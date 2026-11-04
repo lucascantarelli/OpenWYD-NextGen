@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image
 
 build:
 	go build ./...
@@ -69,6 +69,13 @@ portal-test:
 
 portal-build:
 	cd portal && npm run build
+
+# Rebuilda SÓ a imagem do portal e recria o container — o jogo (tmserver) não
+# reinicia. É o alvo para publicar mudanças do portal no ambiente local; para
+# subir/atualizar a stack inteira (e semear a conta de teste) use run-local.
+portal-image:
+	docker compose build portal logpipe
+	docker compose up -d portal logpipe
 
 # Generate gRPC code from api/ (requires protoc + protoc-gen-go / protoc-gen-go-grpc
 # on PATH; install with `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`

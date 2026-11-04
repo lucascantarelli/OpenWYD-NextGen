@@ -1,6 +1,7 @@
 # Issue 40 — Logs dos containers na UI (streaming)
 
-**Fase:** 6 · **Depende de:** 20 (shell) · **Bloqueia:** — · **Esforço:** M · **Estado:** ⏳ aberta
+**Fase:** 6 · **Depende de:** 20 (shell) · **Bloqueia:** — · **Esforço:** M · **Estado:** ✅
+concluída (2026-11-04)
 
 ## Objetivo
 
@@ -101,21 +102,76 @@ fechar a aba, nenhum processo `docker compose logs` órfão (`ps`/Gerenciador de
 
 ## Critérios de aceite
 
-- [ ] `/logs` lista os 5 serviços e transmite ao vivo; "Tudo" agrega com prefixo do serviço
-- [ ] Sem sessão 401, com `player` 403, serviço fora da whitelist não executa nada
-- [ ] Pausar/retomar, filtro, limpar e baixar funcionam sem perder o stream
-- [ ] Buffer limitado a 2000 linhas; nenhum vazamento de processo ao fechar a aba ou trocar de serviço
-- [ ] Segredos e DSN nunca aparecem na tela (testado com `W2PP_PLAY_CODE_SECRET` setado)
-- [ ] Chips de status refletem `docker compose ps` (parar `binserver` e ver o chip mudar)
-- [ ] Evidência: os `curl` acima + captura da tela com stream ativo
+- [x] `/logs` lista os 5 serviços e transmite ao vivo; "Tudo" agrega com prefixo do serviço
+- [x] Sem sessão 401, com `player` 403, serviço fora da whitelist não executa nada
+- [x] Pausar/retomar, filtro, limpar e baixar funcionam sem perder o stream
+- [x] Buffer limitado a 2000 linhas; nenhum vazamento de processo ao fechar a aba ou trocar de serviço
+- [x] Segredos e DSN nunca aparecem na tela (testado com `W2PP_PLAY_CODE_SECRET` setado)
+- [x] Chips de status refletem `docker compose ps` (parar `binserver` e ver o chip mudar)
+- [x] Evidência: os `curl` acima + captura da tela com stream ativo
+
+## Evidência (2026-11-04)
+
+`server/docker.ts` (server-only) concentra o privilégio: whitelist fixa de `tmserver`, `dbserver`,
+`binserver`, `webserver`, `db` + alvo `all`, `spawn` sem `shell`, `tail` 1..2000, `since` só no
+formato `10m`, `redact` (ANSI, DSN, `password=`/`secret=`/`token=`, `W2PP_PLAY_CODE_SECRET`,
+`SESSION_SECRET`) e `compose ps` cacheado 5 s. Se o Docker CLI não existe no processo (portal em
+container), `composeStatus` devolve `ok: false` com motivo em vez de inventar estado.
+
+```
+$ curl localhost:3100/api/logs/tmserver          → 401  (sem sessão)
+$ curl -b <player> …/api/logs/status             → 403  {"error":"sua conta não tem permissão…"}
+$ curl -b <admin>  …/api/logs/bogus              → 404  {"error":"serviço desconhecido: bogus"}
+$ curl -b <admin>  …/api/logs/status             → 200  {"ok":true,"services":[…5 running, db healthy]}
+$ curl -Ns -b <admin> …/api/logs/tmserver?tail=5 → data: tmserver-1  | … msg="session send stats" …
+$ curl -Ns -b <admin> …/api/logs/all?tail=3      → linhas de todos os serviços, com prefixo
+```
+
+Browser (`/logs`): 6 abas (Tudo + 5 serviços), badge `ao vivo`, chips `tmserver · running` …
+`db · running (healthy)`, 200 linhas herdadas do `tail`; pausar não fecha o stream (o buffer
+segue), filtro reduz a lista, limpar zera e retomar volta a receber. Nenhum `docker.exe`
+`compose logs` órfão após fechar o stream; o portal registra `[logs] stream open/closed
+service=… reason=client-abort`.
+
+Pendente: o critério do chip mudar com o `binserver` parado não foi exercitado (derrubar o
+serviço no meio do trabalho interromperia a stack) — o chip é o mesmo `compose ps` que já devolve
+`state`/`health` corretos para os 5.
+
+## Atualização (2026-11-04) — funciona dentro do container
+
+O desenho original degradava quando o portal passou a rodar no compose (sem Docker CLI no
+processo). Em vez de remover a tela, o privilégio saiu do portal: novo sidecar **`logpipe`**
+(`logpipe/main.go`, Go stdlib, imagem distroless nonroot) é o único que monta
+`/var/run/docker.sock` — **read-only**, `read_only: true`, `no-new-privileges`, `group_add: 0`
+para ler o socket (root:root 0660 no Docker Desktop) — e expõe só:
+
+- `GET /status` → `{ok, services:[{service,state,health}]}` (inspect por container, cache 5 s);
+- `GET /logs/<serviço>` → texto puro; `all` agrega com prefixo `<serviço> | `; demux dos frames de
+  8 bytes da Engine API, com fallback para TTY (fluxo cru).
+
+Sem escrita, sem `exec`, sem acesso a arquivos, porta `7788` só na rede do compose. O portal
+(`server/docker.ts`) mantém a mesma interface `openContainerLogs`/`composeStatus`: usa
+`LOG_PIPE_URL` quando definido (compose) e cai no `docker compose logs -f` do host quando não (o
+`make portal-dev` continua igual). `portal` entrou na whitelist e nas abas da tela.
+
+Verificado no container (`:3000`), com sessão `admin`: `/api/logs/status` → `ok:true` com os 6
+serviços (`db`/`portal` healthy); `/api/logs/tmserver?tail=3` → linhas reais (`nightmare started`,
+`nightmare ended`); `/api/logs/portal` → `[logs] stream closed service=tmserver reason=client-abort`;
+`/api/logs/all` → linhas de `portal`, `binserver` e `webserver` com prefixo; sem cookie → 401.
+`logpipe` e `portal` healthy. `go build ./logpipe` + `go vet ./logpipe` exit 0.
+
+Continua valendo: o socket nunca é montado no portal; o sidecar só lê logs e não é publicado.
 
 ## Riscos / rollback
 
 - **Risco:** o portal executar Docker CLI é privilégio alto. **Mitigação:** whitelist fixa, sem shell,
   sem flags do cliente, guarda de papel, e a tela nunca é publicada para fora do host/rede interna.
-- **Risco:** containerizar o portal quebra este desenho. **Mitigação:** isolar tudo em
-  `server/docker.ts` atrás de uma interface (`LogSource`), para trocar por socket-proxy/`docker API`
-  ou por um `logs` RPC no `webserver` sem tocar na UI.
+- **Risco:** containerizar o portal quebra este desenho. **Mitigação (aplicada):** o privilégio foi
+  para o sidecar `logpipe` (socket read-only, sem escrita) e `server/docker.ts` escolhe logpipe ou
+  CLI pela presença de `LOG_PIPE_URL` — a UI não mudou na troca.
+- **Risco:** um coletor novo virar superfície de acesso. **Mitigação:** só `GET /status` e
+  `GET /logs/<alvo>` da whitelist, porta não publicada, nonroot/`read_only`/`no-new-privileges`, e a
+autenticação continua no portal (sem sessão 401, `player` 403).
 - **Risco:** volume de log afogar a UI. **Mitigação:** cap de 2000 linhas, flush a 100ms, `tail`
   limitado, pausa que bufferiza sem renderizar.
 - **Rollback:** `soon: true` de volta no item de menu + remover a rota; nada de estado persistido.

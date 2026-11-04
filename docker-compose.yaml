@@ -71,6 +71,33 @@ services:
     ports:
       - "7600:7600"
 
+  # Sidecar de logs (issue 40): ÚNICO processo com o socket do Docker, montado
+  # read-only. Serve /status e /logs/<serviço> na rede interna do compose; o
+  # portal autentica a sessão e repassa. Nenhuma operação de escrita, sem exec,
+  # sem acesso a arquivos — e a porta não é publicada.
+  logpipe:
+    build:
+      context: .
+      dockerfile: logpipe/Dockerfile
+    image: openwyd-logpipe:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # O socket pertence a root:root (0660) no Docker Desktop; a imagem distroless
+    # roda como nonroot, então o grupo 0 é o que dá leitura sem rodar como root.
+    group_add:
+      - "0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "7788"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/logpipe", "-healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
   portal:
     build:
       context: .
@@ -78,6 +105,8 @@ services:
     environment:
       WEB_API_ADDR: webserver:7600
       W2PP_CONTENT: /Release
+      # Logs ao vivo pelo sidecar; sem isto o BFF tenta o Docker CLI do host.
+      LOG_PIPE_URL: http://logpipe:7788
       # Dev-only: sobrescreva no ambiente em qualquer deploy real (>=32 chars).
       SESSION_SECRET: ${W2PP_PORTAL_SESSION_SECRET:-dev-only-portal-session-secret-32-chars}
       AUDIT_LOG_DIR: /var/log/wyd-portal
@@ -87,6 +116,8 @@ services:
       - portal-audit:/var/log/wyd-portal   # trilha de auditoria (ndjson)
     depends_on:
       webserver:
+        condition: service_started
+      logpipe:
         condition: service_started
     ports:
       - "3000:3000"            # UI de administração
