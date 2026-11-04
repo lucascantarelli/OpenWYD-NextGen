@@ -1,6 +1,7 @@
 # Issue 02 — Provisionar ambiente de execução (Go, Docker, portas)
 
-**Fase:** 0 · **Depende de:** 01 · **Bloqueia:** 03, 04, 06, 07, 16 · **Esforço:** S · **Estado:** 🟡 parcial (2026-11-02) — falta `scripts/preflight.sh`
+**Fase:** 0 · **Depende de:** 01 · **Bloqueia:** 03, 04, 06, 07, 16 · **Esforço:** S · **Estado:** ✅
+concluída (2026-11-04)
 
 ## Objetivo
 
@@ -74,11 +75,36 @@ Saída esperada do build: `naming to docker.io/library/openwyd-tmserver` (ou sim
 
 ## Critérios de aceite
 
-- [ ] `./scripts/preflight.sh` roda e falha de forma legível quando algo essencial falta
-- [ ] `docker compose build <serviço>` conclui para os 4 serviços, mesmo que serializado
-- [ ] `go build ./...` roda em container `golang:1.26-alpine` sem erro
-- [ ] Portas 80 e 8281 livres (ou conflito documentado com plano de porta alternativa)
-- [ ] Causa do `rpc error ... EOF` identificada e registrada (recurso × Dockerfile × contexto)
+- [x] `./scripts/preflight.sh` roda e falha de forma legível quando algo essencial falta
+- [x] `docker compose build <serviço>` conclui para os 4 serviços, mesmo que serializado
+- [x] `go build ./...` roda em container `golang:1.26-alpine` sem erro
+- [x] Portas 80 e 8281 livres (ou conflito documentado com plano de porta alternativa)
+- [x] Causa do `rpc error ... EOF` identificada e registrada (recurso × Dockerfile × contexto)
+
+## Evidência (2026-11-04)
+
+`scripts/preflight.sh` (`set -uo pipefail`, sem `-e`: roda **todas** as checagens antes de
+resumir) cobre exatamente o que já custou tempo: raiz do repo + sparse checkout, `Release/`
+(ItemList, SkillData, NPCGener, `run/npc/` e os 4 `BaseMob`, mapas como warning), daemon Docker
++ compose v2/v1 + memória mínima de 6 GB, portas 80/8281/7600/3000 e Go do host contra 1.26
+(cai para o caminho em container quando não há Go). Porta ocupada **pela própria stack** conta
+como OK — o erro real é estar ocupada por outro processo.
+
+```
+$ ./scripts/preflight.sh          # árvore completa
+  [ OK ] Release/TMsrv/run/npc/ (1991 arquivos)
+  [ OK ] porta 80 ocupada pela stack (tmserver) — esperado
+  [ OK ] go 1.27.3 no host
+  0 falha(s), 0 aviso(s) · preflight OK — próximo passo: make run-local   → exit 0
+
+$ bash /tmp/fakepp/scripts/preflight.sh    # cópia fora do repo (caminho de falha)
+  [FAIL] não parece a raiz do repo (go.mod e docker-compose.yaml devem existir aqui)
+  11 falha(s), 2 aviso(s) · preflight FALHOU                          → exit 1
+```
+
+Sobre a falha original (`COPY . .` → `rpc error ... EOF`): era pressão de recurso do Docker
+Desktop, não Dockerfile — o build serializado por serviço concluiu e as imagens `openwyd-*`
+estão em uso desde então; o script agora avisa quando o daemon tem menos de 6 GB.
 
 ## Riscos / rollback
 

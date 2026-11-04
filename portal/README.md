@@ -93,3 +93,46 @@ A imagem (`portal/Dockerfile`) usa o output `standalone` do Next. O contexto de 
 repositório** (não `portal/`) porque a imagem precisa de `api/web/v1/web.proto`. No container,
 `WEB_API_ADDR=webserver:7600`, `W2PP_CONTENT=/Release` e `AUDIT_LOG_DIR` vêm do compose;
 `SESSION_SECRET` tem default apenas de desenvolvimento (>= 32 caracteres em produção).
+
+### Logs ao vivo (`/logs`, issue 40)
+
+O portal **não** monta o socket do Docker. No compose, quem fala com a Engine API é o sidecar
+**`logpipe`** (`logpipe/`, Go stdlib): monta `/var/run/docker.sock` **read-only** e expõe só
+`/status` e `/logs/<serviço>` na rede interna — sem escrita, sem `exec`, sem acesso a arquivos,
+com `read_only`, `no-new-privileges` e `group_add: 0` para ler o socket rodando nonroot. O portal
+autentica a sessão e repassa o stream em SSE (`/api/logs/<serviço>`, `/api/logs/status`), com
+`redact` de ANSI/DSN/segredo antes de qualquer linha chegar ao browser.
+
+Serviços aceitos: `tmserver`, `dbserver`, `binserver`, `webserver`, `db`, `portal` e o alvo `all`.
+Nada vem cru do browser: whitelist fixa, `tail` 1..2000 e `since` só no formato `10m`. Sem
+`LOG_PIPE_URL` (ex.: `make portal-dev` no host), o BFF volta ao `docker compose logs -f` local.
+
+### Contas, papéis e banimento (`/contas`, issue 32)
+
+Lista com cursor keyset (`apos`), filtro por prefixo de login, papel e estado de bloqueio; o detalhe
+traz a conta, o motivo do bloqueio e a **auditoria** (`account_admin_audit`: quem, quando, antes →
+depois e o motivo digitado). Criar conta já com papel é coisa de `admin`.
+
+Toda escrita é `action → adminCall → AccountAdminService`, com `moderator_id` vindo da sessão. As
+regras **não** moram na UI nem no gRPC: `internal/store/account_admin.go` as aplica dentro da
+transação — ninguém altera o próprio papel/bloqueio, a última conta admin ativa é protegida e
+`moderator` só bloqueia `player`. O web-api responde `INVALID` com uma explicação ("esta é a última
+conta admin ativa — promova outra antes") e o `adminCall` repassa essa mensagem à tela.
+
+Nada aqui toca personagem: `account.role` e `account.is_blocked` são lidos no **próximo login**.
+A conta nunca é apagada e senha/PIN não são redefinidos por esta tela (fora do escopo da issue).
+
+### Faturamento (`/faturamento`, issue 31)
+
+Leitura pura do `DonateRevenueAdminService` — nada escreve, nem linha de auditoria no banco — e
+restrita a `admin`: `moderator` cai em `/sem-permissao`, porque receita e dados de pagador são
+informação financeira. A janela (7/30/90 dias ou intervalo digitado) é interpretada em
+`America/Sao_Paulo` e enviada em segundos Unix; a tela exibe a janela que o **servidor** aplicou.
+Dinheiro (`gross_cents`, BRL) e donate (`credits`) nunca se somam, e `pending_cents` tem cartão
+próprio com o aviso de que não é receita. Pedidos saem em CSV client-side (100 linhas por carga) e
+a busca de conta usa `/api/search/accounts`, a mesma do `Combobox` do crédito manual em `/loja`.
+
+A escolha de qual compose usar é `W2PP_COMPOSE_DIR` (default: o diretório pai de `portal/`).
+
+A tela exige sessão de `moderator`/`admin` — `player` recebe 403, e sem sessão a resposta é 401
+antes de qualquer conexão com o Docker (logpipe ou CLI).

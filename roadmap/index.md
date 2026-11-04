@@ -47,7 +47,7 @@ comando). "Escrevi o código" não fecha issue.
 | # | Issue | Estado | Esforço |
 |---|-------|--------|---------|
 | 01 | [Restaurar e validar a árvore de trabalho](issues/issue-01.md) | ✅ | S |
-| 02 | [Provisionar ambiente de execução (Go/Docker/portas)](issues/issue-02.md) | 🟡 (falta `preflight.sh`) | S |
+| 02 | [Provisionar ambiente de execução (Go/Docker/portas)](issues/issue-02.md) | ✅ (`scripts/preflight.sh`: checkout, `Release/`, daemon/compose, portas e Go; exit 1 com 11 `[FAIL]` numa árvore incompleta e exit 0 aqui) | S |
 | 03 | [Subir Postgres, migrações e contas seed](issues/issue-03.md) | ✅ | S |
 | 04 | [Subir e validar o tmServer com conteúdo](issues/issue-04.md) | ✅ | M |
 
@@ -98,11 +98,11 @@ comando). "Escrevi o código" não fecha issue.
 | 25 | [Editor de stats e equip de mobs](issues/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
 | 26 | [Relatórios de drop: item ↔ mob](issues/issue-26.md) | ✅ (duas visões, CSV e cache; validado ao vivo: 1.349 templates, 13.813 slots, consistência item↔mob, player 403) | M |
 | 27 | [Editor do mapa de colisão (AttributeMap)](issues/issue-27.md) | ✅ (info + histograma + transformação + download de 1 MiB com sha conferido; `/mapa` 200 e rota de download 200) | M |
-| 28 | [Eventos globais do mundo](issues/issue-28.md) | ⏳ | S |
-| 29 | [Administração da loja de donate](issues/issue-29.md) | ⏳ | M |
-| 30 | [Administração da recompensa diária](issues/issue-30.md) | ⏳ | S |
-| 31 | [Faturamento e relatórios de donate](issues/issue-31.md) | ⏳ | M |
-| 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | ⏳ | L |
+| 28 | [Eventos globais do mundo](issues/issue-28.md) | ✅ (`/eventos` com estado ativo/esgotado/incompleto, item por catálogo, divisor em "1 em cada N", gate de EXP dobrada e "desligar tudo"; salvar relê o servidor e o tmserver recarregou em ~7 s sem restart) | S |
+| 29 | [Administração da loja de donate](issues/issue-29.md) | ✅ (`/loja`: CRUD com preço em donate, efeitos e `expires_days` do proto, habilitar/desabilitar, apagar exigindo o título digitado e crédito manual com motivo + confirmação dupla, tudo auditado) | M |
+| 30 | [Administração da recompensa diária](issues/issue-30.md) | ✅ (`/diaria` com CRUD completo, item por catálogo, efeitos/`expires_days` fiéis ao proto, habilitar/duplicar/apagar com confirmação; resgate provado duas vezes → `ALREADY_CLAIMED` e `delivery_queue` `daily_reward:1`) | S |
+| 31 | [Faturamento e relatórios de donate](issues/issue-31.md) | ✅ (`/faturamento` só `admin`: janela 7/30/90/personalizada em Brasília, receita em R$ separada dos créditos de donate, pendentes em cartão próprio ("não é receita"), série em barras por dia/semana/mês, pedidos com CSV, top compradores com LTV, extrato da carteira e filtro por conta; 6 KPIs conferidos contra SQL, `moderator` → `/sem-permissao`) | M |
+| 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | 🟡 (backend e portal ✅: migração `0042_account_admin` com `account_admin_audit`, `AccountAdminService` (list/keyset, get+auditoria, set role/block, create) e `/contas` com filtros, detalhe e motivo obrigatório; regras no store dentro da transação — sem auto-alteração, última admin ativa protegida, moderador só bloqueia jogador; e2e contra o web-api ✅ e `VerifyCredentials` vê o bloqueio. Falta só a recusa no login do cliente) | L |
 | 33 | [Catálogo de itens editável (overlay de ItemList.csv)](issues/issue-33.md) | ⏳ | L |
 | 34 | [Drops editáveis: taxa por slot e Carry[] do mob](issues/issue-34.md) | 🟡 (taxa por slot e `Carry[]` ✅ ponta a ponta: migrações 0040/0041, `DropAdminService` com os dois editores — **`/drops/editar`** e **`/drops/carry`** —, overlays no boot com log `templates=1`/`applied=1`, `Set/Restore` validados e auditoria; falta só a evidência in-game de frequência) | L |
 | 35 | [Curva de EXP e rebalanceamento em massa](issues/issue-35.md) | ⏳ | M |
@@ -110,7 +110,7 @@ comando). "Escrevi o código" não fecha issue.
 | 37 | [Spawns e localização de mobs](issues/issue-37.md) | ⏳ | L |
 | 38 | [Operação ao vivo: online, kick, teleport e aviso](issues/issue-38.md) | ⏳ | L |
 | 39 | [QA final do portal: E2E, segurança e fechamento](issues/issue-39.md) | ⏳ | M |
-| 40 | [Logs dos containers na UI (streaming)](issues/issue-40.md) | ⏳ | M |
+| 40 | [Logs dos containers na UI (streaming)](issues/issue-40.md) | ✅ (`/logs` em SSE por serviço + "Tudo", agora **funcionando no container**: sidecar `logpipe` lê o socket do Docker read-only e serve `/status`/`/logs`; o portal autentica e repassa. 401 sem sessão, 403 `player`, 404 fora da whitelist, `portal` incluído, pausa/filtro/limpar/baixar) | M |
 | 41 | [Atlas do mundo: zonas, coordenadas e portais](issues/issue-41.md) | ✅ | M |
 | 42 | [Rotas de teleporte editáveis](issues/issue-42.md) | ✅ | L |
 | 43 | [Inventário e status de personagem](issues/issue-43.md) | 🟡 leitura+fila | L |
@@ -190,6 +190,69 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-04 (issue 32 — contas, papéis e banimento)** — `/contas` deixou de ser "em breve":
+  listagem com cursor keyset (`apos`), filtro por prefixo de login/papel/estado e detalhe com a
+  **auditoria** de cada alteração. Papel e bloqueio exigem motivo (≥ 10) e passam por
+  `AccountAdminService` (novo, `web.proto` regenerado no container), com `moderator_id` vindo da
+  sessão. As regras ficaram no store, **dentro da transação**: ator `admin` re-lido do banco, ninguém
+  altera a si mesmo, a última conta admin ativa é protegida (`FOR UPDATE` nos admins ativos antes de
+  contar) e `moderator` só bloqueia `player`. Migração `0042_account_admin` acrescenta
+  `role_changed_at`/`role_changed_by`/`blocked_reason` e `account_admin_audit` (antes → depois, autor,
+  motivo); o e2e (`-tags=e2e`) cria contas `zq*`, prova cada recusa e limpa o banco no fim. O
+  `adminCall` passou a repassar o `message` de negócio do web-api ("esta é a última conta admin
+  ativa — promova outra antes") em vez do genérico "dados inválidos". Falta apenas a evidência no
+  login do cliente do jogo.
+
+- **2026-11-04 (issues 02 · 29 · 40)**
+
+  - **02 — `scripts/preflight.sh`.** Valida, antes do bring-up: raiz do repo (e sparse
+    checkout), `Release/` (ItemList/SkillData/NPCGener/1.991 templates/4 BaseMob, mapas como
+    warning), daemon Docker + compose v2/v1 + memória mínima, portas 80/8281/7600/3000
+    (ocupada pela própria stack = OK) e Go do host contra 1.26, imprimindo o caminho oficial em
+    container quando falta. `--quiet` mostra só FAIL/WARN; exit 1 se houver `[FAIL]`.
+  - **29 — `/loja` (loja de donate).** Catálogo com item por nome/ícone, **preço em donate**
+    (nunca coin), validade, adicionais e estado; diálogo de criação/edição com os três pares
+    `eff`/`effv` e `expires_days`; habilitar/desabilitar; **apagar exige digitar o título** (o
+    servidor confere) e crédito manual exige motivo (>= 10 chars) e confirmação explícita,
+    devolvendo `new_balance`. `lib/donate.ts` valida título 3–60, preço 1..1.000.000, validade
+    ≤ 3.650 e o `uint8` dos adicionais (14 testes). O backend só exige `item_index > 0` e
+    `price > 0`: a action recusa item fora do catálogo, porque o jogador compraria slot vazio.
+  - **40 — `/logs` (streaming).** `server/docker.ts` concentra o Docker CLI: whitelist fixa de
+    5 serviços + alvo `all`, `spawn` sem shell, `tail` 1..2000, `since` só no formato `10m`,
+    `redact` de ANSI/DSN/segredo e `compose ps` cacheado 5s. `/api/logs/[service]` responde
+    `text/event-stream` (sessão obrigatória, `player` 403, serviço fora da whitelist 404) e mata
+    o filho no abort; a tela tem abas, chips de status, pausa que não fecha o stream, filtro,
+    limpar, baixar `.txt` e buffer de 2.000 linhas com flush a cada 100ms.
+
+- **2026-11-04 (issue 30 — recompensa diária)** — `/diaria` gerencia o catálogo da recompensa:
+  tabela com título, **item por nome e ícone**, validade (`permanente`/`N dias`), resumo dos
+  adicionais e estado; diálogo de criação/edição com os três pares de efeito (`eff`/`effv`) vindos do
+  vocabulário de `ItemEffect.h`, `expires_days` (0 = permanente, até 3.650) e `enabled`; ações de
+  linha habilitar/desabilitar, **duplicar** (a cópia nasce desabilitada para não publicar por engano)
+  e apagar com confirmação. `lib/daily.ts` valida título 3–60, descrição ≤ 280, efeito/valor no
+  `uint8` da `STRUCT_ITEM` (8 testes); a action também recusa item fora do catálogo — o backend só
+  exige `item_index > 0` e o jogador receberia slot vazio. O painel de "resgates de hoje" ficou para
+  a issue 31: **não existe RPC** para contar claims e o portal não fala Postgres. Verificado ao vivo:
+  oferta `id 1` (item 400, 7 dias) criada pela tela, `claim #1 = OK`/`claim #2 = ALREADY_CLAIMED` para
+  a conta 1, `daily_reward_claim` com `2026-11-04` e `delivery_queue` `pending` com
+  `source=daily_reward:1`; desabilitar e apagar refletiram no banco e na tabela. `tsc`, `vitest`
+  (39) e `next build` verdes (`/diaria` 6,59 kB). Falta só ver o item no personagem após login.
+
+- **2026-11-04 (issue 28 — eventos globais)** — `/eventos` controla o evento global de mundo:
+  estado do servidor com badge (ativo · esgotado · config incompleta · desligado), item escolhido
+  pelo catálogo (nome no lugar de índice), divisor lido como "1 em cada N kills elegíveis", faixa
+  `start/current/end` com barra de progresso e "restam N drops", e os toggles de serial, anúncio,
+  EXP dobrada e evento newbie. `lib/worldevent.ts` espelha `worldevent.validConfig` (10 testes em
+  `worldevent.test.ts`), o que corrigiu a leitura de que zeros com o evento desligado seriam
+  inválidos (os inputs agora só exigem mínimo 1 com o evento ligado). A Server Action recusa item
+  fora do catálogo — o backend aceita qualquer índice ≤ 32767 e o jogador receberia slot vazio —
+  e **relê** o config depois de salvar; EXP dobrada exige confirmação explícita e há
+  "desligar tudo" num diálogo único. Verificado ao vivo: salvar `item 400 / divisor 5 / faixa 1..50`
+  gravou a linha (`updated_by=1`), a auditoria `set_config` e **version 1**, e o tmserver logou
+  `world event config reloaded version=1` ~7 s depois — sem restart, pelo poll de 15 s. `/eventos`
+  200 com sessão e 307 sem; `tsc`, `vitest` (31) e `next build` verdes. Falta só a evidência in-game
+  (EXP dobrada e notice no cliente), que depende do cliente do usuário.
 
 - **2026-11-04 (reestruturação — portal e roadmap dentro do repo)** — o portal passou a viver em
   `portal/` e o planejamento em `roadmap/`, com o cliente do jogo em `client/` (ignorado no git). O portal entrou na infraestrutura: imagem `portal/Dockerfile` (Next standalone,
@@ -376,6 +439,19 @@ Grafo da Fase 6:
   log do processo e, com `AUDIT_LOG_DIR`, em `audit-YYYY-MM-DD.ndjson`. 8 testes de vitest cobrem
   o mapa; `npm test` entrou no portal.
 
+- **2026-11-04 (painel + logs no container)** — `/painel` deixou de exibir cartões "em breve":
+  lê itens do catálogo, templates de mob, NPCs, ofertas de donate e recompensas diárias, e (para
+  `admin`) receita/compradores dos últimos 30 dias pelo `DonateRevenueAdminService`. `/logs` passou
+  a funcionar no formato de produção: novo sidecar **`logpipe`** (Go stdlib) monta o socket do
+  Docker **read-only** e serve `/status` + `/logs/<serviço>` na rede do compose, com `portal`
+  incluído; o portal só autentica e repassa por SSE. O socket nunca é montado no portal.
+- **2026-11-04 (issue 31)** — Faturamento: `/faturamento` (só `admin`) sobre o
+  `DonateRevenueAdminService` — janela 7/30/90/personalizada interpretada em `America/Sao_Paulo`,
+  receita em R$ separada dos créditos de donate, `pending_cents` em cartão próprio com o aviso de
+  que não é receita, série em barras CSS por dia/semana/mês, pedidos com CSV client-side, top
+  compradores com LTV e extrato da carteira. A busca de conta (`SearchAccounts`) virou `Combobox`
+  reutilizável e substituiu o "id numérico" do crédito manual da issue 29. Conferido ao vivo no
+  container: 6 KPIs batem com SQL, `moderator` cai em `/sem-permissao`.
 - **2026-11-03 (issue 40 criada)** — Monitoramento de logs na UI: `/logs` com streaming SSE por
   serviço (`tmserver`, `dbserver`, `binserver`, `webserver`, `db`) via `docker compose logs -f`
   a partir do BFF, whitelist fixa de serviços, redação de DSN/segredo, cap de 2000 linhas, pausa/
