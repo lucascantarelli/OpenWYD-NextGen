@@ -1314,6 +1314,121 @@ message SearchAccountsResponse {
   repeated AccountSummary accounts = 2;
 }
 
+// AccountAdminService is the account moderation surface (issue 32): list/search,
+// role changes, block/unblock and account creation. Before it, role and block
+// were only editable with psql.
+//
+// Authorization is re-read server-side from account.role on every call: list/get
+// need moderator or admin; role changes and creation need admin; a moderator may
+// only block/unblock players. Rules that must never be bypassed live inside the
+// write transaction, not here: nobody changes their own role/block, the last
+// ACTIVE admin cannot be demoted or blocked, and every write appends
+// account_admin_audit with old/new value and the typed reason.
+//
+// Nothing here touches live game state. account.role and account.is_blocked are
+// consulted on the NEXT login (game and web), so the panel says so explicitly.
+service AccountAdminService {
+  // ListAccounts is a keyset page (after_id) filtered by login prefix, role and
+  // blocked state, with the total for the page footer.
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+  // GetAccount returns one account plus its newest audit rows.
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  // SetRole promotes/demotes an account (admin only, reason required).
+  rpc SetRole(SetRoleRequest) returns (AccountWriteResponse);
+  // SetBlocked blocks/unblocks an account (moderator or admin, reason required).
+  rpc SetBlocked(SetBlockedRequest) returns (AccountWriteResponse);
+  // CreateAccount registers an account with an explicit role (admin only).
+  rpc CreateAccount(AdminCreateAccountRequest) returns (AdminCreateAccountResponse);
+}
+
+// AccountRow is the moderation view of an account. It carries NO credential
+// material: pass_hash, pin_hash and block_pass_hash never leave the database.
+message AccountRow {
+  int64  id              = 1; // serialize as string in public JSON
+  string name            = 2; // canonical lowercase login
+  string email           = 3;
+  string role            = 4; // 'player' | 'moderator' | 'admin'
+  bool   is_blocked      = 5;
+  string blocked_reason  = 6; // empty when active
+  int32  donate_balance  = 7;
+  int64  created_at_unix = 8;
+  int64  role_changed_at_unix = 9;  // 0 = nunca alterado pela web
+  int64  role_changed_by      = 10; // account.id do autor; 0 = desconhecido
+  int32  characters           = 11;
+}
+
+message ListAccountsRequest {
+  int64  moderator_id = 1;
+  string query        = 2;  // login prefix (lowercased server-side); empty = todos
+  string role         = 3;  // exact match; empty = todos
+  int32  blocked      = 4;  // -1 = todos, 0 = ativas, 1 = bloqueadas
+  int32  limit        = 5;  // default 50, max 100
+  int64  after_id     = 6;  // keyset cursor; 0 = desde o começo
+}
+message ListAccountsResponse {
+  AdminResult result = 1;
+  repeated AccountRow accounts = 2;
+  int64 next_id      = 3; // último id da página; 0 = sem próxima
+  int32 total_count  = 4;
+}
+
+message GetAccountRequest {
+  int64 moderator_id = 1;
+  int64 account_id   = 2;
+}
+message GetAccountResponse {
+  AdminResult result = 1;
+  AccountRow account = 2;
+  repeated AccountAuditRow audit = 3;
+}
+
+// AccountAuditRow is one moderation action. old_value/new_value are text: the
+// role name for 'set_role', 'active'/'blocked' for 'set_blocked', ""/role for
+// 'create'.
+message AccountAuditRow {
+  int64  id              = 1;
+  int64  actor_id        = 2;
+  string action          = 3;
+  string old_value       = 4;
+  string new_value       = 5;
+  string reason          = 6;
+  int64  created_at_unix = 7;
+}
+
+message SetRoleRequest {
+  int64  moderator_id = 1;
+  int64  account_id   = 2;
+  string role         = 3;
+  string reason       = 4; // mínimo 10 caracteres; vai para a auditoria
+}
+message SetBlockedRequest {
+  int64  moderator_id = 1;
+  int64  account_id   = 2;
+  bool   blocked      = 3;
+  string reason       = 4;
+}
+// AccountWriteResponse carries the business refusal in message (e.g. "última
+// conta admin") so the panel can explain it instead of showing a generic error.
+message AccountWriteResponse {
+  AdminResult result = 1;
+  string message     = 2;
+  AccountRow account = 3; // presente quando result = OK
+}
+
+message AdminCreateAccountRequest {
+  int64  moderator_id = 1;
+  string name         = 2;
+  string password     = 3; // plaintext over the mTLS link; argon2id before storage
+  string email        = 4;
+  string role         = 5;
+  string reason       = 6;
+}
+message AdminCreateAccountResponse {
+  AdminResult result = 1;
+  int64  account_id  = 2;
+  string message     = 3;
+}
+
 // TeleportAdminService is the moderator-facing teleport editor (issue 42). The
 // Next.js BFF calls it server-side after establishing a moderator session; every
 // write is cold config in Postgres, applied by tmServer on its poll — never live

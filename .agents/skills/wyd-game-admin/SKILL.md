@@ -58,31 +58,42 @@ não prometa nem documente como disponíveis.
 
 ## 4. Conceder ou remover papel administrativo
 
-Papel vive no banco. Vale no **próximo login** (é carregado na autenticação):
+**Prefira o portal** (`/contas`, issue 32): login do alvo → detalhe → papel + motivo. Ele grava
+`role_changed_at`/`role_changed_by` e a linha de `account_admin_audit` (antes/depois + motivo) na
+mesma transação, exige `admin` e recusa rebaixar a si mesmo ou a última conta admin ativa.
+
+Papel vive no banco e vale no **próximo login** (é carregado na autenticação) — sessão web aberta
+continua com o papel antigo.
+
+SQL direto só como **emergência** (portal indisponível), e sabendo que não haverá auditoria do BFF:
 
 ```bash
 # (comandos rodam na raiz do repositório)
 docker compose exec db psql -U postgres -d postgres -c \
-  "update account set role='admin' where name='test';"
+  "update account set role='admin', role_changed_at=now() where name='test';"
 # conferir
 docker compose exec db psql -U postgres -d postgres -c \
-  "select name, role, is_blocked from account order by name;"
+  "select name, role, is_blocked, blocked_reason from account order by name;"
 ```
 
-Para voltar a jogador comum, `role='user'` (ou o valor padrão da coluna) e relogar. Nunca edite
-`character`/`item` à mão para "dar" algo: o loop é dono desse estado e o próximo save sobrescreve.
+Para voltar a jogador comum, `role='player'` e relogar. Nunca edite `character`/`item` à mão para
+"dar" algo: o loop é dono desse estado e o próximo save sobrescreve.
 
 ## 5. Banimento e abuso
 
 ```bash
-# pelo jogo (preferido, auditado):  /gm ban fulano
-# pelo banco (offline, sem auditoria de GM):
+# pelo portal (preferido, auditado): /contas → bloqueio com motivo
+# pelo jogo:                        /gm ban fulano
+# pelo banco (offline, sem auditoria):
 docker compose exec db psql -U postgres -d postgres -c \
-  "update account set is_blocked=true where name='fulano';"
+  "update account set is_blocked=true, blocked_reason='motivo' where name='fulano';"
 ```
 
-O login já rejeita conta bloqueada. A migração do ban administrativo para o binServer (entitlement)
-está pendente (`docs/migration/web-platform-plan.md §binServer`) — não invente esse fluxo.
+O login já rejeita conta bloqueada (o `is_blocked` é lido na autenticação do jogo e no
+`VerifyCredentials`). No portal, `moderator` só bloqueia conta de jogador; ninguém bloqueia a si
+mesmo e a última conta admin ativa não pode ser bloqueada. A migração do ban administrativo para o
+binServer (entitlement) está pendente (`docs/migration/web-platform-plan.md §binServer`) — não
+invente esse fluxo.
 
 ## 6. Auditoria e verificação
 

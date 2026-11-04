@@ -28,6 +28,7 @@ import (
 	"github.com/jeanluca/w2pp-openwyd/internal/secure"
 	"github.com/jeanluca/w2pp-openwyd/internal/store"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/account"
+	"github.com/jeanluca/w2pp-openwyd/webserver/internal/accountadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/attributemap"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/characteradmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/characters"
@@ -35,22 +36,22 @@ import (
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donaterevenue"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donateshop"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donatetopup"
+	"github.com/jeanluca/w2pp-openwyd/webserver/internal/dropadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/droptool"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/grpcsrv"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/dropadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemeffectadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/ratesadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/worldstateadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemicons"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mobtemplateadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mobtemplates"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npcadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/ranking"
+	"github.com/jeanluca/w2pp-openwyd/webserver/internal/ratesadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/skillcatalog"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/teleportadmin"
 	"github.com/jeanluca/w2pp-openwyd/webserver/internal/worldevent"
+	"github.com/jeanluca/w2pp-openwyd/webserver/internal/worldstateadmin"
 )
 
 func main() {
@@ -201,6 +202,9 @@ func run(logger *slog.Logger) error {
 		}
 	}
 	webv1.RegisterAccountWebServiceServer(srv, grpcsrv.New(account.New(st)).WithPlayCodes(playCodes))
+	// Contas, papéis e banimento (issue 32): leitura para staff, escrita auditada
+	// só para admin (bloqueio também para moderador, alvo jogador).
+	webv1.RegisterAccountAdminServiceServer(srv, grpcsrv.NewAccountAdmin(accountadmin.New(st)))
 	webv1.RegisterRankingWebServiceServer(srv, grpcsrv.NewRanking(ranking.New(st)))
 	webv1.RegisterCharacterWebServiceServer(srv, grpcsrv.NewCharacters(characters.New(st)))
 	webv1.RegisterItemCatalogServiceServer(srv, grpcsrv.NewItemCatalog(itemCatalog))

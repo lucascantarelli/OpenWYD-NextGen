@@ -31,6 +31,13 @@ export interface AdminCallAudit {
 type WithoutModerator<Req> = Omit<Req, "moderator_id" | "moderatorId">;
 
 /**
+ * Resposta admin vista pelo `adminCall`. Alguns serviços (contas, issue 32)
+ * devolvem `message` com a recusa de negócio ("última conta admin ativa");
+ * quando ela existe, é mais útil que o texto genérico do `AdminResult`.
+ */
+type AdminResponse = { result: number; message?: string };
+
+/**
  * Sessão de staff ou erro tipado — **auditando a tentativa negada**.
  *
  * O `requireStaff` sozinho lançaria antes de qualquer registro: uma conta
@@ -57,7 +64,7 @@ async function guardStaff(audit: AdminCallAudit): Promise<Session> {
   throw new AdminError(status, message);
 }
 
-export async function adminCall<Req extends object, Res extends { result: number }>(
+export async function adminCall<Req extends object, Res extends AdminResponse>(
   fn: Unary<Req, Res>,
   req: WithoutModerator<Req>,
   audit: AdminCallAudit,
@@ -79,6 +86,6 @@ export async function adminCall<Req extends object, Res extends { result: number
     status,
   });
 
-  if (!isOk(res.result)) throw new AdminError(status, messageFor(res.result));
+  if (!isOk(res.result)) throw new AdminError(status, res.message?.trim() || messageFor(res.result));
   return res;
 }

@@ -74,7 +74,7 @@ portal/                                  ← raiz do workspace, IRMÃO de  (não
 | `WorldEventAdminService` | ✅ | evento global (double EXP, item do evento, notice) |
 | `DonateAdminService` / `DonateShopService` | ✅ | loja de donate e carteira |
 | `DailyRewardAdminService` | ✅ | catálogo de recompensa diária |
-| `DonateRevenueAdminService` | ❌ | faturamento (KPIs, pedidos, compradores, busca de contas) |
+| `DonateRevenueAdminService` | ✅ | faturamento (KPIs, pedidos, compradores, extrato, busca de contas) |
 | `AccountWebService` | ✅ (criar) | `VerifyCredentials` (login), `CreateAccount`, `IssuePlayCode` |
 | `CharacterWebService`, `RankingWebService`, `ItemCatalogService` | ❌ | leitura fria |
 | `NpcAdminService.ListDropItems` / `ListMobDrops` | ✅ `/drops` (abas Por item/Por mob, raridade pelo divisor, CSV) | relatórios de drop (item↔mob) |
@@ -264,11 +264,11 @@ em `efeito N` — não inventar rótulo.
 | 25 | Editor de stats/equip de mob |
 | 26 | Relatórios de drop item↔mob |
 | 27 | Editor do mapa de colisão — ✅ `/mapa` (histograma, significados, operações em massa, retângulo em mundo e download `AttributeMap_New.dat` com sha no header) |
-| 28 | Eventos globais |
-| 29 | Loja de donate |
-| 30 | Recompensa diária |
-| 31 | Faturamento |
-| 32 | Contas, papéis e ban (backend novo) |
+| 28 | Eventos globais — ✅ `/eventos` (badge ativo/esgotado/incompleto, item pelo catálogo, divisor lido como "1 em cada N", faixa com progresso, gate de EXP dobrada e "desligar tudo"; a action relê o servidor depois do `Set`, e o tmserver aplica em até 15 s sem restart) |
+| 29 | Loja de donate — ✅ `/loja` (item por nome/ícone, **preço em donate** com o rótulo em toda linha, validade, adicionais, estado; diálogo de criação/edição com `eff`/`effv` e `expires_days`; habilitar/desabilitar; **apagar exige digitar o título** e o servidor confere; crédito manual exige motivo ≥ 10 e confirmação dupla e devolve `new_balance`). A action recusa item fora do catálogo e — armadilha real — **nada de `export const` num arquivo `"use server"`**: o build passa e a action responde 500 em runtime |
+| 30 | Recompensa diária — ✅ `/diaria` (tabela com item por nome/ícone, validade, adicionais e estado; diálogo de criação/edição com os três pares `eff`/`effv` e `expires_days`; habilitar, duplicar — a cópia nasce desabilitada — e apagar com confirmação). Resgate é do `DailyRewardService`, nunca do BFF: claim duplicado devolve `ALREADY_CLAIMED` e a entrega é `delivery_queue` (`source=daily_reward:<id>`) drenada no login |
+| 31 | Faturamento — ✅ `/faturamento` (só `admin`): janela 7/30/90 dias ou intervalo digitado em `America/Sao_Paulo`, KPIs de dinheiro (`gross_cents`, ticket, compradores) separados dos de donate, aviso de que `pending_cents` não é receita, série em barras CSS por dia/semana/mês, pedidos com CSV client-side, top compradores com LTV e extrato da carteira. O filtro mora na URL; a busca de conta (`SearchAccounts`) virou `Combobox` e também substituiu o "id numérico" do crédito manual da issue 29 |
+| 32 | Contas, papéis e ban — ✅ `/contas` (lista com cursor keyset + filtro de login/papel/bloqueio, detalhe com **auditoria** e formulário de papel/bloqueio com motivo ≥ 10, criar conta já com papel). Regras no **store**, dentro da transação: ninguém altera a si mesmo, a última conta admin ativa não é rebaixada nem bloqueada, e `moderator` só bloqueia `player`. `adminCall` agora prefere o `message` de negócio que o web-api devolve ("esta é a última conta admin ativa — promova outra antes") ao texto genérico do `AdminResult`. Falta a evidência in-game do bloqueio |
 | 33 | Catálogo de itens editável (overlay) |
 | 34 | Tabela de drop editável — `/drops/editar` (divisor por slot, simulador, faixas nomeadas, slots 8–11 "fixo no código") e `/drops/carry` (Carry[] por template, faixas de raridade, adicionar na próxima posição livre, restaurar) |
 | 35 | EXP de mob e curva |
@@ -276,7 +276,7 @@ em `efeito N` — não inventar rótulo.
 | 37 | Spawns e localização de mob |
 | 38 | Live ops (online/kick/teleport/notice) |
 | 39 | QA final: E2E, segurança, hardening |
-| 40 | Logs dos containers ao vivo (SSE + docker compose logs) |
+| 40 | Logs dos containers ao vivo — ✅ `/logs` com **dois modos** atrás de `server/docker.ts`: no compose, o sidecar **`logpipe`** (Go stdlib, socket read-only, `/status` + `/logs/<serviço>`, sem escrita/exec, nonroot + `read_only` + `no-new-privileges` + `group_add: 0`) e o portal só autentica e repassa; no host, `docker compose logs -f`. Whitelist de `tmserver`/`dbserver`/`binserver`/`webserver`/`db`/`portal` + `all`, `redact` de ANSI/DSN/segredo, `tail` 1..2000, `since` só `10m`, SSE com 401/403/404 antes de abrir conexão, chips de status cacheados 5 s, pausa que não fecha o stream, filtro, limpar e `.txt`. **O socket nunca é montado no portal** |
 | 41 | Atlas do mundo: zonas, coordenadas, portais e spawns (leitura + mapa) — ✅ `/atlas`, artefato gerado por `tmserver/cmd/worldatlas` |
 | 42 | Rotas de teleporte editáveis (overlay + tmserver read-through) — ✅ `/teleportes`, `TeleportAdminService`, overlay com poll de 15 s |
 | 36 | Rates de conteúdo — 🟡 `/config` (abas Refino/Combine/Quests + seção Flags), `ContentRatesService`, overlay `content_rate_override` + auditoria; parser único em `internal/ratetables`; read-through no tmserver (`-rates-editing`, logs `rate_overrides_applied` + linha efetiva); flags lidas de `server_instance_flags`, gravadas pelo tmserver no boot via `InstanceFlagsService` |

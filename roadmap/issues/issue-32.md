@@ -1,108 +1,99 @@
 # Issue 32 — Contas, papéis e banimento (backend novo)
 
-**Fase:** 6 · **Depende de:** 19, 21 · **Bloqueia:** 30, 31, 38 · **Esforço:** L · **Estado:** ⏳ aberta
+**Fase:** 6 · **Depende de:** 19, 21 · **Bloqueia:** 30, 31, 38 · **Esforço:** L · **Estado:** 🟡 backend e portal ✅, evidência in-game ⏳
 
 ## Objetivo
 
 Listar contas, promover/rebaixar papel (`player`/`moderator`/`admin`), bloquear/desbloquear e criar
 conta — com auditoria — sem precisar de `psql` na mão.
 
-## Contexto / evidência
+## Resultado (2026-11-04)
 
-- **Não existe RPC de papel/ban.** Hoje é SQL manual: `web.proto:200` ("Não há RPC para promover") e
-  `docs/integrations/npc-admin-nextjs.md §2`; a skill `wyd-game-admin` usa `update account set
-  role=… where name=…`. O próprio `AGENTS.md` avisa que o `role` é carregado no login.
-- `account`: `id, name, pass_hash, role, is_blocked, donate_balance, …`. O login do jogo e o
-  `VerifyCredentials` consultam `is_blocked` (`web.proto:70`).
-- `AccountWebService.CreateAccount` já existe (argon2id no Go, `NAME_TAKEN`/`INVALID`
-  — `web.proto:42-63`), então criar conta **não** exige backend novo; papel/ban exige.
-- `DonateRevenueAdminService.SearchAccounts` já busca contas por nome (leitura) — reaproveitar como
-  base de busca, mas não para escrita.
-- Promover/rebaixar em `account` só tem efeito no próximo login; sessão web aberta mantém o papel
-  antigo (por isso TTL curto na issue 19).
+- **Migração `0042_account_admin`** (a 0034 do plano já estava ocupada): `account.role_changed_at`,
+  `account.role_changed_by`, `account.blocked_reason` e a tabela `account_admin_audit`
+  (`actor_id`, `target_id`, `action`, `old_value`, `new_value`, `reason`, `created_at`, índices por
+  alvo e por autor). Aplicada no boot do `webserver`; conferida em `schema_migrations`.
+- **`AccountAdminService`** no `web.proto` (regenerado com `protoc-gen-go v1.36.11` /
+  `protoc-gen-go-grpc v1.6.2`): `ListAccounts` (keyset + `total_count`), `GetAccount` (conta + 50
+  linhas de auditoria), `SetRole`, `SetBlocked`, `CreateAccount`. `AccountRow` não tem campo de
+  senha/PIN — o vazamento exigiria mudar o contrato.
+- **Regras no store**, dentro da transação (`internal/store/account_admin.go`): ator re-lido do banco,
+  ninguém altera o próprio papel/bloqueio, última conta admin **ativa** protegida (`SELECT … FOR
+  UPDATE` nas linhas de admin antes de contar), `moderator` só bloqueia `player`. Cada escrita grava
+  a auditoria na mesma transação; `blocked_reason` é limpo no desbloqueio.
+- **Portal `/contas`**: lista com filtros (prefixo de login, papel, bloqueio) e cursor `apos`, detalhe
+  com papel + motivo, bloqueio/desbloqueio, criação de conta já com papel (só `admin`) e a trilha de
+  auditoria na tela. `moderator` vê a lista e o detalhe, mas sem criar conta e com o papel travado.
+  O aviso "vale no próximo login" está nas duas telas.
 
-## Passos
+### Desvios do plano original (conscientes)
 
-1. **Migração** `internal/migrations/0034_account_admin.up.sql` (e `.down.sql` simétrico):
-   ```sql
-   ALTER TABLE account ADD COLUMN IF NOT EXISTS role_changed_at timestamptz;
-   ALTER TABLE account ADD COLUMN IF NOT EXISTS role_changed_by bigint REFERENCES account(id);
-   ALTER TABLE account ADD COLUMN IF NOT EXISTS blocked_reason text;
-   CREATE TABLE IF NOT EXISTS account_admin_audit (
-     id          bigserial PRIMARY KEY,
-     actor_id    bigint NOT NULL REFERENCES account(id),
-     target_id   bigint NOT NULL REFERENCES account(id),
-     action      text   NOT NULL,   -- 'set_role' | 'set_blocked' | 'create'
-     old_value   text,
-     new_value   text,
-     reason      text,
-     created_at  timestamptz NOT NULL DEFAULT now()
-   );
-   CREATE INDEX IF NOT EXISTS account_admin_audit_target_idx ON account_admin_audit(target_id, id DESC);
-   ```
-2. **Proto** (`api/web/v1/web.proto`): `AccountAdminService` com
-   `ListAccounts(filter, cursor)`, `GetAccount(account_id)`, `SetRole(account_id, role, reason)`,
-   `SetBlocked(account_id, blocked, reason)`, `CreateAccount` (delegando ao já existente).
-   Regras no comentário do serviço: `moderator_id` obrigatório, `admin` não pode rebaixar a si mesmo,
-   `admin` não pode rebaixar o **último** admin, papel inválido → `ADMIN_RESULT_INVALID`.
-3. **Store** `webserver/internal/accountadmin`: `List` (busca por nome, filtro de papel/block,
-   paginação por `id`), `SetRole`, `SetBlocked`, cada escrita gravando `account_admin_audit` na mesma
-   transação. Nunca devolver `pass_hash`.
-4. **gRPC** `webserver/internal/grpcsrv/accountadmin.go` + registro em
-   `webserver/cmd/webserver/main.go`. Autorização: `admin` para papel; `moderator` só pode
-   bloquear/desbloquear `player`; ninguém altera papel de `admin` exceto `admin`.
-5. **Teste Go** `accountadmin_test.go`: promoção, auto-rebaixamento recusado, último admin protegido,
-   `player` recebe `FORBIDDEN`, auditoria criada, `pass_hash` nunca serializado.
-6. **Portal** `/contas`: tabela (`id`, nome, papel, bloqueada, saldo donate, criada em), busca,
-   filtros; detalhe com form de papel (Select + motivo obrigatório) e toggle de bloqueio (motivo
-   obrigatório); botão "criar conta" usando `CreateAccount` (mostra `NAME_TAKEN` como 409).
-7. Aviso na tela: "papel vale no próximo login; sessões web abertas mantêm o papel anterior".
+- Migração é **0042**, não 0034 (o número já estava usado por `mob_carry`).
+- `actor_id`/`target_id` da auditoria **sem FK**, igual a `character_admin_audit`: o histórico não pode
+  depender da existência da conta.
+- `CreateAccount` ganhou RPC própria no `AccountAdminService` (delegar ao `AccountWebService` deixaria
+  a criação fora da auditoria, porque ele não conhece o moderador).
+- `NAME_TAKEN` chega como `ADMIN_RESULT_INVALID` + `message` ("já existe uma conta com esse nome"),
+  HTTP 422 — o enum de `AdminResult` não tem código de conflito.
+- `adminCall` passou a preferir o `message` de negócio da resposta ao texto genérico do `AdminResult`.
+  Sem isso, "esta é a última conta admin ativa" viraria "dados inválidos" na tela.
 
-## Arquivos
+## Evidência de execução
 
-- Criados: `internal/migrations/0034_account_admin.{up,down}.sql`,
-  `webserver/internal/accountadmin/{service.go,service_test.go}`,
-  `webserver/internal/grpcsrv/accountadmin.go`,
-  `portal/src/app/(admin)/contas/page.tsx`, `portal/src/app/(admin)/contas/[id]/page.tsx`,
-  `portal/src/server/actions/accounts.ts`, `portal/src/lib/account.ts`.
-- Alterados: `api/web/v1/web.proto`, `api/web/v1/web.pb.go` (regen),
-  `webserver/cmd/webserver/main.go`, `portal/src/components/nav.ts`,
-  `docs/integrations/` (novo guia `accounts-nextjs.md`).
-- Proibido: expor `pass_hash`; permitir que a web redefina senha nesta issue (fica para depois, com
-  fluxo próprio); apagar contas.
+```text
+$ go test ./webserver/internal/accountadmin/ ./webserver/internal/grpcsrv/
+ok  .../webserver/internal/accountadmin   1.658s
+ok  .../webserver/internal/grpcsrv        0.448s
 
-## Testes / verificação
+$ W2PP_E2E_ADMIN_ID=1 W2PP_E2E_WEB_API=127.0.0.1:7600 \
+  W2PP_E2E_DSN=postgres://postgres:…@127.0.0.1:5432/postgres \
+  go test -tags=e2e -count=1 ./webserver/internal/accountadmin -run TestE2EAccountAdmin -v
+=== RUN   TestE2EAccountAdmin
+    contas criadas: zqp16930=9 zqm16930=10 zqo16930=11
+    cleanup: 3 contas de teste removidas
+--- PASS: TestE2EAccountAdmin (0.82s)
 
-```bash
-# (comandos rodam na raiz do repositório)
-MSYS_NO_PATHCONV=1 docker run --rm -v "D:/dolorestec/wyd2/OpenWYD:/src" -w /src golang:1.26-alpine \
-  sh -c "go build ./... && go test ./webserver/internal/accountadmin/ ./webserver/internal/grpcsrv/"
+$ docker exec -i openwyd-db-1 psql -U postgres -c "select version from schema_migrations order by version desc limit 2;"
+ 0042_account_admin
+ 0041_mob_carry
+
+$ docker exec -i openwyd-db-1 psql -U postgres -t -c "select count(*) from account where name like 'zq%'; select count(*) from account_admin_audit;"
+ 0
+ 0
 ```
 
-```bash
-docker compose up -d webserver   # aplica a migração no boot
-docker compose exec -T db psql -U postgres -d postgres -c \
-  "select name, role, role_changed_at is not null as auditado from account order by id;"
-```
+O e2e (contra o web-api de verdade) cobre: criação já com papel, promoção com
+`role_changed_by`/`role_changed_at` e auditoria com o motivo, `moderator` recusado ao alterar papel,
+auto-bloqueio recusado (`INVALID` + mensagem), `moderator` bloqueando `moderator` recusado
+(`FORBIDDEN`), bloqueio com motivo persistido, desbloqueio limpando o motivo, `VerifyCredentials`
+devolvendo `blocked=true` com a conta bloqueada e `false` depois, filtro `role=moderator` achando a
+conta promovida e `player` recebendo `FORBIDDEN` na leitura.
 
-Evidência de ponta a ponta: promover `teste` a `moderator` pela tela, logar com `teste` no cliente do
-jogo e usar um `/gm` de moderador; bloquear `teste2` e confirmar que o login do jogo é recusado;
-tentar se auto-rebaixar como `test` → erro de negócio.
+```text
+$ curl http://127.0.0.1:3000/contas                     → 307 /login   (sem cookie)
+$ curl -H "Cookie: wyd_session=<admin>" …/contas        → 200  ("Contas e papéis", botão "criar conta")
+$ curl -H "Cookie: wyd_session=<admin>" …/contas/1      → 200  ("Auditoria", aviso do próximo login)
+$ curl -H "Cookie: wyd_session=<moderator>" …/contas    → 200  (sem botão "criar conta")
+$ curl -H "Cookie: wyd_session=<moderator>" …/contas/1  → 200  ("Só um admin altera papéis. Você pode bloquear contas de jogador.")
+$ cd portal && npx tsc --noEmit → 0 · npx vitest run → 76/76 · npx next build → 0
+```
 
 ## Critérios de aceite
 
-- [ ] Listar/buscar contas sem qualquer campo sensível
-- [ ] Papel e bloqueio alteráveis com motivo, gravando auditoria na mesma transação
-- [ ] Auto-rebaixamento e remoção do último admin bloqueados no servidor (não só na UI)
-- [ ] `moderator` não altera papel nem bloqueia `admin`/`moderator`
-- [ ] Bloqueio refletido no login do jogo (teste real)
-- [ ] Migração aplica e reverte limpa; `go test` verde
+- [x] Listar/buscar contas sem qualquer campo sensível (`AccountRow` não tem hash; teste de `Get`)
+- [x] Papel e bloqueio alteráveis com motivo, gravando auditoria na mesma transação
+- [x] Auto-rebaixamento e remoção do último admin bloqueados **no store**, não só na UI
+- [x] `moderator` não altera papel nem bloqueia `admin`/`moderator`
+- [ ] Bloqueio refletido no login **do jogo** (teste real com o cliente Windows) — o caminho de
+  autenticação da web (`VerifyCredentials`) foi validado; falta abrir o cliente, logar com a conta
+  bloqueada e ver a recusa
+- [x] Migração aplica e reverte limpa; `go test` verde
 
 ## Riscos / rollback
 
-- **Risco:** escalada de privilégio por bug de autorização. **Mitigação:** regra no store (não só no
-  gRPC) + testes cobrindo cada combinação de papel.
-- **Risco:** bloquear a única conta admin e perder a gestão. **Mitigação:** guarda do "último admin" e
-  conta `test` como admin de recuperação documentada.
-- **Rollback:** `.down.sql` remove as colunas/tabela; papéis podem ser redefinidos por SQL (comando na
-  skill `wyd-game-admin`).
+- **Escalada de privilégio:** regra no store (não só no gRPC) + auditoria de toda escrita; `role` só
+  muda com ator `admin` re-lido do banco dentro da transação.
+- **Perder a gestão:** a última conta admin ativa não é rebaixada nem bloqueada; a conta `test`
+  continua admin de recuperação.
+- **Rollback:** `0042_account_admin.down.sql` remove tabela e colunas. Papéis podem ser redefinidos por
+  SQL com o comando de emergência da skill `wyd-game-admin` (sem auditoria do BFF, e sabendo disso).
