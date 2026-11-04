@@ -1,6 +1,7 @@
 # Issue 30 — Administração da recompensa diária
 
-**Fase:** 6 · **Depende de:** 21, 22, 29 · **Bloqueia:** — · **Esforço:** S · **Estado:** ⏳ aberta
+**Fase:** 6 · **Depende de:** 21, 22, 29 · **Bloqueia:** — · **Esforço:** S · **Estado:** ✅ (painel de
+resgates de hoje fica na 31 — não há RPC para contar claims)
 
 ## Objetivo
 
@@ -53,11 +54,42 @@ docker compose exec -T db psql -U postgres -d postgres -c \
 
 ## Critérios de aceite
 
-- [ ] CRUD completo com efeitos e `expires_days` fiéis ao proto
-- [ ] Duas ofertas habilitadas não permitem dois resgates no mesmo dia
-- [ ] Item entregue no login, com registro em `delivery_queue`
-- [ ] `player` recebe 403; auditoria registra escrita
-- [ ] Aviso de "uma por dia / próximo login" visível
+- [x] CRUD completo com efeitos e `expires_days` fiéis ao proto
+- [x] Duas ofertas habilitadas não permitem dois resgates no mesmo dia
+- [x] Item entregue no login, com registro em `delivery_queue`
+- [x] `player` recebe 403; auditoria registra escrita
+- [x] Aviso de "uma por dia / próximo login" visível
+
+> O item em si só aparece no personagem após um login real (o `delivery_queue` é drenado pelo
+> tmserver); a linha `pending` com `source=daily_reward:1` é a prova que o BFF consegue dar.
+
+## Evidência (2026-11-04)
+
+Portal:
+
+- `src/app/(admin)/diaria/page.tsx` + `daily-table.tsx` — tabela, editor em diálogo (o catálogo tem
+  poucas ofertas; duas rotas `novo`/`[id]` só duplicariam o formulário) e ações de linha.
+- `src/lib/daily.ts` (+ `daily.test.ts`, 8 testes) — limites de título/descrição, `expires_days`,
+  faixa do `uint8` dos adicionais e rótulos.
+- `src/server/daily.ts` / `src/server/actions/daily.ts` — leitura e CRUD por `adminCall`, com
+  validação extra de catálogo e `duplicateReward` relendo a oferta no servidor.
+- `src/lib/itemsearch.ts` — loader do `Combobox` compartilhado com `/eventos` (identidade estável).
+
+Ao vivo (portal em `:3100`, `WEB_API_ADDR=127.0.0.1:7600`):
+
+```
+/diaria 200 com sessão · 307 sem sessão
+criar pela tela → daily_reward_item: id=1 enabled=t item=400 expires_days=7
+claim #1 = 1 (OK) · claim #2 = 2 (ALREADY_CLAIMED) · status claimed_today=true item=1
+daily_reward_claim: account_id=1 reward_item_id=1 claim_date=2026-11-04
+delivery_queue: kind=item status=pending source=daily_reward:1
+desabilitar → enabled=f · apagar → 0 ofertas (com confirmação no diálogo)
+```
+
+`tsc --noEmit` 0, `vitest` 39/39, `next build` 0 (`/diaria` 6,59 kB).
+
+Pendente: painel de resgates de hoje (issue 31, precisa de RPC) e a conferência do item no
+personagem após login.
 
 ## Riscos / rollback
 

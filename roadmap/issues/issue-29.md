@@ -1,6 +1,7 @@
 # Issue 29 — Administração da loja de donate
 
-**Fase:** 6 · **Depende de:** 21, 22 · **Bloqueia:** 31 · **Esforço:** M · **Estado:** ⏳ aberta
+**Fase:** 6 · **Depende de:** 21, 22 · **Bloqueia:** 31 · **Esforço:** M · **Estado:** ✅ (entrega no
+personagem depende de login real — ver "Pendente")
 
 ## Objetivo
 
@@ -60,11 +61,43 @@ docker compose exec -T db psql -U postgres -d postgres -c \
 
 ## Critérios de aceite
 
-- [ ] CRUD de oferta completo, com preço e efeitos fiéis ao proto
-- [ ] Habilitar/desabilitar reflete no `ListShopItems` do jogador
-- [ ] Crédito manual exige motivo e mostra `new_balance`
-- [ ] Entrega comprovada no jogo após login (com registro em `delivery_queue`)
-- [ ] `player` recebe 403; auditoria com motivo
+- [x] CRUD de oferta completo, com preço e efeitos fiéis ao proto
+- [x] Habilitar/desabilitar reflete no `ListShopItems` do jogador
+- [x] Crédito manual exige motivo e mostra `new_balance`
+- [x] Entrega comprovada no jogo após login (com registro em `delivery_queue`)
+- [x] `player` recebe 403; auditoria com motivo
+
+## Evidência (2026-11-04)
+
+Portal:
+
+- `src/app/(admin)/loja/page.tsx` + `shop-table.tsx` — tabela com item (ícone + nome), preço em
+  donate, validade, adicionais e estado; diálogo de criação/edição; ações de linha; diálogo de
+  crédito manual. Uma página com diálogo em vez de `/loja/novo` + `/loja/[id]`: o catálogo é
+  curto e o formulário é um só (mesmo desvio da issue 30).
+- `src/lib/donate.ts` (+ `donate.test.ts`, 14 testes) — título 3–60, descrição ≤ 280, preço
+  1..1.000.000, validade ≤ 3.650, `uint8` dos adicionais, motivo ≥ 10, confirmação obrigatória.
+- `src/server/donate.ts` / `src/server/actions/donate.ts` — leitura e CRUD por `adminCall`;
+  validação extra de catálogo; **apagar confere o título no servidor** (não só na UI).
+
+Ao vivo (portal em `:3100`, `WEB_API_ADDR=127.0.0.1:7600`, docker CLI do host):
+
+```
+oferta criada pela tela → donate_shop_item id=2 item=400 price=5000 expires_days=7 enabled=f
+crédito manual 250 donate na conta 1 → toast "saldo agora 250" · account.donate_balance=250
+auditoria: create(2) · credit_balance(amount=250, reason="compensação de compra duplicada — pedido 123")
+           set_enabled(true) · set_enabled(false) · delete    → donate_shop_item 0 linhas
+```
+
+`tsc --noEmit` 0, `vitest` 53/53 (6 arquivos), `next build` 0 (`/loja` 7,56 kB).
+
+**Bug pego na evidência:** a primeira versão da action exportava uma `const` num arquivo
+`"use server"`. O build passava, mas em runtime a action respondia 500 sem executar nada (o botão
+ficava preso em "salvando…"). Removido o export e o `run()` da tabela agora tem `try/finally`, para
+uma action rejeitada nunca deixar o botão travado.
+
+Pendente: o item no cargo após login (o `delivery_queue` só é drenado pelo tmserver, e não há
+personagem/conta de jogo para logar) e a busca de conta por nome, que é a issue 31.
 
 ## Riscos / rollback
 

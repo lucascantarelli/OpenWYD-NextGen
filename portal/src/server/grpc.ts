@@ -259,6 +259,161 @@ export interface ListMobCarryResponse {
 }
 
 /**
+ * `DailyRewardAdminService` — catálogo da recompensa diária (issue 30).
+ * `ListRewardItems` devolve todas as ofertas (a tabela de moderação);
+ * `upsertRewardItem` com `item.id == 0` cria. Sempre via `adminCall`.
+ */
+export const dailyRewardAdmin = client<{
+  listRewardItems: Unary<Record<string, never>, ListRewardItemsResponse>;
+  upsertRewardItem: Unary<
+    { item: import("@/lib/daily").DailyRewardItem },
+    UpsertRewardItemResponse
+  >;
+  setRewardItemEnabled: Unary<{ item_id: number; enabled: boolean }, AdminAck>;
+  deleteRewardItem: Unary<{ item_id: number }, AdminAck>;
+}>("DailyRewardAdminService");
+
+export interface ListRewardItemsResponse {
+  result: number;
+  items?: import("@/lib/daily").DailyRewardItem[];
+}
+
+export interface UpsertRewardItemResponse {
+  result: number;
+  item_id: number;
+}
+
+/**
+ * `DonateAdminService` — loja de donate (issue 29). `ListShopItems` devolve todas
+ * as ofertas (a tabela de moderação); `CreditDonateBalance` é a operação mais
+ * sensível do portal e sempre passa por `adminCall` com motivo auditado.
+ */
+export const donateAdmin = client<{
+  listShopItems: Unary<Record<string, never>, ListShopItemsResponse>;
+  upsertShopItem: Unary<
+    { item: import("@/lib/donate").DonateShopItem },
+    UpsertShopItemResponse
+  >;
+  setShopItemEnabled: Unary<{ item_id: number; enabled: boolean }, AdminAck>;
+  deleteShopItem: Unary<{ item_id: number }, AdminAck>;
+  creditDonateBalance: Unary<
+    { account_id: number; amount: number; reason: string },
+    CreditDonateBalanceResponse
+  >;
+}>("DonateAdminService");
+
+export interface ListShopItemsResponse {
+  result: number;
+  items?: import("@/lib/donate").DonateShopItem[];
+}
+
+export interface UpsertShopItemResponse {
+  result: number;
+  item_id: number;
+}
+
+export interface CreditDonateBalanceResponse {
+  result: number;
+  new_balance: number;
+}
+
+/**
+ * `DonateRevenueAdminService` — faturamento (issue 31). **Só leitura**: KPIs do
+ * período, tabela de pedidos, ranking de compradores, extrato da carteira e a
+ * busca de conta que o filtro usa. Dinheiro (`*_cents`) e donate (`credits`) são
+ * unidades distintas; o painel nunca as soma. Sempre via `adminCall`.
+ */
+export const donateRevenueAdmin = client<{
+  getRevenueSummary: Unary<RevenueSummaryRequest, RevenueSummaryResponse>;
+  listTopupOrders: Unary<
+    {
+      window: import("@/lib/revenue").RevenueWindowInput;
+      status: number;
+      payment_method: number;
+      account_id: number;
+      limit: number;
+      offset: number;
+    },
+    ListTopupOrdersResponse
+  >;
+  listTopBuyers: Unary<
+    { window: import("@/lib/revenue").RevenueWindowInput; limit: number; offset: number },
+    ListTopBuyersResponse
+  >;
+  listDonateSpend: Unary<
+    {
+      window: import("@/lib/revenue").RevenueWindowInput;
+      action: number;
+      account_id: number;
+      limit: number;
+      offset: number;
+    },
+    ListDonateSpendResponse
+  >;
+  searchAccounts: Unary<{ name_prefix: string; limit: number }, SearchAccountsResponse>;
+}>("DonateRevenueAdminService");
+
+export interface RevenueSummaryRequest {
+  window: import("@/lib/revenue").RevenueWindowInput;
+  bucket: number;
+  account_id: number;
+}
+
+export interface RevenueSummaryResponse {
+  result: number;
+  totals?: import("@/lib/revenue").RevenueTotalsWire;
+  by_method?: import("@/lib/revenue").RevenueByMethodWire[];
+  series?: import("@/lib/revenue").RevenuePointWire[];
+  from_unix: number;
+  to_unix: number;
+}
+
+export interface ListTopupOrdersResponse {
+  result: number;
+  orders?: import("@/lib/revenue").TopupOrderRowWire[];
+  total_count: number;
+  from_unix: number;
+  to_unix: number;
+}
+
+export interface ListTopBuyersResponse {
+  result: number;
+  buyers?: import("@/lib/revenue").TopBuyerRowWire[];
+  total_count: number;
+  from_unix: number;
+  to_unix: number;
+}
+
+export interface ListDonateSpendResponse {
+  result: number;
+  entries?: import("@/lib/revenue").DonateLedgerRowWire[];
+  total_count: number;
+  from_unix: number;
+  to_unix: number;
+}
+
+export interface SearchAccountsResponse {
+  result: number;
+  accounts?: import("@/lib/revenue").AccountSummaryWire[];
+}
+
+/**
+ * `WorldEventAdminService` — evento global de mundo (issue 28). `Set` substitui o
+ * config inteiro; o tmserver relê por polling de 15 s, então a alteração chega ao
+ * mundo sem restart. Sempre via `adminCall`.
+ */
+export const worldEventAdmin = client<{
+  getWorldEventConfig: Unary<Record<string, never>, GetWorldEventConfigResponse>;
+  setWorldEventConfig: Unary<{ config: import("@/lib/worldevent").WorldEventConfig }, AdminAck>;
+}>("WorldEventAdminService");
+
+export interface GetWorldEventConfigResponse {
+  result: number;
+  version: number;
+  config?: import("@/lib/worldevent").WorldEventConfig;
+}
+
+/**
  * `WorldStateAdminService` — guildas, zonas do reino, castelo e Kefra (issue 45).
  * `GetWorldState` devolve tudo num só snapshot; as duas escritas são taxa da
  * cidade e o flag do Kefra, ambas aplicadas no próximo boot do tmserver.
@@ -470,6 +625,53 @@ export interface SimulateTeleportRouteResponse {
  * `CharacterAdminService` — inspeção de personagem (issue 43). Só leitura nesta
  * fase: busca e detalhe vêm do estado frio em Postgres. Sempre via `adminCall`.
  */
+/**
+ * `AccountAdminService` — contas, papéis e banimento (issue 32).
+ *
+ * Leitura para staff; `setRole`/`createAccount` só para admin e `setBlocked`
+ * também para moderador (alvo jogador). O `message` das respostas de escrita é a
+ * recusa de negócio ("última conta admin ativa") que o `adminCall` repassa.
+ */
+export const accountAdmin = client<{
+  listAccounts: Unary<
+    { query: string; role: string; blocked: number; limit: number; after_id: number },
+    ListAccountsResponse
+  >;
+  getAccount: Unary<{ account_id: number }, GetAccountAdminResponse>;
+  setRole: Unary<{ account_id: number; role: string; reason: string }, AccountWriteResponse>;
+  setBlocked: Unary<{ account_id: number; blocked: boolean; reason: string }, AccountWriteResponse>;
+  createAccount: Unary<
+    { name: string; password: string; email: string; role: string; reason: string },
+    AdminCreateAccountResponse
+  >;
+}>("AccountAdminService");
+
+export interface ListAccountsResponse {
+  result: number;
+  accounts: import("@/lib/account").AdminAccount[];
+  /** último id da página; 0 = sem próxima. */
+  next_id: number;
+  total_count: number;
+}
+
+export interface GetAccountAdminResponse {
+  result: number;
+  account?: import("@/lib/account").AdminAccount;
+  audit: import("@/lib/account").AccountAudit[];
+}
+
+export interface AccountWriteResponse {
+  result: number;
+  message?: string;
+  account?: import("@/lib/account").AdminAccount;
+}
+
+export interface AdminCreateAccountResponse {
+  result: number;
+  account_id: number;
+  message?: string;
+}
+
 export const characterAdmin = client<{
   searchCharacters: Unary<{ query: string }, SearchCharactersResponse>;
   getCharacter: Unary<{ character_id: number }, GetCharacterAdminResponse>;

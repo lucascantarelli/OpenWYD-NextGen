@@ -1,6 +1,7 @@
 # Issue 28 — Eventos globais do mundo
 
-**Fase:** 6 · **Depende de:** 21 · **Bloqueia:** — · **Esforço:** S · **Estado:** ⏳ aberta
+**Fase:** 6 · **Depende de:** 21 · **Bloqueia:** — · **Esforço:** S · **Estado:** ✅ (falta a
+evidência in-game de EXP dobrada/notice, que exige o cliente)
 
 ## Objetivo
 
@@ -52,11 +53,37 @@ recebida (dobro); desligar e conferir o retorno. `notice_enabled=true` aparece c
 
 ## Critérios de aceite
 
-- [ ] Ler, salvar e reler confirma o estado no servidor
-- [ ] `item_index` validado contra o catálogo (não aceita índice inexistente)
-- [ ] Confirmação extra para double EXP; botão "desligar tudo"
-- [ ] `player` recebe 403 e auditoria registra a tentativa
+- [x] Ler, salvar e reler confirma o estado no servidor
+- [x] `item_index` validado contra o catálogo (não aceita índice inexistente)
+- [x] Confirmação extra para double EXP; botão "desligar tudo"
+- [x] `player` recebe 403 e auditoria registra a tentativa
 - [ ] Evidência de EXP dobrada no jogo e de notice visível
+
+## Evidência (2026-11-04)
+
+Portal (`portal/`):
+
+- `src/app/(admin)/eventos/page.tsx` + `event-panel.tsx` — estado, formulário e diálogos.
+- `src/lib/worldevent.ts` (+ `worldevent.test.ts`, 10 testes) — espelho de `validConfig`, rótulo do
+  divisor, `remainingDrops` e detecção de rascunho sujo.
+- `src/server/events.ts` (leitura) e `src/server/actions/events.ts` (escrita via `adminCall`):
+  valida faixa, recusa item fora do catálogo e **relê** `GetWorldEventConfig` depois do `Set`.
+- `nav.ts`: `/eventos` deixou de ser "em breve" (o middleware já cobria a rota).
+
+Ao vivo contra a stack (portal em `:3100` com `WEB_API_ADDR=127.0.0.1:7600`):
+
+```
+login 200 · /eventos 200 (com sessão) · /eventos 307 (sem sessão)
+config: enabled=f item_index=400 rate=5 start=1 current=1 end=50 notice=t updated_by=1
+world_event_audit: account_id=1 action=set_config
+world_event_meta: version 0 → 1
+tmserver: "world event config reloaded" version=1  (~7 s depois, poll de 15 s, sem restart)
+```
+
+`tsc --noEmit` 0, `vitest` 31/31, `next build` 0 (`/eventos` 5,75 kB).
+
+Pendente: ligar `double_exp_enabled` e conferir a EXP dobrada no cliente, e o notice no chat — os
+ dois exigem o cliente gráfico do usuário (a configuração de teste foi revertida depois).
 
 ## Riscos / rollback
 
