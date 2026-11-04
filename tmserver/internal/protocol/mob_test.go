@@ -1,0 +1,231 @@
+package protocol
+
+import (
+	"encoding/binary"
+	"testing"
+)
+
+// makeMob builds a raw 816-byte STRUCT_MOB with the fields the codecs read.
+func makeMob(name string, class, merchant uint8, level, hp int32) []byte {
+	b := make([]byte, structMobSize)
+	copy(b[0:16], name)
+	b[20] = class
+	binary.LittleEndian.PutUint64(b[32:], 1800)            // STRUCT_MOB.Exp (kill reward)
+	const cs = 92                                          // CurrentScore
+	binary.LittleEndian.PutUint32(b[cs+0:], uint32(level)) // Level
+	b[cs+12] = merchant                                    // Merchant
+	binary.LittleEndian.PutUint32(b[cs+24:], uint32(hp))   // Hp
+	binary.LittleEndian.PutUint16(b[40:], 2096)            // SPX
+	binary.LittleEndian.PutUint16(b[42:], 2096)            // SPY
+	binary.LittleEndian.PutUint16(b[140:], 1001)           // Equip[0].sIndex
+	binary.LittleEndian.PutUint16(b[268:], 555)            // Carry[0].sIndex
+	return b
+}
+
+func TestParseMobBasics(t *testing.T) {
+	b := makeMob("Ciclope_Forte", 1, 0, 171, 15000)
+	binary.LittleEndian.PutUint32(b[28:], 50) // STRUCT_MOB.Coin (Gremlin's template value)
+	m := ParseMobBasics(b)
+	if m.Name != "Ciclope_Forte" || m.Class != 1 || m.Level != 171 || m.Hp != 15000 || m.Exp != 1800 || m.Coin != 50 {
+		t.Errorf("ParseMobBasics = %+v", m)
+	}
+	if x, y := BaseMobSpawn(b); x != 2096 || y != 2096 {
+		t.Errorf("BaseMobSpawn = %d,%d want 2096,2096", x, y)
+	}
+	if MobEquip(b)[0].Index != 1001 {
+		t.Errorf("MobEquip[0] = %d, want 1001", MobEquip(b)[0].Index)
+	}
+	if MobCarry(b)[0].Index != 555 {
+		t.Errorf("MobCarry[0] = %d, want 555", MobCarry(b)[0].Index)
+	}
+}
+
+func TestCNFCharacterLoginRawLayout(t *testing.T) {
+	tmpl := makeMob("Template", 2, 0, 1, 100)
+	var equip [16]SelItem
+	equip[1] = SelItem{Index: 1100} // an equipped weapon
+	var carry [64]SelItem
+	carry[3] = SelItem{Index: 831} // a bought item
+	var sk [16]uint8
+	sk[0] = 42 // hotbar echo (ShortSkill @body1034)
+	skill := SkillState{
+		LearnedSkill: 0x0000_00FF, // first 8 skills learned
+		ScoreBonus:   11, SpecialBonus: 22, SkillBonus: 33,
+		Special:     [4]int16{5, 6, 7, 8},
+		BaseSpecial: [4]int16{1, 2, 3, 4},
+		SkillBar:    [4]uint8{9, 10, 11, 12},
+	}
+	b := EncodeCNFCharacterLoginRaw(tmpl, "Hero", 777777, 123456789, equip, carry, 2453, 2000, 0, 0, 0, 1, 0, sk, skill, 75)
+
+	if len(b) != cnfCharacterLoginSize-HeaderSize { // 1832 - 12 = 1820
+		t.Fatalf("CNFCharacterLogin body = %d, want %d", len(b), cnfCharacterLoginSize-HeaderSize)
+	}
+	le := binary.LittleEndian
+	if got := cstr16(b[4:20]); got != "Hero" { // MobName patched @ body4
+		t.Errorf("name = %q, want Hero", got)
+	}
+	// Login position is written to the packet PosX/PosY, while the embedded
+	// STRUCT_MOB keeps its save point (SPX/SPY) from the template.
+	if le.Uint16(b[0:]) != 2453 || le.Uint16(b[2:]) != 2000 {
+		t.Errorf("msg PosX/PosY = %d,%d want 2453,2000", le.Uint16(b[0:]), le.Uint16(b[2:]))
+	}
+	if le.Uint16(b[4+40:]) != 2096 || le.Uint16(b[4+42:]) != 2096 {
+		t.Errorf("mob SPX/SPY = %d,%d want 2096,2096", le.Uint16(b[4+40:]), le.Uint16(b[4+42:]))
+	}
+	// Gold is written at both candidate offsets (24 = client display, 28 = Coin).
+	if le.Uint32(b[4+24:]) != 777777 || le.Uint32(b[4+28:]) != 777777 {
+		t.Errorf("coin not set at mob offsets 24/28")
+	}
+	// Persisted experience → STRUCT_MOB.Exp @32 (body 4+32), so the exp bar shows the
+	// saved total at login.
+	if got := le.Uint64(b[4+32:]); got != 123456789 {
+		t.Errorf("exp @mob32 = %d, want 123456789", got)
+	}
+	// MobName[12] (body 4+12) is the PKPoint that colors the own nick: 75 = white
+	// (neutral). Passing 75 must land there — 0 would render the nick red (issue #59).
+	if b[4+12] != 75 {
+		t.Errorf("MobName[12] (PKPoint) = %d, want 75 (neutral/white nick)", b[4+12])
+	}
+	// Persisted equip overlays the template's Equip@140 (mob) → body 4+140 + 1*8.
+	if got := le.Uint16(b[4+structMobEquip+1*8:]); got != 1100 {
+		t.Errorf("equip[1] overlay = %d, want 1100", got)
+	}
+	// Persisted carry overlays the template's Carry@268 (mob) → body 4+268 + 3*8.
+	if got := le.Uint16(b[4+structMobCarry+3*8:]); got != 831 {
+		t.Errorf("carry[3] overlay = %d, want 831", got)
+	}
+	// Skill block patched over the template: LearnedSkill@780, bonuses@788-793,
+	// SkillBar@796, Special in BaseScore@44+40 / CurrentScore@92+40, hotbar tail.
+	if got := le.Uint32(b[4+780:]); got != 0xFF {
+		t.Errorf("LearnedSkill @780 = %#x, want 0xff", got)
+	}
+	if le.Uint16(b[4+788:]) != 11 || le.Uint16(b[4+790:]) != 22 || le.Uint16(b[4+792:]) != 33 {
+		t.Errorf("bonuses @788/790/792 = %d/%d/%d, want 11/22/33",
+			le.Uint16(b[4+788:]), le.Uint16(b[4+790:]), le.Uint16(b[4+792:]))
+	}
+	if got := b[4+796 : 4+800]; got[0] != 9 || got[3] != 12 {
+		t.Errorf("SkillBar @796 = %v, want [9 10 11 12]", got)
+	}
+	if le.Uint16(b[4+44+40:]) != 1 || le.Uint16(b[4+44+46:]) != 4 {
+		t.Errorf("BaseScore.Special @84 = %d..%d, want 1..4", le.Uint16(b[4+44+40:]), le.Uint16(b[4+44+46:]))
+	}
+	if le.Uint16(b[4+92+40:]) != 5 || le.Uint16(b[4+92+46:]) != 8 {
+		t.Errorf("CurrentScore.Special @132 = %d..%d, want 5..8", le.Uint16(b[4+92+40:]), le.Uint16(b[4+92+46:]))
+	}
+	if b[1034] != 42 {
+		t.Errorf("ShortSkill tail @1034 = %d, want 42", b[1034])
+	}
+	if le.Uint16(b[1028:]) != 0 || le.Uint16(b[1030:]) != 1 || le.Uint16(b[1032:]) != 0 {
+		t.Errorf("tail Slot/ClientID/Weather = %d/%d/%d, want 0/1/0",
+			le.Uint16(b[1028:]), le.Uint16(b[1030:]), le.Uint16(b[1032:]))
+	}
+	assertZeroRange(t, b, 820, 1028)
+	assertZeroRange(t, b, 1050, len(b))
+}
+
+func TestCNFCharacterLoginBodyLayout(t *testing.T) {
+	var short [16]uint8
+	short[15] = 77
+	b := EncodeCNFCharacterLoginBody(2, 33, 4, 2453, 2000, MobSnapshot{
+		Name:      "Fallback",
+		SPX:       2494,
+		SPY:       1707,
+		Coin:      123,
+		Exp:       456,
+		AttackRun: 2,
+	}, short)
+
+	if len(b) != cnfCharacterLoginSize-HeaderSize {
+		t.Fatalf("CNFCharacterLogin body = %d, want %d", len(b), cnfCharacterLoginSize-HeaderSize)
+	}
+	le := binary.LittleEndian
+	if le.Uint16(b[0:]) != 2453 || le.Uint16(b[2:]) != 2000 {
+		t.Errorf("msg PosX/PosY = %d,%d want 2453,2000", le.Uint16(b[0:]), le.Uint16(b[2:]))
+	}
+	if le.Uint16(b[4+40:]) != 2494 || le.Uint16(b[4+42:]) != 1707 {
+		t.Errorf("mob SPX/SPY = %d,%d want 2494,1707", le.Uint16(b[4+40:]), le.Uint16(b[4+42:]))
+	}
+	if got := cstr16(b[4:20]); got != "Fallback" {
+		t.Errorf("name = %q, want Fallback", got)
+	}
+	if le.Uint16(b[1028:]) != 2 || le.Uint16(b[1030:]) != 33 || le.Uint16(b[1032:]) != 4 {
+		t.Errorf("tail Slot/ClientID/Weather = %d/%d/%d, want 2/33/4",
+			le.Uint16(b[1028:]), le.Uint16(b[1030:]), le.Uint16(b[1032:]))
+	}
+	if b[1034+15] != 77 {
+		t.Errorf("ShortSkill[15] = %d, want 77", b[1034+15])
+	}
+	assertZeroRange(t, b, 1050, len(b))
+}
+
+func assertZeroRange(t *testing.T, b []byte, start, end int) {
+	t.Helper()
+	for i := start; i < end; i++ {
+		if b[i] != 0 {
+			t.Fatalf("byte[%d] = %#x, want zero", i, b[i])
+		}
+	}
+}
+
+func TestSelCharSizes(t *testing.T) {
+	chars := []SelChar{{Slot: 0, Name: "Hero", Level: 50}}
+	var empty [cnfCargoSlots]SelItem
+	if got := len(EncodeCNFAccountLoginBody("acc", chars, 0, empty)); got != cnfAccountLoginSize-HeaderSize {
+		t.Errorf("CNFAccountLogin body = %d, want %d", got, cnfAccountLoginSize-HeaderSize) // 1996
+	}
+	if got := len(EncodeCNFNewCharacterBody(chars)); got != cnfNewCharacterSize-HeaderSize {
+		t.Errorf("CNFNewCharacter body = %d, want %d", got, cnfNewCharacterSize-HeaderSize) // 844
+	}
+	// Slot-0 name at body 36 (sel@20 + Name[][]@16), level at body 100 (sel@20 + Score@80).
+	b := EncodeCNFAccountLoginBody("acc", chars, 0, empty)
+	if cstr16(b[36:52]) != "Hero" {
+		t.Errorf("selchar name = %q, want Hero", cstr16(b[36:52]))
+	}
+	if binary.LittleEndian.Uint32(b[100:104]) != 50 {
+		t.Errorf("selchar level = %d, want 50", binary.LittleEndian.Uint32(b[100:104]))
+	}
+}
+
+func TestCNFAccountLoginCargo(t *testing.T) {
+	chars := []SelChar{{Slot: 0, Name: "Hero", Level: 1}}
+	var cargo [cnfCargoSlots]SelItem
+	cargo[0] = SelItem{Index: 4140}
+	cargo[28] = SelItem{Index: 4199}
+	b := EncodeCNFAccountLoginBody("acc", chars, 12345, cargo)
+	if got := binary.LittleEndian.Uint16(b[cnfCargoBodyOff : cnfCargoBodyOff+2]); got != 4140 {
+		t.Errorf("cargo[0] = %d, want 4140", got)
+	}
+	if got := binary.LittleEndian.Uint16(b[cnfCargoBodyOff+28*8 : cnfCargoBodyOff+28*8+2]); got != 4199 {
+		t.Errorf("cargo[28] = %d, want 4199", got)
+	}
+	if got := binary.LittleEndian.Uint32(b[cnfCoinBodyOff : cnfCoinBodyOff+4]); got != 12345 {
+		t.Errorf("cargo coin = %d, want 12345", got)
+	}
+	if cstr16(b[cnfNameBodyOff:cnfNameBodyOff+16]) != "acc" {
+		t.Errorf("account name = %q, want acc", cstr16(b[cnfNameBodyOff:cnfNameBodyOff+16]))
+	}
+}
+
+func TestOverlayLoginScores(t *testing.T) {
+	body := make([]byte, cnfCharacterLoginSize-HeaderSize)
+	body[4+92+12], body[4+92+14] = 0x11, 0x22 // Merchant/Direction from the template
+	base := ScoreData{Level: 50, MaxHp: 1200, Hp: 900, Str: 31, Special: [4]int16{1, 2, 3, 4}}
+	cur := ScoreData{Level: 50, Ac: 40, Damage: 60, AttackRun: 0x23, MaxHp: 1500, MaxMp: 500, Hp: 900, Mp: 300,
+		Str: 41, Int: 42, Dex: 43, Con: 44, Special: [4]int16{5, 6, 7, 8}}
+	OverlayLoginScores(body, base, cur)
+	le := binary.LittleEndian
+	b, c := body[4+44:], body[4+92:]
+	if le.Uint32(b[0:]) != 50 || le.Uint32(b[16:]) != 1200 || le.Uint32(b[24:]) != 900 || le.Uint16(b[32:]) != 31 || le.Uint16(b[46:]) != 4 {
+		t.Errorf("BaseScore = % x", b[:48])
+	}
+	if le.Uint32(c[4:]) != 40 || le.Uint32(c[8:]) != 60 || c[13] != 0x23 || le.Uint32(c[16:]) != 1500 ||
+		le.Uint32(c[20:]) != 500 || le.Uint32(c[28:]) != 300 || le.Uint16(c[38:]) != 44 || le.Uint16(c[40:]) != 5 {
+		t.Errorf("CurrentScore = % x", c[:48])
+	}
+	if c[12] != 0x11 || c[14] != 0x22 {
+		t.Errorf("Merchant/Direction = %#x/%#x, want the template's 0x11/0x22", c[12], c[14])
+	}
+	if body[4+140] != 0 { // Equip @mob+140 untouched
+		t.Errorf("overlay wrote past CurrentScore")
+	}
+}

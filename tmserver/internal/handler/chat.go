@@ -1,0 +1,704 @@
+package handler
+
+import (
+	"bytes"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+)
+
+// messageChat handles _MSG_MessageChat (0x0333): public chat plus a few slash
+// commands (lote2-chat.md). A non-command line is multicast to players in view.
+//
+// UNVERIFIED: the full command list (partychat/kingdomchat/guildchat/chatting
+// routing) is not reproduced — only the toggles and guildtax below; everything
+// else is treated as public speech. Recommended migration: split a command-bus
+// from the chat transport.
+func (d *Dispatcher) messageChat(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
+	if s.Mode != world.UserPlay {
+		return
+	}
+	text := cstr(payload)
+	switch firstToken(text) {
+	case "whisper":
+		s.Whisper = !s.Whisper
+	case "partychat":
+		// _MSG_MessageChat.cpp:117-126: toggles whether this player receives the
+		// party channel; the legacy confirms with a client message.
+		s.PartyChat = !s.PartyChat
+		if s.PartyChat {
+			d.sendChatText(w, s, "Party Chatting : Off")
+		} else {
+			d.sendChatText(w, s, "Party Chatting : On")
+		}
+	case "guildchat":
+		// _MSG_MessageChat.cpp:140-150: toggles whether this player receives the
+		// guild channel and confirms with SendClientMessage (a message panel). The
+		// client matches these exact texts to flip its guild button
+		// (TMScene.cpp:1660-1669).
+		s.GuildChat = !s.GuildChat
+		if s.GuildChat {
+			d.sendClientMessage(w, s, "Guild Chatting : Off")
+		} else {
+			d.sendClientMessage(w, s, "Guild Chatting : On")
+		}
+	case "guildon":
+		s.GuildDisable = false
+	case "guildoff":
+		s.GuildDisable = true
+	case "guildtax":
+		d.guildTax(w, s, text)
+	default:
+		// Public speech → everyone in view (HEADER.ID = speaker).
+		w.BroadcastInView(s.Conn, protocol.MsgMessageChat, payload)
+	}
+}
+
+// messageWhisper handles _MSG_MessageWhisper (0x0334): a private message to a
+// named online player (lote2-chat.md).
+//
+// UNVERIFIED: the 55 command keywords (the bulk of the original 1710-line
+// handler, incl. GM/backdoor commands) are NOT handled here — MobName is treated
+// purely as a whisper target. Migrating commands to an authorized command-bus is
+// a deliberate, separate task (and removes the documented backdoors).
+func (d *Dispatcher) messageWhisper(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
+	if s.Mode != world.UserPlay {
+		return
+	}
+	var body protocol.MsgWhisperBody
+	if err := body.Decode(payload); err != nil {
+		return
+	}
+	name := cstr(body.MobName[:])
+	if name == "" && len(body.String) > 0 && body.String[0] == '-' {
+		d.guildChat(w, s, body)
+		return
+	}
+	if name == "" && len(body.String) > 0 && body.String[0] == '=' {
+		d.partyChat(w, s, body)
+		return
+	}
+	if d.runCommand(w, s, name, body.String) {
+		// Freeze investigation: commands were invisible in the logs (the recv
+		// packet line only shows 0x0334), so incident timelines could not tell a
+		// teleport command from a plain whisper. Keyword only — no whisper text.
+		d.log.Info("chat command", "conn", s.Conn, "cmd", strings.TrimPrefix(name, "/"))
+		return // a slash command (the client sends "/x" as a whisper to "x")
+	}
+	// "/r" answers whoever whispered last (the "PM, /r" region of
+	// _MSG_MessageWhisper.cpp, pUser[conn].LastChat). No one yet: not connected.
+	if name == whisperReply {
+		name = s.LastWhisperFrom
+	}
+	target, _ := w.SessionByName(name)
+	if target == nil {
+		d.notify(w, s, NoticeNotConnected)
+		return
+	}
+	if target.Whisper {
+		d.notify(w, s, NoticeDenyWhisper)
+		return
+	}
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	// The legacy writes the speaker's name into MobName before forwarding, and
+	// the receiving client shows MobName as the sender. Forwarding the payload
+	// as sent left the target's own name there.
+	body.MobName = [16]byte{}
+	copy(body.MobName[:len(body.MobName)-1], e.Name)
+	body.String = privateWhisperText(body.String)
+	target.LastWhisperFrom = e.Name
+	w.SendTo(target, protocol.Header{Type: protocol.MsgMessageWhisper, ID: uint16(s.Conn)}, body.Encode())
+}
+
+// whisperReply is the target name the client sends for "/r".
+const whisperReply = "r"
+
+// whisperTextMax is the 7662 MSG_MessageWhisper.String size (frame offsets
+// 28..155); the receiver forces String[127] = 0.
+const whisperTextMax = 128
+
+// privateWhisperText rewrites a private whisper's String for the 7662 client,
+// keeping the received length (158 from the web dialect, 160 from WYD.exe):
+//   - the receiver's memo prints &String[1] (TMFieldScene.cpp:17945), also
+//     with the legacy server, which forwards the text as typed. A leading space
+//     keeps the whole message. It also stops a player from starting the line
+//     with a channel marker ('-' guild, '=' party, '@' kingdom) to have it
+//     shown as that channel;
+//   - Color (offset whisperColorOffset) is zeroed: 7 would move the line to the
+//     grey chat (TMFieldScene.cpp:17901).
+//
+// The text is cut to fit String with its NUL (126 bytes after the space).
+func privateWhisperText(in []byte) []byte {
+	text := in
+	if len(text) > whisperTextMax {
+		text = text[:whisperTextMax]
+	}
+	if i := bytes.IndexByte(text, 0); i >= 0 {
+		text = text[:i]
+	}
+	if len(text) > whisperTextMax-2 {
+		text = text[:whisperTextMax-2]
+	}
+	out := make([]byte, max(len(in), len(text)+2))
+	out[0] = ' '
+	copy(out[1:], text)
+	return out
+}
+
+// partyChat routes a "=text" line (MobName empty) to the speaker's party, as the
+// "Chat Party" region of _MSG_MessageWhisper.cpp:1470-1510: MobName becomes the
+// speaker's name, the leader receives it unless it is the speaker, and so do the
+// leader's PartyList members except the speaker and those with partychat off.
+// A player outside any party is its own leader with an empty list, so nobody
+// receives it. Summons share the PartyList and are skipped (no session).
+//
+// Not reproduced: the MuteChat gate, which is not modeled yet (see magicTrumpet),
+// and the chat_party ChatLog line — the text is never logged.
+func (d *Dispatcher) partyChat(w *world.World, s *world.Session, body protocol.MsgWhisperBody) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	body.MobName = [16]byte{}
+	copy(body.MobName[:len(body.MobName)-1], e.Name)
+	out := body.Encode()
+	leaderConn := e.Leader
+	if leaderConn <= 0 {
+		leaderConn = s.Conn
+	}
+	le := w.Entity(leaderConn)
+	ls := w.Session(leaderConn)
+	if le == nil || ls == nil || ls.Mode != world.UserPlay {
+		return
+	}
+	h := protocol.Header{Type: protocol.MsgMessageWhisper, ID: uint16(s.Conn)}
+	if leaderConn != s.Conn {
+		w.SendTo(ls, h, out)
+	}
+	for _, m := range le.PartyList {
+		if m <= 0 || m == s.Conn {
+			continue
+		}
+		ms := w.Session(m)
+		if ms == nil || ms.Mode != world.UserPlay || ms.PartyChat {
+			continue
+		}
+		w.SendTo(ms, h, out)
+	}
+}
+
+// guildChatColor is the Color the legacy stamps on a guild line
+// (m->String[MESSAGE_LENGTH] = 3); the client only shows a "-" line as guild chat
+// when Color == 3 (TMFieldScene.cpp:17885).
+const guildChatColor = 3
+
+// whisperColorOffset is where the 7662 client keeps MSG_MessageWhisper.Color
+// inside the body String: MobName[16] + String[128] + short Color (frame offset
+// 156). The legacy TMSrv writes String[MESSAGE_LENGTH] = String[96] because its
+// own whisper struct has a 100-byte String; the Windows client this server
+// targets reads offset 128.
+const whisperColorOffset = 128
+
+// onlyGuildMemberCan is Language.txt _NN_Only_Guild_Member_Can (104), kept in the
+// table's Windows-1252 bytes like the rest of the legacy string table.
+const onlyGuildMemberCan = "S\xf3 poder\xe1 usar o Chat Guildas se pertence a alguma."
+
+// guildChat routes a "-text" line (MobName empty) to the speaker's guild, as the
+// "Chat Guild" region of _MSG_MessageWhisper.cpp:1426-1468: MobName becomes the
+// speaker's name and Color becomes 3. Every other in-play member of the guild
+// receives it, unless it turned guildchat off. A "--text" line also reaches the
+// members of the guild the speaker's guild is allied to (g_pGuildAlly[guild]).
+// A player outside any guild gets _NN_Only_Guild_Member_Can.
+//
+// Not reproduced: the chat_guild log line — the text is never logged.
+func (d *Dispatcher) guildChat(w *world.World, s *world.Session, body protocol.MsgWhisperBody) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	guild := e.Guild
+	if guild == 0 {
+		d.sendClientMessage(w, s, onlyGuildMemberCan)
+		return
+	}
+	body.MobName = [16]byte{}
+	copy(body.MobName[:len(body.MobName)-1], e.Name)
+	// A short line is padded up to Color, which is a little-endian short.
+	if len(body.String) < whisperColorOffset+2 {
+		body.String = append(body.String, make([]byte, whisperColorOffset+2-len(body.String))...)
+	}
+	body.String[whisperColorOffset] = guildChatColor
+	body.String[whisperColorOffset+1] = 0
+	out := body.Encode()
+	ally := uint16(0)
+	if len(body.String) > 1 && body.String[1] == '-' {
+		ally = d.guildAllies[guild]
+	}
+	h := protocol.Header{Type: protocol.MsgMessageWhisper, ID: uint16(s.Conn)}
+	w.ForEachPlaying(s.Conn, func(ms *world.Session, me *world.Entity) {
+		if me.Guild != guild && (ally == 0 || me.Guild != ally) {
+			return
+		}
+		if ms.GuildChat {
+			return
+		}
+		w.SendTo(ms, h, out)
+	})
+}
+
+// teleportCmds maps a chat slash command to its destination tile. The client sends
+// "/armia" as a whisper whose target name is "armia", so the command keyword IS the
+// whisper name (_MSG_MessageWhisper.cpp). Coordinates are the peacetime ones; the
+// RvR/Torre/Castle war-state variants are not modeled.
+var teleportCmds = map[string][2]int16{
+	"armia": {2100, 2100}, "azran": {2500, 1716}, "erion": {2461, 2003},
+	"gelo": {3650, 3130}, "torre": {2506, 1878},
+	"arch":    {1706, 1723},
+	"selados": {1843, 3652}, "amagos": {3910, 2878}, "agua": {1966, 1770},
+	"noatun": {1052, 1726},
+}
+
+// /kefra destinations and texts (_MSG_MessageWhisper.cpp:836-850). With the
+// Kefra alive the command stops at the boss gate; once it is defeated it opens
+// the "Continente desconhecido", where the Urnammu stands (issue #410).
+var (
+	kefraDestAlive    = [2]int16{2365, 3884}
+	kefraDestDefeated = [2]int16{3250, 1695}
+)
+
+const (
+	msgKefraStillAlive = "O kefra ainda esta vivo, precisa ser derrotado"
+	msgTeleportKefra   = "Teleportado para Kefra." // _NN_TP_KEFRA (548)
+)
+
+// teleportKefra is /kefra. The war-state guard (RvR/Torre/Castle) is not
+// modeled, like the other teleport commands.
+func (d *Dispatcher) teleportKefra(w *world.World, s *world.Session) {
+	if w.Entity(s.Conn) == nil {
+		return
+	}
+	dest, msg := kefraDestAlive, msgKefraStillAlive
+	if d.expEvents.KefraLive { // legacy name: true means defeated
+		dest, msg = kefraDestDefeated, msgTeleportKefra
+	}
+	d.doTeleport(w, s, dest[0]+int16(w.Rand().Intn(3)), dest[1]+int16(w.Rand().Intn(3)))
+	d.sendClientMessage(w, s, msg)
+}
+
+// reinoCapeSlot is the cape equip slot (Equip[15]), confirmed by _MSG_Quest.cpp:702
+// (STRUCT_ITEM *Capa = &pMob[conn].MOB.Equip[15]) and every cape's nPos=-32768
+// (bit 15) in Release/Common/ItemList.csv.
+const reinoCapeSlot = 15
+
+// capaBrancaDoMonstroIndex is ItemList.csv #550 "Capa_Branca_do_Monstro" — the neutral
+// white cape. Like every other non-kingdom cape it routes /reino to the neutral
+// destination (issue #208); it is named here because it is the cape players mean by
+// "capa branca".
+const capaBrancaDoMonstroIndex = 550
+
+// Kingdom command destinations remain fixed like the legacy /king and /kingdom
+// handlers. King and commerce destinations are intentionally distinct (issue #318).
+var (
+	kingDestHekalotia = [2]int16{1748, 1574}
+	kingDestAkelonia  = [2]int16{1748, 1880}
+
+	kingdomDestNeutral   = [2]int16{1702, 1726}
+	kingdomDestHekalotia = [2]int16{1690, 1618}
+	kingdomDestAkelonia  = [2]int16{1690, 1842}
+)
+
+// runCommand executes a chat slash command delivered as a whisper whose target name is
+// the command. Returns true when name was a command (handled); false to fall through to
+// the normal whisper delivery. Mirrors the dispatch in _MSG_MessageWhisper.cpp.
+//
+// UNVERIFIED / deferred: the unlock/quest commands (destravar40/90, arcana,
+// crias) depend on the Arch/Celestial and quest systems that are not modeled yet,
+// so they are not handled here.
+func (d *Dispatcher) runCommand(w *world.World, s *world.Session, name string, args []byte) bool {
+	cmd := strings.TrimPrefix(name, "/")
+	if cmd == "nt" {
+		if e := w.Entity(s.Conn); e != nil {
+			d.sendKefraBalance(w, s, e.NightmareEntries)
+		}
+		return true
+	}
+	if cmd == "nig" {
+		w.Send(s, protocol.MsgMessagePanel, protocol.EncodeMessagePanelBody(d.now().In(time.Local).Format("!!150405")))
+		return true
+	}
+	// "day": the 7662 asks on every affect update while it has no year/day
+	// (TMHuman.cpp:4755, m_nYear/m_nDays still 0). The legacy answers a fixed
+	// "!#11  2" (_MSG_MessageWhisper.cpp:603), which TMScene parses into the
+	// field's year/day. Unanswered, each request fell through to the whisper
+	// path as a whisper to "day" and showed the not-connected notice.
+	if cmd == "day" {
+		d.sendClientMessage(w, s, "!#11  2")
+		return true
+	}
+	if cmd == "kefra" {
+		d.teleportKefra(w, s)
+		return true
+	}
+	if dest, ok := teleportCmds[cmd]; ok {
+		if e := w.Entity(s.Conn); e != nil {
+			d.doTeleport(w, s, dest[0]+int16(w.Rand().Intn(3)), dest[1]+int16(w.Rand().Intn(3)))
+		}
+		return true
+	}
+	if cmd == "rei" || cmd == "king" {
+		d.teleportKing(w, s)
+		return true
+	}
+	if cmd == "reino" || cmd == "kingdom" {
+		d.teleportKingdom(w, s)
+		return true
+	}
+	if cmd == "buffs" {
+		d.clearBuffs(w, s)
+		return true
+	}
+	if cmd == "create" {
+		d.createGuild(w, s, args)
+		return true
+	}
+	if cmd == "subcreate" {
+		d.subcreate(w, s, args)
+		return true
+	}
+	if cmd == "handover" {
+		d.handoverGuild(w, s, args)
+		return true
+	}
+	if cmd == "summonguild" {
+		d.summonGuild(w, s)
+		return true
+	}
+	if cmd == "expulsar" {
+		d.kickGuild(w, s, args)
+		return true
+	}
+	if cmd == "sair" || cmd == "abandonar" {
+		d.leaveGuild(w, s)
+		return true
+	}
+	if cmd == "destravar40" {
+		d.destravarCelestial(w, s, false)
+		return true
+	}
+	if cmd == "destravar90" {
+		d.destravarCelestial(w, s, true)
+		return true
+	}
+	if cmd == "arcana" {
+		d.arcana(w, s)
+		return true
+	}
+	if cmd == "cp" {
+		d.showChaosPoints(w, s)
+		return true
+	}
+	if cmd == "gritar" || cmd == "spk" {
+		d.magicTrumpet(w, s, args)
+		return true
+	}
+	if cmd == "gm" {
+		// GM/moderation command bus (issue #122). args is the whisper's String — the
+		// rest of the typed line (e.g. "/gm kick foo" → args = "kick foo").
+		d.runGMCommand(w, s, args)
+		return true
+	}
+	if cmd == "nick" {
+		d.showNick(w, s, cstr(args))
+		return true
+	}
+	return false
+}
+
+// teleportKing routes /rei and /king by the equipped cape. Neutral cape states
+// are handled no-ops because the legacy /king command has no neutral destination.
+func (d *Dispatcher) teleportKing(w *world.World, s *world.Session) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	switch kingClanFromCape(0, e.Equip[reinoCapeSlot].Index) {
+	case clanHekalotia:
+		d.doTeleport(w, s, kingDestHekalotia[0], kingDestHekalotia[1])
+	case clanAkelonia:
+		d.doTeleport(w, s, kingDestAkelonia[0], kingDestAkelonia[1])
+	}
+}
+
+// teleportKingdom routes /reino and /kingdom by the equipped cape. Kingdom
+// capes land by their commerce NPCs; neutral cape states land between kingdoms.
+func (d *Dispatcher) teleportKingdom(w *world.World, s *world.Session) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	dest := kingdomDestNeutral
+	switch kingClanFromCape(0, e.Equip[reinoCapeSlot].Index) {
+	case clanHekalotia:
+		dest = kingdomDestHekalotia
+	case clanAkelonia:
+		dest = kingdomDestAkelonia
+	}
+	d.doTeleport(w, s, dest[0], dest[1])
+}
+
+// clearBuffs removes every active buff/debuff (the /buffs command), recomputes the score
+// — dropping e.g. the Divine +20% — and refreshes the client (_MSG_MessageWhisper.cpp:42).
+// A cleared transform (affect 16) also needs its beast mesh reverted in view, so
+// that path re-broadcasts the equip instead of only the score.
+func (d *Dispatcher) clearBuffs(w *world.World, s *world.Session) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	_, _, wasTransformed := activeTransform(e)
+	e.ResetAffects()
+	if wasTransformed {
+		d.refreshEquip(w, s, e) // recomputes visual gear/glow + score, broadcasts both
+	} else {
+		d.refreshScore(e)
+		d.sendScore(w, s, e)
+	}
+	d.sendAffect(w, s, e)
+}
+
+// Celestial unlock constants (_MSG_MessageWhisper.cpp:628/645/676).
+const (
+	celestialUnlockParm = 1    // _MSG_CombineComplete Parm on a successful unlock
+	cytheraMisticaItem  = 3502 // /destravar90 and Pedra da Furia Lv90 reward (Cythera_Mistica), granted to carry
+	arcanaItemIndex     = 3507 // /arcana reward, placed in Equip[1]
+	arcanaEquipSlot     = 1
+)
+
+// destravarCelestial handles /destravar40 (ninety=false) and /destravar90
+// (ninety=true): the Celestial level-40/90 unlock (_MSG_MessageWhisper.cpp:628/645).
+// It sets the QuestInfo.Celestial gate flag so CheckGetLevel lets the character pass
+// level 40/90 (CMob.cpp:1107), signals the client, and persists the flag. /destravar90
+// additionally hands out the Cythera Mistica (item 3502) and plays the unlock emote.
+//
+// The command is only effective for a Celestial — for anyone else it is a no-op
+// (there is no gate to unlock on the Mortal/Arch curve), matching the design in
+// celestial-system-plan.md. Re-running after the flag is already set is idempotent.
+func (d *Dispatcher) destravarCelestial(w *world.World, s *world.Session, ninety bool) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	d.destravarCelestialFor(w, s, e, ninety)
+}
+
+// destravarCelestialFor is destravarCelestial's body with the entity passed
+// explicitly, so other callers that already have one (e.g. combineOdin's
+// Destrave Lv40 recipe) don't need it registered in the world's connection
+// table — the same split useItem/useClasseItem and combineItemOdin/combineOdin
+// already use.
+func (d *Dispatcher) destravarCelestialFor(w *world.World, s *world.Session, e *world.Entity, ninety bool) {
+	if e.ClassMaster != classMasterCelestial {
+		d.log.Debug("destravar: not a celestial", "conn", s.Conn, "ninety", ninety)
+		return
+	}
+	if ninety {
+		if e.CelLv90 != 0 {
+			return
+		}
+		e.CelLv90 = 1
+		d.grantCarry(w, s, e, cytheraMisticaItem)
+	} else {
+		if e.CelLv40 != 0 {
+			return
+		}
+		e.CelLv40 = 1
+	}
+	sendCombineComplete(w, s, celestialUnlockParm)
+	if ninety {
+		d.playUnlockEmote(w, s)
+	}
+	w.SaveCharacterThen(s, func(*world.World, *world.Session) {})
+	d.log.Info("celestial unlock", "conn", s.Conn, "name", e.Name, "ninety", ninety)
+}
+
+// arcana handles /arcana: the Cythera Arcana quest turn-in (_MSG_MessageWhisper.cpp:676).
+// It sets QuestInfo.Circle, places the reward (item 3507) in Equip[1], signals the
+// client, plays the unlock emote, and persists. Only effective for a Celestial.
+func (d *Dispatcher) arcana(w *world.World, s *world.Session) {
+	e := w.Entity(s.Conn)
+	if e == nil || e.ClassMaster != classMasterCelestial {
+		d.log.Debug("arcana: not a celestial", "conn", s.Conn)
+		return
+	}
+	if e.CelCircle != 0 {
+		return
+	}
+	e.CelCircle = 1
+	e.Equip[arcanaEquipSlot] = world.Item{Index: arcanaItemIndex}
+	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceEquip, arcanaEquipSlot, itemToSel(e.Equip[arcanaEquipSlot])))
+	sendCombineComplete(w, s, celestialUnlockParm)
+	d.playUnlockEmote(w, s)
+	w.SaveCharacterThen(s, func(*world.World, *world.Session) {})
+	d.log.Info("arcana quest", "conn", s.Conn, "name", e.Name)
+}
+
+// grantCarry places an item into the player's first free carry slot and pushes the
+// SendItem update. If the inventory is full the grant is dropped (logged) — the flag
+// change still stands, matching the legacy PutItem best-effort behavior.
+func (d *Dispatcher) grantCarry(w *world.World, s *world.Session, e *world.Entity, index int16) {
+	i := firstEmptyAccessibleCarry(e)
+	if i >= 0 {
+		e.Carry[i] = world.Item{Index: index}
+		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, i, itemToSel(e.Carry[i])))
+		return
+	}
+	d.log.Info("grantCarry: inventory full", "conn", s.Conn, "index", index)
+}
+
+// playUnlockEmote sends the celestial-unlock emotion (MsgMotion 14/3) to the caller
+// and everyone in view (the same emote the client plays on level-up).
+func (d *Dispatcher) playUnlockEmote(w *world.World, s *world.Session) {
+	motion := protocol.EncodeMotion(motionLevelUp, motionLevelUpParm)
+	w.Send(s, protocol.MsgMotion, motion)
+	w.BroadcastInView(s.Conn, protocol.MsgMotion, motion)
+}
+
+// showChaosPoints handles the /cp command: reports the player's current chaos
+// points (_MSG_MessageWhisper.cpp:33-39, _DN_Show_Chao = "Pontos Caos atual: %d").
+// GetPKPoint(conn)-75 maps to pkPoint(e)-75, now the real persisted PKPoint/
+// Guilty counters (issue #210), not an approximation.
+func (d *Dispatcher) showChaosPoints(w *world.World, s *world.Session) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	chaos := int(pkPoint(e)) - 75
+	msg := fmt.Sprintf("Pontos Caos atual: %d", chaos)
+	d.sendChatText(w, s, msg)
+}
+
+// itemMagicTrumpet is the Trombeta Mágica (ItemList.csv:5031 —
+// "3330,Trombeta_Mágica,…,EF_VOLATILE,0,EF_GRID,0"): a stackable consumable with
+// no use-effect of its own; it exists only to pay for /gritar.
+const itemMagicTrumpet = 3330
+
+// magicTrumpet handles /gritar (legacy alias /spk): it burns one Trombeta Mágica
+// and shouts "[Nome]> texto" to every player online
+// (_MSG_MessageWhisper.cpp:114-162, issue #258).
+//
+// Deviations from the legacy, all deliberate:
+//   - The legacy relayed MSG_MagicTrumpet through the DBSrv so every channel
+//     received it (DBSrv/CFileDB.cpp:1616, TMSrv/ProcessDBMessage.cpp:136). The Go
+//     stack has one tmServer per channel and the dbServer has no announce RPC, so
+//     the shout reaches this server's players only. Cross-channel fan-out is future
+//     work.
+//   - Without a trumpet the legacy returned silently (:139); here the player is
+//     told why nothing happened.
+//   - An empty message is refused instead of shouting "[Nome]> " and eating a
+//     trumpet anyway.
+//   - The MuteChat gate (:118) has no counterpart — muting is not modeled yet.
+func (d *Dispatcher) magicTrumpet(w *world.World, s *world.Session, args []byte) {
+	e := w.Entity(s.Conn)
+	if e == nil {
+		return
+	}
+	text := strings.TrimSpace(cstr(args))
+	if text == "" {
+		return
+	}
+	slot := -1
+	for i, limit := 0, activeCarryLimit(e); i < limit; i++ {
+		if e.Carry[i].Index == itemMagicTrumpet {
+			slot = i
+			break
+		}
+	}
+	if slot < 0 {
+		d.sendChatText(w, s, "Voc\xea precisa de uma Trombeta M\xe1gica para gritar.")
+		return
+	}
+	consumeOneItem(&e.Carry[slot])
+	d.sendSlot(w, s, world.ItemPlaceCarry, slot, e.Carry[slot])
+
+	// HEADER.ID = 0 like the legacy (sm_mt.ID = 0): the shout carries its speaker
+	// inside the text, not in the header. Nobody is excluded — the shouter sees it
+	// too, as SyncMulticast(0, …) did.
+	payload := protocol.EncodeMagicTrumpetBody(fmt.Sprintf("[%s]> %s", e.Name, text))
+	w.ForEachPlaying(-1, func(vs *world.Session, _ *world.Entity) {
+		w.SendTo(vs, protocol.Header{Type: protocol.MsgMagicTrumpet, ID: 0}, payload)
+	})
+	d.log.Info("magic trumpet", "conn", s.Conn, "account", s.AccountName, "name", e.Name, "text", text)
+}
+
+// sendChatText sends a raw MsgMessageChat line to s only — the SendClientMessage
+// family of legacy notices (_DN_Show_Chao, _DN_CantKillUser, _DD_PKPointPlus/
+// Minus, _DN_lose_D_exp, …), as opposed to the dialog-box Notice family
+// (notice.go).
+func (d *Dispatcher) sendChatText(w *world.World, s *world.Session, text string) {
+	w.SendTo(s, protocol.Header{Type: protocol.MsgMessageChat, ID: uint16(s.Conn)}, protocol.EncodeMessageChatBody(text))
+}
+
+// sendNPCChatText uses the speaker ID like legacy SendSay, but keeps personal
+// service replies private to the requesting session instead of multicasting.
+// The body is the fixed-width MSG_MessageChat.String: a short frame from an NPC
+// speaker dropped the client's connection (issue #344).
+func (d *Dispatcher) sendNPCChatText(w *world.World, s *world.Session, npcID int, text string) {
+	w.SendTo(s, protocol.Header{Type: protocol.MsgMessageChat, ID: uint16(npcID)}, protocol.EncodeMessageChatBody(text))
+}
+
+// notifyPKPointDelta formats the _DD_PKPointPlus/_DD_PKPointMinus chat line:
+// the player's new displayed Chaos Points (PKPoint-75) plus the signed change
+// that just happened. Exact legacy string-table text isn't available in this
+// source tree (Language.h only has numeric #define indices), so this matches
+// the tone/format of the existing _DN_Show_Chao line above.
+func notifyPKPointDelta(newPKPoint uint8, delta int) string {
+	sign := "+"
+	if delta < 0 {
+		sign = "-"
+		delta = -delta
+	}
+	return fmt.Sprintf("Pontos Caos atual: %d (%s%d)", int(newPKPoint)-75, sign, delta)
+}
+
+// showNick handles the /nick <jogador> command (issue #131): replies to the
+// caller only, with the target's Nick, Guild (name + fame, if registered —
+// world/guild.go), Citizenship and character Fame. Mirrors the legacy
+// _MSG_MessageWhisper.cpp:1618-1636 info line (Language.txt _NN_Check_User_Info
+// "Cidadania: %d / Fama: %d"), extended with guild fame per issue #131, and
+// sent back as a self-addressed chat line (like gmNotice's free-text path)
+// since there's no dedicated system-message wire format captured yet.
+func (d *Dispatcher) showNick(w *world.World, s *world.Session, rest string) {
+	name := firstToken(strings.TrimSpace(rest))
+	if name == "" {
+		return
+	}
+	_, te := w.SessionByName(name)
+	if te == nil {
+		d.notify(w, s, NoticeNotConnected)
+		return
+	}
+	guildPart := "Sem guilda"
+	if te.Guild != 0 {
+		if gi, ok := w.GuildInfo(te.Guild); ok {
+			guildPart = fmt.Sprintf("%s (Fama guilda: %d)", gi.Name, gi.Fame)
+		} else {
+			guildPart = fmt.Sprintf("Guild #%d (nao registrada)", te.Guild)
+		}
+	}
+	msg := fmt.Sprintf("%s [%s] Cidadania: %d / Fama: %d", te.Name, guildPart, te.Citizen, te.Fame)
+	w.Send(s, protocol.MsgMessageChat, protocol.EncodeMessageChatBody(msg))
+}
+
+// firstToken returns the first whitespace-separated token of s.
+func firstToken(s string) string {
+	if i := strings.IndexByte(s, ' '); i >= 0 {
+		return s[:i]
+	}
+	return s
+}

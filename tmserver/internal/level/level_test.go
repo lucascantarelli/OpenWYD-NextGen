@@ -1,0 +1,106 @@
+package level
+
+import "testing"
+
+// TestNextLevelTable guards the transcribed g_pNextLevel[] against silent
+// corruption: the documented anchor values and — most importantly — strict
+// monotonicity, which catches any single mistyped/dropped/duplicated entry (it
+// would break the increasing order).
+func TestNextLevelTable(t *testing.T) {
+	if len(nextLevel) != 401 {
+		t.Fatalf("nextLevel has %d entries, want 401 (indices 0..400)", len(nextLevel))
+	}
+	anchors := map[int]int64{0: 0, 1: 500, 2: 1124, 398: 3817000000, 399: 4000000000, 400: 4100000000}
+	for i, want := range anchors {
+		if nextLevel[i] != want {
+			t.Errorf("nextLevel[%d] = %d, want %d", i, nextLevel[i], want)
+		}
+	}
+	for i := 1; i < len(nextLevel); i++ {
+		if nextLevel[i] <= nextLevel[i-1] {
+			t.Fatalf("nextLevel not strictly increasing at %d: %d <= %d", i, nextLevel[i], nextLevel[i-1])
+		}
+	}
+	if nextLevel[len(nextLevel)-1] != MaxExp {
+		t.Errorf("nextLevel[last] = %d, want MaxExp %d", nextLevel[len(nextLevel)-1], MaxExp)
+	}
+}
+
+func TestNextLevelExp(t *testing.T) {
+	if got := NextLevelExp(0); got != 500 { // level 0 → needs nextLevel[1]
+		t.Errorf("NextLevelExp(0) = %d, want 500", got)
+	}
+	if got := NextLevelExp(1); got != 1124 {
+		t.Errorf("NextLevelExp(1) = %d, want 1124", got)
+	}
+	if got := NextLevelExp(MaxLevel); got != MaxExp { // at cap → no further level
+		t.Errorf("NextLevelExp(MaxLevel) = %d, want MaxExp", got)
+	}
+}
+
+func TestExpApply(t *testing.T) {
+	tests := []struct {
+		name             string
+		exp              int64
+		attacker, target int32
+		want             int64
+	}{
+		{"zero", 0, 50, 50, 0},
+		{"equal level (mult 100%)", 1000, 50, 50, 1000},         // (51*100/51)=100 → (1000*100+1)/100=1000
+		{"higher mob → bonus capped 200", 1000, 10, 400, 2000},  // mult>200 → 200
+		{"much higher killer penalised to 0", 1000, 100, 10, 0}, // mult=10 → 10*2-100=-80 → 0
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ExpApply(tt.exp, tt.attacker, tt.target); got != tt.want {
+				t.Errorf("ExpApply(%d,%d,%d) = %d, want %d", tt.exp, tt.attacker, tt.target, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestScoreBonus(t *testing.T) {
+	// A TK at the class base stats (8,4,7,6) spends 0 points → level*5 free points.
+	if got := ScoreBonus(0, 10, 8, 4, 7, 6); got != 50 {
+		t.Errorf("ScoreBonus(TK, lvl10, base stats) = %d, want 50", got)
+	}
+	// Spending 5 Str (8→13) reduces the free pool by 5.
+	if got := ScoreBonus(0, 10, 13, 4, 7, 6); got != 45 {
+		t.Errorf("ScoreBonus(TK, lvl10, +5 str) = %d, want 45", got)
+	}
+}
+
+// TestScoreBonusCelestial pins BASE_GetBonusScorePoint for CELESTIAL
+// (Basedef.cpp:980-1041), computed by hand from the legacy branch.
+func TestScoreBonusCelestial(t *testing.T) {
+	tests := []struct {
+		name                    string
+		lvl                     int32
+		str, intel, dex, con    int16
+		cristal, reset, archLvl uint8
+		other                   int32 // the parked tier's level (CELESTIALCS/SCELESTIAL)
+		want                    int32
+	}{
+		{"fresh celestial", 0, 8, 4, 7, 6, 0, 0, 0, 0, 1001},
+		{"level 10 spent 5 str", 10, 13, 4, 7, 6, 0, 0, 0, 0, 60 + 1001 - 5},
+		{"cristal 4 archLevel 5", 0, 8, 4, 7, 6, 4, 0, 5, 0, 400 + 1001 + 1200},
+		{"archLevel 3", 0, 8, 4, 7, 6, 0, 0, 3, 0, 1001 + 600},
+		// 199*6 + 1001 + 80*6 + (50+30+20+10)*2 = 1194 + 1001 + 480 + 220.
+		{"level 199 no reset", 199, 8, 4, 7, 6, 0, 0, 0, 0, 2895},
+		{"level 199 three resets", 199, 8, 4, 7, 6, 0, 3, 0, 0, 2895 + 600},
+		{"over-spent clamps to 0", 0, 3000, 4, 7, 6, 0, 0, 0, 0, 0},
+		// The parked tier (issue #410): lvl*6/2, plus the full 120+ bonuses.
+		{"parked level 10", 0, 8, 4, 7, 6, 0, 0, 0, 10, 1001 + 30},
+		{"parked level 120", 0, 8, 4, 7, 6, 0, 0, 0, 120, 1001 + 360 + 6},
+		// 199*6/2 + 80*6 + (50+30+20+10)*2 = 597 + 480 + 220.
+		{"parked level 199", 199, 8, 4, 7, 6, 0, 0, 0, 199, 2895 + 1297},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ScoreBonusCelestial(0, tc.lvl, tc.str, tc.intel, tc.dex, tc.con, tc.cristal, tc.reset, tc.archLvl, tc.other)
+			if got != tc.want {
+				t.Errorf("ScoreBonusCelestial = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

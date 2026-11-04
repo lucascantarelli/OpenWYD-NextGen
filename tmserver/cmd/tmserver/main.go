@@ -1,0 +1,899 @@
+// Command tmserver is the WYD game server (TMSrv): it speaks the legacy CPSock
+// wire protocol to the unmodified WYD.exe 7662 client (tmserver/internal/protocol)
+// and owns the in-memory world state through a single game-loop goroutine
+// (tmserver/internal/world).
+//
+// This entrypoint only does wiring (guidelines §3): flags, logging, the gRPC
+// client connections to dbServer/binServer, the listener and graceful shutdown.
+// Without -dbserver the persistence falls back to a no-op (local bring-up).
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"syscall"
+	"time"
+
+	"google.golang.org/grpc"
+
+	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
+	"github.com/jeanluca/w2pp-openwyd/internal/secure"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/binclient"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combine"
+	"github.com/jeanluca/w2pp-openwyd/internal/ratetables"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/dbclient"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/dropcfg"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/loot"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/handler"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/mobcarry"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/mobstat"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/npccfg"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/route"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldcfg"
+)
+
+func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	if err := run(logger); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("tmserver stopped with error", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("tmserver stopped")
+}
+
+// envInt reads an integer flag default from the environment so container
+// deployments (Railway) can set it as a variable like the other W2PP_* knobs;
+// a missing or malformed value falls back to def.
+func envInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+// envBool reads a boolean flag default from the environment (Railway-style knob),
+// accepting the usual truthy spellings; a missing or malformed value falls back to
+// def.
+func envBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return def
+	}
+	return b
+}
+
+// addrOrNone renders an empty flag value as "(none)" so the boot log reads
+// clearly when an optional address (dbServer/binServer/content) is unset.
+func addrOrNone(v string) string {
+	if v == "" {
+		return "(none)"
+	}
+	return v
+}
+
+func run(logger *slog.Logger) error {
+	addr := flag.String("addr", ":8281", "CPSock listen address for the client edge")
+	dbAddr := flag.String("dbserver", os.Getenv("W2PP_DBSERVER"), "dbServer gRPC address (empty = no-op persistence)")
+	binAddr := flag.String("binserver", os.Getenv("W2PP_BINSERVER"), "binServer gRPC address (empty = allow-all billing)")
+	tlsCert := flag.String("tls-cert", os.Getenv("W2PP_TLS_CERT"), "client certificate (PEM) for internal mTLS")
+	tlsKey := flag.String("tls-key", os.Getenv("W2PP_TLS_KEY"), "client private key (PEM)")
+	tlsCA := flag.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "CA (PEM) verifying dbServer/binServer")
+	tlsServerName := flag.String("tls-server-name", os.Getenv("W2PP_TLS_SERVER_NAME"), "expected server name in internal certs")
+	rejectChecksum := flag.Bool("reject-checksum", false, "drop connections on CPSock checksum mismatch (Fase 7; off by default)")
+	maxMsgPerSec := flag.Float64("max-msg-per-sec", 200, "per-connection inbound message rate limit (0 = disabled)")
+	msgBurst := flag.Int("msg-burst", 400, "per-connection message burst depth")
+	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree (empty = skip; validates rates/catalogs/maps at boot)")
+	npcEditing := flag.Bool("npc-editing", envBool("W2PP_NPC_EDITING", false), "enable the moderator NPC-editing overlay (npc-editing-plan.md); needs -dbserver and -content. OFF by default: turn it on only after `dbserver import-npcs` has seeded npc_definition, else DB-managed merchant NPCs would be skipped from NPCGener.txt with nothing to replace them")
+	teleportEditing := flag.Bool("teleport-editing", envBool("W2PP_TELEPORT_EDITING", false), "enable the moderator teleport-route overlay (issue 42); needs -dbserver. Applied at boot and re-read every 15s, so an edit reaches a running world without a restart. OFF by default: with it off the world resolves strictly from the compiled table")
+	mobStatEditing := flag.Bool("mob-stat-editing", envBool("W2PP_MOB_STAT_EDITING", false), "enable the moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the equivalent-tool successor to the legacy EDITAPPMOB); needs -dbserver and -content. Applied ONCE at boot, like every other content load — a moderator edit needs a tmServer restart to take effect (EDITAPPMOB itself required a server restart too), independent of -npc-editing")
+	itemEffectEditing := flag.Bool("item-effect-editing", envBool("W2PP_ITEM_EFFECT_EDITING", false), "enable the moderator item base-effect overlay (issue 44, the read-through side of the web editor); needs -dbserver (overlay source) and -content (item catalog). Applied ONCE at boot: itemEffects is folded into the handler at construction, so a moderator edit needs a tmServer restart to reach a running world (same restart-to-apply as -mob-stat-editing). OFF by default: with it off the catalog is exactly ItemList.csv")
+	ratesEditing := flag.Bool("rates-editing", envBool("W2PP_RATES_EDITING", false), "enable the moderator content-rate overlay (issue 36: SancRate/CompRate/QuestsRate); needs -dbserver (overlay source) and -content (rate files). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the tables are exactly the files in Release/Common/Settings")
+	dropConfigEditing := flag.Bool("drop-config-editing", envBool("W2PP_DROP_CONFIG_EDITING", false), "enable the moderator drop-rate overlay (issue 34: DropRate[64] divisor per Carry slot); needs -dbserver (overlay source). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the table is exactly the code defaults in tmserver/internal/loot")
+	mobCarryEditing := flag.Bool("mob-carry-editing", envBool("W2PP_MOB_CARRY_EDITING", false), "enable the moderator Carry[] overlay (issue 34: the drop table of each mob template); needs -dbserver (overlay source) and -content (mob templates). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off every template keeps exactly the Carry[] in Release/TMsrv/run/npc")
+	defStatusAddr := os.Getenv("W2PP_STATUS_ADDR")
+	if defStatusAddr == "" {
+		defStatusAddr = ":80"
+	}
+	statusAddr := flag.String("status-addr", defStatusAddr, "HTTP channel-status listen address (serv00.htm); real WYD serves status on :80, separate from the game port. Empty disables")
+	maxNightmare := flag.Int("max-nightmare", envInt("W2PP_MAX_NIGHTMARE", 3), "counted Nightmare admissions per map and cycle")
+	kefraEntriesPerScroll := flag.Int("kefra-entries-per-scroll", envInt("W2PP_KEFRA_ENTRIES_PER_SCROLL", 100), "Hall of Kefra entries one sealed scroll grants at the Sobrevivente (legacy 100; servers commonly use 50 or 100)")
+	clientVersion := flag.Int("client-version", envInt("W2PP_CLIENT_VERSION", 7640), "MSG_AccountLogin.ClientVersion the client must send (protocol-spec says 7640; this 7662 'Cavaleiros de Kersef' build sends 12000)")
+	doubleExp := flag.Bool("double-exp", envBool("W2PP_DOUBLE_EXP", false), "DOUBLEMODE: double PvE experience (gameconfig double)")
+	newbieEvent := flag.Bool("newbie-event", envBool("W2PP_NEWBIE_EVENT", false), "NewbieEventServer: +15% exp and newbie under-100 bonus (gameconfig)")
+	kefraLive := flag.Bool("kefra-live", envBool("W2PP_KEFRA_LIVE", false), "initial Kefra defeated state (true opens city); persisted cycle takes precedence; false halves PvE exp")
+	// Issue #383: a fresh character must reach displayed level 35 in ~15 min on
+	// the training grounds. The measured pace with the plain reward was ~1k exp/min
+	// (×0.425 from Kefra/newbie included) against the ~11.7k needed; dropping
+	// those reducers gives ~2.35×, and 6 closes the rest with headroom.
+	trainingFieldExp := flag.Int("training-field-exp", envInt("W2PP_TRAINING_FIELD_EXP", 6), "EXP multiplier for training-grounds kills (AttributeMap 0x80 generators) by mortals below stored level 35; replaces the global event modifiers there. 0 = legacy reward")
+	logSends := flag.Bool("log-sends", envBool("W2PP_LOG_SENDS", false), "log every S→C frame (conn/type/id/len) — client-freeze diagnostics (investigacao-freeze-cliente.md); high volume, enable only while reproducing an incident")
+	// Cast-buff duration tuning (issue #229). The legacy formula is
+	// (AffectTime+1)*(100+Special)/100 ticks of 8s, which puts an endgame character
+	// at 30-100 min per buff — reported as far too long three times over (#92, #202,
+	// #229). 100/0/0 restores the legacy durations exactly.
+	affectScalePct := flag.Int("affect-scale-pct", envInt("W2PP_AFFECT_SCALE_PCT", 15), "percent of the legacy cast-affect duration to keep, applied only OUTSIDE the target band: a non-aggressive affect whose BASE (unmastered) duration is already under -affect-max-minutes keeps its legacy mastery curve (issue #236). 100 = legacy")
+	affectMinSeconds := flag.Int("affect-min-seconds", envInt("W2PP_AFFECT_MIN_SECONDS", 60), "floor for NON-aggressive cast affects, in seconds; keeps the shortest buffs usable (0 = no floor)")
+	affectMaxMinutes := flag.Int("affect-max-minutes", envInt("W2PP_AFFECT_MAX_MINUTES", 10), "cap for cast affects, in minutes; cuts the mastery tail (0 = no cap)")
+	flag.Parse()
+
+	// Echo the effective wiring at boot: the client-version and the resolved
+	// dbServer/binServer addresses are the knobs most often misconfigured in a
+	// container deploy (version-mismatch drops, or "produced zero addresses" when
+	// an internal hostname is wrong), so surface them before anything connects.
+	logger.Info("tmserver config",
+		"client_version", *clientVersion,
+		"dbserver", addrOrNone(*dbAddr),
+		"binserver", addrOrNone(*binAddr),
+		"content", addrOrNone(*contentDir),
+		"npc_editing", *npcEditing,
+		"mob_stat_editing", *mobStatEditing,
+		"teleport_editing", *teleportEditing,
+		"item_effect_editing", *itemEffectEditing,
+		"rates_editing", *ratesEditing,
+		"mob_carry_editing", *mobCarryEditing)
+
+	// When -content is set, load and validate the content tree up front so a
+	// missing/corrupt mount fails fast instead of surfacing mid-session. The
+	// recipe→combine-family and AttributeMap-bit semantics remain UNVERIFIED
+	// (PROGRESS Fase 5), so this validates and exposes the data; it does not
+	// rewire gameplay on unverified mappings.
+	var itemPrices map[int]int32
+	var itemEffects map[int][]content.BaseEffect
+	var itemReqs map[int]content.ItemReq
+	var itemVolatiles, itemPos, itemUnique, itemGrades, itemExtra map[int]int
+	var itemRanges map[int]int16
+	var combineFamilies map[protocol.Type]handler.CombineFamily
+	var odinCatalog combine.Catalog
+	var spells *content.SkillData
+	var heights *content.Grid
+	var attrs *content.Grid
+	var sancRate *content.SancRate
+	var compRate *content.CompRate
+	var questRates *content.QuestRates
+	if *contentDir != "" {
+		c, err := loadContent(*contentDir, logger)
+		if err != nil {
+			return err
+		}
+		items := c.items
+		itemPrices, itemEffects, itemReqs = items.Prices(), items.BaseEffects(), items.Requirements()
+		itemVolatiles, itemPos, itemUnique = items.Volatiles(), items.Positions(), items.Uniques()
+		itemGrades = items.Grades()
+		itemExtra = items.Extras()
+		itemRanges = items.Ranges()
+		odinCatalog = handler.NewCombineCatalog(items, c.comp)
+		combineFamilies = handler.DefaultCombineFamilies(odinCatalog)
+		spells = c.skills
+		heights = c.heights
+		attrs = c.attrs
+		sancRate = c.sanc
+		compRate = c.comp
+		questRates = c.quests
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	clientCreds, err := secure.ClientCreds(secure.Config{
+		CertFile: *tlsCert, KeyFile: *tlsKey, CAFile: *tlsCA, ServerName: *tlsServerName,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Persistence: real dbServer adapter when -dbserver is set, else no-op. The
+	// connection is retained (dbConn) so the NPC-config overlay can share it.
+	var persist world.Persistence = world.NopPersistence{}
+	var dbConn *grpc.ClientConn
+	var worldEvents worldcfg.Source
+	if *dbAddr != "" {
+		conn, err := grpc.NewClient(*dbAddr, grpc.WithTransportCredentials(clientCreds))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = conn.Close() }()
+		dbConn = conn
+		persist = dbclient.New(conn)
+		worldEvents = dbclient.NewWorldEventConfig(conn)
+		logger.Info("dbServer wired", "addr", *dbAddr)
+	} else {
+		logger.Warn("no -dbserver: using no-op persistence (logins report no account; Kefra cycle is not preserved across restarts)")
+	}
+
+	// The client fetches a channel-status page over HTTP before the CPSock
+	// connect; serve it from the content tree when available.
+	var statusFile string
+	var baseMobs map[int][]byte
+	var summonMobs [][]byte
+	var vineMob []byte
+	var castleQuests []content.CastleQuest
+	if *contentDir != "" {
+		statusFile = filepath.Join(*contentDir, "Common", "serv00.htm")
+		if bm, err := content.LoadBaseMobs(*contentDir); err != nil {
+			logger.Warn("base mob templates not loaded", "err", err)
+		} else {
+			baseMobs = bm
+			logger.Info("base mob templates loaded", "classes", len(baseMobs))
+		}
+		if sm, missing, err := content.LoadBaseSummons(*contentDir); err != nil {
+			logger.Warn("base summon templates not loaded (BM evocations disabled)", "err", err)
+		} else {
+			summonMobs = sm
+			if len(missing) > 0 {
+				logger.Warn("optional summon templates missing", "names", missing)
+			}
+			logger.Info("base summon templates loaded", "count", len(summonMobs)-len(missing))
+		}
+		// Muro de Espinhos is CreateMob("Vinha", ..., "Boss", 3) in the C++,
+		// but the shipped Linux content tree carries the wall template as npc/Vine.
+		if vm, err := content.LoadNPCTemplate(*contentDir, "Vine"); err != nil {
+			logger.Warn("vine template not loaded (skill 98 cannot create Muro de Espinhos)", "err", err)
+		} else {
+			vineMob = vm
+			logger.Info("vine template loaded")
+		}
+		if cq, err := content.LoadCastleQuests(filepath.Join(*contentDir, "Common", "Settings", "CastleQuest.txt")); err != nil {
+			logger.Warn("castle quests not loaded (Castle/Zakum disabled)", "err", err)
+		} else {
+			castleQuests = cq
+			logger.Info("castle quests loaded", "count", len(castleQuests))
+		}
+	}
+
+	// Moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the
+	// equivalent-tool successor to the legacy EDITAPPMOB): the single switch is
+	// -mob-stat-editing (W2PP_MOB_STAT_EDITING), off by default. Unlike
+	// -npc-editing this applies to ANY npc/<template_name> file — monsters
+	// included, the tool's primary rebalancing use case — not just the
+	// DB-managed merchant subset, so it is deliberately independent of
+	// -npc-editing (its own flag, its own dependency check). Fetched ONCE here,
+	// synchronously, before any template gets loaded below: there is no
+	// hot-reload for this feature, matching EDITAPPMOB's own restart-to-apply
+	// behavior (it wrote the file; the server only read it at boot too).
+	var mobStatOverrides map[string]mobstat.Override
+	if *mobStatEditing {
+		if dbConn == nil || *contentDir == "" {
+			return fmt.Errorf("-mob-stat-editing requires both -dbserver (config source) and -content (mob templates)")
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		overrides, ferr := dbclient.NewMobStatSource(dbConn).Fetch(fetchCtx)
+		cancel()
+		if ferr != nil {
+			return fmt.Errorf("fetch mob template stat overrides: %w", ferr)
+		}
+		mobStatOverrides = overrides
+		logger.Info("mob template stat overlay enabled (moderator editing)", "overrides", len(mobStatOverrides))
+	}
+
+	// Moderator Carry[] overlay (issue 34, fatia 3): the drop table of each mob
+	// template. Same shape as the stat overlay — fetched once, before any template
+	// is loaded, because the table is baked into the bytes the world spawns from
+	// and there is no hot-reload. -mob-carry-editing (W2PP_MOB_CARRY_EDITING), off
+	// by default so an unseeded DB never changes a single drop.
+	var mobCarryOverrides map[string]mobcarry.Override
+	if *mobCarryEditing {
+		if dbConn == nil || *contentDir == "" {
+			return fmt.Errorf("-mob-carry-editing requires both -dbserver (overlay source) and -content (mob templates)")
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		overrides, ferr := dbclient.NewMobCarrySource(dbConn).Fetch(fetchCtx)
+		cancel()
+		if ferr != nil {
+			return fmt.Errorf("fetch mob carry overrides: %w", ferr)
+		}
+		mobCarryOverrides = overrides
+		logger.Info("mob carry overlay enabled (moderator editing)", "templates", len(mobCarryOverrides))
+	}
+
+	// Moderator NPC-editing overlay (npc-editing-plan.md): the single switch is
+	// -npc-editing (W2PP_NPC_EDITING), off by default so an unseeded DB never makes
+	// the NPCGener.txt merchants vanish. When on, it MUST have a dbServer (the config
+	// source) and a content tree (to resolve template bytes into the 816-byte
+	// STRUCT_MOB) — both are hard dependencies, not optional, so fail fast with a
+	// clear error rather than booting an overlay that can't read or spawn anything.
+	var npcConfig npccfg.Source
+	if *npcEditing {
+		if dbConn == nil || *contentDir == "" {
+			return fmt.Errorf("-npc-editing requires both -dbserver (config source) and -content (NPC templates)")
+		}
+		npcConfig = dbclient.NewNpcConfig(dbConn, func(name string) ([]byte, error) {
+			b, terr := content.LoadNPCTemplate(*contentDir, name)
+			if terr != nil {
+				return nil, terr
+			}
+			return mobcarry.ApplyOverride(mobstat.ApplyOverride(b, name, mobStatOverrides), name, mobCarryOverrides), nil
+		}, logger)
+		logger.Info("npc config overlay enabled (moderator editing)")
+	}
+
+	// Moderator teleport overlay (issue 42): the single switch is
+	// -teleport-editing (W2PP_TELEPORT_EDITING). Unlike the NPC overlay this one
+	// does not spawn or materialize anything — route resolution already happens in
+	// world.teleportDest, so the overlay is just a read-only snapshot swapped
+	// atomically. A 15s poll keeps a running world in sync with the web.
+	if *teleportEditing {
+		if dbConn == nil {
+			return fmt.Errorf("-teleport-editing requires -dbserver (config source)")
+		}
+		telCfg := dbclient.NewTeleportConfig(dbConn)
+		applyTeleportOverlay := func(actx context.Context) error {
+			routes, ferr := telCfg.Routes(actx)
+			if ferr != nil {
+				return ferr
+			}
+			rows := make([]world.OverlayRoute, 0, len(routes))
+			disabled := 0
+			for _, r := range routes {
+				if !r.Enabled {
+					disabled++
+				}
+				rows = append(rows, world.OverlayRoute{
+					SrcX: r.SrcX, SrcY: r.SrcY, DstX: r.DstX, DstY: r.DstY,
+					Cost: r.Cost, Requirement: r.Requirement, Enabled: r.Enabled,
+				})
+			}
+			applied := world.SetTeleportOverlay(rows)
+			logger.Info("teleport overlay applied", "rows", applied, "disabled", disabled)
+			return nil
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		err := applyTeleportOverlay(fetchCtx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("fetch teleport overlay: %w", err)
+		}
+		go func() {
+			ticker := time.NewTicker(15 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					pctx, pcancel := context.WithTimeout(ctx, 10*time.Second)
+					if perr := applyTeleportOverlay(pctx); perr != nil {
+						logger.Warn("teleport overlay poll failed", "err", perr)
+					}
+					pcancel()
+				}
+			}
+		}()
+		logger.Info("teleport config overlay enabled (moderator editing)", "poll", "15s")
+	}
+
+	// Seed the world-event RNG from the wall clock so the weather sequence differs
+	// between boots (handler.worldEventRNGSeed explains why the fixed seed is only
+	// for tests). Zero means "use the fixed seed", so keep it out of range.
+	eventSeed := uint32(time.Now().UnixNano())
+	if eventSeed == 0 {
+		eventSeed = 1
+	}
+	// Moderator content-rate overlay (issue 36): the read-through side of
+	// /config. Same shape as the item-effect overlay — one flag, applied once at
+	// boot, because SancRate/CompRate/QuestRates are read-only snapshots from the
+	// moment the world starts (an edit takes effect on the next restart).
+	if *ratesEditing {
+		if dbConn == nil || *contentDir == "" {
+			return fmt.Errorf("-rates-editing requires both -dbserver (overlay source) and -content (rate files)")
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		rows, ferr := dbclient.NewContentRateConfig(dbConn).Overrides(fetchCtx)
+		cancel()
+		if ferr != nil {
+			return fmt.Errorf("fetch content rate overlay: %w", ferr)
+		}
+		overrides := make([]ratetables.Override, 0, len(rows))
+		for _, r := range rows {
+			overrides = append(overrides, ratetables.Override{
+				File: r.File, Family: r.Family, Name: r.Name, Value: r.Value,
+			})
+		}
+		applied, ignored := content.ApplyRateOverrides(sancRate, compRate, questRates, overrides)
+		logger.Info("content rate overlay applied",
+			"rate_overrides_applied", applied, "rate_overrides_ignored", ignored, "rows", len(rows))
+		// "content loaded" runs before this block, so the effective Ori row is
+		// logged here: the operator needs to see the number the world will use,
+		// not only how many rows were fetched.
+		if sancRate != nil {
+			logger.Info("content rate overlay effective", "sancrate_ori", sancRow(sancRate, 0))
+		}
+	}
+
+	// Moderator drop-rate overlay (issue 34): /drops/editar writes
+	// drop_rate_override; the world reads DropRate[64] from the moment it starts,
+	// so this is applied ONCE here. Values only — no rand() call is added, so RNG
+	// parity is untouched.
+	if *dropConfigEditing {
+		if dbConn == nil {
+			return fmt.Errorf("-drop-config-editing requires -dbserver (overlay source)")
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		rows, ferr := dbclient.NewDropConfig(dbConn).Overrides(fetchCtx)
+		cancel()
+		if ferr != nil {
+			return fmt.Errorf("fetch drop rate overlay: %w", ferr)
+		}
+		overrides := make([]dropcfg.Override, 0, len(rows))
+		for _, r := range rows {
+			overrides = append(overrides, dropcfg.Override{Slot: r.Slot, Value: r.Value})
+		}
+		applied, ignored := dropcfg.Apply(overrides)
+		logger.Info("drop rate overlay applied",
+			"drop_overrides_applied", applied, "drop_overrides_ignored", ignored, "rows", len(rows),
+			"slot_12", loot.DropRate[12])
+	}
+
+	// Moderator item base-effect overlay (issue 44): the read-through side of the
+	// web editor at /itens/[index]. The single switch is -item-effect-editing
+	// (W2PP_ITEM_EFFECT_EDITING), off by default, and — like -mob-stat-editing —
+	// it is applied ONCE here, right before the handler is built: ItemEffects is an
+	// immutable snapshot folded into the score, so a running world keeps what it
+	// booted with. Precedence is unchanged: an item instance's own stEffect/stValue
+	// still beats the catalog (here, content + overlay) at score time.
+	if *itemEffectEditing {
+		if dbConn == nil || *contentDir == "" {
+			return fmt.Errorf("-item-effect-editing requires both -dbserver (overlay source) and -content (item catalog)")
+		}
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		rows, ferr := dbclient.NewItemEffectConfig(dbConn).Effects(fetchCtx)
+		cancel()
+		if ferr != nil {
+			return fmt.Errorf("fetch item effect overlay: %w", ferr)
+		}
+		overrides := make([]content.ItemEffectOverride, 0, len(rows))
+		for _, r := range rows {
+			overrides = append(overrides, content.ItemEffectOverride{
+				ItemIndex: r.ItemIndex, Effect: r.Effect, Value: r.Value,
+			})
+		}
+		overlaid, stats := content.ApplyItemEffectOverrides(itemEffects, overrides)
+		itemEffects = overlaid
+		logger.Info("item effect overlay applied",
+			"rows", len(rows), "replaced", stats.Replaced, "added", stats.Added, "ignored", stats.Ignored)
+	}
+
+	// Process flags snapshot (issue 36, aba "Flags"): the portal shows what this
+	// process booted with, read-only. These flags live in the compose command and
+	// the W2PP_* environment; the web never edits them, so a restart is the only
+	// way to change one. A failure here must not stop the server — the snapshot is
+	// observability, not gameplay.
+	if dbConn != nil {
+		snapshot := []dbclient.InstanceFlag{
+			{Name: "addr", Value: *addr, RestartRequired: true, Hint: "porta CPSock do cliente (docker-compose command)"},
+			{Name: "status-addr", Value: *statusAddr, RestartRequired: true, Hint: "HTTP de status (serv00.htm) que o cliente sonda"},
+			{Name: "client-version", Value: strconv.Itoa(*clientVersion), RestartRequired: true, Hint: "versão aceita no handshake; divergente = 0x102"},
+			{Name: "dbserver", Value: *dbAddr, RestartRequired: true, Hint: "persistência; vazio = no-op"},
+			{Name: "binserver", Value: *binAddr, RestartRequired: true, Hint: "billing; vazio = allow-all"},
+			{Name: "content", Value: *contentDir, RestartRequired: true, Hint: "árvore Release/ (catálogos, taxas, mapas)"},
+			{Name: "double-exp", Value: strconv.FormatBool(*doubleExp), RestartRequired: true, Hint: "DOUBLEMODE: dobra EXP PvE"},
+			{Name: "newbie-event", Value: strconv.FormatBool(*newbieEvent), RestartRequired: true, Hint: "NewbieEventServer: +15% EXP e bônus abaixo do nível 100"},
+			{Name: "kefra-live", Value: strconv.FormatBool(*kefraLive), RestartRequired: true, Hint: "evento do Kefra ativo"},
+			{Name: "training-field-exp", Value: strconv.FormatInt(int64(*trainingFieldExp), 10), RestartRequired: true, Hint: "multiplicador de EXP do Campo de Treino"},
+			{Name: "max-nightmare", Value: strconv.Itoa(*maxNightmare), RestartRequired: true, Hint: "admissões contadas de Nightmare por mapa/ciclo"},
+			{Name: "npc-editing", Value: strconv.FormatBool(*npcEditing), RestartRequired: true, Hint: "overlay de NPCs do portal"},
+			{Name: "mob-stat-editing", Value: strconv.FormatBool(*mobStatEditing), RestartRequired: true, Hint: "overlay de stats de mob"},
+			{Name: "mob-carry-editing", Value: strconv.FormatBool(*mobCarryEditing), RestartRequired: true, Hint: "overlay do Carry[] (drop) dos templates"},
+			{Name: "teleport-editing", Value: strconv.FormatBool(*teleportEditing), RestartRequired: true, Hint: "overlay de rotas de teleporte (relido a cada 15 s)"},
+			{Name: "item-effect-editing", Value: strconv.FormatBool(*itemEffectEditing), RestartRequired: true, Hint: "overlay de efeitos base de item"},
+			{Name: "rates-editing", Value: strconv.FormatBool(*ratesEditing), RestartRequired: true, Hint: "overlay de taxas (refino/combine/quests)"},
+			{Name: "drop-config-editing", Value: strconv.FormatBool(*dropConfigEditing), RestartRequired: true, Hint: "overlay de taxa de drop por slot"},
+		}
+		flagCtx, cancelFlags := context.WithTimeout(ctx, 10*time.Second)
+		err := dbclient.NewInstanceFlags(dbConn).Record(flagCtx, "tmserver", snapshot)
+		cancelFlags()
+		if err != nil {
+			logger.Warn("record instance flags", "err", err)
+		}
+	}
+
+	dispatch := handler.New(handler.Config{
+		MaxNightmare:          *maxNightmare,
+		KefraEntriesPerScroll: *kefraEntriesPerScroll,
+		Log:                   logger, ClientVersion: int32(*clientVersion), BaseMobs: baseMobs, SummonMobs: summonMobs, VineMob: vineMob, ItemPrices: itemPrices, ItemEffects: itemEffects, ItemReqs: itemReqs,
+		ItemVolatiles: itemVolatiles, ItemPos: itemPos, ItemUnique: itemUnique, ItemGrades: itemGrades, ItemExtra: itemExtra, Spells: spells, Heights: heights, Attrs: attrs,
+		SancRate:         sancRate,
+		ExpEvents:        level.ExpEvents{DoubleMode: *doubleExp, NewbieEvent: *newbieEvent, KefraLive: *kefraLive},
+		TrainingFieldExp: int64(*trainingFieldExp),
+		CombineFamilies:  combineFamilies,
+		OdinCatalog:      odinCatalog,
+		CombineCatalog:   odinCatalog,
+		CompRate:         compRate,
+		QuestRates:       questRates,
+		NpcConfig:        npcConfig,
+		WorldEvents:      worldEvents,
+		CastleQuests:     castleQuests,
+		EventRNGSeed:     eventSeed,
+		AffectDuration: world.AffectDuration{
+			ScalePct: *affectScalePct,
+			MinTicks: handler.AffectTicksFromSeconds(*affectMinSeconds),
+			MaxTicks: handler.AffectTicksFromMinutes(*affectMaxMinutes),
+		},
+	})
+	w := world.New(world.Config{
+		RejectChecksum: *rejectChecksum,
+		MaxMsgPerSec:   *maxMsgPerSec,
+		MsgBurst:       *msgBurst,
+		StatusFile:     statusFile,
+		ItemRanges:     itemRanges,
+		LogSends:       *logSends,
+	}, logger, persist, dispatch.Handle)
+	// Mob-AI pulse: monsters acquire/chase/melee nearby players each tick (mobai.go).
+	w.SetTickHandler(world.DefaultMobTick, dispatch.Tick)
+	// Party teardown on disconnect: unlink the party bond and reap the summons
+	// before the slot is freed (party.go SessionEnd).
+	w.SetSessionEndHandler(dispatch.SessionEnd)
+	// The newbie flag has two owners: the dispatcher's ExpEvents (the EXP bonus)
+	// and the world (the sub-120 spawn HP handicap). Set here, BEFORE spawnNPCs
+	// below, so the boot population is handicapped too — the portal config may
+	// override it later via ApplyWorldEventConfigBoot.
+	w.SetNewbieEvent(*newbieEvent)
+
+	// Billing gate: real binServer adapter when -binserver is set, else allow-all.
+	if *binAddr != "" {
+		conn, err := grpc.NewClient(*binAddr, grpc.WithTransportCredentials(clientCreds))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = conn.Close() }()
+		w.SetBilling(binclient.New(conn))
+		logger.Info("binServer wired", "addr", *binAddr)
+	}
+
+	// Channel-status HTTP server on its own port (real WYD serves serv00.htm on
+	// :80, separate from the game's :8281 — general-config.h of the snalmir
+	// reference). The client probes status here, then opens the CPSock game
+	// connection to the game port; keeping them apart avoids the client seeing an
+	// HTTP server on the game port.
+	if *statusAddr != "" {
+		go serveStatusHTTP(ctx, *statusAddr, statusFile, logger)
+	}
+
+	// Populate the world with NPCs/monsters from NPCGener.txt (before Serve starts
+	// the loop, so spawning is single-threaded). Capped to fit the mob slots. When
+	// the DB overlay is active, merchant blocks are skipped here (owned by
+	// npc_definition) and applied from the config snapshot instead.
+	if *contentDir != "" {
+		spawnNPCs(w, *contentDir, attrs, npcConfig != nil, mobStatOverrides, mobCarryOverrides, logger)
+		seedWorldItems(w, *contentDir, logger)
+	}
+	if npcConfig != nil {
+		// Retries while the dbServer is still coming up; ctx aborts the wait on
+		// SIGTERM instead of holding the process for the whole retry budget.
+		if err := dispatch.ApplyNPCConfigBoot(ctx, w); err != nil {
+			return err
+		}
+	}
+	if worldEvents != nil {
+		dispatch.ApplyWorldEventConfigBoot(w)
+	}
+	dispatch.ApplyGuildStateBoot(w)
+
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		return err
+	}
+	logger.Info("tmserver listening", "addr", *addr, "mtls", *tlsCert != "")
+
+	return w.Serve(ctx, ln)
+}
+
+// spawnNPCs parses NPCGener.txt, registers every block as a world.Generator
+// (spawn recipe + live population accounting) and fires one GenerateMob per
+// block to populate the world: leader + rolled followers per group, instance
+// waypoints randomized per mob, respecting each block's MaxNumMob. From then on
+// the AI tick regenerates MinuteGenerate>0 blocks on their minute phase and the
+// 15s respawn queue covers the rest.
+//
+// Boot divergence (deliberate): the original starts EMPTY and fills over time
+// via the minute timer — blocks with MinuteGenerate<=0 (~45% of the file, e.g.
+// the Coliseum) only ever spawn through event code. We populate everything up
+// front so the world is playable immediately. This burns the LCG at boot (one
+// stream for all spawns, like the original's global rand()); there is no legacy
+// boot rand order to diverge from.
+//
+// attrs is the raw AttributeMap; it marks the training-grounds generators
+// (handler.TrainingFieldAt). nil leaves every block unmarked, so the field EXP
+// multiplier is off.
+func spawnNPCs(w *world.World, dir string, attrs *content.Grid, skipMerchants bool, mobStatOverrides map[string]mobstat.Override, mobCarryOverrides map[string]mobcarry.Override, logger *slog.Logger) {
+	gens, err := content.LoadNPCGenerators(filepath.Join(dir, "TMsrv", "run", "NPCGener.txt"))
+	if err != nil {
+		logger.Warn("NPC generators not loaded", "err", err)
+		return
+	}
+	// A real monster whose kill reward is zero or beyond the legacy award gate
+	// (10M, MobKilled.cpp:1284) means the content tree wasn't restamped with
+	// cmd/exptool — players would gain nothing from those kills (issue #43).
+	const maxSaneMobExp = 10_000_000
+	// loadedTemplate keeps the raw (pre-override) Merchant classification
+	// alongside the override-applied bytes: rawMerchant drives the
+	// DB-managed-merchant skip below, so a moderator's stat override (which
+	// is documented as informational-only for STRUCT_MOB.Merchant, see
+	// mob-template-editing-frontend.md §6.3) can't turn a monster into a
+	// "merchant" that vanishes from NPCGener.txt, or vice versa.
+	type loadedTemplate struct {
+		bytes       []byte
+		rawMerchant uint8
+	}
+	templates := make(map[string]loadedTemplate)
+	// stats records the on-disk layout of every referenced template so the boot
+	// log says how much of the catalog needed widening from the legacy 756/920
+	// forms, and how many blocks lost their template and why (issue #244 — the
+	// load error used to be discarded here, leaving a rejected template visible
+	// only as a name in the "NPC templates missing" sample).
+	var stats npctemplate.ScanStats
+	load := func(name string) loadedTemplate {
+		if name == "" {
+			return loadedTemplate{}
+		}
+		t, seen := templates[name]
+		if !seen {
+			b, res, terr := npctemplate.Load(dir, name)
+			if terr != nil {
+				logger.Warn("npc template load failed", "npc", name, "err", terr)
+				stats.CountUnreadable()
+			} else {
+				stats.Count(res.Version)
+				t.rawMerchant = protocol.ParseMobBasics(b).Merchant
+				// Apply the moderator stat override (if any) BEFORE the exp sanity
+				// check below, so a fix made via the web tool clears the warning too.
+				t.bytes = mobcarry.ApplyOverride(mobstat.ApplyOverride(b, name, mobStatOverrides), name, mobCarryOverrides)
+				if mb := protocol.ParseMobBasics(t.bytes); mb.Merchant == 0 && mb.Level >= 1 &&
+					(mb.Exp <= 0 || mb.Exp > maxSaneMobExp) {
+					logger.Warn("monster template has unbalanced Exp (run cmd/exptool)",
+						"npc", name, "level", mb.Level, "exp", mb.Exp)
+				}
+			}
+			templates[name] = t
+		}
+		return t
+	}
+
+	wgens := make([]*world.Generator, len(gens))
+	dbOwned := make([]bool, len(gens))
+	skipped := 0
+	missingLeaderBlocks, missingFollowerBlocks := 0, 0
+	missingLeaderNames := make(map[string]struct{})
+	missingFollowerNames := make(map[string]struct{})
+	for i, g := range gens {
+		leader := load(g.Leader)
+		if leader.bytes == nil {
+			missingLeaderBlocks++
+			if g.Leader != "" {
+				missingLeaderNames[g.Leader] = struct{}{}
+			}
+			continue // block unusable without its Leader template
+		}
+		// When DB-managed NPC config is active, merchant blocks are owned by
+		// npc_definition (materialized by the dispatcher overlay), so skip them here
+		// to avoid double-spawning. Monsters / non-shop NPCs stay on NPCGener.txt.
+		// Uses the RAW (pre-override) classification — a moderator's stat
+		// override must not flip a block between "spawn from NPCGener.txt"
+		// and "owned by npc_definition".
+		if skipMerchants && leader.rawMerchant != 0 {
+			skipped++
+			dbOwned[i] = true
+		}
+		follower := load(g.Follower)
+		if g.Follower != "" && follower.bytes == nil {
+			missingFollowerBlocks++
+			missingFollowerNames[g.Follower] = struct{}{}
+		}
+		wg := &world.Generator{
+			DBManaged:      dbOwned[i],
+			MinuteGenerate: g.MinuteGenerate,
+			MinGroup:       g.MinGroup,
+			MaxGroup:       g.MaxGroup,
+			MaxNumMob:      g.MaxNumMob,
+			RouteType:      uint8(g.RouteType),
+			Formation:      g.Formation,
+			SegX:           g.SegX,
+			SegY:           g.SegY,
+			LeaderTmpl:     leader.bytes,
+			FollowerTmpl:   follower.bytes,
+			FightAction:    g.FightAction,
+			DieAction:      g.DieAction,
+			TrainingField:  handler.TrainingFieldAt(attrs, g.SegX[0], g.SegY[0]),
+		}
+		for s := 0; s < 5; s++ {
+			wg.SegRange[s] = int16(g.SegRange[s])
+			wg.SegWait[s] = int16(g.SegWait[s])
+		}
+		wgens[i] = wg
+		if dbOwned[i] {
+			wg.LeaderTmpl = nil
+			wg.FollowerTmpl = nil
+		}
+	}
+	w.RegisterGenerators(wgens)
+	trainingGens := 0
+	for _, wg := range wgens {
+		if wg != nil && wg.TrainingField {
+			trainingGens++
+		}
+	}
+	if attrs == nil {
+		logger.Warn("training-grounds generators not marked: AttributeMap.dat not loaded, field EXP multiplier disabled")
+	} else {
+		logger.Info("training-grounds generators marked", "generators", trainingGens)
+	}
+
+	total := 0
+	for i := range wgens {
+		if wgens[i] != nil && !dbOwned[i] && !world.IsWaterGenerator(i) && !world.IsKefraGenerator(i) && world.NightmareGenerator(i) < 0 && !world.IsRuneQuestGenerator(i) {
+			total += len(w.GenerateMob(i))
+		}
+	}
+	if missingLeaderBlocks > 0 || missingFollowerBlocks > 0 {
+		logger.Warn("NPC templates missing",
+			"leader_blocks_skipped", missingLeaderBlocks,
+			"missing_leader_templates", len(missingLeaderNames),
+			"missing_leader_sample", sampleNames(missingLeaderNames, 10),
+			"follower_blocks_degraded", missingFollowerBlocks,
+			"missing_follower_templates", len(missingFollowerNames),
+			"missing_follower_sample", sampleNames(missingFollowerNames, 10))
+	}
+	logger.Info("npc template catalog", "layouts", stats)
+	logger.Info("NPCs spawned", "generators", len(gens), "mobs", total, "templates", len(templates),
+		"merchant_blocks_skipped", skipped)
+}
+
+// seedWorldItems spawns the static world objects (gates/doors) from
+// TMsrv/run/InitItem.csv before Serve starts the loop, so id assignment is
+// single-threaded and follows file order (matching the legacy CreateItem sequence
+// the client expects). Missing/unreadable is a warning, not fatal — like the maps.
+func seedWorldItems(w *world.World, dir string, logger *slog.Logger) {
+	items, err := content.LoadInitItems(filepath.Join(dir, "TMsrv", "run", "InitItem.csv"))
+	if err != nil {
+		logger.Warn("world items not loaded", "err", err)
+		return
+	}
+	seeded := 0
+	for _, it := range items {
+		// Gates seed open (parity with CreateItem); locking arrives with the deferred
+		// event/timer systems. SeedWorldItem returns -1 only when the id table is full.
+		if id := w.SeedWorldItem(world.Item{Index: it.Index}, it.PosX, it.PosY, world.StateOpen); id >= 0 {
+			seeded++
+		}
+	}
+	logger.Info("world items seeded", "count", seeded)
+}
+
+func sampleNames(names map[string]struct{}, limit int) []string {
+	if len(names) == 0 || limit <= 0 {
+		return nil
+	}
+	out := make([]string, 0, len(names))
+	for name := range names {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	if len(out) > limit {
+		return out[:limit]
+	}
+	return out
+}
+
+// serveStatusHTTP runs the channel-status web server (serv00.htm). It answers any
+// path with the status page so the client's GET succeeds regardless of the exact
+// file it asks for. The body is read per request so it can be edited live.
+func serveStatusHTTP(ctx context.Context, addr, statusFile string, logger *slog.Logger) {
+	defaultBody := []byte("4\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		body := defaultBody
+		if statusFile != "" {
+			if b, err := os.ReadFile(statusFile); err == nil {
+				body = b
+			}
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write(body)
+		logger.Info("served status (http)", "ip", r.RemoteAddr, "req", r.Method+" "+r.URL.Path)
+	})
+	srv := &http.Server{Addr: addr, Handler: mux}
+	go func() { <-ctx.Done(); _ = srv.Close() }()
+	logger.Info("status server listening", "addr", addr)
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Warn("status server stopped", "err", err)
+	}
+}
+
+// loadContent loads and validates the Release/ content tree (Fase 5 loaders).
+// The rates and catalogs are required (a broken mount is a hard error); the maps
+// are large and optional (a warning when absent). It logs what was loaded so the
+// operator can confirm the mount is correct.
+func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
+	comp, err := content.LoadCompRate(filepath.Join(dir, "Common", "Settings", "CompRate.txt"))
+	if err != nil {
+		return nil, err
+	}
+	sanc, err := content.LoadSancRate(filepath.Join(dir, "Common", "Settings", "SancRate.txt"))
+	if err != nil {
+		return nil, err
+	}
+	quests, err := content.LoadQuestRates(filepath.Join(dir, "Common", "Settings", "QuestsRate.txt"))
+	if err != nil {
+		return nil, err
+	}
+	items, err := content.LoadItemList(filepath.Join(dir, "Common", "ItemList.csv"))
+	if err != nil {
+		return nil, err
+	}
+	skills, err := content.LoadSkillData(filepath.Join(dir, "Common", "SkillData.csv"))
+	if err != nil {
+		return nil, err
+	}
+	// The Ori/Lac rates are worth logging outright: SancRate.txt only overrides the
+	// indices it lists, so a broken mount silently leaves the compiled defaults and
+	// the operator would otherwise not notice.
+	logger.Info("content loaded",
+		"comprate_families", comp.Families(),
+		"sancrate_ori", sancRow(sanc, 0), "sancrate_lac", sancRow(sanc, 1),
+		"items", items.Len(), "skills", skills.Len())
+
+	// Maps are optional: 17 MiB HeightMap + 1 MiB AttributeMap aren't required to
+	// accept logins; warn rather than fail when they aren't mounted. When both
+	// load, bake the attribute blocks into the height grid once (the boot-time
+	// BASE_ApplyAttribute) — the result drives mob pathfinding (route.Next).
+	var heights *content.Grid
+	attr, err := content.LoadGrid(filepath.Join(dir, "TMsrv", "run", "AttributeMap.dat"), content.AttributeMapDim)
+	if err != nil {
+		logger.Warn("attribute map not loaded", "err", err)
+	}
+	hm, err := content.LoadHeightMap(filepath.Join(dir, "TMsrv", "run", "HeightMap.dat"))
+	if err != nil {
+		logger.Warn("height map not loaded", "err", err)
+	}
+	if hm != nil && attr != nil {
+		route.Bake(hm, attr)
+		heights = hm
+		logger.Info("walkability grid baked", "dim", hm.Dim)
+	} else if hm != nil || attr != nil {
+		logger.Warn("mob pathfinding disabled: need BOTH HeightMap.dat and AttributeMap.dat")
+	}
+	return &loadedContent{items: items, comp: comp, sanc: sanc, quests: quests, skills: skills, heights: heights, attrs: attr}, nil
+}
+
+// loadedContent is what a mounted Release/ tree yields. It is a struct rather
+// than a return list only because the list had grown past readability.
+type loadedContent struct {
+	items   *content.ItemList
+	comp    *content.CompRate
+	sanc    *content.SancRate
+	quests  *content.QuestRates
+	skills  *content.SkillData
+	heights *content.Grid
+	attrs   *content.Grid // raw AttributeMap (training-grounds bit); nil when not mounted
+}
+
+// sancRow renders one anvil's rate row for the boot log.
+func sancRow(s *content.SancRate, anvil int) []int {
+	row := make([]int, 0, 12)
+	for i := 0; i < 12; i++ {
+		row = append(row, s.Rate(anvil, i))
+	}
+	return row
+}

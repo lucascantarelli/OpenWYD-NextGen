@@ -1,0 +1,201 @@
+package handler
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+)
+
+// accountLogin handles _MSG_AccountLogin (0x020D), handlers/_MSG_AccountLogin.md.
+// It validates the client version, session mode and brute-force gate, then
+// relays the credentials to the dbServer asynchronously (the original forwards
+// _MSG_DBAccountLogin and waits in USER_LOGIN).
+func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
+	if len(payload) < protocol.MsgAccountLoginBodySize {
+		d.log.Warn("account login: short packet", "conn", s.Conn)
+		w.Close(s)
+		return
+	}
+	var body protocol.MsgAccountLoginBody
+	if err := body.Decode(payload); err != nil {
+		w.Close(s)
+		return
+	}
+
+	// Server-authoritative version check (anti-cheat: blocks forged/old clients).
+	// This 7662 "Cavaleiros de Kersef" build sends ClientVersion=12000 (set via
+	// -client-version); mismatches get the rerun notice and are dropped.
+	if body.ClientVersion != d.cfg.ClientVersion {
+		d.log.Warn("account login: version mismatch",
+			"conn", s.Conn, "got", body.ClientVersion, "want", d.cfg.ClientVersion)
+		d.notify(w, s, NoticeVersionMismatch)
+		w.Close(s)
+		return
+	}
+	if s.Mode != world.UserAccept {
+		d.notify(w, s, NoticeLoginNow)
+		return
+	}
+
+	name := strings.ToLower(cstr(body.AccountName[:]))
+	if name == "" {
+		w.Close(s)
+		return
+	}
+	if d.fails[name] >= d.cfg.MaxFailLogin {
+		d.log.Warn("account login: locked out after wrong passwords", "conn", s.Conn, "account", name, "fails", d.fails[name])
+		d.notify(w, s, Notice3WrongPass)
+		return
+	}
+
+	pass := cstr(body.AccountPassword[:])
+	s.AccountName = name
+	s.Mode = world.UserLogin
+	d.log.Info("account login: relaying to dbServer", "conn", s.Conn, "account", name)
+
+	p := w.Persistence()
+	w.Go(s, func() func(*world.World, *world.Session) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		out, err := p.AccountLogin(ctx, name, pass)
+		return func(w *world.World, s *world.Session) { d.completeAccountLogin(w, s, out, err) }
+	})
+}
+
+// completeAccountLogin applies the dbServer login result back in the loop.
+func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out world.LoginOutcome, err error) {
+	if err != nil {
+		d.log.Error("account login backend error", "conn", s.Conn, "account", s.AccountName, "err", err)
+		s.Mode = world.UserAccept
+		d.notify(w, s, NoticeDBError)
+		w.Close(s)
+		return
+	}
+	switch out.Result {
+	case world.LoginOK:
+		delete(d.fails, s.AccountName)
+		if d.refuseDuplicateLogin(w, s, out.AccountID) {
+			return
+		}
+		s.AccountID = out.AccountID
+		s.AccessLevel = world.ParseAccess(out.Role) // GM/moderation privilege (issue #122)
+		d.log.Info("account login: OK", "conn", s.Conn, "account", s.AccountName, "id", out.AccountID, "role", s.AccessLevel, "chars", len(out.Characters))
+		// Install the account-shared cargo, loaded in the same backend round-trip.
+		// It lives for the whole account session and is released on disconnect.
+		cargo := out.Cargo
+		w.SetCargo(out.AccountID, &cargo)
+		// Drain any pending donate web-shop grants (fetched in the same login
+		// round-trip) into the freshly-loaded cargo (issue #34); items land in the
+		// next free slot, or are lost when full. Encode AFTER the drain so the
+		// client vault cache includes freshly delivered items.
+		w.ApplyDeliveries(s, out.PendingDeliveries)
+		s.Mode = world.UserSelChar
+		coin, cargoItems := d.cargoWire(w.Cargo(out.AccountID))
+		body := protocol.EncodeCNFAccountLoginBody(s.AccountName, d.selCharsFrom(out.Characters), coin, cargoItems)
+		w.SendTo(s, protocol.Header{Type: protocol.MsgCNFAccountLogin, ID: protocol.IDSelChar}, body)
+	case world.LoginBadPassword:
+		d.fails[s.AccountName]++
+		d.log.Warn("account login: bad password", "conn", s.Conn, "account", s.AccountName, "fails", d.fails[s.AccountName])
+		s.Mode = world.UserAccept // allow retry
+		d.notify(w, s, NoticeBadPass)
+	case world.LoginNoAccount:
+		s.Mode = world.UserAccept
+		d.notify(w, s, NoticeNoAccount)
+	case world.LoginBlocked:
+		d.notify(w, s, NoticeBlocked)
+		w.Close(s)
+	case world.LoginAlreadyPlaying:
+		s.Mode = world.UserAccept // allow retry, as the duplicate-login refusal below
+		w.Send(s, protocol.MsgAlreadyPlaying, nil)
+	}
+}
+
+// accountFromOthers is Language.txt _NN_Your_Account_From_Others (134), in the
+// table's Windows-1252 bytes like the rest of the legacy string table.
+const accountFromOthers = "Conta desconectada por conex\xe3o simult\xe2nea."
+
+// refuseDuplicateLogin applies the legacy rule for a second login of an
+// account that is already in the game (DBSrv CFileDB.cpp:1001-1017,
+// TMSrv ProcessDBMessage.cpp _MSG_DBSavingQuit):
+//   - the session already in character selection or play is told
+//     _NN_Your_Account_From_Others and closed, which saves it;
+//   - the new login is refused with _MSG_StillPlaying (0x011D) and may try
+//     again; the 7662 client shows "Conexão anterior finalizada. Tente
+//     novamente." (TMSelectServerScene.cpp:1571);
+//   - while that save is in flight a new try gets _MSG_AlreadyPlaying (0x011C),
+//     so it never loads the character/cargo rows before they are written.
+//
+// The legacy closes the refused socket; here it returns to UserAccept so the
+// client can retry on the same connection. The check is per tmServer: the
+// dbServer does not track online accounts, so a second tmServer instance would
+// not see this session. Loop-only.
+func (d *Dispatcher) refuseDuplicateLogin(w *world.World, s *world.Session, accountID int64) bool {
+	refusal := protocol.Type(0)
+	switch old := w.SessionByAccount(accountID, s); {
+	case old != nil:
+		d.log.Info("account login: duplicate, closing the previous session", "conn", s.Conn, "account", s.AccountName, "previous", old.Conn)
+		d.sendClientMessage(w, old, accountFromOthers)
+		w.Close(old)
+		refusal = protocol.MsgStillPlaying
+	case w.AccountSaving(accountID):
+		d.log.Info("account login: previous session still saving", "conn", s.Conn, "account", s.AccountName)
+		refusal = protocol.MsgAlreadyPlaying
+	default:
+		return false
+	}
+	s.Mode = world.UserAccept
+	w.Send(s, refusal, nil)
+	return true
+}
+
+func (d *Dispatcher) cargoWire(st *world.CargoState) (int32, [128]protocol.SelItem) {
+	var items [128]protocol.SelItem
+	if st == nil {
+		return 0, items
+	}
+	for i := range st.Items {
+		if i >= len(items) {
+			break
+		}
+		items[i] = itemToSel(st.Items[i])
+	}
+	return st.Coin, items
+}
+
+// selCharsFrom maps the dbServer character summaries to protocol.SelChar rows for
+// the byte-exact STRUCT_SELCHAR (MSG_CNFAccountLogin / MSG_CNFNewCharacter). The
+// summary carries the real score (gold, HP/MP, attributes) so the selection
+// screen previews each slot's actual character, not placeholders. Level goes as
+// stored, like the in-world snapshot: both screens show Level+1
+// (TMSelectCharScene.cpp:1018, TMFieldScene.cpp:4230), so a new character —
+// level 0, as the legacy BaseMob templates — reads "Nv 1" in both.
+func (d *Dispatcher) selCharsFrom(chars []world.CharSummary) []protocol.SelChar {
+	out := make([]protocol.SelChar, 0, len(chars))
+	for _, c := range chars {
+		sc := protocol.SelChar{
+			Slot:  c.Slot,
+			Name:  c.Name,
+			Level: int32(c.Level),
+			Exp:   c.Exp,
+			Guild: c.GuildID,
+			Coin:  c.Coin,
+			MaxHp: c.MaxHp, Hp: c.Hp, MaxMp: c.MaxMp, Mp: c.Mp,
+			Str: c.Str, Int: c.Int, Dex: c.Dex, Con: c.Con,
+		}
+		// Preview the saved gear. Empty equipment falls back to the class BaseMob so
+		// fresh characters still render with the right class model on the select screen.
+		if !equipEmpty(c.Equip) {
+			for i := range c.Equip {
+				sc.Equip[i] = itemToSel(c.Equip[i])
+			}
+		} else if tmpl, ok := d.baseMobs[c.Class]; ok && len(tmpl) == content.BaseMobSize {
+			sc.Equip = protocol.MobEquip(tmpl)
+		}
+		out = append(out, sc)
+	}
+	return out
+}

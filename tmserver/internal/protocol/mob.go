@@ -1,0 +1,304 @@
+package protocol
+
+// MSG_CNFCharacterLogin (0x0114) — the in-world character snapshot sent when a
+// player enters the game. Byte-exact against the original Basedef.h (compiler
+// sizeof/offsetof probe): STRUCT_MOB is 816 bytes, the client packet is 1832.
+// Send with HEADER.ID = IDScene (30000).
+
+const (
+	structMobSize         = 816
+	cnfCharacterLoginSize = 1832
+)
+
+// MobBasics is the subset of a raw STRUCT_MOB needed to spawn a world entity.
+type MobBasics struct {
+	Name               string
+	Clan               uint8 // STRUCT_MOB.Clan @16 — drives the g_pClanTable hostility check
+	Class              uint8
+	Merchant           uint8 // CurrentScore.Merchant — NPC type (shop/bank/…); 0 = monster
+	AttackRun          uint8 // CurrentScore.AttackRun — speed byte, echoed into CreateMob so clients animate the mob's walks
+	Level, Ac, Damage  int32
+	MaxHp, Hp          int32
+	Str, Int, Dex, Con int16
+	Coin               int32    // STRUCT_MOB.Coin @28; for a monster this is its gold-drop base (GoldDrop)
+	Exp                int64    // STRUCT_MOB.Exp @32; for a monster this is its kill reward
+	Resist             [4]uint8 // STRUCT_MOB.Resist @806 — elemental skill resists
+}
+
+// ParseMobBasics reads the spawn-relevant fields from a raw 816-byte STRUCT_MOB
+// (CurrentScore @92): name, class and the current score.
+//
+// The blob MUST already be canonical — the legacy 756/920-byte template layouts
+// have entirely different offsets and are widened to this one by
+// npctemplate.Load, the single loader boundary (data-formats.md §1.4.1). A
+// shorter slice is a contract violation and panics here, deliberately: the
+// alternative is a zero-valued MobBasics silently becoming a nameless, 0-HP
+// ghost mob in SpawnMobAt (world/api.go), and MobEquip would index the same
+// blob unguarded a few lines later anyway.
+func ParseMobBasics(mob816 []byte) MobBasics {
+	const cs = 92 // CurrentScore offset within STRUCT_MOB
+	return MobBasics{
+		Name:      cstr16(mob816[0:16]),
+		Clan:      mob816[16], // Clan @16 (same offset writeStructMob writes)
+		Class:     mob816[20],
+		Coin:      int32(le.Uint32(mob816[28:])), // STRUCT_MOB.Coin @28 (int)
+		Exp:       int64(le.Uint64(mob816[32:])), // STRUCT_MOB.Exp @32 (long long)
+		Merchant:  mob816[cs+12],                 // CurrentScore.Merchant
+		AttackRun: mob816[cs+13],                 // CurrentScore.AttackRun (speed)
+		Level:     int32(le.Uint32(mob816[cs+0:])),
+		Ac:        int32(le.Uint32(mob816[cs+4:])),
+		Damage:    int32(le.Uint32(mob816[cs+8:])),
+		MaxHp:     int32(le.Uint32(mob816[cs+16:])),
+		Hp:        int32(le.Uint32(mob816[cs+24:])),
+		Str:       int16(le.Uint16(mob816[cs+32:])),
+		Int:       int16(le.Uint16(mob816[cs+34:])),
+		Dex:       int16(le.Uint16(mob816[cs+36:])),
+		Con:       int16(le.Uint16(mob816[cs+38:])),
+		Resist:    [4]uint8(mob816[806:810]), // STRUCT_MOB.Resist @806 (skill mitigation)
+	}
+}
+
+// cstr16 trims a fixed name field at the first NUL.
+func cstr16(b []byte) string {
+	for i, c := range b {
+		if c == 0 {
+			return string(b[:i])
+		}
+	}
+	return string(b)
+}
+
+// MobSnapshot is the subset of STRUCT_MOB the snapshot needs. BaseScore mirrors
+// CurrentScore here (the world doesn't track them separately this phase).
+type MobSnapshot struct {
+	Name                 string
+	Clan                 uint8
+	Merchant             uint8
+	Guild                uint16
+	Class                uint8
+	Quest                uint8
+	Coin                 int32
+	Exp                  int64
+	SPX, SPY             int16
+	Level                int32
+	Ac, Damage           int32
+	MaxHp, MaxMp, Hp, Mp int32
+	Str, Int, Dex, Con   int16
+	Special              [4]int16 // STRUCT_SCORE.Special @40 (skill-tree mastery)
+	AttackRun            uint8    // STRUCT_SCORE.AttackRun @13 — the client reads its own speed from here and stamps it into _MSG_Action.Speed
+	Direction            uint8
+	Equip                [16]SelItem
+	Carry                [64]SelItem
+	LearnedSkill         int32
+	Magic                uint32
+	ScoreBonus           uint16
+	SpecialBonus         uint16
+	SkillBonus           uint16
+	Critical             uint8
+	SkillBar             [4]uint8
+	GuildLevel           uint8
+	RegenHP, RegenMP     uint16
+	Resist               [4]uint8
+	PKPoint              uint8 // MobName[12] chaos byte: 75 = neutral/white nick, 0 = red (players only)
+}
+
+// writeMobScore writes a 48-byte STRUCT_SCORE from a MobSnapshot.
+func writeMobScore(b []byte, m MobSnapshot) {
+	le.PutUint32(b[0:], uint32(m.Level))  // Level @0
+	le.PutUint32(b[4:], uint32(m.Ac))     // Ac @4
+	le.PutUint32(b[8:], uint32(m.Damage)) // Damage @8
+	b[12] = m.Merchant                    // Merchant @12
+	b[13] = m.AttackRun                   // AttackRun @13 (speed)
+	b[14] = m.Direction                   // Direction @14
+	le.PutUint32(b[16:], uint32(m.MaxHp)) // MaxHp @16
+	le.PutUint32(b[20:], uint32(m.MaxMp)) // MaxMp @20
+	le.PutUint32(b[24:], uint32(m.Hp))    // Hp @24
+	le.PutUint32(b[28:], uint32(m.Mp))    // Mp @28
+	le.PutUint16(b[32:], uint16(m.Str))   // Str @32
+	le.PutUint16(b[34:], uint16(m.Int))   // Int @34
+	le.PutUint16(b[36:], uint16(m.Dex))   // Dex @36
+	le.PutUint16(b[38:], uint16(m.Con))   // Con @38
+	for i, v := range m.Special {         // Special[4] @40
+		le.PutUint16(b[40+i*2:], uint16(v))
+	}
+}
+
+// writeStructMob writes a 816-byte STRUCT_MOB.
+func writeStructMob(b []byte, m MobSnapshot) {
+	PackMobName(b[0:16], m.Name, m.PKPoint, 0, 0) // MobName @0: name[0..11] + PK data[12..15]
+	b[16] = m.Clan                                // Clan @16
+	b[17] = m.Merchant                            // Merchant @17
+	le.PutUint16(b[18:], m.Guild)                 // Guild @18
+	b[20] = m.Class                               // Class @20
+	b[24] = m.Quest                               // Quest @24
+	le.PutUint32(b[28:], uint32(m.Coin))          // Coin @28
+	le.PutUint64(b[32:], uint64(m.Exp))           // Exp @32
+	le.PutUint16(b[40:], uint16(m.SPX))           // SPX @40
+	le.PutUint16(b[42:], uint16(m.SPY))           // SPY @42
+	writeMobScore(b[44:], m)                      // BaseScore @44
+	writeMobScore(b[92:], m)                      // CurrentScore @92
+	for i := 0; i < 16; i++ {                     // Equip[16] @140
+		writeSelItem(b[140+i*8:], m.Equip[i])
+	}
+	for i := 0; i < 64; i++ { // Carry[64] @268
+		writeSelItem(b[268+i*8:], m.Carry[i])
+	}
+	le.PutUint32(b[780:], uint32(m.LearnedSkill)) // @780
+	le.PutUint32(b[784:], m.Magic)                // @784
+	le.PutUint16(b[788:], m.ScoreBonus)           // @788
+	le.PutUint16(b[790:], m.SpecialBonus)         // @790
+	le.PutUint16(b[792:], m.SkillBonus)           // @792
+	b[794] = m.Critical                           // @794
+	copy(b[796:800], m.SkillBar[:])               // SkillBar[4] @796
+	b[800] = m.GuildLevel                         // @800
+	le.PutUint16(b[802:], m.RegenHP)              // @802
+	le.PutUint16(b[804:], m.RegenMP)              // @804
+	copy(b[806:810], m.Resist[:])                 // Resist[4] @806
+}
+
+// BaseMobSpawn returns the spawn position (mob.SPX/SPY) stored in a raw STRUCT_MOB
+// template — the original server's valid start coordinates.
+func BaseMobSpawn(mob816 []byte) (x, y int16) {
+	return int16(le.Uint16(mob816[40:42])), int16(le.Uint16(mob816[42:44]))
+}
+
+// SkillState is the persisted skill block patched over the BaseMob template on
+// login (STRUCT_MOB @780-799 + STRUCT_SCORE.Special): the learned-skill mask,
+// the free points and the skill bar. Without the patch the client would show
+// the template's (empty) skill window regardless of what the character learned.
+type SkillState struct {
+	LearnedSkill int32
+	ScoreBonus   uint16
+	SpecialBonus uint16
+	SkillBonus   uint16
+	Special      [4]int16 // CurrentScore.Special (base + equip)
+	BaseSpecial  [4]int16 // BaseScore.Special (allocated)
+	SkillBar     [4]uint8
+}
+
+// EncodeCNFCharacterLoginRaw builds the snapshot from a RAW 816-byte STRUCT_MOB
+// (a per-class BaseMob template, which already carries valid stats, starter
+// equipment and skills), patching the character-specific state. loginX/loginY
+// are the actual world-entry position in MSG_CNFCharacterLogin.PosX/PosY; the
+// embedded mob.SPX/SPY remains the save point, matching ProcessDBMessage.cpp's
+// later tx/ty spawn rewrite. When saveX/saveY are zero, the template's SPX/SPY
+// are preserved. pkPoint is packed into MobName[12] for the own nickname color.
+func EncodeCNFCharacterLoginRaw(mob816 []byte, name string, coin int32, exp int64, equip [16]SelItem, carry [64]SelItem, loginX, loginY, saveX, saveY int16, slot, clientID int, weather uint16, shortSkill [16]uint8, skill SkillState, pkPoint uint8) []byte {
+	b := make([]byte, cnfCharacterLoginSize-HeaderSize) // 1820
+	copy(b[4:4+structMobSize], mob816)                  // mob @ body4 (raw template)
+	// MobName @ body4: name in [0..11] + PK data in [12..15]. The client colors the
+	// player's own nick from MobName[12] (PKPoint: 75 = neutral/white, 0 = red
+	// blinking). Packing it here avoids a red flash before the self-CreateMob
+	// arrives (GetFunc.cpp:1082-1101).
+	PackMobName(b[4:4+16], name, pkPoint, 0, 0)
+	// Overlay the persisted equipment onto the template's Equip@140, so the saved
+	// gear (not the class starter set) shows on the model and in the equip window.
+	for i := 0; i < 16; i++ {
+		writeSelItem(b[4+structMobEquip+i*8:], equip[i])
+	}
+	// Overlay the persisted inventory onto the template's Carry@268 (mob), so saved
+	// purchases show on re-login (the template ships an empty/stock Carry).
+	for i := 0; i < 64; i++ {
+		writeSelItem(b[4+structMobCarry+i*8:], carry[i])
+	}
+	// The BaseMob template is a raw memory dump with uninitialized 0xCC padding at
+	// Quest@24/pad@25-27, which the client reads as a 4-byte gold field → the
+	// -858993664 (0xCCCCCC00) "negative gold" (B2). Set the real gold at both
+	// candidate offsets (24 = what the client displays, 28 = STRUCT_MOB.Coin).
+	le.PutUint32(b[4+24:], uint32(coin))
+	le.PutUint32(b[4+28:], uint32(coin))
+	// Persisted experience → STRUCT_MOB.Exp@32, so the client's exp bar reflects the
+	// saved total at login (the template ships Exp=0). The client owns the level
+	// curve and renders the bar from this raw value.
+	le.PutUint64(b[4+32:], uint64(exp))
+	// The legacy server keeps mob.SPX/SPY as the save point and later overwrites
+	// only MSG_CNFCharacterLogin.PosX/PosY with the actual tx/ty spawn. Keeping
+	// those roles separate prevents the client and server from starting on
+	// different tiles after login.
+	le.PutUint16(b[0:], uint16(loginX)) // PosX @ body0
+	le.PutUint16(b[2:], uint16(loginY)) // PosY @ body2
+	if saveX != 0 || saveY != 0 {
+		le.PutUint16(b[4+40:], uint16(saveX))
+		le.PutUint16(b[4+42:], uint16(saveY))
+	}
+	// Persisted skill state over the template's: learned mask + free points
+	// @780-793, skill bar @796, and the Special mastery in both scores @+40
+	// (BaseScore @44, CurrentScore @92). The template ships all-zero here.
+	le.PutUint32(b[4+780:], uint32(skill.LearnedSkill))
+	le.PutUint16(b[4+788:], skill.ScoreBonus)
+	le.PutUint16(b[4+790:], skill.SpecialBonus)
+	le.PutUint16(b[4+792:], skill.SkillBonus)
+	copy(b[4+796:4+800], skill.SkillBar[:])
+	for i := 0; i < 4; i++ {
+		le.PutUint16(b[4+44+40+i*2:], uint16(skill.BaseSpecial[i]))
+		le.PutUint16(b[4+92+40+i*2:], uint16(skill.Special[i]))
+	}
+	le.PutUint16(b[1028:], uint16(slot))
+	le.PutUint16(b[1030:], uint16(clientID))
+	le.PutUint16(b[1032:], weather)
+	copy(b[1034:1050], shortSkill[:])
+	return b
+}
+
+// OverlayLoginScores writes the character's own BaseScore (@mob+44) and
+// CurrentScore (@mob+92) into a MSG_CNFCharacterLogin body built from a class
+// template. The legacy sends pMob[conn].MOB right after GetCurrentScore
+// (ProcessDBMessage.cpp:812-821), so the client starts from the real level,
+// HP/MP and attributes instead of the template's until the next UpdateScore.
+// Merchant@12 and Direction@14 keep the template's bytes.
+func OverlayLoginScores(body []byte, base, current ScoreData) {
+	writeScoreData(body[4+44:4+92], base)
+	writeScoreData(body[4+92:4+140], current)
+}
+
+// writeScoreData writes the STRUCT_SCORE fields ScoreData carries (48 bytes).
+func writeScoreData(b []byte, s ScoreData) {
+	le.PutUint32(b[0:], uint32(s.Level))
+	le.PutUint32(b[4:], uint32(s.Ac))
+	le.PutUint32(b[8:], uint32(s.Damage))
+	b[13] = s.AttackRun
+	le.PutUint32(b[16:], uint32(s.MaxHp))
+	le.PutUint32(b[20:], uint32(s.MaxMp))
+	le.PutUint32(b[24:], uint32(s.Hp))
+	le.PutUint32(b[28:], uint32(s.Mp))
+	le.PutUint16(b[32:], uint16(s.Str))
+	le.PutUint16(b[34:], uint16(s.Int))
+	le.PutUint16(b[36:], uint16(s.Dex))
+	le.PutUint16(b[38:], uint16(s.Con))
+	for i, sp := range s.Special {
+		le.PutUint16(b[40+i*2:], uint16(sp))
+	}
+}
+
+// updateEquipSize is MSG_UpdateEquip (0x036B): HEADER + ushort Equip[16] +
+// uchar AnctCode[16] = 12 + 32 + 16 = 60 bytes.
+const updateEquipSize = 60
+
+// EncodeUpdateEquip builds _MSG_UpdateEquip (0x006B): the 16 visible equipment
+// codes that drive the character's rendered gear (SendFunc.cpp:SendEquip). visual
+// holds the per-slot visual item code (0 = empty slot); anct holds the matching
+// ancient/refine glow overlay bytes. Send with HEADER.ID = the entity id so it
+// applies to the right mob (self or an in-view player).
+func EncodeUpdateEquip(visual [16]uint16, anct [16]uint8) []byte {
+	b := make([]byte, updateEquipSize-HeaderSize) // 48
+	for i := 0; i < 16; i++ {
+		le.PutUint16(b[i*2:], visual[i]) // Equip[16] @body0
+	}
+	copy(b[32:48], anct[:]) // AnctCode[16] @body32
+	return b
+}
+
+// EncodeCNFCharacterLoginBody builds the body of MSG_CNFCharacterLogin (0x0114):
+// the in-world snapshot. loginX/loginY are the packet entry position; m.SPX/SPY
+// stays as the embedded save point. Send with HEADER.ID = IDScene (30000).
+func EncodeCNFCharacterLoginBody(slot, clientID int, weather uint16, loginX, loginY int16, m MobSnapshot, shortSkill [16]uint8) []byte {
+	b := make([]byte, cnfCharacterLoginSize-HeaderSize) // 1820
+	le.PutUint16(b[0:], uint16(loginX))                 // PosX @ abs12 → body0
+	le.PutUint16(b[2:], uint16(loginY))                 // PosY @ abs14 → body2
+	writeStructMob(b[4:4+structMobSize], m)             // mob @ abs16 → body4
+	le.PutUint16(b[1028:], uint16(slot))                // Slot @ abs1040 → body1028
+	le.PutUint16(b[1030:], uint16(clientID))            // ClientID @ abs1042 → body1030
+	le.PutUint16(b[1032:], weather)                     // Weather @ abs1044 → body1032
+	copy(b[1034:1050], shortSkill[:])                   // ShortSkill[16] @ abs1046 → body1034
+	return b
+}

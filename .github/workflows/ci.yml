@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One CI run per ref; cancel superseded runs to save minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # gofmt is authoritative (guidelines); .pb.go is generated and exempt.
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l . | grep -v '\.pb\.go$' || true)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"; echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      # Race detector + coverage. Integration tests are behind the `integration`
+      # build tag (need Postgres) and are intentionally excluded here.
+      - name: Test
+        run: go test -race -cover ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # only-new-issues: gate quality on new/changed code without blocking on the
+      # pre-existing lint debt. Run `golangci-lint run` locally for the full set.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          only-new-issues: true
+
+  govulncheck:
+    name: Vulnerabilities
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install govulncheck
+        # Pinned: @latest (v1.8.0+) requires a newer Go than go.mod, and
+        # GOTOOLCHAIN=local refuses to switch. Bump together with the Go version.
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  portal:
+    name: Portal (typecheck & test)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: portal
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Builds the standalone output used by portal/Dockerfile.
+      - name: Build
+        run: npm run build
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Same context/file as docker compose; no push, just a build smoke test.
+      - name: Docker build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: portal/Dockerfile
+          push: false
+          tags: w2pp-portal:ci
+          cache-from: type=gha,scope=portal
+          cache-to: type=gha,mode=max,scope=portal
+
+  docker:
+    name: Docker build (${{ matrix.svc }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        svc: [tmserver, dbserver, binserver, webserver]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Build the production image the same way Railway does (parameterized by
+      # SVC); catches Dockerfile/.dockerignore regressions — e.g. the Release/
+      # content tree tmserver bakes in. No push: this is a build smoke test.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          build-args: SVC=${{ matrix.svc }}
+          push: false
+          tags: w2pp-${{ matrix.svc }}:ci
+          cache-from: type=gha,scope=${{ matrix.svc }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.svc }}

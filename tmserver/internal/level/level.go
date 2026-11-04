@@ -1,0 +1,216 @@
+// Package level holds the WYD experience curve and level-up math as pure
+// functions (captura-wyd-levelup.md, from CMob::CheckGetLevel / GetExpApply /
+// BASE_GetHpMp / BASE_GetBonusScorePoint in the original source). Like the combat
+// package it is isolated from I/O so it can be golden-tested exactly.
+//
+// Scope: the MORTAL (ClassMaster 2, Basedef.h:238) solo path — the dominant case. ARCH/CELESTIAL
+// tiers (different curve g_pNextLevel_2, quest gates, half-exp) and party
+// distribution are NOT modeled here yet; the world tracks no tier state for them.
+package level
+
+// MaxLevel is MAX_LEVEL (Basedef.h:177): a MORTAL (or ARCH) never levels past it.
+const MaxLevel int32 = 399
+
+// MaxCLevel is MAX_CLEVEL (Basedef.h:178): the level cap on the CELESTIAL curve
+// (CELESTIAL/CELESTIALCS/SCELESTIAL). CheckGetLevel picks MaxCLevel over MaxLevel
+// for those tiers (CMob.cpp:1085-1086).
+const MaxCLevel int32 = 199
+
+// MaxHPCap / MaxMPCap are MAX_HP / MAX_MP (Basedef.h:263-264).
+const (
+	MaxHPCap int32 = 1_000_000_000
+	MaxMPCap int32 = 1_000_000_000
+)
+
+// MaxExp is the experience ceiling: g_pNextLevel[MAX_LEVEL+1] = g_pNextLevel[400]
+// (MobKilled.cpp clamps accumulated Exp to it).
+const MaxExp int64 = 4_100_000_000
+
+// incHP / incMP are g_pIncrementHp / g_pIncrementMp (Basedef.cpp:63-64): the HP/MP
+// gained per level, indexed by class (0 TK, 1 FM, 2 BM, 3 HT).
+var (
+	incHP = [4]int32{3, 1, 1, 2}
+	incMP = [4]int32{1, 3, 2, 1}
+)
+
+// baseSIDCHM is BaseSIDCHM[class][Str,Int,Dex,Con,HP,MP] (Basedef.cpp:44): the
+// per-class starting attributes and base HP/MP, used by the score formulas.
+var baseSIDCHM = [4][6]int32{
+	{8, 4, 7, 6, 80, 45},  // TK
+	{5, 8, 5, 5, 60, 65},  // FM
+	{6, 6, 9, 5, 70, 55},  // BM
+	{8, 9, 13, 6, 75, 60}, // HT
+}
+
+// validClass guards the per-class tables against an out-of-range class (mobs or
+// corrupt data); callers get class 0 semantics rather than a panic.
+func validClass(cls uint8) int {
+	if int(cls) >= len(baseSIDCHM) {
+		return 0
+	}
+	return int(cls)
+}
+
+// BaseStats returns BaseSIDCHM[cls]: Str, Int, Dex, Con, HP and MP of a fresh
+// character of that class.
+func BaseStats(cls uint8) [6]int32 { return baseSIDCHM[validClass(cls)] }
+
+// IncHP / IncMP are the per-level HP/MP increments for a class.
+func IncHP(cls uint8) int32 { return incHP[validClass(cls)] }
+func IncMP(cls uint8) int32 { return incMP[validClass(cls)] }
+
+// NextLevelExp returns g_pNextLevel[curLevel+1]: the total experience needed to
+// reach the next level. Levels at or above MaxLevel return MaxExp (no further
+// level-up). curLevel is clamped so the lookup never goes out of range.
+func NextLevelExp(curLevel int32) int64 {
+	next := max(curLevel+1, 1)
+	if int(next) >= len(nextLevel) {
+		return MaxExp
+	}
+	return nextLevel[next]
+}
+
+// MaxLevelForTier is the level cap for a tier: MaxCLevel for the celestial tiers
+// (which ride g_pNextLevel_2), MaxLevel otherwise (CMob.cpp:1082-1086).
+func MaxLevelForTier(classMaster uint8) int32 {
+	if isCelestialTier(classMaster) {
+		return MaxCLevel
+	}
+	return MaxLevel
+}
+
+// NextLevelExpTier returns the total experience needed to reach curLevel+1 on the
+// curve for the given tier: g_pNextLevel_2 for celestial tiers, g_pNextLevel
+// (the Mortal/Arch curve) otherwise (CMob.cpp:1092-1093). At or above the tier's
+// cap it returns the curve ceiling so no further level-up triggers.
+func NextLevelExpTier(curLevel int32, classMaster uint8) int64 {
+	if !isCelestialTier(classMaster) {
+		return NextLevelExp(curLevel)
+	}
+	next := max(curLevel+1, 1)
+	if next >= MaxCLevel+1 || int(next) >= len(nextLevel2) {
+		return nextLevel2[len(nextLevel2)-1]
+	}
+	return nextLevel2[next]
+}
+
+// ForExpTier maps total experience back to a level on the tier's curve.
+// Ehre's purified-refine recipe subtracts experience and then performs this
+// inverse lookup exactly like CMob's legacy g_pNextLevel_2 scan.
+func ForExpTier(exp int64, classMaster uint8) int32 {
+	levelCap := MaxLevelForTier(classMaster)
+	var result int32
+	for current := int32(0); current < levelCap; current++ {
+		if exp < NextLevelExpTier(current, classMaster) {
+			break
+		}
+		result = current + 1
+	}
+	return result
+}
+
+// ExpApply is GetExpApply for the MORTAL path (GetFunc.cpp:1028): it scales the
+// mob's base reward by the attacker↔target level ratio. attacker is the killer's
+// level, target the mob's. Higher-level targets give a bonus (capped at 200%); a
+// killer far above the mob (ratio < 80% and level ≥ 49) is penalised.
+func ExpApply(exp int64, attacker, target int32) int64 {
+	if exp <= 0 {
+		return 0
+	}
+	if target > MaxLevel+1 || attacker < 0 || target < 0 {
+		return exp
+	}
+	a := int64(attacker) + 1
+	t := int64(target) + 1
+	mult := t * 100 / a
+	switch {
+	case mult < 80 && a >= 50:
+		mult = mult*2 - 100
+	case mult > 200:
+		mult = 200
+	}
+	if mult < 0 {
+		mult = 0
+	}
+	return (exp*mult + 1) / 100
+}
+
+// ScoreBonus is BASE_GetBonusScorePoint for MORTAL (Basedef.cpp:898): the free
+// attribute points the character should have = points granted by level minus
+// points already spent above the class base. It is idempotent (a function of the
+// current level and attributes), so it can be recomputed on each level-up without
+// being persisted.
+func ScoreBonus(cls uint8, level int32, str, intel, dex, con int16) int32 {
+	c := validClass(cls)
+	used := (int32(str) - baseSIDCHM[c][0]) +
+		(int32(intel) - baseSIDCHM[c][1]) +
+		(int32(dex) - baseSIDCHM[c][2]) +
+		(int32(con) - baseSIDCHM[c][3])
+
+	leveluse := level * 5
+	if level >= 254 {
+		leveluse += (level - 254) * 5
+	}
+	if level >= 299 {
+		leveluse += (level - 299) * 10
+	}
+	if level >= 354 {
+		leveluse += (level - 354) * -8
+	}
+	if bonus := leveluse - used; bonus > 0 {
+		return bonus
+	}
+	return 0
+}
+
+// ScoreBonusCelestial is BASE_GetBonusScorePoint for the celestial tiers
+// (Basedef.cpp:980-1172): 6 points per level plus the quest grants (100 per
+// Arch crystal stage, 200 per Pedra da Furia reset, the flat 1001 and the
+// ArchLevel tier bonus), with extra points from level 120 up. Like ScoreBonus it
+// clamps an over-spend to 0 instead of taking the excess back from BaseScore.
+// CELESTIALCS/SCELESTIAL also credit the parked tier (Basedef.cpp:1084-1101 and
+// :1149-1166): otherLvl is QuestInfo.Celestial.SubCelestialLevel for a
+// CELESTIALCS and CelestialLevel for a SCELESTIAL, worth 3 points per level plus
+// the full 120+ bonuses; pass 0 for a plain CELESTIAL (issue #410).
+func ScoreBonusCelestial(cls uint8, lvl int32, str, intel, dex, con int16, cristal, reset, archLevel uint8, otherLvl int32) int32 {
+	c := validClass(cls)
+	used := (int32(str) - baseSIDCHM[c][0]) +
+		(int32(intel) - baseSIDCHM[c][1]) +
+		(int32(dex) - baseSIDCHM[c][2]) +
+		(int32(con) - baseSIDCHM[c][3])
+
+	leveluse := lvl*6 + int32(cristal)*100 + int32(reset)*200 + 1001
+	switch archLevel {
+	case 1:
+		leveluse += 100
+	case 2:
+		leveluse += 300
+	case 3:
+		leveluse += 600
+	case 4:
+		leveluse += 900
+	case 5:
+		leveluse += 1200
+	}
+	if lvl >= 120 {
+		leveluse += (lvl - 119) * 6
+	}
+	for _, from := range [...]int32{150, 170, 180, 190} {
+		if lvl >= from {
+			leveluse += (lvl - from + 1) * 2
+		}
+	}
+	leveluse += otherLvl * 6 / 2
+	if otherLvl >= 120 {
+		leveluse += (otherLvl - 119) * 6
+	}
+	for _, from := range [...]int32{150, 170, 180, 190} {
+		if otherLvl >= from {
+			leveluse += (otherLvl - from + 1) * 2
+		}
+	}
+	if bonus := leveluse - used; bonus > 0 {
+		return bonus
+	}
+	return 0
+}

@@ -1,0 +1,84 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+const MESSAGES: Record<number, string> = {
+  401: "Usuário ou senha inválidos.",
+  403: "Esta conta está bloqueada.",
+  422: "Preencha usuário e senha.",
+  502: "O servidor de jogo não respondeu. Tente novamente em instantes.",
+};
+
+export default function LoginForm() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [pass, setPass] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, pass }),
+      });
+      if (res.ok) {
+        router.replace("/painel");
+        router.refresh();
+        return;
+      }
+      setError(MESSAGES[res.status] ?? "Não foi possível entrar.");
+    } catch {
+      setError("Falha de rede. Verifique se o portal está no ar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+      <label style={{ display: "grid", gap: 4 }}>
+        <span style={{ color: "var(--muted)", fontSize: 13 }}>Usuário</span>
+        <input
+          name="name"
+          className="ui-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          autoComplete="username"
+          autoFocus
+          required
+          maxLength={16}
+        />
+      </label>
+
+      <label style={{ display: "grid", gap: 4 }}>
+        <span style={{ color: "var(--muted)", fontSize: 13 }}>Senha</span>
+        <input
+          name="pass"
+          className="ui-input"
+          type="password"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          autoComplete="current-password"
+          required
+          maxLength={64}
+        />
+      </label>
+
+      {error && (
+        <p role="alert" style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>
+          {error}
+        </p>
+      )}
+
+      <button type="submit" className="ui-btn ui-btn--primary" disabled={busy}>
+        {busy ? "Entrando…" : "Entrar"}
+      </button>
+    </form>
+  );
+}

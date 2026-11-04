@@ -1,0 +1,55 @@
+# golangci-lint v2 config (guidelines §25). The v2 default set already enables
+# errcheck/govet/ineffassign/staticcheck/unused; we add revive/misspell/unconvert
+# on top and run gofmt/goimports as formatters. CI gates only *new* issues
+# (only-new-issues) so pre-existing debt doesn't block; run `golangci-lint run`
+# locally for the full picture. Regenerate via `golangci-lint migrate` if bumping.
+version: "2"
+linters:
+  enable:
+    - misspell
+    - revive
+    - unconvert
+  settings:
+    misspell:
+      ignore-rules:
+        # The legacy protocol really spells it this way (_MSG_Challange.cpp);
+        # handlers/comments mirror that name for parity.
+        - challange
+        # The legacy GM tool file is genuinely named "Comandos GM.txt" (Portuguese
+        # for "commands"), cited verbatim as an evidence source.
+        - comandos
+        # Portuguese client text copied from Language.txt (_NN_Night_Already,
+        # "Quest em progresso.").
+        - progresso
+        # Legacy item name "Pedras Secretas" (5334–5337, ItemList.csv), cited
+        # verbatim in the King/Pedra Ideal/Pedra da Fúria handlers.
+        - secretas
+        # Portuguese client text copied from Language.txt (_NN_Cant_with_armor,
+        # "No momento você não pode equipar arma e armadura.").
+        - momento
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+          - staticcheck
+        path: \.pb\.go$
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

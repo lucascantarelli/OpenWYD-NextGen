@@ -1,0 +1,128 @@
+// Package loot holds the mob-death drop formulas as pure functions
+// (game-rules.md §2, MobKilled.cpp). Like package combat, the rand() calls go
+// through an injected Rand in the original order, so the MSVC LCG reproduces the
+// drops exactly (parity-tests.md §4.0).
+package loot
+
+import "github.com/jeanluca/w2pp-openwyd/internal/droprate"
+
+// Rand is the minimal RNG; *rng.MSVC satisfies it. Intn(n) == C rand()%n.
+type Rand interface {
+	Intn(n int) int
+}
+
+// DropRate is g_pDropRate[64] — the base drop odds PER Carry slot of the mob
+// (NOT per item): the larger the value, the rarer the drop (it is a divisor).
+// Real values from Basedef.cpp:222 (game-rules.md §2.2).
+//
+// It is initialized as a COPY of internal/droprate.Rate: the moderator overlay
+// (dropcfg) rewrites this table at boot, and the web editor keeps reading the
+// pristine base values from the shared package.
+var DropRate = droprate.Rate
+
+// DropBonus is g_pDropBonus[64] — all 100 (neutral) by default (Basedef.cpp).
+var DropBonus [64]int
+
+func init() {
+	for i := range DropBonus {
+		DropBonus[i] = 100
+	}
+}
+
+// EffectiveDropRate computes the per-slot drop odds after the killer's drop
+// bonus and the target-level adjustment (game-rules.md §2.2). A larger result is
+// rarer. killerBonus is the killer's DropBonus (0 = none).
+func EffectiveDropRate(slot, killerBonus, mobLevel int) int {
+	droprate := DropRate[slot]
+	dropbonus := DropBonus[slot] + killerBonus
+	if dropbonus != 100 {
+		dropbonus = 10000 / (dropbonus + 1)
+		droprate = dropbonus * droprate / 100
+	}
+	if slot < 60 {
+		switch slot / 8 {
+		case 0, 1, 2:
+			switch {
+			case mobLevel < 10:
+				droprate = 4 * droprate / 100
+			case mobLevel < 20:
+				droprate = 5 * droprate / 100
+			case mobLevel < 30:
+				droprate = 6 * droprate / 100
+			case mobLevel < 40:
+				droprate = 7 * droprate / 100
+			case mobLevel < 60:
+				droprate = 8 * droprate / 100
+			default:
+				droprate = 99 * droprate / 100
+			}
+		}
+	} else {
+		switch {
+		case mobLevel < 170:
+			droprate = 90 * droprate / 100
+		case mobLevel < 200:
+			droprate = 60 * droprate / 100
+		case mobLevel < 230:
+			droprate = 50 * droprate / 100
+		case mobLevel < 255:
+			droprate = 43 * droprate / 100
+		case mobLevel < 320:
+			droprate = 38 * droprate / 100
+		default:
+			droprate = 50 * droprate / 100
+		}
+	}
+
+	// These four Carry positions are hard overrides applied after every level
+	// adjustment in MobKilled.cpp. Slot 11 is therefore guaranteed.
+	switch slot {
+	case 8, 9, 10:
+		droprate = 4
+	case 11:
+		droprate = 1
+	}
+	if droprate > 32000 {
+		droprate = 32000
+	}
+	return droprate
+}
+
+// Drops rolls a single drop against an effective rate: drop iff rand()%rate == 0
+// (the odds-as-divisor pattern, like the gold gate).
+//
+// UNVERIFIED: the exact final comparison is truncated in the source
+// (MobKilled.cpp after :2800); this is the conventional pattern and should be
+// confirmed by capture.
+func Drops(r Rand, rate int) bool {
+	if rate <= 0 {
+		return true // rate 0 ⇒ always (slot 56 = 1 still rolls 0)
+	}
+	return r.Intn(rate) == 0
+}
+
+// GoldDrop returns the gold dropped by a dying mob (game-rules.md §2.1,
+// MobKilled.cpp:2693). It consumes two rand() values: a drop gate, then (if it
+// drops) the amount. Capped at 2000 per kill. 0 means no gold.
+func GoldDrop(r Rand, mobLevel, mobCoin int) int {
+	unkGold := 18
+	switch {
+	case mobLevel < 10:
+		unkGold = 2
+	case mobLevel < 20:
+		unkGold = 4
+	case mobLevel < 30:
+		unkGold = 6
+	case mobLevel < 50:
+		unkGold = 9
+	}
+	if mobCoin == 0 || r.Intn(unkGold+1) != 0 {
+		return 0
+	}
+	q := (mobCoin + 1) / 4
+	coin := 4 * (r.Intn(q+1) + q + mobCoin)
+	if coin > 2000 {
+		coin = 2000
+	}
+	return coin
+}

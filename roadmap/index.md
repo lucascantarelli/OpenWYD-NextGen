@@ -1,0 +1,411 @@
+# Roadmap — Dolorestec WYD2
+
+Plano de execução do servidor local do WYD2 (servidor Go + portal administrativo em `portal/`),
+usando o cliente modificado em `client/`, incluindo a camada de agente de IA que administra e
+evolui o servidor.
+
+Este índice é a **fonte da verdade do progresso**. Cada issue em [`issues/`](issues/) é uma unidade
+de trabalho executável por um agente ou por uma pessoa, com passos, arquivos, testes e resultado
+esperado. Ao concluir uma issue, atualize a linha dela aqui e o `docs/migration/SESSION-PRIMER.md`
+quando o comportamento observável mudar.
+
+## Como ler uma issue
+
+Cada arquivo segue o mesmo formato:
+
+```
+# Issue NN — título
+Fase · Depende de · Bloqueia · Esforço (S/M/L)
+Objetivo            — o resultado verificável, em uma frase
+Contexto/evidência  — por que isso é necessário, com caminhos de arquivo
+Passos              — sequência executável
+Arquivos            — o que é criado/alterado
+Testes/verificação  — comando + saída esperada
+Critérios de aceite — checklist objetivo
+Riscos/rollback     — o que pode dar errado e como voltar
+```
+
+Regra de ouro: **nenhuma issue é "concluída" sem evidência de execução** (log, teste verde, saída de
+comando). "Escrevi o código" não fecha issue.
+
+## Estado atual (2026-11-02)
+
+| Item | Estado | Evidência |
+|------|--------|-----------|
+| Working tree completo (`Release/`, `scripts/`, `internal/`, `api/`, `dbserver/`, `binserver/`, `webserver/`) | ✅ restaurado nesta sessão | `git sparse-checkout disable`; `Release/` com 67 MB |
+| Árvore de conteúdo íntegra | ✅ verificado | `ItemList.csv`, `SkillData.csv`, `npc/` 1.991 templates, `HeightMap.dat` 16 MiB, `AttributeMap.dat` 1 MiB, `BaseMob/{TK,FM,BM,HT}` 816 B |
+| Toolchain Go no host | ❌ ausente | `go: command not found`; caminho é container `golang:1.26-alpine` |
+| Docker / Compose | ✅ presente | Docker 29.9.2 daemon `29.9.2`, 8 CPUs / 16 GB; Compose v5.6.1 |
+| Build da stack | ✅ 5 imagens construídas | build **serializado** por serviço (`db`, `dbserver`, `binserver`, `webserver`, `tmserver`), todos exit 0; o build paralelo era o que derrubava o daemon |
+| Stack no ar | ✅ `db`, `binserver`, `dbserver`, `webserver`, `tmserver` Up | `tmserver listening addr=:8281`, status `:80` → HTTP 200; `NPCs spawned mobs=11930`, `walkability grid baked dim=4096` |
+| Cliente apontando para o servidor local | ⏳ pendente | `serverlist.bin` atual aponta para canais remotos; `.remote_serverlist.bin` é uma página HTML de erro |
+| Camada de agente de IA (AGENTS.md + skills) | ✅ criada nesta sessão | `AGENTS.md`, `.agents/skills/wyd-*` |
+
+## Fases e issues
+
+### Fase 0 — Fundação: ambiente, conteúdo e banco
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 01 | [Restaurar e validar a árvore de trabalho](issues/issue-01.md) | ✅ | S |
+| 02 | [Provisionar ambiente de execução (Go/Docker/portas)](issues/issue-02.md) | 🟡 (falta `preflight.sh`) | S |
+| 03 | [Subir Postgres, migrações e contas seed](issues/issue-03.md) | ✅ | S |
+| 04 | [Subir e validar o tmServer com conteúdo](issues/issue-04.md) | ✅ | M |
+
+### Fase 1 — Cliente modificado e login
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 05 | [Configurar o cliente para o servidor local](issues/issue-05.md) | ⏳ | M |
+| 06 | [Alinhar versão de protocolo e autenticar](issues/issue-06.md) | ⏳ | S |
+| 07 | [Login ponta-a-ponta (headless + gráfico)](issues/issue-07.md) | 🟡 (headless ✅, gráfico ⏳) | M |
+
+### Fase 2 — Personagens e persistência
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 08 | [Criação e seleção de personagem com equip inicial](issues/issue-08.md) | ⏳ | M |
+| 09 | [Persistência de personagem, cargo e contas/papéis](issues/issue-09.md) | ⏳ | M |
+
+### Fase 3 — Funcionalidades do jogo
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 10 | [Movimento, visão, cidades e teleporte](issues/issue-10.md) | ⏳ | M |
+| 11 | [Combate PvE, IA de mob, drop e EXP](issues/issue-11.md) | ⏳ | L |
+| 12 | [Comércio: loja NPC, banco/cargo, trade e autotrade](issues/issue-12.md) | ⏳ | L |
+| 13 | [Quests, refino/combine e progressão](issues/issue-13.md) | ⏳ | L |
+
+### Fase 4 — Agente de IA e automação
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 14 | [Camada de agente: AGENTS.md, skills e disciplina de execução](issues/issue-14.md) | ✅ (v1) | M |
+| 15 | [Ferramentas de administração e economia para o agente](issues/issue-15.md) | ⏳ | M |
+| 16 | [Bots de teste e harness de carga](issues/issue-16.md) | ⏳ | L |
+
+### Fase 5 — Operação e evolução
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 17 | [Observabilidade, backup, CI e hardening](issues/issue-17.md) | ⏳ | M |
+
+### Fase 6 — Portal web de administração (UI completa)
+
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 18 | [Portal Next.js: bootstrap do BFF e cliente gRPC](issues/issue-18.md) | ✅ | S |
+| 19 | [Login web, sessão httpOnly e guarda de papel](issues/issue-19.md) | ✅ | S |
+| 20 | [Shell da UI: layout, navegação e componentes base](issues/issue-20.md) | ✅ | M |
+| 21 | [Camada de admin no BFF: resultado→HTTP e auditoria](issues/issue-21.md) | ✅ | M |
+| 22 | [Catálogo de itens com ícones (leitura)](issues/issue-22.md) | ✅ | M |
+| 23 | [Editor de NPCs e mercadores](issues/issue-23.md) | 🟡 (UI ✅, in-game ⏳) | L |
+| 24 | [Preços globais de itens](issues/issue-24.md) | 🟡 (UI ✅, in-game ⏳) | S |
+| 25 | [Editor de stats e equip de mobs](issues/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
+| 26 | [Relatórios de drop: item ↔ mob](issues/issue-26.md) | ✅ (duas visões, CSV e cache; validado ao vivo: 1.349 templates, 13.813 slots, consistência item↔mob, player 403) | M |
+| 27 | [Editor do mapa de colisão (AttributeMap)](issues/issue-27.md) | ✅ (info + histograma + transformação + download de 1 MiB com sha conferido; `/mapa` 200 e rota de download 200) | M |
+| 28 | [Eventos globais do mundo](issues/issue-28.md) | ⏳ | S |
+| 29 | [Administração da loja de donate](issues/issue-29.md) | ⏳ | M |
+| 30 | [Administração da recompensa diária](issues/issue-30.md) | ⏳ | S |
+| 31 | [Faturamento e relatórios de donate](issues/issue-31.md) | ⏳ | M |
+| 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | ⏳ | L |
+| 33 | [Catálogo de itens editável (overlay de ItemList.csv)](issues/issue-33.md) | ⏳ | L |
+| 34 | [Drops editáveis: taxa por slot e Carry[] do mob](issues/issue-34.md) | 🟡 (taxa por slot e `Carry[]` ✅ ponta a ponta: migrações 0040/0041, `DropAdminService` com os dois editores — **`/drops/editar`** e **`/drops/carry`** —, overlays no boot com log `templates=1`/`applied=1`, `Set/Restore` validados e auditoria; falta só a evidência in-game de frequência) | L |
+| 35 | [Curva de EXP e rebalanceamento em massa](issues/issue-35.md) | ⏳ | M |
+| 36 | [Rates editáveis e visão das flags](issues/issue-36.md) | 🟡 (overlay + `/config` + read-through + aba de flags ✅ validados ao vivo: 16 flags gravadas no boot e tabela em `/config`; falta só evidência in-game de refino/combine) | M |
+| 37 | [Spawns e localização de mobs](issues/issue-37.md) | ⏳ | L |
+| 38 | [Operação ao vivo: online, kick, teleport e aviso](issues/issue-38.md) | ⏳ | L |
+| 39 | [QA final do portal: E2E, segurança e fechamento](issues/issue-39.md) | ⏳ | M |
+| 40 | [Logs dos containers na UI (streaming)](issues/issue-40.md) | ⏳ | M |
+| 41 | [Atlas do mundo: zonas, coordenadas e portais](issues/issue-41.md) | ✅ | M |
+| 42 | [Rotas de teleporte editáveis](issues/issue-42.md) | ✅ | L |
+| 43 | [Inventário e status de personagem](issues/issue-43.md) | 🟡 leitura+fila | L |
+| 44 | [Adds e efeitos de item (base, instância, refino, combine)](issues/issue-44.md) | 🟡 (leitura ✅ + overlay ✅ + read-through ✅; refino/combine ⏳) | L |
+| 45 | [Guildas, castelo e Kefra](issues/issue-45.md) | 🟡 (leitura ✅, taxa ✅, dono de cidade/torre ✅, Kefra ✅, escritas de guilda/membro/relação ✅; falta a janela de horários, que é da 36) | L |
+| 46 | [Catálogo de skills](issues/issue-46.md) | 🟡 (nomes ✅) | M |
+| 47 | [UI sem IDs crus e padrão de UI/UX](issues/issue-47.md) | ✅ (nomes no lugar de IDs, `--space-*`, foco, alvo 32px, contraste medido, retry global; `/config` e `/drops` respondendo 200 com sessão) | M |
+| 48 | [Mapa de navegação: relevo, zoom e leitura de ponto](issues/issue-48.md) | 🟡 (relevo/zoom/leitura ✅) | M |
+
+Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do
+repo, com contexto Docker próprio (`portal/Dockerfile`) para não inflar o contexto dos serviços Go.
+As issues 18–31
+consomem contratos que **já existem** no `webserver` (gRPC :7600); as 32–38 criam os contratos que
+faltam (contas/papéis, catálogo, drops, EXP, rates, spawns, live ops); a 39 fecha com E2E e segurança; a 40 abre a observabilidade dentro do portal (logs ao vivo dos containers);
+a 47 padroniza a UI (nome no lugar de ID, tokens de espaço e a11y) sobre `frontend-design` e
+`ui-ux-practices`.
+
+## Grafo de dependências
+
+```
+01 ──► 02 ──► 03 ──► 04 ──┬──► 05 ──► 06 ──► 07 ──┬──► 08 ──► 09
+                          │                        │
+                          └────────────────────────┴──► 10 ──► 11 ──► 12 ──► 13
+
+14 (contínuo, não bloqueia)         15 ── depende de 03+04
+16 ── depende de 07 (login headless funcionando)
+17 ── depende de 04 (stack estável)
+```
+
+Caminho crítico para a meta principal ("servidor no ar + login com o cliente modificado"):
+**01 → 02 → 03 → 04 → 05 → 06 → 07**. Nada mais deve ser iniciado antes de 07 fechar, exceto 14
+(documentação de agente) e 15/16 em paralelo depois de 04.
+
+Grafo da Fase 6:
+
+```
+18 ──► 19 ──► 20 ──► 21 ──┬──► 22 ──► 23 ──► 24
+                          │           └────► 26 ──► 34
+                          ├──► 25 ──► 26, 34, 35
+                          ├──► 27 ──► 28 ──► 29 ──► 30, 31
+                          ├──► 32 ──► 38
+                          └──► 33, 36, 37
+39 ── depende de 18–38 (fechamento)
+40 ── depende de 20 (shell); independente de 21–38
+41 (atlas) ── bloqueia 42 (teleportes) e 45 (guildas/castelo)
+44 (adds/refino) ── depende de 25+33; 43 (personagens) ── depende de 32+38
+```
+
+## Metas do projeto e onde são verificadas
+
+| Meta | Issue de fechamento | Prova |
+|------|--------------------|-------|
+| Servidor local com funcionalidades básicas | 04 | log `content loaded` + `NPCs spawned` + status HTTP |
+| Login com o cliente modificado | 07 | cliente entra no mundo; log `0x020d`/`0x0213` |
+| Criar e configurar personagens | 08 | 4 classes criadas com BaseMob e equip inicial |
+| Batalha, comércio e quests testados | 11, 12, 13 | cenários da skill `wyd-testing-bots` §6 |
+| Agente de IA para administração/manutenção | 14, 15 | skills + ferramentas + auditoria |
+| Bots controlados por IA | 16 | harness + bot headless jogando o roteiro |
+
+## Riscos estruturais
+
+| Risco | Impacto | Mitigação |
+|-------|---------|-----------|
+| `Release/` é ignorado por padrão (`[Rr]elease/` no `.gitignore`) e já sumiu uma vez por sparse checkout | crítico — servidor sobe vazio | issue 01 + skill `wyd-server-ops` §1 |
+| Cliente fechado com proteções (`JProtectDll.dll`, `jlock10*`) e launcher que sobrescreve `serverlist.bin` | alto — login impossível de reproduzir | issue 05, skill `wyd-client-connect` |
+| Versão de protocolo divergente (7640 vs 12000) | alto — login recusado (0x102) | issue 06: 12000 confirmado no headless; valor do cliente gráfico ainda não medido |
+| Build Docker instável nesta máquina (daemon EOF) | médio — bloqueia 03/04 | issue 02 (diagnóstico de daemon/recursos) |
+| Dados de conteúdo sem paridade com o cliente (`ItemList.csv` vs `ItemList.bin`) | médio — item invisível/nome errado | skill `wyd-economy` §8 |
+| Migração de schema sem rebuild `--no-cache` | médio — "valor certo no banco, serviço antigo" | skill `wyd-server-dev` §4 |
+
+## Convenções
+
+- Numeração sequencial; não reutilize número de issue fechada.
+- Uma issue = um resultado verificável. Se virar duas coisas independentes, divida.
+- Bloqueio real (ambiente, credencial, decisão humana) vira nota na issue com **o que foi tentado** e
+  **o que falta** — não vira "feito".
+- Todo comando citado deve rodar de `` salvo indicação contrária.
+
+## Changelog
+
+- **2026-11-04 (reestruturação — portal e roadmap dentro do repo)** — o portal passou a viver em
+  `portal/` e o planejamento em `roadmap/`, com o cliente do jogo em `client/` (ignorado no git). O portal entrou na infraestrutura: imagem `portal/Dockerfile` (Next standalone,
+  contexto da raiz para levar `api/web/v1/web.proto`), serviço `portal` no `docker-compose.yaml`
+  (`:3000`, `WEB_API_ADDR=webserver:7600`), alvos `make portal-*`, bootstrap do `run-local.sh` e job
+  de CI (typecheck, testes, build e imagem). Os arquivos de IA da raiz foram consolidados em
+  `AGENTS.md`/`CLAUDE.md` + `.agents/skills`.
+
+- **2026-11-04 (issue 27 — mapa de colisão)** — `/mapa` lê o `AttributeMap.dat` do content tree e
+  mostra sha256, histograma de 256 valores e a tabela de significados (valor, bit e o que faz). O
+  formulário de transformação cobre as cinco operações do backend (incluindo a regra legada
+  `value < 64 && value != 1 → |= 64`), retângulo **em coordenadas de mundo** com a célula resultante
+  (`x/4`) ao lado e filtro por valor exato ou máscara. O download só habilita para os mesmos
+  parâmetros já pré-visualizados; a rota `/api/mapa/download` refaz a transformação, confere o
+  tamanho de 1.048.576 bytes e devolve `AttributeMap_New.dat` com o sha256 no header — o arquivo do
+  servidor não é reescrito. Verificado ao vivo: página 200, download 200 com **7.148 células**
+  alteradas e sha do arquivo igual ao header; `npm test` 21/21, `tsc` e `next build` 0. O clique do
+  “pré-visualizar” não foi exercitado no navegador (login do painel no browser de teste não submeteu
+  o formulário) — a mesma RPC foi exercitada pelo download.
+
+- **2026-11-04 (issue 34, fatia 3 — `Carry[]` por template)** — a tabela de drop de cada mob virou
+  editável: `/drops/carry` escolhe o template pela URL e edita as posições agrupadas pela raridade
+  que **a posição** vale (“Sempre cai”, “Ultra raro”…). Salvar substitui a tabela inteira, então o
+  vazio é uma decisão explícita; restaurar volta ao arquivo. Do browser vem só o índice do item —
+  o web-api preserva os efeitos de quem não mudou e zera os de quem mudou, e recusa item fora do
+  catálogo ou template inexistente. Migração 0041 (`mob_carry_override`/`mob_carry_audit`),
+  `ListMobCarry/SetMobCarry/ResetMobCarry` e `-mob-carry-editing` no tmserver (OFF), com evidência
+  de boot `templates=1` e das rejeições `INVALID`/`FORBIDDEN`.
+
+- **2026-11-03 (issue 34, fatia 2 — `/drops/editar`)** — a taxa por slot ganhou editor no portal:
+  simulador embutido (nível do mob e bônus do matador recalculam a chance de todas as linhas ao vivo),
+  divisor editável com motivo auditado, restaurar por posição e badge de estado. **Nada de ID cru
+  como rótulo**: a linha é "Equipamento comum", "Ouro e poção", "Ultra raro", "Sempre cai"… e o
+  intervalo do `Carry[]` é posição secundária; os slots 8–11 aparecem como "fixo no código" e ficam
+  desabilitados, porque `EffectiveDropRate` reescreve o resultado deles. `lib/droprate.ts` espelha a
+  fórmula do Go com 5 casos testados; a tabela base entra por parâmetro (server e client são
+  instâncias diferentes do módulo). `/drops` e `/drops/editar` verificados com sessão (200) e
+  `next build` 0.
+
+- **2026-11-03 (issue 34, fatia 1 — taxa de drop por slot)** — `DropRate[64]` (que era `init()` de
+  `loot`) virou a tabela compartilhada `internal/droprate`, porque o `webserver` não pode importar
+  `tmserver/internal/loot` (regra de `internal` do Go) e o editor precisa mostrar os mesmos valores
+  base; `loot.DropRate` continua sendo a cópia mutável que o overlay reescreve. Migração
+  **0040_drop_config** (`drop_rate_override` + `drop_rate_audit`), store com auditoria,
+  `DropConfigService` (dbserver → tmServer) e `DropAdminService` (`ListDropRates`/`UpsertDropRate`/
+  `ResetDropRate`) com autorização por papel. tmServer aplica no boot atrás de
+  `-drop-config-editing` (OFF = tabela do código, byte a byte) e loga `drop rate overlay applied`.
+  Verificado ao vivo: 64 slots, `slot 12 base=900 → 450 overridden`, slot 64 e valor 0 INVALID,
+  `player` FORBIDDEN, reset OK e NOT_FOUND na repetição; boot one-off aplicou `applied=1 rows=1
+  slot_12=450`. Faltam portal, `Carry[]` e evidência in-game.
+
+- **2026-11-03 (issue 25, editor de `Equip[]`)** — grade dos 16 slots com picker de item do catálogo,
+  diff por slot e `SetMobTemplateEquip`; trocar item zera os efeitos do slot (efeitos são da issue 44)
+  e o botão só habilita com override de stats salvo (`NOT_FOUND` do web-api vira "salve os stats
+  antes" na UI). `saveMobStat` parou de aceitar equip do browser e relê o equip do servidor, senão
+  salvar stats apagaria uma edição de equip feita logo antes. Verificado ao vivo: slot 5/item 412
+  persistido e lido, slot duplicado e slot 16 recusados, `player` FORBIDDEN, `/mobs/@@Gargula` 200.
+
+- **2026-11-03 (issue 25, flag de override)** — `MobTemplateFile.overridden` no `web.proto`;
+  `ListTemplates` resolve o flag numa consulta só (`ListMobTemplateStats`) e devolve uma **cópia** do
+  snapshot escaneado no boot, então listar nunca deixa flag velha. No portal, `/mobs` ganhou coluna
+  "Override" (badge "no banco"), contador no cabeçalho e o filtro "somente com override". Verificado
+  ao vivo: com a base recém-migrada a listagem vem `[]`, o upsert de `@@Gargula` faz
+  `overrides=[@@Gargula]`/`overridden=true` e o delete volta a `[]`/`false`; `/mobs` responde 200.
+  Teste novo `TestListTemplatesMarksOverrides` cobre o flag e o caso de delete.
+
+- **2026-11-03 (issue 25, fatia principal)** — Editor de stats de mob no portal: `/mobs` lista os
+  **1.991 templates** do content tree (656 com merchant) e `/mobs/[template]` abre com **read-through**
+  do arquivo (`overridden=false`, ex.: `@@Gargula` nível 399, HP 14000, EXP 2.990.849, 2 slots de
+  equip), seis seções de campos com os mesmos intervalos da validação do web-api, diff da sessão,
+  contador de campos alterados, salvar (`UpsertMobTemplateStat`, devolvendo o `Equip[]` carregado
+  porque o upsert substitui o override inteiro) e "reverter ao arquivo". `player` recebe FORBIDDEN e
+  template inexistente devolve NOT_FOUND. `tsc`, `npm test` (8/8), `next build` e `/mobs` (HTTP 200)
+  verificados. Pendente: editor de `Equip[]`, badge/filtro de override (pede campo novo no proto) e
+  evidência in-game.
+
+- **2026-11-03 (Docker de volta — evidências ao vivo)** — O Docker Desktop voltou a subir; imagens de
+  `dbserver`/`tmserver`/`webserver` reconstruídas e a stack inteira no ar (`db`, `binserver`,
+  `dbserver`, `tmserver`, `webserver`). Migração `0039_server_instance_flags` aplicada e o tmserver
+  gravou **16 flags** no boot (`captured_at=2026-11-03T18:11:47Z`), que `/config` mostra; `/drops`
+  responde 200 com as duas abas e `ListMobDrops(mob_query="a")` devolve 1.349 templates / 13.813
+  slots com consistência item→mob confirmada e `player` recebendo FORBIDDEN. O bloqueio de `C:`
+  continua latente (6,7 GB livres; builds só com `GOTMPDIR`/`TMPDIR` no `D:`).
+
+- **2026-11-03 (issue 47, fechamento parcial)** — Nome de lugar nos teleportes: `lib/zone.ts`
+  resolve coordenada → cidade/região escolhendo a **menor** caixa do atlas, e `/teleportes` mostra
+  "Armia → Montanha Gelada" com a coordenada no `title` (sem atlas, volta às coordenadas). Escala de
+  espaço `--space-1..7` entrou no `:root` e nas superfícies compartilhadas + telas novas. Dois bugs de
+  acessibilidade corrigidos: `all: unset` em `.ui-tab` e nos cabeçalhos ordenáveis apagava o anel de
+  `:focus-visible` (agora redeclarado), e `.ui-chip`/`.ui-select` estavam abaixo do alvo mínimo de
+  32 px. `tsc`, `npm test` (8/8) e `next build` verdes.
+  Fechamento: contraste medido par a par (pior caso `--danger` no surface2 = 4,94:1, acima de 4,5) e
+  `--border-control: #707b8d` (4,42:1 no bg, 3,77:1 no surface2) nas bordas de input/select/chip/botão,
+  substituindo os divisores decorativos `--border`/`--border-strong` (1,45:1 / 1,87:1) que não
+  satisfazem 1.4.11 para controle. `RetryButton` (`router.refresh()` em transição) levou
+  "tentar de novo" a `/castelo`, `/guildas`, `/personagens`, `/npcs`, `/teleportes`, `/config` e
+  `/drops`.
+
+- **2026-11-03 (issue 26)** — Relatório de drops no portal: `/drops` com as duas visões do mesmo
+  `Carry[]` (**Por item** e **Por mob**), busca server-side com debounce e mínimo de 2 caracteres
+  (sem filtro o relatório devolve o catálogo inteiro de pares), toggle `include_zero_drop_items`,
+  raridade derivada do **divisor** de `g_pDropRate` (≤1 sempre · ≤100 muito comum · ≤1000 comum ·
+  ≤3000 incomum · resto raro) e export CSV das duas visões. O BFF cacheia por filtro (o catálogo é
+  varrido uma vez no boot do web-api), audita como `drop.byItem`/`drop.byMob` e mantém a guarda de
+  sessão do `adminCall`. `tsc --noEmit` e `next build` 0 com `/drops` em 4,1 kB. Pendente: evidência ao
+  vivo e a conferência manual de 2 templates contra o binário — Docker Desktop não sobe nesta máquina.
+
+- **2026-11-03 (issue 36, aba de flags)** — O tmserver passa a gravar no boot o snapshot das suas 16
+  flags de processo (`server_instance_flags`, migration 0039, via `InstanceFlagsService`), com
+  `restart_required` e o efeito de cada uma; `/config` mostra a tabela acima das taxas e avisa que
+  nenhuma flag é recarregada em runtime. Falha ao gravar é warning, não impede o boot. Verificado por
+  `go build`, `go test` (snapshot ausente → `available=false`; JSON → flag com `restart_required` e
+  `captured_at`) e `tsc`; a validação ao vivo ficou bloqueada pelo Docker.
+
+- **2026-11-03 (issue 43, parcial 2)** — Concessão de item por `delivery_queue` com auditoria
+  (`character_admin_audit`, migration 0035): `GrantItem`/`ListCharacterGrants` no
+  `CharacterAdminService`, `EnqueueItemGrant` (uma linha por unidade) e diálogo de concessão no
+  detalhe do personagem. Verificado executando o store contra o Postgres real (2 linhas + auditoria,
+  removidas depois). Pendente: gold/cash e edição de campo.
+- **2026-11-03 (issue 43, parcial)** — Inspeção de personagem só-leitura: `CharacterAdminService`
+  (`SearchCharacters` por nome/conta; `GetCharacter` com status, skills e inventário com os 3 pares de
+  efeito), store `SearchCharacters`/`LoadCharacterByID`, e `/personagens` + `/personagens/[id]` com busca
+  e tabelas de equipamento/cargo. A escrita (concessão, `SetField`) fica bloqueada por dois achados
+  registrados na issue: `delivery_queue` só drena item (sem gold/cash) e não existe presença online.
+
+- **2026-11-03 (issue 42)** — Rotas de teleporte editáveis: tabela `teleport_route` (migration 0034,
+  origem = tile múltiplo de 4, custo, requisito, ativa, nota) como **overlay** da tabela compilada, que
+  passou a morar em `internal/teleportdata` para o web-api listar/simular sem cópia. `TeleportAdminService`
+  (ListRoutes mesclado, UpsertRoute com normalização + warning, SetRouteEnabled, DeleteRoute,
+  SimulateRoute) e `TeleportConfigService` no dbserver para o tmserver, que publica o snapshot num
+  `atomic.Pointer` e o re-lê a cada 15 s com `W2PP_TELEPORT_EDITING=true` (ordem do RNG e gate
+  fada/Kefra preservados, com teste). `/teleportes` lista as 23 rotas, edita destino/custo/requisito,
+  desativa, volta ao padrão e duplica inverso; `import-teleports` semeia as rotas compiladas.
+
+- **2026-11-03 (issue 41)** — Atlas do mundo: `tmserver/cmd/worldatlas` gera
+  `dist/world-atlas.json` (5 cidades com spawn/limite/arena, 52 regiões do `Regions.txt`, 23 rotas de
+  teleporte, 49 itens fixos do `InitItem.csv`, 6.099 geradores de `NPCGener.txt`, hash das fontes) e
+  `dist/world-map.png` (AttributeMap 512²), lendo as **mesmas** constantes do servidor via
+  `world.AtlasCities()`/`world.AtlasTeleports()`. `/atlas` mostra o mapa com camadas ligáveis,
+  tabelas por camada, "copiar coordenada", destaque de região e export CSV/JSON por camada (401 sem
+  sessão). Sem os artefatos a tela ensina o comando do gerador.
+
+- **2026-11-03 (análise de editabilidade + issues 41–46)** — Levantamento completo do que é editável no
+  servidor em `roadmap/editabilidade.md` (conteúdo de `Release/`, tabelas de overlay, estado vivo e
+  constantes em Go) e o catálogo de áreas do mundo em `roadmap/atlas-mundo.md` (5 cidades com
+  spawn/limite/arena,  52 regiões nomeadas, 23 rotas de teleporte, 49 itens fixos). Abertas seis issues
+  para as lacunas: **41** atlas do mundo com mapa e camadas (gera `world-atlas.json` a partir de código
+  e conteúdo), **42** rotas de teleporte editáveis (overlay + `TeleportAdminService`, preservando o
+  arredondamento `x &^ 3` e a ordem do RNG), **43** inventário/status de personagem (edição só offline,
+  concessão por `delivery_queue`), **44** adds e efeitos de item + refino/combine, **45** guildas,
+  castelo e Kefra, **46** catálogo de skills. O menu do portal já lista as seis telas como "em breve".
+
+- **2026-11-03 (issue 24)** — Preços globais no portal: `/precos` lista os overrides de
+  `item_price` (`ListItemPrices`) com nome, ícone, **preço base do `ItemList.csv`**, preço atual e Δ;
+  "definir preço" usa Combobox do catálogo (o hint do picker já mostra a base) e "remover override"
+  manda `-1` com confirmação inline. Preço é global, explicitado na tela e no diálogo. Base lida do
+  CSV no host (6ª coluna, mesma de `content.ItemList.Prices()`) via `unstable_cache`. Verificado:
+  `SetItemPrice(1234,1500000)` → linha no banco, `-1` → 0 linhas; player recebe 403. Pendências: o
+  backend aceita `item_index` inexistente (não há 422), contagem de chamadas ao catálogo não medida e
+  evidência in-game não feita.
+
+- **2026-11-03 (issue 23)** — Editor de NPC/mercador: `/npcs` lista as 568 definições do overlay
+  (busca por slug/nome/template, filtro "somente ocultos", badges de origem e status), `/npcs/novo` e
+  `/npcs/[id]` com form completo (slug travado na edição, template por Combobox de 228 templates,
+  mapa por zona, posição, rota, tipo de mercador, visibilidade) e a aba **Loja** com 27 slots em 3
+  abas de 9, diff antes de salvar e envio do array completo. Ações de linha: ocultar/mostrar,
+  duplicar (copia a loja) e apagar com confirmação por slug — `CONTENT_OWNED` vira 409 tratado com
+  "ocultar em vez de apagar", não erro interno. `adminCall` passou a **auditar a tentativa negada**
+  (`guardStaff`), corrigindo o 500 que uma conta `player` recebia. Falta a evidência in-game: exige
+  `W2PP_NPC_EDITING=true` e restart do tmserver.
+
+- **2026-11-03 (issue 22)** — Catálogo de itens no portal: `/itens` lista os 3.220 itens do
+  `ItemList.csv` com ícone (ou fallback estável), busca com debounce de 150 ms, chips de slot
+  multi-seleção, filtro de grau, paginação 100/200/500 e `/itens/[index]` com o detalhe completo
+  (inclusive `slot_mask`/`mesh`/`texture`/`icon_key` crus). Catálogo servido por
+  `unstable_cache` na tag `item-catalog`; estados distintos para "web-api fora" e "serviço no ar
+  sem `-content`". Pack de ícones ainda não gerado: a tela roda em fallback.
+
+- **2026-11-03 (issue 21)** — Camada de admin do BFF: `adminCall` passa a ser o caminho único para
+  RPC admin — exige sessão de staff, injeta `moderator_id` **da sessão** (nunca do body), aplica
+  deadline de 10s e mapeia `AdminResult` → HTTP (1→200, 2→403, 3→422, 4→404, **5→409**,
+  0/desconhecido→500) com mensagem acionável; falha de transporte → 502 "serviço de administração
+  indisponível". Toda ação registra auditoria (`accountId, role, action, target, result, status`) no
+  log do processo e, com `AUDIT_LOG_DIR`, em `audit-YYYY-MM-DD.ndjson`. 8 testes de vitest cobrem
+  o mapa; `npm test` entrou no portal.
+
+- **2026-11-03 (issue 40 criada)** — Monitoramento de logs na UI: `/logs` com streaming SSE por
+  serviço (`tmserver`, `dbserver`, `binserver`, `webserver`, `db`) via `docker compose logs -f`
+  a partir do BFF, whitelist fixa de serviços, redação de DSN/segredo, cap de 2000 linhas, pausa/
+  filtro/download e chips de `docker compose ps`. Depende só do shell (20); já aparece no menu como
+  "em breve".
+- **2026-11-03 (issue 20)** — Shell do portal: sidebar gerada por `components/nav.ts` (11 seções,
+  não implementadas com badge "em breve"), header com conta/papel/Sair, e a biblioteca base —
+  `DataTable` (busca, ordenação, 50/100/200), `Form`/`Field`, `Dialog` nativo, `Combobox` com
+  debounce 200ms, `Toast` (`role="status"`), `Badge`, `Tabs`, `Stat`. `/painel` mostra 3.220 itens
+  do catálogo real; `/api/search/items` exige sessão (401 sem cookie).
+- **2026-11-03 (issue 19)** — Login web fechado: `VerifyCredentials` → cookie `wyd_session`
+  HS256 (8h, `HttpOnly`, `SameSite=Lax`), guarda em `(admin)/layout.tsx` + `middleware.ts` nas 12
+  rotas. `test`/`test123` → 200 + cookie e `/npcs` 200; `teste` (player) → `/sem-permissao`;
+  senha errada 401, corpo vazio 422, cookie forjado 307 para `/login`, logout 204 e sessão morta.
+- **2026-11-03 (issue 18)** — `portal/` criado: Next.js 15.5.28 + React 19, cliente gRPC via
+  `@grpc/proto-loader` sobre `api/web/v1/web.proto`, `/api/health` devolvendo
+  `{"ok":true,"items":3220,"catalogVersion":"acce2f7cf63fb856"}` (mesmo `items=3220` do boot do
+  tmserver). `tsc --noEmit` e `next build` exit 0. Stack: `webserver` Up em `:7600`.
+- **2026-11-03** — Fase 6 aberta: 22 issues (18–39) e a skill `wyd-web-admin-ui` definem o
+  portal web de administração (Next.js como BFF do gRPC `webserver`), cobrindo telas sobre contratos
+  existentes (NPC, mob, item, drop, mapa, eventos, loja, faturamento) e os contratos que faltam
+  (contas/papéis, catálogo editável, drops, EXP, rates, spawns, live ops), até o QA final.
+  Login do cliente validado nesta sessão (`test`/`Cantarelli`, `role=admin`).
+- **2026-11-02 (sessão 2)** — Stack no ar: build serializado resolveu a queda do daemon; `db`/`binserver`/
+  `dbserver`/`webserver`/`tmserver` Up; migrações até `0033_save_celestial`; contas `test` e `test2`
+  semeadas (argon2id, `role=player`, 0 personagens). Boot: `items=3220 skills=151`, `grid dim=4096`,
+  `classes=4`, `layouts.loaded=620` (0 rejeitados), `mobs=11930`, `merchant_blocks_skipped=0`,
+  `world items=49`. Status `:80` → 200 (30 bytes) e TCP `:8281` aberto. **Login headless OK**
+  (`CNFAccountLogin`, `body=1996`). Pendente: cliente gráfico (05/06/07) e criação de personagem (08).
+- **2026-11-02** — Roadmap criado. Issue 01 concluída (restauração do working tree e validação da
+  árvore de conteúdo). Issue 14 v1 concluída (AGENTS.md + 6 skills). Build Docker tentado: o daemon
+  caiu durante o `COPY . .` e passou a responder `Docker Desktop is unable to start`; Docker Desktop
+  foi reiniciado e continuou indisponível — 02/03/04 abertas e bloqueadas no host, não no código.
