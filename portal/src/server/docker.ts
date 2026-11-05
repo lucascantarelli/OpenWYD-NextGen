@@ -23,6 +23,7 @@ const run = promisify(execFile);
 /** Whitelist única: nada de serviço vindo do cliente sem validação. */
 export const SERVICES = [
   "tmserver",
+  "tmserver2",
   "dbserver",
   "binserver",
   "webserver",

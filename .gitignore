@@ -300,3 +300,6 @@ ModelManifest.xml
 
 # Issue 56: serverlist.bin gerado com IP privado nunca entra no git.
 serverlist bin/**/*.bin
+
+# serverlist.bin gerado com IP privado — nunca versionar
+dist/serverlist/

@@ -40,7 +40,7 @@ import (
 )
 
 // known é a whitelist única. Nada fora dela é lido, mesmo que exista container.
-var known = []string{"tmserver", "dbserver", "binserver", "webserver", "db", "portal"}
+var known = []string{"tmserver", "tmserver2", "dbserver", "binserver", "webserver", "db", "portal"}
 
 var sincePattern = regexp.MustCompile(`^\d{1,4}[smh]$`)
 

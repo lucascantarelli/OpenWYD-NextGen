@@ -8,6 +8,7 @@ import { Tabs } from "@/components/Tabs";
 const TABS = [
   { id: "all", label: "Tudo" },
   { id: "tmserver", label: "tmserver" },
+  { id: "tmserver2", label: "tmserver2" },
   { id: "dbserver", label: "dbserver" },
   { id: "binserver", label: "binserver" },
   { id: "webserver", label: "webserver" },
