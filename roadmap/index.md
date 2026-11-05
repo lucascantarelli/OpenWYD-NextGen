@@ -81,6 +81,30 @@ fecha issue rápido (teste real no cliente) e termina na faxina que depende de t
 Regra: uma REVIEW só começa quando a anterior tem evidência registrada — cada uma abre issues
 filhas que podem ser executadas em paralelo **dentro** dela, nunca fora de ordem.
 
+
+## Execução da revisão (05/11/2026)
+
+A série REVIEW foi executada com medição no próprio checkout: cada achado virou issue filha com
+número medido e comando de verificação, e o que já estava resolvido ficou registrado como evidência.
+
+| Achado (medido em 05/11/2026) | Número | Issue |
+|---|---|---|
+| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) 🟡 |
+| `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
+| Comentário em inglês / citação de issue dentro do código | 187 / 80 arquivos | [REFACTOR-03](issues/REFACTOR-03.md) |
+| `t.Skip` escondendo teste | 43 em 17 arquivos | [TEST-01](issues/TEST-01.md) |
+| Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
+| Sem `make ci` nem workflow reutilizável | 0 alvo `ci`, 21 alvos | [CI-01](issues/CI-01.md) |
+| Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
+| Postgres acessado só como superusuário; sem restore testado | DSN linhas 34/58 | [DB-01](issues/DB-01.md) |
+| Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
+| Sem hub de documentação/ADRs | 283 `.md`, 0 mkdocs, 0 ADR | [DOC-01](issues/DOC-01.md) |
+| Leitura do portal sem middleware default-deny | 0 `middleware.ts` | [PORTAL-01](issues/PORTAL-01.md) |
+| Definition of Done espalhada em três documentos | — | [CLEAN-05](issues/CLEAN-05.md) |
+| Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
+
+Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
+de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.
 ## Fases e issues
 
 ### Fase 0 — Fundação: ambiente, conteúdo e banco
