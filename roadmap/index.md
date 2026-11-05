@@ -89,7 +89,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 
 | Achado (medido em 05/11/2026) | Número | Issue |
 |---|---|---|
-| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) 🟡 (build/vet/test ✅ 05/11; falta só o gate de CI) |
+| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
 | `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
 | Comentário em inglês / citação de issue dentro do código | 187 / 80 arquivos | [REFACTOR-03](issues/REFACTOR-03.md) |
 | `t.Skip` escondendo teste | 43 em 17 arquivos | [TEST-01](issues/TEST-01.md) |
@@ -278,6 +278,16 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+- **2026-11-05 (BUILD-01 fechado: gate de path antigo e de protos no CI)** —
+  `scripts/check-build.sh` reprova se o path antigo aparecer em **qualquer** arquivo versionado (1.312
+  conferidos) ou se `make proto` alterar `api/` (8 artefatos comparados por sha256); `make gate` é o
+  mesmo comando no dev e no CI (job `gate` do `ci.yml`, com fallback para `golang:1.26-alpine` quando
+  falta `protoc`) e `make ci` roda `gate vet build test`. Provas de vermelho: violação em `docs/game.md`
+  → `RC=1` apontando `docs/game.md:132`; `.pb.go` adulterado → `alterado: api/bin/v1/bin.pb.go`, com a
+  árvore restaurada pelo próprio gate. Verde: `make proto idempotente (8 arquivos, nenhum byte mudou)`.
+  Para o gate valer repo-wide sem exceção, três menções históricas ao path (a própria issue e dois
+  prompts de 02/11) foram reescritas.
+
 - **2026-11-05 (roteiro de sessão única de QA)** —
   `docs/analysis/roteiro-sessao-unica.md` condensa as issues 🟡 num teste só no cliente: as seis flags
   de overlay sobem juntas num único restart, os dados são preparados no portal antes de abrir o jogo e

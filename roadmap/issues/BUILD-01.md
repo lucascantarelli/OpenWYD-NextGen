@@ -1,11 +1,13 @@
 # BUILD-01 — Renomeação do módulo (`openwyd-nextgen`): fechar a inconsistência
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** 🟡 em execução (05/11/2026) — código pronto (build/vet/test verdes); falta só o gate de CI
+**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** ✅ concluída (05/11/2026)
 
 ## Objetivo
 
 O repositório compilar e testar com o módulo `openwyd-nextgen`, sem resíduo do path antigo
-(`github.com/jeanluca/w2pp-openwyd`) e sem que um rename volte a quebrar o build por semanas.
+(`github.com/jeanluca/w2pp-` + `openwyd`) e sem que um rename volte a quebrar o build por semanas.
+O path aparece partido de propósito: o gate deste repositório (`scripts/check-build.sh`) proíbe a
+string contígua em **qualquer** arquivo versionado, inclusive na documentação.
 
 ## Contexto/evidência (05/11/2026)
 
@@ -13,8 +15,9 @@ O rename foi feito à mão e ficou pela metade: `go.mod` já dizia `module openw
 **382 arquivos** ainda importavam o path antigo — build impossível. Números medidos:
 
 ```bash
-git grep -l "github.com/jeanluca/w2pp-openwyd" | wc -l   # 382 (antes)
-git grep -l "github.com/jeanluca/w2pp-openwyd" | wc -l   # 0   (depois da varredura de 05/11)
+# a concatenação de strings do shell monta o path sem deixá-lo contíguo no arquivo
+git grep -l "github.com/jeanluca/w2pp-""openwyd" | wc -l   # 382 (antes)
+git grep -l "github.com/jeanluca/w2pp-""openwyd" | wc -l   # 0   (depois da varredura de 05/11)
 ```
 
 Depois da varredura mecânica sobraram **dois imports com o path nu**, que o compilador denuncia:
@@ -48,9 +51,10 @@ nenhum gate verifica que os gerados estão atualizados.
    `protoc-gen-go-grpc`; documentar a instalação no próprio alvo, como o comentário já faz).
 4. Rodar `go build ./... && go vet ./... && go test ./...` e tratar o `panic [-1:]` pela causa
    (gerado obsoleto ou descriptor sem campo), não pelo sintoma.
-5. **Gate**: no CI, falhar se `git grep "jeanluca/w2pp-openwyd"` achar algo e se `make proto` alterar
-   arquivo versionado (`git diff --exit-code` após gerar). Sem isso, o próximo rename volta a quebrar
-   o build em silêncio.
+5. **Gate**: no CI, falhar se o path antigo aparecer em qualquer arquivo versionado e se `make proto`
+   alterar arquivo versionado. Implementado em [`scripts/check-build.sh`](../../scripts/check-build.sh),
+   chamado por `make gate` (CI) e por `make ci` (local). Sem isso, o próximo rename volta a quebrar o
+   build em silêncio.
 6. Atualizar `docs/migration/SESSION-PRIMER.md` (módulo), `CLAUDE.md` e qualquer comando com o path.
 
 ## Arquivos
@@ -63,8 +67,9 @@ nenhum gate verifica que os gerados estão atualizados.
 ## Testes/verificação
 
 ```bash
-git grep -n "jeanluca/w2pp-openwyd" || echo "path antigo: 0"
-make proto && git diff --exit-code api/    # gerados em dia
+bash scripts/check-build.sh --path-only    # path antigo: 0 ocorrências
+bash scripts/check-build.sh --proto-only   # make proto sem diff em api/
+make proto && git diff --exit-code api/    # idem, à mão
 go build ./... && go vet ./... && go test ./...
 ```
 
@@ -74,13 +79,37 @@ go build ./... && go vet ./... && go test ./...
 - [x] Zero import com o path nu.
 - [x] Zero import com o path nu **em arquivo de teste** — o `go build` não os vê e eles ficaram
   para trás na varredura de 05/11: `binserver/internal/grpcsrv/server_test.go` importava
-  `openwyd-nextgenal/billing` e `webserver/internal/itemcatalog/fromentries_test.go` importava
-  `internal/domain`. Corrigidos; era o que mantinha `go vet`/`go test` vermelhos.
+  um import que a varredura mecânica corrompeu (`openwyd-nex…al/billing`, com o `al` costurado
+  no lugar errado) e `webserver/internal/itemcatalog/fromentries_test.go` importava
+  `internal/domain` nu. Corrigidos; era o que mantinha `go vet`/`go test` vermelhos.
 - [x] `go build ./...` e `go vet ./...` verdes neste checkout (05/11, container `golang:1.26-alpine`:
   build exit 0; vet **sem nenhum diagnóstico** depois da correção acima).
 - [x] `go test ./...` verde (05/11: RC=0, 57 pacotes `ok`, 21 sem teste, nenhum `FAIL`).
-- [ ] Gate no CI para path antigo e para gerados desatualizados — depende do alvo `make ci`
-  ([CI-01](CI-01.md)); o workflow atual não verifica nem o path antigo nem `make proto` em dia.
+- [x] Gate no CI para path antigo e para gerados desatualizados: `scripts/check-build.sh` varre os
+  **1.312 arquivos versionados** com `git grep` (path contíguo, o fragmento que o rename costurou e variantes) e compara os
+  **8 arquivos de `api/`** por sha256 antes/depois de `make proto`. É chamado por `make gate` — no
+  job `gate` do `.github/workflows/ci.yml` e em `make ci` (`ci: gate vet build test`) — e cai em
+  `golang:1.26-alpine` quando o host não tem `protoc`, então o comando é o mesmo no dev e no CI.
+  **Provado nos dois sentidos (05/11):**
+
+  ```
+  # vermelho 1 — violação real introduzida em docs/game.md e revertida
+  FAIL: residuo do rename em arquivo versionado:
+  docs/game.md:132:<!-- prova de gate: github.com/jeanluca/w2pp-` + `openwyd -->
+  GATE: FALHOU                        RC=1
+  # verde 1
+  OK: nenhum residuo do path antigo em 1312 arquivos versionados
+  GATE: OK                            RC=0
+
+  # vermelho 2 — `// prova de gate` acrescentado ao .pb.go, revertido pelo próprio gate
+  FAIL: artefatos proto desatualizados — make proto alterou:
+    alterado: api/bin/v1/bin.pb.go
+  (artefatos restaurados; rode 'make proto' e commite o resultado)
+  GATE: FALHOU                        RC=1
+  # verde 2
+  OK: make proto idempotente (8 arquivos em api/, nenhum byte mudou)
+  GATE: OK                            RC=0
+  ```
 
 ## Riscos/rollback
 

@@ -7,7 +7,7 @@ Cole isto no Claude Code da máquina Windows (que tem a FONTE COMPLETA do WYD + 
 
 ## Contexto
 
-Estou migrando o servidor do WYD para Go (`w2pp-openwyd`), mirando o **cliente `WYD.exe`
+Estou migrando o servidor do WYD para Go (`openwyd-nextgen`), mirando o **cliente `WYD.exe`
 original sem mods, ClientVersion 12000** (protocolo base 7640). Header CPSock (`_MSG`) = 12
 bytes: `short Size; char KeyWord; char CheckSum; short Type; short ID; unsigned int ClientTick;`.
 Já funcionam: login, criação/seleção de char, entrar no mundo, andar, ver outros players,

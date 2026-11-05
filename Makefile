@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate ci
 
 build:
 	go build ./...
@@ -26,6 +26,15 @@ item-icons:
 # writes every returned URL to docs/audits/item-icons-upload-<version>.json.
 item-icons-publish:
 	sh ./scripts/upload-item-icons-storage-manager.sh
+
+# Gate do BUILD-01: resíduo do rename (qualquer arquivo versionado) e artefatos proto
+# em dia. Sem `protoc` no host o script cai no container golang:1.26-alpine, então o
+# comando é o mesmo na máquina do dev e no CI.
+gate:
+	bash scripts/check-build.sh
+
+# O que o CI precisa, na ordem: o gate falha rápido e as três etapas provam o build.
+ci: gate vet build test
 
 test:
 	go test -race -cover ./...

@@ -46,6 +46,18 @@ jobs:
       - name: Test
         run: go test -race -cover ./...
 
+  # BUILD-01: reprova se o path antigo do módulo voltar a algum arquivo versionado
+  # ou se `make proto` alterar os artefatos commitados. É o mesmo comando que o dev
+  # roda (`make gate`); sem protoc no runner, o script usa golang:1.26-alpine.
+  gate:
+    name: Module & proto gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: make gate
+        run: make gate
+
   lint:
     name: Lint
     runs-on: ubuntu-24.04
