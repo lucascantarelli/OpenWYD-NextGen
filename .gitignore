@@ -297,3 +297,6 @@ ModelManifest.xml
 
 # Staging local do squash de migrations (issue 58): o histórico pre-squash vive no git.
 /internal/migrations/_archived/
+
+# Issue 56: serverlist.bin gerado com IP privado nunca entra no git.
+serverlist bin/**/*.bin

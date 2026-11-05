@@ -21,7 +21,7 @@ save.
 | `Release/Common/Settings/QuestsRate.txt` | taxas de quest | `content.QuestRates` |
 | `Release/Common/Settings/CastleQuest.txt` | quests de castelo/Zakum | `content.CastleQuest` |
 | `Release/Common/Settings/MobMerc.txt` | mercadores de mob | loaders de conteúdo |
-| `Release/TMsrv/run/ItemDropList.txt` | tabela de drop | `loot` |
+| `npc_template.Carry[]` (banco) | tabela de drop | `loot` · telas `/drops`, `/drops/carry` |
 | `Release/TMsrv/run/LevelItem.txt` | itens por nível | progressão |
 | `Release/TMsrv/run/gameconfig.txt` | `double`, `deadpoint`, `partybonus`, `partydif`, matriz 8×8 de bônus de drop, `DropItem`, `PotionDelay`, `maxNightmare`, horas de GTorre/RVR/BR | mapeado para flags (ver `docs/migration/config-ops.md`) |
 | `npc_template` (Postgres) | template de mob/NPC (816 B) — inclui `Exp`, nível, clan, merchant, equip-modelo | gRPC do dbServer; seed em `seed_npc_template.up.sql` |
@@ -86,7 +86,7 @@ por nível → `MSG_UpdateScore`.
 
 ## 6. Drops
 
-- `loot` consome `ItemDropList.txt` + bônus por slot da matriz 8×8 do `gameconfig.txt`
+- `loot` consome o `Carry[]` do template (banco) + bônus por slot da matriz 8×8 do `gameconfig.txt`; o relatório item↔mob é a tela `/drops`, não um arquivo
   (`g_pDropBonus`), com paridade de RNG (ordem de chamadas do LCG).
 - `DropItem 0` no `gameconfig` **desliga** drop de item — se "nada cai" e o gold cai, comece por aí.
 - A recompensa de kill é server-authoritative e testada com golden cases (`loot`/`combat`). Mudar

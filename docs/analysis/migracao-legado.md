@@ -11,7 +11,7 @@ código Go e os documentos de engenharia reversa (`docs/migration/`, 58/58 handl
 | `DBSrv` | 12 | persistência em arquivos `account/<Key>/<NOME>` | **substituído** por Postgres (`dbserver` + `internal/store`), com conversor one-shot | 46 tabelas, 49 `.up.sql`, `dbserver convert` |
 | `BISrv` | 7 | billing (`_AUTH_GAME`, 196 B, layout UNVERIFIED) | **reescrito do zero** (`binserver`, allow-all por padrão) | `api/bin/v1`, `binserver/` (5 arquivos) |
 | `ClientPatch_v7662` | 5 | patch do cliente: checksum off, força-gráficos, `SkillDelay/4`, título | **não portável** (roda dentro do cliente Windows) | `docs/migration/client-patch-hooks.md`; `client/ClientPatch.dll` |
-| `DropTool` | 2 | gera `ItemDropList.txt` (relatório inverso) | **substituído** por `/drops` e `/drops/carry` | issue 34, `DropAdminService` |
+| `DropTool` (`Source/Code/_legacy/DropTool/`) | 2 | gera `ItemDropList.txt` (relatório inverso) | **substituído** por `/drops` e `/drops/carry` | issue 34, `DropAdminService` |
 | `ExpTool` | 2 | recalcula EXP dos templates pela curva | **substituído** por `/mobs` (stats) e pela curva em `game-rules.md` | issue 25 |
 | `NPTool` | 7 | edita `NPCGener.txt` (spawn) | **substituído** por `/npcs` (definições) — spawn ainda é arquivo (issue 37) | issues 23, 37 |
 | `EDITAPPMOB` | 5 | edita template de mob (816 B) | **substituído** por `/mobs/[template]` (stats + `Equip[]`) | issues 25, 34 |

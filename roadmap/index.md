@@ -174,12 +174,12 @@ evidência humana, depois o risco estrutural, depois produto.
 | 53 | [Feedback dos jogadores](issues/issue-53.md) — bug/sugestão no portal | ⏳ | M |
 | 54 | [Hub de documentação, ADRs e runbooks](issues/issue-54.md) | ⏳ | M |
 | 55 | [Qualidade: CI, banco efêmero e observabilidade](issues/issue-55.md) | ⏳ | L |
-| 56 | [Limpeza do repositório e legado arquivado](issues/issue-56.md) | ⏳ | S |
+| 56 | [Limpeza do repositório e legado arquivado](issues/issue-56.md) | ✅ (05/11: artefatos, openspec arquivado, skills unificadas) | S |
 | 57 | [NPCs: migrar todos os blocos e dropar `NPCGener.txt`](issues/issue-57.md) | ✅ | L |
 | 58 | [Baseline do banco: uma inicialização completa, sem arquivos de conteúdo](issues/issue-58.md) | ✅ | L |
 | 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
 | 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
-| 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ⏳ | S |
+| 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ✅ (05/11: `ItemDropList.txt` 242 KB removido, DropTool em `_legacy`) | S |
 | 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](issues/issue-62.md) — resíduo da fase 5 | ⏳ | M |
 
 Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do

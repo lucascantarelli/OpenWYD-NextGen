@@ -20,7 +20,7 @@ cliente Windows usado para conectar — tudo num único repositório.
 | `Release/` | Árvore de conteúdo do jogo (catálogos, NPCs, mapas, rates) | Dados |
 | `Source/` | Fontes C++ legados, referência de wire/format/gameplay | C++ |
 | `docs/` | Engenharia reversa (`docs/migration/`), integrações e planos | Markdown |
-| `.agents/skills/` | Skills de operação/desenvolvimento (WYD + openspec + UI) | Markdown |
+| `.agents/skills/` | Skills de operação/desenvolvimento (WYD + UI) | Markdown |
 
 O objetivo: **servidor local do WYD2 operacional, com login pelo cliente modificado, personagens,
 batalha, comércio e quests funcionando**, mais uma camada de automação por IA para administrar e
@@ -110,7 +110,7 @@ conteúdo externa (backup).
 Release/Common/            serv00.htm, serverlist.txt,
                            Settings/{CompRate,SancRate,QuestsRate,CastleQuest,MobMerc}.txt
 Release/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
-                           ItemDropList.txt, HeightMap.dat (16 MiB, 4096²),
+                           HeightMap.dat (16 MiB, 4096²),
                            AttributeMap.dat (1 MiB, 1024²)
 Release/DBsrv/run/BaseMob/ {TK,FM,BM,HT} — template por classe (816 B) com equip inicial
 Release/TMsrv/run/BaseSummon/ templates de invocação do BM
@@ -189,7 +189,7 @@ essa marcação em vez de tratá-la como fato.
 | `wyd-testing-bots` | testes e2e headless, harness de protocolo, bots e carga |
 | `wyd-web-admin-ui` | construir ou alterar o portal (telas, BFF gRPC, sessão/papéis, overlays) |
 | `frontend-design`, `ui-ux-practices` | direção visual e revisão de UI/UX do portal |
-| `openspec-*` | fluxo de propostas/mudanças do openspec |
+| ~~`openspec-*`~~ | arquivado em `docs/archive/openspec/`; o plano vive no `roadmap/` |
 
 ## 8. Convenções de trabalho
 

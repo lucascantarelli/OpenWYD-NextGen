@@ -161,7 +161,7 @@ Parseado posicionalmente por seção. Campos confirmados (valores do exemplo):
 ### 2.5. Conteúdo / regras (referência cruzada)
 
 Carregados na inicialização (detalhados nas Fases 2 e 4): `ItemList.csv/.bin`, `SkillData.csv`,
-`NPCGener.txt`, `HeightMap.dat`, `AttributeMap.dat`, `ItemDropList.txt`, `LevelItem.txt`,
+`NPCGener.txt`, `HeightMap.dat`, `AttributeMap.dat`, `LevelItem.txt`,
 `Regions.txt`, `Guard.txt`, `InitItem.csv`, `QuestDiaria.txt`, `Language.txt`, e
 `Settings/{CompRate,SancRate,CastleQuest,QuestsRate,MobMerc}.txt`.
 

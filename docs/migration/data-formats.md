@@ -536,7 +536,7 @@ parsing exato na Fase 4 (AI/spawn).
 | `data00.csv` | Common | CSV temporal | série tempo (ranking grind por hora? `2021_01_15_07,0,0,...`) — **UNVERIFIED** |
 | `extraitem.bin` / `extraitem.csv` | Common / TMsrv | bin/CSV | itens extras (cash/eventos); `.bin` em runtime |
 | `InitItem.csv` | TMsrv | CSV `STRUCT_INITITEM` | itens iniciais por classe (`PosX,PosY,ItemIndex,Rotate`) |
-| `ItemDropList.txt` | TMsrv (~240 KB) | TXT | tabela de drop por mob (ver Fase 4) |
+| `ItemDropList.txt` | — (removido) | TXT | **artefato** do DropTool; o drop real é o `Carry[]` + `DropRate[64]` (telas `/drops`) |
 | `LevelItem.txt` | TMsrv (~17 KB) | TXT | itens por nível (drop/recompensa) |
 | `Guard.txt` | TMsrv | TXT | NPCs guarda (`STRUCT_NPC_GUARD`) |
 | `Regions.txt` | TMsrv | TXT `x1,y1,x2,y2 = Nome` | regiões nomeadas (guerra, RvR, cidades) |
