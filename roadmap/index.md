@@ -128,6 +128,23 @@ Cada linha é medida no servidor (log/SQL), não é impressão do cliente:
 O que já foi corrigido na mesma sessão: a flag `W2PP_MOB_CARRY_EDITING` passou a ser repassada pelo
 compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi reposicionado e a conta
 `test2` (papel `player`) foi criada para o teste de duas janelas.
+
+### Segunda rodada (05/11/2026, à tarde)
+
+| Passo | Resultado medido | Destino |
+|---|---|---|
+| C — NPC e preço | `qa-ferreiro` apareceu ao lado do spawn; o item 907 sai por **30000**, que é o `item_catalog.price` (a tabela `npc_shop_item` não tem coluna de preço, então o preço não é editável por NPC) | roteiro |
+| D — mob alvo | Troll morto várias vezes fora da cidade, **412 sempre no drop** | ✅ QA-02 corrigido |
+| E — refino com Ori | Para em **+6**: limite fixo no código (`oriMaxSanc`), não é tabela — `SancRate` em 100 não o move | ✅ regra legada |
+| E.1 — outro pó | Levou o item a **+9** | ✅ |
+| E.2 — AC do refino | Túnica de pano +9: defesa **149 → 189** | ✅ |
+| E.3 — dano do refino | Arco curto +9: ataque **69 → 118** | ✅ |
+| E.4 — mensagens | Nenhum texto de sucesso/falha/limite aparecia: o painel ia com `HEADER.ID = conn` e o cliente 7662 descarta ID ≠ 0 | ✅ corrigido em `refine_feedback.go` |
+| F — `/kefra` | Funcionou | ✅ |
+| H — `/atlas` | Nada acontece: **não é comando in-game**, é a página `/atlas` do portal | roteiro corrigido |
+| Trava/grupo | Sem segunda sessão simultânea, não há como abrir janela de troca nem convidar | a retestar com `test2` |
+| Guilda | `/create` exige clã 7/8 + cidadania, e nada no servidor concede nenhum dos dois | [QA-05](issues/QA-05.md) |
+| Duelo | Teleporte para a arena PvP, funcionou | ✅ issue-118 |
 ## Fases e issues
 
 ### Fase 0 — Fundação: ambiente, conteúdo e banco

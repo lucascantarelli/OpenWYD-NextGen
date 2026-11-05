@@ -28,8 +28,14 @@ const (
 // sendRefineMessage uses the same MSG_MessagePanel wire shape as the legacy
 // SendClientMessage function. Notice's MessageBoxOk body is only a placeholder
 // and is not understood as text by the unmodified 7662 client.
+//
+// HEADER.ID must be 0, not the session's own conn: w.Send stamps s.Conn, and the
+// 7662 client only handles a message panel whose ID is 0 (TMScene.cpp:1371), so
+// every refine text was silently dropped in game (QA 05/11 — success, failure,
+// "can't refine more" and the Ori +6 wall all invisible). Same shape as
+// sendClientMessage in notice.go.
 func (d *Dispatcher) sendRefineMessage(w *world.World, s *world.Session, message string) {
-	w.Send(s, protocol.MsgMessagePanel, protocol.EncodeMessagePanelBody(message))
+	w.SendTo(s, protocol.Header{Type: protocol.MsgMessagePanel}, protocol.EncodeMessagePanelBody(message))
 }
 
 // sendRefineMotion reproduces SendEmotion: the player and everyone in view see

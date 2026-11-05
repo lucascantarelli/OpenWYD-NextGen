@@ -298,9 +298,38 @@ conta `test2` (papel `player`, mesma senha) para o teste de duas janelas.
 
 ### O que dá para retestar agora, sem reiniciar mais nada
 
-1. **C** — andar até o spawn de Armia e abrir o `qa-ferreiro` em (2098,2093): preço 12345 no item 907.
+1. **C** — andar até o spawn de Armia e abrir o `qa-ferreiro` em (2098,2093): o item 907 aparece por
+   **30000**. Esse é o `item_catalog.price` real: `npc_shop_item` não tem coluna de preço, então a
+   preparação de 12345 não tinha onde gravar. O preço não é editável por NPC hoje.
 2. **D** — matar **Troll fora da cidade** (a partir de 2454,1836): drop garantido de 412 (carry do Troll)
    e a frequência do slot 12 com divisor 4. Mobs **dentro** da aldeia continuam pacíficos por design.
 3. **E (resto)** — refino com `SancRate` PO em 100 e o AC +60 da `Armadura_Couro_Duro` (1116): nenhum
    dos dois usa o `/gm item` com quantidade.
 4. **F..J** — ficha, imposto/Kefra, atlas, duas janelas (conta `test2`) e persistência.
+
+## Segunda execução (05/11/2026, tarde)
+
+| Passo | Resultado |
+|---|---|
+| C — NPC e preço | `qa-ferreiro` ao lado do spawn; 907 por **30000** (preço do catálogo) |
+| D — mob alvo | Troll fora da cidade: **412 cai sempre**, várias mortes |
+| E — refino com Ori | para em **+6** (limite do código, `oriMaxSanc`); outro pó levou a +9 |
+| E.2/E.3 | túnica de pano +9: defesa 149 → 189; arco curto +9: ataque 69 → 118 |
+| E.4 | **nenhuma** mensagem de refino aparecia no cliente |
+| F — `/kefra` | ok |
+| H — `/atlas` | nada acontece — não é comando in-game |
+| Troca e grupo | sem segunda sessão simultânea não dá para testar |
+| Guilda | `/create` exige clã 7/8 + cidadania; nada concede → QA-05 |
+| Duelo | teleporte para a arena PvP, ok |
+
+### Correções desta rodada
+
+1. **Mensagens de refino (E.4).** `sendRefineMessage` mandava o `MSG_MessagePanel` por `w.Send`, que
+   carimba `HEADER.ID = conn`; o cliente 7662 só trata painel com `ID = 0` (`TMScene.cpp:1371`) — o
+   mesmo motivo já documentado em `notice.go` para `sendClientMessage`. Passou a usar
+   `SendTo(Header{Type: MsgMessagePanel})`. Isso cobre sucesso, falha, "não pode ser mais refinado"
+   (inclusive o muro do Ori em +6) e as recusas do Classe.
+2. **Atlas.** `/atlas` é a página do portal, não um comando do cliente; o passo H deve ser lido assim.
+   Um `/atlas` digitado no jogo cai como whisper para o jogador "atlas" e não mostra nada.
+3. **Troca e grupo exigem duas sessões.** `_MSG_Trade`/`_MSG_SendReqParty` agem sobre o outro jogador;
+   com um cliente só, o convite não tem alvo. O teste é o passo I (duas janelas), com `test2`.
