@@ -27,7 +27,10 @@ pronto" do roadmap.
    `make portal-test portal-build`.
 3. Executar a fila na ordem de [`docs/analysis/roteiros-qa.md`](../../docs/analysis/roteiros-qa.md)
    (SQL de preparação + passos no cliente + captura), uma issue por vez, anexando evidência no arquivo
-   da issue.
+   da issue. Para não repetir login e restart por issue, o caminho curto é
+   [`docs/analysis/roteiro-sessao-unica.md`](../../docs/analysis/roteiro-sessao-unica.md): as seis flags
+   de overlay sobem juntas num restart só e a sessão cobre 24, 25, 34, 36, 44, 45, 48, 28 e 30, além
+   de 08/09/10/11/12/13.
 4. Cada falha vira linha em `docs/migration/ingame-bugs.md` (prioridade, causa provável, o que falta) e
    **não** fecha a issue.
 5. Ao final, atualizar `roadmap/index.md` (linhas 05–48 afetadas) e o changelog.

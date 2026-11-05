@@ -1,6 +1,6 @@
 # BUILD-01 — Renomeação do módulo (`openwyd-nextgen`): fechar a inconsistência
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** 🟡 em execução (05/11/2026)
+**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** 🟡 em execução (05/11/2026) — código pronto (build/vet/test verdes); falta só o gate de CI
 
 ## Objetivo
 
@@ -72,9 +72,15 @@ go build ./... && go vet ./... && go test ./...
 
 - [x] Zero ocorrência do path antigo no repositório.
 - [x] Zero import com o path nu.
-- [ ] `go build ./...` e `go vet ./...` verdes neste checkout.
-- [ ] `go test ./...` verde (ou falhas explicadas com issue filha).
-- [ ] Gate no CI para path antigo e para gerados desatualizados.
+- [x] Zero import com o path nu **em arquivo de teste** — o `go build` não os vê e eles ficaram
+  para trás na varredura de 05/11: `binserver/internal/grpcsrv/server_test.go` importava
+  `openwyd-nextgenal/billing` e `webserver/internal/itemcatalog/fromentries_test.go` importava
+  `internal/domain`. Corrigidos; era o que mantinha `go vet`/`go test` vermelhos.
+- [x] `go build ./...` e `go vet ./...` verdes neste checkout (05/11, container `golang:1.26-alpine`:
+  build exit 0; vet **sem nenhum diagnóstico** depois da correção acima).
+- [x] `go test ./...` verde (05/11: RC=0, 57 pacotes `ok`, 21 sem teste, nenhum `FAIL`).
+- [ ] Gate no CI para path antigo e para gerados desatualizados — depende do alvo `make ci`
+  ([CI-01](CI-01.md)); o workflow atual não verifica nem o path antigo nem `make proto` em dia.
 
 ## Riscos/rollback
 

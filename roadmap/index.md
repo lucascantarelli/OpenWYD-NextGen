@@ -89,7 +89,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 
 | Achado (medido em 05/11/2026) | Número | Issue |
 |---|---|---|
-| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) 🟡 |
+| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) 🟡 (build/vet/test ✅ 05/11; falta só o gate de CI) |
 | `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
 | Comentário em inglês / citação de issue dentro do código | 187 / 80 arquivos | [REFACTOR-03](issues/REFACTOR-03.md) |
 | `t.Skip` escondendo teste | 43 em 17 arquivos | [TEST-01](issues/TEST-01.md) |
@@ -278,6 +278,13 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+- **2026-11-05 (roteiro de sessão única de QA)** —
+  `docs/analysis/roteiro-sessao-unica.md` condensa as issues 🟡 num teste só no cliente: as seis flags
+  de overlay sobem juntas num único restart, os dados são preparados no portal antes de abrir o jogo e
+  a sessão prova **24, 25, 34, 36, 44, 45, 48, 28 e 30**, além de 08/09 (criação e persistência) e das
+  fatias observáveis de 10/11/12/13. O que não fecha por falta de código (33, 35, 37, 38, 43, 46) está
+  listado no próprio roteiro para não virar pendência informal.
+
 - **2026-11-05 (ferramentas C++ substituídas arquivadas)** — `ExpTool`, `NPTool`, `EDITAPPMOB`,
   `EDITAPPSHOP`, `SearchPass`, `ZerarSkill` e `AttributeMap_Editor` saíram de `Source/Code/` para
   `Source/Code/_legacy/` (onde o `DropTool` já estava desde a issue 61), com README que mapeia cada
