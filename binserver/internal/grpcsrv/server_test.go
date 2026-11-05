@@ -7,7 +7,7 @@ import (
 
 	binv1 "openwyd-nextgen/api/bin/v1"
 
-	"openwyd-nextgenal/billing"
+	"openwyd-nextgen/binserver/internal/billing"
 )
 
 func TestCheckBilling(t *testing.T) {

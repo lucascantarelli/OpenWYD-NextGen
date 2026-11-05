@@ -3,7 +3,7 @@ package itemcatalog
 import (
 	"testing"
 
-	"internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // TestFromEntriesMapsDatabaseRows guards the database → web shape conversion that
