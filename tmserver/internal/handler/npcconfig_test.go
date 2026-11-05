@@ -60,10 +60,11 @@ func TestApplyNPCConfigSpawnsMerchant(t *testing.T) {
 	}
 	d.applyNPCConfig(w, snap, false)
 
-	id, ok := d.managedNPCs["shop-1"]
+	m, ok := d.managedNPCs["shop-1"]
 	if !ok {
 		t.Fatal("managed NPC not registered")
 	}
+	id := m.id
 	e := w.Entity(id)
 	if e == nil {
 		t.Fatal("managed NPC entity missing")
@@ -121,11 +122,11 @@ func TestApplyNPCConfigDisplayNameFallbackAndSharedTemplate(t *testing.T) {
 		"named-b":  "Alquimista",
 		"fallback": "Default",
 	} {
-		id, ok := d.managedNPCs[slug]
+		m, ok := d.managedNPCs[slug]
 		if !ok {
 			t.Fatalf("%s not spawned", slug)
 		}
-		if got := w.Entity(id).Name; got != want {
+		if got := w.Entity(m.id).Name; got != want {
 			t.Errorf("%s name = %q, want %q", slug, got, want)
 		}
 	}
@@ -147,7 +148,7 @@ func TestApplyNPCConfigReconcile(t *testing.T) {
 		}},
 		PriceOverrides: map[int]int32{1100: 500},
 	}, false)
-	id := d.managedNPCs["shop-1"]
+	id := d.managedNPCs["shop-1"].id
 
 	// Reload: NPC disabled, override gone.
 	d.applyNPCConfig(w, npccfg.Snapshot{
@@ -168,6 +169,40 @@ func TestApplyNPCConfigReconcile(t *testing.T) {
 	}
 	if d.npcVersion != 2 {
 		t.Errorf("npcVersion = %d, want 2", d.npcVersion)
+	}
+}
+
+// TestApplyNPCConfigKeepsUnchangedNPCs: a reload that edits ONE definition must
+// leave every other live entity exactly as it was. The wipe-and-rebuild version
+// despawned and respawned the whole set on every apply, which is what duplicated
+// every merchant on a live client (in-game report, Armia, 2026-11-04).
+func TestApplyNPCConfigKeepsUnchangedNPCs(t *testing.T) {
+	d, w := newNPCDispatcher(nil)
+	tmpl := merchantTemplate("Keeper")
+	base := npccfg.Snapshot{Version: 1, Defs: []npccfg.Definition{
+		{Slug: "a", Template: tmpl, DisplayName: "A", Enabled: true, X: 6, Y: 6, Merchant: 1},
+		{Slug: "b", Template: tmpl, DisplayName: "B", Enabled: true, X: 7, Y: 7, Merchant: 1},
+	}}
+	d.applyNPCConfig(w, base, false)
+	kept := d.managedNPCs["a"].id
+
+	edited := npccfg.Snapshot{Version: 2, Defs: []npccfg.Definition{
+		{Slug: "a", Template: tmpl, DisplayName: "A", Enabled: true, X: 6, Y: 6, Merchant: 1},
+		{Slug: "b", Template: tmpl, DisplayName: "B editado", Enabled: true, X: 7, Y: 7, Merchant: 1},
+	}}
+	d.applyNPCConfig(w, edited, true)
+
+	if got := d.managedNPCs["a"].id; got != kept {
+		t.Errorf("unchanged NPC despawned/respawned: id %d → %d", kept, got)
+	}
+	if e := w.Entity(kept); e == nil || e.Name != "A" {
+		t.Errorf("unchanged NPC entity gone or renamed: %+v", e)
+	}
+	if e := w.Entity(d.managedNPCs["b"].id); e == nil || e.Name != "B editado" {
+		t.Errorf("edited NPC not re-materialized with the new definition")
+	}
+	if len(d.managedNPCs) != 2 {
+		t.Errorf("managed = %d, want 2", len(d.managedNPCs))
 	}
 }
 
@@ -193,8 +228,7 @@ func TestApplyNPCConfigSkipsInvalid(t *testing.T) {
 // Production incident 2026-08-13: tmServer and dbServer deploy together, and the
 // dbServer reconciles the content catalog BEFORE it listens, so the tmServer
 // routinely wins the race. Boot must wait it out instead of exiting and burning
-// the platform's restart budget — while still failing fast on config that will
-// never become valid.
+// the platform's restart budget — while still failing fast on corrupt data.
 
 // bootStep is one scripted answer from fakeBootSource.
 type bootStep struct {
@@ -233,24 +267,7 @@ func shrinkBootRetry(t *testing.T) {
 	})
 }
 
-// newBootDispatcher wires a Dispatcher to src over a world holding managed
-// DB-managed generator slots — the shape ApplyNPCConfigBoot validates against.
-func newBootDispatcher(src npccfg.Source, managed int) (*Dispatcher, *world.World) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	d := New(Config{Log: log, NpcConfig: src})
-	w := world.New(world.Config{GridDim: 32}, log, world.NopPersistence{}, d.Handle)
-	gens := make([]*world.Generator, managed)
-	for i := range gens {
-		gens[i] = &world.Generator{DBManaged: true}
-	}
-	w.RegisterGenerators(gens)
-	return d, w
-}
-
-// bootSnapshot covers the first n DB-managed generator slots. The definitions are
-// left disabled: they still count toward the completeness check, which keeps
-// these tests on the boot-load path rather than the spawn path already covered
-// by TestApplyNPCConfigSpawnsMerchant.
+// bootSnapshot covers the first n content generator slots.
 func bootSnapshot(version int64, n int) npccfg.Snapshot {
 	snap := npccfg.Snapshot{Version: version}
 	for i := 0; i < n; i++ {
@@ -263,12 +280,12 @@ func bootSnapshot(version int64, n int) npccfg.Snapshot {
 	return snap
 }
 
-func TestApplyNPCConfigBootRetries(t *testing.T) {
-	const managed = 3
+func TestFetchNPCConfigRetries(t *testing.T) {
+	const content = 3
 	unavailable := errors.New("connection refused")
 
 	tests := []struct {
-		name  string
+		name string
 		steps []bootStep
 		// wantCalls is exact; 0 means "only require that it retried".
 		wantCalls int
@@ -280,23 +297,23 @@ func TestApplyNPCConfigBootRetries(t *testing.T) {
 			steps: []bootStep{
 				{err: unavailable},
 				{err: unavailable},
-				{snap: bootSnapshot(7, managed)},
+				{snap: bootSnapshot(7, content)},
 			},
 			wantCalls: 3,
 		},
 		{
 			// The other production signature: dbServer answered mid-seed, so the
-			// catalog was short rather than the connection refused.
-			name: "short catalog clears once the seed commits",
+			// catalogue came back empty rather than refusing the connection.
+			name: "empty catalogue clears once the seed commits",
 			steps: []bootStep{
-				{snap: bootSnapshot(7, managed-1)},
-				{snap: bootSnapshot(7, managed)},
+				{snap: npccfg.Snapshot{Version: 7}},
+				{snap: bootSnapshot(7, content)},
 			},
 			wantCalls: 2,
 		},
 		{
 			name:      "succeeds on the first attempt",
-			steps:     []bootStep{{snap: bootSnapshot(7, managed)}},
+			steps:     []bootStep{{snap: bootSnapshot(7, content)}},
 			wantCalls: 1,
 		},
 		{
@@ -311,14 +328,8 @@ func TestApplyNPCConfigBootRetries(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "generator outside the DB-managed set fails without retrying",
-			steps:     []bootStep{{snap: bootSnapshot(7, managed+1)}},
-			wantCalls: 1,
-			wantErr:   true,
-		},
-		{
 			// Fail-closed is preserved: a dbServer that never comes back still
-			// stops the boot rather than starting on an empty catalog.
+			// stops the boot rather than starting on an empty catalogue.
 			name:    "permanent failure still fails closed",
 			steps:   []bootStep{{err: unavailable}},
 			wantErr: true,
@@ -329,15 +340,15 @@ func TestApplyNPCConfigBootRetries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			shrinkBootRetry(t)
 			src := &fakeBootSource{steps: tt.steps}
-			d, w := newBootDispatcher(src, managed)
+			d := New(Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), NpcConfig: src})
 
-			err := d.ApplyNPCConfigBoot(context.Background(), w)
+			snap, err := d.FetchNPCConfig(context.Background())
 
 			if tt.wantErr && err == nil {
-				t.Fatal("ApplyNPCConfigBoot succeeded, want error")
+				t.Fatal("FetchNPCConfig succeeded, want error")
 			}
 			if !tt.wantErr && err != nil {
-				t.Fatalf("ApplyNPCConfigBoot: %v", err)
+				t.Fatalf("FetchNPCConfig: %v", err)
 			}
 			switch {
 			case tt.wantCalls > 0 && src.calls != tt.wantCalls:
@@ -345,31 +356,51 @@ func TestApplyNPCConfigBootRetries(t *testing.T) {
 			case tt.wantCalls == 0 && src.calls < 2:
 				t.Errorf("Snapshot called %d times, want more than one attempt", src.calls)
 			}
-			if !tt.wantErr && d.npcVersion != 7 {
-				t.Errorf("npcVersion = %d, want the applied snapshot version 7", d.npcVersion)
+			if !tt.wantErr && snap.Version != 7 {
+				t.Errorf("snapshot version = %d, want 7", snap.Version)
 			}
 		})
 	}
 }
 
-// TestApplyNPCConfigBootHonoursContext proves SIGTERM during boot aborts the wait
+// TestFetchNPCConfigHonoursContext proves SIGTERM during boot aborts the wait
 // instead of holding the process for the whole retry budget. The budget is left
 // at full size on purpose: cancellation, not the budget, must end the wait.
-func TestApplyNPCConfigBootHonoursContext(t *testing.T) {
+func TestFetchNPCConfigHonoursContext(t *testing.T) {
 	src := &fakeBootSource{steps: []bootStep{{err: errors.New("connection refused")}}}
-	d, w := newBootDispatcher(src, 1)
+	d := New(Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), NpcConfig: src})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	start := time.Now()
-	err := d.ApplyNPCConfigBoot(ctx, w)
-	if err == nil {
-		t.Fatal("ApplyNPCConfigBoot succeeded on a cancelled context, want error")
-	}
-	if !errors.Is(err, context.Canceled) {
+	if _, err := d.FetchNPCConfig(ctx); err == nil {
+		t.Fatal("FetchNPCConfig succeeded on a cancelled context, want error")
+	} else if !errors.Is(err, context.Canceled) {
 		t.Errorf("error = %v, want it to wrap context.Canceled", err)
 	}
 	if elapsed := time.Since(start); elapsed > 5*time.Second {
 		t.Errorf("returned after %s, want it to abort promptly", elapsed)
+	}
+}
+
+// TestApplyNPCConfigBootRequiresRegisteredSlot: slots are registered from the same
+// snapshot the boot applies, so a content definition without a slot means the two
+// went out of sync — boot must fail instead of starting a world with holes.
+func TestApplyNPCConfigBootRequiresRegisteredSlot(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	d := New(Config{Log: log, NpcConfig: staticSource{}})
+	w := world.New(world.Config{GridDim: 32}, log, world.NopPersistence{}, d.Handle)
+	snap := npccfg.Snapshot{Version: 3, Defs: []npccfg.Definition{{
+		Slug: "a", Origin: "content", GeneratorIndex: 0, Enabled: true,
+	}}}
+	if err := d.ApplyNPCConfigBoot(w, snap); err == nil {
+		t.Fatal("boot accepted a definition whose generator slot was never registered")
+	}
+	w.RegisterGenerators([]*world.Generator{{MinuteGenerate: -1, MaxNumMob: 1}})
+	if err := d.ApplyNPCConfigBoot(w, snap); err != nil {
+		t.Fatalf("ApplyNPCConfigBoot: %v", err)
+	}
+	if d.npcVersion != 3 {
+		t.Errorf("npcVersion = %d, want the applied snapshot version 3", d.npcVersion)
 	}
 }

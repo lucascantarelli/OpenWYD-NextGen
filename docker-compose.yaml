@@ -150,6 +150,17 @@ services:
         condition: service_started
       binserver:
         condition: service_started
+    # Switches for the moderator overlays (README/test recipes assume they can be
+    # exported). Every one defaults to "false" = read strictly from Release/, so this
+    # passthrough changes nothing unless you export it. The NPC spawn catalogue is
+    # NOT an overlay: npc_definition is the single source of spawn blocks (issue 57).
+    #   W2PP_RATES_EDITING=true docker compose up -d tmserver
+    environment:
+      W2PP_MOB_STAT_EDITING: "${W2PP_MOB_STAT_EDITING:-false}"
+      W2PP_ITEM_EFFECT_EDITING: "${W2PP_ITEM_EFFECT_EDITING:-false}"
+      W2PP_RATES_EDITING: "${W2PP_RATES_EDITING:-false}"
+      W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
+      W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
     volumes:
       - ./Release:/Release:ro   # content tree (rates/catalogs/maps), validated at boot
     ports:

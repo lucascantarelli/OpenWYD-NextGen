@@ -1,7 +1,7 @@
 // Command worldatlas publishes the world layout the server actually uses: the
 // fixed city table and teleport routes (from tmserver/internal/world), the named
-// regions of Regions.txt, the static objects of InitItem.csv, the NPC spawn
-// generators of NPCGener.txt and a downsampled PNG of AttributeMap.dat.
+// regions of Regions.txt, the static objects of world_item_seed, the NPC spawn
+// generators of npc_definition and a downsampled PNG of AttributeMap.dat.
 //
 // It lives under tmserver/cmd (not webserver/cmd) because it reads
 // tmserver/internal/content and tmserver/internal/world, which Go only allows
@@ -9,6 +9,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -25,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
 	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
@@ -135,11 +138,11 @@ type atlas struct {
 }
 
 var regionLine = regexp.MustCompile(`^\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*=\s*(.+?)\s*$`)
-var generatorHead = regexp.MustCompile(`^#\s*\[\s*(\d+)\s*\]`)
 
 func main() {
-	contentDir := flag.String("content", "Release", "content tree (Release/)")
+	contentDir := flag.String("content", "Release", "content tree (Release/): regiões e mapas")
 	outDir := flag.String("out", "dist", "output directory")
+	dsn := flag.String("dsn", os.Getenv("W2PP_DB_DSN"), "PostgreSQL DSN: itens estáticos e spawns vêm do banco")
 	flag.Parse()
 
 	cities := world.AtlasCities()
@@ -150,18 +153,23 @@ func main() {
 		log.Fatalf("worldatlas: regions: %v", err)
 	}
 
-	items, err := content.LoadInitItems(filepath.Join(*contentDir, "TMsrv", "run", "InitItem.csv"))
+	// Itens estáticos e spawns vêm do banco (issue 58, fase 5): InitItem.csv e
+	// NPCGener.txt saíram do conteúdo, e o atlas não pode ficar preso a eles.
+	if *dsn == "" {
+		log.Fatalf("worldatlas: -dsn (or W2PP_DB_DSN) is required: static items and spawns come from the database")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, *dsn)
 	if err != nil {
-		log.Fatalf("worldatlas: init items: %v", err)
+		log.Fatalf("worldatlas: connect: %v", err)
 	}
-	staticItems := make([]staticItem, 0, len(items))
-	for i, it := range items {
-		staticItems = append(staticItems, staticItem{
-			Order: i + 1, Item: int(it.Index), X: int(it.PosX), Y: int(it.PosY), Rotate: int(it.Rotate),
-		})
+	defer pool.Close()
+	staticItems, err := loadStaticItems(ctx, pool)
+	if err != nil {
+		log.Fatalf("worldatlas: static items: %v", err)
 	}
-
-	spawns, err := loadSpawns(filepath.Join(*contentDir, "TMsrv", "run", "NPCGener.txt"))
+	spawns, err := loadSpawns(ctx, pool)
 	if err != nil {
 		log.Fatalf("worldatlas: spawns: %v", err)
 	}
@@ -221,13 +229,20 @@ func main() {
 			"spawns":       len(spawns),
 		},
 	}
-	payload.SourceHash = hashSources(
+	// O hash cobre arquivos E o payload do banco: mudar um item em
+	// world_item_seed/npc_definition também invalida o cache do portal.
+	dbPayload, err := json.Marshal(struct {
+		Items  []staticItem `json:"items"`
+		Spawns []spawn      `json:"spawns"`
+	}{staticItems, spawns})
+	if err != nil {
+		log.Fatalf("worldatlas: marshal sources: %v", err)
+	}
+	payload.SourceHash = hashSources([]string{
 		filepath.Join(*contentDir, "TMsrv", "run", "Regions.txt"),
-		filepath.Join(*contentDir, "TMsrv", "run", "InitItem.csv"),
-		filepath.Join(*contentDir, "TMsrv", "run", "NPCGener.txt"),
 		mapPath,
 		heightPath,
-	)
+	}, dbPayload)
 
 	raw, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
@@ -268,56 +283,6 @@ func loadRegions(path string) ([]region, error) {
 	return out, nil
 }
 
-// loadSpawns parses NPCGener.txt: blocks start at "# [n]", fields are
-// "Key:\tValue". Only the fields the atlas needs are kept.
-func loadSpawns(path string) ([]spawn, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var out []spawn
-	var current *spawn
-	fields := map[string]string{}
-
-	flush := func() {
-		if current == nil {
-			return
-		}
-		current.Leader = fields["Leader"]
-		current.Follower = fields["Follower"]
-		current.X, _ = strconv.Atoi(fields["StartX"])
-		current.Y, _ = strconv.Atoi(fields["StartY"])
-		current.Range, _ = strconv.Atoi(fields["StartRange"])
-		current.MaxMob, _ = strconv.Atoi(fields["MaxNumMob"])
-		current.RouteType, _ = strconv.Atoi(fields["RouteType"])
-		out = append(out, *current)
-		current = nil
-		fields = map[string]string{}
-	}
-
-	for _, line := range strings.Split(string(raw), "\n") {
-		text := strings.TrimSpace(strings.TrimSuffix(line, "\r"))
-		if m := generatorHead.FindStringSubmatch(text); m != nil {
-			flush()
-			index, _ := strconv.Atoi(m[1])
-			current = &spawn{Generator: index}
-			continue
-		}
-		if current == nil || text == "" || strings.HasPrefix(text, "//") {
-			continue
-		}
-		parts := strings.SplitN(text, ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		fields[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-	}
-	flush()
-	if len(out) == 0 {
-		return nil, fmt.Errorf("no spawn generator parsed")
-	}
-	return out, nil
-}
 
 // renderTerrain draws the world from the grids the server itself uses:
 // HeightMap.dat (4096², one byte per block — the same grid route.Bake walks) for
@@ -584,7 +549,9 @@ func fileSize(path string) int64 {
 	return st.Size()
 }
 
-func hashSources(paths ...string) string {
+// hashSources fingerprints every atlas input: the files that stay on disk plus
+// the database payload already serialized.
+func hashSources(paths []string, dbPayload []byte) string {
 	h := sha256.New()
 	for _, p := range paths {
 		raw, err := os.ReadFile(p)
@@ -593,5 +560,56 @@ func hashSources(paths ...string) string {
 		}
 		h.Write(raw)
 	}
+	h.Write(dbPayload)
 	return hex.EncodeToString(h.Sum(nil))[:16]
+}
+
+// loadStaticItems reads the static world objects (gates/doors) from
+// world_item_seed — the table that replaced InitItem.csv (issue 58).
+func loadStaticItems(ctx context.Context, pool *pgxpool.Pool) ([]staticItem, error) {
+	rows, err := pool.Query(ctx,
+		`SELECT item_index, pos_x, pos_y, rotate FROM world_item_seed ORDER BY item_index, pos_x, pos_y`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []staticItem
+	for rows.Next() {
+		var item, x, y, rotate int16
+		if err := rows.Scan(&item, &x, &y, &rotate); err != nil {
+			return nil, err
+		}
+		out = append(out, staticItem{Order: len(out) + 1, Item: int(item), X: int(x), Y: int(y), Rotate: int(rotate)})
+	}
+	return out, rows.Err()
+}
+
+// loadSpawns reads the spawn generators from npc_definition — the table that
+// replaced NPCGener.txt (issues 57/58). StartRange is not modelled in the table
+// yet, so Range stays 0.
+func loadSpawns(ctx context.Context, pool *pgxpool.Pool) ([]spawn, error) {
+	rows, err := pool.Query(ctx, `
+		SELECT coalesce(nullif(display_name, ''), template_name), coalesce(follower_template, ''),
+		       pos_x, pos_y, max_num_mob, route_type, coalesce(generator_index, 0)
+		FROM npc_definition
+		WHERE origin = 'content'
+		ORDER BY generator_index NULLS LAST`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []spawn
+	for rows.Next() {
+		var leader, follower string
+		var x, y, route int16
+		var maxMob, generator int32
+		if err := rows.Scan(&leader, &follower, &x, &y, &maxMob, &route, &generator); err != nil {
+			return nil, err
+		}
+		out = append(out, spawn{
+			Generator: int(generator), Leader: leader, Follower: follower,
+			X: int(x), Y: int(y), MaxMob: int(maxMob), RouteType: int(route),
+		})
+	}
+	return out, rows.Err()
 }

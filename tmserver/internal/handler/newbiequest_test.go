@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"os"
 	"testing"
 
 	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
@@ -12,7 +11,7 @@ import (
 
 func npcTemplate(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := os.ReadFile("../../../Release/TMsrv/run/npc/" + name)
+	b, err := readRelease(t, "../../../Release/TMsrv/run/npc/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

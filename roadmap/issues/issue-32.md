@@ -1,6 +1,6 @@
 # Issue 32 — Contas, papéis e banimento (backend novo)
 
-**Fase:** 6 · **Depende de:** 19, 21 · **Bloqueia:** 30, 31, 38 · **Esforço:** L · **Estado:** 🟡 backend e portal ✅, evidência in-game ⏳
+**Fase:** 6 · **Depende de:** 19, 21 · **Bloqueia:** 30, 31, 38 · **Esforço:** L · **Estado:** ✅ fechada em 2026-11-04 (backend, portal e recusa **vista na tela do cliente**)
 
 ## Objetivo
 
@@ -84,9 +84,9 @@ $ cd portal && npx tsc --noEmit → 0 · npx vitest run → 76/76 · npx next bu
 - [x] Papel e bloqueio alteráveis com motivo, gravando auditoria na mesma transação
 - [x] Auto-rebaixamento e remoção do último admin bloqueados **no store**, não só na UI
 - [x] `moderator` não altera papel nem bloqueia `admin`/`moderator`
-- [ ] Bloqueio refletido no login **do jogo** (teste real com o cliente Windows) — o caminho de
-  autenticação da web (`VerifyCredentials`) foi validado; falta abrir o cliente, logar com a conta
-  bloqueada e ver a recusa
+- [x] Bloqueio refletido no login **do jogo** (teste real com o cliente Windows) — 04/11: o cliente
+  exibiu “Conta bloqueada Grade X, entre em contato com Suporte.” e fechou; `VerifyCredentials` já
+  refletia o bloqueio
 - [x] Migração aplica e reverte limpa; `go test` verde
 
 ## Riscos / rollback
@@ -97,3 +97,52 @@ $ cd portal && npx tsc --noEmit → 0 · npx vitest run → 76/76 · npx next bu
   continua admin de recuperação.
 - **Rollback:** `0042_account_admin.down.sql` remove tabela e colunas. Papéis podem ser redefinidos por
   SQL com o comando de emergência da skill `wyd-game-admin` (sem auditoria do BFF, e sabendo disso).
+
+## Evidência de execução (2026-11-04) — bloqueio recusado + bug da mensagem
+
+```sql
+-- antes
+select id, name, role, is_blocked, blocked_reason from account order by id;
+ id | name | role  | is_blocked | blocked_reason
+  1 | test | admin | f          |
+
+update account set is_blocked=true, blocked_reason='teste QA issue 32' where name='test';
+UPDATE 1
+
+-- depois: test | admin | is_blocked=t | teste QA issue 32
+```
+
+- **Servidor:** `TestLoginNoAccountAndBlocked` e `TestLoginBadVersionClosed` **PASS** — o
+  `LoginBlocked` vindo do dbServer vira recusa e a conexão é fechada.
+- **Bug encontrado (o que você viu na tela):** `notify()` mandava `MSG_MessageBoxOk` com um código
+  numérico local de 4 bytes. O struct legado é
+  `{int Useless1; int Useless2; char String[96]}` (`Basedef.h:1534-1541`): com body de 4 bytes a
+  string vai vazia e o cliente abre uma **caixa em branco** — nenhuma mensagem de erro aparece.
+- **Causa do formato:** o legado manda **texto**, não código — `SendClientMessage(conn,
+  g_pMessageStringTable[...])` = `_MSG_MessagePanel` com `HEADER.ID = 0`
+  (`ProcessDBMessage.cpp:518-570`).
+- **Correção:** as cinco recusas de login com texto confirmado no `Language.txt` passaram a sair por
+  `sendClientMessage`: versão (36), 3 senhas erradas (37), conta inexistente (131), bloqueada (132,
+  `Parm 0` → “Grade X”), senha incorreta (133). Bytes Windows-1252, como o resto da tabela.
+- **Testes ajustados** para exigir `MsgMessagePanel` + texto exato (antes aceitavam
+  `MsgMessageBoxOk` + código, o que mascarava o bug).
+- **Confirmado no cliente** depois do rebuild (`docker compose up -d --build tmserver`).
+
+### Confirmação no cliente (2026-11-04, 19:51–19:52)
+
+```text
+19:51:56.607  recv packet conn=1 type=0x020d len=104 routed=true
+19:51:56.607  account login: relaying to dbServer conn=1 account=test
+19:51:56.613  session send stats conn=1 frames=1 bytes=140 by_type=0x0101:1
+19:51:56.613  session last sends conn=1 tail=0x0101(0)/128/-0ms
+19:51:56.613  connection closed conn=1
+19:52:03.173  … mesma sequência na 2ª tentativa
+```
+
+- O cliente exibiu **“Conta bloqueada Grade X, entre em contato com Suporte.”** e foi fechado em
+  seguida (a recusa encerra a conexão, como no legado).
+- 140 B no fio = header 12 + `MSG_MessagePanel.String[128]` com `HEADER.ID = 0`.
+- **Conta liberada** ao fim do teste: `update account set is_blocked=false, blocked_reason='' where
+  name='test';` → `is_blocked=f`.
+- Fora de escopo (seguem no placeholder, documentado em `notice.go`): `LoginNow` e falha de backend,
+  que não têm texto confirmado no `Language.txt`.

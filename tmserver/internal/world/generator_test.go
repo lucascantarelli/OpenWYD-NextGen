@@ -26,7 +26,7 @@ func genMerchantTemplate(merchant uint8) []byte {
 func TestClearGeneratorRemovesWholeGroup(t *testing.T) {
 	w := New(Config{GridDim: 64}, slogDiscard(), nil, nil)
 	g := &Generator{
-		DBManaged: true, MinGroup: 2, MaxGroup: 2, MaxNumMob: 3,
+		MinGroup: 2, MaxGroup: 2, MaxNumMob: 3,
 		SegX: [5]int16{20}, SegY: [5]int16{20},
 		LeaderTmpl: genMerchantTemplate(12), FollowerTmpl: genMobTemplate(0),
 	}

@@ -739,9 +739,11 @@ func TestLoginBadVersionClosed(t *testing.T) {
 	defer c.Close()
 
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", 1234))
+	// The refusal is the Language.txt text in a MessagePanel (ID 0), not a
+	// MSG_MessageBoxOk: the client renders an empty box for a numeric code.
 	ty, payload := read(t, c)
-	if ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != NoticeVersionMismatch {
-		t.Errorf("got %#x/%d, want version-mismatch notice", ty, noticeCode(t, payload))
+	if ty != protocol.MsgMessagePanel || cstr(payload) != versionMismatchText {
+		t.Errorf("got %#x/%q, want the version-mismatch panel", ty, cstr(payload))
 	}
 	// Connection must be closed after a version mismatch.
 	if err := c.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
@@ -762,15 +764,15 @@ func TestLoginBadPasswordThenLockout(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		send(t, c, protocol.MsgAccountLogin, loginBody("tester", "wrong", protocol.AppVersion))
 		ty, payload := read(t, c)
-		if ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != NoticeBadPass {
-			t.Fatalf("attempt %d: got %#x/%d, want bad-pass", i, ty, noticeCode(t, payload))
+		if ty != protocol.MsgMessagePanel || cstr(payload) != wrongPasswordText {
+			t.Fatalf("attempt %d: got %#x/%q, want the wrong-password panel", i, ty, cstr(payload))
 		}
 	}
 	// ...the fourth is locked out before hitting the backend.
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
 	ty, payload := read(t, c)
-	if ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != Notice3WrongPass {
-		t.Errorf("got %#x/%d, want 3-wrong-pass lockout", ty, noticeCode(t, payload))
+	if ty != protocol.MsgMessagePanel || cstr(payload) != threeWrongPassText {
+		t.Errorf("got %#x/%q, want the 3-wrong-pass lockout panel", ty, cstr(payload))
 	}
 }
 
@@ -781,15 +783,15 @@ func TestLoginNoAccountAndBlocked(t *testing.T) {
 	c1 := dial(t, addr)
 	defer c1.Close()
 	send(t, c1, protocol.MsgAccountLogin, loginBody("ghost", "x", protocol.AppVersion))
-	if ty, p := read(t, c1); ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeNoAccount {
-		t.Errorf("no-account: got %#x/%d", ty, noticeCode(t, p))
+	if ty, p := read(t, c1); ty != protocol.MsgMessagePanel || cstr(p) != noAccountText {
+		t.Errorf("no-account: got %#x/%q", ty, cstr(p))
 	}
 
 	c2 := dial(t, addr)
 	defer c2.Close()
 	send(t, c2, protocol.MsgAccountLogin, loginBody("banned", "x", protocol.AppVersion))
-	if ty, p := read(t, c2); ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeBlocked {
-		t.Errorf("blocked: got %#x/%d", ty, noticeCode(t, p))
+	if ty, p := read(t, c2); ty != protocol.MsgMessagePanel || cstr(p) != blockedAccountText {
+		t.Errorf("blocked: got %#x/%q", ty, cstr(p))
 	}
 }
 

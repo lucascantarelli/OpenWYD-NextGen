@@ -202,7 +202,7 @@ Boot válido produz, nesta ordem, no log: `tmserver config` → `content loaded`
 | Comandos de jogador (`/armia`, `/cp`, `/nick`, `/gritar`, `/buffs`…) | `handler/chat.go` | ✅ |
 | Comandos de GM (`/gm …`) | `handler/gm.go` | ✅ (14 subcomandos, auditado) |
 | Papéis e banimento | `account.role`, `account.is_blocked` | ✅ |
-| Edição de NPC por moderador | `handler/npccfg` + `-npc-editing` | ✅ (off por padrão; exige `import-npcs`) |
+| Edição de NPC por moderador | `handler/npccfg` + `npc_definition` | ✅ (fonte única de spawn; sem flag desde a issue 57) |
 | Edição de stats de mob | `mobstat` + `-mob-stat-editing` | ✅ (aplica no boot) |
 | Eventos globais via web | `worldcfg` + `delivery_queue` (plano) | parcial |
 

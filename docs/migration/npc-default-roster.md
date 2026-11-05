@@ -80,17 +80,17 @@ do roster curado ou para reimportar depois de uma mudança no conteúdo `Release
 `ON CONFLICT (slug) DO NOTHING`, rodá-lo depois da migration é seguro: só adiciona o que faltar, não
 duplica nem sobrescreve os 80 já seedados.
 
-## 5. Risco aceito — leia antes de ligar `-npc-editing`
+## 5. Risco — leia antes de subir um ambiente novo (issue 57)
 
-`tmserver/cmd/tmserver/main.go` pula **todo** bloco de `NPCGener.txt` cujo líder é merchant quando
-`-npc-editing` está ativo — **não só os que estão no banco**. Isso significa:
+Desde a issue 57 o roster curado é o **piso** do catálogo, não um atalho: `npc_definition` é a única
+fonte de spawn e o tmServer materializa **só o que está na tabela**.
 
-> Se você ligar `-npc-editing` sem antes rodar `dbserver import-npcs` (que traz **todos** os 544
-> blocos merchant), todo merchant que **não** está no roster seedado pela migration desaparece do
-> jogo — inclusive as lojas regionais colapsadas (ex.: `Acessorios2`..`6`, `Set_BM_Erion`) e
-> qualquer coisa fora de `{1,2,19,100}`.
+> Um ambiente que subiu pelo `store.Migrate` (80 blocos do roster) e **nunca** rodou
+> `dbserver import-npcs` joga com 80 dos 6.099 blocos: o resto do mundo fica vazio — inclusive as
+> lojas regionais colapsadas (ex.: `Acessorios2`..`6`, `Set_BM_Erion`) e tudo fora de
+> `Merchant ∈ {1,2,19,100}`.
 
-Isso é aceito porque `-npc-editing` já é **opt-in, off por padrão**, e nada em produção liga essa
-flag hoje. Mas se algum dia for necessário ligá-la com paridade completa, rode
-`dbserver import-npcs -content <Release/> -dsn <dsn>` antes — ver
-[npc-editing-plan.md §"Feature flag"](./npc-editing-plan.md).
+O `dbserver` semeia o catálogo a partir de `NPCGener.txt` no boot quando `-content` está disponível
+(é o caminho do `docker compose`), então o compose já sobe com paridade. Para um banco que não passou
+por esse seed, rode `dbserver import-npcs -content <Release/> -dsn <dsn>` — ver
+[npc-editing-plan.md](./npc-editing-plan.md).

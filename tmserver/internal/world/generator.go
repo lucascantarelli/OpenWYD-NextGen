@@ -10,7 +10,6 @@ package world
 // Generator is the runtime state of one NPCGener.txt block (NPCGENLIST,
 // CNPCGene.h:29-51): the spawn recipe plus the live population counter.
 type Generator struct {
-	DBManaged      bool // content merchant recipe must be supplied by npc_definition
 	MinuteGenerate int  // respawn period in minutes; <=0 = the timer never regenerates
 	MinGroup       int  // follower count rolled as MinGroup + rand()%(MaxGroup-MinGroup+1)
 	MaxGroup       int
@@ -67,15 +66,12 @@ func (w *World) GeneratorAt(idx int) *Generator {
 	return w.generators[idx]
 }
 
-// DBManagedGeneratorCount reports how many content slots require DB recipes.
-func (w *World) DBManagedGeneratorCount() int {
-	n := 0
-	for _, g := range w.generators {
-		if g != nil && g.DBManaged {
-			n++
-		}
-	}
-	return n
+// EventOwnedGenerator reports whether the block belongs to an event system (water
+// room, Kefra, Nightmare, rune quest). Those systems own the block's lifecycle,
+// so the moderator overlay must not materialize it: it would spawn a second boss,
+// tower or room group on top of the one the event code creates.
+func EventOwnedGenerator(idx int) bool {
+	return IsWaterGenerator(idx) || IsKefraGenerator(idx) || NightmareGenerator(idx) >= 0 || IsRuneQuestGenerator(idx)
 }
 
 // ClearGenerator removes every live entity and queued respawn owned by one

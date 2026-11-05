@@ -1,6 +1,6 @@
 # Issue 06 — Alinhar versão de protocolo e autenticar
 
-**Fase:** 1 · **Depende de:** 05 · **Bloqueia:** 07 · **Esforço:** S · **Estado:** ⏳ aberta
+**Fase:** 1 · **Depende de:** 05 · **Bloqueia:** 07 · **Esforço:** S · **Estado:** ✅ fechada em 2026-11-04 (versão 12000 medida no cliente; o headless fecha na 07)
 
 ## Objetivo
 
@@ -77,3 +77,23 @@ W2PP_E2E_VERSION=<NNNNN> go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/int
   **Mitigação:** fechar issue 07 (login completo ≥ seleção de personagem) antes de considerar
   compatível.
 - **Rollback:** voltar `-client-version` ao valor anterior e reiniciar `tmserver`.
+
+## Evidência de execução (2026-11-04)
+
+```text
+# docker inspect openwyd-tmserver-1 → Cmd
+["-addr",":8281",…,"-status-addr",":80","-client-version","12000"]
+
+recv packet conn=1 type=0x020d len=104 routed=true
+account login: relaying to dbServer conn=1 account=test
+account login: OK conn=1 account=test id=1 role=admin chars=2
+```
+
+- `handler/login.go` só loga `got=` **em mismatch**; como não houve `version mismatch` com
+  `-client-version 12000`, o cliente enviou **12000**. Build testado: `WYD.exe` 7662 "Cavaleiros de
+  Kersef" da pasta `client/`.
+- Login aceito (sem `0x102`) e a lista veio com **2 personagens** (`chars=2`).
+- Documentação corrigida para 12000: `README.md`, `CLAUDE.md`, `docs/migration/README.md`,
+  `protocol-spec.md` §4.1 e skills `wyd-client-connect`/`wyd-server-ops`.
+- Critérios: ✅ valor medido e registrado · ✅ tmServer com exatamente esse valor · ✅ login aceito no
+  cliente (headless: rodar junto da issue 07) · ✅ documentação atualizada.

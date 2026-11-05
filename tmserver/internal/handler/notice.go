@@ -96,6 +96,12 @@ const (
 // code; the real format (notification id / Language.txt string) is pinned once a
 // capture exists (parity-tests.md §5). Handler tests assert the Type + code, not
 // the final byte layout.
+//
+// Do NOT use this for the login refusals: MSG_MessageBoxOk is
+// {int Useless1; int Useless2; char String[96]} (Basedef.h:1534-1541), so a
+// 4-byte body leaves the string empty and the client shows a blank dialog. The
+// five login refusals with a confirmed Language.txt text go through
+// sendClientMessage instead (issue 32 / QA 2026-11-04).
 func (d *Dispatcher) notify(w *world.World, s *world.Session, n Notice) {
 	var b [4]byte
 	binary.LittleEndian.PutUint32(b[:], uint32(n))
@@ -122,6 +128,19 @@ const (
 	cantWithArmor = "No momento voc\xea n\xe3o pode equipar arma e armadura." // _NN_Cant_with_armor (205)
 
 	newbieZone = "Somente n\xedvel 35 ou inferior pode entrar no campo de treinamento." // _NN_Newbie_zone (46)
+
+	// Login refusals, verbatim from Release/TMsrv/run/Language.txt (Windows-1252
+	// bytes, like the table). The legacy server sends these through
+	// SendClientMessage — a MSG_MessagePanel with HEADER.ID 0 — and then closes:
+	// TMSrv/ProcessDBMessage.cpp:518-570 (_Account/_Block/_Pass) and
+	// _MSG_AccountLogin.cpp:44-90 (version/mode/lockout). Sending MSG_MessageBoxOk
+	// with a bare numeric code (what notify does) makes the 7662 client open an
+	// empty box, so the player sees no error at all.
+	versionMismatchText = "Vers\xe3o do jogo incompat\xedvel com os servidores. Atualize o jogo pelo launcher." // _NN_Version_Not_Match_Rerun (36)
+	threeWrongPassText  = "3 tentativas de senha incorreta ocasiona bloqueio de acesso durante 5 min."          // _NN_3_Tims_Wrong_Pass (37)
+	noAccountText       = "Conta inexistente."                                                                 // _NN_No_Account_With_That_Name (131)
+	blockedAccountText  = "Conta bloqueada Grade X, entre em contato com Suporte."                             // _SN_Blocked_Account (132), Parm 0
+	wrongPasswordText   = "Senha incorreta."                                                                   // _NN_Wrong_Password (133)
 )
 
 // PvP and duel texts (Language.txt, Windows-1252), sent through

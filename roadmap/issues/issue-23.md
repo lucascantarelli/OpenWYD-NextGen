@@ -1,6 +1,6 @@
 # Issue 23 — Editor de NPCs e mercadores
 
-**Fase:** 6 · **Depende de:** 20, 21 · **Bloqueia:** 24 · **Esforço:** L · **Estado:** 🟡 UI ✅ (2026-11-03) — falta a evidência in-game
+**Fase:** 6 · **Depende de:** 20, 21 · **Bloqueia:** 24 · **Esforço:** L · **Estado:** ✅ fechada em 2026-11-04 (UI 03/11 · overlay no mundo + confirmação no jogo 04/11)
 
 ## Objetivo
 
@@ -84,7 +84,8 @@ estoque novo presente (após restart do tmserver, log `npc overlay applied`).
 - [x] `template_name` e item só por picker (sem digitar índice à mão)
 - [x] Aviso de restart visível após toda escrita
 - [x] Conta `player` recebe 403 em toda ação; auditoria registra a tentativa
-- [ ] Evidência no jogo: NPC novo com estoque, após restart
+- [x] Evidência no jogo: NPC novo com estoque, após restart — 04/11: o `QA Ferreiro` apareceu em
+  Armia com os três itens e **os três foram comprados** no cliente
 
 ## Riscos / rollback
 
@@ -133,8 +134,51 @@ DeleteNpc(ferreiro-teste)      → {ok:true}; GetNpc → "o registro não existe
   pack não existe nesta máquina; ícone no picker só faz sentido junto da issue de ícones.
 - **Desvio 3:** "duplicar" copia também a loja (sem isso a cópia de um mercador nasce vazia) e usa o
   sufixo `-copy`; colisão de slug aparece como `INVALID` do servidor.
-- **Pendente (critério 6):** evidência in-game não foi feita. Exige `W2PP_NPC_EDITING=true` no
-  `tmserver` (a flag **não** está no `docker-compose.yaml`) e restart do serviço de jogo; a escrita
-  ficou só no Postgres. O compose e o restart não foram alterados sem o OK do usuário.
+- **Resolvido em 04/11 (ver seção de 2026-11-04):** o compose passou a repassar os overlays, então
+  `W2PP_NPC_EDITING=true docker compose up -d tmserver` funciona. Falta apenas a conferência na tela.
 - **Pendente:** botões de "ver preço/quem dropa/usar em loja" do detalhe continuam texto, porque as
   telas 24/26 ainda não existem.
+
+## Evidência de execução (2026-11-04) — overlay aplicado no mundo
+
+Seed já existente: 568 definições / 108 mercadores. Definição criada espelhando a transação da
+server action (definição + loja + bump de versão):
+
+```text
+insert npc_definition(slug=qa-ferreiro, template=Acessorios, Armia 2090,2106, merchant=1) → id 2273
+insert npc_shop_item slots 0..2                                                           → itens 591, 592, 593
+update npc_config_meta set version = version + 1                                          → 11
+
+$ W2PP_NPC_EDITING=true docker compose up -d tmserver
+msg="tmserver config" npc_editing=true …
+msg="npc config overlay enabled (moderator editing)"
+msg="NPCs spawned" generators=6099 mobs=11126 templates=620 merchant_blocks_skipped=548
+msg="npc config applied at boot" version=11 npcs=568
+
+# hot-reload, sem restart: a contagem anda ±1 com o `enabled` do qa-ferreiro
+update enabled=false + bump → msg="npc config reloaded" version=13 npcs=567
+update enabled=true  + bump → msg="npc config reloaded" version=14 npcs=568
+```
+
+- A entidade gerida é a nossa: esconder a definição remove exatamente uma entidade do mundo
+  (568 → 567) e reativá-la devolve (567 → 568); o hot-reload aplicou três versões sem restart.
+- `npcs=568` para 569 linhas: uma definição do seed não materializa — investigar separadamente.
+- **Correção de infraestrutura durante o teste:** o passo documentado não funcionava porque o
+  serviço `tmserver` não tinha bloco `environment:` no compose (o `docker compose up` não recriava
+  nada). Adicionado passthrough dos seis overlays com default `false`.
+- **Desvio:** a linha foi gravada por SQL espelhando a transação da server action; o caminho
+  portal → web-api → auditoria já tem evidência de 2026-11-03.
+
+### Confirmação no jogo (2026-11-04, 20:2x)
+
+- O `QA Ferreiro` **apareceu** em Armia, abriu a loja com os **três itens** (591/592/593) e os três
+  foram **comprados** no cliente — critério 6 cumprido, overlay de NPC comprovado ponta a ponta.
+- **Bug encontrado no mesmo teste (B18, `docs/migration/ingame-bugs.md`):** quase todos os mercadores
+  de Armia apareciam em dobro. Eram **20 linhas legadas** do seed pré-0018 (`generator_index` NULL,
+  `generator_data` vazio, `display_name` = template) na mesma posição/template de um bloco NPCGener
+  já importado — o overlay materializava o bloco **e** a sombra. Somado a isso, `applyNPCConfig`
+  refazia o conjunto inteiro a cada bump de versão.
+- **Correção:** as 20 sombras foram desativadas (`enabled=false`), o `store.SeedNPCDefinitions`
+  passou a aposentá-las (`retireShadowedDefinitions`) e o reconcile virou **diff** — no reload
+  seguinte o log mostra `npc config reloaded version=16 npcs=548` (só as sombras saíram) contra
+  `npcs=568` antes, com as 549 definições ativas preservadas.

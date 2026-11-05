@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -263,6 +264,27 @@ func (l *ItemList) Requirements() map[int]ItemReq {
 			out[idx] = req
 		}
 	}
+	return out
+}
+
+// NewItemList builds a catalog from explicit entries. It is the entry point for
+// the database-backed catalog (issue 58, fase 2) and for tests, which must not
+// depend on Release/ being present.
+func NewItemList(entries []ItemEntry) *ItemList {
+	l := &ItemList{items: make(map[int]ItemEntry, len(entries))}
+	for _, e := range entries {
+		l.items[e.Index] = e
+	}
+	return l
+}
+
+// Entries returns every entry ordered by item index.
+func (l *ItemList) Entries() []ItemEntry {
+	out := make([]ItemEntry, 0, len(l.items))
+	for _, e := range l.items {
+		out = append(out, e)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Index < out[j].Index })
 	return out
 }
 

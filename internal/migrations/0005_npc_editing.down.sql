@@ -1,6 +1,0 @@
-DROP TABLE IF EXISTS npc_audit;
-DROP TABLE IF EXISTS npc_config_meta;
-DROP TABLE IF EXISTS item_price;
-DROP TABLE IF EXISTS npc_shop_item;
-DROP TABLE IF EXISTS npc_definition;
-ALTER TABLE account DROP COLUMN IF EXISTS role;

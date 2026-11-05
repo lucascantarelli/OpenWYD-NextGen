@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 
 func uxmalTemplate(t *testing.T) []byte {
 	t.Helper()
-	b, err := os.ReadFile("../../../Release/TMsrv/run/npc/Uxmal")
+	b, err := readRelease(t, "../../../Release/TMsrv/run/npc/Uxmal")
 	if err != nil {
 		t.Fatal(err)
 	}

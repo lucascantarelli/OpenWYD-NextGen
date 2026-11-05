@@ -1,6 +1,6 @@
 # Issue 05 — Configurar o cliente modificado para o servidor local
 
-**Fase:** 1 · **Depende de:** 04 · **Bloqueia:** 06, 07 · **Esforço:** M · **Estado:** ⏳ aberta
+**Fase:** 1 · **Depende de:** 04 · **Bloqueia:** 06, 07 · **Esforço:** M · **Estado:** ✅ fechada em 2026-11-04 (cliente conectou; ressalva do backup registrada)
 
 ## Objetivo
 
@@ -77,3 +77,18 @@ Saída esperada: requisição de status do IP do cliente e, na sequência, `recv
 - **Risco:** `serverlist editor.exe` gerar canal com porta errada (cliente sempre disca 8281 pelo
   binário; o campo de porta pode não ser respeitado) → manter 8281 e mudar a porta publicada do host.
 - **Rollback:** restaurar `serverlist.bin.bak` (o cliente volta ao estado anterior, remoto).
+
+## Evidência de execução (2026-11-04)
+
+```text
+time=2026-11-04T19:13:51.802Z level=INFO msg="served status probe" ip=172.28.0.1:48230 req="GET /serv00.htm HTTP/1.1" bytes=30
+time=2026-11-04T19:13:55.826Z level=INFO msg="served status probe" ip=172.28.0.1:42226 req="GET /serv00.htm HTTP/1.1" bytes=30
+time=2026-11-04T19:14:12.809Z level=INFO msg="recv packet" conn=1 type=0x020d len=104 routed=true
+```
+
+- O cliente alcançou o status (`:80`) **e** abriu o CPSock (`:8281`): canal local listado e escolhido.
+- **Ressalva:** `client/serverlist.bin` continua com 7.040 B e data 02/11 — não foi regerado nesta
+  rodada e **não existe `.bak`**. Funcionou com o bin que já estava lá; para outra máquina, gerar o
+  bin novo e guardar backup antes (passo 2 do roteiro).
+- Critérios: ✅ canal listado · ✅ GET de status no log · ✅ `0x020d` no log · ⏳ procedimento repetido
+  em outra máquina (só ao testar LAN de verdade).

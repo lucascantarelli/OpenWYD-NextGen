@@ -25,6 +25,14 @@
   `STRUCT_SELCHAR` ao cliente; ver Fase 6).
 - Erros: `_NN_Reconnect`, `_NN_Version_Not_Match_Rerun`, `_NN_3_Tims_Wrong_Pass`,
   `_MSG_DBAccountLoginFail_*` (vindos do DBSrv).
+- **Como o erro chega ao cliente:** o legado **não** usa `_MSG_MessageBoxOk` com um número. Ele
+  chama `SendClientMessage(conn, g_pMessageStringTable[...])`, que monta um `_MSG_MessagePanel`
+  (`MSG_MessagePanel.String[128]`) com `HEADER.ID = 0` e o **texto** do `Language.txt`:
+  `_MSG_DBAccountLoginFail_Account` → `_NN_No_Account_With_That_Name` (131); `_Fail_Pass` →
+  `_NN_Wrong_Password` (133); `_Fail_Block` → `_SN_Blocked_Account` (132) com `"X"` no `%s`
+  (`ProcessDBMessage.cpp:518-570`, depois `SendMessageA()` + `CloseUser`). Ver a correção de
+  2026-11-04 na issue 32: o `notify()` do servidor novo mandava só o código, e o cliente abria uma
+  caixa vazia.
 
 ## Anti-cheat
 - Versão de cliente obrigatória (bloqueia clientes desatualizados/forjados).

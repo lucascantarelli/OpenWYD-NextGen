@@ -47,7 +47,7 @@ fase) e [validate.md](prompts/validate.md) (audita paridade + aderência às gui
 
 ## Achados de maior impacto (resumo executivo)
 
-- **Versão de protocolo = 7640**, não 7662 (7662 é o nome do build/patch). `MSG_AccountLogin.
+- **Versão de protocolo do legado = 7640**, não 7662 (7662 é o nome do build/patch); **correção de 2026-11-04:** o cliente usado neste projeto envia `ClientVersion = 12000` — medido no login real, sem mismatch com `-client-version 12000`. Ver `roadmap/issues/issue-06.md`. `MSG_AccountLogin.
   ClientVersion` deve ser `7640` (`Basedef.h:102`). — Fase 1 §4.1.
 - **Sem criptografia real:** ofuscação por tabela estática pública (`pKeyWord`) + checksum
   **não-rejeitante**; o cliente tem a verificação **desligada** pelo ClientPatch. — Fase 1 §1.4-1.5.

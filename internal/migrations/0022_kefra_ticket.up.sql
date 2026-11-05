@@ -1,1 +1,0 @@
-ALTER TABLE character ADD COLUMN kefra_ticket INTEGER NOT NULL DEFAULT 0;

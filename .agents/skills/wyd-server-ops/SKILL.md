@@ -21,9 +21,9 @@ protocolo legado com o cliente**. Os outros são internos (gRPC) e um Postgres.
 ```bash
 # (comandos rodam na raiz do repositório)
 
-# a) a árvore de conteúdo está completa?
-test -f Release/Common/ItemList.csv && echo "ItemList ok"
-test -d Release/TMsrv/run/npc && ls Release/TMsrv/run/npc | wc -l   # esperado ~1991
+# a) a árvore de conteúdo obrigatória está completa? (catálogo de item/skill/NPC vem do Postgres
+#    desde a issue 58; o fail-closed do boot é sobre o banco, não sobre arquivo)
+test -f Release/Common/Settings/SancRate.txt && echo "taxas ok"
 ls -l Release/TMsrv/run/HeightMap.dat Release/TMsrv/run/AttributeMap.dat
 ls Release/DBsrv/run/BaseMob                                        # TK FM BM HT (816 B cada)
 
@@ -102,13 +102,13 @@ Definidas em `tmserver/cmd/tmserver/main.go`; quase todas têm equivalente `W2PP
 | `-content` | env `W2PP_CONTENT` | árvore `Release/`; vazio = sem conteúdo (inútil para jogar) |
 | `-dbserver` / `-binserver` | env | vazio = persistência no-op / billing allow-all |
 | `-status-addr` | `:80` | página de status; vazio desliga |
-| `-client-version` | `7640` | versão exigida no login (o compose passa **12000**) |
+| `-client-version` | `7640` | versão exigida no login; o compose passa **12000**, que é o valor medido no cliente real (2026-11-04) |
 | `-kefra-live` | `false` | semente do ciclo do Kefra (o registro no banco prevalece) |
 | `-double-exp` / `-newbie-event` | off | modificadores globais de EXP |
 | `-training-field-exp` | `6` | multiplicador do Campo de Treino (mortal < 35) |
 | `-affect-scale-pct` | `15` | duração de buffs fora da faixa-alvo (100 = legado) |
 | `-log-sends` | off | loga todo frame S→C (alto volume) |
-| `-npc-editing` / `-mob-stat-editing` | off | overlays de edição por moderador (exigem DB + conteúdo) |
+| `-mob-stat-editing` | off | overlay de edição por moderador (exige DB + conteúdo); o catálogo de NPCs **não** tem flag: `npc_definition` é a fonte |
 | `-reject-checksum` | **off** | só ligue com captura que confirme checksums corretos |
 
 Mudar flag = `docker compose up -d tmserver` com o `command:` ajustado (ou `docker compose run`).
@@ -168,5 +168,6 @@ Regras aprendidas na prática:
 - Não exponha 7514/3000/7600 na internet: são links internos sem TLS obrigatório por padrão.
 - Não habilite `-reject-checksum` "para testar": o cliente pode ter a verificação desligada por
   patch e você derruba toda conexão.
-- Não habilite `-npc-editing` antes de `dbserver import-npcs` popular `npc_definition`: os
-  mercadores saem do `NPCGener.txt` e não têm substituto, então **as lojas somem**.
+- Não suba o tmserver com `-dbserver` apontando para um banco sem `npc_definition`: o catálogo é a
+  **única** fonte de spawn (issue 57), então um banco vazio = **mundo sem NPCs**. Rode
+  `dbserver import-npcs` (ou deixe o dbserver semear no boot) antes.

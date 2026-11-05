@@ -413,7 +413,7 @@ func TestWaterPartyExp(t *testing.T) {
 
 func TestWaterReleaseContent(t *testing.T) {
 	dir := filepath.Join("..", "..", "..", "Release", "TMsrv", "run")
-	gens, err := content.LoadNPCGenerators(filepath.Join(dir, "NPCGener.txt"))
+	gens, err := content.LoadNPCGenerators(releasePath(t, filepath.Join(dir, "NPCGener.txt")))
 	if err != nil {
 		t.Fatal(err)
 	}

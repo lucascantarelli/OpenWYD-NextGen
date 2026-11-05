@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -34,7 +33,7 @@ func TestSpawnNPCsLeavesWaterGeneratorsForRoomLifecycle(t *testing.T) {
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	w := world.New(world.Config{GridDim: 128}, log, nil, nil)
-	spawnNPCs(w, dir, nil, false, nil, nil, log)
+	spawnNPCsForTest(w, dir, nil, log)
 	if w.GeneratorAt(10) == nil || w.GeneratorAt(10).CurrentNumMob != 0 {
 		t.Fatal("water generator spawned during world startup")
 	}
@@ -46,7 +45,11 @@ func TestSpawnNPCsLeavesWaterGeneratorsForRoomLifecycle(t *testing.T) {
 	}
 }
 
-func TestSpawnNPCsWarnsMissingTemplates(t *testing.T) {
+// TestSpawnNPCsSkipsMissingLeaderTemplate: a block whose leader template cannot be
+// decoded never becomes a generator slot (the importer drops it, so the catalogue
+// the tmServer reads has no definition for it), and a missing follower degrades the
+// block to a leader-only group.
+func TestSpawnNPCsSkipsMissingLeaderTemplate(t *testing.T) {
 	dir := t.TempDir()
 	runDir := filepath.Join(dir, "TMsrv", "run")
 	npcDir := filepath.Join(runDir, "npc")
@@ -77,10 +80,9 @@ func TestSpawnNPCsWarnsMissingTemplates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	w := world.New(world.Config{GridDim: 64}, logger, nil, nil)
-	spawnNPCs(w, dir, nil, false, nil, nil, logger)
+	spawnNPCsForTest(w, dir, nil, logger)
 
 	if g := w.GeneratorAt(0); g != nil {
 		t.Fatalf("missing leader generator = %#v, want skipped nil slot", g)
@@ -94,21 +96,6 @@ func TestSpawnNPCsWarnsMissingTemplates(t *testing.T) {
 	}
 	if g.CurrentNumMob != 1 {
 		t.Fatalf("CurrentNumMob = %d, want one spawned leader", g.CurrentNumMob)
-	}
-
-	gotLog := logs.String()
-	for _, want := range []string{
-		"NPC templates missing",
-		"leader_blocks_skipped=1",
-		"missing_leader_templates=1",
-		"MissingLeader",
-		"follower_blocks_degraded=1",
-		"missing_follower_templates=1",
-		"MissingFollower",
-	} {
-		if !strings.Contains(gotLog, want) {
-			t.Fatalf("log missing %q:\n%s", want, gotLog)
-		}
 	}
 }
 
@@ -145,10 +132,9 @@ func TestSpawnNPCsResolvesLegacyTemplateNames(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	w := world.New(world.Config{GridDim: 64}, logger, nil, nil)
-	spawnNPCs(w, dir, nil, false, nil, nil, logger)
+	spawnNPCsForTest(w, dir, nil, logger)
 
 	for i := 0; i < 2; i++ {
 		g := w.GeneratorAt(i)
@@ -158,9 +144,6 @@ func TestSpawnNPCsResolvesLegacyTemplateNames(t *testing.T) {
 		if g.CurrentNumMob != 1 {
 			t.Fatalf("generator %d CurrentNumMob = %d, want one spawned leader", i, g.CurrentNumMob)
 		}
-	}
-	if strings.Contains(logs.String(), "NPC templates missing") {
-		t.Fatalf("legacy aliases should not log missing templates:\n%s", logs.String())
 	}
 }
 
@@ -194,7 +177,7 @@ func TestSpawnNPCsMarksTrainingFieldGenerators(t *testing.T) {
 	attrs.Data[2*32+3] = 0x80
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	w := world.New(world.Config{GridDim: 128}, log, nil, nil)
-	spawnNPCs(w, dir, attrs, false, nil, nil, log)
+	spawnNPCsForTest(w, dir, attrs, log)
 	if g := w.GeneratorAt(0); g == nil || !g.TrainingField {
 		t.Error("generator on a 0x80 cell not marked as training field")
 	}

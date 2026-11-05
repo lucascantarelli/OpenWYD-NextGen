@@ -33,10 +33,11 @@ Regras que **não** mudam:
 3. **Conta de moderador**: a coluna `account.role` precisa ser `'moderator'` ou `'admin'`. **Não há RPC
    para promover** — é operação de DBA/seed (ex.: `UPDATE account SET role='moderator' WHERE name=...`).
    Contas normais têm `role='player'` e recebem `ADMIN_RESULT_FORBIDDEN`.
-4. **Seed dos NPCs** (uma vez): `dbserver import-npcs -content <Release/> -dsn <dsn>` popula os NPCs
-   merchant a partir do `NPCGener.txt`. Antes disso, `ListNpcs` volta vazio.
-5. **Overlay ligado no tmServer**: `W2PP_NPC_EDITING=true` (senão as edições ficam só no banco e não
-   aparecem no jogo). Ver §7.
+4. **Seed dos NPCs** (uma vez): `dbserver import-npcs -content <Release/> -dsn <dsn>` popula o
+   catálogo de spawn (todos os blocos) a partir do `NPCGener.txt`. Antes disso, `ListNpcs` volta vazio
+   e o mundo sobe sem NPCs.
+5. **Nada a ligar no tmServer**: `npc_definition` é a única fonte de spawn (issue 57). O tmServer lê o
+   catálogo no boot e recarrega no poll de ~15 s. Ver §7.
 
 ## 3. Autenticação e sessão do moderador
 
@@ -254,8 +255,8 @@ A escrita vai para o Postgres na hora, mas o mundo do jogo só reflete quando o 
 - **no boot**, e
 - por **poll periódico (~15s)** enquanto roda.
 
-Ou seja: comunique ao moderador algo como *"a alteração aparece no jogo em alguns segundos"*. Requer o
-overlay ligado (`W2PP_NPC_EDITING=true`). Sem isso, a edição fica só no banco.
+Ou seja: comunique ao moderador algo como *"a alteração aparece no jogo em alguns segundos"*. Não há
+flag: o catálogo do banco é aplicado no boot e no poll.
 
 ### 5.5 Combobox de `template_name` (`ListMerchantTemplates`)
 

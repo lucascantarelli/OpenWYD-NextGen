@@ -323,6 +323,15 @@ Int (BattleProcessor). Lógica fiel ao `CMob.cpp` (StandingBy/BattleProcessor/Ge
   `BenchmarkTickIdle10k` ≈ **0,2ms/tick com 10k mobs**. Greedy NÃO é A*: contorna obstáculo de
   1 célula (desvio lateral) mas fica retido por muro comprido — fiel. Testes: `route/route_test.go`
   (ramos golden), `TestMobRoutesAroundObstacle`, `TestMobHeldByWall`.
+- **NPCs saem do arquivo (04/11/2026, issue 57).** `npc_definition` é a única fonte de spawn: no
+  boot o tmServer registra um `Generator` por definição de conteúdo (`registerNPCGenerators`: segs,
+  população, formação, `training_field`) e materializa as entidades do mesmo snapshot
+  (`FetchNPCConfig` + `ApplyNPCConfigBoot`, com retry para a corrida com o dbserver). Blocos de evento
+  (água, Kefra, Nightmare, rune quest) ficam sob `world.EventOwnedGenerator` e são spawnados pelo
+  código de evento. `spawnNPCs`, `skipMerchants`, `Generator.DBManaged` e `-npc-editing` saíram;
+  `NPCGener.txt` virou insumo do importador do dbserver. Boot medido: `generators=6099 slots=6099
+  event_owned=199 training_grounds=104` e `npcs=5161` (os 739 slots sem entidade têm `max_num_mob=0`
+  ou posição bloqueada — igual ao caminho antigo, agora logado).
 - **Iteração 2 parte 3 FEITA (jul/2026) — roaming/patrulha (M4).** Parser NPCGener COMPLETO
   (`content/npc.go`: MinuteGenerate/MaxGroup/Follower ("0"=nenhum)/RouteType/Formation +
   waypoints com o mapeamento do ParseString: **Start→Seg[0], Segment1-3→Seg[1-3], Dest→Seg[4]**;

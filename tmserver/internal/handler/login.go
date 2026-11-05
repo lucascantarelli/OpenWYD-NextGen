@@ -32,11 +32,14 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	if body.ClientVersion != d.cfg.ClientVersion {
 		d.log.Warn("account login: version mismatch",
 			"conn", s.Conn, "got", body.ClientVersion, "want", d.cfg.ClientVersion)
-		d.notify(w, s, NoticeVersionMismatch)
+		d.sendClientMessage(w, s, versionMismatchText)
 		w.Close(s)
 		return
 	}
 	if s.Mode != world.UserAccept {
+		// No Language.txt text confirmed for this one (legacy
+		// _MSG_AccountLogin.cpp:56-63 logs CrackLog and answers the client); keep
+		// the placeholder until a capture pins it.
 		d.notify(w, s, NoticeLoginNow)
 		return
 	}
@@ -48,7 +51,7 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	}
 	if d.fails[name] >= d.cfg.MaxFailLogin {
 		d.log.Warn("account login: locked out after wrong passwords", "conn", s.Conn, "account", name, "fails", d.fails[name])
-		d.notify(w, s, Notice3WrongPass)
+		d.sendClientMessage(w, s, threeWrongPassText)
 		return
 	}
 
@@ -101,12 +104,12 @@ func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out 
 		d.fails[s.AccountName]++
 		d.log.Warn("account login: bad password", "conn", s.Conn, "account", s.AccountName, "fails", d.fails[s.AccountName])
 		s.Mode = world.UserAccept // allow retry
-		d.notify(w, s, NoticeBadPass)
+		d.sendClientMessage(w, s, wrongPasswordText)
 	case world.LoginNoAccount:
 		s.Mode = world.UserAccept
-		d.notify(w, s, NoticeNoAccount)
+		d.sendClientMessage(w, s, noAccountText)
 	case world.LoginBlocked:
-		d.notify(w, s, NoticeBlocked)
+		d.sendClientMessage(w, s, blockedAccountText)
 		w.Close(s)
 	case world.LoginAlreadyPlaying:
 		s.Mode = world.UserAccept // allow retry, as the duplicate-login refusal below

@@ -31,7 +31,7 @@ export default async function NovoNpcPage() {
       <h1 className="ui-page-title">Novo NPC</h1>
       <p className="ui-page-sub">
         A definição é criada no Postgres com <code>origin=custom</code>; o tmserver a materializa no
-        próximo restart (ou no poll de ~15 s com <code>W2PP_NPC_EDITING=true</code>).
+        próximo restart (ou no poll de ~15 s).
       </p>
 
       {error ? (

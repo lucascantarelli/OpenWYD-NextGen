@@ -14,9 +14,9 @@ export const metadata = { title: "NPCs e lojas · WYD2" };
 /**
  * Lista de definições de NPC/mercador.
  *
- * O banner de lista vazia é a proteção do risco da issue: ligar
- * `-npc-editing` no tmserver sem rodar `import-npcs` antes derruba os mercadores
- * do mundo — aqui o operador vê o que falta fazer, em vez de uma tela vazia.
+ * O banner de lista vazia cobre o caso de catálogo não semeado: `npc_definition`
+ * é a única fonte de spawn do tmserver (issue 57), então um banco vazio = mundo
+ * sem NPCs — aqui o operador vê o que falta fazer, em vez de uma tela vazia.
  */
 export default async function NpcsPage() {
   let npcs: NpcDefinition[] = [];
@@ -64,8 +64,8 @@ export default async function NpcsPage() {
         <div className="ui-card ui-empty" style={{ marginBottom: 12 }}>
           <strong>Nenhuma definição no banco</strong>
           <p>
-            O overlay está vazio. Rode o seed antes de ligar <code>-npc-editing</code> no tmserver —
-            sem isso os mercadores do mundo somem:
+            O catálogo está vazio. Rode o seed e reinicie o tmserver — sem definições o mundo
+            sobe sem NPCs:
           </p>
           <p className="ui-mono">
             docker compose run --rm dbserver import-npcs -content /Release -dsn

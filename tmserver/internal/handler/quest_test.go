@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -187,7 +186,7 @@ func baseMortalState(level int) world.CharacterState {
 }
 
 func TestKibitaSoulWithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Kibita"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Kibita"))
 	if err != nil {
 		t.Fatalf("read real Kibita template: %v", err)
 	}
@@ -317,7 +316,7 @@ func TestKibitaSoulRejectsInvalidRequirementsWithoutMutation(t *testing.T) {
 }
 
 func TestJardineiroStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Jardineiro"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Jardineiro"))
 	if err != nil {
 		t.Fatalf("read real Jardineiro template: %v", err)
 	}
@@ -395,7 +394,7 @@ func TestJardineiroRejectsInvalidRequirements(t *testing.T) {
 }
 
 func TestCoveiroStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Coveiro"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Coveiro"))
 	if err != nil {
 		t.Fatalf("read real Coveiro template: %v", err)
 	}
@@ -834,8 +833,8 @@ func TestKingArchRejectsMissingPedraIdeal(t *testing.T) {
 	}
 }
 
-func mestreGrifoTemplate() []byte {
-	if b, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo")); err == nil && len(b) == 816 {
+func mestreGrifoTemplate(t *testing.T) []byte {
+	if b, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo")); err == nil && len(b) == 816 {
 		return b
 	}
 	b := make([]byte, 816)
@@ -860,7 +859,7 @@ func startServerMestreGrifo(t *testing.T, st world.CharacterState, tick bool) (s
 	if tick {
 		w.SetTickHandler(10*time.Millisecond, d.Tick)
 	}
-	npcID := w.SpawnMob(mestreGrifoTemplate(), 2116, 2080)
+	npcID := w.SpawnMob(mestreGrifoTemplate(t), 2116, 2080)
 	if npcID < 0 {
 		t.Fatal("failed to spawn Mestre_Grifo")
 	}
@@ -1088,7 +1087,7 @@ func TestMestreGrifoQuestFlagPreventsImmediateRecall(t *testing.T) {
 }
 
 func TestMestreGrifoRealTemplateTeleportsAndSurvivesGuard(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo"))
 	if err != nil {
 		t.Fatalf("read real Mestre_Grifo template: %v", err)
 	}
@@ -1295,7 +1294,7 @@ func TestQuest256TicketSecondUseOnEmptySlotIsNoop(t *testing.T) {
 }
 
 func TestGuardaStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Guarda"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Guarda"))
 	if err != nil {
 		t.Fatalf("read real Guarda template: %v", err)
 	}
@@ -1376,7 +1375,7 @@ func TestGuardaRejectsInvalidRequirements(t *testing.T) {
 // only EF_GRADE0 (2 vs 3) and the ticket tell them apart, so both load the real
 // template to prove the pair resolves to different steps.
 func TestPatrulhaKaizenStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha_"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha_"))
 	if err != nil {
 		t.Fatalf("read real Patrulha_ template: %v", err)
 	}
@@ -1455,7 +1454,7 @@ func TestPatrulhaKaizenRejectsInvalidRequirements(t *testing.T) {
 }
 
 func TestPatrulhaHidraStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := os.ReadFile(filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha"))
 	if err != nil {
 		t.Fatalf("read real Patrulha template: %v", err)
 	}

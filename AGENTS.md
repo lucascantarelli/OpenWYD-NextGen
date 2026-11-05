@@ -33,8 +33,9 @@ convenções, veja `CLAUDE.md`; este arquivo cobre o repositório inteiro (servi
 ## 2. Caminho feliz (bring-up do zero)
 
 ```bash
-# 0. A árvore de conteúdo TEM de existir. Sem isto o servidor sobe "vazio".
-test -f Release/Common/ItemList.csv && test -d Release/TMsrv/run/npc || echo "CONTEÚDO FALTANDO"
+# 0. Conteúdo que ainda vive em arquivo: taxas, mapas e BaseMob. Catálogos de item/skill,
+#    templates de NPC e spawns vêm do banco (baseline da issue 58).
+test -f Release/TMsrv/run/HeightMap.dat && test -d Release/DBsrv/run/BaseMob || echo "CONTEÚDO FALTANDO"
 
 # 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + tmServer)
 make run-local          # = ./scripts/run-local.sh  (conta test / test123)
@@ -97,17 +98,22 @@ Detalhes, diagnóstico e alternativas: skills `wyd-server-ops`, `wyd-client-conn
 
 ## 4. Árvore de conteúdo (`Release/`)
 
-O tmServer carrega isto no boot (`-content /Release`); taxas e catálogos são **obrigatórios**
-(erro fatal se quebrarem), mapas são opcionais (warning).
+O tmServer carrega isto no boot (`-content /Release`); taxas são **obrigatórias** (erro fatal se
+quebrarem), mapas e BaseMob são opcionais (warning).
+
+**Catálogos não moram mais aqui** (issue 58, fase 5): `item_catalog`, `skill_catalog`,
+`npc_template`, `world_item_seed` e `npc_definition` vêm do Postgres, pelo gRPC do dbserver, e a
+ausência deles recusa o boot. O `importcontent` continua existindo só para reprocessar uma árvore de
+conteúdo externa (backup).
 
 ```
-Release/Common/            ItemList.csv, SkillData.csv, serv00.htm, serverlist.txt,
+Release/Common/            serv00.htm, serverlist.txt,
                            Settings/{CompRate,SancRate,QuestsRate,CastleQuest,MobMerc}.txt
-Release/TMsrv/run/         NPCGener.txt, npc/ (~1.991 templates de 816 B), InitItem.csv,
-                           ItemDropList.txt, LevelItem.txt, Regions.txt, Guard.txt,
-                           gameconfig.txt, HeightMap.dat (16 MiB, 4096²),
+Release/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
+                           ItemDropList.txt, HeightMap.dat (16 MiB, 4096²),
                            AttributeMap.dat (1 MiB, 1024²)
 Release/DBsrv/run/BaseMob/ {TK,FM,BM,HT} — template por classe (816 B) com equip inicial
+Release/TMsrv/run/BaseSummon/ templates de invocação do BM
 ```
 
 Os mapas alimentam `route.Bake` (atributo → altura 127 = bloqueado) e o pathfinding dos mobs.
@@ -162,7 +168,9 @@ humano terminar, e só então mexa.
 | Comandos in-game e de GM | `docs/game.md` |
 | Histórico de bugs in-game | `docs/migration/ingame-bugs.md` |
 | Portal: BFF, telas, overlays, sessão | `portal/README.md` + `.agents/skills/wyd-web-admin-ui` |
-| Plano de execução deste projeto | `roadmap/index.md` |
+| Banco: auditoria, tipos, índices, squash | `docs/analysis/banco-de-dados.md` + skill `wyd-database` |
+| Plano de execução deste projeto | `roadmap/index.md` + `roadmap/PLANO-2026-11.md` |
+| Análise de conjunto (estado, legado, cliente, banco, processo) | `docs/analysis/` |
 
 Antes de mexer em wire/format/gameplay, leia o doc correspondente. Ele cita evidência como
 `Source/Code/.../arquivo.cpp:linha` e marca como **UNVERIFIED** o que não foi confirmado — respeite
@@ -173,6 +181,7 @@ essa marcação em vez de tratá-la como fato.
 | Skill | Use quando |
 |-------|-----------|
 | `wyd-server-ops` | subir/parar/inspecionar a stack local, portas, logs, banco, backup, migrations |
+| `wyd-database` | auditar/migrar/backup do Postgres, escrever migration, squash de migrations, seeds de referência |
 | `wyd-client-connect` | gerar `serverlist.bin`, alinhar versão de protocolo, diagnosticar cliente que não loga |
 | `wyd-game-admin` | GM commands, contas, papéis, bans, dar item/gold/nível, auditoria |
 | `wyd-economy` | preços, drops, refino, combines, curva de EXP, balanceamento e ferramentas de dados |
@@ -184,6 +193,11 @@ essa marcação em vez de tratá-la como fato.
 
 ## 8. Convenções de trabalho
 
+- **Ao migrar uma funcionalidade, remova o caminho legado na mesma entrega** (arquivo, flag, coluna,
+  tela, tabela). Migração sem remoção deixa duas fontes vivas e o defeito nasce da convivência: foi
+  assim que 20 linhas do seed curado (0006) ficaram sombreadas pelos blocos importados e duplicaram
+  os mercadores de Armia (B18, 04/11). Se a migração ainda não terminou, a remoção fica registrada
+  como issue de fechamento (ex.: 57), não como pendência informal.
 - Siga `development-guidelines/Go-development-guidelines.md` para Go.
 - Prefira editar o que existe a criar arquivo novo; o roadmap já diz onde cada coisa mora.
 - Docs, UI e mensagens em português; commits pequenos e descritivos em português.

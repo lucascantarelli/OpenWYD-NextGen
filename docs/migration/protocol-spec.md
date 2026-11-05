@@ -496,7 +496,7 @@ rejeita com mensagem de versão (`_MSG_AccountLogin.cpp:44-47`).
   `MSG_AccountLogin.ClientVersion`, que o TMSrv compara com `APP_VERSION` (`_MSG_AccountLogin.cpp:26,44`).
   Mismatch → mensagem `_NN_Version_Not_Match_Rerun` e rejeição.
 - **Nomenclatura:** "7662" é o build/nome do executável e do `ClientPatch_v7662.dll`; o **número de
-  versão de protocolo trafegado** é **7640**. O servidor novo deve aceitar `ClientVersion == 7640`
+  versão de protocolo trafegado** documentada é **7640**; **medido em 2026-11-04:** o cliente `WYD.exe` 7662 usado aqui envia **12000** (o servidor aceita o valor da flag `-client-version`, hoje 12000)
   (ou tornar configurável).
 
 ### 4.2. Ofuscação no cliente (ClientPatch)

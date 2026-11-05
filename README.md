@@ -4,7 +4,8 @@ servidor aberto de wyd
 [![CI](https://github.com/Jean1dev/w2pp-OpenWYD/actions/workflows/ci.yml/badge.svg)](https://github.com/Jean1dev/w2pp-OpenWYD/actions/workflows/ci.yml)
 
 Reescrita em **Go** (big-bang) do servidor do WYD (With Your Destiny), mirando o **client `WYD.exe`
-7662 sem modificação** (protocolo 7640). Os fontes legados em C++ ficam em `Source/`, os binários
+7662 sem modificação** — este build envia `ClientVersion` **12000** no login (medido em 2026-11-04;
+`Basedef.h` documenta 7640). Os fontes legados em C++ ficam em `Source/`, os binários
 legados + conteúdo do jogo em `Release/`, e os serviços Go novos em `tmserver/`, `dbserver/`,
 `binserver/`, `webserver/`. A reescrita é guiada pela engenharia reversa documentada em
 `docs/migration/`. Agradecimentos ao pessoal que me forneceu os fontes.
@@ -42,10 +43,25 @@ moderator/admin). Para desenvolver com hot reload, sem container: `make portal-i
 `make portal-dev`. Planejamento e issues ficam em `roadmap/index.md`; detalhes do portal em
 `portal/README.md`.
 
+### Variáveis de ambiente
+
+A configuração de processo vem de `./.env`, carregado pelo `docker compose` — o arquivo **não** é
+versionado, e `.env.example` documenta cada chave com o seu default:
+
+```bash
+cp .env.example .env                                   # primeira vez
+W2PP_RATES_EDITING=true docker compose up -d tmserver   # o shell vence o arquivo
+```
+
+Nenhuma chave é obrigatória: as flags `-x` dos binários usam `W2PP_X` como default e o argumento de
+CLI sempre vence a variável. Números de gameplay (rate, drop, preço, EXP) **não** vêm por env —
+ficam em `Release/` e nos overlays do portal. Catálogo completo: `docs/migration/config-ops.md` §0.
+
 ## Cliente do jogo
 
 O servidor Go mira o **`WYD.exe` build 7662 sem modificação**, que usa o protocolo/
-`ClientVersion` **7640**. O repositório não distribui um instalador oficial do cliente. Os links antigos
+`ClientVersion` **12000** (valor medido com o cliente real em 2026-11-04; o `Basedef.h` do legado traz
+7640). O repositório não distribui um instalador oficial do cliente. Os links antigos
 do servidor de teste e do cliente 7.59 foram removidos porque estão offline; veja o histórico nas
 issues [#85](https://github.com/Jean1dev/w2pp-OpenWYD/issues/85) e
 [#235](https://github.com/Jean1dev/w2pp-OpenWYD/issues/235).

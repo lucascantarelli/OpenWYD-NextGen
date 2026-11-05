@@ -189,7 +189,7 @@ Após mexer em overlay: `docker compose up -d tmserver` e conferir no log `conte
 | `longs: Number` ausente | `int64` chega como objeto `Long` e quebra JSON | sempre `longs: Number` |
 | `enums: String` + mapa numérico | `AdminResult` vira `"OK"` e nada casa | `enums: Number` |
 | `keepCase` divergente | campos viram `moderatorId` vs `moderator_id` | fixe `keepCase: true` |
-| `-npc-editing` sem `dbserver import-npcs` | mercadores somem do mundo | rodar o import antes de ligar |
+| `npc_definition` vazio | o mundo sobe sem NPCs (o banco é a única fonte, issue 57) | rodar `dbserver import-npcs` (o dbserver também semeia no boot) |
 | `-mob-stat-editing` | aplica **uma vez** no boot | reiniciar tmserver após editar |
 | Catálogo de itens (3.2k) por request | portal lento | cachear por `catalog_version` |
 | `unstable_cache` lendo artefato gerado (`dist/world-atlas.json`) | regenerar não aparece na tela e o `null` fica gravado em disco | cache manual por `mtime` (`server/atlas.ts`): arquivo mudou, cache cai |
@@ -198,7 +198,7 @@ Após mexer em overlay: `docker compose up -d tmserver` e conferir no log `conte
 | `webserver/internal/*` importando um pacote `tmserver/internal/*` | `use of internal package ... not allowed`: `tmserver/internal` só é importável de dentro de `tmserver` | tabela/constante compartilhada vai para `internal/<nome>` (foi assim com `internal/droprate`); o pacote do tmserver fica com a cópia mutável |
 | Listar template de mob e querer saber se tem override | não existe no arquivo (é estado do Postgres); um `Get` por item da lista seriam 1.991 RPCs | `MobTemplateFile.overridden` é resolvido no web-api com **uma** consulta por listagem (`ListMobTemplateStats`) e a lista devolvida é cópia do snapshot de boot |
 | Indexar célula de taxa por posição numérica | `CompRate.txt` tem **várias chaves por família** (`Compositor Item_+7`, `Item_+8`, `Item_+9`) e todas caíam na mesma `pos` | chave textual `(file, family, name)`: índice do refino, chave do CompRate ou `"<tier>.<coluna>"` |
-| Editar adds de item por posição (`slot 1..3`) | `ItemList.csv` traz até 12 pares `EF_*` por item (a 1188 tem 6) e o servidor indexa por código | overlay com PK `(item_index, effect)` — a posição não existe como conceito no conteúdo |
+| Editar adds de item por posição (`slot 1..3`) | `item_catalog` traz até 12 pares `EF_*` por item (a 1188 tem 6) e o servidor indexa por código | overlay com PK `(item_index, effect)` — a posição não existe como conceito no conteúdo |
 | Estado de módulo (`setBaseTable`) num `lib/` compartilhado | o server component e o bundle do client são instâncias separadas do módulo: o valor escrito no SSR não existe no browser e a conta sai zerada | passe a tabela por prop (`effectiveDropRate(slot, bonus, level, base)`) ou serializável; nunca guarde dado de request em variável de módulo isomórfico |
 | Retângulo digitado em célula quando o contrato é mundo | o servidor divide por 4 de novo e a área atingida fica 16× menor (ou no lugar errado) | digite sempre em 0..4095, mostre `describeRect` (mundo → célula) ao lado do input e valide com o mesmo limite do backend |
 | Editor que só desenha linhas preenchidas e envia o array completo | posição vazia pode ser lida como "manter" e o drop antigo volta sem ninguém pedir | no carry o vazio é decisão explícita: envie só as ocupadas e deixe o servidor substituir a tabela do template inteira; nunca complete com os valores lidos |
@@ -245,8 +245,8 @@ os gates `pnpm` ou o IPC).
    proíbe.
 7. **A UI não fala protocolo**: nada de `eff1/effv1`, enum ou hex na tela; o BFF entrega tipo nomeado.
 
-Nomes vêm de catálogo no **web-api**, nunca do browser: `itemcatalog` (`ItemList.csv`),
-`skillcatalog` (`SkillData.csv`, 151 linhas) e `itemeffects` (`Source/Code/ItemEffect.h`) resolvem
+Nomes vêm de catálogo no **web-api**, nunca do browser: `itemcatalog` (`item_catalog`),
+`skillcatalog` (`skill_catalog`, 151 linhas) e `itemeffects` (`Source/Code/ItemEffect.h`) resolvem
 índice/código → nome, e a RPC devolve só o que o personagem tem. Código de efeito fora do header cai
 em `efeito N` — não inventar rótulo.
 
@@ -284,6 +284,6 @@ em `efeito N` — não inventar rótulo.
 | 43 | Inventário e status de personagem (edição offline + delivery_queue) — 🟡 leitura + concessão de item por fila; gold e edição de campo pendentes |
 | 44 | Adds/efeitos de item, refino e combine — 🟡 leitura ✅ (`ItemCatalogEntry.effects`, `effect_types`, validação de adds na concessão); edição pendente |
 | 45 | Guildas, castelo/Zakum e Kefra |
-| 46 | Catálogo de skills (overlay de SkillData.csv) |
+| 46 | Catálogo de skills (overlay de `skill_catalog`) |
 | 47 | UI sem IDs crus + padrão de UI/UX (tokens, estados, a11y) — 🟡 itens, skills, adds, atlas, loja e teleportes já mostram nome (nome de lugar via `lib/zone.ts`, coordenada no `title`); escala `--space-1..7` e foco visível nos alvos que usam `all: unset` |
 | 48 | Mapa de navegação: relevo (geral + detalhe 4096²), zoom/pan, leitura de ponto, calor de spawn, “ir para coordenada”, teleportes com nome de lugar e raster de regiões (contorno colado ao terreno) — 🟡 feito; faltam mapa em largura total e pinch-zoom |

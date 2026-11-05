@@ -286,7 +286,7 @@ export function NpcForm({
 
           <p className="ui-banner" style={{ marginTop: 12 }} role="note">
             A gravação vai para o Postgres na hora; o mundo reflete no <strong>próximo restart</strong>{" "}
-            do tmserver (ou no poll de ~15 s, se <code>W2PP_NPC_EDITING=true</code>). Restart:{" "}
+            do tmserver (ou no poll de ~15 s). Restart:{" "}
             <code>docker compose restart tmserver</code>.{" "}
             <Link href="/logs">ver logs</Link>
           </p>

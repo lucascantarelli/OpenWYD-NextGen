@@ -211,7 +211,7 @@ type Dispatcher struct {
 	// single in-flight version poll; npcPollTick phases the poll cadence.
 	npcSource      npccfg.Source
 	baseItemPrices map[int]int32
-	managedNPCs    map[string]int
+	managedNPCs    map[string]managedNPC
 	npcVersion     int64
 	npcPolling     bool
 	npcPollTick    int
@@ -326,7 +326,7 @@ func New(cfg Config) *Dispatcher {
 		guildWars:        make(map[uint16]uint16),
 		guildAllies:      make(map[uint16]uint16),
 		npcSource:        cfg.NpcConfig,
-		managedNPCs:      make(map[string]int),
+		managedNPCs:      make(map[string]managedNPC),
 		worldEventSource: cfg.WorldEvents,
 		castleQuests:     cfg.CastleQuests,
 		eventRNG:         rng.NewSeeded(cfg.EventRNGSeed),

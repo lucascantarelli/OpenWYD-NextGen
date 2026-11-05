@@ -1,4 +1,0 @@
-ALTER TABLE character DROP COLUMN IF EXISTS pk_point;
-ALTER TABLE character DROP COLUMN IF EXISTS guilty;
-ALTER TABLE character DROP COLUMN IF EXISTS cur_kill;
-ALTER TABLE character DROP COLUMN IF EXISTS tot_kill;

@@ -28,7 +28,7 @@ Riscos/rollback     — o que pode dar errado e como voltar
 Regra de ouro: **nenhuma issue é "concluída" sem evidência de execução** (log, teste verde, saída de
 comando). "Escrevi o código" não fecha issue.
 
-## Estado atual (2026-11-02)
+## Estado atual (2026-11-04)
 
 | Item | Estado | Evidência |
 |------|--------|-----------|
@@ -40,6 +40,23 @@ comando). "Escrevi o código" não fecha issue.
 | Stack no ar | ✅ `db`, `binserver`, `dbserver`, `webserver`, `tmserver` Up | `tmserver listening addr=:8281`, status `:80` → HTTP 200; `NPCs spawned mobs=11930`, `walkability grid baked dim=4096` |
 | Cliente apontando para o servidor local | ⏳ pendente | `serverlist.bin` atual aponta para canais remotos; `.remote_serverlist.bin` é uma página HTML de erro |
 | Camada de agente de IA (AGENTS.md + skills) | ✅ criada nesta sessão | `AGENTS.md`, `.agents/skills/wyd-*` |
+
+## Dossiê de análise (2026-11-04)
+
+Antes de escolher a próxima frente, leia o dossiê: ele responde "o que é o projeto, o que do legado
+ainda existe, o que pode ir para o banco, o que dá para fazer no cliente" com evidência do
+repositório e pesquisa externa.
+
+| Documento | Para quê |
+|-----------|----------|
+| [`docs/analysis/README.md`](../docs/analysis/README.md) | índice e resumo executivo |
+| [`docs/analysis/estado-atual.md`](../docs/analysis/estado-atual.md) | inventário, respostas 1–10 e as 3 perguntas adicionais, dívidas |
+| [`docs/analysis/migracao-legado.md`](../docs/analysis/migracao-legado.md) | mapa C++ → Go, o que falta, limites |
+| [`docs/analysis/persistencia-conteudo.md`](../docs/analysis/persistencia-conteudo.md) | arquivos × banco, o que migrar e o que não |
+| [`docs/analysis/cliente-launcher.md`](../docs/analysis/cliente-launcher.md) | cliente 7.64/12000, modernização e launcher |
+| [`docs/analysis/qa-ingame.md`](../docs/analysis/qa-ingame.md) | fila de testes reais e sistema de feedback |
+| [`docs/analysis/qualidade-e-processo.md`](../docs/analysis/qualidade-e-processo.md) | plano de engenharia e marcos |
+| [`PLANO-2026-11.md`](PLANO-2026-11.md) | ordem de execução (fecha o que está pronto primeiro) |
 
 ## Fases e issues
 
@@ -54,9 +71,9 @@ comando). "Escrevi o código" não fecha issue.
 ### Fase 1 — Cliente modificado e login
 | # | Issue | Estado | Esforço |
 |---|-------|--------|---------|
-| 05 | [Configurar o cliente para o servidor local](issues/issue-05.md) | ⏳ | M |
-| 06 | [Alinhar versão de protocolo e autenticar](issues/issue-06.md) | ⏳ | S |
-| 07 | [Login ponta-a-ponta (headless + gráfico)](issues/issue-07.md) | 🟡 (headless ✅, gráfico ⏳) | M |
+| 05 | [Configurar o cliente para o servidor local](issues/issue-05.md) | ✅ (04/11: status + CPSock + `0x020d`; bin usado é o de 02/11, sem `.bak`) | M |
+| 06 | [Alinhar versão de protocolo e autenticar](issues/issue-06.md) | ✅ (04/11: cliente envia **12000**; `account login: OK … chars=2`) | S |
+| 07 | [Login ponta-a-ponta (headless + gráfico)](issues/issue-07.md) | ✅ (04/11: entrou no mundo, andou, abriu loja e comprou; headless PASS) | M |
 
 ### Fase 2 — Personagens e persistência
 | # | Issue | Estado | Esforço |
@@ -93,7 +110,7 @@ comando). "Escrevi o código" não fecha issue.
 | 20 | [Shell da UI: layout, navegação e componentes base](issues/issue-20.md) | ✅ | M |
 | 21 | [Camada de admin no BFF: resultado→HTTP e auditoria](issues/issue-21.md) | ✅ | M |
 | 22 | [Catálogo de itens com ícones (leitura)](issues/issue-22.md) | ✅ | M |
-| 23 | [Editor de NPCs e mercadores](issues/issue-23.md) | 🟡 (UI ✅, in-game ⏳) | L |
+| 23 | [Editor de NPCs e mercadores](issues/issue-23.md) | ✅ (UI 03/11; NPC do portal visível e comprável no jogo 04/11) | L |
 | 24 | [Preços globais de itens](issues/issue-24.md) | 🟡 (UI ✅, in-game ⏳) | S |
 | 25 | [Editor de stats e equip de mobs](issues/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
 | 26 | [Relatórios de drop: item ↔ mob](issues/issue-26.md) | ✅ (duas visões, CSV e cache; validado ao vivo: 1.349 templates, 13.813 slots, consistência item↔mob, player 403) | M |
@@ -102,7 +119,7 @@ comando). "Escrevi o código" não fecha issue.
 | 29 | [Administração da loja de donate](issues/issue-29.md) | ✅ (`/loja`: CRUD com preço em donate, efeitos e `expires_days` do proto, habilitar/desabilitar, apagar exigindo o título digitado e crédito manual com motivo + confirmação dupla, tudo auditado) | M |
 | 30 | [Administração da recompensa diária](issues/issue-30.md) | ✅ (`/diaria` com CRUD completo, item por catálogo, efeitos/`expires_days` fiéis ao proto, habilitar/duplicar/apagar com confirmação; resgate provado duas vezes → `ALREADY_CLAIMED` e `delivery_queue` `daily_reward:1`) | S |
 | 31 | [Faturamento e relatórios de donate](issues/issue-31.md) | ✅ (`/faturamento` só `admin`: janela 7/30/90/personalizada em Brasília, receita em R$ separada dos créditos de donate, pendentes em cartão próprio ("não é receita"), série em barras por dia/semana/mês, pedidos com CSV, top compradores com LTV, extrato da carteira e filtro por conta; 6 KPIs conferidos contra SQL, `moderator` → `/sem-permissao`) | M |
-| 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | 🟡 (backend e portal ✅: migração `0042_account_admin` com `account_admin_audit`, `AccountAdminService` (list/keyset, get+auditoria, set role/block, create) e `/contas` com filtros, detalhe e motivo obrigatório; regras no store dentro da transação — sem auto-alteração, última admin ativa protegida, moderador só bloqueia jogador; e2e contra o web-api ✅ e `VerifyCredentials` vê o bloqueio. Falta só a recusa no login do cliente) | L |
+| 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | ✅ (04/11: backend, portal e recusa **vista no cliente** — “Conta bloqueada Grade X…” após corrigir o formato do aviso; migração `0042_account_admin` com `account_admin_audit`, `AccountAdminService` (list/keyset, get+auditoria, set role/block, create) e `/contas` com filtros, detalhe e motivo obrigatório; regras no store dentro da transação — sem auto-alteração, última admin ativa protegida, moderador só bloqueia jogador; e2e contra o web-api ✅ e `VerifyCredentials` vê o bloqueio. Falta só a recusa no login do cliente) | L |
 | 33 | [Catálogo de itens editável (overlay de ItemList.csv)](issues/issue-33.md) | ⏳ | L |
 | 34 | [Drops editáveis: taxa por slot e Carry[] do mob](issues/issue-34.md) | 🟡 (taxa por slot e `Carry[]` ✅ ponta a ponta: migrações 0040/0041, `DropAdminService` com os dois editores — **`/drops/editar`** e **`/drops/carry`** —, overlays no boot com log `templates=1`/`applied=1`, `Set/Restore` validados e auditoria; falta só a evidência in-game de frequência) | L |
 | 35 | [Curva de EXP e rebalanceamento em massa](issues/issue-35.md) | ⏳ | M |
@@ -119,6 +136,27 @@ comando). "Escrevi o código" não fecha issue.
 | 46 | [Catálogo de skills](issues/issue-46.md) | 🟡 (nomes ✅) | M |
 | 47 | [UI sem IDs crus e padrão de UI/UX](issues/issue-47.md) | ✅ (nomes no lugar de IDs, `--space-*`, foco, alvo 32px, contraste medido, retry global; `/config` e `/drops` respondendo 200 com sessão) | M |
 | 48 | [Mapa de navegação: relevo, zoom e leitura de ponto](issues/issue-48.md) | 🟡 (relevo/zoom/leitura ✅) | M |
+
+### Fase 7 — Fechamento in-game e consolidação (nov/2026)
+
+Ordem definida em [`PLANO-2026-11.md`](PLANO-2026-11.md): primeiro o que já está pronto e só espera
+evidência humana, depois o risco estrutural, depois produto.
+
+| # | Issue | Estado | Esforço |
+|---|-------|--------|---------|
+| 49 | [QA in-game em lote](issues/issue-49.md) — fechar as 13 issues 🟡 | ⏳ | M |
+| 50 | [Conteúdo do servidor no banco](issues/issue-50.md) — CSV vira seed | ⏳ | L |
+| 51 | [Launcher próprio](issues/issue-51.md) — patch, serverlist e login | ⏳ | L |
+| 52 | [Cliente: offsets, assets e resolução](issues/issue-52.md) | ⏳ | L |
+| 53 | [Feedback dos jogadores](issues/issue-53.md) — bug/sugestão no portal | ⏳ | M |
+| 54 | [Hub de documentação, ADRs e runbooks](issues/issue-54.md) | ⏳ | M |
+| 55 | [Qualidade: CI, banco efêmero e observabilidade](issues/issue-55.md) | ⏳ | L |
+| 56 | [Limpeza do repositório e legado arquivado](issues/issue-56.md) | ⏳ | S |
+| 57 | [NPCs: migrar todos os blocos e dropar `NPCGener.txt`](issues/issue-57.md) | ✅ | L |
+| 58 | [Baseline do banco: uma inicialização completa, sem arquivos de conteúdo](issues/issue-58.md) | ✅ | L |
+| 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
+| 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
+| 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ⏳ | S |
 
 Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do
 repo, com contexto Docker próprio (`portal/Dockerfile`) para não inflar o contexto dos serviços Go.
@@ -176,7 +214,7 @@ Grafo da Fase 6:
 |-------|---------|-----------|
 | `Release/` é ignorado por padrão (`[Rr]elease/` no `.gitignore`) e já sumiu uma vez por sparse checkout | crítico — servidor sobe vazio | issue 01 + skill `wyd-server-ops` §1 |
 | Cliente fechado com proteções (`JProtectDll.dll`, `jlock10*`) e launcher que sobrescreve `serverlist.bin` | alto — login impossível de reproduzir | issue 05, skill `wyd-client-connect` |
-| Versão de protocolo divergente (7640 vs 12000) | alto — login recusado (0x102) | issue 06: 12000 confirmado no headless; valor do cliente gráfico ainda não medido |
+| Versão de protocolo divergente (7640 vs 12000) | resolvido | issue 06 **fechada em 04/11**: o cliente gráfico envia 12000 (login OK, sem mismatch) |
 | Build Docker instável nesta máquina (daemon EOF) | médio — bloqueia 03/04 | issue 02 (diagnóstico de daemon/recursos) |
 | Dados de conteúdo sem paridade com o cliente (`ItemList.csv` vs `ItemList.bin`) | médio — item invisível/nome errado | skill `wyd-economy` §8 |
 | Migração de schema sem rebuild `--no-cache` | médio — "valor certo no banco, serviço antigo" | skill `wyd-server-dev` §4 |
@@ -190,6 +228,85 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-04 (issue 57 fechada: o banco é a única fonte de NPCs)** — os 6.099 blocos de
+  `NPCGener.txt` estão em `npc_definition` (o import deixou de filtrar merchant; o shop só é gravado
+  para quem vende, porque o `Carry[]` de monstro é a tabela de drop). No boot o tmServer **registra um
+  gerador por definição** (`npc generators registered generators=6099 slots=6099 event_owned=199
+  training_grounds=104`) e materializa as entidades do mesmo snapshot (`npc config applied at boot
+  version=17 npcs=5161`); 739 blocos com `max_num_mob=0` ou posição bloqueada não produzem entidade —
+  o mesmo comportamento de antes, agora visível no log em vez de silencioso. Saíram: `spawnNPCs` (o
+  parser do arquivo no tmServer), `skipMerchants`/`rawMerchant`, `Generator.DBManaged`,
+  `DBManagedGeneratorCount`, a flag `-npc-editing`/`W2PP_NPC_EDITING` e o log `NPCs spawned`. O
+  `NPCGener.txt` fica no repositório só como **insumo do importador** do dbserver. Evidência:
+  `go build/vet` + testes de `tmserver/cmd/tmserver`, `handler`, `world`, `content` e
+  `dbserver/cmd/dbserver` verdes; boot acima; `TestE2ESmokeLogin` aprovado com 6099 geradores no ar.
+
+- **2026-11-04 (legado do seed curado removido)** — a
+  duplicação de Armia veio de **duas fontes vivas**, não do arquivo: 20 linhas do seed curado (0006)
+  sem `generator_index` sombreando blocos já importados. A migração **0043** apaga essas linhas
+  (irreversível de propósito — o bloco importado é o dono), `store.SeedNPCDefinitions` mantém
+  `retireShadowedDefinitions` como guarda em re-seed e a regra "migrar = remover o legado" entrou no
+  `AGENTS.md` §8. A **issue 57** fechou a migração na sequência: os 6.099 blocos estão no banco, o
+  tmServer registra os geradores e materializa as entidades a partir de `npc_definition`, e
+  `skipMerchants`, o campo `DBManaged` (com `DBManagedGeneratorCount`) e a flag `-npc-editing`
+  saíram. O `NPCGener.txt` continua no repositório apenas como **insumo do importador** do dbserver
+  (o runtime não o lê).
+
+- **2026-11-04 (issue 23 fechada + B18: editar 1 NPC duplicava a cidade)** — o `QA Ferreiro` criado
+pelo editor apareceu em Armia com os três itens da loja e os três foram comprados no cliente: o
+overlay de NPC funciona ponta a ponta. No mesmo teste apareceu o **B18** (mercadores de Armia em
+dobro): 20 linhas legadas do seed pré-0018 (`generator_index` NULL) ficaram sombreadas pelos blocos
+NPCGener na mesma posição/template e as duas eram materializadas. As sombras foram desativadas, o
+seed passou a aposentá-las (`retireShadowedDefinitions`) e o reload virou **diff** (`managedNPC` +
+`npcDefKey`), então um edit não remonta mais a cidade inteira —
+`TestApplyNPCConfigKeepsUnchangedNPCs`.
+
+- **2026-11-04 (issue 07 fechada — o cliente entrou no mundo)** — `test` logou (`chars=2`), selecionou o
+`Cantarelli` 39 (`0x0213` slot 1 → `CNFCharacterLogin` corpo 1.820 B, spawn 2089,2106), **andou**
+(`0x036C` com rota de 6 passos), abriu loja em três mercadores (`0x027B` → `MSG_ShopList`) e
+**comprou** (`0x0379` → `buy ok item=5134 price=0`), saindo por `EOF`. Headless
+`TestE2ESmokeLogin` PASS com versão 12000. Achado menor: `0x03AE` chegou com `routed=false` antes do
+logout — provável pacote de quit do cliente, a mapear.
+
+- **2026-11-04 (issue 32: recusa de conta bloqueada + bug das mensagens de login)** — com `test`
+bloqueada no banco (`is_blocked=t`), o servidor recusa o login e fecha a conexão
+(`TestLoginNoAccountAndBlocked` PASS). No caminho apareceu **o motivo de nenhuma mensagem de erro
+aparecer no cliente**: `notify()` enviava `_MSG_MessageBoxOk` com um código numérico local de 4 bytes,
+mas o struct legado é `{int;int;char String[96]}` (`Basedef.h:1534-1541`) — o cliente abria uma caixa
+vazia. O legado manda **texto** via `SendClientMessage` (`_MSG_MessagePanel`, `HEADER.ID 0`,
+`ProcessDBMessage.cpp:518-570`). As cinco recusas de login com texto no `Language.txt` (versão 36, 3
+senhas 37, conta 131, bloqueada 132, senha 133) passaram a sair assim, com os testes exigindo
+`MsgMessagePanel` + texto exato. **Fechada no cliente** em 19:51 e 19:52: cada tentativa gerou `0x0101` ID 0 com 140 B e a recusa
+encerrou a conexão; a conta `test` foi liberada depois do teste.
+
+- **2026-11-04 (issue 07 parcial: login e lista de personagens no cliente)** — a sessão gráfica autenticou
+`test` e recebeu a lista com **2 personagens** (`account login: OK … chars=2`, frame `0x010a` de
+1.996 B), mas a conexão caiu por `EOF` **7 s depois, sem pacote de seleção**: não houve entrada no
+mundo. A issue continua 🟡 com os critérios marcados até onde a evidência alcança — headless e
+seleção/entrada seguem pendentes.
+
+- **2026-11-04 (issues 05 e 06 fechadas — o cliente conectou)** — o `WYD.exe` 7662 da pasta
+`client/` consultou o status (`GET /serv00.htm` em `:80`) e abriu o CPSock em `:8281`:
+`recv packet type=0x020d len=104` → `account login: relaying to dbServer account=test` →
+`account login: OK id=1 role=admin chars=2`, **sem** rejeição de versão. Isso encerra a divergência
+7640 × 12000: a checagem do `handler/login.go` é igualdade estrita e o servidor estava com
+`-client-version 12000`, logo este build envia **12000** (o 7640 é o valor de `Basedef.h`). README,
+`CLAUDE.md`, `docs/migration/README.md`, `protocol-spec` §4.1 e as skills `wyd-client-connect` /
+`wyd-server-ops` foram corrigidos; `docs/analysis/qa-ingame.md` e `roteiros-qa.md` atualizados.
+Ressalva: `client/serverlist.bin` não foi regerado (7.040 B, 02/11) e não há backup.
+
+- **2026-11-04 (dossiê de análise + reordenação do plano)** — varredura do repositório e pesquisa
+externa viraram `docs/analysis/` (7 documentos): inventário com números reais (198 arquivos de C++,
+2.138 de conteúdo, ~91 mil linhas de Go, 46 tabelas, 49 migrações), mapa C++→Go com o que já foi
+substituído pelas telas do portal e o que é limite duro (cliente fechado, offsets, assets), análise de
+persistência (quais CSVs podem ir para o banco e por que os mapas binários não devem), cliente
+DX9/32-bit com caminhos de modernização e desenho do launcher, fila de QA in-game e plano de
+engenharia (ADRs, runbooks, CI com banco efêmero, métricas). Achados que mudam decisão: o
+`serverlist.bin` está **versionado com IP privado**; `openspec/` tem 5 mudanças paradas e zero
+referência no código; a doc diverge sobre a versão do protocolo (7640 × 12000); teste de store usa
+`resetTestSchema` (apaga o schema) e por isso não roda. O plano de novembro (`roadmap/PLANO-2026-11.md`)
+prioriza fechar as 11 issues 🟡 (mais 05/06) antes de abrir features novas, e cria as issues 49–56.
 
 - **2026-11-04 (issue 32 — contas, papéis e banimento)** — `/contas` deixou de ser "em breve":
   listagem com cursor keyset (`apos`), filtro por prefixo de login/papel/estado e detalhe com a

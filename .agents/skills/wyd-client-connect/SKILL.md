@@ -64,7 +64,7 @@ Valores conhecidos:
 
 | Build do cliente | ClientVersion enviado |
 |------------------|----------------------|
-| `WYD.exe` 7662 (Cavaleiros de Kersef, protocolo 7640) | `12000` |
+| `WYD.exe` 7662 (Cavaleiros de Kersef) — **medido em 2026-11-04** | `12000` |
 | Protocolo documentado (`Basedef.h`) | `7640` |
 
 O `docker-compose.yaml` já sobe o tmServer com `-client-version 12000`, porque o build usado neste

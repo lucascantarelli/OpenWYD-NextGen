@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -26,7 +25,7 @@ func startKefraServer(t *testing.T, db *fakeDB) (string, *Dispatcher, *world.Wor
 	log := slog.New(slog.DiscardHandler)
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 4096}, log, db, d.Handle)
-	template, err := os.ReadFile("../../../Release/TMsrv/run/npc/Sobrevivente")
+	template, err := readRelease(t, "../../../Release/TMsrv/run/npc/Sobrevivente")
 	if err != nil {
 		t.Fatal(err)
 	}

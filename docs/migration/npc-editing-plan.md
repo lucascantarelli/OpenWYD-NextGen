@@ -295,29 +295,26 @@ verificação do mapeamento `Merchant → ShopType` por captura.
 
 ### Feature flag (opt-in) e ordem de ativação
 
-O overlay é **desligado por padrão** — a chave única é `-npc-editing` (ou `W2PP_NPC_EDITING=true`). Ligado,
-ele **exige** `-dbserver` (fonte da config) **e** `-content` (para resolver os templates); faltando
-qualquer um, o tmServer **falha no boot** com erro claro (não sobe um overlay que não teria de onde ler
-nem como spawnar). Motivo do default OFF: com o overlay ligado, os blocos merchant do `NPCGener.txt` são
-pulados e materializados do banco; se `npc_definition` estiver **vazia** (seed não rodou), os NPCs de loja
-**sumiriam**. Ordem correta de ativação:
+> **Estado desde a issue 57:** a flag **não existe mais**. `npc_definition` é a única fonte de spawn —
+> o tmServer registra um gerador por definição de conteúdo e materializa as entidades do mesmo
+> snapshot (`registerNPCGenerators` + `ApplyNPCConfigBoot`), e o `dbserver` semeia o catálogo a partir
+> de `NPCGener.txt` no boot (o arquivo virou **insumo do importador**, o runtime não o lê). Sem
+> `-dbserver`/`-content` o mundo sobe **sem NPCs** e o log avisa.
+>
+> As decisões abaixo são históricas e explicam por que a flag existiu (nunca houve caminho duplo
+> silencioso: ou o bloco vinha do arquivo, ou do banco).
 
-1. `dbserver import-npcs -content <Release/> -dsn <dsn>` — seeda os merchants no banco.
-2. Suba o tmServer com `-npc-editing` (`W2PP_NPC_EDITING=true`).
+O overlay era **desligado por padrão** — a chave única era `-npc-editing` (ou `W2PP_NPC_EDITING=true`).
+Ligado, ele exigia `-dbserver` (fonte da config) **e** `-content` (para resolver os templates). Motivo do
+default OFF: com o overlay ligado, os blocos merchant do `NPCGener.txt` eram pulados e materializados do
+banco; se `npc_definition` estivesse **vazia** (seed não rodou), os NPCs de loja **sumiriam**.
 
-Sem a flag, o comportamento é o de antes (NPCs 100% do `NPCGener.txt`).
-
-> **Atualização (issue #29 — [npc-default-roster.md](./npc-default-roster.md)):** o passo 1 acima já
-> não é manual. A migration `internal/migrations/0006_default_npc_seed.up.sql` seeda um roster
-> curado (63 templates / 80 blocos, congelado em SQL a partir do conteúdo real) direto no
-> `npc_definition`, e `store.Migrate` roda automaticamente no boot de qualquer serviço — então
-> **`npc_definition` nunca está vazia** a partir do primeiro boot, mesmo sem rodar `import-npcs`.
-> Isso muda o risco de "seed não rodou" para "seed rodou, mas é só o subconjunto curado": ligar
-> `-npc-editing` sem também ter rodado `import-npcs` (que traz **todos** os 544 blocos merchant do
-> conteúdo) faz **qualquer merchant fora do roster da migration** (variantes regionais colapsadas,
-> e tudo fora de `Merchant ∈ {1,2,19,100}`) sumir do jogo assim que a flag liga — mesmo em um
-> ambiente que nunca rodou `import-npcs` manualmente. Para paridade completa antes de ligar a flag,
-> rode `dbserver import-npcs -content <Release/> -dsn <dsn>`.
+> **Atualização (issue #29 — [npc-default-roster.md](./npc-default-roster.md)):** o seed manual deixou
+> de ser obrigatório. A migration `internal/migrations/0006_default_npc_seed.up.sql` seeda um roster
+> curado (63 templates / 80 blocos) direto no `npc_definition`, e `store.Migrate` roda automaticamente
+> no boot de qualquer serviço. O risco passou de "seed não rodou" para "seed rodou, mas é só o
+> subconjunto curado": sem `import-npcs` o catálogo tem 80 dos 6.099 blocos, e o mundo nasce com
+> poucos NPCs. Para paridade completa, rode `dbserver import-npcs -content <Release/> -dsn <dsn>`.
 
 ## 11. Relação com o resto da plataforma
 

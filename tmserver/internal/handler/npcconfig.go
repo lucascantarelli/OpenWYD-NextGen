@@ -2,7 +2,10 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"hash/fnv"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,10 +18,12 @@ import (
 // to Postgres; the tmServer reads it (via dbServer) and MATERIALIZES the live
 // entities inside the single-owner loop — the web never touches live state.
 //
-// DB-managed NPCs are the MERCHANT subset: at boot the NPCGener.txt merchant
-// blocks are skipped (main.spawnNPCs) and these definitions own them instead, so
-// there is no double-spawn. Monsters and non-shop NPCs keep coming from
-// NPCGener.txt untouched.
+// The database is the single source of spawn blocks (issue 57): the tmServer no
+// longer parses NPCGener.txt. At boot it registers one generator slot per content
+// definition and materializes the entities from the same snapshot, so the file and
+// the table can no longer disagree. Event-owned blocks (water rooms, Kefra,
+// Nightmare, rune quest) are registered but never materialized here — their event
+// code spawns them.
 
 const (
 	// npcPollPeriod is how many mob-AI ticks (1s each) between config version
@@ -42,75 +47,84 @@ var (
 	npcBootRetryMax     = 5 * time.Second
 )
 
-// ApplyNPCConfigBoot fetches the definition snapshot synchronously and applies it
-// once at boot (no reveal — no players are connected yet). It runs before the
-// loop starts, so it is single-threaded like spawnNPCs. Loading is fail-closed:
-// starting with an incomplete content catalog would silently remove legacy NPCs.
-// Transient failures are retried until npcBootRetryBudget expires — the dbServer
-// may still be unreachable, or still mid-seed and answering with a short catalog.
-// Structural failures (duplicate or non-DB-managed generator index) never heal on
-// their own, so they fail immediately instead of burning the budget.
-func (d *Dispatcher) ApplyNPCConfigBoot(ctx context.Context, w *world.World) error {
+// FetchNPCConfig loads the spawn catalogue before the loop starts. Transient
+// failures are retried until npcBootRetryBudget expires — the dbServer may still be
+// unreachable, or still mid-seed and answering with an empty catalogue (it seeds
+// the whole catalogue BEFORE it listens: production incident, 2026-08-13). Corrupt
+// data (duplicate generator index) never heals on its own, so it fails immediately
+// instead of burning the budget.
+func (d *Dispatcher) FetchNPCConfig(ctx context.Context) (npccfg.Snapshot, error) {
 	if d.npcSource == nil {
-		return nil
+		return npccfg.Snapshot{}, nil
 	}
 	deadline := time.Now().Add(npcBootRetryBudget)
 	delay := npcBootRetryInitial
 	for attempt := 1; ; attempt++ {
-		retriable, err := d.loadNPCConfigBoot(ctx, w)
+		snap, retriable, err := d.fetchNPCConfigAttempt(ctx)
 		if err == nil {
-			return nil
+			return snap, nil
 		}
 		if !retriable {
-			return err
+			return npccfg.Snapshot{}, err
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("gave up after %d attempts in %s: %w", attempt, npcBootRetryBudget, err)
+			return npccfg.Snapshot{}, fmt.Errorf("gave up after %d attempts in %s: %w", attempt, npcBootRetryBudget, err)
 		}
 		d.log.Warn("npc config boot load failed, retrying", "attempt", attempt, "retry_in", delay, "err", err)
 		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return fmt.Errorf("npc config boot load: %w", ctx.Err())
+			return npccfg.Snapshot{}, fmt.Errorf("npc config boot load: %w", ctx.Err())
 		case <-timer.C:
 		}
 		delay = min(delay*2, npcBootRetryMax)
 	}
 }
 
-// loadNPCConfigBoot runs one boot-load attempt. retriable reports whether the
+// fetchNPCConfigAttempt runs one boot-load attempt. retriable reports whether the
 // failure is the kind that clears once the dbServer finishes coming up.
-func (d *Dispatcher) loadNPCConfigBoot(ctx context.Context, w *world.World) (retriable bool, err error) {
+func (d *Dispatcher) fetchNPCConfigAttempt(ctx context.Context) (snap npccfg.Snapshot, retriable bool, err error) {
 	fetchCtx, cancel := context.WithTimeout(ctx, npcFetchTimeout)
 	defer cancel()
-	snap, err := d.npcSource.Snapshot(fetchCtx)
+	snap, err = d.npcSource.Snapshot(fetchCtx)
 	if err != nil {
-		return true, fmt.Errorf("npc config boot load: %w", err)
+		return npccfg.Snapshot{}, true, fmt.Errorf("npc config boot load: %w", err)
 	}
-	expected := w.DBManagedGeneratorCount()
-	seen := make(map[int]struct{}, expected)
+	seen := make(map[int]struct{}, len(snap.Defs))
 	for _, def := range snap.Defs {
-		if def.Origin != "content" || def.GeneratorIndex < 0 {
+		if def.Origin != "content" || def.GeneratorIndex < 0 || world.EventOwnedGenerator(def.GeneratorIndex) {
 			continue
 		}
 		if _, exists := seen[def.GeneratorIndex]; exists {
-			return false, fmt.Errorf("npc config duplicate generator index %d", def.GeneratorIndex)
-		}
-		g := w.GeneratorAt(def.GeneratorIndex)
-		if g == nil || !g.DBManaged {
-			return false, fmt.Errorf("npc config content generator index %d is not DB-managed", def.GeneratorIndex)
+			return npccfg.Snapshot{}, false, fmt.Errorf("npc config duplicate generator index %d", def.GeneratorIndex)
 		}
 		seen[def.GeneratorIndex] = struct{}{}
 	}
-	if len(seen) != expected {
-		// The dbServer seeds the whole catalog in one transaction, so a short
-		// count means we read before it committed — not that content is broken.
-		return true, fmt.Errorf("npc config incomplete: content generators=%d expected=%d", len(seen), expected)
+	if len(seen) == 0 {
+		// An empty catalogue means we read it before the seed committed — not that
+		// this shard is supposed to have no monsters.
+		return npccfg.Snapshot{}, true, errors.New("npc config catalogue is empty")
+	}
+	return snap, false, nil
+}
+
+// ApplyNPCConfigBoot materializes the fetched snapshot before the loop starts (no
+// reveal — no players are connected yet). Generator slots were registered from this
+// same snapshot, so a definition without a slot is a wiring bug: fail closed rather
+// than booting a world with holes.
+func (d *Dispatcher) ApplyNPCConfigBoot(w *world.World, snap npccfg.Snapshot) error {
+	for _, def := range snap.Defs {
+		if !def.Enabled || def.Origin != "content" || def.GeneratorIndex < 0 {
+			continue
+		}
+		if w.GeneratorAt(def.GeneratorIndex) == nil {
+			return fmt.Errorf("npc config content generator index %d (%s) has no registered slot", def.GeneratorIndex, def.Slug)
+		}
 	}
 	d.applyNPCConfig(w, snap, false)
 	d.log.Info("npc config applied at boot", "version", snap.Version, "npcs", len(d.managedNPCs))
-	return false, nil
+	return nil
 }
 
 // pollNPCConfig checks the config version off the loop each npcPollPeriod ticks
@@ -149,24 +163,50 @@ func (d *Dispatcher) pollNPCConfig(w *world.World) {
 }
 
 // applyNPCConfig reconciles the live world with a config snapshot, inside the
-// loop. It fully re-materializes the managed set: despawn every currently managed
-// NPC, then spawn each enabled definition. Merchant count is small and reloads
-// are rare (moderator-driven), so a full reconcile is simplest and obviously
-// correct. It also refreshes the global item-price overlay. reveal announces new
-// spawns to in-view players (true on hot-reload, false at boot).
+// loop. It reconciles by DIFF: a definition whose materialized key is unchanged
+// keeps its live entity, so a moderator edit only touches the NPC that changed.
+//
+// The first implementation wiped and rebuilt the whole managed set on every
+// apply. That is semantically simpler but wrong for a live shard: the client of
+// a player standing in town then holds the OLD entity next to the NEW one, so
+// editing a single NPC made every merchant duplicate on screen (in-game report,
+// Armia, 2026-11-04 — three config bumps while the player was online). Reveal still
+// announces the few spawns a real diff produces (true on hot-reload, false at
+// boot), and the global item-price overlay is refreshed on every apply.
 func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal bool) {
 	d.rebuildItemPrices(snap.PriceOverrides)
 
-	for slug, id := range d.managedNPCs {
-		w.DespawnMob(id, 0) // removeType 0 = out-of-view removal, never queues a respawn
-		delete(d.managedNPCs, slug)
+	// A disabled content definition must stop spawning from its NPCGener block.
+	for _, def := range snap.Defs {
+		if def.Enabled || def.Origin != "content" || def.GeneratorIndex < 0 || world.EventOwnedGenerator(def.GeneratorIndex) {
+			continue
+		}
+		if g := w.GeneratorAt(def.GeneratorIndex); g != nil {
+			w.ClearGenerator(def.GeneratorIndex)
+			g.LeaderTmpl, g.FollowerTmpl = nil, nil
+		}
 	}
 
+	live := make(map[string]struct{}, len(snap.Defs))
 	for _, def := range snap.Defs {
+		if !def.Enabled {
+			continue
+		}
+		live[def.Slug] = struct{}{}
+		key := npcDefKey(def)
+		if m, ok := d.managedNPCs[def.Slug]; ok {
+			if m.key == key && w.Entity(m.id) != nil {
+				continue // unchanged: leave the entity and its recipe alone
+			}
+			d.teardownNPC(w, def.Slug, m)
+		}
 		if def.Origin == "content" && def.GeneratorIndex >= 0 {
+			if world.EventOwnedGenerator(def.GeneratorIndex) {
+				continue // the event system spawns this block; the overlay must not
+			}
 			g := w.GeneratorAt(def.GeneratorIndex)
-			if g == nil || !g.DBManaged {
-				d.log.Warn("npc content generator index is not DB-managed", "slug", def.Slug, "index", def.GeneratorIndex)
+			if g == nil {
+				d.log.Warn("npc content generator index has no registered slot", "slug", def.Slug, "index", def.GeneratorIndex)
 				continue
 			}
 			w.ClearGenerator(def.GeneratorIndex)
@@ -196,7 +236,7 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 			if def.Merchant != 0 {
 				applyShop(w.Entity(ids[0]), def.Shop)
 			}
-			d.managedNPCs[def.Slug] = ids[0]
+			d.managedNPCs[def.Slug] = managedNPC{id: ids[0], key: key, gen: def.GeneratorIndex}
 			if reveal {
 				d.revealSpawned(w, ids)
 			}
@@ -231,12 +271,60 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 		if def.Merchant != 0 {
 			applyShop(w.Entity(id), def.Shop)
 		}
-		d.managedNPCs[def.Slug] = id
+		d.managedNPCs[def.Slug] = managedNPC{id: id, key: key, gen: -1}
 		if reveal {
 			d.revealSpawned(w, []int{id})
 		}
 	}
+	for slug, m := range d.managedNPCs {
+		if _, ok := live[slug]; !ok {
+			d.teardownNPC(w, slug, m) // definition deleted from the config
+		}
+	}
 	d.npcVersion = snap.Version
+}
+
+// managedNPC is one materialized definition: its live leader entity, the key that
+// summarizes what was applied, and the NPCGener block it owns (-1 for a definition
+// spawned on its own position). The key is what turns a reload into a diff.
+type managedNPC struct {
+	id  int
+	key string
+	gen int
+}
+
+// teardownNPC removes one managed definition. A content block is cleared whole
+// (leader, followers and any queued respawn); a standalone NPC is despawned.
+func (d *Dispatcher) teardownNPC(w *world.World, slug string, m managedNPC) {
+	if m.gen >= 0 {
+		w.ClearGenerator(m.gen)
+	} else {
+		w.DespawnMob(m.id, 0) // removeType 0 = out-of-view removal, never queues a respawn
+	}
+	delete(d.managedNPCs, slug)
+}
+
+// npcDefKey summarizes everything a definition applies to the live world, so an
+// apply can tell “nothing changed” from “respawn this one”. The template bytes
+// are part of it: a re-stamped STRUCT_MOB must re-materialize even when only a
+// stat moved.
+func npcDefKey(def npccfg.Definition) string {
+	h := fnv.New64a()
+	fmt.Fprintf(h, "%s|%d|%s|%d,%d|%d|%d|%d,%d,%d,%d,%d|",
+		def.Origin, def.GeneratorIndex, def.DisplayName, def.X, def.Y, def.RouteType,
+		def.Merchant, def.MinuteGenerate, def.MinGroup, def.MaxGroup, def.MaxNumMob, def.Formation)
+	for i := range def.SegX {
+		fmt.Fprintf(h, "%d,%d,%d,%d;", def.SegX[i], def.SegY[i], def.SegRange[i], def.SegWait[i])
+	}
+	for i := range def.FightAction {
+		fmt.Fprintf(h, "%s;%s;", def.FightAction[i], def.DieAction[i])
+	}
+	for _, it := range def.Shop {
+		fmt.Fprintf(h, "%d:%d:%d:%v;", it.Slot, it.Index, it.Quantity, it.Eff)
+	}
+	h.Write(def.Template)
+	h.Write(def.FollowerTemplate)
+	return strconv.FormatUint(h.Sum64(), 16)
 }
 
 // npcTemplateWithDisplayName overlays the moderator display name onto a copy of

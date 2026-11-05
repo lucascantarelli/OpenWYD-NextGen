@@ -5,16 +5,17 @@ description: Analisa e ajusta a economia e a progressão do servidor WYD2 — pr
 
 # Economia e progressão (WYD local)
 
-Tudo que define valor no jogo vem de **dados em `Release/`** mais um punhado de flags do
-tmServer. Não há banco de dados de economia: mexer em item/preço é mexer em CSV e reiniciar o
-servidor; mexer em personagem é in-game (`/gm`) ou via save.
+Tudo que define valor no jogo vem de **dados de conteúdo** — catálogo de item/skill no Postgres
+(issue 58) e taxas, drops e mapas em `Release/` — mais um punhado de flags do tmServer. Mexer em
+item/preço é mexer no catálogo e reiniciar o servidor; mexer em personagem é in-game (`/gm`) ou via
+save.
 
 ## 1. Os arquivos que mandam
 
 | Arquivo | Define | Consumidor |
 |---------|--------|-----------|
-| `Release/Common/ItemList.csv` | catálogo: índice, preço, efeitos-base, requisitos, volatilidade, `nPos`, `nUnique`, grade, `Extra`, alcance | `content.LoadItemList` → `Config.Item*` |
-| `Release/Common/SkillData.csv` | catálogo de skills (mana, dano, affect, nomes Latin-1) | `content.LoadSkillData` → `Config.Spells` |
+| `item_catalog` (Postgres) | catálogo: índice, preço, efeitos-base, requisitos, volatilidade, `nPos`, `nUnique`, grade, `Extra`, alcance | gRPC do dbServer → `content.Config.Item*`; seed em `seed_item_catalog.up.sql` |
+| `skill_catalog` (Postgres) | catálogo de skills (mana, dano, affect, nomes Latin-1) | gRPC do dbServer → `content.Config.Spells`; seed em `seed_skill_catalog.up.sql` |
 | `Release/Common/Settings/SancRate.txt` | taxa de sucesso do refino por anvil (0 = Ori, 1 = Lac), 12 níveis | `refine.RateTable` |
 | `Release/Common/Settings/CompRate.txt` | famílias/taxas de composição | `combine.Catalog` |
 | `Release/Common/Settings/QuestsRate.txt` | taxas de quest | `content.QuestRates` |
@@ -23,7 +24,7 @@ servidor; mexer em personagem é in-game (`/gm`) ou via save.
 | `Release/TMsrv/run/ItemDropList.txt` | tabela de drop | `loot` |
 | `Release/TMsrv/run/LevelItem.txt` | itens por nível | progressão |
 | `Release/TMsrv/run/gameconfig.txt` | `double`, `deadpoint`, `partybonus`, `partydif`, matriz 8×8 de bônus de drop, `DropItem`, `PotionDelay`, `maxNightmare`, horas de GTorre/RVR/BR | mapeado para flags (ver `docs/migration/config-ops.md`) |
-| `Release/TMsrv/run/npc/<Nome>` | template de mob/NPC (816 B) — inclui `Exp`, nível, clan, merchant, equip-modelo | `npctemplate.Load` |
+| `npc_template` (Postgres) | template de mob/NPC (816 B) — inclui `Exp`, nível, clan, merchant, equip-modelo | gRPC do dbServer; seed em `seed_npc_template.up.sql` |
 
 Regra de leitura do catálogo: a **coluna 0 do CSV é o índice** usado no fio e em `/gm item`. A 4ª
 coluna é `ReqLvl.ReqStr.ReqInt.ReqDex.ReqCon` (confira a ordem nos comentários de
@@ -34,9 +35,9 @@ coluna é `ReqLvl.ReqStr.ReqInt.ReqDex.ReqCon` (confira a ordem nos comentários
 - Preço-base vem de `ItemPrices` (coluna de preço do catálogo). NPC compra/vende por
   `handler/shop.go` (`MsgREQShopList`, `MsgBuy`, `MsgSell`); item ausente do catálogo passa sem
   gate, então **preço errado costuma ser linha ausente**, não bug de código.
-- O overlay de NPC por moderador (`-npc-editing` + `npc_definition`) permite mudar preço de loja de
-  mercador sem rebuild — mas exige `dbserver import-npcs` antes, senão **as lojas desaparecem**
-  (blocks de mercador saem do `NPCGener.txt` e não têm substituto no banco).
+- O editor de NPC (`npc_definition`) permite mudar preço de loja de mercador sem rebuild — e desde a
+  issue 57 a tabela é a **única** fonte de spawn: sem catálogo no banco o mundo sobe **sem NPCs**
+  (rode `dbserver import-npcs`; o dbserver também semeia no boot).
 - Ouro tem três lugares distintos: carregado (`Gold`), cargo/banco da conta
   (`_MSG_Deposit` 0x0388 / `_MSG_Withdraw` 0x0387) e chão. `/gm setgold` mexe **só no carregado**.
 
@@ -109,9 +110,10 @@ por nível → `MSG_UpdateScore`.
 
 ## 8. Nunca
 
-- Não edite `ItemList.csv` sem checar que o **cliente** tem o item correspondente em
+- Não acrescente item ao `item_catalog` sem checar que o **cliente** tem o item correspondente em
   `ItemList.bin`/`itemname.bin` — item novo só de servidor fica invisível ou com nome errado.
-- Não altere preço no banco: preço de catálogo é carregado do conteúdo.
-- Não rode `make exp-data` em produção sem `-dry-run` e sem backup do diretório `npc/`.
+- Não edite preço à mão no banco de dev: o catálogo vem do seed (`seed_item_catalog.up.sql`) ou do
+  `importcontent`, e a alteração manual some no próximo baseline.
+- Não rode `make exp-data` em produção sem `-dry-run` e sem backup da tabela `npc_template`.
 - Não trate valor **UNVERIFIED** (curva celestial, coef. Dex/Str por classe×arma, DoT) como verdade
   ao calibrar.

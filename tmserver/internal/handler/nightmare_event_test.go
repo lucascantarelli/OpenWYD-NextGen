@@ -105,7 +105,7 @@ func TestNightmareStaleLoginPosition(t *testing.T) {
 }
 
 func TestNightmareShippedContent(t *testing.T) {
-	gens, err := content.LoadNPCGenerators("../../../Release/TMsrv/run/NPCGener.txt")
+	gens, err := content.LoadNPCGenerators(releasePath(t, "../../../Release/TMsrv/run/NPCGener.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}

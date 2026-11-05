@@ -35,8 +35,10 @@ Digitados como `/gm <subcomando> <args>`:
 | `/gm guildname <id> <nome>` | registra nome de guild (memória) | não há fluxo de criação de guild |
 | `/gm guildfame <id> <fama>` | registra fama de guild | admin-only, equivalente ao `+guildfame set` |
 
-Antes de usar `item`/`spawn`, descubra o índice certo em `Release/Common/ItemList.csv`
-(coluna 0 = índice) — chutar índice é a forma mais rápida de dar o item errado e sujar a economia.
+Antes de usar `item`/`spawn`, descubra o índice certo em `item_catalog` (Postgres; é a coluna 0 do
+antigo `ItemList.csv`) — no portal em `/itens`, ou
+`SELECT "index", name FROM item_catalog WHERE name ILIKE '%…%'`. Chutar índice é a forma mais
+rápida de dar o item errado e sujar a economia.
 Para itens de progressão (Pedra Ideal 1742, Cythera 3502/3507, Pedra da Fúria 3020, Pergaminho
 Selado 4127, Semente de Cristal 4032), confira a regra do sistema em `docs/game.md`.
 

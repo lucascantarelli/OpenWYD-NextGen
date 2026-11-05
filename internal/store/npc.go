@@ -311,6 +311,9 @@ func (s *Store) SeedNPCDefinitions(ctx context.Context, defs []domain.NPCDefinit
 		if err := seedNPCShopRows(ctx, tx, defs, ids); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, retireShadowedDefinitions); err != nil {
+			return fmt.Errorf("store: retire shadowed npc definitions: %w", err)
+		}
 		for _, isNew := range created {
 			if isNew {
 				inserted++
@@ -328,6 +331,26 @@ func (s *Store) SeedNPCDefinitions(ctx context.Context, defs []domain.NPCDefinit
 	}
 	return inserted, nil
 }
+
+// retireShadowedDefinitions hides the rows an older, hand-curated seed left
+// behind at the same template and position as an NPCGener block this import now
+// owns. They carry no generator_index (so nothing replaces their block) and no
+// generator_data, and their display name is still the template name — the shape
+// of a pre-0018 curated row, not of a moderator-created NPC.
+//
+// Without this, both materialize: the tmServer skips the merchant block and the
+// overlay spawns BOTH the content definition and the stale custom one on the same
+// tile, so every affected NPC appears twice in town (in-game report, Armia,
+// 2026-11-04 — 20 duplicates). Disabled rather than deleted: it is reversible and
+// the row stays visible in the web editor.
+const retireShadowedDefinitions = `
+	UPDATE npc_definition x SET enabled = FALSE, updated_at = now()
+	 WHERE x.generator_index IS NULL AND x.enabled AND x.generator_data = '{}'
+	   AND x.display_name = x.template_name
+	   AND EXISTS (SELECT 1 FROM npc_definition c
+	                WHERE c.generator_index IS NOT NULL AND c.slug <> x.slug
+	                  AND c.template_name = x.template_name
+	                  AND c.pos_x = x.pos_x AND c.pos_y = x.pos_y)`
 
 // seedBatchChunk bounds how many statements are pipelined per round trip. The
 // content catalog is ~550 definitions plus several thousand shop items, so

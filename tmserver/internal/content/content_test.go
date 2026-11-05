@@ -1,15 +1,22 @@
 package content
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// release returns a path under the repo's Release/ tree, or skips if absent.
+// release returns a path under the repo's Release/ tree, skipping the test when
+// the file is not there: the catalogs moved into Postgres and out of the
+// repository (issue 58, fase 5), so these fixtures need an external copy.
 func release(t *testing.T, parts ...string) string {
 	t.Helper()
-	return filepath.Join(append([]string{"..", "..", "..", "Release"}, parts...)...)
+	p := filepath.Join(append([]string{"..", "..", "..", "Release"}, parts...)...)
+	if _, err := os.Stat(p); err != nil {
+		t.Skipf("Release content unavailable: %v", err)
+	}
+	return p
 }
 
 func TestCombineVariantRatesFromRelease(t *testing.T) {

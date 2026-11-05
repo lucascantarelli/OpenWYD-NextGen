@@ -19,14 +19,13 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"google.golang.org/grpc"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
 	"github.com/jeanluca/w2pp-openwyd/internal/secure"
 	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/binclient"
 	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combine"
@@ -106,10 +105,9 @@ func run(logger *slog.Logger) error {
 	maxMsgPerSec := flag.Float64("max-msg-per-sec", 200, "per-connection inbound message rate limit (0 = disabled)")
 	msgBurst := flag.Int("msg-burst", 400, "per-connection message burst depth")
 	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree (empty = skip; validates rates/catalogs/maps at boot)")
-	npcEditing := flag.Bool("npc-editing", envBool("W2PP_NPC_EDITING", false), "enable the moderator NPC-editing overlay (npc-editing-plan.md); needs -dbserver and -content. OFF by default: turn it on only after `dbserver import-npcs` has seeded npc_definition, else DB-managed merchant NPCs would be skipped from NPCGener.txt with nothing to replace them")
 	teleportEditing := flag.Bool("teleport-editing", envBool("W2PP_TELEPORT_EDITING", false), "enable the moderator teleport-route overlay (issue 42); needs -dbserver. Applied at boot and re-read every 15s, so an edit reaches a running world without a restart. OFF by default: with it off the world resolves strictly from the compiled table")
-	mobStatEditing := flag.Bool("mob-stat-editing", envBool("W2PP_MOB_STAT_EDITING", false), "enable the moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the equivalent-tool successor to the legacy EDITAPPMOB); needs -dbserver and -content. Applied ONCE at boot, like every other content load — a moderator edit needs a tmServer restart to take effect (EDITAPPMOB itself required a server restart too), independent of -npc-editing")
-	itemEffectEditing := flag.Bool("item-effect-editing", envBool("W2PP_ITEM_EFFECT_EDITING", false), "enable the moderator item base-effect overlay (issue 44, the read-through side of the web editor); needs -dbserver (overlay source) and -content (item catalog). Applied ONCE at boot: itemEffects is folded into the handler at construction, so a moderator edit needs a tmServer restart to reach a running world (same restart-to-apply as -mob-stat-editing). OFF by default: with it off the catalog is exactly ItemList.csv")
+	mobStatEditing := flag.Bool("mob-stat-editing", envBool("W2PP_MOB_STAT_EDITING", false), "enable the moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the equivalent-tool successor to the legacy EDITAPPMOB); needs -dbserver and -content. Applied ONCE at boot, like every other content load — a moderator edit needs a tmServer restart to take effect (EDITAPPMOB itself required a server restart too), independent of the other overlays")
+	itemEffectEditing := flag.Bool("item-effect-editing", envBool("W2PP_ITEM_EFFECT_EDITING", false), "enable the moderator item base-effect overlay (issue 44, the read-through side of the web editor); needs -dbserver (catalog and overlay source). Applied ONCE at boot: itemEffects is folded into the handler at construction, so a moderator edit needs a tmServer restart to reach a running world (same restart-to-apply as -mob-stat-editing). OFF by default: with it off the catalog is exactly item_catalog")
 	ratesEditing := flag.Bool("rates-editing", envBool("W2PP_RATES_EDITING", false), "enable the moderator content-rate overlay (issue 36: SancRate/CompRate/QuestsRate); needs -dbserver (overlay source) and -content (rate files). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the tables are exactly the files in Release/Common/Settings")
 	dropConfigEditing := flag.Bool("drop-config-editing", envBool("W2PP_DROP_CONFIG_EDITING", false), "enable the moderator drop-rate overlay (issue 34: DropRate[64] divisor per Carry slot); needs -dbserver (overlay source). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the table is exactly the code defaults in tmserver/internal/loot")
 	mobCarryEditing := flag.Bool("mob-carry-editing", envBool("W2PP_MOB_CARRY_EDITING", false), "enable the moderator Carry[] overlay (issue 34: the drop table of each mob template); needs -dbserver (overlay source) and -content (mob templates). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off every template keeps exactly the Carry[] in Release/TMsrv/run/npc")
@@ -148,7 +146,6 @@ func run(logger *slog.Logger) error {
 		"dbserver", addrOrNone(*dbAddr),
 		"binserver", addrOrNone(*binAddr),
 		"content", addrOrNone(*contentDir),
-		"npc_editing", *npcEditing,
 		"mob_stat_editing", *mobStatEditing,
 		"teleport_editing", *teleportEditing,
 		"item_effect_editing", *itemEffectEditing,
@@ -168,25 +165,23 @@ func run(logger *slog.Logger) error {
 	var combineFamilies map[protocol.Type]handler.CombineFamily
 	var odinCatalog combine.Catalog
 	var spells *content.SkillData
+	// Catálogos lidos do banco (issue 58, fase 2); nil quando o banco não tem
+	// conteúdo importado e o boot cai nos arquivos de Release/.
+	var catalogTemplates map[string][]byte
+	var worldItems []content.InitItem
 	var heights *content.Grid
 	var attrs *content.Grid
 	var sancRate *content.SancRate
 	var compRate *content.CompRate
 	var questRates *content.QuestRates
+	// Taxas, mapas e a página de status continuam em arquivo (issues 59/60).
+	// item_catalog, skill_catalog, npc_template e world_item_seed vêm do banco:
+	// os CSV e o npc/ saíram do conteúdo na fase 5 da issue 58.
 	if *contentDir != "" {
 		c, err := loadContent(*contentDir, logger)
 		if err != nil {
 			return err
 		}
-		items := c.items
-		itemPrices, itemEffects, itemReqs = items.Prices(), items.BaseEffects(), items.Requirements()
-		itemVolatiles, itemPos, itemUnique = items.Volatiles(), items.Positions(), items.Uniques()
-		itemGrades = items.Grades()
-		itemExtra = items.Extras()
-		itemRanges = items.Ranges()
-		odinCatalog = handler.NewCombineCatalog(items, c.comp)
-		combineFamilies = handler.DefaultCombineFamilies(odinCatalog)
-		spells = c.skills
 		heights = c.heights
 		attrs = c.attrs
 		sancRate = c.sanc
@@ -223,6 +218,38 @@ func run(logger *slog.Logger) error {
 		logger.Warn("no -dbserver: using no-op persistence (logins report no account; Kefra cycle is not preserved across restarts)")
 	}
 
+	// Catálogos de conteúdo (issue 58): o banco é a ÚNICA fonte. ItemList.csv,
+	// SkillData.csv, npc/* e InitItem.csv saíram do repositório na fase 5, então
+	// não há mais fallback: banco sem catálogo recusa o boot. Um mundo sem itens
+	// sobe "saudável" e só falha no primeiro combate — pior que um boot negado.
+	if dbConn != nil {
+		fetchCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		cat, cerr := dbclient.NewContentCatalog(dbConn).Fetch(fetchCtx)
+		cancel()
+		if cerr != nil {
+			return fmt.Errorf("load content catalogs from the database: %w", cerr)
+		}
+		if len(cat.Items) == 0 {
+			return fmt.Errorf("item_catalog is empty: seed the content catalogue (tmserver/cmd/importcontent or seedgen)")
+		}
+		items := content.NewItemList(cat.Items)
+		itemPrices, itemEffects, itemReqs = items.Prices(), items.BaseEffects(), items.Requirements()
+		itemVolatiles, itemPos, itemUnique = items.Volatiles(), items.Positions(), items.Uniques()
+		itemGrades, itemExtra, itemRanges = items.Grades(), items.Extras(), items.Ranges()
+		// A combinação (Odin) depende das taxas de combine, que continuam em
+		// arquivo: só é reconstruída quando o Content/ está montado.
+		if compRate != nil {
+			odinCatalog = handler.NewCombineCatalog(items, compRate)
+			combineFamilies = handler.DefaultCombineFamilies(odinCatalog)
+		}
+		spells = content.NewSkillData(cat.Skills)
+		catalogTemplates = cat.Templates
+		worldItems = cat.WorldItems
+		logger.Info("content catalogs loaded from the database",
+			"items", items.Len(), "skills", spells.Len(),
+			"templates", len(catalogTemplates), "world_items", len(worldItems))
+	}
+
 	// The client fetches a channel-status page over HTTP before the CPSock
 	// connect; serve it from the content tree when available.
 	var statusFile string
@@ -249,11 +276,12 @@ func run(logger *slog.Logger) error {
 		}
 		// Muro de Espinhos is CreateMob("Vinha", ..., "Boss", 3) in the C++,
 		// but the shipped Linux content tree carries the wall template as npc/Vine.
-		if vm, err := content.LoadNPCTemplate(*contentDir, "Vine"); err != nil {
-			logger.Warn("vine template not loaded (skill 98 cannot create Muro de Espinhos)", "err", err)
-		} else {
+		if vm, ok := catalogTemplates["Vine"]; ok {
 			vineMob = vm
-			logger.Info("vine template loaded")
+			logger.Info("vine template loaded", "source", "database")
+		} else {
+			logger.Warn("vine template not loaded (skill 98 cannot create Muro de Espinhos)",
+				"reason", "absent from npc_template")
 		}
 		if cq, err := content.LoadCastleQuests(filepath.Join(*contentDir, "Common", "Settings", "CastleQuest.txt")); err != nil {
 			logger.Warn("castle quests not loaded (Castle/Zakum disabled)", "err", err)
@@ -266,17 +294,17 @@ func run(logger *slog.Logger) error {
 	// Moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the
 	// equivalent-tool successor to the legacy EDITAPPMOB): the single switch is
 	// -mob-stat-editing (W2PP_MOB_STAT_EDITING), off by default. Unlike
-	// -npc-editing this applies to ANY npc/<template_name> file — monsters
+	// The carry overlay applies to ANY npc/<template_name> file — monsters
 	// included, the tool's primary rebalancing use case — not just the
 	// DB-managed merchant subset, so it is deliberately independent of
-	// -npc-editing (its own flag, its own dependency check). Fetched ONCE here,
+	// the NPC catalogue (its own source, its own dependency check). Fetched ONCE here,
 	// synchronously, before any template gets loaded below: there is no
 	// hot-reload for this feature, matching EDITAPPMOB's own restart-to-apply
 	// behavior (it wrote the file; the server only read it at boot too).
 	var mobStatOverrides map[string]mobstat.Override
 	if *mobStatEditing {
-		if dbConn == nil || *contentDir == "" {
-			return fmt.Errorf("-mob-stat-editing requires both -dbserver (config source) and -content (mob templates)")
+		if dbConn == nil {
+			return fmt.Errorf("-mob-stat-editing requires -dbserver (config source)")
 		}
 		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		overrides, ferr := dbclient.NewMobStatSource(dbConn).Fetch(fetchCtx)
@@ -295,8 +323,8 @@ func run(logger *slog.Logger) error {
 	// by default so an unseeded DB never changes a single drop.
 	var mobCarryOverrides map[string]mobcarry.Override
 	if *mobCarryEditing {
-		if dbConn == nil || *contentDir == "" {
-			return fmt.Errorf("-mob-carry-editing requires both -dbserver (overlay source) and -content (mob templates)")
+		if dbConn == nil {
+			return fmt.Errorf("-mob-carry-editing requires -dbserver (overlay source)")
 		}
 		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		overrides, ferr := dbclient.NewMobCarrySource(dbConn).Fetch(fetchCtx)
@@ -308,25 +336,26 @@ func run(logger *slog.Logger) error {
 		logger.Info("mob carry overlay enabled (moderator editing)", "templates", len(mobCarryOverrides))
 	}
 
-	// Moderator NPC-editing overlay (npc-editing-plan.md): the single switch is
-	// -npc-editing (W2PP_NPC_EDITING), off by default so an unseeded DB never makes
-	// the NPCGener.txt merchants vanish. When on, it MUST have a dbServer (the config
-	// source) and a content tree (to resolve template bytes into the 816-byte
-	// STRUCT_MOB) — both are hard dependencies, not optional, so fail fast with a
-	// clear error rather than booting an overlay that can't read or spawn anything.
+	// NPC spawn catalogue (issue 57): npc_definition in Postgres is the SINGLE
+	// source of spawn blocks AND of the templates (npc_template), so -dbserver is
+	// the only dependency — NPCGener.txt e npc/ saíram do conteúdo na fase 5.
+	// The tmServer registers one generator slot per content block and
+	// materializes the entities. Without -dbserver the world boots with no NPCs,
+	// which the dev topology relies on — hence a loud warning, not a fatal error.
 	var npcConfig npccfg.Source
-	if *npcEditing {
-		if dbConn == nil || *contentDir == "" {
-			return fmt.Errorf("-npc-editing requires both -dbserver (config source) and -content (NPC templates)")
-		}
+	if dbConn == nil {
+		logger.Warn("no NPC catalogue: -dbserver is required, the world will boot with no monsters",
+			"dbserver", addrOrNone(*dbAddr))
+	} else {
 		npcConfig = dbclient.NewNpcConfig(dbConn, func(name string) ([]byte, error) {
-			b, terr := content.LoadNPCTemplate(*contentDir, name)
-			if terr != nil {
-				return nil, terr
+			// Só o banco: o blob de 816 B vem de npc_template, garantido pelo
+			// CHECK (length(blob) = 816) e normalizado no import.
+			b, ok := catalogTemplates[name]
+			if !ok {
+				return nil, fmt.Errorf("npc template %q not in npc_template", name)
 			}
 			return mobcarry.ApplyOverride(mobstat.ApplyOverride(b, name, mobStatOverrides), name, mobCarryOverrides), nil
 		}, logger)
-		logger.Info("npc config overlay enabled (moderator editing)")
 	}
 
 	// Moderator teleport overlay (issue 42): the single switch is
@@ -454,8 +483,8 @@ func run(logger *slog.Logger) error {
 	// booted with. Precedence is unchanged: an item instance's own stEffect/stValue
 	// still beats the catalog (here, content + overlay) at score time.
 	if *itemEffectEditing {
-		if dbConn == nil || *contentDir == "" {
-			return fmt.Errorf("-item-effect-editing requires both -dbserver (overlay source) and -content (item catalog)")
+		if dbConn == nil {
+			return fmt.Errorf("-item-effect-editing requires -dbserver (catalog and overlay source)")
 		}
 		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		rows, ferr := dbclient.NewItemEffectConfig(dbConn).Effects(fetchCtx)
@@ -493,7 +522,6 @@ func run(logger *slog.Logger) error {
 			{Name: "kefra-live", Value: strconv.FormatBool(*kefraLive), RestartRequired: true, Hint: "evento do Kefra ativo"},
 			{Name: "training-field-exp", Value: strconv.FormatInt(int64(*trainingFieldExp), 10), RestartRequired: true, Hint: "multiplicador de EXP do Campo de Treino"},
 			{Name: "max-nightmare", Value: strconv.Itoa(*maxNightmare), RestartRequired: true, Hint: "admissões contadas de Nightmare por mapa/ciclo"},
-			{Name: "npc-editing", Value: strconv.FormatBool(*npcEditing), RestartRequired: true, Hint: "overlay de NPCs do portal"},
 			{Name: "mob-stat-editing", Value: strconv.FormatBool(*mobStatEditing), RestartRequired: true, Hint: "overlay de stats de mob"},
 			{Name: "mob-carry-editing", Value: strconv.FormatBool(*mobCarryEditing), RestartRequired: true, Hint: "overlay do Carry[] (drop) dos templates"},
 			{Name: "teleport-editing", Value: strconv.FormatBool(*teleportEditing), RestartRequired: true, Hint: "overlay de rotas de teleporte (relido a cada 15 s)"},
@@ -546,8 +574,8 @@ func run(logger *slog.Logger) error {
 	// before the slot is freed (party.go SessionEnd).
 	w.SetSessionEndHandler(dispatch.SessionEnd)
 	// The newbie flag has two owners: the dispatcher's ExpEvents (the EXP bonus)
-	// and the world (the sub-120 spawn HP handicap). Set here, BEFORE spawnNPCs
-	// below, so the boot population is handicapped too — the portal config may
+	// and the world (the sub-120 spawn HP handicap). Set here, BEFORE the boot
+	// population below, so the spawns are handicapped too — the portal config may
 	// override it later via ApplyWorldEventConfigBoot.
 	w.SetNewbieEvent(*newbieEvent)
 
@@ -571,18 +599,24 @@ func run(logger *slog.Logger) error {
 		go serveStatusHTTP(ctx, *statusAddr, statusFile, logger)
 	}
 
-	// Populate the world with NPCs/monsters from NPCGener.txt (before Serve starts
-	// the loop, so spawning is single-threaded). Capped to fit the mob slots. When
-	// the DB overlay is active, merchant blocks are skipped here (owned by
-	// npc_definition) and applied from the config snapshot instead.
-	if *contentDir != "" {
-		spawnNPCs(w, *contentDir, attrs, npcConfig != nil, mobStatOverrides, mobCarryOverrides, logger)
-		seedWorldItems(w, *contentDir, logger)
+	// Static world objects (gates/doors) before the loop starts, so id assignment
+	// is single-threaded and follows file order.
+	if len(worldItems) > 0 {
+		seedWorldItems(w, worldItems, logger)
 	}
+	// Populate the world from the NPC spawn catalogue (before Serve starts the
+	// loop, so spawning is single-threaded): register the generator slots from the
+	// snapshot, then materialize the entities from that same snapshot.
 	if npcConfig != nil {
 		// Retries while the dbServer is still coming up; ctx aborts the wait on
 		// SIGTERM instead of holding the process for the whole retry budget.
-		if err := dispatch.ApplyNPCConfigBoot(ctx, w); err != nil {
+		snap, err := dispatch.FetchNPCConfig(ctx)
+		if err != nil {
+			return err
+		}
+		auditMobTemplates(snap.Defs, logger)
+		registerNPCGenerators(w, snap.Defs, attrs, logger)
+		if err := dispatch.ApplyNPCConfigBoot(w, snap); err != nil {
 			return err
 		}
 	}
@@ -600,176 +634,11 @@ func run(logger *slog.Logger) error {
 	return w.Serve(ctx, ln)
 }
 
-// spawnNPCs parses NPCGener.txt, registers every block as a world.Generator
-// (spawn recipe + live population accounting) and fires one GenerateMob per
-// block to populate the world: leader + rolled followers per group, instance
-// waypoints randomized per mob, respecting each block's MaxNumMob. From then on
-// the AI tick regenerates MinuteGenerate>0 blocks on their minute phase and the
-// 15s respawn queue covers the rest.
-//
-// Boot divergence (deliberate): the original starts EMPTY and fills over time
-// via the minute timer — blocks with MinuteGenerate<=0 (~45% of the file, e.g.
-// the Coliseum) only ever spawn through event code. We populate everything up
-// front so the world is playable immediately. This burns the LCG at boot (one
-// stream for all spawns, like the original's global rand()); there is no legacy
-// boot rand order to diverge from.
-//
-// attrs is the raw AttributeMap; it marks the training-grounds generators
-// (handler.TrainingFieldAt). nil leaves every block unmarked, so the field EXP
-// multiplier is off.
-func spawnNPCs(w *world.World, dir string, attrs *content.Grid, skipMerchants bool, mobStatOverrides map[string]mobstat.Override, mobCarryOverrides map[string]mobcarry.Override, logger *slog.Logger) {
-	gens, err := content.LoadNPCGenerators(filepath.Join(dir, "TMsrv", "run", "NPCGener.txt"))
-	if err != nil {
-		logger.Warn("NPC generators not loaded", "err", err)
-		return
-	}
-	// A real monster whose kill reward is zero or beyond the legacy award gate
-	// (10M, MobKilled.cpp:1284) means the content tree wasn't restamped with
-	// cmd/exptool — players would gain nothing from those kills (issue #43).
-	const maxSaneMobExp = 10_000_000
-	// loadedTemplate keeps the raw (pre-override) Merchant classification
-	// alongside the override-applied bytes: rawMerchant drives the
-	// DB-managed-merchant skip below, so a moderator's stat override (which
-	// is documented as informational-only for STRUCT_MOB.Merchant, see
-	// mob-template-editing-frontend.md §6.3) can't turn a monster into a
-	// "merchant" that vanishes from NPCGener.txt, or vice versa.
-	type loadedTemplate struct {
-		bytes       []byte
-		rawMerchant uint8
-	}
-	templates := make(map[string]loadedTemplate)
-	// stats records the on-disk layout of every referenced template so the boot
-	// log says how much of the catalog needed widening from the legacy 756/920
-	// forms, and how many blocks lost their template and why (issue #244 — the
-	// load error used to be discarded here, leaving a rejected template visible
-	// only as a name in the "NPC templates missing" sample).
-	var stats npctemplate.ScanStats
-	load := func(name string) loadedTemplate {
-		if name == "" {
-			return loadedTemplate{}
-		}
-		t, seen := templates[name]
-		if !seen {
-			b, res, terr := npctemplate.Load(dir, name)
-			if terr != nil {
-				logger.Warn("npc template load failed", "npc", name, "err", terr)
-				stats.CountUnreadable()
-			} else {
-				stats.Count(res.Version)
-				t.rawMerchant = protocol.ParseMobBasics(b).Merchant
-				// Apply the moderator stat override (if any) BEFORE the exp sanity
-				// check below, so a fix made via the web tool clears the warning too.
-				t.bytes = mobcarry.ApplyOverride(mobstat.ApplyOverride(b, name, mobStatOverrides), name, mobCarryOverrides)
-				if mb := protocol.ParseMobBasics(t.bytes); mb.Merchant == 0 && mb.Level >= 1 &&
-					(mb.Exp <= 0 || mb.Exp > maxSaneMobExp) {
-					logger.Warn("monster template has unbalanced Exp (run cmd/exptool)",
-						"npc", name, "level", mb.Level, "exp", mb.Exp)
-				}
-			}
-			templates[name] = t
-		}
-		return t
-	}
-
-	wgens := make([]*world.Generator, len(gens))
-	dbOwned := make([]bool, len(gens))
-	skipped := 0
-	missingLeaderBlocks, missingFollowerBlocks := 0, 0
-	missingLeaderNames := make(map[string]struct{})
-	missingFollowerNames := make(map[string]struct{})
-	for i, g := range gens {
-		leader := load(g.Leader)
-		if leader.bytes == nil {
-			missingLeaderBlocks++
-			if g.Leader != "" {
-				missingLeaderNames[g.Leader] = struct{}{}
-			}
-			continue // block unusable without its Leader template
-		}
-		// When DB-managed NPC config is active, merchant blocks are owned by
-		// npc_definition (materialized by the dispatcher overlay), so skip them here
-		// to avoid double-spawning. Monsters / non-shop NPCs stay on NPCGener.txt.
-		// Uses the RAW (pre-override) classification — a moderator's stat
-		// override must not flip a block between "spawn from NPCGener.txt"
-		// and "owned by npc_definition".
-		if skipMerchants && leader.rawMerchant != 0 {
-			skipped++
-			dbOwned[i] = true
-		}
-		follower := load(g.Follower)
-		if g.Follower != "" && follower.bytes == nil {
-			missingFollowerBlocks++
-			missingFollowerNames[g.Follower] = struct{}{}
-		}
-		wg := &world.Generator{
-			DBManaged:      dbOwned[i],
-			MinuteGenerate: g.MinuteGenerate,
-			MinGroup:       g.MinGroup,
-			MaxGroup:       g.MaxGroup,
-			MaxNumMob:      g.MaxNumMob,
-			RouteType:      uint8(g.RouteType),
-			Formation:      g.Formation,
-			SegX:           g.SegX,
-			SegY:           g.SegY,
-			LeaderTmpl:     leader.bytes,
-			FollowerTmpl:   follower.bytes,
-			FightAction:    g.FightAction,
-			DieAction:      g.DieAction,
-			TrainingField:  handler.TrainingFieldAt(attrs, g.SegX[0], g.SegY[0]),
-		}
-		for s := 0; s < 5; s++ {
-			wg.SegRange[s] = int16(g.SegRange[s])
-			wg.SegWait[s] = int16(g.SegWait[s])
-		}
-		wgens[i] = wg
-		if dbOwned[i] {
-			wg.LeaderTmpl = nil
-			wg.FollowerTmpl = nil
-		}
-	}
-	w.RegisterGenerators(wgens)
-	trainingGens := 0
-	for _, wg := range wgens {
-		if wg != nil && wg.TrainingField {
-			trainingGens++
-		}
-	}
-	if attrs == nil {
-		logger.Warn("training-grounds generators not marked: AttributeMap.dat not loaded, field EXP multiplier disabled")
-	} else {
-		logger.Info("training-grounds generators marked", "generators", trainingGens)
-	}
-
-	total := 0
-	for i := range wgens {
-		if wgens[i] != nil && !dbOwned[i] && !world.IsWaterGenerator(i) && !world.IsKefraGenerator(i) && world.NightmareGenerator(i) < 0 && !world.IsRuneQuestGenerator(i) {
-			total += len(w.GenerateMob(i))
-		}
-	}
-	if missingLeaderBlocks > 0 || missingFollowerBlocks > 0 {
-		logger.Warn("NPC templates missing",
-			"leader_blocks_skipped", missingLeaderBlocks,
-			"missing_leader_templates", len(missingLeaderNames),
-			"missing_leader_sample", sampleNames(missingLeaderNames, 10),
-			"follower_blocks_degraded", missingFollowerBlocks,
-			"missing_follower_templates", len(missingFollowerNames),
-			"missing_follower_sample", sampleNames(missingFollowerNames, 10))
-	}
-	logger.Info("npc template catalog", "layouts", stats)
-	logger.Info("NPCs spawned", "generators", len(gens), "mobs", total, "templates", len(templates),
-		"merchant_blocks_skipped", skipped)
-}
-
 // seedWorldItems spawns the static world objects (gates/doors) from
-// TMsrv/run/InitItem.csv before Serve starts the loop, so id assignment is
-// single-threaded and follows file order (matching the legacy CreateItem sequence
-// the client expects). Missing/unreadable is a warning, not fatal — like the maps.
-func seedWorldItems(w *world.World, dir string, logger *slog.Logger) {
-	items, err := content.LoadInitItems(filepath.Join(dir, "TMsrv", "run", "InitItem.csv"))
-	if err != nil {
-		logger.Warn("world items not loaded", "err", err)
-		return
-	}
+// world_item_seed before Serve starts the loop, so id assignment is
+// single-threaded and follows import order (matching the legacy CreateItem
+// sequence the client expects). An empty catalogue seeds nothing.
+func seedWorldItems(w *world.World, items []content.InitItem, logger *slog.Logger) {
 	seeded := 0
 	for _, it := range items {
 		// Gates seed open (parity with CreateItem); locking arrives with the deferred
@@ -781,19 +650,76 @@ func seedWorldItems(w *world.World, dir string, logger *slog.Logger) {
 	logger.Info("world items seeded", "count", seeded)
 }
 
-func sampleNames(names map[string]struct{}, limit int) []string {
-	if len(names) == 0 || limit <= 0 {
-		return nil
+// registerNPCGenerators builds the world's generator slots from the spawn
+// catalogue (issue 57) instead of parsing NPCGener.txt at boot. Slot i is content
+// block i, exactly the file order the legacy server used, so the index ranges that
+// classify event blocks (IsWaterGenerator, NightmareGenerator, rune quest) keep
+// working. A block the importer skipped (missing/undecodable template) leaves its
+// slot nil, and event-owned blocks are registered but left to their event code.
+func registerNPCGenerators(w *world.World, defs []npccfg.Definition, attrs *content.Grid, logger *slog.Logger) {
+	slots := 0
+	for _, def := range defs {
+		if def.Origin == "content" && def.GeneratorIndex >= 0 && def.GeneratorIndex+1 > slots {
+			slots = def.GeneratorIndex + 1
+		}
 	}
-	out := make([]string, 0, len(names))
-	for name := range names {
-		out = append(out, name)
+	if slots == 0 {
+		logger.Warn("npc catalogue has no content blocks: the world boots with no monsters")
+		return
 	}
-	sort.Strings(out)
-	if len(out) > limit {
-		return out[:limit]
+	gens := make([]*world.Generator, slots)
+	registered, eventOwned, training := 0, 0, 0
+	for _, def := range defs {
+		if def.Origin != "content" || def.GeneratorIndex < 0 {
+			continue
+		}
+		g := &world.Generator{
+			MinuteGenerate: def.MinuteGenerate, MinGroup: def.MinGroup, MaxGroup: def.MaxGroup, MaxNumMob: def.MaxNumMob,
+			RouteType: def.RouteType, Formation: def.Formation,
+			SegX: def.SegX, SegY: def.SegY, SegRange: def.SegRange, SegWait: def.SegWait,
+			LeaderTmpl: def.Template, FollowerTmpl: def.FollowerTemplate,
+			FightAction: def.FightAction, DieAction: def.DieAction,
+			TrainingField: handler.TrainingFieldAt(attrs, def.SegX[0], def.SegY[0]),
+		}
+		gens[def.GeneratorIndex] = g
+		registered++
+		if world.EventOwnedGenerator(def.GeneratorIndex) {
+			eventOwned++
+		}
+		if g.TrainingField {
+			training++
+		}
 	}
-	return out
+	w.RegisterGenerators(gens)
+	if attrs == nil {
+		logger.Warn("training-grounds generators not marked: AttributeMap.dat not loaded, field EXP multiplier disabled")
+	}
+	logger.Info("npc generators registered", "generators", registered, "slots", slots,
+		"event_owned", eventOwned, "training_grounds", training)
+}
+
+// auditMobTemplates warns once per template whose kill reward is zero or beyond the
+// legacy award gate (10M, MobKilled.cpp:1284): the content tree must be restamped
+// with cmd/exptool or players gain nothing from those kills (issue #43). The check
+// came from the NPCGener.txt boot loader, which no longer exists (issue 57).
+func auditMobTemplates(defs []npccfg.Definition, logger *slog.Logger) {
+	const maxSaneMobExp = 10_000_000
+	seen := make(map[string]struct{}, len(defs))
+	for _, def := range defs {
+		if len(def.Template) < 16 {
+			continue
+		}
+		name := strings.TrimRight(string(def.Template[0:16]), "\x00 ")
+		if _, dup := seen[name]; dup {
+			continue
+		}
+		seen[name] = struct{}{}
+		if mb := protocol.ParseMobBasics(def.Template); mb.Merchant == 0 && mb.Level >= 1 &&
+			(mb.Exp <= 0 || mb.Exp > maxSaneMobExp) {
+			logger.Warn("monster template has unbalanced Exp (run cmd/exptool)",
+				"npc", name, "level", mb.Level, "exp", mb.Exp)
+		}
+	}
 }
 
 // serveStatusHTTP runs the channel-status web server (serv00.htm). It answers any
@@ -838,21 +764,12 @@ func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	if err != nil {
 		return nil, err
 	}
-	items, err := content.LoadItemList(filepath.Join(dir, "Common", "ItemList.csv"))
-	if err != nil {
-		return nil, err
-	}
-	skills, err := content.LoadSkillData(filepath.Join(dir, "Common", "SkillData.csv"))
-	if err != nil {
-		return nil, err
-	}
 	// The Ori/Lac rates are worth logging outright: SancRate.txt only overrides the
 	// indices it lists, so a broken mount silently leaves the compiled defaults and
 	// the operator would otherwise not notice.
 	logger.Info("content loaded",
 		"comprate_families", comp.Families(),
-		"sancrate_ori", sancRow(sanc, 0), "sancrate_lac", sancRow(sanc, 1),
-		"items", items.Len(), "skills", skills.Len())
+		"sancrate_ori", sancRow(sanc, 0), "sancrate_lac", sancRow(sanc, 1))
 
 	// Maps are optional: 17 MiB HeightMap + 1 MiB AttributeMap aren't required to
 	// accept logins; warn rather than fail when they aren't mounted. When both
@@ -874,17 +791,15 @@ func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	} else if hm != nil || attr != nil {
 		logger.Warn("mob pathfinding disabled: need BOTH HeightMap.dat and AttributeMap.dat")
 	}
-	return &loadedContent{items: items, comp: comp, sanc: sanc, quests: quests, skills: skills, heights: heights, attrs: attr}, nil
+	return &loadedContent{comp: comp, sanc: sanc, quests: quests, heights: heights, attrs: attr}, nil
 }
 
 // loadedContent is what a mounted Release/ tree yields. It is a struct rather
 // than a return list only because the list had grown past readability.
 type loadedContent struct {
-	items   *content.ItemList
 	comp    *content.CompRate
 	sanc    *content.SancRate
 	quests  *content.QuestRates
-	skills  *content.SkillData
 	heights *content.Grid
 	attrs   *content.Grid // raw AttributeMap (training-grounds bit); nil when not mounted
 }

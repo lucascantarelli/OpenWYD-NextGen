@@ -29,6 +29,47 @@
 - Sem banco (`NopPersistence`), o ciclo funciona somente na memória do processo:
   reiniciar usa novamente a flag inicial e não preserva a derrota anterior.
 
+## 0. Variáveis de ambiente (`.env`, compose, flags)
+
+O repositório **não versiona segredo**: `./.env` é gitignored e `.env.example` é o catálogo
+versionado. `docker compose` carrega `./.env` sozinho e o **shell vence o arquivo**, então o
+liga/desliga por execução continua valendo:
+
+```bash
+cp .env.example .env                                 # primeira vez
+W2PP_RATES_EDITING=true docker compose up -d tmserver  # só nesta subida
+```
+
+Precedência em toda a stack:
+
+| Camada | Fonte | Exemplo |
+|---|---|---|
+| Argumento de CLI | vence tudo | o compose fixa `-addr :8281`, `-content /Release`, `-client-version 12000` |
+| Variável de ambiente | default da flag (`os.Getenv`) | `W2PP_RATES_EDITING`, `W2PP_CONTENT`, `W2PP_DB_DSN` |
+| `./.env` | interpolado pelo compose (`${VAR:-default}`) | `POSTGRES_PASSWORD`, `W2PP_PORTAL_SESSION_SECRET` |
+| Banco / `Release/` | **conteúdo**, nunca env | rates, drop, preço, EXP, NPCs (overlays do portal) |
+
+Como o compose passa `-addr`, `-content` e `-dbserver` explicitamente, mudar `W2PP_CONTENT` no
+`.env` **não** afeta os containers — só os binários rodando no host. Porta e caminho dentro do
+compose mudam em `docker-compose.yaml`; segredo e liga/desliga mudam no `.env`.
+
+Chaves que o compose interpola hoje: `POSTGRES_PASSWORD` (as três DSNs derivam dela),
+`W2PP_PORTAL_SESSION_SECRET`, `W2PP_PLAY_CODE_SECRET` e os cinco overlays (`W2PP_MOB_STAT_EDITING`,
+`W2PP_ITEM_EFFECT_EDITING`, `W2PP_RATES_EDITING`, `W2PP_DROP_CONFIG_EDITING`,
+`W2PP_TELEPORT_EDITING`). Os overlays são lidos **no boot** (o de teleporte a cada 15 s). O catálogo
+de NPCs **não** é overlay: `npc_definition` é a única fonte de spawn (issue 57) — o tmserver registra
+os geradores e materializa as entidades a partir dela, e sem `-dbserver`/`-content` o mundo sobe sem
+NPCs. O portal tem catálogo próprio em `portal/.env.example` para rodar no host com
+`make portal-dev`.
+
+O `docker-compose.dev.yaml` (hot-reload do tmserver com `go run`) lê o **mesmo** `.env`, mas só a
+senha do Postgres se aplica: aquele recorte sobe sem `-dbserver` e sem `-content`, então os
+overlays `W2PP_*_EDITING` ficam de fora de propósito — com eles ligados o boot falha com
+`-teleport-editing requires -dbserver (config source)`. Sem catálogo o mundo sobe **sem NPCs**: é o
+recorte de desenvolvimento, não uma topologia jogável.
+
+---
+
 ## 1. Topologia de deploy
 
 **3 processos** (todos Win32), tipicamente na mesma máquina ou LAN:
@@ -123,6 +164,47 @@ Carregados na inicialização (detalhados nas Fases 2 e 4): `ItemList.csv/.bin`,
 `NPCGener.txt`, `HeightMap.dat`, `AttributeMap.dat`, `ItemDropList.txt`, `LevelItem.txt`,
 `Regions.txt`, `Guard.txt`, `InitItem.csv`, `QuestDiaria.txt`, `Language.txt`, e
 `Settings/{CompRate,SancRate,CastleQuest,QuestsRate,MobMerc}.txt`.
+
+**Migração para o banco (issue 58, concluída).** Quatro desses arquivos saíram do repositório na fase
+5: o banco é a única fonte do runtime e o dado vem dos seeds do baseline.
+
+| Arquivo | Tabela | Conjunto do importador |
+|---|---|---|
+| `Common/ItemList.csv` | `item_catalog` | `item` |
+| `Common/SkillData.csv` | `skill_catalog` | `skill` |
+| `TMsrv/run/npc/*` (STRUCT_MOB) | `npc_template` | `npc-template` |
+| `TMsrv/run/InitItem.csv` | `world_item_seed` | `world-item` |
+
+Reimportar de uma árvore **externa** (o `Release/` do repositório não tem mais esses arquivos) e
+conferir:
+
+```bash
+docker compose run --rm --entrypoint importcontent dbserver \
+  -content /Release -dsn "postgres://postgres:<senha>@db:5432/postgres"
+docker compose run --rm --entrypoint importcontent dbserver \
+  -content /Release -dsn "postgres://postgres:<senha>@db:5432/postgres" -check
+```
+
+O comando é `tmserver/cmd/importcontent` (os parsers vivem em `tmserver/internal/content`, que o
+`dbserver` não pode importar por visibilidade de `internal`); a imagem do tmserver o contém. O
+`-check` sai 1 quando o banco diverge do conteúdo — é o gate para editar `Release/` sem reimportar.
+
+**Encoding:** os CSVs são **Windows-1252**. Qualquer import que grave texto no Postgres precisa
+passar por `internal/textenc.ToUTF8`; sem isso o banco recusa com
+`invalid byte sequence for encoding "UTF8"` no primeiro nome acentuado.
+
+**Quem lê o quê hoje (issue 58, fase 5).** O tmServer busca os quatro catálogos por gRPC
+(`ContentCatalogService`) logo depois de abrir a conexão com o dbserver e **não tem mais fallback**:
+banco sem catálogo recusa o boot (`load content catalogs from the database` / `item_catalog is
+empty`). Um mundo sem itens sobe "saudável" e só quebra no primeiro combate.
+
+Mapas (`HeightMap/AttributeMap`), ícones, taxas (`CompRate/SancRate/QuestsRate`), `CastleQuest.txt`,
+`serv00.htm` e `BaseMob/BaseSummon` continuam em arquivo. O `worldatlas` passou a ler
+`world_item_seed` e `npc_definition` pelo `-dsn`.
+
+**dbserver:** o `serve` não lê mais `NPCGener.txt`. O reconcile a cada boot — que fazia
+`npc_shop_item` divergir do seed (6.711 × 3.538) — foi removido; ele só verifica que existe catálogo
+(`npc catalogue ready content_definitions=…`) e falha fechado se estiver vazio.
 
 ### 2.6. Estado persistente de mundo (escrito em runtime)
 

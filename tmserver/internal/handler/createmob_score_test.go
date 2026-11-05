@@ -42,7 +42,7 @@ func readAny(t *testing.T, c net.Conn) (protocol.Type, []byte) {
 // (without the weapon's EF_DAMAGE) showed a weaponless score until the next push.
 func TestEnterWorldSelfCreateMobCarriesTheScore(t *testing.T) {
 	rel := filepath.Join("..", "..", "..", "Release")
-	items, err := content.LoadItemList(filepath.Join(rel, "Common", "ItemList.csv"))
+	items, err := requireItemList(t, filepath.Join(rel, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Fatalf("load ItemList: %v", err)
 	}

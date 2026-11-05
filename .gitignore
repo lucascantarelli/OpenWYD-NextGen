@@ -287,3 +287,13 @@ ModelManifest.xml
 
 # Metadados locais do Freebuff (project-id do workspace).
 /.freebuff/
+
+# --- Variáveis de ambiente ---------------------------------------------------
+# `.env` guarda segredo local (senha do banco, SESSION_SECRET) e o docker compose
+# carrega o arquivo sozinho; só o exemplo é versionado.
+.env
+.env.*
+!.env.example
+
+# Staging local do squash de migrations (issue 58): o histórico pre-squash vive no git.
+/internal/migrations/_archived/

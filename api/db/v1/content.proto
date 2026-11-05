@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+// Static content catalogs (issue 58, fase 2). These four sets used to be files
+// read at boot by tmServer: Common/ItemList.csv, Common/SkillData.csv,
+// TMsrv/run/npc/* and TMsrv/run/InitItem.csv. The importer
+// (tmserver/cmd/importcontent) writes the Postgres tables; tmServer fetches them
+// once, before the world loop starts.
+//
+// READ-ONLY on purpose: nothing here writes content. Moderator overlays
+// (item_effect_override, mob_template_stat…) stay in NpcConfigService.
+//
+// One RPC per catalog, not one combined snapshot: npc_template alone is
+// ~1.6 MB (1.991 × 816 B) and keeping each response small keeps us well under
+// gRPC's 4 MiB default message limit even as content grows.
+//
+// Generate with `make proto` (protoc + protoc-gen-go/-grpc).
+package db.v1;
+
+option go_package = "github.com/jeanluca/w2pp-openwyd/api/db/v1;dbv1";
+
+service ContentCatalogService {
+  // FetchItemCatalog returns item_catalog (ItemList.csv), ordered by index.
+  rpc FetchItemCatalog(FetchItemCatalogRequest) returns (FetchItemCatalogResponse);
+  // FetchSkillCatalog returns skill_catalog (SkillData.csv), ordered by index.
+  rpc FetchSkillCatalog(FetchSkillCatalogRequest) returns (FetchSkillCatalogResponse);
+  // FetchNPCTemplates returns npc_template (npc/*), the canonical 816-byte blob.
+  rpc FetchNPCTemplates(FetchNPCTemplatesRequest) returns (FetchNPCTemplatesResponse);
+  // FetchWorldItems returns world_item_seed (InitItem.csv) in insertion order.
+  rpc FetchWorldItems(FetchWorldItemsRequest) returns (FetchWorldItemsResponse);
+}
+
+message FetchItemCatalogRequest {}
+message FetchItemCatalogResponse { repeated CatalogItem items = 1; }
+
+// CatalogItem mirrors item_catalog. `fields` is the raw CSV row (every column,
+// original order) so the tmServer derives exactly what the file would give;
+// the other columns are the pre-resolved accessors. Nullable columns use -1:
+// volatile and attack_range are absent for most items.
+message CatalogItem {
+  int32 item_index = 1;
+  string name = 2;
+  int32 price = 3;
+  int32 grade = 4;
+  int32 unique_id = 5;
+  int32 extra = 6;
+  int32 pos = 7;
+  int32 req_level = 8;
+  int32 req_str = 9;
+  int32 req_int = 10;
+  int32 req_dex = 11;
+  int32 req_con = 12;
+  int32 volatile = 13;      // -1 = not a volatile item
+  int32 attack_range = 14;  // -1 = no reach of its own
+  repeated CatalogEffect effects = 15;
+  repeated string fields = 16;
+  string sha256 = 17;
+}
+
+message CatalogEffect {
+  int32 eff = 1;
+  int32 val = 2;
+}
+
+message FetchSkillCatalogRequest {}
+message FetchSkillCatalogResponse { repeated CatalogSkill skills = 1; }
+
+// CatalogSkill mirrors skill_catalog / content.Spell. affect_time is already
+// divided by the legacy loader's divisor — the value the runtime uses.
+message CatalogSkill {
+  int32 skill_index = 1;
+  string name = 2;
+  int32 skill_point = 3;
+  int32 target_type = 4;
+  int32 mana_spent = 5;
+  int32 delay_ticks = 6;
+  int32 range_tiles = 7;
+  int32 instance_type = 8;
+  int32 instance_value = 9;
+  int32 tick_type = 10;
+  int32 tick_value = 11;
+  int32 affect_type = 12;
+  int32 affect_value = 13;
+  int32 affect_time = 14;
+  int32 instance_attribute = 15;
+  int32 tick_attribute = 16;
+  int32 aggressive = 17;
+  int32 max_target = 18;
+  int32 party = 19;
+  int32 affect_resist = 20;
+  int32 passive = 21;
+}
+
+message FetchNPCTemplatesRequest {}
+message FetchNPCTemplatesResponse { repeated CatalogTemplate templates = 1; }
+
+// CatalogTemplate is one STRUCT_MOB template. blob is ALWAYS the canonical
+// 816-byte layout (the importer normalizes the legacy 756/920 forms).
+message CatalogTemplate {
+  string template_name = 1;
+  string file_name = 2;
+  int32 source_size = 3;
+  string sha256 = 4;
+  bytes blob = 5;
+}
+
+message FetchWorldItemsRequest {}
+message FetchWorldItemsResponse { repeated CatalogWorldItem items = 1; }
+
+// CatalogWorldItem is one static world object (gate/door/decoration).
+message CatalogWorldItem {
+  int32 item_index = 1;
+  int32 pos_x = 2;
+  int32 pos_y = 3;
+  int32 rotate = 4;
+}
