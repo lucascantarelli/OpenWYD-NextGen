@@ -107,6 +107,27 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 
 Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
 de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.
+
+## Sessão de QA in-game (05/11/2026)
+
+Primeira execução do roteiro `docs/analysis/roteiro-sessao-unica.md` no cliente real (conta `test`).
+Cada linha é medida no servidor (log/SQL), não é impressão do cliente:
+
+| Passo | Resultado medido | Destino |
+|---|---|---|
+| A — login e diária | login OK; **nada recebido** (`daily_reward_claim=0`, `delivery_queue=0`, nenhum caminho de diária no `tmserver`) | [QA-01](issues/QA-01.md) |
+| B — criação | 4 personagens (HT/BM/FM/TK) criados com equip inicial e 1M de gold | ✅ issue-08 |
+| C — cidades | `/armia /erion /azran /gelo /noatun` OK; compra sem gold recusada com mensagem correta | ✅ issue-10/issue-12 |
+| C — `qa-ferreiro` | materializado no boot (`npcs` 5161→5162), mas em (2504,1684), a 32 tiles do jogador; movido para (2098,2093) ao lado do spawn | roteiro |
+| C/D — mobs da cidade | `nonCombatNPC` marca `clan=0` dentro da aldeia como NPC de serviço: não atacam e não podem ser atacados | [QA-04](issues/QA-04.md) |
+| D — mob alvo | apareceu com modelo de TK e intocável: o overlay de stat zerou `class`, `clan` e `equip` do template | [QA-02](issues/QA-02.md) |
+| E — refino | `/gm setgold` OK; `/gm item 412 20` **derrubou o cliente** (o servidor aceitou e logou `amount=20`) | [QA-03](issues/QA-03.md) |
+| F..J | não executados (crash no passo E) | — |
+| Extra — Campo de Treinamento | sem portões semeados, Unicórnio sem estoque, Ajudante sem buff | [QA-04](issues/QA-04.md) |
+
+O que já foi corrigido na mesma sessão: a flag `W2PP_MOB_CARRY_EDITING` passou a ser repassada pelo
+compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi reposicionado e a conta
+`test2` (papel `player`) foi criada para o teste de duas janelas.
 ## Fases e issues
 
 ### Fase 0 — Fundação: ambiente, conteúdo e banco

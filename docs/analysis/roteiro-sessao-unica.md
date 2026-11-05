@@ -248,7 +248,7 @@ Valores que estão no banco agora; use-os como referência ao conferir no client
 |---|---|---|
 | Preço do item 907 | **12345** | `item_price` · `/precos` |
 | NPC | `qa-ferreiro` (template `Acessorios`, mercador) em Armia **(2504,1684)** vendendo **907** e **5134** | `npc_definition` · `npc_shop_item` |
-| Mob alvo | **Troll** — nível 1, HP 120, EXP **250.000** (97 geradores, a partir de 2454,1836) | `mob_template_stat` |
+| Mob alvo | **Troll** natural (97 geradores, a partir de 2454,1836) — o override de stat foi **removido**, ver QA-02 | `mob_carry_override` |
 | Drop | slot **12** (equipamento comum) divisor **4** | `drop_rate_override` |
 | Carry | **Troll** slot **56** = item **412** (Poeira de Oriharucon, sempre cai) | `mob_carry_override` |
 | Refino | `SancRate` **PO** índices 0..11 = **100** | `content_rate_override` |
@@ -261,7 +261,7 @@ Valores que estão no banco agora; use-os como referência ao conferir no client
 O que o boot registrou (log real do `tmserver`):
 
 ```
-mob template stat overlay enabled (moderator editing) overrides=1
+mob template stat overlay enabled (moderator editing) overrides=0
 mob carry overlay enabled (moderator editing) templates=1
 content rate overlay applied rate_overrides_applied=12 rows=12
 content rate overlay effective sancrate_ori="[100 100 100 100 100 100 100 100 100 100 100 100]"
@@ -273,4 +273,34 @@ world event config applied at boot version=2
 
 Nota de infraestrutura: o `docker-compose.yaml` repassava cinco das seis flags — `W2PP_MOB_CARRY_EDITING`
 não chegava ao container e o overlay de `Carry` nunca ligava. A variável foi adicionada ao serviço
-`tmserver`; o alvo de XP e de drop é o **Troll**, que spawna ao lado dos mercadores de Armia.
+`tmserver`; o alvo de drop é o **Troll**. O override de stat do Troll foi removido no mesmo dia: ele
+zerava `class`, `clan` e `equip` e deixava o mob com modelo de TK e pacífico (QA-02).
+
+## Resultado da primeira execução (05/11/2026, 14:05–14:33)
+
+Cliente real, conta `test`, personagens `TestHT` (lv 35), `TestTK`, `TestFM`, `TestBM`. Cada achado
+abaixo foi confirmado no servidor (log + SQL), não é impressão do cliente.
+
+| Passo | Resultado | Evidência |
+|---|---|---|
+| A — login e diária | login OK, **diária não recebida** | `daily_reward_claim=0`, `delivery_queue=0`; nenhum caminho de diária no `tmserver` → **QA-01** |
+| B — criação | 4 personagens com equip inicial e 1M de gold | `select * from character` (4 linhas, `class` 0..3) |
+| C — cidades | `/armia /erion /azran /gelo /noatun` OK | `msg=teleport … to_x/to_y` de cada comando |
+| C — `qa-ferreiro` | não apareceu: estava em (2504,1684), o jogador em (2502,1716) | `npc config applied at boot … npcs=5162`; reposicionado para (2098,2093) |
+| C/D — mobs da cidade | não atacam e não podem ser atacados | `world/city.go` `nonCombatNPC`: `clan=0` em aldeia ⇒ NPC de serviço → **QA-04** |
+| D — mob alvo | Troll com modelo de TK e intocável | overlay de stat zerou `class`/`clan`/`equip` → **QA-02** |
+| E — refino | `/gm setgold` OK; `/gm item 412 20` **derrubou o cliente** | `msg="gm item" … item=412 amount=20 slot=7` (servidor aceitou) → **QA-03** |
+| F..J | não executados | crash no passo E |
+
+O que já foi corrigido na sessão: flag `W2PP_MOB_CARRY_EDITING` repassada pelo compose, override do
+`Troll` removido (`overrides=0` no boot de 14:48), `qa-ferreiro` em (2098,2093) ao lado do spawn e
+conta `test2` (papel `player`, mesma senha) para o teste de duas janelas.
+
+### O que dá para retestar agora, sem reiniciar mais nada
+
+1. **C** — andar até o spawn de Armia e abrir o `qa-ferreiro` em (2098,2093): preço 12345 no item 907.
+2. **D** — matar **Troll fora da cidade** (a partir de 2454,1836): drop garantido de 412 (carry do Troll)
+   e a frequência do slot 12 com divisor 4. Mobs **dentro** da aldeia continuam pacíficos por design.
+3. **E (resto)** — refino com `SancRate` PO em 100 e o AC +60 da `Armadura_Couro_Duro` (1116): nenhum
+   dos dois usa o `/gm item` com quantidade.
+4. **F..J** — ficha, imposto/Kefra, atlas, duas janelas (conta `test2`) e persistência.
