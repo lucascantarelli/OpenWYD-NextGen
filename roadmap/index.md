@@ -102,6 +102,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Leitura do portal sem middleware default-deny | 0 `middleware.ts` | [PORTAL-01](issues/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | — | [CLEAN-05](issues/CLEAN-05.md) |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
+| Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](issues/NORMALIZE-01.md) ✅ |
 
 Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
 de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.

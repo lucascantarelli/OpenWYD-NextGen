@@ -1,0 +1,36 @@
+# Normalização de fim de linha: o índice guarda sempre LF, independente do SO.
+# Sem isto, um checkout no Windows (core.autocrlf=true) deixa 700+ arquivos com
+# CRLF no worktree e qualquer substituição de texto passa a ser não determinística.
+* text=auto eol=lf
+
+# Binários: nunca normalizar (git não os trata como texto).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.rar binary
+*.7z binary
+*.gz binary
+*.exe binary
+*.dll binary
+*.bin binary
+*.dat binary
+*.vt2 binary
+*.vt4 binary
+*.wys binary
+*.wyt binary
+*.wdb binary
+*.trn binary
+*.tga binary
+*.dds binary
