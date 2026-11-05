@@ -58,6 +58,29 @@ repositório e pesquisa externa.
 | [`docs/analysis/qualidade-e-processo.md`](../docs/analysis/qualidade-e-processo.md) | plano de engenharia e marcos |
 | [`PLANO-2026-11.md`](PLANO-2026-11.md) | ordem de execução (fecha o que está pronto primeiro) |
 
+## Revisão de engenharia (REVIEW-01..10)
+
+O dossiê de 04/11 respondeu "o que é o projeto"; a série `REVIEW-*` transforma cada frente em
+trabalho executável, **em sequência**, e cada uma abre issues filhas (`REFACTOR-`, `TEST-`, `CI-`,
+`DB-`, `DOC-`, `PORTAL-`, `OBS-`, `CLEAN-`) com critério de aceite próprio. A ordem começa pelo que
+fecha issue rápido (teste real no cliente) e termina na faxina que depende de todo o resto.
+
+| Ordem | Issue | Entrega | Esforço |
+|---:|---|---|---|
+| 1 | [REVIEW-01](issues/REVIEW-01.md) | Triagem da fila in-game: fechar/reabrir as 🟡 com evidência | M |
+| 2 | [REVIEW-02](issues/REVIEW-02.md) | Código Go: docstrings/comentários em PT, refatorações, `newApp` | L |
+| 3 | [REVIEW-03](issues/REVIEW-03.md) | Testes: arquitetura, triagem de `t.Skip`, Playwright, fixtures | L |
+| 4 | [REVIEW-04](issues/REVIEW-04.md) | CI/CD: workflows reutilizáveis, banco no pipeline, SBOM, `make ci` | M |
+| 5 | [REVIEW-05](issues/REVIEW-05.md) | Banco: roles, restore testado, naming, índices de auditoria | M |
+| 6 | [REVIEW-06](issues/REVIEW-06.md) | Documentação: mkdocs, índice de sistemas, ADRs, `doc_legacy` | L |
+| 7 | [REVIEW-07](issues/REVIEW-07.md) | Legado C++ e ClientPatch_v7662: classificar e decidir | M |
+| 8 | [REVIEW-08](issues/REVIEW-08.md) | Portal: público × admin, loja, fóruns, identidade visual | L |
+| 9 | [REVIEW-09](issues/REVIEW-09.md) | Observabilidade: `/metrics`, `trace_id`, alertas, segredos | M |
+| 10 | [REVIEW-10](issues/REVIEW-10.md) | Limpeza final: IA/skills, `openspec`, `scripts/`, DoD | M |
+
+Regra: uma REVIEW só começa quando a anterior tem evidência registrada — cada uma abre issues
+filhas que podem ser executadas em paralelo **dentro** dela, nunca fora de ordem.
+
 ## Fases e issues
 
 ### Fase 0 — Fundação: ambiente, conteúdo e banco
