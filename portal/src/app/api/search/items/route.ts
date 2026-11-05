@@ -1,4 +1,5 @@
 import { fmtCoin } from "@/lib/format";
+import { normalizeSearch } from "@/lib/itemsearch";
 import { getItemCatalog } from "@/server/catalog";
 import { getBasePrices } from "@/server/prices";
 import { getSession } from "@/server/session";
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const query = (searchParams.get("q") ?? "").trim().toLowerCase();
+  const query = normalizeSearch((searchParams.get("q") ?? "").trim());
 
   try {
     const catalog = await getItemCatalog();
@@ -27,8 +28,8 @@ export async function GET(request: Request) {
       if (!query) return true;
       if (String(item.item_index) === query) return true;
       return (
-        item.name.toLowerCase().includes(query) ||
-        (item.display_name ?? "").toLowerCase().includes(query)
+        normalizeSearch(item.name).includes(query) ||
+        normalizeSearch(item.display_name ?? "").includes(query)
       );
     });
 

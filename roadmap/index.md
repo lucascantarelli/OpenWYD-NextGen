@@ -103,6 +103,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Definition of Done espalhada em três documentos | — | [CLEAN-05](issues/CLEAN-05.md) |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
 | Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](issues/NORMALIZE-01.md) ✅ |
+| Busca compara Unicode cru: termo em NFD não acha o nome em NFC | NFD 0 × NFC 20 no mesmo item | [NORMALIZE-02](issues/NORMALIZE-02.md) ✅ |
 
 Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
 de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.
@@ -159,7 +160,7 @@ de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o
 | 21 | [Camada de admin no BFF: resultado→HTTP e auditoria](issues/issue-21.md) | ✅ | M |
 | 22 | [Catálogo de itens com ícones (leitura)](issues/issue-22.md) | ✅ | M |
 | 23 | [Editor de NPCs e mercadores](issues/issue-23.md) | ✅ (UI 03/11; NPC do portal visível e comprável no jogo 04/11) | L |
-| 24 | [Preços globais de itens](issues/issue-24.md) | 🟡 (UI ✅, in-game ⏳) | S |
+| 24 | [Preços globais de itens](issues/issue-24.md) | 🟡 (UI ✅, rota HTTP ✅ 05/11: 200/422/401 reais; in-game ⏳) | S |
 | 25 | [Editor de stats e equip de mobs](issues/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
 | 26 | [Relatórios de drop: item ↔ mob](issues/issue-26.md) | ✅ (duas visões, CSV e cache; validado ao vivo: 1.349 templates, 13.813 slots, consistência item↔mob, player 403) | M |
 | 27 | [Editor do mapa de colisão (AttributeMap)](issues/issue-27.md) | ✅ (info + histograma + transformação + download de 1 MiB com sha conferido; `/mapa` 200 e rota de download 200) | M |
@@ -205,7 +206,7 @@ evidência humana, depois o risco estrutural, depois produto.
 | 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
 | 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
 | 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ✅ (05/11: `ItemDropList.txt` 242 KB removido, DropTool em `_legacy`) | S |
-| 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](issues/issue-62.md) — resíduo da fase 5 | ⏳ | M |
+| 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](issues/issue-62.md) — resíduo da fase 5 | ✅ (05/11: catálogo do banco 3220/151/228/1991/20680 drops, zero WARN; falta teste do wiring) | M |
 
 Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do
 repo, com contexto Docker próprio (`portal/Dockerfile`) para não inflar o contexto dos serviços Go.

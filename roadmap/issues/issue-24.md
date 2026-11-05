@@ -1,6 +1,6 @@
 # Issue 24 — Preços globais de itens
 
-**Fase:** 6 · **Depende de:** 23 · **Bloqueia:** — · **Esforço:** S · **Estado:** 🟡 UI ✅ (2026-11-03) — falta a evidência in-game e a validação de item inexistente
+**Fase:** 6 · **Depende de:** 23 · **Bloqueia:** — · **Esforço:** S · **Estado:** 🟡 UI ✅, rota HTTP ✅ (05/11) — falta a evidência in-game e o cache por `catalog_version`
 
 ## Objetivo
 
@@ -53,7 +53,7 @@ docker compose exec -T db psql -U postgres -d postgres -c \
 
 - [x] Definir e limpar override funcionam; `ListItemPrices` reflete na hora
 - [x] Preço base do catálogo visível ao lado do override
-- [ ] Busca por nome e por índice; item inexistente → `INVALID` tratado como 422
+- [x] Busca por nome e por índice; item inexistente → `INVALID` tratado como 422
 - [ ] Uma chamada de catálogo por sessão (cache por `catalog_version`), não por página
 - [ ] Evidência no jogo + consulta SQL coladas
 
@@ -97,6 +97,30 @@ player (conta teste)        → {ok:false,status:403,"sua conta não tem permiss
   `SetItemPrice(999999, 1500)` devolveu OK e foi limpo logo depois. A UI só oferece item do picker,
   mas o "422 para item inexistente" que a issue previa não existe do lado do servidor.
 - **Pendente (critério 4):** não contei chamadas ao web-api; o cache é por tag (`item-base-prices`) e
-  o catálogo por `item-catalog`, não por `catalog_version` como a issue pedia.
-- **Pendente (critério 5):** evidência no jogo não feita — exige `W2PP_NPC_EDITING=true` no tmserver e
-  a loja aberta no cliente; a consulta SQL está colada acima.
+  o catálogo por `item-catalog`, não por `catalog_version` como a issue pedia.- **Pendente (critério 5):** evidência no jogo não feita — exige `W2PP_NPC_EDITING=true` no tmserver e
+a loja aberta no cliente; a consulta SQL está colada acima.
+
+## Evidência de execução (2026-11-05) — rota HTTP na imagem nova
+
+Stack reconstruída do `HEAD` (`docs/analysis/deploy-2026-11-05.md`). O cookie sai `Secure`
+(`NODE_ENV=production`), então o token do `set-cookie` vai no header `Cookie:` — com `curl -b` ele não
+volta por `http://`.
+
+```text
+POST /api/items/price {"itemIndex":907,"price":12345} -> 200 {"ok":true}
+  sql: select item_index, price from item_price where item_index=907  ->  907 | 12345
+POST /api/items/price {"itemIndex":907,"price":-1}    -> 200 {"ok":true}
+  sql: select count(*) from item_price where item_index=907           ->  0
+POST /api/items/price {"itemIndex":999999,"price":100} -> 422 {"ok":false,"error":"dados inválidos para esta ação","status":422}
+POST /api/items/price {"itemIndex":-3,"price":-9}      -> 422 {"error":"índice de item inválido"}
+POST /api/items/price  (sem sessão)                    -> 401 {"error":"sessão expirada: entre novamente"}
+
+GET /precos -> 200 (22.234 B)
+GET /api/search/items?q=espada -> 200 option #907 "Espada Bastarda"
+```
+
+- **Resolvido:** o 422 para item inexistente que a issue previa agora **existe** (validação
+  `itemCatalog.Has` em `npcadmin.SetItemPrice`), e a rota `POST /api/items/price` é o caminho
+  verificável sem navegador.
+- **Continua pendente:** cache por `catalog_version` (critério 4) e o preço visto na loja in-game
+  (critério 5).

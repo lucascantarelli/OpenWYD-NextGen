@@ -1,6 +1,6 @@
 # Issue 62 — webserver ainda lê os catálogos de arquivo (fase 5 incompleta)
 
-**Fase:** 5 (resíduo) · **Depende de:** 58 · **Esforço:** M · **Estado:** ⏳ aberta
+**Fase:** 5 (resíduo) · **Depende de:** 58 · **Esforço:** M · **Estado:** ✅ concluída (05/11/2026)
 
 ## Sintoma
 
@@ -87,10 +87,33 @@ Passos:
 
 ## Critérios de aceite
 
-- [ ] Nenhum `Scan` de catálogo em `webserver/cmd/webserver/main.go`.
-- [ ] Quatro WARN extinguidos e features de picker/ficha funcionando com dado do banco.
-- [ ] `-content` documentado como "rates e mapas", não como catálogo.
-- [ ] Teste cobrindo catálogo vindo do store.
+- [x] Nenhum `Scan` de catálogo em `webserver/cmd/webserver/main.go` (`grep -nE "Scan\(" webserver/cmd/webserver/main.go` → vazio).
+- [x] Quatro WARN extinguidos e features de picker/ficha funcionando com dado do banco.
+- [x] `-content` documentado como "rates e mapas", não como catálogo (help da flag).
+- [ ] Teste cobrindo catálogo vindo do store (hoje só `itemcatalog/fromentries_test.go`, que cobre a
+      conversão, não o wiring do `main`).
+- [ ] Boot com banco vazio: erro explícito pedindo o seed (comportamento desejado, ainda sem prova).
+
+## Evidência de execução (05/11/2026)
+
+Stack reconstruída do `HEAD` (`docs/analysis/deploy-2026-11-05.md`), boot sem WARN:
+
+```
+warn=0  panic=0  scan_failed=0        # docker compose logs --since 10m webserver
+loaded item catalog from the database count=3220 version=6b056042e402f8d1 icon_pack_version=3260f9a7065f88ef
+loaded skill catalog from the database count=151
+loaded merchant npc templates from the database count=228 layouts.loaded=1991 layouts.current816=1991
+loaded mob templates from the database count=1991 layouts.loaded=1991 layouts.current816=1991
+loaded drop catalog from the database items=3327 mobs=1991 drops=20680
+```
+
+Efeito visível no portal (imagem nova), não só no log:
+
+```
+GET /api/search/items?q=espada -> 200 option #907 "Espada Bastarda" (catálogo do banco)
+GET /itens/907                -> 200, <h1>Espada Bastarda
+GET /itens/999999             -> 404
+```
 
 ## Riscos/rollback
 
