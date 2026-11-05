@@ -195,3 +195,49 @@ Ou seja: o grupo 3 tinha **dois canais** (34 e 35). O `serverlist.txt`
 O campo de endereço é uma string de 64 bytes, então `ip:porta` cabe — mas o cliente
 disca 8281 historicamente. Enquanto isso não for confirmado, o caminho seguro para
 dois canais é **um IP por canal**; a porta no endereço é o experimento.
+
+### O `client/serverlist.txt` e o limite de 32 caracteres
+
+A pasta do cliente tem **dois** arquivos, e eles andam juntos:
+
+```
+client/serverlist.txt     # pares, em texto
+http://127.0.0.1:8281/serv00.htm
+127.0.0.1:8281
+                          # linha em branco separa um grupo
+http://127.0.0.1:8281/serv00.htm
+127.0.0.1:8281
+
+client/serverlist.bin     # o que o cliente lê
+célula 0 = "http://127.0.0.1:8281/serv00.htm"   (32 caracteres)
+célula 1 = "127.0.0.1"                          (o porto NÃO vai para o bin)
+```
+
+Duas consequências medidas nesta rodada:
+
+1. **A URL de status tem 32 caracteres úteis** no arquivo original
+   (`http://127.0.0.1:8281/serv00.htm` = exatamente 32). Gerar
+   `http://192.168.100.3:8281/serv00.htm` (37) estoura o campo e o cliente não
+   lista nada. Com IP de LAN, use **sem porta**: `http://192.168.100.3/serv00.htm`
+   (31) — o status é servido no `:80`, então a porta é dispensável.
+2. O bin guarda **só o host**; a porta do jogo vem do host do cliente/URL. Por
+   isso dois canais no mesmo IP não se distinguem pelo bin: cada canal precisa de
+   um **IP próprio** (a porta no endereço é o experimento em aberto).
+
+Receita para trocar o IP sem quebrar a lista:
+
+```bash
+# 1. bin: célula 0 = URL curta, célula 1 = host
+printf '0 0 http://192.168.100.3/serv00.htm\n0 1 192.168.100.3\n' > dist/serverlist/serverlist-lan.txt
+go run ./client-tools/serverlist -in dist/serverlist/serverlist-lan.txt -out dist/serverlist/serverlist-lan.bin
+
+# 2. txt: pares, com ip:porta na segunda linha e linha em branco entre grupos
+cp dist/serverlist/client-serverlist.txt client/serverlist.txt
+
+# 3. bin
+cp client/serverlist.bin client/serverlist.bin.bak
+cp dist/serverlist/serverlist-lan.bin client/serverlist.bin
+```
+
+O `serverlist.bin.bak` guardado na pasta é o **original que funcionava** (127.0.0.1):
+se qualquer variante falhar, copiá-lo de volta restaura a lista.
