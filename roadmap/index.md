@@ -180,6 +180,7 @@ evidência humana, depois o risco estrutural, depois produto.
 | 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
 | 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
 | 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ⏳ | S |
+| 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](issues/issue-62.md) — resíduo da fase 5 | ⏳ | M |
 
 Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do
 repo, com contexto Docker próprio (`portal/Dockerfile`) para não inflar o contexto dos serviços Go.
