@@ -9,6 +9,11 @@
 // cada célula é o endereço em ASCII, terminado em NUL, com cada byte somado de
 // obfuscationKey[63-i] (o legado soma e depois subtrai a mesma tabela em memória).
 //
+// O terceiro campo é o conteúdo da CÉLULA, não necessariamente um IP: nos arquivos
+// gerados pelo editor do cliente cada grupo usa a célula 0 para a URL de status
+// ("http://<ip>:8281/serv00.htm") e as células 1..N para os endereços dos canais
+// (ver docs/migration/canais.md §8).
+//
 // Uso:
 //
 //	go run ./client-tools/serverlist -in Release/Common/serverlist.txt -out serverlist.bin

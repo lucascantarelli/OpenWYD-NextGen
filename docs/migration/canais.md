@@ -163,3 +163,35 @@ O arquivo tem exatamente 7.040 bytes (`10 grupos × 11 canais × 64`), com a mes
 `BASE_InitializeServerList` (`Basedef.cpp:6874`). Copie para `client/serverlist.bin` **com
 backup** do original; o launcher do cliente original pode sobrescrevê-lo (skill
 `wyd-client-connect`).
+
+### Layout real das células (corrigido em 05/11)
+
+Gerar um `.bin` com uma linha por canal **não funciona**: o cliente não mostra lista
+nenhuma. O arquivo que funcionava, decodificado célula a célula, revelou o padrão:
+
+| Célula (`grupo*11 + canal`) | Conteúdo |
+|---|---|
+| canal 0 do grupo | URL de status: `http://<ip>:8281/serv00.htm` |
+| canal 1..10 do grupo | endereço do canal: `<ip>` |
+
+Exemplo do arquivo original (4 grupos, o último com dois canais):
+
+```
+ 0 "http://127.0.0.1:8281/serv00.htm"   1 "127.0.0.1"
+11 "http://127.0.0.1:8281/serv00.htm"  12 "127.0.0.1"
+22 "http://127.0.0.1:8281/serv00.htm"  23 "127.0.0.1"
+33 "http://127.0.0.1:8281/serv00.htm"  34 "127.0.0.1"  35 "127.0.0.1"
+```
+
+Ou seja: o grupo 3 tinha **dois canais** (34 e 35). O `serverlist.txt`
+(`<grupo> <canal> <conteúdo>`) descreve células, e o gerador só precisa gravar isso:
+
+```
+0 0 http://192.168.100.3:8281/serv00.htm
+0 1 192.168.100.3
+0 2 192.168.100.3:8282      # segundo canal: a porta no endereço é UNVERIFIED
+```
+
+O campo de endereço é uma string de 64 bytes, então `ip:porta` cabe — mas o cliente
+disca 8281 historicamente. Enquanto isso não for confirmado, o caminho seguro para
+dois canais é **um IP por canal**; a porta no endereço é o experimento.
