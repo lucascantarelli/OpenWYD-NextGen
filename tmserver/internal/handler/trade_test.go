@@ -252,23 +252,27 @@ func TestTradeRejectsTamperedOffers(t *testing.T) {
 
 	// Not held: refused before anything reaches B.
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 2200}, 0, 0, false))
+	expectType(t, a, protocol.MsgMessagePanel) // _NN_Wrong_Trade_Packet1, then the close
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectSilence(t, b)
 
 	// Checking a different amount than the forwarded offer cancels both.
 	openTrade(t, a, b, world.Item{Index: 1100}, world.Item{}, 0, 0)
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 1100}, 0, 5, true))
+	expectType(t, a, protocol.MsgMessagePanel)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectType(t, b, protocol.MsgQuitTrade)
 
 	// Removing an already-offered item cancels both.
 	openTrade(t, a, b, world.Item{Index: 1100}, world.Item{}, 0, 0)
 	sendTrade(t, a, tradeBody(2, world.Item{}, 0, 0, false))
+	expectType(t, a, protocol.MsgMessagePanel)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectType(t, b, protocol.MsgQuitTrade)
 
 	// A gold offer above the purse is refused.
 	sendTrade(t, a, tradeBody(2, world.Item{}, 0, 5000, false))
+	expectType(t, a, protocol.MsgMessagePanel) // _NN_Not_Enough_Money
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectSilence(t, b)
 }

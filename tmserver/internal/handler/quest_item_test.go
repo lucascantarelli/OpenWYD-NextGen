@@ -39,7 +39,7 @@ func collectQuestResult(t *testing.T, c net.Conn, limit int) (exp int64, coin in
 			break
 		}
 		switch ty {
-		case protocol.MsgExpPanel:
+		case protocol.MsgMessagePanel: // _NS_GETEXP now rides SendClientMessage
 			sawPanel = true
 		case protocol.MsgUpdateEtc:
 			exp = int64(binary.LittleEndian.Uint64(payload[4:12]))

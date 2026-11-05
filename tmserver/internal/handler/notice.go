@@ -138,9 +138,9 @@ const (
 	// empty box, so the player sees no error at all.
 	versionMismatchText = "Vers\xe3o do jogo incompat\xedvel com os servidores. Atualize o jogo pelo launcher." // _NN_Version_Not_Match_Rerun (36)
 	threeWrongPassText  = "3 tentativas de senha incorreta ocasiona bloqueio de acesso durante 5 min."          // _NN_3_Tims_Wrong_Pass (37)
-	noAccountText       = "Conta inexistente."                                                                 // _NN_No_Account_With_That_Name (131)
-	blockedAccountText  = "Conta bloqueada Grade X, entre em contato com Suporte."                             // _SN_Blocked_Account (132), Parm 0
-	wrongPasswordText   = "Senha incorreta."                                                                   // _NN_Wrong_Password (133)
+	noAccountText       = "Conta inexistente."                                                                  // _NN_No_Account_With_That_Name (131)
+	blockedAccountText  = "Conta bloqueada Grade X, entre em contato com Suporte."                              // _SN_Blocked_Account (132), Parm 0
+	wrongPasswordText   = "Senha incorreta."                                                                    // _NN_Wrong_Password (133)
 )
 
 // PvP and duel texts (Language.txt, Windows-1252), sent through
@@ -155,6 +155,28 @@ const (
 	pkPointMinus     = "Seu ponto caos \xe9 %d (Menos_%d)."                        // _DD_PKPointMinus (208)
 	cantKillUser     = "Voc\xea n\xe3o pode mais derrotar jogadores. (Atual : %d)" // _DN_CantKillUser (209)
 	cantTradePKMode  = "A troca n\xe3o fica dispon\xedvel com o modo PK ativado."  // _NN_Cant_trade_pkmode (331)
+)
+
+// Gameplay texts the legacy sends through SendClientMessage (MSG_MessagePanel,
+// HEADER.ID 0), verbatim from Release/TMsrv/run/Language.txt in the table's
+// Windows-1252 bytes. The number in parentheses is the Language.h id.
+//
+// They exist because the port used to answer these flows with nothing at all
+// (the handlers returned silently), so the player saw a click do nothing: party
+// and trade were reported as "not working" on 05/11 precisely because of that.
+const (
+	levelUpText      = " + + + + SUBIU DE N\xcdVEL + + + + "                                              // _NN_Level_Up (53)
+	expGainFormat    = "*** EXP + %d ***"                                                                 // _NS_GETEXP (473)
+	joinedTownText   = "Voc\xea se cadastrou neste servidor."                                             // _DD_JOINTOWNPEP (427)
+	partyAlreadyIn   = "N\xe3o pode ingressar no grupo pois voc\xea j\xe1 possui um."                     // _NN_Dropped_Current_Party_First (121)
+	partyTargetGone  = "O jogador n\xe3o est\xe1 conectado."                                              // _NN_Not_Connected (91)
+	partyOtherMember = "Este jogador j\xe1 \xe9 membro de um grupo."                                      // _NN_Other_Partys_Member (119)
+	partyOwnGroup    = "Este jogador j\xe1 criou um grupo."                                               // _NN_Have_Own_Party_Already (120)
+	partyLevelTooFar = "Grupo \xe9 poss\xedvel somente para jogadores com diferen\xe7a de 200 n\xedveis." // _NN_Party_Level_Limit (215)
+	partyIsFull      = "O grupo est\xe1 cheio."                                                           // _NN_Partys_Full (122)
+	tradeWrongPacket = "Erro na transa\xe7\xe3o."                                                         // _NN_Wrong_Trade_Packet1 (80)
+	tradeAlreadyOn   = "J\xe1 h\xe1 uma transa\xe7\xe3o com outro jogador."                               // _NN_Already_Trading (82)
+	tradeNoSpace     = "N\xe3o h\xe1 espa\xe7o no invent\xe1rio para realizar transa\xe7\xf5es."          // _NN_You_Have_No_Space_To_Trade (86)
 )
 
 // cstr trims a fixed-size NUL/space-padded C char array to a Go string.

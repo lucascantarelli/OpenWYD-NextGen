@@ -38,6 +38,7 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 		return
 	}
 	if e.Leader != 0 { // already a member elsewhere
+		d.sendClientMessage(w, s, partyAlreadyIn)
 		return
 	}
 	target := int(body.Unk)
@@ -47,9 +48,25 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 	other := w.Session(target)
 	te := w.Entity(target)
 	if target <= 0 || target >= world.MaxUser || other == nil || other.Mode != world.UserPlay || te == nil {
+		// The legacy answers _NN_Not_Connected here; staying silent left the player
+		// with a click that did nothing (QA 05/11).
+		d.log.Warn("party invite: target not in play", "conn", s.Conn, "target", target)
+		d.sendClientMessage(w, s, partyTargetGone)
 		return
 	}
-	if isInParty(te) || !partyLevelOK(e, te) { // target already partied / level gate
+	// The legacy distinguishes the two party conflicts by owner: the target is
+	// already someone's member (_NN_Other_Partys_Member) versus already a leader
+	// (_NN_Have_Own_Party_Already). isInParty folds both, so tell which one.
+	if te.Leader != 0 {
+		d.sendClientMessage(w, s, partyOtherMember)
+		return
+	}
+	if partyMemberCount(te) != 0 {
+		d.sendClientMessage(w, s, partyOwnGroup)
+		return
+	}
+	if !partyLevelOK(e, te) {
+		d.sendClientMessage(w, s, partyLevelTooFar)
 		return
 	}
 	te.LastReqParty = s.Conn // anti-forge gate for AcceptParty
@@ -89,7 +106,8 @@ func (d *Dispatcher) acceptParty(w *world.World, s *world.Session, _ protocol.He
 	}
 	slot, ok := addMember(le, s.Conn)
 	if !ok {
-		return // party full
+		d.sendClientMessage(w, s, partyIsFull)
+		return
 	}
 	e.Leader = leaderConn
 	e.LastReqParty = 0

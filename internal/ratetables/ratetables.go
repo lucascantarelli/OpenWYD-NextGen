@@ -64,8 +64,70 @@ type Override struct {
 	Value  int64
 }
 
+// FileRefineRate is the dust-refine ceiling table (RefineRate.txt). Its rows are
+// "POLICY <KEY> <VALUE>" and tmServer consumes them as a policy, not as a
+// percentage table.
+const FileRefineRate = "RefineRate"
+
 // Files lists the tables the editor exposes.
-func Files() []string { return []string{FileSancRate, FileCompRate, FileQuestsRate} }
+func Files() []string { return []string{FileSancRate, FileCompRate, FileQuestsRate, FileRefineRate} }
+
+// refinePolicyKeys are the editable RefineRate cells, with the range a moderator
+// may set (tmServer clamps the dust ceilings to HARD_CAP on load).
+var refinePolicyKeys = []struct {
+	Name  string
+	Label string
+}{
+	{"PO_MAX", "Poeira de Ori · refino máximo"},
+	{"PL_MAX", "Poeira de Lac · refino máximo"},
+	{"GEM_LEVEL", "Nível do passo especial da gema"},
+	{"HARD_CAP", "Teto absoluto do refino"},
+}
+
+// RefineRateMax bounds every RefineRate value (no legacy path refines past +12).
+const RefineRateMax = 15
+
+// refineRows reads RefineRate.txt the same way tmServer does: "POLICY key value",
+// skipping comments and malformed lines. A missing file yields the legacy
+// defaults so the editor still shows the effective ceiling.
+func refineRows(path string) ([]Row, error) {
+	values := map[string]int64{"PO_MAX": 6, "PL_MAX": 9, "GEM_LEVEL": 10, "HARD_CAP": 11}
+	f, err := os.Open(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("ratetables: open %s: %w", path, err)
+		}
+	} else {
+		defer f.Close()
+		sc := bufio.NewScanner(f)
+		for sc.Scan() {
+			fields := strings.Fields(sc.Text())
+			if len(fields) != 3 || !strings.EqualFold(fields[0], "POLICY") {
+				continue
+			}
+			v, err := strconv.ParseInt(fields[2], 10, 64)
+			key := strings.ToUpper(fields[1])
+			if err != nil || v < 0 || v > RefineRateMax {
+				continue
+			}
+			if _, ok := values[key]; !ok {
+				continue
+			}
+			values[key] = v
+		}
+		if err := sc.Err(); err != nil {
+			return nil, fmt.Errorf("ratetables: read RefineRate: %w", err)
+		}
+	}
+	out := make([]Row, 0, len(refinePolicyKeys))
+	for _, k := range refinePolicyKeys {
+		out = append(out, Row{
+			File: FileRefineRate, Family: "POLICY", Name: k.Name,
+			Value: values[k.Name], Min: 0, Max: RefineRateMax, Label: k.Label,
+		})
+	}
+	return out, nil
+}
 
 // Rows parses every editable table under contentDir/Common/Settings, in a stable
 // order (file, then family, then name) so the UI and tests can compare slices.
@@ -83,10 +145,15 @@ func Rows(contentDir string) ([]Row, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Row, 0, len(sanc)+len(comp)+len(quests))
+	refine, err := refineRows(filepath.Join(settings, "RefineRate.txt"))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Row, 0, len(sanc)+len(comp)+len(quests)+len(refine))
 	out = append(out, sanc...)
 	out = append(out, comp...)
 	out = append(out, quests...)
+	out = append(out, refine...)
 	return out, nil
 }
 

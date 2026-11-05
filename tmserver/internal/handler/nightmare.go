@@ -119,7 +119,7 @@ func nightmareClass(kind int, class uint8) bool {
 func (d *Dispatcher) useNightmareScroll(w *world.World, s *world.Session, e *world.Entity, src, kind int) {
 	d.tickNightmare(w)
 	reject := func(message string) {
-		w.Send(s, protocol.MsgMessagePanel, protocol.EncodeMessagePanelBody(message))
+		d.sendClientMessage(w, s, message)
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 	}
 	if s.Trade.Active || s.TradeMode != 0 {

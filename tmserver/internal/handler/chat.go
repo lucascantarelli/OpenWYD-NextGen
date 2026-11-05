@@ -329,7 +329,8 @@ func (d *Dispatcher) runCommand(w *world.World, s *world.Session, name string, a
 		return true
 	}
 	if cmd == "nig" {
-		w.Send(s, protocol.MsgMessagePanel, protocol.EncodeMessagePanelBody(d.now().In(time.Local).Format("!!150405")))
+		// SendClientMessage (ID 0): w.Send stamps the conn and the 7662 drops the panel.
+		d.sendClientMessage(w, s, d.now().In(time.Local).Format("!!150405"))
 		return true
 	}
 	// "day": the 7662 asks on every affect update while it has no year/day

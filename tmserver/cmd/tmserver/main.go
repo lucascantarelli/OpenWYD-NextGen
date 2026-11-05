@@ -26,16 +26,16 @@ import (
 
 	"google.golang.org/grpc"
 
+	"openwyd-nextgen/internal/ratetables"
 	"openwyd-nextgen/internal/secure"
 	"openwyd-nextgen/tmserver/internal/binclient"
 	"openwyd-nextgen/tmserver/internal/combine"
-	"openwyd-nextgen/internal/ratetables"
 	"openwyd-nextgen/tmserver/internal/content"
 	"openwyd-nextgen/tmserver/internal/dbclient"
 	"openwyd-nextgen/tmserver/internal/dropcfg"
-	"openwyd-nextgen/tmserver/internal/loot"
 	"openwyd-nextgen/tmserver/internal/handler"
 	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/loot"
 	"openwyd-nextgen/tmserver/internal/mobcarry"
 	"openwyd-nextgen/tmserver/internal/mobstat"
 	"openwyd-nextgen/tmserver/internal/npccfg"
@@ -119,6 +119,11 @@ func run(logger *slog.Logger) error {
 	maxNightmare := flag.Int("max-nightmare", envInt("W2PP_MAX_NIGHTMARE", 3), "counted Nightmare admissions per map and cycle")
 	kefraEntriesPerScroll := flag.Int("kefra-entries-per-scroll", envInt("W2PP_KEFRA_ENTRIES_PER_SCROLL", 100), "Hall of Kefra entries one sealed scroll grants at the Sobrevivente (legacy 100; servers commonly use 50 or 100)")
 	clientVersion := flag.Int("client-version", envInt("W2PP_CLIENT_VERSION", 7640), "MSG_AccountLogin.ClientVersion the client must send (protocol-spec says 7640; this 7662 'Cavaleiros de Kersef' build sends 12000)")
+	// Channel identity. The legacy indexes everything per "ServerIndex": the
+	// citizen of a channel is ServerIndex+1 (_MSG_Quest.cpp:2436) and guild ids
+	// carry it in their high bits (serverIndex*4096). One instance per channel, so
+	// 0 is the default (channel 1) and each extra container gets its own value.
+	serverIndex := flag.Int("server-index", envInt("W2PP_SERVER_INDEX", 0), "zero-based channel index this instance serves; citizenship is stamped as server-index+1")
 	doubleExp := flag.Bool("double-exp", envBool("W2PP_DOUBLE_EXP", false), "DOUBLEMODE: double PvE experience (gameconfig double)")
 	newbieEvent := flag.Bool("newbie-event", envBool("W2PP_NEWBIE_EVENT", false), "NewbieEventServer: +15% exp and newbie under-100 bonus (gameconfig)")
 	kefraLive := flag.Bool("kefra-live", envBool("W2PP_KEFRA_LIVE", false), "initial Kefra defeated state (true opens city); persisted cycle takes precedence; false halves PvE exp")
@@ -171,6 +176,22 @@ func run(logger *slog.Logger) error {
 	var worldItems []content.InitItem
 	var heights *content.Grid
 	var attrs *content.Grid
+	// Dust-refine ceilings (QA 05/11): moved out of the code into
+	// Common/Settings/RefineRate.txt so a moderator decides how far each dust goes.
+	// A missing/broken file is not fatal — the file is a tuning surface, and the
+	// world keeps the legacy 6/9/10/11 instead of refusing to boot.
+	refinePolicy := content.DefaultRefinePolicy()
+	if *contentDir != "" {
+		if p, perr := content.LoadRefinePolicy(*contentDir + "/Common/Settings/RefineRate.txt"); perr != nil {
+			logger.Warn("refine policy: legacy defaults", "err", perr)
+		} else {
+			refinePolicy = p
+		}
+	}
+	logger.Info("refine policy", "po_max", refinePolicy.OriMax, "pl_max", refinePolicy.PLMax,
+		"gem_level", refinePolicy.GemLevel, "hard_cap", refinePolicy.HardCap,
+		"server_index", *serverIndex)
+
 	var sancRate *content.SancRate
 	var compRate *content.CompRate
 	var questRates *content.QuestRates
@@ -441,6 +462,11 @@ func run(logger *slog.Logger) error {
 			})
 		}
 		applied, ignored := content.ApplyRateOverrides(sancRate, compRate, questRates, overrides)
+		var refineApplied, refineIgnored int
+		refinePolicy, refineApplied, refineIgnored = content.ApplyRefineOverrides(refinePolicy, overrides)
+		logger.Info("refine policy overlay", "applied", refineApplied, "ignored", refineIgnored,
+			"po_max", refinePolicy.OriMax, "pl_max", refinePolicy.PLMax,
+			"gem_level", refinePolicy.GemLevel, "hard_cap", refinePolicy.HardCap)
 		logger.Info("content rate overlay applied",
 			"rate_overrides_applied", applied, "rate_overrides_ignored", ignored, "rows", len(rows))
 		// "content loaded" runs before this block, so the effective Ori row is
@@ -543,6 +569,8 @@ func run(logger *slog.Logger) error {
 		Log:                   logger, ClientVersion: int32(*clientVersion), BaseMobs: baseMobs, SummonMobs: summonMobs, VineMob: vineMob, ItemPrices: itemPrices, ItemEffects: itemEffects, ItemReqs: itemReqs,
 		ItemVolatiles: itemVolatiles, ItemPos: itemPos, ItemUnique: itemUnique, ItemGrades: itemGrades, ItemExtra: itemExtra, Spells: spells, Heights: heights, Attrs: attrs,
 		SancRate:         sancRate,
+		RefinePolicy:     refinePolicy,
+		ServerIndex:      *serverIndex,
 		ExpEvents:        level.ExpEvents{DoubleMode: *doubleExp, NewbieEvent: *newbieEvent, KefraLive: *kefraLive},
 		TrainingFieldExp: int64(*trainingFieldExp),
 		CombineFamilies:  combineFamilies,

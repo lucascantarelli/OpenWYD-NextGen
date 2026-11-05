@@ -1262,8 +1262,9 @@ func (d *Dispatcher) useBaseGem(w *world.World, s *world.Session, e *world.Entit
 	}
 
 	level := refine.Level(*dst)
+	gemLevel := d.refineLimits().GemLevel
 	grade := d.itemGrades[int(dst.Index)]
-	if level < gemSancLvl && grade < 5 {
+	if level < gemLevel && grade < 5 {
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 		return
 	}
@@ -1271,7 +1272,7 @@ func (d *Dispatcher) useBaseGem(w *world.World, s *world.Session, e *world.Entit
 	if grade >= 5 && grade <= 8 {
 		dst.Index += int16(gem - (grade - 5))
 	}
-	if level >= gemSancLvl {
+	if level >= gemLevel {
 		refine.Set(dst, level, gem)
 	}
 

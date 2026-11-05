@@ -270,10 +270,10 @@ func (d *Dispatcher) quest(w *world.World, s *world.Session, _ protocol.Header, 
 		d.compSephi(w, s, e, npc, int(confirm))
 		return
 	}
-	// KIBITA (Merchant 74): permanently unlocks Mortal Soul with the
-	// class-specific Secreta stone (_MSG_Quest.cpp:2518-2558).
+	// KIBITA (Merchant 74): citizenship first, then the permanent Mortal Soul
+	// with the class-specific Secreta stone (_MSG_Quest.cpp:2430-2562).
 	if npc.Merchant == 74 {
-		d.kibitaSoul(w, s, e)
+		d.kibita(w, s, e)
 		return
 	}
 	if isKingQuestNPC(npc) {
@@ -634,18 +634,37 @@ const (
 )
 
 const (
-	kibitaSoulMinLevel  = 369
-	kibitaSoulSkillBit  = int32(1 << 30)
-	kibitaCapeHekalotia = int16(3194)
-	kibitaCapeAkelonia  = int16(3195)
-	kibitaCapeNeutral   = int16(3196)
+	kibitaCitizenshipCost = 4_000_000 // _MSG_Quest.cpp:2433, fixed in the legacy
+	kibitaSoulMinLevel    = 369
+	kibitaSoulSkillBit    = int32(1 << 30)
+	kibitaCapeHekalotia   = int16(3194)
+	kibitaCapeAkelonia    = int16(3195)
+	kibitaCapeNeutral     = int16(3196)
 )
 
 var kibitaSoulStones = [...]int16{5334, 5336, 5335, 5337}
 
-// kibitaSoul ports the permanent Soul branch of KIBITA. The citizenship branch
-// and the compile-time KIBITA_SOUL event buff are separate legacy services and
-// intentionally remain disabled until their own state and scheduling are ported.
+// kibita is the KIBITA entry point in the legacy order: the citizenship sale
+// first, the permanent Soul afterwards (:2430-2562). The compile-time
+// KIBITA_SOUL event buff is still not ported.
+func (d *Dispatcher) kibita(w *world.World, s *world.Session, e *world.Entity) {
+	// A character with no town and the fee in gold buys the citizenship of THIS
+	// channel, and the legacy returns right there even if it also qualifies for the
+	// Soul branch (:2433-2459). Citizen is 1-based: channel N is N+1.
+	if e.Citizen == 0 && e.Coin >= kibitaCitizenshipCost && d.serverIndex >= 0 && d.serverIndex < 255 {
+		e.Coin -= kibitaCitizenshipCost
+		e.Citizen = uint8(d.serverIndex + 1)
+		d.sendEtc(w, s, e) // the fee changes the gold the client shows
+		d.sendClientMessage(w, s, joinedTownText)
+		d.log.Info("citizenship granted", "conn", s.Conn, "name", e.Name,
+			"citizen", e.Citizen, "server_index", d.serverIndex, "coin", e.Coin)
+		w.SaveCharacterAsync(s)
+		return
+	}
+	d.kibitaSoul(w, s, e)
+}
+
+// kibitaSoul ports the permanent Soul branch of KIBITA.
 func (d *Dispatcher) kibitaSoul(w *world.World, s *world.Session, e *world.Entity) {
 	if e.ClassMaster != classMasterMortal || e.Level < kibitaSoulMinLevel || e.LearnedSkill&kibitaSoulSkillBit != 0 {
 		d.notify(w, s, NoticeReqNotMet)

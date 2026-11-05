@@ -298,8 +298,9 @@ func (d *Dispatcher) applyMobExp(w *world.World, ks *world.Session, killer *worl
 		killer.Exp = level.MaxExp
 	}
 	if applied := killer.Exp - previousExp; applied > 0 && ks != nil {
-		body := protocol.EncodeExpPanelBody(fmt.Sprintf("+%d de EXP", applied), expPanelDefaultColor)
-		w.Send(ks, protocol.MsgExpPanel, body)
+		// _NS_GETEXP panels the gain; the custom MSG_Exp_Msg_Panel_ never showed up
+		// in the client (QA 05/11), so this rides SendClientMessage like the legacy.
+		d.sendClientMessage(w, ks, fmt.Sprintf(expGainFormat, applied))
 	}
 
 	// A player attack carries the post-kill EXP in its authoritative attack
@@ -331,7 +332,7 @@ func (d *Dispatcher) grantDirectExp(w *world.World, s *world.Session, e *world.E
 	if applied <= 0 || s == nil {
 		return applied
 	}
-	w.Send(s, protocol.MsgExpPanel, protocol.EncodeExpPanelBody(fmt.Sprintf("+%d de EXP", applied), expPanelDefaultColor))
+	d.sendClientMessage(w, s, fmt.Sprintf(expGainFormat, applied))
 	if !d.applyLevelUps(w, s, e) {
 		d.sendEtc(w, s, e)
 	}
@@ -440,6 +441,8 @@ func (d *Dispatcher) levelUps(w *world.World, s *world.Session, e *world.Entity,
 	if s != nil {
 		d.sendScore(w, s, e)
 		d.sendEtc(w, s, e)
+		// _NN_Level_Up (SendFunc.cpp:1040): the sparkle alone was not readable.
+		d.sendClientMessage(w, s, levelUpText)
 		w.Send(s, protocol.MsgMotion, motion)
 	}
 	w.BroadcastInView(e.ID, protocol.MsgMotion, motion)

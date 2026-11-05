@@ -255,8 +255,9 @@ func TestRefineOriCapsAtSix(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		f.refine(itemPoeiraOri)
 	}
-	if got := refine.Level(f.target()); got != oriMaxSanc {
-		t.Errorf("level = %d, want %d (Ori's cap)", got, oriMaxSanc)
+	// 6/9 are the legacy ceilings, now the defaults of content.RefinePolicy.
+	if got := refine.Level(f.target()); got != 6 {
+		t.Errorf("level = %d, want 6 (Ori's cap)", got)
 	}
 }
 
@@ -267,8 +268,8 @@ func TestRefineLacCapsAtNine(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		f.refine(itemPoeiraLac)
 	}
-	if got := refine.Level(f.target()); got != lacMaxSanc {
-		t.Errorf("level = %d, want %d (Lac's cap)", got, lacMaxSanc)
+	if got := refine.Level(f.target()); got != 9 {
+		t.Errorf("level = %d, want 9 (Lac's cap)", got)
 	}
 }
 

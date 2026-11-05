@@ -48,50 +48,54 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	other := w.Session(opp)
 	oe := w.Entity(opp)
 	if opp <= 0 || opp >= world.MaxUser || opp == s.Conn || other == nil || oe == nil || other.Mode != world.UserPlay {
-		d.rejectTrade(w, s)
+		d.log.Warn("trade: opponent not in play", "conn", s.Conn, "opponent", opp)
+		d.tradeRefuse(w, s, tradeWrongPacket)
 		return
 	}
 	if body.TradeMoney < 0 || body.TradeMoney > maxTradeCoin || body.TradeMoney > e.Coin {
-		d.rejectTrade(w, s)
+		d.tradeRefuse(w, s, notEnoughMoney)
 		return
 	}
 	offer, ok := d.tradeOffer(e, &body)
 	if !ok {
-		d.rejectTrade(w, s)
+		d.log.Warn("trade: offer does not match the carry", "conn", s.Conn, "opponent", opp,
+			"money", body.TradeMoney)
+		d.tradeRefuse(w, s, tradeWrongPacket)
 		return
 	}
 	linked := other.Trade.Active && other.Trade.OpponentID == s.Conn
 	if linked && !tradeOfferHeld(oe, &other.Trade) {
-		d.rejectTrade(w, s) // the opponent's offered item moved or changed
+		d.log.Warn("trade: opponent offer changed", "conn", s.Conn, "opponent", opp)
+		d.tradeRefuse(w, s, tradeWrongPacket) // the opponent's offered item moved or changed
 		return
 	}
 
 	if s.Trade.Active {
 		if s.Trade.OpponentID != opp {
-			d.rejectTrade(w, s) // _NN_Already_Trading
+			d.tradeRefuse(w, s, tradeAlreadyOn) // _NN_Already_Trading
 			return
 		}
 		for i := range s.Trade.Items {
 			if s.Trade.Items[i].Index != 0 && (s.Trade.Items[i] != offer.Items[i] || s.Trade.InvenPos[i] != offer.InvenPos[i]) {
-				d.rejectTrade(w, s)
+				d.tradeRefuse(w, s, tradeWrongPacket)
 				return
 			}
 		}
 		if s.Trade.Money != 0 && s.Trade.Money != offer.Money {
-			d.rejectTrade(w, s)
+			d.tradeRefuse(w, s, tradeWrongPacket)
 			return
 		}
 	}
 
 	if other.Trade.Active && !linked {
-		d.rejectTrade(w, s) // the opponent is trading with someone else
+		d.tradeRefuse(w, s, tradeAlreadyOn) // the opponent is trading with someone else
 		return
 	}
 
 	if body.MyCheck == 1 {
 		// Checking is only valid on the exact offer the opponent already saw.
 		if !linked || !s.Trade.Active || s.Trade.Items != offer.Items || s.Trade.InvenPos != offer.InvenPos || s.Trade.Money != offer.Money {
-			d.rejectTrade(w, s)
+			d.tradeRefuse(w, s, tradeWrongPacket)
 			return
 		}
 		s.Trade.Confirmed = true
@@ -109,6 +113,12 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	s.Trade = offer
 	other.Trade.Confirmed = false
 	d.forwardTrade(w, s, other)
+} // tradeRefuse is rejectTrade plus the player-facing reason. Every refusal used to
+// be silent, so a refused trade only closed the window and read as "trade does
+// not work" (QA 05/11).
+func (d *Dispatcher) tradeRefuse(w *world.World, s *world.Session, text string) {
+	d.sendClientMessage(w, s, text)
+	d.rejectTrade(w, s)
 }
 
 // rejectTrade cancels s's trade after a refused _MSG_Trade. Unlike removeTrade it

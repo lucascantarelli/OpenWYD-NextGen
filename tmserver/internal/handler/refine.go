@@ -21,12 +21,12 @@ const (
 	// item769 is capped at +9 by name (_MSG_UseItem.cpp:802).
 	item769 = 769
 
-	// Ori stops at +6, Lac at +9; the dust path never goes past +9 except for the
-	// one +10→+11 step.
-	oriMaxSanc  = 6
-	lacMaxSanc  = 9
-	gemSancLvl  = 10 // the +10 special case: goes to +11 and preserves the gem
-	sancHardCap = 11 // at +11 and above the dust path refuses outright
+	// The ceilings (Ori +6, Lac +9, the +10 gem step and the +11 wall) used to be
+	// constants here. They now live in Common/Settings/RefineRate.txt and in the
+	// moderator overlay as content.RefinePolicy (QA 05/11) so a moderator can set
+	// how far each dust refines without a rebuild. Only the pity rule is still
+	// code: it is a quirk of the roll, not a tunable.
+	pityOriMaxLevel = 5 // Ori accrues pity only up to +5 (_MSG_UseItem.cpp:943)
 
 	// refineRollModulo is the dust roll: a plain rand()%100
 	// (_MSG_UseItem.cpp:851). NOT combine.Roll's rand()%115 with the -15 fold —
@@ -149,16 +149,17 @@ func (d *Dispatcher) refineItem(w *world.World, s *world.Session, e *world.Entit
 		return
 	}
 
+	limits := d.refineLimits()
 	level := refine.Level(*dst)
-	// Ori cannot touch an item already at +6 or above (:203).
-	if vol == volDustOri && level >= oriMaxSanc {
+	// Ori cannot touch an item already at its ceiling (-6 by default, :203).
+	if vol == volDustOri && level >= limits.OriMax {
 		d.refineDustReject(w, s, e, src, refineMessageCantMore)
 		return
 	}
-	// +9 is the dust path's wall. +10 is allowed through as the one special case
-	// (it becomes +11); +11 and up are refused (:802, where the legacy compares
-	// against the REF_11 sentinel).
-	if level == lacMaxSanc || level >= sancHardCap || (level >= lacMaxSanc && dst.Index == item769) {
+	// Lac reaches its own ceiling (9) but the +10 step is allowed through as the
+	// one special case (it becomes +11); at HardCap and above the dust path
+	// refuses outright (:802, where the legacy compares against REF_11).
+	if level == limits.PLMax || level >= limits.HardCap || (level >= limits.PLMax && dst.Index == item769) {
 		d.refineDustReject(w, s, e, src, refineMessageCantMore)
 		return
 	}
@@ -231,16 +232,17 @@ type refineTarget struct {
 func (d *Dispatcher) refineSucceed(w *world.World, s *world.Session, e *world.Entity, t refineTarget, src, vol, anvil, level, grade int) {
 	dst := t.item
 
-	if level == gemSancLvl {
+	limits := d.refineLimits()
+	if level == limits.GemLevel {
 		// +10 → +11, carrying the gem index across (:857).
-		refine.Set(dst, gemSancLvl+1, refine.Gem(*dst))
+		refine.Set(dst, limits.GemLevel+1, refine.Gem(*dst))
 	} else {
 		if grade >= 1 && grade <= 5 {
 			level += refine.Step(anvil, grade)
-			if level >= oriMaxSanc && vol == volDustOri {
-				level = oriMaxSanc
-			} else if level > lacMaxSanc {
-				level = lacMaxSanc
+			if level >= limits.OriMax && vol == volDustOri {
+				level = limits.OriMax
+			} else if level > limits.PLMax {
+				level = limits.PLMax
 			}
 		} else {
 			// No usable grade → a plain +1. Note the legacy skips BOTH caps on this
@@ -274,7 +276,7 @@ func (d *Dispatcher) refineFail(w *world.World, s *world.Session, e *world.Entit
 
 	if w.Rand().Intn(pityRollModulo) <= pityRollMax {
 		// Lac always accrues pity; Ori only up to +5 (:943-949).
-		if anvil == refine.Lac || (level <= 5 && anvil == refine.Ori) {
+		if anvil == refine.Lac || (level <= pityOriMaxLevel && anvil == refine.Ori) {
 			pity++
 		}
 	}
@@ -284,7 +286,7 @@ func (d *Dispatcher) refineFail(w *world.World, s *world.Session, e *world.Entit
 		// A failed egg refine starts the incubation cooldown (:951).
 		dst.Effects[2] = world.Effect{Effect: efIncuDelay, Value: uint8(w.Rand().Intn(pityRollModulo))}
 	}
-	if level != gemSancLvl {
+	if limits := d.refineLimits(); level != limits.GemLevel {
 		refine.Set(dst, level, pity)
 	}
 	d.sendSlot(w, s, t.place, t.slot, *dst)

@@ -29,12 +29,16 @@ import (
 
 // Config tunes the dispatcher. Zero values get sensible defaults.
 type Config struct {
-	ClientVersion int32            // required client version (default AppVersion 7640)
-	MaxNightmare  int              // Counted admissions per map/cycle; default 3.
-	MaxFailLogin  int              // wrong-password lockout threshold (default 3)
-	ServerIndex   int              // legacy guild id high bits (server_index * 4096)
-	Log           *slog.Logger     // default slog.Default()
-	Now           func() time.Time // wall clock for calendar-gated guild ops
+	ClientVersion int32 // required client version (default AppVersion 7640)
+	MaxNightmare  int   // Counted admissions per map/cycle; default 3.
+	MaxFailLogin  int   // wrong-password lockout threshold (default 3)
+	ServerIndex   int   // legacy guild id high bits (server_index * 4096); also the channel a citizen belongs to (Citizen = ServerIndex+1)
+
+	// RefinePolicy is the dust-refine ceiling table (RefineRate). Zero value
+	// falls back to the legacy 6/9/10/11.
+	RefinePolicy content.RefinePolicy
+	Log          *slog.Logger     // default slog.Default()
+	Now          func() time.Time // wall clock for calendar-gated guild ops
 
 	// KefraEntriesPerScroll is how many Hall of Kefra entries one sealed
 	// scroll grants at the Sobrevivente; default 100 (the legacy value).
@@ -183,6 +187,7 @@ type Dispatcher struct {
 	itemGrades      map[int]int                  // item index → Grade (ExpBonus)
 	itemExtra       map[int]int                  // item index → Extra (Anct/Adamantita combine result)
 	sancRate        refine.RateTable             // dust-refine success table (g_pSancRate)
+	refinePolicy    content.RefinePolicy         // dust refine ceilings (RefineRate + overlay)
 	expEvents       level.ExpEvents              // global EXP event flags
 	fieldExp        int64                        // training-grounds EXP multiplier (0 = off)
 	kefra           kefraRuntime                 // loop-owned weekly event I/O tracking
@@ -315,6 +320,7 @@ func New(cfg Config) *Dispatcher {
 		itemGrades:       cfg.ItemGrades,
 		itemExtra:        cfg.ItemExtra,
 		sancRate:         cfg.SancRate,
+		refinePolicy:     cfg.RefinePolicy,
 		expEvents:        cfg.ExpEvents,
 		fieldExp:         cfg.TrainingFieldExp,
 		spells:           cfg.Spells,
@@ -447,6 +453,16 @@ func (d *Dispatcher) Handle(w *world.World, s *world.Session, h protocol.Header,
 		return
 	}
 	fn(w, s, h, payload)
+}
+
+// refineLimits returns the effective dust ceilings. A dispatcher built without a
+// policy (tests, small tools) keeps the legacy 6/9/10/11 instead of zeroing every
+// cap, which would refuse every refine.
+func (d *Dispatcher) refineLimits() content.RefinePolicy {
+	if d.refinePolicy.HardCap <= 0 {
+		return content.DefaultRefinePolicy()
+	}
+	return d.refinePolicy
 }
 
 func formatType(t protocol.Type) string {

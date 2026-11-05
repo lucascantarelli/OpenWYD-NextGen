@@ -1,0 +1,8 @@
+# Teto de refino por poeira (era hardcoded em _MSG_UseItem.cpp: 6/9/10/11).
+# Formato: POLICY <CHAVE> <VALOR>. Sem linha, vale o default do código.
+# O tmServer lê no boot; com W2PP_RATES_EDITING=true o overlay de
+# content_rate_override (arquivo "RefineRate") sobrescreve o arquivo.
+POLICY PO_MAX 6
+POLICY PL_MAX 9
+POLICY GEM_LEVEL 10
+POLICY HARD_CAP 11
