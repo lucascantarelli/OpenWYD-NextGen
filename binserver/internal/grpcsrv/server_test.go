@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	binv1 "openwyd-nextgen"
+	binv1 "openwyd-nextgen/api/bin/v1"
 
 	"openwyd-nextgenal/billing"
 )

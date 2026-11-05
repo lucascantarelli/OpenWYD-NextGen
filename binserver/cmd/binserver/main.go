@@ -23,7 +23,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	binv1 "openwyd-nextgen"
+	binv1 "openwyd-nextgen/api/bin/v1"
 
 	"openwyd-nextgen/binserver/internal/billing"
 	"openwyd-nextgen/binserver/internal/grpcsrv"
