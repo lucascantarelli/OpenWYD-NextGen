@@ -538,8 +538,12 @@ type MsgSendReqPartyBody struct {
 	Target   int16
 }
 
-// MsgSendReqPartyBodySize is the body length.
-const MsgSendReqPartyBodySize = 36
+// MsgSendReqPartyBodySize is the body length. Wire structs are pack(1) (AGENTS.md
+// invariant 2), so there is NO padding between MobName and unk: sizeof is 44 and
+// the body 32. The port used the MSVC natural-alignment offsets (36) and the
+// 7662 client rejected the invite: the target never saw the dialog and nothing
+// was ever accepted (QA 05/11).
+const MsgSendReqPartyBodySize = 32
 
 // Decode parses an MSG_SendReqParty body.
 func (m *MsgSendReqPartyBody) Decode(b []byte) error {
@@ -553,8 +557,8 @@ func (m *MsgSendReqPartyBody) Decode(b []byte) error {
 	m.HP = le.Uint16(b[6:8])
 	m.PartyID = int16(le.Uint16(b[8:10]))
 	copy(m.MobName[:], b[10:26])
-	m.Unk = int32(le.Uint32(b[28:32]))
-	m.Target = int16(le.Uint16(b[32:34]))
+	m.Unk = int32(le.Uint32(b[26:30]))
+	m.Target = int16(le.Uint16(b[30:32]))
 	return nil
 }
 
@@ -568,20 +572,21 @@ func (m *MsgSendReqPartyBody) Encode() []byte {
 	le.PutUint16(b[6:8], m.HP)
 	le.PutUint16(b[8:10], uint16(m.PartyID))
 	copy(b[10:26], m.MobName[:])
-	le.PutUint32(b[28:32], uint32(m.Unk))
-	le.PutUint16(b[32:34], uint16(m.Target))
+	le.PutUint32(b[26:30], uint32(m.Unk))
+	le.PutUint16(b[30:32], uint16(m.Target))
 	return b
 }
 
 // MsgAcceptPartyBody is MSG_AcceptParty (C↔S, 0x03AB): LeaderID is who invited
-// me. The natural-alignment tail padding keeps sizeof(MSG_AcceptParty)==32.
+// me. pack(1): sizeof 30, body 18 — the natural-alignment size the port assumed
+// (20) made Decode reject every accept, so a party could never form.
 type MsgAcceptPartyBody struct {
 	LeaderID int16
 	MobName  [16]byte
 }
 
 // MsgAcceptPartyBodySize is the body length.
-const MsgAcceptPartyBodySize = 20
+const MsgAcceptPartyBodySize = 18
 
 // Decode parses an MSG_AcceptParty body.
 func (m *MsgAcceptPartyBody) Decode(b []byte) error {

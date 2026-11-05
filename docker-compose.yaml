@@ -168,6 +168,48 @@ services:
       - "8281:8281"            # TMSrv CPSock client edge (game)
       - "80:80"                # channel-status HTTP (serv00.htm), real WYD uses :80
 
+  # Segundo canal (docs/migration/canais.md §7). Mesma imagem, mesmo dbServer,
+  # mesmo Release/ somente-leitura e um ServerIndex diferente: é o índice que
+  # define a cidadania (Citizen = ServerIndex + 1) e o id de guilda.
+  # Suba com: docker compose up -d tmserver2
+  tmserver2:
+    build:
+      context: .
+      args:
+        SVC: tmserver
+    command:
+      - "-addr"
+      - ":8282"
+      - "-dbserver"
+      - "dbserver:7514"
+      - "-binserver"
+      - "binserver:3000"
+      - "-content"
+      - "/Release"
+      - "-status-addr"
+      - ":8080"
+      - "-client-version"
+      - "12000"
+      - "-server-index"
+      - "1"
+    depends_on:
+      dbserver:
+        condition: service_started
+      binserver:
+        condition: service_started
+    environment:
+      W2PP_MOB_STAT_EDITING: "${W2PP_MOB_STAT_EDITING:-false}"
+      W2PP_ITEM_EFFECT_EDITING: "${W2PP_ITEM_EFFECT_EDITING:-false}"
+      W2PP_RATES_EDITING: "${W2PP_RATES_EDITING:-false}"
+      W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
+      W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
+      W2PP_MOB_CARRY_EDITING: "${W2PP_MOB_CARRY_EDITING:-false}"
+    volumes:
+      - ./Release:/Release:ro
+    ports:
+      - "8282:8282"            # canal 1 (ServerIndex 1)
+      - "8080:8080"            # status HTTP do canal 1
+
 volumes:
   pgdata:
   portal-audit:

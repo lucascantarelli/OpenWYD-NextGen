@@ -32,9 +32,14 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 	}
 	var body protocol.MsgSendReqPartyBody
 	if err := body.Decode(payload); err != nil {
+		// A silent return here is what made "invite does nothing" impossible to
+		// diagnose: the packet arrived, was routable and produced no reaction.
+		d.log.Warn("party invite: bad packet", "conn", s.Conn, "len", len(payload), "err", err)
 		return
 	}
 	if int(body.PartyID) != s.Conn { // PartyID must be the inviter
+		d.log.Warn("party invite: PartyID is not the inviter", "conn", s.Conn,
+			"party_id", body.PartyID, "target", body.Unk, "len", len(payload))
 		return
 	}
 	if e.Leader != 0 { // already a member elsewhere
@@ -83,6 +88,7 @@ func (d *Dispatcher) acceptParty(w *world.World, s *world.Session, _ protocol.He
 	}
 	var body protocol.MsgAcceptPartyBody
 	if err := body.Decode(payload); err != nil {
+		d.log.Warn("party accept: bad packet", "conn", s.Conn, "len", len(payload), "err", err)
 		return
 	}
 	leaderConn := int(body.LeaderID)

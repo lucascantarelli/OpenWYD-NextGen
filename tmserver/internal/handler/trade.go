@@ -48,7 +48,9 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	other := w.Session(opp)
 	oe := w.Entity(opp)
 	if opp <= 0 || opp >= world.MaxUser || opp == s.Conn || other == nil || oe == nil || other.Mode != world.UserPlay {
-		d.log.Warn("trade: opponent not in play", "conn", s.Conn, "opponent", opp)
+		d.log.Warn("trade: opponent not in play", "conn", s.Conn, "opponent", opp,
+			"money", body.TradeMoney, "mycheck", body.MyCheck,
+			"first_pos", body.InvenPos[0], "first_item", body.Item[0].Index)
 		d.tradeRefuse(w, s, tradeWrongPacket)
 		return
 	}
@@ -146,8 +148,18 @@ func (d *Dispatcher) tradeOffer(e *world.Entity, body *protocol.MsgTradeBody) (w
 			t.InvenPos[i] = tradeEmptyPos
 			continue
 		}
-		if pos >= maxTradeSlot || !carrySlotAccessible(e, pos) || used[pos] || e.Carry[pos].Empty() || !sameItem(body.Item[i], e.Carry[pos]) {
+		if pos >= maxTradeSlot || !carrySlotAccessible(e, pos) || used[pos] || e.Carry[pos].Empty() {
 			return world.TradeState{}, false
+		}
+		// Server-authoritative offer: the slot is the truth, the item bytes the
+		// client sent are only a hint. The legacy rebuilds the same way
+		// (memcpy from MOB.Carry, _MSG_Trade.cpp:199) and refuses only on a bad
+		// slot. Requiring an exact match of the sent STRUCT_ITEM refused every
+		// real trade with "Erro na transação" (QA 05/11), because the client's
+		// effect bytes for the same item differ from the stored ones.
+		if !sameItem(body.Item[i], e.Carry[pos]) {
+			d.log.Debug("trade: client item bytes differ from carry, using carry",
+				"conn", e.ID, "slot", pos, "client", body.Item[i].Index, "carry", e.Carry[pos].Index)
 		}
 		if d.itemAbility(e.Carry[pos], efNoTrade) != 0 {
 			return world.TradeState{}, false

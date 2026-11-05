@@ -240,8 +240,11 @@ func TestTradeChangeResetsCheck(t *testing.T) {
 	expectSilence(t, b)
 }
 
-// TestTradeRejectsTamperedOffers: an item the sender does not hold, a check on
-// data the opponent never saw, and replacing an offered item all cancel.
+// TestTradeRejectsTamperedOffers: the server rebuilds every offer from the carry
+// slot (the client's item bytes are only a hint, like the legacy memcpy at
+// _MSG_Trade.cpp:199), so forged bytes cannot smuggle another item; a check on
+// data the opponent never saw, removing an offered item and a gold offer above
+// the purse all cancel.
 func TestTradeRejectsTamperedOffers(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -250,9 +253,14 @@ func TestTradeRejectsTamperedOffers(t *testing.T) {
 	b := enterWorldAs(t, addr, "tradeb")
 	defer b.Close()
 
-	// Not held: refused before anything reaches B.
+	// Forged item bytes: the opponent receives what the slot holds (1100), never
+	// the 2200 the client claimed. Requiring an exact match instead refused every
+	// real trade with "Erro na transação".
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 2200}, 0, 0, false))
-	expectType(t, a, protocol.MsgMessagePanel) // _NN_Wrong_Trade_Packet1, then the close
+	if got := readForwarded(t, b); got.Item[0].Index != 1100 {
+		t.Fatalf("forwarded item = %d, want the carry item 1100", got.Item[0].Index)
+	}
+	send(t, a, protocol.MsgQuitTrade, nil)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectSilence(t, b)
 

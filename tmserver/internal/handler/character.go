@@ -379,6 +379,12 @@ func (d *Dispatcher) completeCharacterLogin(w *world.World, s *world.Session, st
 			if value, _, ok := activeTransform(e); ok {
 				equip[0].Index = transMesh(value)
 			}
+			// The 7662 reads the character's citizenship from the body item's third
+			// effect, not from a packet field: the legacy overwrites it right before
+			// handing the MOB over (ProcessDBMessage.cpp:763 — cEffect 28,
+			// cValue = mobExtra.Citizen). Without it the character window says the
+			// citizenship is inexistente even after the Kibita sale.
+			equip[0].Eff[2] = [2]uint8{28, e.Citizen}
 		}
 		var carry [64]protocol.SelItem
 		for i := range st.Carry {

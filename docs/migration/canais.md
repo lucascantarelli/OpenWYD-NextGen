@@ -109,3 +109,57 @@ um canal único: o jogador paga 4M por uma cidadania que não entrega nada.
   local à instância).
 - **Chat global é por canal** (`_MSG_MessageChat` sem roteamento entre instâncias).
 - **Billing e gold** são únicos (um `binserver`), então economia é global.
+
+---
+
+## 7. Dois canais no compose (teste de cidadania)
+
+O plano dos 4 canais (§6) começa com dois, que já dá para exercitar tudo o que depende
+de `ServerIndex`: cidadania por canal, id de guilda, NPC de outra cidade.
+
+```bash
+docker compose up -d tmserver tmserver2        # 8281/80 e 8282/8080
+docker compose logs -f tmserver2               # "refine policy ... server_index=1"
+```
+
+| Serviço | Porta de jogo | Status HTTP | `ServerIndex` | Cidadania vendida |
+|---|---|---|---|---|
+| `tmserver` | 8281 | 80 | 0 | `Citizen = 1` |
+| `tmserver2` | 8282 | 8080 | 1 | `Citizen = 2` |
+
+Os dois usam o **mesmo** `dbserver`/`binserver` e o mesmo `Release/` somente-leitura: conta,
+personagem e save são únicos; o que muda é o mundo em memória e o canal da cidadania.
+
+### O que testar
+
+1. Comprar cidadania na Kibita (4.000.000 de gold) no canal 1 → `Citizen = 1`; a tela de
+   personagem passa a mostrar a cidadania (o cliente lê o efeito 28 do item de corpo,
+   `ProcessDBMessage.cpp:763`).
+2. No canal 2: o mesmo personagem é estrangeiro (`Citizen = 1 != ServerIndex+1`); a Kibita de
+   lá cobra de novo e grava `Citizen = 2`.
+3. Falar com o NPC de outra cidade deve recusar enquanto a cidadania não for do canal.
+
+### Limite conhecido (a verificar no cliente)
+
+O campo de endereço da serverlist é uma string de 64 bytes por canal — cabe `ip:porta`. O
+cliente 7662, porém, historicamente disca **8281** e sonda **:80**; se ele ignorar a porta,
+dois canais no mesmo host não são alcançáveis e cada canal precisa de um IP próprio (ou de um
+proxy na frente). O teste é objetivo: gerar o `.bin` com `0 1 <ip>:8282` e ver se o cliente
+conecta no canal 1 (`docker compose logs -f tmserver2` deve mostrar o login). Se não conectar,
+o caminho é IP por canal, não porta.
+
+## 8. Gerar o `serverlist.bin` por código nosso
+
+O `serverlist editor.exe` é Windows, fechado, e vive numa pasta que já saiu do git. O gerador
+agora é nosso:
+
+```bash
+# Release/Common/serverlist.txt: "<grupo> <canal> <endereço>"
+go run ./client-tools/serverlist -in Release/Common/serverlist.txt -out serverlist.bin
+go run ./client-tools/serverlist -print serverlist.bin     # confere o que foi gravado
+```
+
+O arquivo tem exatamente 7.040 bytes (`10 grupos × 11 canais × 64`), com a mesma ofuscação do
+`BASE_InitializeServerList` (`Basedef.cpp:6874`). Copie para `client/serverlist.bin` **com
+backup** do original; o launcher do cliente original pode sobrescrevê-lo (skill
+`wyd-client-connect`).

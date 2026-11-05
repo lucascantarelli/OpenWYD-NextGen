@@ -48,6 +48,11 @@ export const RATE_FILES = [
     title: "Quests",
     hint: "EXP e moedas por tier e as janelas de nível mortal/arch.",
   },
+  {
+    file: "RefineRate",
+    title: "Teto do refino",
+    hint: "Até onde cada poeira refina: PO_MAX (Ori), PL_MAX (Lac), GEM_LEVEL (passo da gema) e HARD_CAP (muro final). O tmserver lê no boot.",
+  },
 ] as const;
 
 export type RateFile = (typeof RATE_FILES)[number]["file"];
