@@ -251,6 +251,39 @@ Mapas (`HeightMap/AttributeMap`), ícones, taxas (`CompRate/SancRate/QuestsRate`
    do banco.
 4. Logs: `fLogFile`/`fChatLogFile`/`fItemLogFile` (TMSrv) — centralizar (stdout/JSON) na migração.
 
+### 5.1. Disco do Docker Desktop (WSL2) fora do `C:`
+
+O disco que guarda imagens, volumes e build cache Ã© o `docker_data.vhdx` (~24 GB), em
+`%LOCALAPPDATA%\Docker\wsl\disk`. Ele **nÃ£o** Ã© uma distro WSL: nÃ£o aparece em `wsl -l -v` nem tem
+entrada em `HKCU\...\Lxss`, entÃ£o nada do lado do WSL o move:
+
+| Tentativa | Resultado |
+|---|---|
+| `.wslconfig` | sÃ³ tem `memory`, `processors` e `swap` â€” nÃ£o existe chave de localizaÃ§Ã£o |
+| `wsl --manage <distro> --move` | move distro registrada; a `docker-desktop` tem sÃ³ ~100 MB |
+| `WslDataFolder` no `settings-store.json` | **ignorada** pelo backend (testado em 05/11) |
+| Settings â†’ Resources â†’ Advanced â†’ *Disk image location* | caminho suportado (`moveWSLDisk`), exige a GUI |
+
+Nesta mÃ¡quina o disco foi movido e o caminho original virou uma **junction**:
+
+```
+%LOCALAPPDATA%\Docker\wsl\disk  --Junction-->  D:\Docker\wsl\disk\docker_data.vhdx
+```
+
+Procedimento (Git Bash, com o Docker parado):
+
+1. `docker desktop stop && wsl --shutdown` e confirme que o `.vhdx` estÃ¡ sem lock.
+2. `MSYS_NO_PATHCONV=1 robocopy "<origem>" "D:\Docker\wsl\disk" /MOVE /E /MT:16` â€” sem
+   `MSYS_NO_PATHCONV` os argumentos `/MOVE` e `/E` sÃ£o convertidos em caminhos e o robocopy falha.
+3. `New-Item -ItemType Junction -Path "<origem>" -Target "D:\Docker\wsl\disk"` â€” `mklink /J` via
+   `cmd` quebra no Git Bash pela mesma conversÃ£o.
+4. `docker desktop start` e valide: `docker volume ls` lista `openwyd_pgdata`, o `PG_VERSION` do
+   volume responde `17`, o `docker compose up -d` chega em `tmserver listening` e o `.vhdx` no D:
+   passa a ter `mtime` novo (sinal de que o Docker usa o disco movido).
+
+Antes de mover, `scripts/db-backup.sh` grava o dump fora do repositÃ³rio â€” Ã© a rede de seguranÃ§a do
+banco do jogo. ReversÃ£o: parar o Docker, remover a junction (`rmdir`) e mover a pasta de volta; a
+configuraÃ§Ã£o do Docker nÃ£o muda em nenhum dos dois sentidos.
 > **Status da Fase 7: COMPLETO** para o catálogo de config e topologia. Parsing posicional exato de
 > `gameconfig.txt`/`Treasure`/`Guild.txt` deve ser confirmado contra `CReadFiles.cpp` ao
 > reimplementar o loader.
