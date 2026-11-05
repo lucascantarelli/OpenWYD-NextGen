@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Pista de Runas (rune track): the Uxmal registration (_MSG_Quest.cpp:1313-1395)

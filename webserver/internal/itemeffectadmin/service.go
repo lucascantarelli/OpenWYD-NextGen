@@ -17,9 +17,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/itemeffects"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
+	"openwyd-nextgen/internal/itemeffects"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
 )
 
 // MaxValue bounds one value: STRUCT_EFFECT stores it as a signed short.

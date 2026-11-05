@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // TestParseAccess covers the account.role → AccessLevel mapping (fail-closed:

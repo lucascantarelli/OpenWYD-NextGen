@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Legacy arena geometry (Server.cpp:720-745): the two spawn points, the

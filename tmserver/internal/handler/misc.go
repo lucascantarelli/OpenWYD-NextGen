@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // mountExpiryDays is the lifetime granted to a Perzen reward mount ("X(30dias)",

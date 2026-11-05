@@ -13,7 +13,7 @@ package mobstat
 import (
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 // EquipItem is one Equip[] slot override (0..15, MAX_EQUIP).

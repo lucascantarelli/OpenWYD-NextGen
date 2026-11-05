@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // duelDB gives tester(7)/tradeb(11) distinct-named characters at the same

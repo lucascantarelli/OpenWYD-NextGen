@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 // Capacity limits (Basedef.h via domain-model.md §6). The index space is shared:

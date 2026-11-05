@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/ratetables"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/ratetables"
+	"openwyd-nextgen/internal/store"
 )
 
 // Store is the persistence surface the service needs (satisfied by *store.Store).

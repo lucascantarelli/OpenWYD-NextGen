@@ -3,10 +3,10 @@ package handler
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Seeds for the single rand()%115 of a Pedra da Fúria quest (MSVC LCG):

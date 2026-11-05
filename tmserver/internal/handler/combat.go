@@ -4,11 +4,11 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combat"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/combat"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // attackCadence is the minimum ms between attacks (handlers/_MSG_Attack.md §4):

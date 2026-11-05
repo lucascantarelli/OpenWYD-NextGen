@@ -3,7 +3,7 @@ package handler
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // TestDeliveryDrainOnLogin verifies a pending donate-shop grant is delivered into

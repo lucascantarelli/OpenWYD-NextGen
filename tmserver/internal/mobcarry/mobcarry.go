@@ -19,7 +19,7 @@
 package mobcarry
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 // Slot is one Carry[] position override (0..63, savefmt.MaxCarry).

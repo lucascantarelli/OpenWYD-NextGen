@@ -3,7 +3,7 @@ package mobstat
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 func blankTemplate(name string) []byte {

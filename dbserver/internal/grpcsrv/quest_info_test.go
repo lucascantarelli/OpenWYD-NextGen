@@ -3,7 +3,7 @@ package grpcsrv
 import (
 	"testing"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
+	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
 // The dbServer leg of the QuestInfo round trip (issue #401): every gate the

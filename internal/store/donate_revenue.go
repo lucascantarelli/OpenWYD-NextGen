@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // Donate revenue read models for the painel de faturamento

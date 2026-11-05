@@ -25,7 +25,7 @@ OpenWYD/                      # raiz do repositório (2026-11-04 em diante)
 
 ### 1.1 Servidor — Go
 
-- Módulo Go `github.com/jeanluca/w2pp-openwyd`, `go 1.26.10`.
+- Módulo Go `openwyd-nextgen`, `go 1.26.10`.
 - Serviços: `tmserver` (jogo, CPSock), `dbserver` (gRPC + PostgreSQL), `binserver` (billing),
   `webserver` (web-api gRPC para a futura plataforma Next.js).
 - Compartilhado na raiz `internal/`: `store`, `migrations` (até `0033_*`), `domain`, `secure` (mTLS),

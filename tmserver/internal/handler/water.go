@@ -3,9 +3,9 @@ package handler
 import (
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Server.cpp WaterScrollPosition, in N/M/A order. Legacy entries 8 and 9

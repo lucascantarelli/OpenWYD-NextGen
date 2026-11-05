@@ -31,12 +31,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/internal/textenc"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/npctemplate"
+	"openwyd-nextgen/internal/savefmt"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/internal/textenc"
+	"openwyd-nextgen/tmserver/internal/content"
 )
 
 // defaultSets is what a bare run imports.

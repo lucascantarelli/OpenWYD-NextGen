@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
-	"github.com/jeanluca/w2pp-openwyd/internal/secret"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/savefmt"
+	"openwyd-nextgen/internal/secret"
 )
 
 // cstr trims a fixed-size C char array to a Go string: it cuts at the first NUL

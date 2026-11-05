@@ -6,8 +6,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/mobstat"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/tmserver/internal/mobstat"
 )
 
 // MobStatSource fetches the moderator-edited mob/NPC template stat overrides

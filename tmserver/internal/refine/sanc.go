@@ -19,7 +19,7 @@
 // space, with one translation: `sanc >= REF_11` becomes `level >= 11`.
 package refine
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // Effect ids that can carry a refine level. BASE_GetItemSanc prefers the
 // [116,125] range over EF_SANC when an item somehow has both.

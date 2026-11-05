@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
+	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
 type fakeNpcConfigAPI struct {

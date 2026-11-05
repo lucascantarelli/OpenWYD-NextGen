@@ -10,7 +10,7 @@ Reescrita **big-bang em Go** do servidor do MMORPG **WYD (With Your Destiny)**, 
 - **ClientVersion = `12000`** (esse build manda 12000; o tmserver roda com `-client-version 12000`).
 - Fonte C++ legada em `Source/Code/` (decompile **parcial** — algumas funções só têm declaração).
 - Conteúdo de jogo + binários legados em `Release/` (montado read-only nos containers).
-- Serviços novos em `tmserver/`, `dbserver/`, `binserver/`. Módulo Go: `github.com/jeanluca/w2pp-openwyd`.
+- Serviços novos em `tmserver/`, `dbserver/`, `binserver/`. Módulo Go: `openwyd-nextgen`.
 
 ### Status atual (o que JÁ funciona contra o cliente real)
 Login → seleção/criação de personagem (com equipamento visual correto + **preview de atributos**:

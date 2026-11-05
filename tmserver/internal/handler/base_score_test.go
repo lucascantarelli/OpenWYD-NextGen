@@ -8,9 +8,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 const itemPedraAmunra = 3464

@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/route"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/route"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func TestChebyshevAndStep(t *testing.T) {

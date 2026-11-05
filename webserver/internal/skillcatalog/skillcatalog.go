@@ -26,6 +26,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"openwyd-nextgen/internal/domain"
 )
 
 // Table dimensions, same as content.MaxSkill/MaxSkillIndex (Basedef.h:171/200).
@@ -116,6 +118,30 @@ func Scan(contentDir string) (Catalog, error) {
 // IS its code point in that encoding) into UTF-8. bufio.Scanner's Text() wraps
 // raw bytes without transcoding, so this has to run before the name reaches
 // gRPC/JSON.
+// FromEntries builds the web-facing skill list from the skill_catalog rows the
+// database holds (issue 58). The CSV left the repository in phase 5, so this is
+// the only source left; the class stays index/MaxSkill, as the CSV convention.
+func FromEntries(rows []domain.SkillCatalogEntry) Catalog {
+	out := make([]Entry, 0, len(rows))
+	sum := sha256.New()
+	for _, row := range rows {
+		if row.Index < 0 || row.Index >= MaxSkillIndex || row.Name == "" {
+			continue
+		}
+		out = append(out, Entry{
+			Index:       int32(row.Index),
+			Name:        row.Name,
+			DisplayName: strings.TrimSpace(strings.ReplaceAll(row.Name, "_", " ")),
+			Class:       int32(row.Index / MaxSkill),
+		})
+		fmt.Fprintf(sum, "%d:%s\n", row.Index, row.Name)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Index < out[j].Index })
+	return Catalog{Skills: out, Version: hex.EncodeToString(sum.Sum(nil))[:16]}
+}
+
+// latin1ToUTF8 converts a string holding raw ISO-8859-1 bytes (each byte's value
+// IS its code point in that encoding) into UTF-8.
 func latin1ToUTF8(s string) string {
 	b := []byte(s)
 	runes := make([]rune, len(b))

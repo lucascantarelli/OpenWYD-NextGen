@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 func slogDiscard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

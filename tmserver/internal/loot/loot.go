@@ -4,7 +4,7 @@
 // drops exactly (parity-tests.md §4.0).
 package loot
 
-import "github.com/jeanluca/w2pp-openwyd/internal/droprate"
+import "openwyd-nextgen/internal/droprate"
 
 // Rand is the minimal RNG; *rng.MSVC satisfies it. Intn(n) == C rand()%n.
 type Rand interface {

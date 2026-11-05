@@ -5,7 +5,7 @@ package store
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // Migration 0027: the equipment-free base round-trips through SaveCharacter /

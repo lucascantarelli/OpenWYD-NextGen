@@ -13,8 +13,8 @@
 package dropcfg
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/internal/droprate"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/loot"
+	"openwyd-nextgen/internal/droprate"
+	"openwyd-nextgen/tmserver/internal/loot"
 )
 
 // MaxRate is the largest accepted divisor, matching the CHECK on

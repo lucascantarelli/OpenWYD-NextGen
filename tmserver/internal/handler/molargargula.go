@@ -3,8 +3,8 @@ package handler
 import (
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/refine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/refine"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Molar_de_Gárgula (item 4122, EF_VOLATILE 194): a once-per-character Mortal

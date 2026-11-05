@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/loot"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/loot"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // coinCap is the total-gold overflow guard (game-rules.md §7, MobKilled.cpp:2715).

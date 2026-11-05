@@ -23,9 +23,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/internal/teleportdata"
 )
 
 func main() {

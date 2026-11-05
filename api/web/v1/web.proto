@@ -10,7 +10,7 @@ syntax = "proto3";
 // Generate with `make proto` (protoc + protoc-gen-go/-grpc).
 package web.v1;
 
-option go_package = "github.com/jeanluca/w2pp-openwyd/api/web/v1;webv1";
+option go_package = "openwyd-nextgen/api/web/v1;webv1";
 
 // AccountWebService owns the web platform's account flows (sign-up, credential
 // check for the BFF session cookie). Game state is never written here — that
@@ -627,7 +627,7 @@ message DeleteMobTemplateStatRequest {
 }
 
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
-// Source/Code/AttributeMap_Editor tool. It reads the binary
+// Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
 // Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.

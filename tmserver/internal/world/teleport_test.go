@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 func TestTeleportDestDungeon(t *testing.T) {

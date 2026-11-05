@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/refine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/refine"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Classe A-E item range (_MSG_UseItem.cpp:4989): 4016-4020 are the plain

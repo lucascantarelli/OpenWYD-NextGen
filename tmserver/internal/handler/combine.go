@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/refine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/combine"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/refine"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Combine result codes for _MSG_CombineComplete.Parm (game-rules.md §3.1).

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combat"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/route"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/combat"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/route"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Mob-AI tuning (CMob.cpp; the orchestration loop that drove these per tick is not

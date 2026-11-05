@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 func TestPlayCodeIssueAndConsume(t *testing.T) {

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 const maxLegacyDamage int32 = 1_000_000_000

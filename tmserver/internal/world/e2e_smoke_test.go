@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 func env(k, def string) string {

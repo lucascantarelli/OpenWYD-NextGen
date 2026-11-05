@@ -8,7 +8,7 @@
 
 ## 1. O que é o "EditaPPMob" da issue
 
-O nome na issue é uma leitura corrida de **`EDITAPPMOB`** (`Source/Code/EDITAPPMOB/`, binário
+O nome na issue é uma leitura corrida de **`EDITAPPMOB`** (`Source/Code/_legacy/EDITAPPMOB/`, binário
 em `Release/{TMsrv,DBsrv}/run/EDITAPPMOB.exe`) — "Edita-App-Mob": um editor Win32 (`Main.cpp` +
 `File.cpp`) que lê **todos** os arquivos de `./npc/*` (cada um um `STRUCT_MOB` cru de 816 bytes,
 o mesmo formato compartilhado por players e mobs) e permite editar e salvar de volta:
@@ -25,7 +25,7 @@ o mesmo formato compartilhado por players e mobs) e permite editar e salvar de v
 - Botões `Save`/`Reload`/`Clear` (zera `Carry[]`)/`Delete` (apaga o arquivo `npc/<nome>`).
 
 Não existe conceito de "PP" no código-fonte, na documentação ou nos comentários — é apenas a
-substring de "editA-APPmob". `EDITAPSHOP` (`Source/Code/EDITAPPSHOP/`) é um fork quase idêntico,
+substring de "editA-APPmob". `EDITAPSHOP` (`Source/Code/_legacy/EDITAPPSHOP/`) é um fork quase idêntico,
 mesma struct, focado em edição de loja.
 
 **Não havia port anterior desta ferramenta** no projeto migrado (`grep -rin "ppmob"` em

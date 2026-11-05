@@ -15,16 +15,16 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/combine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/npccfg"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/refine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldcfg"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldevents"
+	"openwyd-nextgen/tmserver/internal/combine"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/npccfg"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/refine"
+	"openwyd-nextgen/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/worldcfg"
+	"openwyd-nextgen/tmserver/internal/worldevents"
 )
 
 // Config tunes the dispatcher. Zero values get sensible defaults.

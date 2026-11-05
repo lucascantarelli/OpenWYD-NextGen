@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // partyOfTwo puts "tester" (Hero, conn 1, leader) and "tradeb" (HeroB, conn 2) in a

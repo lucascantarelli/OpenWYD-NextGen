@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // TestRestartRevives covers the death-respawn / recall flow: on _MSG_Restart the

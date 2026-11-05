@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 func TestAccountConversion(t *testing.T) {

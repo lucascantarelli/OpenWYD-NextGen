@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemicons"
+	"openwyd-nextgen/webserver/internal/itemicons"
 )
 
 func writeCSV(t *testing.T, dir string, lines ...string) {

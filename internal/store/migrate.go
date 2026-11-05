@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/migrations"
+	"openwyd-nextgen/internal/migrations"
 )
 
 // migrationLockKey serializes Migrate across dbserver, webserver, and one-off

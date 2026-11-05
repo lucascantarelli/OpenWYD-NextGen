@@ -4,8 +4,8 @@ import (
 	"math/rand"
 	"sync/atomic"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/internal/teleportdata"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 type teleRoute struct {

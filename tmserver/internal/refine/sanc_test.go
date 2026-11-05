@@ -3,7 +3,7 @@ package refine
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // item builds an item with the given effect pairs, padded to 3 slots.

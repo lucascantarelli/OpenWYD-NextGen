@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 const (

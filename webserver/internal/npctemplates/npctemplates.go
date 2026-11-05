@@ -15,8 +15,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/npctemplate"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 const (
@@ -49,6 +49,25 @@ type Template struct {
 // file that isn't a STRUCT_MOB at all is counted in the returned stats rather
 // than failing the whole scan — the npc/ directory can contain non-template
 // files. Callers log the stats once instead of warning per file.
+// FromBlobs builds the merchant picker from the canonical STRUCT_MOB blobs the
+// database holds (npc_template, issue 58/62): npc/ left Release/ in phase 5, so
+// the directory scan can only come up empty.
+func FromBlobs(blobs map[string][]byte) ([]Template, npctemplate.ScanStats) {
+	var out []Template
+	stats := npctemplate.ScanBlobs(blobs, func(name string, mob savefmt.Mob) {
+		if !supportedTemplate(name, mob) {
+			return
+		}
+		out = append(out, Template{
+			TemplateName: name,
+			DisplayName:  CString(mob.Name[:]),
+			Merchant:     int16(mob.CurrentScore.Merchant),
+		})
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].TemplateName < out[j].TemplateName })
+	return out, stats
+}
+
 func Scan(contentDir string, logger *slog.Logger) ([]Template, npctemplate.ScanStats, error) {
 	var out []Template
 	stats, err := npctemplate.ScanDir(contentDir, logger, func(name string, mob savefmt.Mob) {

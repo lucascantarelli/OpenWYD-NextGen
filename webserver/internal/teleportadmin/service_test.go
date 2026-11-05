@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/internal/teleportdata"
 )
 
 type fakeStore struct {

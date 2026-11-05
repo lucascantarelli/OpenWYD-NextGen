@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/npccfg"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/npccfg"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // merchantTemplate builds a minimal 816-byte STRUCT_MOB with CurrentScore.Merchant

@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // Store is the persistence surface the service needs (satisfied by *store.Store).

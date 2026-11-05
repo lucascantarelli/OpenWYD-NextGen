@@ -252,6 +252,13 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+- **2026-11-05 (ferramentas C++ substituídas arquivadas)** — `ExpTool`, `NPTool`, `EDITAPPMOB`,
+  `EDITAPPSHOP`, `SearchPass`, `ZerarSkill` e `AttributeMap_Editor` saíram de `Source/Code/` para
+  `Source/Code/_legacy/` (onde o `DropTool` já estava desde a issue 61), com README que mapeia cada
+  uma ao substituto no Go/portal. Continuam em `Source/Code/` só as referências de wire/layout/fórmula
+  (`TMSrv`, `DBSrv`, `BISrv`, `Basedef`, `CPSock`, `ItemEffect`) e o `ClientPatch_v7662`, que é
+  dependência do cliente. Citações vivas (proto, `exptool.go`, docs de integração e issue 27) foram
+  atualizadas para `_legacy/`; os relatórios datados de `docs/agents/` ficaram como retrato.
 
 - **2026-11-04 (issue 57 fechada: o banco é a única fonte de NPCs)** — os 6.099 blocos de
   `NPCGener.txt` estão em `npc_definition` (o import deixou de filtrar merchant; o shop só é gravado

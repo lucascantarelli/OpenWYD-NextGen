@@ -14,8 +14,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/exptool"
+	"openwyd-nextgen/internal/npctemplate"
+	"openwyd-nextgen/tmserver/internal/exptool"
 )
 
 func main() {

@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // BM transformation (affect Type 16, skills 64/66/68/70/71). The transform is

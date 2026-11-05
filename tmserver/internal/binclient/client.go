@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	binv1 "github.com/jeanluca/w2pp-openwyd/api/bin/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	binv1 "openwyd-nextgen/api/bin/v1"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Client is a world.Billing backed by the binServer.

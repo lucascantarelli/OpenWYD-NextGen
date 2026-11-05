@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // TestMobTemplateStatCRUD exercises the full moderator write path: upsert a

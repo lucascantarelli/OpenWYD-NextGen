@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/playcode"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/account"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/playcode"
+	"openwyd-nextgen/webserver/internal/account"
 )
 
 // fakeAccounts is a scripted Accounts for testing the gRPC mapping in isolation.

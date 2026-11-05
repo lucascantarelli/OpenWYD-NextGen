@@ -1,6 +1,6 @@
 package handler
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
+import "openwyd-nextgen/tmserver/internal/level"
 
 // mobDeathExpLoss is the legacy PvE death penalty from MobKilled.cpp. The
 // server subtracts it immediately; the client is refreshed by sendEtc.

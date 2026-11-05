@@ -1,6 +1,6 @@
 package refine
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // bonusValue3/2/4/5 are g_pBonusValue3/2/4/5 (Basedef.cpp:432/467/396/353):
 // SetItemBonus2's reroll pools, one per equip slot class. Each row is

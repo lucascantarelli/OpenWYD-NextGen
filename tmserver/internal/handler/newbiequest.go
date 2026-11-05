@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/refine"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/refine"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // The Campo de Treino newbie quest (TREINADORNEWBIE1..4, _MSG_Quest.cpp:1895-2100).

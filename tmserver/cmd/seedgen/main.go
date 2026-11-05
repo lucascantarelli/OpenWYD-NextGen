@@ -35,7 +35,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/store"
 )
 
 func main() {

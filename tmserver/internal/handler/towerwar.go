@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldevents"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/worldevents"
 )
 
 const towerGenerator = 1078

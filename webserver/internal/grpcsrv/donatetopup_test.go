@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donatetopup"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/webserver/internal/donatetopup"
 )
 
 // fakeTopup is a scripted DonateTopup for testing the gRPC mapping in isolation.

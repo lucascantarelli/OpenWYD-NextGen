@@ -3,7 +3,7 @@ package dropcfg
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/loot"
+	"openwyd-nextgen/tmserver/internal/loot"
 )
 
 // TestApplyChangesOnlyTheEditedSlot is the golden rule of this feature: with no

@@ -1562,7 +1562,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
-// Source/Code/AttributeMap_Editor tool. It reads the binary
+// Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
 // Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.
@@ -1609,7 +1609,7 @@ func (c *attributeMapAdminServiceClient) TransformAttributeMap(ctx context.Conte
 // for forward compatibility.
 //
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
-// Source/Code/AttributeMap_Editor tool. It reads the binary
+// Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
 // Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.

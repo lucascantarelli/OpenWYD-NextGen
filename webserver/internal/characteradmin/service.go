@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/itemeffects"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/skillcatalog"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/itemeffects"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/skillcatalog"
 )
 
 // MinQueryLength avoids scanning the whole character table for a single letter.

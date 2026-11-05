@@ -15,11 +15,12 @@
 package dbv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -7882,7 +7883,7 @@ const file_api_db_v1_db_proto_rawDesc = "" +
 	"\x13RecordInstanceFlags\x12!.db.v1.RecordInstanceFlagsRequest\x1a\".db.v1.RecordInstanceFlagsResponse2\xdb\x01\n" +
 	"\x11DropConfigService\x12b\n" +
 	"\x15ListDropRateOverrides\x12#.db.v1.ListDropRateOverridesRequest\x1a$.db.v1.ListDropRateOverridesResponse\x12b\n" +
-	"\x15ListMobCarryOverrides\x12#.db.v1.ListMobCarryOverridesRequest\x1a$.db.v1.ListMobCarryOverridesResponseB1Z/github.com/jeanluca/w2pp-openwyd/api/db/v1;dbv1b\x06proto3"
+	"\x15ListMobCarryOverrides\x12#.db.v1.ListMobCarryOverridesRequest\x1a$.db.v1.ListMobCarryOverridesResponseB1Z/openwyd-nextgen/api/db/v1;dbv1b\x06proto3"
 
 var (
 	file_api_db_v1_db_proto_rawDescOnce sync.Once

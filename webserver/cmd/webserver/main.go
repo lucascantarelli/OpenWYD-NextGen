@@ -17,41 +17,40 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/playcode"
-	"github.com/jeanluca/w2pp-openwyd/internal/secure"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/account"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/accountadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/attributemap"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/characteradmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/characters"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/dailyreward"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donaterevenue"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donateshop"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donatetopup"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/dropadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/droptool"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/grpcsrv"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemeffectadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemicons"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mobtemplateadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mobtemplates"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npcadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/ranking"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/ratesadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/skillcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/teleportadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/worldevent"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/worldstateadmin"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/playcode"
+	"openwyd-nextgen/internal/secure"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/account"
+	"openwyd-nextgen/webserver/internal/accountadmin"
+	"openwyd-nextgen/webserver/internal/attributemap"
+	"openwyd-nextgen/webserver/internal/characteradmin"
+	"openwyd-nextgen/webserver/internal/characters"
+	"openwyd-nextgen/webserver/internal/dailyreward"
+	"openwyd-nextgen/webserver/internal/donaterevenue"
+	"openwyd-nextgen/webserver/internal/donateshop"
+	"openwyd-nextgen/webserver/internal/donatetopup"
+	"openwyd-nextgen/webserver/internal/dropadmin"
+	"openwyd-nextgen/webserver/internal/droptool"
+	"openwyd-nextgen/webserver/internal/grpcsrv"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/itemeffectadmin"
+	"openwyd-nextgen/webserver/internal/itemicons"
+	"openwyd-nextgen/webserver/internal/mobtemplateadmin"
+	"openwyd-nextgen/webserver/internal/mobtemplates"
+	"openwyd-nextgen/webserver/internal/npcadmin"
+	"openwyd-nextgen/webserver/internal/npctemplates"
+	"openwyd-nextgen/webserver/internal/ranking"
+	"openwyd-nextgen/webserver/internal/ratesadmin"
+	"openwyd-nextgen/webserver/internal/skillcatalog"
+	"openwyd-nextgen/webserver/internal/teleportadmin"
+	"openwyd-nextgen/webserver/internal/worldevent"
+	"openwyd-nextgen/webserver/internal/worldstateadmin"
 )
 
 func main() {
@@ -71,7 +70,7 @@ func run(logger *slog.Logger) error {
 	tlsCert := flag.String("tls-cert", os.Getenv("W2PP_TLS_CERT"), "server certificate (PEM)")
 	tlsKey := flag.String("tls-key", os.Getenv("W2PP_TLS_KEY"), "server private key (PEM)")
 	tlsCA := flag.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "client CA (PEM) for mTLS")
-	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree (empty = skip; ListMerchantTemplates/ListItemCatalog return empty lists and the UI falls back to manual entry)")
+	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree for rates and maps (catalogs come from the database)")
 	iconManifestPath := flag.String("item-icons-manifest", os.Getenv("W2PP_ITEM_ICONS_MANIFEST"), "generated item-icon manifest (empty = fallback-only)")
 	flag.Parse()
 
@@ -120,8 +119,8 @@ func run(logger *slog.Logger) error {
 	worldStateAdmin := worldstateadmin.New(st)
 	ratesAdmin := ratesadmin.New(st, *contentDir)
 	dropAdmin := dropadmin.New(st)
-	// Stays zero-valued without -content: ItemCatalogService then serves an
-	// empty list, the same graceful degradation the pickers already have.
+	// Stays zero-valued until the catalog loads: ItemCatalogService then serves
+	// an empty list, which the boot log calls out loudly.
 	var itemCatalog itemcatalog.Catalog
 	var iconManifest itemicons.Manifest
 	if *iconManifestPath != "" {
@@ -135,72 +134,92 @@ func run(logger *slog.Logger) error {
 		logger.Warn("item icon manifest not configured; catalog is fallback-only",
 			"configuration", "W2PP_ITEM_ICONS_MANIFEST")
 	}
+
+	// CatÃ¡logos vÃªm do Postgres (issue 58): ItemList.csv, SkillData.csv e npc/
+	// saÃ­ram de Release/ na fase 5, entÃ£o escanear a Ã¡rvore sÃ³ produzia WARN de
+	// catÃ¡logo vazio a cada boot (issue 62). -content fica sÃ³ com rates e mapa.
+	itemRows, err := st.ListItemCatalog(ctx)
+	if err != nil {
+		return fmt.Errorf("load item catalog: %w", err)
+	}
+	catalog := itemcatalog.FromEntries(itemRows)
+	if *iconManifestPath != "" {
+		itemcatalog.ApplyIcons(&catalog, iconManifest)
+	}
+	withIconKey, withIconURL := catalog.IconCoverage()
+	if len(catalog.Items) == 0 {
+		logger.Warn("item catalog is empty in the database; item picker will be empty",
+			"table", "item_catalog", "seed", "tmserver/cmd/importcontent")
+	}
+	logger.Info("loaded item catalog from the database", "count", len(catalog.Items), "version", catalog.Version,
+		"icon_pack_version", catalog.IconPackVersion, "items_with_icon_key", withIconKey,
+		"items_with_icon_url", withIconURL)
+	npcAdmin.SetItemCatalog(catalog)
+	// The character screen shows item names/icons instead of raw indexes.
+	characterAdmin.SetItemCatalog(catalog)
+	// Efeitos base: o overlay da web mescla com o que o banco declara.
+	itemEffectAdmin.SetCatalog(catalog)
+	// O editor de Carry[] valida o Ã­ndice e mostra nome, nunca o nÃºmero.
+	dropAdmin.SetItemCatalog(catalog)
+	itemCatalog = catalog
+
+	skillRows, err := st.ListSkillCatalog(ctx)
+	if err != nil {
+		return fmt.Errorf("load skill catalog: %w", err)
+	}
+	skillCatalog := skillcatalog.FromEntries(skillRows)
+	if len(skillCatalog.Skills) == 0 {
+		logger.Warn("skill catalog is empty in the database; skill names stay as raw indexes",
+			"table", "skill_catalog")
+	}
+	logger.Info("loaded skill catalog from the database", "count", len(skillCatalog.Skills), "version", skillCatalog.Version)
+	characterAdmin.SetSkillCatalog(skillCatalog)
+
+	// npc_template guarda o STRUCT_MOB canÃ´nico de cada template: Ã© a mesma
+	// fonte do picker de NPC, do picker de mob e do DropTool (issue 62).
+	templateRows, err := st.ListNPCTemplates(ctx)
+	if err != nil {
+		return fmt.Errorf("load npc templates: %w", err)
+	}
+	blobs := make(map[string][]byte, len(templateRows))
+	for _, t := range templateRows {
+		blobs[t.Name] = t.Blob
+	}
+	if len(blobs) == 0 {
+		logger.Warn("npc_template is empty in the database; template pickers will be empty", "table", "npc_template")
+	}
+
+	merchantTemplates, npcStats := npctemplates.FromBlobs(blobs)
+	logger.Info("loaded merchant npc templates from the database", "count", len(merchantTemplates), "layouts", npcStats)
+	npcAdmin.SetTemplates(merchantTemplates)
+
+	mobTemplates, mobStats := mobtemplates.FromBlobs(blobs)
+	logger.Info("loaded mob templates from the database", "count", len(mobTemplates), "layouts", mobStats)
+	mobTemplateAdmin.SetTemplates(mobTemplates)
+
+	readMobTemplate := func(name string) ([]byte, error) {
+		if blob, ok := blobs[name]; ok {
+			return blob, nil
+		}
+		return nil, fmt.Errorf("template %q not found in npc_template", name)
+	}
+	mobTemplateAdmin.SetTemplateReader(readMobTemplate)
+	// Carry[] por template (issue 34): decodifica o blob real e recusa um
+	// template que nÃ£o existe.
+	dropAdmin.SetTemplateReader(readMobTemplate)
+
+	dropsOpts := droptool.Options{}
 	if *contentDir != "" {
-		templates, npcStats, err := npctemplates.Scan(*contentDir, logger)
-		if err != nil {
-			logger.Warn("npc template scan failed; merchant picker will be empty", "content", *contentDir, "err", err)
-		} else {
-			logger.Info("scanned merchant npc templates", "count", len(templates), "layouts", npcStats)
-			npcAdmin.SetTemplates(templates)
-		}
-
-		catalog, err := itemcatalog.Scan(*contentDir)
-		if err != nil {
-			logger.Warn("item catalog scan failed; item picker will be empty", "content", *contentDir, "err", err)
-		} else {
-			if *iconManifestPath != "" {
-				itemcatalog.ApplyIcons(&catalog, iconManifest)
-			}
-			withIconKey, withIconURL := catalog.IconCoverage()
-			logger.Info("scanned item catalog", "count", len(catalog.Items), "version", catalog.Version,
-				"icon_pack_version", catalog.IconPackVersion, "items_with_icon_key", withIconKey,
-				"items_with_icon_url", withIconURL)
-			npcAdmin.SetItemCatalog(catalog)
-			// The character screen shows item names/icons instead of raw indexes.
-			characterAdmin.SetItemCatalog(catalog)
-			// Efeitos base: o overlay da web mescla com o que o CSV declara.
-			itemEffectAdmin.SetCatalog(catalog)
-			// O editor de Carry[] valida o índice e mostra nome, nunca o número.
-			dropAdmin.SetItemCatalog(catalog)
-			itemCatalog = catalog
-
-			skillCatalog, err := skillcatalog.Scan(*contentDir)
-			if err != nil {
-				logger.Warn("skill catalog scan failed; skill names stay as raw indexes", "content", *contentDir, "err", err)
-			} else {
-				logger.Info("scanned skill catalog", "count", len(skillCatalog.Skills), "version", skillCatalog.Version)
-				characterAdmin.SetSkillCatalog(skillCatalog)
-			}
-		}
-
-		mobTemplates, mobStats, err := mobtemplates.Scan(*contentDir, logger)
-		if err != nil {
-			logger.Warn("mob template scan failed; template picker will be empty", "content", *contentDir, "err", err)
-		} else {
-			logger.Info("scanned mob templates", "count", len(mobTemplates), "layouts", mobStats)
-			mobTemplateAdmin.SetTemplates(mobTemplates)
-		}
-		readMobTemplate := func(name string) ([]byte, error) {
-			return os.ReadFile(filepath.Join(*contentDir, "TMsrv", "run", "npc", name))
-		}
-		mobTemplateAdmin.SetTemplateReader(readMobTemplate)
-		// Carry[] por template (issue 34): lê o arquivo para o overlay partir dos
-		// valores reais e para recusar um template que não existe.
-		dropAdmin.SetTemplateReader(readMobTemplate)
-
 		exclusions, err := droptool.LoadContentExclusions(*contentDir)
 		if err != nil {
 			logger.Warn("drop exclusion scan failed; continuing without exclusions", "content", *contentDir, "err", err)
 		}
-		drops, dropStats, err := droptool.Scan(*contentDir, logger, droptool.Options{Exclusions: exclusions})
-		if err != nil {
-			logger.Warn("drop catalog scan failed; DropTool endpoints will be empty", "content", *contentDir, "err", err)
-		} else {
-			logger.Info("scanned drop catalog", "items", len(drops.Items), "mobs", len(drops.Mobs),
-				"drops", len(drops.Drops), "layouts", dropStats)
-			npcAdmin.SetDropCatalog(drops)
-		}
+		dropsOpts.Exclusions = exclusions
 	}
+	drops, dropStats := droptool.FromBlobs(catalog.Items, blobs, dropsOpts)
+	logger.Info("loaded drop catalog from the database", "items", len(drops.Items), "mobs", len(drops.Mobs),
+		"drops", len(drops.Drops), "layouts", dropStats)
+	npcAdmin.SetDropCatalog(drops)
 	webv1.RegisterAccountWebServiceServer(srv, grpcsrv.New(account.New(st)).WithPlayCodes(playCodes))
 	// Contas, papéis e banimento (issue 32): leitura para staff, escrita auditada
 	// só para admin (bloqueio também para moderador, alvo jogador).

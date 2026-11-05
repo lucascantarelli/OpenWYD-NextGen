@@ -81,8 +81,8 @@ portal-image:
 # on PATH; install with `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`
 # and `.../grpc/cmd/protoc-gen-go-grpc@latest`).
 proto:
-	protoc --go_out=. --go_opt=module=github.com/jeanluca/w2pp-openwyd \
-	       --go-grpc_out=. --go-grpc_opt=module=github.com/jeanluca/w2pp-openwyd \
+	protoc --go_out=. --go_opt=module=openwyd-nextgen \
+	       --go-grpc_out=. --go-grpc_opt=module=openwyd-nextgen \
 	       api/db/v1/db.proto api/bin/v1/bin.proto api/web/v1/web.proto
 
 # Generate dev mTLS certs into ./certs (gitignored). Apply with the mTLS overlay:

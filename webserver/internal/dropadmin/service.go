@@ -18,12 +18,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/droprate"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/droprate"
+	"openwyd-nextgen/internal/savefmt"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/npctemplates"
 )
 
 // Store is the persistence surface this service needs (satisfied by *store.Store).

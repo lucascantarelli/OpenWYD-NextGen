@@ -3,7 +3,7 @@ package refine
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // fakeTable is the effective SancRate.txt table after the issue #103 Âmago fix:

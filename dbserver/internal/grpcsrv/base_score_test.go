@@ -3,7 +3,7 @@ package grpcsrv
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // The base columns of migration 0027 survive the domain <-> proto mapping, and

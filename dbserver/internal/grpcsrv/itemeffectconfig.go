@@ -6,8 +6,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/store"
 )
 
 // ItemEffectConfigStore is the read surface the item-effect overlay service needs

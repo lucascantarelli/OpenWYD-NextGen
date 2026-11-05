@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/attributemap"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/webserver/internal/attributemap"
 )
 
 type fakeAttributeMapAdmin struct {

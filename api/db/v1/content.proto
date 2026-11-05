@@ -16,7 +16,7 @@ syntax = "proto3";
 // Generate with `make proto` (protoc + protoc-gen-go/-grpc).
 package db.v1;
 
-option go_package = "github.com/jeanluca/w2pp-openwyd/api/db/v1;dbv1";
+option go_package = "openwyd-nextgen/api/db/v1;dbv1";
 
 service ContentCatalogService {
   // FetchItemCatalog returns item_catalog (ItemList.csv), ordered by index.

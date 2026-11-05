@@ -1,8 +1,8 @@
 package world
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 // This file is the API the handler package (Phase 4) uses to act on the world.

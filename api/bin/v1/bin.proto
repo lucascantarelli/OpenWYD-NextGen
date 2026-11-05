@@ -8,7 +8,7 @@ syntax = "proto3";
 // Generate with `make proto` (protoc + protoc-gen-go/-grpc).
 package bin.v1;
 
-option go_package = "github.com/jeanluca/w2pp-openwyd/api/bin/v1;binv1";
+option go_package = "openwyd-nextgen/api/bin/v1;binv1";
 
 // BillingService is the new billing API (binserver/internal/billing).
 service BillingService {

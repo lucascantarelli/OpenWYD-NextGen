@@ -192,7 +192,7 @@ const file_api_bin_v1_bin_proto_rawDesc = "" +
 	"\x0eSTATUS_BLOCKED\x10\x02\x12\x12\n" +
 	"\x0eSTATUS_EXPIRED\x10\x032[\n" +
 	"\x0eBillingService\x12I\n" +
-	"\fCheckBilling\x12\x1b.bin.v1.CheckBillingRequest\x1a\x1c.bin.v1.CheckBillingResponseB3Z1github.com/jeanluca/w2pp-openwyd/api/bin/v1;binv1b\x06proto3"
+	"\fCheckBilling\x12\x1b.bin.v1.CheckBillingRequest\x1a\x1c.bin.v1.CheckBillingResponseB3Z1openwyd-nextgen/api/bin/v1;binv1b\x06proto3"
 
 var (
 	file_api_bin_v1_bin_proto_rawDescOnce sync.Once

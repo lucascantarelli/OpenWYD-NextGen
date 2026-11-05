@@ -9,7 +9,7 @@ massa (retângulo + filtro), baixando o `AttributeMap_New.dat` para substituiç�
 
 ## Contexto / evidência
 
-- `AttributeMapAdminService` substitui o `Source/Code/AttributeMap_Editor` legado e **não** sobrescreve
+- `AttributeMapAdminService` substitui o `Source/Code/_legacy/AttributeMap_Editor` legado e **não** sobrescreve
   o arquivo: devolve o payload de 1 MiB para download (`docs/integrations/attributemap-editor-nextjs.md`).
 - `GetAttributeMapInfo` → `dim=1024`, `world_scale=4`, `sha256`, `histogram` (256 buckets), `meanings`.
   `INVALID` = sem `-content`, arquivo ausente ou tamanho ≠ 1024×1024.

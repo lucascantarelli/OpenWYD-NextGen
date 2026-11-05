@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 const guildStateFetchTimeout = 5 * time.Second

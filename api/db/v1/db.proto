@@ -9,7 +9,7 @@ syntax = "proto3";
 // becomes the consumer. Generate with `make proto`.
 package db.v1;
 
-option go_package = "github.com/jeanluca/w2pp-openwyd/api/db/v1;dbv1";
+option go_package = "openwyd-nextgen/api/db/v1;dbv1";
 
 // AccountService owns accounts, characters and persistence (PostgreSQL).
 service AccountService {

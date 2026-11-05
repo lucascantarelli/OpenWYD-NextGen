@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldcfg"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/worldcfg"
 )
 
 const (

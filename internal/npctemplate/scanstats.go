@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 // ScanStats tallies one walk of the npc template directory by on-disk layout.
@@ -61,6 +62,28 @@ func (s ScanStats) LogValue() slog.Value {
 		slog.Int("unreadable", s.Unreadable),
 		slog.Int("rejected", s.Rejected),
 	)
+}
+
+// ScanBlobs is ScanDir's in-memory twin: it decodes the canonical STRUCT_MOB
+// blobs the database holds (npc_template, issue 58) and calls visit for every one
+// that decodes as a known layout. Names are visited in sorted order, so the
+// catalogs built from them are deterministic without a second sort.
+func ScanBlobs(blobs map[string][]byte, visit func(name string, mob savefmt.Mob)) ScanStats {
+	var stats ScanStats
+	names := make([]string, 0, len(blobs))
+	for name := range blobs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		mob, version, err := savefmt.DecodeMobAny(blobs[name])
+		stats.Count(version)
+		if err != nil {
+			continue
+		}
+		visit(name, mob)
+	}
+	return stats
 }
 
 // ScanDir walks the npc template directory of a Release/ content root and calls

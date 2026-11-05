@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // TestNPCConfigCRUD exercises the full moderator write path: upsert a definition,

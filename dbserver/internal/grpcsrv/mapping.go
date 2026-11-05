@@ -5,8 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/domain"
 )
 
 // uniqueViolation is the PostgreSQL SQLSTATE for a unique-constraint conflict.

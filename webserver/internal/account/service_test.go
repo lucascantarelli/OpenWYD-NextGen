@@ -8,10 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/playcode"
-	"github.com/jeanluca/w2pp-openwyd/internal/secret"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/playcode"
+	"openwyd-nextgen/internal/secret"
+	"openwyd-nextgen/internal/store"
 )
 
 // fakeStore is an in-memory Store for unit tests (no PostgreSQL).

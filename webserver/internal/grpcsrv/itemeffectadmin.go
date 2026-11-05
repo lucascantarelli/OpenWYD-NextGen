@@ -7,9 +7,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/itemeffects"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemeffectadmin"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/itemeffects"
+	"openwyd-nextgen/webserver/internal/itemeffectadmin"
 )
 
 // ItemEffectAdmin is the base-effect editing surface the server depends on

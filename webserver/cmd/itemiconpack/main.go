@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemicons"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/itemicons"
 )
 
 func main() {

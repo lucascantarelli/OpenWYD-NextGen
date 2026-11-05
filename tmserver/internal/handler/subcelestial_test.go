@@ -3,8 +3,8 @@ package handler
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // TestCreateSubCelestial drives the Pedra Ideal (5338, EF_VOLATILE 211) on a

@@ -3,7 +3,7 @@ package combine
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // items8 builds an 8-slot input from a list of sIndex values (0 = empty slot).

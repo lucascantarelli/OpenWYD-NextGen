@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/content"
 )
 
 // readRelease is os.ReadFile for tests that need the Release/ content tree.

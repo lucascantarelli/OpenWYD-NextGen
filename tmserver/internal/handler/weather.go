@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldevents"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/worldevents"
 )
 
 // weatherAuto is the ForceWeather sentinel for "roll automatically"

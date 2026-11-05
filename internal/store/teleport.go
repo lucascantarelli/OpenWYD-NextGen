@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // ListTeleportRoutes returns the moderator-editable teleport overlay, ordered by

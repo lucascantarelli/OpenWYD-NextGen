@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/store"
 )
 
 const (

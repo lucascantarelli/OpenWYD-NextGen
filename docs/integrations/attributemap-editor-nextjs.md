@@ -1,7 +1,7 @@
 # Integração Next.js ↔ web-api: AttributeMap Editor
 
 > Guia de integração para o portal consumir a ferramenta web que substitui o
-> `Source/Code/AttributeMap_Editor`. Fonte da verdade do contrato:
+> `Source/Code/_legacy/AttributeMap_Editor`. Fonte da verdade do contrato:
 > `api/web/v1/web.proto` (`AttributeMapAdminService`).
 
 ## Topologia

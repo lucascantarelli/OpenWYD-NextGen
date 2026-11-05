@@ -1,6 +1,6 @@
 package refine
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // Anvil rows of the SancRate table. "OriLacto" is the legacy's name for the
 // index, derived from the dust's EF_VOLATILE as Vol-4 (_MSG_UseItem.cpp:849).

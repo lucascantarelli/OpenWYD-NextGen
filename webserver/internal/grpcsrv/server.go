@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/playcode"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/account"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/playcode"
+	"openwyd-nextgen/webserver/internal/account"
 )
 
 // Accounts is the account-logic surface the server depends on (satisfied by

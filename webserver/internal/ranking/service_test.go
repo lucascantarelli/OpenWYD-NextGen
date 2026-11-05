@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 type fakeStore struct {

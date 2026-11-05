@@ -11,7 +11,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 func freshStore(t *testing.T) (*Store, context.Context) {

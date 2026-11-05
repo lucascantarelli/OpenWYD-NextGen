@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/internal/teleportdata"
 )
 
 // WorldSize bounds every coordinate: the world grid is 4096×4096 cells and the

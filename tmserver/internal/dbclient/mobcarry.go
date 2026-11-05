@@ -6,8 +6,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/mobcarry"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/tmserver/internal/mobcarry"
 )
 
 // MobCarrySource fetches the moderator-edited Carry[] overlays (issue 34, fatia

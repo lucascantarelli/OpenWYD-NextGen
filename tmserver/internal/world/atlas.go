@@ -3,7 +3,7 @@ package world
 import (
 	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
+	"openwyd-nextgen/internal/teleportdata"
 )
 
 // AtlasCity is a read-only view of the fixed city table (city.go). It exists so

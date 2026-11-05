@@ -4,7 +4,7 @@
 > a anterior verde: `go build ./...`, `go test -race ./...`, golden cases da fase, checklist §25.
 > Status: TODO / EM ANDAMENTO / COMPLETO.
 
-Módulo Go: `github.com/jeanluca/w2pp-openwyd` (monorepo, single module, **`go 1.25`** —
+Módulo Go: `openwyd-nextgen` (monorepo, single module, **`go 1.25`** —
 bump exigido por `golang.org/x/crypto`; toolchain 1.25.x auto-baixado / `golang:1.26-alpine` no
 Docker, alvo canônico). Layout por serviço: `tmserver/`, `dbserver/`, `binserver/` (cada um com
 `cmd/<svc>` + `internal/`), `api/` compartilhado. **Reorg na Fase 2:** Fase 1 saiu de `cmd/`+

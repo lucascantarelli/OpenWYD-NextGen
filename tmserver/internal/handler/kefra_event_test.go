@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func kefraEventWorld(t *testing.T, now *time.Time) (*Dispatcher, *world.World) {

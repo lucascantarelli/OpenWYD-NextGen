@@ -9,10 +9,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/secret"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/secret"
+	"openwyd-nextgen/internal/store"
 )
 
 // TestServiceOverWire runs the real AccountService through a gRPC connection

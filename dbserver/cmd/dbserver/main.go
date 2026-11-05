@@ -30,13 +30,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/dbserver/internal/convert"
-	"github.com/jeanluca/w2pp-openwyd/dbserver/internal/grpcsrv"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/secret"
-	"github.com/jeanluca/w2pp-openwyd/internal/secure"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/dbserver/internal/convert"
+	"openwyd-nextgen/dbserver/internal/grpcsrv"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/secret"
+	"openwyd-nextgen/internal/secure"
+	"openwyd-nextgen/internal/store"
 )
 
 func main() {

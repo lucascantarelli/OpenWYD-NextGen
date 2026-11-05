@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 // Inventory is the reproducible census of one npc template directory, grouped

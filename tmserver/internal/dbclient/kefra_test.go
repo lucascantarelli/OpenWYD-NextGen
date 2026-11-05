@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func TestKefraStateMapping(t *testing.T) {

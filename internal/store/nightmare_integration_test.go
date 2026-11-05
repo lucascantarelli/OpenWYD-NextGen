@@ -5,8 +5,8 @@ package store
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/migrations"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/migrations"
 )
 
 func TestNightmareBalancePersistence(t *testing.T) {

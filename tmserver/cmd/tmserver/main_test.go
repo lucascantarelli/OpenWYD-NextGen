@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func TestSpawnNPCsLeavesWaterGeneratorsForRoomLifecycle(t *testing.T) {

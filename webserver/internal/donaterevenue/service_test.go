@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
 )
 
 // fakeStore records what the service asked for and returns scripted data, so the

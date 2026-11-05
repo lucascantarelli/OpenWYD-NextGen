@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
+	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
 // RemoteDropRate is one drop_rate_override row as tmServer consumes it

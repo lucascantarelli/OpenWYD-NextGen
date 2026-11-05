@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	binv1 "github.com/jeanluca/w2pp-openwyd/api/bin/v1"
+	binv1 "openwyd-nextgen/api/bin/v1"
 )
 
 type fakeAPI struct {

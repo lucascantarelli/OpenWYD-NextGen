@@ -1,4 +1,4 @@
-module github.com/jeanluca/w2pp-openwyd
+module openwyd-nextgen
 
 go 1.26.10
 

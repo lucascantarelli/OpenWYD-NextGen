@@ -16,11 +16,12 @@
 package webv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -16299,7 +16300,7 @@ const file_api_web_v1_web_proto_rawDesc = "" +
 	"\n" +
 	"UpsertRate\x12\x19.web.v1.UpsertRateRequest\x1a\x17.web.v1.SetRateResponse\x12>\n" +
 	"\tResetRate\x12\x18.web.v1.ResetRateRequest\x1a\x17.web.v1.SetRateResponse\x12O\n" +
-	"\x0eGetServerFlags\x12\x1d.web.v1.GetServerFlagsRequest\x1a\x1e.web.v1.GetServerFlagsResponseB3Z1github.com/jeanluca/w2pp-openwyd/api/web/v1;webv1b\x06proto3"
+	"\x0eGetServerFlags\x12\x1d.web.v1.GetServerFlagsRequest\x1a\x1e.web.v1.GetServerFlagsResponseB3Z1openwyd-nextgen/api/web/v1;webv1b\x06proto3"
 
 var (
 	file_api_web_v1_web_proto_rawDescOnce sync.Once

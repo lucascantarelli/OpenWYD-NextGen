@@ -3,10 +3,10 @@ package handler
 import (
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/route"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/level"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/route"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // BM evocations (spell InstanceType 11 → GenerateSummon, Server.cpp:2956).

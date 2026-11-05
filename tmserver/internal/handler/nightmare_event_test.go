@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/loot"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/loot"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func TestNightmareCalendarBoundaries(t *testing.T) {

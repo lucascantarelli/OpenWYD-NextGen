@@ -13,7 +13,7 @@ legados em C++ ficam em `Source/`, o conteúdo do jogo em `Release/`, e a engenh
 `docs/migration/` (leia antes de mudar wire/format/gameplay; pontos não confirmados estão marcados
 **UNVERIFIED**).
 
-Module path: `github.com/jeanluca/w2pp-openwyd` (Go 1.26, Linux/Docker).
+Module path: `openwyd-nextgen` (Go 1.26, Linux/Docker).
 
 ## Comandos
 

@@ -3,8 +3,8 @@ package world
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/teleportdata"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/internal/teleportdata"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 // TestTeleportOverlayOverridesAndDisables covers issue 42's acceptance criteria

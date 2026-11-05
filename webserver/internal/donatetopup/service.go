@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
 )
 
 // Store is the persistence surface the service needs (satisfied by *store.Store).

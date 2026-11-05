@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/droptool"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mapzones"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/droptool"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/mapzones"
+	"openwyd-nextgen/webserver/internal/npctemplates"
 )
 
 // fakeStore is an in-memory Store for exercising the service's authorization and

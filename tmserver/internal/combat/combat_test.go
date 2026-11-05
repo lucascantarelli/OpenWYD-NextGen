@@ -3,7 +3,7 @@ package combat
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 // seqRand returns predetermined Intn values in order, so each formula's rand()

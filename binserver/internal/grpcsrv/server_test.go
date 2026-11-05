@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	binv1 "github.com/jeanluca/w2pp-openwyd/api/bin/v1"
-	"github.com/jeanluca/w2pp-openwyd/binserver/internal/billing"
+	binv1 "openwyd-nextgen"
+
+	"openwyd-nextgenal/billing"
 )
 
 func TestCheckBilling(t *testing.T) {

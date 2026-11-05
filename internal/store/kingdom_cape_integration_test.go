@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 func TestPurchaseKingdomCapeRevisionIsSingleWinner(t *testing.T) {

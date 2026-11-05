@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/content"
 )
 
 // smallWorld builds a 2×2 attribute grid over an 8×8 height grid (each attribute

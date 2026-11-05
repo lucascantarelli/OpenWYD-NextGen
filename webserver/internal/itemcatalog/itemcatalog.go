@@ -29,8 +29,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/itemeffects"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemicons"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/itemeffects"
+	"openwyd-nextgen/webserver/internal/itemicons"
 )
 
 // Entry is one catalog row, trimmed to what the web needs.
@@ -241,6 +242,64 @@ func number(s string) int32 {
 		return 0
 	}
 	return int32(v)
+}
+
+// FromEntries builds the web-facing catalog from the item_catalog rows the
+// database holds (issue 58 seeded them from ItemList.csv; the file left the
+// repository in phase 5, so scanning it can only fail). Fields keeps the raw CSV
+// row, so mesh and texture are still read from the same column, while the base
+// effects arrive already resolved to ItemEffect.h codes.
+func FromEntries(rows []domain.ItemCatalogEntry) Catalog {
+	out := make([]Entry, 0, len(rows))
+	sum := sha256.New()
+	for _, row := range rows {
+		if row.Index < 0 || row.Name == "" {
+			continue
+		}
+		var mesh, texture int32
+		if len(row.Fields) > 2 {
+			m, t, _ := strings.Cut(row.Fields[2], ".")
+			mesh, texture = number(m), number(t)
+		}
+		// nPos is a signed short, so the cape bit arrives negative; mask to 16
+		// bits before decoding, exactly as the CSV scan did.
+		slotMask := int32(row.Pos) & 0xFFFF
+		effects := make([]Effect, 0, len(row.Effects))
+		for _, e := range row.Effects {
+			effects = append(effects, Effect{Code: int32(e.Eff), Value: int32(e.Val)})
+		}
+		out = append(out, Entry{
+			Index:       int32(row.Index),
+			Name:        row.Name,
+			DisplayName: strings.TrimSpace(strings.ReplaceAll(row.Name, "_", " ")),
+			Mesh:        mesh,
+			Texture:     texture,
+			SlotMask:    slotMask,
+			Slots:       decodeSlots(slotMask),
+			Grade:       int32(row.Grade),
+			Effects:     effects,
+		})
+		fmt.Fprintf(sum, "%d:%s\n", row.Index, row.SHA256)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Name != out[j].Name {
+			return out[i].Name < out[j].Name
+		}
+		return out[i].Index < out[j].Index
+	})
+	return Catalog{Items: out, Version: hex.EncodeToString(sum.Sum(nil))[:16]}
+}
+
+// Has reports whether the catalog knows an item index. Callers use it to refuse
+// an edit that would target a slot the game does not have (issue 24): the store
+// writes the row regardless, so the check has to happen here.
+func (c Catalog) Has(index int32) bool {
+	for _, e := range c.Items {
+		if e.Index == index {
+			return true
+		}
+	}
+	return false
 }
 
 // latin1ToUTF8 converts a string holding raw ISO-8859-1 bytes (each byte's

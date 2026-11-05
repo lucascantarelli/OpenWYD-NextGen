@@ -22,11 +22,12 @@
 package dbv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1029,7 +1030,7 @@ const file_api_db_v1_content_proto_rawDesc = "" +
 	"\x10FetchItemCatalog\x12\x1e.db.v1.FetchItemCatalogRequest\x1a\x1f.db.v1.FetchItemCatalogResponse\x12V\n" +
 	"\x11FetchSkillCatalog\x12\x1f.db.v1.FetchSkillCatalogRequest\x1a .db.v1.FetchSkillCatalogResponse\x12V\n" +
 	"\x11FetchNPCTemplates\x12\x1f.db.v1.FetchNPCTemplatesRequest\x1a .db.v1.FetchNPCTemplatesResponse\x12P\n" +
-	"\x0fFetchWorldItems\x12\x1d.db.v1.FetchWorldItemsRequest\x1a\x1e.db.v1.FetchWorldItemsResponseB1Z/github.com/jeanluca/w2pp-openwyd/api/db/v1;dbv1b\x06proto3"
+	"\x0fFetchWorldItems\x12\x1d.db.v1.FetchWorldItemsRequest\x1a\x1e.db.v1.FetchWorldItemsResponseB1Z/openwyd-nextgen/api/db/v1;dbv1b\x06proto3"
 
 var (
 	file_api_db_v1_content_proto_rawDescOnce sync.Once

@@ -3,7 +3,7 @@ package world
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // createMobBody is a CreateMob-sized payload (220 B on the wire with the header,

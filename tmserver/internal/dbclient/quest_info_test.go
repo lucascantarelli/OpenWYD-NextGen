@@ -3,7 +3,7 @@ package dbclient
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Every STRUCT_MOBEXTRA.QuestInfo flag the world models must survive the

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/ratetables"
+	"openwyd-nextgen/internal/ratetables"
 )
 
 // ApplyRateOverrides folds the moderator overlay (issue 36) into the tables

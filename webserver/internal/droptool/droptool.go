@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
+	"openwyd-nextgen/internal/npctemplate"
+	"openwyd-nextgen/internal/savefmt"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
 )
 
 // ItemEntry is one item known to the drop report.
@@ -173,17 +173,38 @@ func init() {
 
 // Scan reads <contentDir>/Common/ItemList.csv and <contentDir>/TMsrv/run/npc/,
 // accepting every STRUCT_MOB layout savefmt knows (816 canonical plus the
-// legacy 756/920 forms — data-formats.md §1.4.1). Files that are not templates
+// legacy 756/920 forms â€” data-formats.md Â§1.4.1). Files that are not templates
 // at all are counted in the returned stats and skipped, matching the existing
 // content scanners used by the moderator UI.
 func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctemplate.ScanStats, error) {
-	var stats npctemplate.ScanStats
 	catalog, err := itemcatalog.Scan(contentDir)
 	if err != nil {
-		return Catalog{}, stats, fmt.Errorf("droptool: item catalog: %w", err)
+		return Catalog{}, npctemplate.ScanStats{}, fmt.Errorf("droptool: item catalog: %w", err)
 	}
-	items := catalog.Items
+	out, stats, err := build(catalog.Items, opts, func(visit func(string, savefmt.Mob)) (npctemplate.ScanStats, error) {
+		return npctemplate.ScanDir(contentDir, logger, visit)
+	})
+	if err != nil {
+		return Catalog{}, stats, fmt.Errorf("droptool: %w", err)
+	}
+	return out, stats, nil
+}
 
+// FromBlobs builds the same catalog from what the database holds â€” the item
+// catalog rows plus the canonical STRUCT_MOB blobs of npc_template (issue
+// 58/62). ItemList.csv and npc/ both left Release/ in phase 5, so the directory
+// scan can only come up empty.
+func FromBlobs(items []itemcatalog.Entry, blobs map[string][]byte, opts Options) (Catalog, npctemplate.ScanStats) {
+	out, stats, _ := build(items, opts, func(visit func(string, savefmt.Mob)) (npctemplate.ScanStats, error) {
+		return npctemplate.ScanBlobs(blobs, visit), nil
+	})
+	return out, stats
+}
+
+// build projects the item list and the decoded templates into the DropTool
+// catalog. walk supplies the templates, so the directory and the database
+// sources share one projection instead of drifting apart.
+func build(items []itemcatalog.Entry, opts Options, walk func(func(string, savefmt.Mob)) (npctemplate.ScanStats, error)) (Catalog, npctemplate.ScanStats, error) {
 	itemByIndex := make(map[int32]string, len(items))
 	out := Catalog{Items: make([]ItemEntry, 0, len(items))}
 	for _, item := range items {
@@ -195,7 +216,7 @@ func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctem
 	for _, item := range out.Items {
 		knownItems[item.Index] = true
 	}
-	stats, err = npctemplate.ScanDir(contentDir, logger, func(templateName string, mob savefmt.Mob) {
+	stats, err := walk(func(templateName string, mob savefmt.Mob) {
 		mobName := cString(mob.Name[:])
 		mobEntry := MobEntry{
 			TemplateName: templateName,
@@ -226,7 +247,7 @@ func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctem
 		}
 	})
 	if err != nil {
-		return Catalog{}, stats, fmt.Errorf("droptool: %w", err)
+		return Catalog{}, stats, err
 	}
 
 	sort.Slice(out.Items, func(i, j int) bool { return out.Items[i].Index < out.Items[j].Index })
@@ -245,7 +266,6 @@ func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctem
 	})
 	return out, stats, nil
 }
-
 // ListDropItems returns the item-centric report. By default it includes only
 // items that have at least one matching drop, while IncludeZeroDropItems mirrors
 // the legacy report's item headers with zero mobs.

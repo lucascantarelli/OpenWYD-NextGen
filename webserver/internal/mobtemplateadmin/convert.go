@@ -3,8 +3,8 @@ package mobtemplateadmin
 import (
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/savefmt"
 )
 
 // statFromRawTemplate decodes a raw STRUCT_MOB (Get's read-through fallback)

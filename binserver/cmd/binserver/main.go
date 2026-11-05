@@ -23,10 +23,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	binv1 "github.com/jeanluca/w2pp-openwyd/api/bin/v1"
-	"github.com/jeanluca/w2pp-openwyd/binserver/internal/billing"
-	"github.com/jeanluca/w2pp-openwyd/binserver/internal/grpcsrv"
-	"github.com/jeanluca/w2pp-openwyd/internal/secure"
+	binv1 "openwyd-nextgen"
+
+	"openwyd-nextgen/binserver/internal/billing"
+	"openwyd-nextgen/binserver/internal/grpcsrv"
+	"openwyd-nextgen/internal/secure"
 )
 
 func main() {

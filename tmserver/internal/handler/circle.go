@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Círculo Divino (_MSG_Quest.cpp:514-691): the Jeffi purifies the circle worn

@@ -11,12 +11,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/droptool"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mapzones"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/store"
+	"openwyd-nextgen/webserver/internal/droptool"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/mapzones"
+	"openwyd-nextgen/webserver/internal/npctemplates"
 )
 
 // Store is the persistence surface the service needs (satisfied by *store.Store).
@@ -229,6 +229,13 @@ func (s *Service) SetItemPrice(ctx context.Context, moderatorID int64, itemIndex
 		return r, err
 	}
 	if itemIndex <= 0 {
+		return Invalid, nil
+	}
+	// An index the catalog does not know would land in item_price as a row no
+	// store can ever show; the legacy editable only offered real items, so the
+	// API refuses it too (issue 24). An empty catalog means the service booted
+	// without content, and then there is nothing to check against.
+	if len(s.itemCatalog.Items) > 0 && !s.itemCatalog.Has(itemIndex) {
 		return Invalid, nil
 	}
 	if err := s.store.SetItemPrice(ctx, itemIndex, price, moderatorID); err != nil {

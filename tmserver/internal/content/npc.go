@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/npctemplate"
+	"openwyd-nextgen/internal/npctemplate"
 )
 
 // NPCGenerator is one spawn block of NPCGener.txt (CNPCGene.cpp ParseString):

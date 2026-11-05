@@ -3,7 +3,7 @@ package refine
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // scriptedRoll returns a roll func that hands back vals in order (repeating the

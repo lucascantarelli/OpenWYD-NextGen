@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // ListExpRanking returns the persisted character Top EXP projection in ranking

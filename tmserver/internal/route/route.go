@@ -4,7 +4,7 @@
 // (no world state) so the walk can be golden-tested against synthetic maps.
 package route
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+import "openwyd-nextgen/tmserver/internal/content"
 
 const (
 	// MaxRoute is MAX_ROUTE (Basedef.h:184): the longest route the original

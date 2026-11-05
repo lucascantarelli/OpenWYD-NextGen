@@ -4,8 +4,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 var nightmareGenerators = [3][2]int{{2368, 2375}, {2377, 2384}, {2385, 2394}}

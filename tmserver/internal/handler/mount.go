@@ -1,6 +1,6 @@
 package handler
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // Mount (montaria) attribute bonuses. In legacy WYD a mount's combat stats do NOT
 // come from the item's catalog effects — they are read from the g_pMountBonus /

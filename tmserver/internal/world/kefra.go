@@ -3,7 +3,7 @@ package world
 import (
 	"context"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // KefraState is the persisted weekly boss cycle, independent of client packets.

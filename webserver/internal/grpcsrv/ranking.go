@@ -6,8 +6,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/domain"
 )
 
 // Ranking is the public ranking surface the server depends on.

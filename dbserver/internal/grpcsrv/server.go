@@ -10,11 +10,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/internal/playcode"
-	"github.com/jeanluca/w2pp-openwyd/internal/secret"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/playcode"
+	"openwyd-nextgen/internal/secret"
+	"openwyd-nextgen/internal/store"
 )
 
 // Store is the persistence surface the service depends on (satisfied by

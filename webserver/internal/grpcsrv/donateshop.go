@@ -6,9 +6,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/donateshop"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/webserver/internal/donateshop"
 )
 
 // DonateAdmin is the moderator donate-shop surface (satisfied by

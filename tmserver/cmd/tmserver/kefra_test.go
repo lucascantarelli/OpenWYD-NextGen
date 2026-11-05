@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 func TestSpawnNPCsDefersKefraUntilStateLoad(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/worldevents"
+	"openwyd-nextgen/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/worldevents"
 )
 
 func TestTowerCaptureRespawnsUnderKillerGuild(t *testing.T) {

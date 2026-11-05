@@ -3,8 +3,8 @@ package dbclient
 import (
 	"testing"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // The equipment-free base (migration 0027) crosses the wire both ways; a save

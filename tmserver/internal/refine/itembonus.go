@@ -1,6 +1,6 @@
 package refine
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // BonusItem is the slice of STRUCT_ITEMLIST that SetItemBonus reads for the
 // item being rolled: nUnique, ReqLvl, nPos and the static stEffect pairs.

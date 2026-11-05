@@ -4,7 +4,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // outFrame is a logical S→C message queued to a session's writer goroutine,

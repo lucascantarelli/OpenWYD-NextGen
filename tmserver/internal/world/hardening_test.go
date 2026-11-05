@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // corruptChecksum encodes a frame and flips its checksum byte (offset 3) so the

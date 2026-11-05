@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/store"
 )
 
 // Validation bounds. The window cap is load-bearing three ways: it bounds the

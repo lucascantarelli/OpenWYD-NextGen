@@ -3,8 +3,8 @@ package handler
 import (
 	"slices"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Pista de Runas room play: the per-room death hooks (MobKilled.cpp:2158-2500,

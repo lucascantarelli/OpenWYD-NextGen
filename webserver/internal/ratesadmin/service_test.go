@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/ratetables"
-	"github.com/jeanluca/w2pp-openwyd/internal/store"
+	"openwyd-nextgen/internal/ratetables"
+	"openwyd-nextgen/internal/store"
 )
 
 type fakeStore struct {

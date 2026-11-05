@@ -101,8 +101,8 @@ recebendo `FORBIDDEN` na leitura.
     "apk add --no-cache protobuf >/dev/null && \
      go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11 && \
      go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2 && \
-     PATH=\$PATH:/root/go/bin protoc --go_out=. --go_opt=module=github.com/jeanluca/w2pp-openwyd \
-       --go-grpc_out=. --go-grpc_opt=module=github.com/jeanluca/w2pp-openwyd api/web/v1/web.proto"
+     PATH=\$PATH:/root/go/bin protoc --go_out=. --go_opt=module=openwyd-nextgen \
+       --go-grpc_out=. --go-grpc_opt=module=openwyd-nextgen api/web/v1/web.proto"
   ```
 
 - **`int64` chega como `number`** no portal (`longs: Number` no proto-loader) — `role_changed_by`

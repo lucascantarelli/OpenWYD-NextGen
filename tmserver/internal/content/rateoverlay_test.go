@@ -3,7 +3,7 @@ package content
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/ratetables"
+	"openwyd-nextgen/internal/ratetables"
 )
 
 func TestApplyRateOverridesSanc(t *testing.T) {

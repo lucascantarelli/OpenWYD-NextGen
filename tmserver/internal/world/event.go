@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // Fase 7 disconnect reasons (migration-plan.md §5).

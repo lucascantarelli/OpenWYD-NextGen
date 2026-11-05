@@ -6,8 +6,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/domain"
 )
 
 // NpcConfigStore is the read surface the NPC-config service needs (satisfied by

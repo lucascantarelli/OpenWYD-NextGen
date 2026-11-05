@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
+	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
 // InstanceFlagsStore is the write surface the flags snapshot needs (satisfied by

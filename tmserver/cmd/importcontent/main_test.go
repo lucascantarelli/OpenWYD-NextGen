@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/content"
+	"openwyd-nextgen/tmserver/internal/content"
 )
 
 // TestBuildItems checks that the importer row carries exactly what the runtime

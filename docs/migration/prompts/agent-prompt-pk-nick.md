@@ -26,7 +26,7 @@ NUNCA apertou a tecla K e nunca atacou ninguém**. E não some sozinho depois de
    `MSG_CNFClientCharacterLogin` (nos dois scores: BaseScore e CurrentScore) e no CreateMob.
    Os templates BaseMob trazem esse byte como `0xCC` (204, lixo de memória não-inicializada).
    Confirmei na captura que virou `0`. **O nick continuou piscando.**
-   - OBS: no `Source/Code/NPTool/ProcessMessage.cpp:159` esse mesmo byte
+   - OBS: no `Source/Code/_legacy/NPTool/ProcessMessage.cpp:159` esse mesmo byte
      (`mob->BaseScore.ChaosRate`) é exibido no editor de NPC como campo **`IDC_ERegen`**
      (Regen!). Isso me faz suspeitar que o byte "ChaosRate" na verdade é REGEN, e NÃO o que
      controla a cor do nick. **Preciso que você confirme.**

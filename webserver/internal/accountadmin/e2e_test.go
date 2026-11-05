@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
+	webv1 "openwyd-nextgen/api/web/v1"
 )
 
 func TestE2EAccountAdmin(t *testing.T) {

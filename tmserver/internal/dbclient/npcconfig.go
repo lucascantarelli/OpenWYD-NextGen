@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/npccfg"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/tmserver/internal/npccfg"
 )
 
 // TemplateLoader resolves an NPC template name to its raw 816-byte STRUCT_MOB.

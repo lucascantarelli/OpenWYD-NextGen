@@ -3,7 +3,7 @@ package handler
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // TestMountBonusForTemp covers a temporary/premium mount (idx 3980-3994): flat table

@@ -61,3 +61,24 @@ código Go e os documentos de engenharia reversa (`docs/migration/`, 58/58 handl
 - [ ] Spawn/quedas/catálogos editáveis **somente** pelo portal.
 - [ ] `docs/migration/` cobre 100% dos handlers com evidência (hoje 58/58).
 - [ ] `Source/` movido para `archive/` ou fora do checkout padrão, com nota no README.
+
+## 6. Arquivamento das ferramentas substituídas (05/11/2026)
+
+As sete ferramentas que a §1 marca como substituídas saíram de `Source/Code/` e foram para
+`Source/Code/_legacy/` (mesmo destino do `DropTool`, arquivado pela issue 61), com um
+[`README`](../../Source/Code/_legacy/README.md) que aponta o substituto de cada uma:
+
+| De | Para | Por quê |
+|----|------|---------|
+| `ExpTool/` | `_legacy/ExpTool/` | alvo (`npc/`) não existe mais; curva vive em `tmserver/internal/exptool` |
+| `NPTool/` | `_legacy/NPTool/` | spawn agora é `npc_definition` (`/npcs`); `NPCGener.txt` só alimenta o importador |
+| `EDITAPPMOB/` | `_legacy/EDITAPPMOB/` | `/mobs/[template]` |
+| `EDITAPPSHOP/` | `_legacy/EDITAPPSHOP/` | `/npcs/[id]` |
+| `SearchPass/` | `_legacy/SearchPass/` | senha só existe como argon2id; não há texto plano para buscar |
+| `ZerarSkill/` | `_legacy/ZerarSkill/` | `/personagens/[id]` + `delivery_queue` |
+| `AttributeMap_Editor/` | `_legacy/AttributeMap_Editor/` | `/mapa` + `/api/mapa/download` |
+
+Continuam em `Source/Code/`, como referência de wire/layout/fórmula citada por `docs/migration/`:
+`TMSrv/`, `DBSrv/`, `BISrv/`, `Basedef.*`, `CPSock.*`, `ItemEffect.h`. `ClientPatch_v7662/` fica
+porque é dependência do **cliente** (REVIEW-07). Remoção definitiva de `_legacy/` quando a paridade
+UNVERIFIED fechar; até lá o custo é só o tamanho do checkout (~330 KB).

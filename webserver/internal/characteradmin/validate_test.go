@@ -3,7 +3,7 @@ package characteradmin
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	"openwyd-nextgen/internal/domain"
 )
 
 // TestValidateAdds: a grant may carry no add (zero) or any code known to

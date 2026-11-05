@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/npccfg"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/npccfg"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Moderator-edited NPC overlay (npc-editing-plan.md). The web writes cold config

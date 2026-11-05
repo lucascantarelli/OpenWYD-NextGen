@@ -3,7 +3,7 @@ package combine
 import (
 	"testing"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/rng"
+	"openwyd-nextgen/tmserver/internal/rng"
 )
 
 type fixedRand struct{ v int }

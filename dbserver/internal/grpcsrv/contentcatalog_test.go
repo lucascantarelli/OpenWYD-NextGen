@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
+	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/domain"
 )
 
 // fakeCatalogStore is the read surface NewContentCatalog needs, with one row per

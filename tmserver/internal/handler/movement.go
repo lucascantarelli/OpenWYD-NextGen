@@ -3,8 +3,8 @@ package handler
 import (
 	"encoding/binary"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Anti-speedhack tick window (_MSG_Action.cpp): the client's movetime

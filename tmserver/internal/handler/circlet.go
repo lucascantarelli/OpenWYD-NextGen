@@ -1,6 +1,6 @@
 package handler
 
-import "github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+import "openwyd-nextgen/tmserver/internal/world"
 
 // circletEquipSlot is Equip[1], the head slot where a Sub-Celestial wears its
 // diadem (Cythera).

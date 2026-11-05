@@ -6,13 +6,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
-	"github.com/jeanluca/w2pp-openwyd/internal/domain"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/droptool"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/itemcatalog"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/mapzones"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npcadmin"
-	"github.com/jeanluca/w2pp-openwyd/webserver/internal/npctemplates"
+	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/webserver/internal/droptool"
+	"openwyd-nextgen/webserver/internal/itemcatalog"
+	"openwyd-nextgen/webserver/internal/mapzones"
+	"openwyd-nextgen/webserver/internal/npcadmin"
+	"openwyd-nextgen/webserver/internal/npctemplates"
 )
 
 // NpcAdmin is the moderator NPC-editing surface the server depends on (satisfied

@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	dbv1 "github.com/jeanluca/w2pp-openwyd/api/db/v1"
+	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
 func TestKefraRPC(t *testing.T) {

@@ -1,6 +1,6 @@
 // Package exptool restamps the kill-reward Exp field of the Release npc
 // templates with the balanced level curve (level.MobExpForLevel) — the Go
-// heir of the legacy ExpTool (Source/Code/ExpTool/main.cpp:128), built for
+// heir of the legacy ExpTool (Source/Code/_legacy/ExpTool/main.cpp:128), built for
 // issue #43 (shipped templates mixed Exp=0 with garbage values).
 package exptool
 
@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/jeanluca/w2pp-openwyd/internal/savefmt"
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/level"
+	"openwyd-nextgen/internal/savefmt"
+	"openwyd-nextgen/tmserver/internal/level"
 )
 
 // Entry reports one restamped template.

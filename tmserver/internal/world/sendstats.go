@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // S→C send diagnostics (docs/migration/investigacao-freeze-cliente.md): the

@@ -38,7 +38,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/protocol"
+	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
 // clientKeyWord seeds the C→S obfuscation. Any value works (the server reads it

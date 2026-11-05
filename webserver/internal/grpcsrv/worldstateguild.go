@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	webv1 "github.com/jeanluca/w2pp-openwyd/api/web/v1"
+	webv1 "openwyd-nextgen/api/web/v1"
 )
 
 // SetGuildMaster promotes one guild member to leader (audited).

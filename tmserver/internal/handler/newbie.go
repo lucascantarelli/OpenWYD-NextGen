@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/jeanluca/w2pp-openwyd/tmserver/internal/world"
+	"openwyd-nextgen/tmserver/internal/world"
 )
 
 // Newbie event (NewbieEventServer, ProcessSecMinTimer.cpp:2540-2561).
