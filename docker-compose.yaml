@@ -161,6 +161,7 @@ services:
       W2PP_RATES_EDITING: "${W2PP_RATES_EDITING:-false}"
       W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
       W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
+      W2PP_MOB_CARRY_EDITING: "${W2PP_MOB_CARRY_EDITING:-false}"
     volumes:
       - ./Release:/Release:ro   # content tree (rates/catalogs/maps), validated at boot
     ports:

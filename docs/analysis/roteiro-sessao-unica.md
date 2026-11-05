@@ -239,3 +239,38 @@ Preencha a tabela §12 de [`roteiros-qa.md`](roteiros-qa.md) e cole a evidência
 issue, marcando **só** o critério que o passo provou. Uma sessão bem executada fecha **9 issues**
 (24, 25, 34, 36, 44, 45, 48, 28, 30) e avança **09** e **08** para ✅, deixando 10/11/12/13 com o
 que foi coberto e o que falta.
+
+## Preparação aplicada (05/11/2026, 13:54) — stack local
+
+Valores que estão no banco agora; use-os como referência ao conferir no cliente.
+
+| O que | Valor preparado | Onde conferir |
+|---|---|---|
+| Preço do item 907 | **12345** | `item_price` · `/precos` |
+| NPC | `qa-ferreiro` (template `Acessorios`, mercador) em Armia **(2504,1684)** vendendo **907** e **5134** | `npc_definition` · `npc_shop_item` |
+| Mob alvo | **Troll** — nível 1, HP 120, EXP **250.000** (97 geradores, a partir de 2454,1836) | `mob_template_stat` |
+| Drop | slot **12** (equipamento comum) divisor **4** | `drop_rate_override` |
+| Carry | **Troll** slot **56** = item **412** (Poeira de Oriharucon, sempre cai) | `mob_carry_override` |
+| Refino | `SancRate` **PO** índices 0..11 = **100** | `content_rate_override` |
+| Imposto | cidade **5** nas 5 zonas | `guild_zone` |
+| Kefra | **morto** (revision 2) | `kefra_state` |
+| Evento global | ligado, item 400, **1 em 5**, faixa 1..50, **EXP dobrada**, notice | `world_event_config` |
+| Diária | item **400**, 7 dias, habilitada | `daily_reward_item` |
+| Efeito | **Armadura Couro Duro (1116)**: `AC +60` | `item_effect_override` |
+
+O que o boot registrou (log real do `tmserver`):
+
+```
+mob template stat overlay enabled (moderator editing) overrides=1
+mob carry overlay enabled (moderator editing) templates=1
+content rate overlay applied rate_overrides_applied=12 rows=12
+content rate overlay effective sancrate_ori="[100 100 100 100 100 100 100 100 100 100 100 100]"
+drop rate overlay applied drop_overrides_applied=1 slot_12=4
+item effect overlay applied rows=1 replaced=1
+npc config applied at boot version=27 npcs=5162
+world event config applied at boot version=2
+```
+
+Nota de infraestrutura: o `docker-compose.yaml` repassava cinco das seis flags — `W2PP_MOB_CARRY_EDITING`
+não chegava ao container e o overlay de `Carry` nunca ligava. A variável foi adicionada ao serviço
+`tmserver`; o alvo de XP e de drop é o **Troll**, que spawna ao lado dos mercadores de Armia.
