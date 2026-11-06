@@ -343,7 +343,10 @@ execução não é conteúdo de site nem entra no gate de links.
 (55 MB) de `Release/` em runtime, insumo de importação e resíduo Win32, e abre a `LEGACY-02` para
 mover o runtime para `tmserver/content/`; `docs/analysis/legado-clientpatch.md` prova que o
 `ClientPatch_v7662` **não** tem dependência de build ou runtime no servidor — só quatro comentários
-e a solution — e define o critério de saída.
+e a solution — e define o critério de saída; o mesmo doc responde às três perguntas de remoção do
+launcher (patch estático no install substitui os 11 patches de byte, checksum correto no servidor
+elimina 3 hooks, comandos de chat e diálogos migram para o servidor) com fontes de projetos
+equivalentes.
   **(c) Qualidade de dados:** `scripts/check-data-quality.sql` auditou 50 tabelas (`item_catalog`
 3.220 linhas): 0 fora de NFC, 0 espaço nas pontas, 0 caractere de controle. Os 37 "mojibake"
 acusados eram **falso positivo** da própria consulta (`Âmbar`, `Âmago` são português) — heurística
