@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate check-skips check-comments ci client-serverlist
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
 
 build:
 	go build ./...
@@ -41,10 +41,20 @@ check-skips:
 check-comments:
 	bash scripts/check-comments.sh
 
+# Conteúdo de /guias: gerado a partir de docs/ e versionado, porque a imagem do
+# portal copia só portal/ e não vê docs/. Rodar depois de editar docs/guias,
+# docs/sistemas ou docs/lore.
+guias:
+	cd portal && npm run guias
+
+# Reprova se o JSON versionado divergir de docs/ (é o mesmo passo do CI).
+guias-check:
+	cd portal && npm run guias && git diff --exit-code -- src/content/guias.json
+
 # O que o CI roda, na mesma ordem: os gates baratos falham rápido, depois o build,
 # o teste e o portal. `ci.yml` chama exatamente estes passos (via _go.yml e
 # _portal.yml), então rodar `make ci` local é a mesma coisa que rodar o CI.
-ci: gate check-skips check-comments vet build test portal-test
+ci: gate check-skips check-comments guias-check vet build test portal-test
 
 test:
 	go test -race -cover ./...

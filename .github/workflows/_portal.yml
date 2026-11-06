@@ -27,6 +27,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      # O conteúdo de /guias sai de docs/ e é versionado (a imagem copia só
+      # portal/). Se docs/ mudou sem regenerar, o portal publicaria texto velho.
+      - name: Guias em dia
+        run: npm run guias && git diff --exit-code -- src/content/guias.json
+
       - name: Typecheck
         run: npm run typecheck
 

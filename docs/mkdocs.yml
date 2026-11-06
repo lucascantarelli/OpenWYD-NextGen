@@ -1,42 +1,94 @@
-# Site de documentação — a config vive dentro de docs/ de propósito: um só lugar
-# para conteúdo, config e Dockerfile.
+# Site de documentação — config dentro de docs/, junto com o conteúdo.
 #
 # `docs_dir: .` porque este arquivo está na raiz do próprio conteúdo. `site_dir`
 # fica FORA de docs_dir (o mkdocs recusa aninhar build no conteúdo) e já está no
 # .gitignore.
 #
-# O `nav` é a semente do mapa do AGENTS.md §6 ("preciso de X → leio Y").
+# ## Identidade visual
 #
-# Como rodar (sem instalar nada no host — o host é Windows, sem Python):
+# A paleta e o raio vêm de `portal/src/app/globals.css` (`:root`), replicados em
+# `assets/portal-theme.css`. O Material expõe as cores por variável CSS
+# (`--md-*`), então o override é declarativo e sobrevive a upgrade de tema.
+#
+# ## Plugins
+#
+# Só os **built-in** do Material (`search`), que já vêm na imagem
+# `squidfunk/mkdocs-material` — nada instala no build:
+#   https://squidfunk.github.io/mkdocs-material/plugins/search/
+# O plugin `social` (cards por página) também é built-in, mas exige renderização
+# de imagem por página e deixa o build ~10x mais lento; fica de fora até existir
+# conteúdo suficiente para justificar.
+#
+# ## Como rodar
 #
 #   docker compose --profile docs up mkdocs      # http://localhost:8000
-#   docker run --rm -v "$PWD:/project" -w /project squidfunk/mkdocs-material \
-#     build -f docs/mkdocs.yml --strict          # gate, o mesmo do CI
+#   docker compose --profile docs run --rm mkdocs build -f docs/mkdocs.yml --strict
 
 site_name: OpenWYD — documentação
 site_description: Servidor local de WYD2 em Go, portal Next.js e cliente Windows
 docs_dir: .
 site_dir: ../site
 use_directory_urls: true
+copyright: OpenWYD — servidor local de WYD2
 
 theme:
   name: material
   language: pt-BR
+  # Tipografia do portal (ui-sans-serif/Segoe UI), não Roboto.
+  font: false
   features:
     - navigation.sections
+    - navigation.tabs
     - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
     - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.tooltips
+  palette:
+    scheme: slate
+    primary: black
+    accent: amber
+
+extra_css:
+  - assets/portal-theme.css
+
+plugins:
+  - search:
+      lang: pt
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - def_list
+  - footnotes
   - tables
   - toc:
       permalink: true
+  - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
 
 nav:
   - Início: index.md
-  - Primeiros passos:
+  - Guias:
+      - Visão geral: guias/index.md
+      - Jogador:
+          - Primeiros passos: guias/usuario/comecando.md
+          - Comandos e utilidades: guias/usuario/comandos.md
+      - Administração:
+          - Portal e papéis: guias/admin/portal.md
+  - Sistemas de jogo:
+      - Índice: sistemas/README.md
+  - História, guerras e reinos:
+      - História: lore/historia.md
+      - Guerras: lore/guerras.md
+      - Reinos e cidades: lore/reinos.md
+  - Primeiros passos (técnico):
       - Sessão atual: migration/SESSION-PRIMER.md
       - Índice da migração: migration/README.md
       - Glossário: migration/glossary.md
@@ -56,12 +108,11 @@ nav:
       - Bugs conhecidos: migration/ingame-bugs.md
   - Handlers:
       - Contratos: migration/handlers/README.md
-  - Sistemas de jogo:
-      - Índice: sistemas/README.md
   - Banco de dados:
       - Auditoria do schema: analysis/banco-de-dados.md
       - Persistência de conteúdo: analysis/persistencia-conteudo.md
   - Portal:
+      - Papéis e rotas: analysis/portal-papeis.md
       - NPCs no Next.js: integrations/npc-admin-nextjs.md
       - Faturamento: integrations/faturamento-nextjs.md
   - Cliente:

@@ -1,0 +1,144 @@
+/* Estilo dos guias públicos: mesmos tokens do painel (globals.css). */
+.guias {
+  max-width: 78ch;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.guias__eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-2);
+}
+
+.guias h1 {
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 0 0 var(--space-4);
+}
+
+.guias h2 {
+  font-size: 18px;
+  margin: var(--space-5) 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.guias h3 {
+  font-size: 15px;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.guias p,
+.guias li {
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.guias a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.guias a:hover {
+  text-decoration: underline;
+}
+
+.guias code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+}
+
+.guias pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+.guias pre code {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+.guias table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-3) 0;
+  font-size: 13px;
+}
+
+.guias th,
+.guias td {
+  border: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.guias th {
+  background: var(--surface-2);
+}
+
+.guias blockquote {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--muted);
+}
+
+.guias blockquote p {
+  margin: 0 0 var(--space-2);
+}
+
+.guias blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.guias ul,
+.guias ol {
+  padding-left: var(--space-4);
+}
+
+.guias__back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  color: var(--muted);
+}
+
+.guias__grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  margin: var(--space-3) 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.guias__card {
+  display: block;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.guias__card:hover {
+  border-color: var(--border-control);
+  text-decoration: none;
+}
+
+.guias__card span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: var(--space-1);
+}
