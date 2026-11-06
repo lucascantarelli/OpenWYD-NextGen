@@ -1,7 +1,6 @@
 # DOC-01 — Esqueleto mkdocs, índice de sistemas e ADRs
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 quase concluída (site, ADRs
-e integração com o portal de 06/11)
+**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟢 concluída (06/11/2026)
 
 ## Objetivo
 
@@ -40,7 +39,7 @@ ls docs/adr                     # não existe
 ## Arquivos
 
 - `mkdocs.yml`, `docker-compose.yaml` (serviço `docs`), `.github/workflows/docs.yml`
-- `docs/adr/**` (novo), `docs/sistemas/**` (novo)
+- `docs/adr/**` (novo), `docs/sistemas/**` (índice + 12 páginas de sistema)
 - `docs/assets/portal-theme.css`, `docs/guias/**`, `docs/lore/**` (integração portal, 06/11)
 - `portal/scripts/build-guias.mjs`, `portal/src/content/guias.json`,
   `portal/src/app/(public)/guias/**`, `portal/src/server/guias.ts` (integração portal, 06/11)
@@ -55,23 +54,23 @@ mkdocs build --strict            # link quebrado falha
 
 ## Critérios de aceite
 
-- [ ] `mkdocs build --strict` verde.
-- [ ] Todo doc citado no `AGENTS.md` §6 alcançável em ≤2 cliques.
-- [ ] Uma página por sistema de jogo, com handler e regra citados.
-- [ ] ≥6 ADRs registradas (incluindo o arquivamento do legado C++).
-- [ ] `doc_legacy/` com README de substituição por doc movido.
+- [x] `mkdocs build --strict` verde.
+- [x] Todo doc citado no `AGENTS.md` §6 alcançável em ≤2 cliques.
+- [x] Uma página por sistema de jogo, com handler e regra citados (12 páginas).
+- [x] ≥6 ADRs registradas (incluindo o arquivamento do legado C++).
+- [x] `doc_legacy/` com README de substituição por doc movido (criado; nada foi apagado).
 
-## Resultado parcial (06/11/2026)
+## Resultado (06/11/2026)
 
 | Critério | Estado |
 |---|---|
-| `mkdocs build --strict` verde | ✅ |
+| `mkdocs build --strict` verde | ✅ 46,06 s, exit 0 |
 | Todo doc do `AGENTS.md` §6 em ≤2 cliques | ✅ (nav do `mkdocs.yml` é o §6 traduzido em seções) |
-| Uma página por sistema de jogo | 🟡 só o índice (`docs/sistemas/README.md`) |
+| Uma página por sistema de jogo | ✅ 12 páginas + índice em `docs/sistemas/` |
 | Mesma identidade visual do portal | ✅ `docs/assets/portal-theme.css` (tokens de `globals.css`) |
-| Docs alimentam áreas do portal | ✅ `/guias` publica 7 páginas de `docs/` via JSON versionado |
+| Docs alimentam áreas do portal | ✅ `/guias` publica **19** páginas de `docs/` via JSON versionado |
 | ≥6 ADRs | ✅ 6 (0001–0006) |
-| `doc_legacy/` com README de substituição | ❌ não criado |
+| `doc_legacy/` com README de substituição | ✅ `roadmap/doc_legacy/README.md` |
 
 **Build verificado de verdade**, em container (o host não tem Python):
 
@@ -94,18 +93,38 @@ apontando para fora.
 check-docs-links: 119 link(s) relativos, 0 quebrado(s), 3 fora de docs/
 ```
 
-### O que falta para fechar
+### O que fechou em 06/11/2026
 
-1. **Página por sistema**: combate, skills/afects, guildas, castelos, quests, drops, refino,
-   comércio. O índice liga handler e doc de regra, mas não explica o sistema.
-2. **`roadmap/doc_legacy/`**: mover o doc superado com README de substituição (nada foi apagado).
+1. **Página por sistema** — `docs/sistemas/` passou a ter uma página por sistema catalogado
+   (personagem, combate, skills, drops, refino, quests, comércio, guildas, castelos, eventos, canais,
+   mapa). Cada uma segue o mesmo contrato: fluxo, tabela peça → arquivo, comando de verificação e
+   bloco UNVERIFIED onde o dado depende de conteúdo do cliente ou de medição que não existe.
+2. **`roadmap/doc_legacy/`** — README de substituição com contrato de arquivamento e o comando que
+   mostra o que ficou fora do site (`git ls-files`), em vez de mover arquivo às cegas.
 3. ~~Serviço `docs` no compose (porta 8000)~~ — **feito**: `docs/mkdocs.yml`, `docs/Dockerfile` e o
    serviço `mkdocs` no compose, sob `--profile docs`, para nada subir junto com o jogo:
    `docker compose --profile docs up mkdocs` (http://localhost:8000) e
    `docker compose --profile docs run --rm mkdocs build -f docs/mkdocs.yml --strict` como gate.
 
-Nenhum destes é bloqueio técnico: são conteúdo e decisão de mover arquivo, e ficam registrados aqui
-em vez de sumirem num "em andamento".
+Nada disso é bloqueio técnico — eram conteúdo e uma decisão de arquivamento, agora fechados. Evidência
+datada (06/11/2026, Windows + Git Bash):
+
+```make guias             # build-guias: 19 página(s)
+make guias-check       # exit 0 (sem diff em portal/src/content/guias.json)
+bash scripts/check-docs-links.sh
+                       # 139 link(s) relativos, 0 quebrado(s), 0 fora de docs/
+docker compose --profile docs run --rm mkdocs build -f docs/mkdocs.yml --strict
+                       # Documentation built in 46.06 seconds, exit 0
+npx vitest run         # 13 arquivos, 101 testes, 0 falha
+npx tsc --noEmit       # exit 0
+```
+
+O teste novo `portal/src/server/guias.test.ts` não checa só o JSON: ele varre as páginas de sistema,
+extrai todo arquivo `.go` citado entre crases e reprova se ele não existir em
+`tmserver/internal/handler`. Ao ser escrito, ele **achou quatro nomes mortos** no índice antigo
+(`attack.go`, `characterlogin.go`, `npcshop*.go`, `worldevents.go`) e três citações minhas sem caminho
+(`clan.go`, `event.go`, `nightmare_event.go` — este último nem existe, só o `_test.go`). Todos foram
+corrigidos; a auditoria em shell sobre `docs/sistemas/*.md` hoje não acusa nada.
 
 ## Riscos/rollback
 

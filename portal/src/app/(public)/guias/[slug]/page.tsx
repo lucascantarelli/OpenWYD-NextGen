@@ -33,6 +33,12 @@ export default async function GuiaPage({ params }: Params) {
   // gerado aqui, no servidor, e servido como conteúdo estático.
   const html = marked.parse(guia.body, { async: false }) as string;
 
+  // Navegação dentro da seção: com 12 páginas de sistema, chegar em "combate"
+  // e não ver o resto da seção deixaria o guia sem saída.
+  const siblings = listGuias().filter(
+    (candidate) => candidate.section === guia.section && candidate.slug !== guia.slug,
+  );
+
   return (
     <main className="guias">
       <Link className="guias__back" href="/guias">
@@ -41,6 +47,19 @@ export default async function GuiaPage({ params }: Params) {
       <p className="guias__eyebrow">{guia.sectionLabel}</p>
       <h1>{guia.title}</h1>
       <article className="guias__doc" dangerouslySetInnerHTML={{ __html: html }} />
+
+      {siblings.length > 0 && (
+        <nav className="guias__siblings" aria-label="Outros guias desta seção">
+          <h2>Nesta seção</h2>
+          <ul>
+            {siblings.map((item) => (
+              <li key={item.slug}>
+                <Link href={`/guias/${item.slug}`}>{item.title}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
     </main>
   );
 }

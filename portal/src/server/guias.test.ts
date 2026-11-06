@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { getGuia, groupGuias, listGuias } from "./guias";
@@ -51,5 +54,53 @@ describe("conteúdo de guias", () => {
   it("o guia do jogador e o do administrador existem", () => {
     expect(getGuia("comecando")?.title).toMatch(/jogador/i);
     expect(getGuia("portal")?.title).toMatch(/pap[eé]is/i);
+  });
+});
+
+/**
+ * Estrutura da seção de sistemas: uma página por sistema catalogado, na ordem
+ * de leitura declarada em `scripts/build-guias.mjs`.
+ */
+describe("sistemas de jogo", () => {
+  const slugs = listGuias()
+    .filter((guia) => guia.section === "sistemas")
+    .map((guia) => guia.slug);
+
+  it("publica o índice e uma página por sistema, na ordem de leitura", () => {
+    expect(slugs).toEqual([
+      "sistemas",
+      "personagem",
+      "combate",
+      "skills",
+      "drops",
+      "refino",
+      "quests",
+      "comercio",
+      "guildas",
+      "castelos",
+      "eventos",
+      "canais",
+      "mapa",
+    ]);
+  });
+
+  it("cada página, inclusive o índice, cita handler existente", () => {
+    // O vitest roda com cwd em portal/; o repositório é o diretório pai.
+    const handlerDir = path.resolve(process.cwd(), "..", "tmserver", "internal", "handler");
+    const paginas = listGuias().filter((guia) => guia.section === "sistemas");
+
+    for (const guia of paginas) {
+      const citados = [...guia.body.matchAll(/`([a-z0-9_]+\.go)`/g)].map((match) => match[1]);
+
+      expect(citados.length, `${guia.slug} não cita nenhum handler`).toBeGreaterThan(0);
+      for (const arquivo of citados) {
+        // Nome de arquivo só conta como citação quando está em crase; prosa
+        // histórica ("o que era attack.go") não é verificada de propósito.
+        expect(
+          existsSync(path.join(handlerDir, arquivo)),
+          `${guia.slug} cita handler/${arquivo}, que não existe`,
+        ).toBe(true);
+      }
+    }
   });
 });

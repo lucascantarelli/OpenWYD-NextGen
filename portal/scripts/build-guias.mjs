@@ -27,6 +27,34 @@ const SECTIONS = [
   { id: "lore", label: "História, guerras e reinos", order: 40, dir: "docs/lore" },
 ];
 
+/**
+ * Ordem de leitura das páginas de sistema. A ordem alfabética jogaria "castelos"
+ * antes de "personagem"; a leitura começa pelo que o jogador vive primeiro.
+ */
+const SYSTEM_ORDER = [
+  "personagem",
+  "combate",
+  "skills",
+  "drops",
+  "refino",
+  "quests",
+  "comercio",
+  "guildas",
+  "castelos",
+  "eventos",
+  "canais",
+  "mapa",
+];
+
+/** README primeiro (é a introdução da seção); o resto segue a ordem declarada. */
+function rankOf(sectionId, file) {
+  const base = file.replace(/\.md$/, "");
+  if (base === "README") return -1;
+  if (sectionId !== "sistemas") return 0;
+  const index = SYSTEM_ORDER.indexOf(base);
+  return index === -1 ? SYSTEM_ORDER.length : index;
+}
+
 const readDoc = (abs) => readFileSync(abs, "utf8").replace(/\r\n/g, "\n");
 
 const titleOf = (md, fallback) => md.match(/^#\s+(.+)$/m)?.[1].trim() ?? fallback;
@@ -87,7 +115,10 @@ for (const section of SECTIONS) {
   } catch {
     throw new Error(`build-guias: diretório ausente: ${section.dir}`);
   }
-  entries.sort();
+  entries.sort(
+    (a, b) =>
+      rankOf(section.id, a) - rankOf(section.id, b) || a.localeCompare(b),
+  );
 
   for (const file of entries) {
     const abs = path.join(dir, file);

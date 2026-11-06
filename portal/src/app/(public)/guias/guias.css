@@ -142,3 +142,30 @@
   font-size: 12px;
   margin-top: var(--space-1);
 }
+
+.guias__siblings {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.guias__siblings ul {
+  columns: 2;
+  column-gap: var(--space-4);
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.guias__siblings li {
+  break-inside: avoid;
+  margin-bottom: var(--space-2);
+}
+
+.guias__siblings a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.guias__siblings a:hover {
+  text-decoration: underline;
+}

@@ -84,6 +84,18 @@ nav:
           - Portal e papéis: guias/admin/portal.md
   - Sistemas de jogo:
       - Índice: sistemas/README.md
+      - Personagem e evolução: sistemas/personagem.md
+      - Combate e dano: sistemas/combate.md
+      - Skills e afects: sistemas/skills.md
+      - Drops: sistemas/drops.md
+      - Refino e combine: sistemas/refino.md
+      - Quests e diária: sistemas/quests.md
+      - Comércio e loja: sistemas/comercio.md
+      - Guildas: sistemas/guildas.md
+      - Castelos, Kefra e torre: sistemas/castelos.md
+      - Eventos globais: sistemas/eventos.md
+      - Canais e troca: sistemas/canais.md
+      - Mapa e teleporte: sistemas/mapa.md
   - História, guerras e reinos:
       - História: lore/historia.md
       - Guerras: lore/guerras.md

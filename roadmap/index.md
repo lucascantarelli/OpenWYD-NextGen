@@ -98,7 +98,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
 | Postgres acessado só como superusuário; sem restore testado | DSN linhas 34/58 | [DB-01](issues/DB-01.md) |
 | Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
-| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde, 6 ADRs, tema do portal e `/guias` no portal lendo `docs/` (7 páginas, JSON versionado); falta página por sistema | [DOC-01](issues/DOC-01.md) |
+| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](issues/DOC-01.md) |
 | Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](issues/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](issues/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
@@ -335,6 +335,18 @@ Grafo da Fase 6:
   Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
   `npx vitest run` 12 arquivos / 93 testes · `tsc --noEmit` exit 0 ·
   `mkdocs build --strict` exit 0 (container) · `check-skips`/`check-comments`/`check-docs-links` verdes.
+- **2026-11-06 (sistemas + doc_legacy, fecha DOC-01)** — uma página por sistema em `docs/sistemas/`
+  (personagem, combate, skills, drops, refino, quests, comércio, guildas, castelos, eventos, canais,
+  mapa), cada uma com fluxo, tabela peça → arquivo, comando de verificação e UNVERIFIED onde o dado
+  depende de conteúdo. O índice de sistemas citava quatro handlers que **não existem**
+  (`attack.go`, `characterlogin.go`, `npcshop*.go`, `worldevents.go`) e regras em §1–§8 trocadas; o
+  mapa foi refeito contra a lista real de `tmserver/internal/handler`. `roadmap/doc_legacy/README.md`
+  registra o contrato de arquivamento e como provar que nada ficou órfão. O gerador ganhou ordem de
+  leitura (`SYSTEM_ORDER`), o portal ganhou navegação "nesta seção" e o teste novo
+  `guias.test.ts` extrai todo `.go` citado e reprova arquivo inexistente — foi ele que pegou
+  `clan.go`, `event.go` e `nightmare_event.go` (este nem existe: só o `_test.go`).
+  Verification: `make guias` 19 páginas · `make guias-check` exit 0 · 139 links / 0 quebrado / 0 fora ·
+  `mkdocs build --strict` 46,06 s exit 0 · `npx vitest run` 13 arquivos / 101 testes · `tsc` exit 0.
 - **2026-11-06 (mkdocs → portal)** — a documentação passou a alimentar o portal. O site ganhou a
   identidade visual do portal (`docs/assets/portal-theme.css` com os tokens de `portal/src/app/globals.css`,
   `font: false` para não baixar Roboto) e as features **built-in** do Material (tabs, sections, top,
