@@ -152,7 +152,7 @@ test-channel:
 	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
 	W2PP_E2E_SLOT=$${W2PP_E2E_SLOT:-0} \
 	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
-	go test -tags=e2e -run 'TestE2EChannelChange|TestE2EServerChangeSameChannel' ./tmserver/internal/world/ -v
+	go test -tags=e2e -run 'TestE2EChannelChange|TestE2EServerChangeSameChannel|TestE2EClientReloginPacket' ./tmserver/internal/world/ -v
 
 run:
 	go run ./tmserver/cmd/tmserver

@@ -48,6 +48,10 @@ até o patch existir.
 
 ```bash
 go test ./internal/crossover/ ./tmserver/internal/handler/ -run 'ServerChange|NewbieChannel'
+
+# ciclo completo na stack viva, do lado do cliente (pacote montado pelos fontes
+# compartilhados: Basedef.h + CPSock.cpp), incluindo relogin no canal de destino
+make test-channel
 ```
 
 No jogo: `/srv 2` e conferir que o personagem entra no outro canal sem redigitar senha; repetir o mesmo

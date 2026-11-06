@@ -509,6 +509,7 @@ responder — o "NextGen-2" do ESC é caminho só do cliente e precisa de patch 
 | comando `/srv <n>` que emite o frame | `tmserver/internal/handler/serverchange.go` |
 | token aceito no campo `Zero[52]` do login, enviado ao db como senha | `handler/login.go` |
 | validação do token no login | `dbserver/internal/grpcsrv/server.go` (`WithCrossoverKey`) |
+| prova do ciclo pelo lado do cliente: `Enc` lido pela regra do cliente (`*%d`) e relogin montado com o struct de `Basedef.h:1546-1561` + enquadramento de `CPSock.cpp:535-583` | `tmserver/internal/world/e2e_client_relogin_test.go` |
 
 ### 8.2 Referência: o `serverlist.bin` do WYD Global
 
