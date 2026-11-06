@@ -91,21 +91,47 @@ const (
 
 // notify sends a client notification.
 //
-// UNVERIFIED: the exact wire format of the _NN_*/_DN_* notifications is not yet
-// captured. As a placeholder we send MSG_MessageBoxOk carrying the 4-byte notice
-// code; the real format (notification id / Language.txt string) is pinned once a
-// capture exists (parity-tests.md §5). Handler tests assert the Type + code, not
-// the final byte layout.
+// O aviso vai como **texto** (`MSG_MessagePanel`, HEADER.ID 0), pelo mesmo
+// caminho do `SendClientMessage` legado: é o único formato que o cliente 7662
+// realmente desenha. O corpo numérico antigo (`MSG_MessageBoxOk` com 4 bytes)
+// deixava o `String[96]` vazio — o cliente abria uma caixa em branco, ou nada —,
+// e foi por isso que "comprar sem gold" e dezenas de outras recusas pareciam
+// "não fazer nada" (QA 05/11, loja pessoal 06/11).
 //
-// Do NOT use this for the login refusals: MSG_MessageBoxOk is
-// {int Useless1; int Useless2; char String[96]} (Basedef.h:1534-1541), so a
-// 4-byte body leaves the string empty and the client shows a blank dialog. The
-// five login refusals with a confirmed Language.txt text go through
-// sendClientMessage instead (issue 32 / QA 2026-11-04).
+// O código numérico continua sendo o último recurso, só para um aviso que ainda
+// não tem texto confirmado em Language.txt: nesse caso o handler loga em Debug
+// (`notice without text`) para a lacuna aparecer na auditoria em vez de sumir.
 func (d *Dispatcher) notify(w *world.World, s *world.Session, n Notice) {
+	if text := noticeText(n); text != "" {
+		d.sendClientMessage(w, s, text)
+		return
+	}
+	d.log.Debug("notice without text", "conn", s.Conn, "code", uint32(n))
 	var b [4]byte
 	binary.LittleEndian.PutUint32(b[:], uint32(n))
 	w.Send(s, protocol.MsgMessageBoxOk, b[:])
+}
+
+// noticeText mapeia cada aviso ao texto de Language.txt. Só entram aqui os
+// textos confirmados na tabela; o resto continua no caminho numérico (invisível)
+// até ser conferido — inventar string é pior que a caixa vazia, porque parece
+// funcionar.
+func noticeText(n Notice) string {
+	switch n {
+	case NoticeNotEnoughMoney:
+		return notEnoughMoney // _NN_Not_Enough_Money (113)
+	case NoticeNoSpaceToTrade:
+		return tradeNoSpace // _NN_You_Have_No_Space_To_Trade (86)
+	case NoticeNotConnected:
+		return partyTargetGone // _NN_Not_Connected (91)
+	case NoticeItemSold:
+		return itemSoldText // _NN_ItemSold (171)
+	case NoticeOnlyVillage:
+		return onlyVillageText // _NN_OnlyVillage (172)
+	case NoticeCantDropHere:
+		return cantDropHereText // _NN_Cant_Drop_Here (117)
+	}
+	return ""
 }
 
 // sendClientMessage mirrors the legacy SendClientMessage (SendFunc.cpp:27-43): a
@@ -126,6 +152,11 @@ const (
 	onlyMerchantBuyYours = "Poss\xedvel vender somente para comerciantes." // _NN_Only_Merchant_Buy_Yours (116)
 
 	cantWithArmor = "No momento voc\xea n\xe3o pode equipar arma e armadura." // _NN_Cant_with_armor (205)
+
+	// Vendas/loja pessoal (Language.txt:171/172) e drop no chão.
+	itemSoldText     = "O item foi vendido."                       // _NN_ItemSold (171)
+	onlyVillageText  = "Apenas na cidade."                         // _NN_OnlyVillage (172)
+	cantDropHereText = "N\xe3o \xe9 poss\xedvel jogar itens aqui." // _NN_Cant_Drop_Here (117)
 
 	newbieZone = "Somente n\xedvel 35 ou inferior pode entrar no campo de treinamento." // _NN_Newbie_zone (46)
 
