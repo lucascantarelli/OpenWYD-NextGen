@@ -18,7 +18,7 @@ func main() {
 	bucket := flag.String("bucket", envOr("W2PP_STORAGE_MANAGER_BUCKET", "jeanluca-teste"), "S3 bucket managed by storage-manager-server")
 	token := flag.String("token", os.Getenv("W2PP_STORAGE_MANAGER_TOKEN"), "optional bearer token")
 	packDir := flag.String("pack", "dist/item-icons", "generated item icon pack")
-	auditPath := flag.String("audit", "", "audit JSON path (default docs/audits/item-icons-upload-<version>.json)")
+	auditPath := flag.String("audit", "", "audit JSON path (default <pack>/item-icons-upload-<version>.json)")
 	flag.Parse()
 
 	manifest, err := itemicons.Load(filepath.Join(*packDir, "manifest.json"))
@@ -26,7 +26,10 @@ func main() {
 		log.Fatal(err)
 	}
 	if *auditPath == "" {
-		*auditPath = filepath.Join("docs", "audits", "item-icons-upload-"+manifest.PackVersion+".json")
+		// A trilha fica ao lado do pack publicado, não em docs/: `docs/` é
+		// conteúdo de site versionado, e um JSON de execução lá dentro polui o
+		// site (e o gate de links) com artefato de máquina.
+		*auditPath = filepath.Join(*packDir, "item-icons-upload-"+manifest.PackVersion+".json")
 	}
 	audit, err := itemicons.Upload(itemicons.UploadConfig{
 		Endpoint: *endpoint, Bucket: *bucket, Token: *token, PackDir: *packDir, AuditPath: *auditPath,

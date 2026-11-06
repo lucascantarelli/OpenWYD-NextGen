@@ -123,10 +123,14 @@ nav:
   - Banco de dados:
       - Auditoria do schema: analysis/banco-de-dados.md
       - Persistência de conteúdo: analysis/persistencia-conteudo.md
+      - Qualidade e normalização de dados: analysis/qualidade-dados.md
   - Portal:
       - Papéis e rotas: analysis/portal-papeis.md
       - NPCs no Next.js: integrations/npc-admin-nextjs.md
       - Faturamento: integrations/faturamento-nextjs.md
+  - Legado:
+      - Release e dependências: analysis/release-dependencias.md
+      - ClientPatch (dependência do cliente): analysis/legado-clientpatch.md
   - Cliente:
       - Visão do cliente: client.md
       - Launcher: analysis/cliente-launcher.md

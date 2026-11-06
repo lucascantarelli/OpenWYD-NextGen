@@ -36,6 +36,7 @@ import (
 	"openwyd-nextgen/internal/savefmt"
 	"openwyd-nextgen/internal/store"
 	"openwyd-nextgen/internal/textenc"
+	"openwyd-nextgen/internal/textnorm"
 	"openwyd-nextgen/tmserver/internal/content"
 )
 
@@ -215,11 +216,13 @@ func buildItems(l *content.ItemList) []domain.ItemCatalogEntry {
 	entries := l.Entries()
 	out := make([]domain.ItemCatalogEntry, 0, len(entries))
 	for _, e := range entries {
-		// The CSVs are Windows-1252; the database only accepts UTF-8.
-		fields := textenc.Slice(e.Fields)
+		// The CSVs are Windows-1252; the database only accepts UTF-8. Depois da
+		// conversão, `textnorm.Clean` fecha NFC, espaço e controle — o que
+		// `utf8.ValidString` não pega.
+		fields := textnorm.Slice(textenc.Slice(e.Fields))
 		it := domain.ItemCatalogEntry{
 			Index:  e.Index,
-			Name:   textenc.ToUTF8(e.Name),
+			Name:   textnorm.Clean(textenc.ToUTF8(e.Name)),
 			Fields: fields,
 			// Slice vazio, nunca nil: json.Marshal de nil vira `null`, que o
 			// json_populate_record relê como SQL NULL e viola o NOT NULL do
@@ -263,7 +266,7 @@ func buildSkills(s *content.SkillData) []domain.SkillCatalogEntry {
 		}
 		out = append(out, domain.SkillCatalogEntry{
 			Index:             sp.Index,
-			Name:              textenc.ToUTF8(sp.Name),
+			Name:              textnorm.Clean(textenc.ToUTF8(sp.Name)),
 			SkillPoint:        int16(sp.SkillPoint),
 			TargetType:        int16(sp.TargetType),
 			ManaSpent:         int16(sp.ManaSpent),
@@ -316,8 +319,8 @@ func buildTemplates(contentDir string, logger *slog.Logger) ([]domain.NPCTemplat
 		}
 		sum := sha256.Sum256(blob)
 		out = append(out, domain.NPCTemplateEntry{
-			Name:       textenc.ToUTF8(name),
-			FileName:   textenc.ToUTF8(name),
+			Name:       textnorm.Clean(textenc.ToUTF8(name)),
+			FileName:   textnorm.Clean(textenc.ToUTF8(name)),
 			SourceSize: int16(len(raw)),
 			SHA256:     hex.EncodeToString(sum[:]),
 			Blob:       blob,
@@ -355,9 +358,9 @@ func runCheck(ctx context.Context, s *store.Store, cat catalog, want map[string]
 		return 1
 	}
 	rows := []struct {
-		set       string
-		name      string
-		file, db  int
+		set      string
+		name     string
+		file, db int
 	}{
 		{"item", "item_catalog", len(cat.Items), counts.Items},
 		{"skill", "skill_catalog", len(cat.Skills), counts.Skills},

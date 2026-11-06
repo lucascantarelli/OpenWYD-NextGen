@@ -85,7 +85,8 @@ fazem a API falhar depois da gravação e não devem ser usados até o
 storage-manager migrar de ACL por objeto para bucket policy/presigned URL.
 
 Todas as URLs, hashes, horários e estados ficam em
-`docs/audits/item-icons-upload-<pack_version>.json`. Token opcional pode ser
+`dist/item-icons/item-icons-upload-<pack_version>.json` (ao lado do pack — auditoria de execução
+não vive em `docs/`). Token opcional pode ser
 fornecido em `W2PP_STORAGE_MANAGER_TOKEN`, mas nunca entra na auditoria.
 
 ## Web-api e implantação

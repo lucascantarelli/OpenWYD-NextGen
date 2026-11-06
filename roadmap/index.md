@@ -335,6 +335,26 @@ Grafo da Fase 6:
   Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
   `npx vitest run` 12 arquivos / 93 testes · `tsc --noEmit` exit 0 ·
   `mkdocs build --strict` exit 0 (container) · `check-skips`/`check-comments`/`check-docs-links` verdes.
+- **2026-11-06 (legado e dados)** — três frentes de "tirar o legado do caminho".
+  **(a) Auditoria fora do site:** `docs/audits/` removido; o `itemiconupload` passou a gravar a
+trilha ao lado do pack (`dist/item-icons/item-icons-upload-<versão>.json`), porque auditoria de
+execução não é conteúdo de site nem entra no gate de links.
+  **(b) Análise de dependência:** `docs/analysis/release-dependencias.md` classifica os 141 arquivos
+(55 MB) de `Release/` em runtime, insumo de importação e resíduo Win32, e abre a `LEGACY-02` para
+mover o runtime para `tmserver/content/`; `docs/analysis/legado-clientpatch.md` prova que o
+`ClientPatch_v7662` **não** tem dependência de build ou runtime no servidor — só quatro comentários
+e a solution — e define o critério de saída.
+  **(c) Qualidade de dados:** `scripts/check-data-quality.sql` auditou 50 tabelas (`item_catalog`
+3.220 linhas): 0 fora de NFC, 0 espaço nas pontas, 0 caractere de controle. Os 37 "mojibake"
+acusados eram **falso positivo** da própria consulta (`Âmbar`, `Âmago` são português) — heurística
+corrigida para sequências completas de duplo encoding. Entrou `internal/textnorm` (controle →
+reparo CP1252 → colapso de espaço → NFC, idempotente), ligado ao `importcontent`, mais a migration
+`0002_normalize_text.up.sql` (idempotente, só tabelas de conteúdo) e
+`docs/analysis/qualidade-dados.md` com as práticas adotadas.
+  Verification: `go build ./...` exit 0 · `go vet` exit 0 · `go test ./internal/textnorm/` verde
+(6 casos) · migration aplicada no Postgres 17 (`DO`) · auditoria `OK: nenhuma coluna de texto com
+problema` · `check-docs-links` 140 links / 0 quebrado / 0 fora · `mkdocs build --strict` 40,81 s
+· `go test ./...` sem falha.
 - **2026-11-06 (sistemas + doc_legacy, fecha DOC-01)** — uma página por sistema em `docs/sistemas/`
   (personagem, combate, skills, drops, refino, quests, comércio, guildas, castelos, eventos, canais,
   mapa), cada uma com fluxo, tabela peça → arquivo, comando de verificação e UNVERIFIED onde o dado

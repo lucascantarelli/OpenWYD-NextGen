@@ -23,7 +23,8 @@ item-icons:
 	go run ./webserver/cmd/itemiconpack -client "$(CLIENT_DIR)" -content Release -out "$${OUTPUT_DIR:-dist/item-icons}"
 
 # Publish through Jean1dev/storage-manager-server. The command is resumable and
-# writes every returned URL to docs/audits/item-icons-upload-<version>.json.
+# writes every returned URL to dist/item-icons/item-icons-upload-<version>.json
+# (ao lado do pack, fora de docs/: auditoria de execução não é conteúdo de site).
 item-icons-publish:
 	sh ./scripts/upload-item-icons-storage-manager.sh
 
