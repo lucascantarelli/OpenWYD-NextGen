@@ -179,7 +179,7 @@ message ListMyCharactersResponse {
 // screens that have to render an item (donate shop, daily reward, drop tables,
 // world events). Unlike NpcAdminService.ListItemCatalog it takes no
 // moderator_id: the catalog is public, immutable content read from the
-// read-only Release/ mount at boot, not account data.
+// read-only tmserver/content/ mount at boot, not account data.
 //
 // The whole list is ~3.2k entries; the BFF is expected to fetch it once and
 // cache it against catalog_version rather than call per item.
@@ -239,11 +239,11 @@ service NpcAdminService {
   // DeleteNpc removes a definition.
   rpc DeleteNpc(DeleteNpcRequest) returns (AdminAck);
   // ListMerchantTemplates returns the supported NPC templates found in the
-  // content tree (Release/TMsrv/run/npc/), so the moderator UI can offer a
+  // content tree (tmserver/content/TMsrv/run/npc/), so the moderator UI can offer a
   // searchable picker instead of a free-text template_name field. Scanned once
   // at web-api boot from -content/W2PP_CONTENT; empty when that flag is unset.
   rpc ListMerchantTemplates(ListMerchantTemplatesRequest) returns (ListMerchantTemplatesResponse);
-  // ListItemCatalog returns the item catalog (Release/Common/ItemList.csv:
+  // ListItemCatalog returns the item catalog (tmserver/content/Common/ItemList.csv:
   // item_index, name), so the shop-item editor (SetNpcShop/SetItemPrice) can
   // offer a searchable picker instead of a raw item_index typed by hand.
   // Scanned once at web-api boot from -content/W2PP_CONTENT; empty when unset.
@@ -364,7 +364,7 @@ message DeleteNpcRequest {
 }
 
 // MerchantTemplate is one supported STRUCT_MOB template found under
-// Release/TMsrv/run/npc/.
+// tmserver/content/TMsrv/run/npc/.
 message MerchantTemplate {
   string template_name = 1; // exact value for UpsertNpc.template_name (no .txt)
   string display_name = 2;  // the template's mob.Name, for the picker UI
@@ -377,7 +377,7 @@ message ListMerchantTemplatesResponse {
   repeated MerchantTemplate templates = 2;
 }
 
-// ItemCatalogEntry is one row of Release/Common/ItemList.csv, trimmed to what
+// ItemCatalogEntry is one row of tmserver/content/Common/ItemList.csv, trimmed to what
 // the shop-item picker and the item icons need (the full row also carries
 // price/effects, not relevant here — see tmserver/internal/content.ItemEntry).
 //
@@ -409,7 +409,7 @@ message ListItemCatalogResponse {
 }
 
 message DropItemMob {
-  string template_name = 1; // Release/TMsrv/run/npc file name
+  string template_name = 1; // tmserver/content/TMsrv/run/npc file name
   string mob_name = 2;      // STRUCT_MOB.Name decoded as Latin-1
   int32 mob_level = 3;      // STRUCT_MOB.CurrentScore.Level
   int32 slot = 4;           // Carry[] slot; controls the base drop divisor
@@ -443,7 +443,7 @@ message MobDropItem {
 }
 
 message MobDropEntry {
-  string template_name = 1; // Release/TMsrv/run/npc file name
+  string template_name = 1; // tmserver/content/TMsrv/run/npc file name
   string mob_name = 2;      // STRUCT_MOB.Name decoded as Latin-1
   int32 mob_level = 3;      // STRUCT_MOB.CurrentScore.Level
   repeated MobDropItem items = 4;
@@ -500,7 +500,7 @@ message ListMapZonesResponse {
 // EDITAPPMOB's own restart-to-apply behavior).
 service MobTemplateAdminService {
   // ListMobTemplates returns every STRUCT_MOB template file found in the
-  // content tree (Release/TMsrv/run/npc/) — unlike NpcAdminService's
+  // content tree (tmserver/content/TMsrv/run/npc/) — unlike NpcAdminService's
   // ListMerchantTemplates, this is NOT filtered to merchants: monsters are the
   // primary rebalancing use case for this tool.
   rpc ListMobTemplates(ListMobTemplatesRequest) returns (ListMobTemplatesResponse);
@@ -517,12 +517,12 @@ service MobTemplateAdminService {
   // NpcAdminService.SetNpcShop on the NPC definition existing).
   rpc SetMobTemplateEquip(SetMobTemplateEquipRequest) returns (AdminAck);
   // DeleteMobTemplateStat removes the override, reverting the template to its
-  // raw file defaults (never deletes the underlying file — Release/ is
+  // raw file defaults (never deletes the underlying file — tmserver/content/ is
   // read-only in production).
   rpc DeleteMobTemplateStat(DeleteMobTemplateStatRequest) returns (AdminAck);
 }
 
-// MobTemplateFile is one STRUCT_MOB template found under Release/TMsrv/run/npc/,
+// MobTemplateFile is one STRUCT_MOB template found under tmserver/content/TMsrv/run/npc/,
 // unfiltered (see ListMobTemplates).
 message MobTemplateFile {
   string template_name = 1; // exact value for Upsert/GetMobTemplateStat.template_name
@@ -628,7 +628,7 @@ message DeleteMobTemplateStatRequest {
 
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
 // Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
-// Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
+// tmserver/content/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.
 service AttributeMapAdminService {
@@ -1606,7 +1606,7 @@ message AdminCharacterSummary {
 message AdminCharacterItem {
   int32 slot = 1;
   int32 item_index = 2;
-  // name/icon_url come from the item catalog (Release/Common/ItemList.csv).
+  // name/icon_url come from the item catalog (tmserver/content/Common/ItemList.csv).
   // The UI shows the name; the index stays for the link to /itens/<index>.
   string name = 10;
   string icon_url = 11;
@@ -1957,7 +1957,7 @@ message ResetDropRateRequest {
 }
 
 // ContentRatesService edits the percentage tables under
-// Release/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
+// tmserver/content/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
 // QuestsRate (recompensas de quest). The files are mounted read-only, so an edit
 // is an overlay row in content_rate_override; tmServer applies it at boot behind
 // `-rates-editing`. The process flags are NOT editable here.
