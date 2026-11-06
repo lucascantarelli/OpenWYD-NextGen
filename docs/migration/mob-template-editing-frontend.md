@@ -55,7 +55,7 @@ As RPCs **não** usam códigos de erro gRPC para regras de negócio — só para
 
 | campo | tipo | descrição |
 |---|---|---|
-| `template_name` | string | nome exato do arquivo em `Release/TMsrv/run/npc/` — valor a enviar em `GetMobTemplateStat`/`Upsert...`/`SetMobTemplateEquip`/`Delete...` |
+| `template_name` | string | nome exato do arquivo em `tmserver/content/TMsrv/run/npc/` — valor a enviar em `GetMobTemplateStat`/`Upsert...`/`SetMobTemplateEquip`/`Delete...` |
 | `display_name` | string | `mob.Name` do arquivo, só para exibir na lista/busca |
 | `merchant` | int32 | `CurrentScore.Merchant` cru do arquivo — **informativo apenas** (ver nota abaixo sobre o campo `merchant` duplicado) |
 | `overridden` | bool | `true` = já existe override de stats no banco para esse template. Como o dado vem do Postgres (não do arquivo), `ListTemplates` resolve o flag numa consulta única por chamada e devolve uma cópia da lista escaneada no boot — use-o para badge/filtro, **nunca** faça um `GetMobTemplateStat` por item da lista |
@@ -155,7 +155,7 @@ slot duplicado na lista → `ADMIN_RESULT_INVALID`.
 ### `DeleteMobTemplateStat(moderator_id, template_name) → AdminAck`
 Remove o override — o template volta a usar os valores crus do arquivo (o `EDITAPPMOB` nunca fez
 isso via UI, ele reescrevia o arquivo; aqui "deletar" é reverter pro default, não apagar nada em
-disco). **Nunca** apaga o arquivo `npc/<nome>` em si — `Release/` é montado read-only em produção.
+disco). **Nunca** apaga o arquivo `npc/<nome>` em si — `tmserver/content/` é montado read-only em produção.
 
 ## 5. Fluxo de sessão (login web)
 
@@ -238,6 +238,6 @@ export async function setMobTemplateEquip(templateName: string, items: AdminMobT
 - **Editar posição de spawn do subconjunto gerido pelo banco** — use
   `NpcAdminService.UpsertNpc` (`pos_x`/`pos_y`).
 - **Renomear ou apagar o arquivo de template** — `DeleteMobTemplateStat` só remove o override; o
-  arquivo em `Release/` nunca é tocado.
+  arquivo em `tmserver/content/` nunca é tocado.
 - **`SpecialBonus`, `SkillBonus`, `Critical`, `GuildLevel`, `Magic`** — o `EDITAPPMOB` legado
   também não editava esses campos, então não há RPC pra eles.

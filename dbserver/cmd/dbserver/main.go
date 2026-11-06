@@ -191,7 +191,7 @@ func runServe(args []string, logger *slog.Logger) error {
 	dbv1.RegisterAccountServiceServer(srv, grpcsrv.New(st).WithCrossoverKey(os.Getenv("W2PP_CROSSOVER_KEY")))
 	dbv1.RegisterNpcConfigServiceServer(srv, grpcsrv.NewNpcConfig(st))
 	// Catálogos de conteúdo (issue 58): o tmServer lê itens/skills/templates/
-	// objetos do mundo daqui em vez dos arquivos de Release/.
+	// objetos do mundo daqui em vez dos arquivos de tmserver/content/.
 	dbv1.RegisterContentCatalogServiceServer(srv, grpcsrv.NewContentCatalog(st))
 	dbv1.RegisterTeleportConfigServiceServer(srv, grpcsrv.NewTeleportConfig(st))
 	dbv1.RegisterItemEffectConfigServiceServer(srv, grpcsrv.NewItemEffectConfig(st))

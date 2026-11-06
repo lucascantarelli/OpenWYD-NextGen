@@ -3,7 +3,7 @@
 #
 # Brings up the 4 services (PostgreSQL + dbServer + binServer + tmServer) via
 # docker compose, seeds one test account so you can actually log in, mounts the
-# Release/ content tree into tmServer, and prints the IP:port to point the client
+# content tree into tmServer, and prints the IP:port to point the client
 # (WYD.exe) at — generate a serverlist.bin for that address with the
 # "serverlist editor.exe" and copy it into the client folder.
 #

@@ -90,7 +90,7 @@ export function MobTable({ templates }: { templates: readonly MobTemplateFile[] 
         getRowKey={(row) => row.template_name}
         searchText={(row) => `${row.template_name} ${row.display_name}`}
         searchPlaceholder="template ou nome do mob…"
-        caption="Templates de Release/TMsrv/run/npc/ — monstros e mercadores"
+        caption="Templates de tmserver/content/TMsrv/run/npc/ — monstros e mercadores"
       />
     </>
   );

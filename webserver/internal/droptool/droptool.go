@@ -25,7 +25,7 @@ type ItemEntry struct {
 	Name  string
 }
 
-// MobEntry is one decoded mob template from Release/TMsrv/run/npc.
+// MobEntry is one decoded mob template from tmserver/content/TMsrv/run/npc.
 type MobEntry struct {
 	TemplateName string
 	DisplayName  string
@@ -192,7 +192,7 @@ func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctem
 
 // FromBlobs builds the same catalog from what the database holds â€” the item
 // catalog rows plus the canonical STRUCT_MOB blobs of npc_template (issue
-// 58/62). ItemList.csv and npc/ both left Release/ in phase 5, so the directory
+// 58/62). ItemList.csv and npc/ both left tmserver/content/ in phase 5, so the directory
 // scan can only come up empty.
 func FromBlobs(items []itemcatalog.Entry, blobs map[string][]byte, opts Options) (Catalog, npctemplate.ScanStats) {
 	out, stats, _ := build(items, opts, func(visit func(string, savefmt.Mob)) (npctemplate.ScanStats, error) {

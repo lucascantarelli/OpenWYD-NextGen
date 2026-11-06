@@ -10,7 +10,7 @@
 Browser ──HTTPS──> Next.js BFF
                         │ gRPC + mTLS
                         ▼
-                     web-api ── lê Release/TMsrv/run/AttributeMap.dat
+                     web-api ── lê tmserver/content/TMsrv/run/AttributeMap.dat
 ```
 
 - O browser nunca fala gRPC nem recebe certificados mTLS.

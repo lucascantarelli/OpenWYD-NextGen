@@ -7,7 +7,7 @@ Levantada junto com a issue #267 (Samaritano), quando a pergunta virou *"por que
 mapeada, para a próxima frente não precisar redescobrir.
 
 Escopo varrido: `tmserver/internal/handler/{affect_score,affect_tick,combat,item,summon,transform}.go`,
-`tmserver/internal/world/affect.go`, `Release/Common/SkillData.csv`, `Source/Code/Basedef.cpp`,
+`tmserver/internal/world/affect.go`, `tmserver/content/Common/SkillData.csv`, `Source/Code/Basedef.cpp`,
 `Source/Code/TMSrv/{Server,_MSG_Attack}.cpp` e `Source/Buff Loop.txt`.
 
 ## 1. `Con` é um stat de saída morta
@@ -54,7 +54,7 @@ sistema de tiers celestiais (`celestial-system-plan.md`).
 ## 3. Tick types 3, 12 e 46 do CSV não são tratados
 
 `processAffect` (`affect_tick.go:66-89`) cobre 17/20/22/23. A coluna 9 (`TickType`) do
-`Release/Common/SkillData.csv` também traz:
+`tmserver/content/Common/SkillData.csv` também traz:
 
 | Skill | Nome | TickType |
 |------:|------|---------:|

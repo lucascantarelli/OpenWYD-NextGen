@@ -1,4 +1,4 @@
-# Persistência: arquivos de `Release/` versus banco de dados
+# Persistência: arquivos de `tmserver/content/` versus banco de dados
 
 Pergunta central: **é possível parar de ler texto/CSV no boot e viver só de Postgres?** Resposta:
 sim para o conteúdo de jogo, não para mapas binários e assets do cliente — e há um caminho de
@@ -41,7 +41,7 @@ tornar o arquivo *seed* e o banco a fonte de verdade.
 ## 3. Desenho recomendado: importar uma vez, servir do banco
 
 ```
-Release/ (read-only)                      Postgres
+tmserver/content/ (read-only)                      Postgres
   ItemList.csv  ─┐                    ┌─ content_item (seed + versão)
   NPCGener.txt  ─┼─ importador ──────►├─ content_spawn
   SkillData.csv ─┤  (idempotente,     ├─ content_skill
@@ -74,19 +74,19 @@ Regras que preservam o que já funciona:
 
 ## 5. Limitações reais
 
-1. **Compatibilidade com o cliente não é afetada** — o cliente nunca lê `Release/`; só o servidor.
+1. **Compatibilidade com o cliente não é afetada** — o cliente nunca lê `tmserver/content/`; só o servidor.
 2. **Ferramentas de terceiros** (editores antigos do fórum) esperam CSV. Se a operação abandonar essas
    ferramentas (já abandonou: portal cobre), o CSV pode ser apenas export.
 3. **Diagnóstico**: hoje um valor estranho se investiga abrindo CSV. Com banco, é preciso uma tela/SQL
    e um export de volta — o portal já tem `/itens`, `/mobs`, `/drops`, `/npcs`.
-4. **Backup**: hoje `Release/` + dump. Depois, só dump (mais simples, mas o dump cresce).
+4. **Backup**: hoje `tmserver/content/` + dump. Depois, só dump (mais simples, mas o dump cresce).
 5. **Tempo de boot**: sai de ~40 s de scan (logs atuais: 1.991 templates + 20.680 drops) para leitura
    de banco; medir antes/depois — é ganho, mas precisa de número (issue 50 exige medição).
 
 ## 6. Entregável da issue 50
 
 - Migrações `content_item`, `content_skill`, `content_spawn` (+ `content_seed`).
-- `make content-import` + comando `tmserver -import-content=Release` (idempotente).
+- `make content-import` + comando `tmserver -import-content=tmserver/content` (idempotente).
 - `tmserver` lendo do banco com flag `-content-source=db|files` (default `db` após validação).
 - Golden test de hash de catálogo + comparação de 10 itens/mobs/skills sorteados.
-- Remoção do volume `./Release:/Release:ro` dos serviços que não precisam mais (portal nunca precisou).
+- Volume único `./tmserver/content:/content:ro` (LEGACY-02); o portal só lê o CSV de preço, quando existe.

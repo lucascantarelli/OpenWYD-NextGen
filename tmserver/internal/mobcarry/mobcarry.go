@@ -4,7 +4,7 @@
 //
 // The Carry[] table is a mob's drop table: the SLOT decides the item's rarity
 // (DropRate[slot] is the divisor) and the item in it is what falls. Editing it
-// from the web is an overlay row in mob_carry_override; the file in Release/ is
+// from the web is an overlay row in mob_carry_override; the file in tmserver/content/ is
 // never written. The overlay is applied at template load, once at boot, behind
 // -mob-carry-editing (OFF = files exactly as they are).
 //

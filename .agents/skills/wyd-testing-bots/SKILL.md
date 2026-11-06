@@ -65,7 +65,7 @@ Para reproduzir um pacote específico sem cliente:
    bug deste projeto é "estado certo, pacote errado".
 
 Fixtures ficam em `tmserver/test/fixtures/`; templates reais podem ser lidos de
-`Release/TMsrv/run/npc/<Nome>` (816 B), como fazem os testes de quest/kefra/subcelestial.
+`tmserver/content/TMsrv/run/npc/<Nome>` (816 B), como fazem os testes de quest/kefra/subcelestial.
 
 ## 4. Bots de QA
 

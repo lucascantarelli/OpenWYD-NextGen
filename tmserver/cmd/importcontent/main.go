@@ -1,6 +1,6 @@
 // Command importcontent seeds the content catalogs into PostgreSQL (issue 58,
 // fase 1): item_catalog (ItemList.csv), skill_catalog (SkillData.csv),
-// npc_template (Release/TMsrv/run/npc/*) and world_item_seed (InitItem.csv).
+// npc_template (tmserver/content/TMsrv/run/npc/*) and world_item_seed (InitItem.csv).
 //
 // It lives under tmserver/cmd — not dbserver — because the CSV/STRUCT_MOB
 // parsers are in tmserver/internal/content, and Go's internal visibility rule
@@ -10,7 +10,7 @@
 //
 // Usage:
 //
-//	importcontent -content <Release/> [-dsn <postgres-url>] [-sets item,skill,npc-template,world-item] [-check]
+//	importcontent -content <tmserver/content/> [-dsn <postgres-url>] [-sets item,skill,npc-template,world-item] [-check]
 //
 // Without -dsn it is a dry run (parses and reports counts). -check compares the
 // database counts against the files and exits 1 on any divergence, so CI can
@@ -43,7 +43,7 @@ import (
 // defaultSets is what a bare run imports.
 const defaultSets = "item,skill,npc-template,world-item"
 
-// catalog is everything parsed from Release/ in one pass.
+// catalog is everything parsed from tmserver/content/ in one pass.
 type catalog struct {
 	Items      []domain.ItemCatalogEntry
 	Skills     []domain.SkillCatalogEntry
@@ -59,7 +59,7 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	fs := flag.NewFlagSet("importcontent", flag.ExitOnError)
-	contentDir := fs.String("content", "", "caminho da árvore Release/")
+	contentDir := fs.String("content", "", "caminho da árvore tmserver/content/")
 	dsn := fs.String("dsn", os.Getenv("W2PP_DB_DSN"), "DSN do PostgreSQL; vazio = dry-run")
 	sets := fs.String("sets", defaultSets, "conjuntos: item,skill,npc-template,world-item")
 	check := fs.Bool("check", false, "não grava: compara banco com os arquivos e sai 1 se divergir")

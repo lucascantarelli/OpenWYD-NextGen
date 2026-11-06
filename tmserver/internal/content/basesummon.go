@@ -7,7 +7,7 @@ import (
 )
 
 // baseSummonFiles is the CNPCSummon::Initialize template order (CNPCGene.cpp:
-// 686-960): mSummon.Mob[i] is loaded from Release/TMsrv/run/BaseSummon/<name>.
+// 686-960): mSummon.Mob[i] is loaded from tmserver/content/TMsrv/run/BaseSummon/<name>.
 // Indices 0..7 are the BM evocation creatures (skills 56-63, InstanceValue-1);
 // 8+ are item/mount/event summons. Index 13 is "Dragao_menor" in the C++ but
 // the content file is "Dragao_Menor" — Windows opened it case-insensitively,

@@ -6,10 +6,10 @@
 >
 > Provas de origem:
 > - cidades: `tmserver/internal/world/city.go:18` (tabela fixa, `Basedef.cpp:54`)
-> - regiões: `Release/TMsrv/run/Regions.txt` (retângulos nomeados)
+> - regiões: `tmserver/content/TMsrv/run/Regions.txt` (retângulos nomeados)
 > - teleportes: `tmserver/internal/world/teleport.go:22` (`GetTeleportPosition`)
-> - itens fixos/portões: `Release/TMsrv/run/InitItem.csv` (48 linhas)
-> - spawns: `Release/TMsrv/run/NPCGener.txt` (6.099 geradores, ~11.930 mobs)
+> - itens fixos/portões: `tmserver/content/TMsrv/run/InitItem.csv` (48 linhas)
+> - spawns: `tmserver/content/TMsrv/run/NPCGener.txt` (6.099 geradores, ~11.930 mobs)
 
 ## 1. Cidades (5) — limite, spawn e arena de guerra
 

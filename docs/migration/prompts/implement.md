@@ -112,7 +112,7 @@ framing/initcode).
 ──────────────────────────────────────────
 FASE 2 — dbServer + CONVERSOR + PostgreSQL   → dbserver/
 ──────────────────────────────────────────
-Fonte: docs/migration/data-formats.md (+ DBSrv/CFileDB.cpp, CReadFiles.cpp; exemplos em Release/).
+Fonte: docs/migration/data-formats.md (+ DBSrv/CFileDB.cpp, CReadFiles.cpp; exemplos em tmserver/content/).
 - Serviço gRPC (contratos em api/) + schema PostgreSQL (migrations versionadas, pgx — guidelines §22).
 - CONVERSOR one-shot dos arquivos de conta: detectar versão por TAMANHO (4294 legado / 7500–7600 /
   7952 atual); codec por offset explícito emulando MSVC-x86 (long=4, time_t=8). Travar com
@@ -150,7 +150,7 @@ CRITÉRIO POR LOTE: golden cases do subsistema (Fase 8 §2.1–§2.7) verdes.
 FASE 5 — CONTEÚDO (LOADERS)   → loaders nos serviços apropriados
 ──────────────────────────────────────────
 Fonte: data-formats.md + game-rules.md. Loaders de ItemList, SkillData, NPCGener, mapas (HeightMap/
-AttributeMap), rates (Rates.txt/gameconfig). Validar contra exemplos reais de Release/.
+AttributeMap), rates (Rates.txt/gameconfig). Validar contra exemplos reais de tmserver/content/.
 
 ──────────────────────────────────────────
 FASE 6 — WAR/CASTLE + binServer   → tmserver/internal/world (war) + binserver/

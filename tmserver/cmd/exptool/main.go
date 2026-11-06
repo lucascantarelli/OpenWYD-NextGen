@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	npc := flag.String("npc", "Release/TMsrv/run/npc", "directory with the raw STRUCT_MOB templates")
+	npc := flag.String("npc", "tmserver/content/TMsrv/run/npc", "directory with the raw STRUCT_MOB templates")
 	dryRun := flag.Bool("dry-run", false, "report what would change without writing")
 	quiet := flag.Bool("quiet", false, "only print the summary line")
 	inventory := flag.Bool("inventory", false, "census the directory by STRUCT_MOB layout and exit (never writes)")

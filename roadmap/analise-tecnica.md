@@ -20,7 +20,7 @@ OpenWYD/                      # raiz do repositório (2026-11-04 em diante)
 ├── roadmap/                  # este roadmap
 ├── client/                   # cliente Windows modificado (não versionado)
 ├── tmserver/ dbserver/ binserver/ webserver/ internal/   # servidor Go
-└── Release/, Source/, docs/  # conteúdo do jogo, fontes legados, engenharia reversa
+└── tmserver/content/, Source/, docs/  # conteúdo do jogo, fontes legados, engenharia reversa
 ```
 
 ### 1.1 Servidor — Go
@@ -30,14 +30,14 @@ OpenWYD/                      # raiz do repositório (2026-11-04 em diante)
   `webserver` (web-api gRPC para a futura plataforma Next.js).
 - Compartilhado na raiz `internal/`: `store`, `migrations` (até `0033_*`), `domain`, `secure` (mTLS),
   `secret` (argon2id).
-- Conteúdo de jogo: `Release/` (67 MB) — `Common/`, `TMsrv/run/`, `DBsrv/run/`.
+- Conteúdo de jogo: `tmserver/content/` (67 MB) — `Common/`, `TMsrv/run/`, `DBsrv/run/`.
 - Legado C++: `Source/Code/` (TMSrv, DBSrv, BISrv, Basedef, CPSock, ClientPatch_v7662, DropTool,
   EDITAPPMOB/SHOP, NPTool, ExpTool) — usado como referência de paridade.
 - Documentação: `docs/migration/` (10 fases de engenharia reversa + contratos dos 58 handlers),
   `docs/agents/` (análises por componente), `docs/game.md` (comandos), `docs/integrations/`.
 
 **Achado bloqueante #1 — working tree parcial.** O repositório estava com `core.sparseCheckout=true`
-e a lista `Source/Code, docs, tmserver`. Todo o resto — `Release/`, `scripts/`, `internal/`, `api/`,
+e a lista `Source/Code, docs, tmserver`. Todo o resto — `tmserver/content/`, `scripts/`, `internal/`, `api/`,
 `dbserver/`, `binserver/`, `webserver/`, `development-guidelines/`, `serverlist bin/` — existia no
 git mas **não em disco**. Sintomas que isso produz: `go build ./...` falha (imports ausentes),
 `scripts/run-local.sh` não existe, servidor não tem conteúdo para carregar. Corrigido com
@@ -228,7 +228,7 @@ Boot válido produz, nesta ordem, no log: `tmserver config` → `content loaded`
 2. **Sem Go no host.** Todo desenvolvimento/teste precisa do container `golang:1.26-alpine`.
 3. **Cliente sem prova de conexão.** Não há registro de tentativa de login no `WYD.log`; a versão de
    protocolo e o comportamento das proteções ainda não foram observados.
-4. **`Release/` protegido por engano** pelo padrão `[Rr]elease/` do `.gitignore` herdado.
+4. **`tmserver/content/` protegido por engano** pelo padrão `[Rr]elease/` do `.gitignore` herdado.
 5. **Curva Celestial placeholder** e vários campos UNVERIFIED (DoT, parry, coef. Dex/Str por
    classe×arma) — não calibrar economia em cima disso.
 6. **Item novo exige paridade de cliente** (`ItemList.bin`/`itemname.bin`), senão fica invisível.

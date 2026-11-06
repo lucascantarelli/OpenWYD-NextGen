@@ -891,7 +891,7 @@ func (d *Dispatcher) useFairyDust(w *world.World, s *world.Session, e *world.Ent
 }
 
 // inPesadelo reports whether (x,y) falls in the Pesadelo_A or Pesadelo_M
-// instanced-dungeon zones (Release/TMsrv/run/Regions.txt rows 5-6), the same
+// instanced-dungeon zones (tmserver/content/TMsrv/run/Regions.txt rows 5-6), the same
 // 128-unit segment test _MSG_UseItem.cpp reuses for the Vol 12/13/174/175
 // tickets (Gema Estelar, Portal, and the two Pesadelo entry scrolls).
 func inPesadelo(x, y int16) bool {
@@ -951,7 +951,7 @@ func (d *Dispatcher) usePortalScroll(w *world.World, s *world.Session, e *world.
 // porting _MSG_UseItem.cpp:4202-4236. The tier is the item's sIndex minus the
 // (N) base (4111→0, 4112→1, 4113→2); each tier lands at a fixed coordinate on
 // map 0 with a rand()%5-3 spread per axis, inside the region bounds declared in
-// Release/TMsrv/run/Regions.txt:45-47 (Lan_N/M/A).
+// tmserver/content/TMsrv/run/Regions.txt:45-47 (Lan_N/M/A).
 //
 // The gate matches legacy exactly — class tier only, no citizenship check: tiers
 // N/M (0,1) require ClassMaster Arch or Mortal; tier A (>=2) requires a celestial

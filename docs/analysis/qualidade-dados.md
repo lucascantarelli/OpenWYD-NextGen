@@ -24,7 +24,7 @@ detector errado é pior que nenhum, porque treina a equipe a ignorar o alerta.
 
 O banco é alimentado por três caminhos, e nenhum deles garante forma sozinho:
 
-1. **Importação** de `Release/` (`tmserver/cmd/importcontent`), onde os CSVs são Windows-1252.
+1. **Importação** de `tmserver/content/` (`tmserver/cmd/importcontent`), onde os CSVs são Windows-1252.
 2. **Seeds** versionados (`internal/migrations/seed_*.up.sql`), regerados por `seedgen`.
 3. **Portal**, que grava texto digitado por moderador.
 

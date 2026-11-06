@@ -10,7 +10,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// The Compositor fixtures below are real Release/Common/ItemList.csv rows:
+// The Compositor fixtures below are real tmserver/content/Common/ItemList.csv rows:
 //
 //	801  Porrete       nUnique 41  nPos 192  Extra 2451  EF_ITEMLEVEL 1
 //	831  Garra         nUnique 43  nPos  64  Extra 2571  EF_ITEMLEVEL 1
@@ -28,18 +28,18 @@ const (
 )
 
 // releaseCombineCatalog builds the combine catalog from the real content tree,
-// skipping when the Release/ mount is absent (same contract as the other
+// skipping when the tmserver/content/ mount is absent (same contract as the other
 // content-backed tests, e.g. affect_duration_content_test.go).
 func releaseCombineCatalog(t *testing.T) combine.Catalog {
 	t.Helper()
-	root := filepath.Join("..", "..", "..", "Release")
+	root := filepath.Join("..", "..", "..", "tmserver", "content")
 	items, err := content.LoadItemList(filepath.Join(root, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	comp, err := content.LoadCompRate(filepath.Join(root, "Common", "Settings", "CompRate.txt"))
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CompRate.txt não foi lido: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/Settings/CompRate.txt não foi lido: %v", err)
 	}
 	return NewCombineCatalog(items, comp)
 }

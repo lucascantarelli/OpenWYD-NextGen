@@ -1,5 +1,5 @@
 // Package skillcatalog reads the skill lookup the web front-end needs from
-// Release/Common/SkillData.csv: index → name (plus the owning class, which is
+// tmserver/content/Common/SkillData.csv: index → name (plus the owning class, which is
 // just index/24).
 //
 // The row layout is the same one tmserver/internal/content parses into

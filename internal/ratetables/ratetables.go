@@ -1,5 +1,5 @@
 // Package ratetables is the single parser for the editable rate tables in
-// Release/Common/Settings — the refine table (SancRate), the combine/recipe table
+// tmserver/content/Common/Settings — the refine table (SancRate), the combine/recipe table
 // (CompRate) and the quest reward tiers (QuestsRate).
 //
 // It exists so the web-api and tmServer cannot drift: the moderator UI serves the

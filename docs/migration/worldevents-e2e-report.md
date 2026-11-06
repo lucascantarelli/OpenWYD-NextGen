@@ -24,7 +24,7 @@ cliente real — ver §5.
 ## 2. Resultado
 
 Stack: `docker compose` completo (PostgreSQL + dbServer + binServer + tmServer), conteúdo
-`Release/` montado, 12.824 mobs gerados, conta `test` promovida a `admin`.
+`tmserver/content/` montado, 12.824 mobs gerados, conta `test` promovida a `admin`.
 
 | Evento (fase da issue #116) | Frame S→C | Status |
 | --- | --- | --- |

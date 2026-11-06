@@ -136,7 +136,7 @@ tmserver, ou a mensagem é genérica ("senha inválida").
 **Preparar** (seed é pré-requisito; rode uma vez):
 
 ```bash
-docker compose run --rm dbserver import-npcs -content /Release \
+docker compose run --rm dbserver import-npcs -content /content \
   -dsn "postgres://postgres:<senha>@db:5432/postgres"
 docker compose up -d tmserver
 docker compose logs --tail 20 tmserver | grep -E "npc generators registered|npc config applied at boot"

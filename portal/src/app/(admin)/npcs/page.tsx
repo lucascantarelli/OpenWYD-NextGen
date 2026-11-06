@@ -68,7 +68,7 @@ export default async function NpcsPage() {
             sobe sem NPCs:
           </p>
           <p className="ui-mono">
-            docker compose run --rm dbserver import-npcs -content /Release -dsn
+            docker compose run --rm dbserver import-npcs -content /content -dsn
             &quot;postgres://postgres:dev@db:5432/postgres&quot;
           </p>
         </div>

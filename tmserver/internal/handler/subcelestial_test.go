@@ -108,7 +108,7 @@ func TestCreateSubCelestial(t *testing.T) {
 
 func urnammuTemplate(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := readRelease(t, "../../../Release/TMsrv/run/npc/" + name)
+	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/" + name)
 	if err != nil {
 		t.Fatal(err)
 	}

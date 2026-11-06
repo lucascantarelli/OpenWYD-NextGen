@@ -155,7 +155,7 @@ reencaminha os bytes originais intactos.
 
 **Onde interpor (usando os arquivos de rede reais — Fase 7/config-ops):**
 
-| Link | Como apontar para o proxy | Arquivo (Release) |
+| Link | Como apontar para o proxy | Arquivo (tmserver/content) |
 |------|---------------------------|-------------------|
 | Cliente → TMSrv | editar a **serverlist** que o cliente baixa (`serverlist.txt`/`serverlist.bin`) para o IP:porta do proxy; proxy encaminha ao TMSrv real (`localip.txt`, lido em `Server.cpp:3965`) | `TMsrv/run/serverlist.*`, `localip.txt` |
 | TMSrv → DBSrv | apontar o endereço do DB que o TMSrv disca para o proxy (o TMSrv usa `ConnectServer`+INITCODE) | config de DB do TMSrv |

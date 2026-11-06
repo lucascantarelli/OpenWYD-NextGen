@@ -6,7 +6,7 @@ description: Analisa e ajusta a economia e a progressão do servidor WYD2 — pr
 # Economia e progressão (WYD local)
 
 Tudo que define valor no jogo vem de **dados de conteúdo** — catálogo de item/skill no Postgres
-(issue 58) e taxas, drops e mapas em `Release/` — mais um punhado de flags do tmServer. Mexer em
+(issue 58) e taxas, drops e mapas em `tmserver/content/` — mais um punhado de flags do tmServer. Mexer em
 item/preço é mexer no catálogo e reiniciar o servidor; mexer em personagem é in-game (`/gm`) ou via
 save.
 
@@ -16,14 +16,14 @@ save.
 |---------|--------|-----------|
 | `item_catalog` (Postgres) | catálogo: índice, preço, efeitos-base, requisitos, volatilidade, `nPos`, `nUnique`, grade, `Extra`, alcance | gRPC do dbServer → `content.Config.Item*`; seed em `seed_item_catalog.up.sql` |
 | `skill_catalog` (Postgres) | catálogo de skills (mana, dano, affect, nomes Latin-1) | gRPC do dbServer → `content.Config.Spells`; seed em `seed_skill_catalog.up.sql` |
-| `Release/Common/Settings/SancRate.txt` | taxa de sucesso do refino por anvil (0 = Ori, 1 = Lac), 12 níveis | `refine.RateTable` |
-| `Release/Common/Settings/CompRate.txt` | famílias/taxas de composição | `combine.Catalog` |
-| `Release/Common/Settings/QuestsRate.txt` | taxas de quest | `content.QuestRates` |
-| `Release/Common/Settings/CastleQuest.txt` | quests de castelo/Zakum | `content.CastleQuest` |
-| `Release/Common/Settings/MobMerc.txt` | mercadores de mob | loaders de conteúdo |
+| `tmserver/content/Common/Settings/SancRate.txt` | taxa de sucesso do refino por anvil (0 = Ori, 1 = Lac), 12 níveis | `refine.RateTable` |
+| `tmserver/content/Common/Settings/CompRate.txt` | famílias/taxas de composição | `combine.Catalog` |
+| `tmserver/content/Common/Settings/QuestsRate.txt` | taxas de quest | `content.QuestRates` |
+| `tmserver/content/Common/Settings/CastleQuest.txt` | quests de castelo/Zakum | `content.CastleQuest` |
+| `tmserver/content/Common/Settings/MobMerc.txt` | mercadores de mob | loaders de conteúdo |
 | `npc_template.Carry[]` (banco) | tabela de drop | `loot` · telas `/drops`, `/drops/carry` |
-| `Release/TMsrv/run/LevelItem.txt` | itens por nível | progressão |
-| `Release/TMsrv/run/gameconfig.txt` | `double`, `deadpoint`, `partybonus`, `partydif`, matriz 8×8 de bônus de drop, `DropItem`, `PotionDelay`, `maxNightmare`, horas de GTorre/RVR/BR | mapeado para flags (ver `docs/migration/config-ops.md`) |
+| `tmserver/content/TMsrv/run/LevelItem.txt` | itens por nível | progressão |
+| `tmserver/content/TMsrv/run/gameconfig.txt` | `double`, `deadpoint`, `partybonus`, `partydif`, matriz 8×8 de bônus de drop, `DropItem`, `PotionDelay`, `maxNightmare`, horas de GTorre/RVR/BR | mapeado para flags (ver `docs/migration/config-ops.md`) |
 | `npc_template` (Postgres) | template de mob/NPC (816 B) — inclui `Exp`, nível, clan, merchant, equip-modelo | gRPC do dbServer; seed em `seed_npc_template.up.sql` |
 
 Regra de leitura do catálogo: a **coluna 0 do CSV é o índice** usado no fio e em `/gm item`. A 4ª
@@ -79,7 +79,7 @@ por nível → `MSG_UpdateScore`.
   para mortais abaixo do nível armazenado 35.
 - O valor de EXP de cada mob está gravado **no template** (`STRUCT_MOB.Exp`). O boot avisa
   `monster template has unbalanced Exp (run cmd/exptool)` quando o catálogo não foi restampado.
-  Ferramenta: `make exp-data` (= `go run ./tmserver/cmd/exptool -npc Release/TMsrv/run/npc -quiet`;
+  Ferramenta: `make exp-data` (= `go run ./tmserver/cmd/exptool -npc tmserver/content/TMsrv/run/npc -quiet`;
   use `-dry-run` primeiro).
 - EXP de party usa divisores que a documentação marca como não confiáveis
   (`captura-wyd-levelup.md`): não "conserte" balanceamento de party assumindo que a regra está certa.

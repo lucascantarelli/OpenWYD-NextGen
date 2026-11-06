@@ -25,7 +25,7 @@ autoritativos; esta skill é o atalho operacional para não quebrar as invariant
 ├── webserver/           # web-api (api/web/v1) para a plataforma Next.js
 ├── api/                 # .proto (db, bin, web) — make proto
 ├── internal/            # store, migrations, domain, secure (mTLS), secret (argon2id)
-├── Release/             # conteúdo carregado no boot (ver skill wyd-server-ops)
+├── tmserver/content/             # conteúdo carregado no boot (ver skill wyd-server-ops)
 └── docs/migration/      # engenharia reversa: leia antes de mudar wire/gameplay
 ```
 
@@ -120,7 +120,7 @@ Siga `development-guidelines/Go-development-guidelines.md`. Em resumo:
 
 ## 8. Antes de commitar
 
-- `git diff` revisado; sem `Release/` alterado por acidente, sem `serverlist.bin` de IP privado, sem
+- `git diff` revisado; sem `tmserver/content/` alterado por acidente, sem `serverlist.bin` de IP privado, sem
   segredo.
 - Se mudou comportamento observável, atualize `docs/migration/SESSION-PRIMER.md` e/ou
   `docs/game.md` (✅/⏳).

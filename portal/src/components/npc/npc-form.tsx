@@ -169,7 +169,7 @@ export function NpcForm({
               label="Template"
               hint={
                 templates.length > 0
-                  ? `${templates.length} templates merchant em Release/TMsrv/run/npc/`
+                  ? `${templates.length} templates merchant em tmserver/content/TMsrv/run/npc/`
                   : "picker indisponível (web-api sem -content): digite o template manualmente"
               }
               htmlFor="template_name"

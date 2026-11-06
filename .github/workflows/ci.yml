@@ -44,7 +44,7 @@ jobs:
               - 'go.sum'
               - 'api/**'
               - 'internal/migrations/**'
-              - 'Release/**'
+              - 'tmserver/content/**'
               - 'scripts/**'
               - 'Makefile'
               - 'docker-compose*.yaml'

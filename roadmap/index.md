@@ -32,7 +32,7 @@ comando). "Escrevi o código" não fecha issue.
 
 | Item | Estado | Evidência |
 |------|--------|-----------|
-| Working tree completo (`Release/`, `scripts/`, `internal/`, `api/`, `dbserver/`, `binserver/`, `webserver/`) | ✅ restaurado nesta sessão | `git sparse-checkout disable`; `Release/` com 67 MB |
+| Working tree completo (`tmserver/content/`, `scripts/`, `internal/`, `api/`, `dbserver/`, `binserver/`, `webserver/`) | ✅ restaurado nesta sessão | `git sparse-checkout disable`; conteúdo com 55 MB |
 | Árvore de conteúdo íntegra | ✅ verificado | `ItemList.csv`, `SkillData.csv`, `npc/` 1.991 templates, `HeightMap.dat` 16 MiB, `AttributeMap.dat` 1 MiB, `BaseMob/{TK,FM,BM,HT}` 816 B |
 | Toolchain Go no host | ❌ ausente | `go: command not found`; caminho é container `golang:1.26-alpine` |
 | Docker / Compose | ✅ presente | Docker 29.9.2 daemon `29.9.2`, 8 CPUs / 16 GB; Compose v5.6.1 |
@@ -151,7 +151,7 @@ compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi repo
 | # | Issue | Estado | Esforço |
 |---|-------|--------|---------|
 | 01 | [Restaurar e validar a árvore de trabalho](issues/issue-01.md) | ✅ | S |
-| 02 | [Provisionar ambiente de execução (Go/Docker/portas)](issues/issue-02.md) | ✅ (`scripts/preflight.sh`: checkout, `Release/`, daemon/compose, portas e Go; exit 1 com 11 `[FAIL]` numa árvore incompleta e exit 0 aqui) | S |
+| 02 | [Provisionar ambiente de execução (Go/Docker/portas)](issues/issue-02.md) | ✅ (`scripts/preflight.sh`: checkout, `tmserver/content/`, daemon/compose, portas e Go; exit 1 com 11 `[FAIL]` numa árvore incompleta e exit 0 aqui) | S |
 | 03 | [Subir Postgres, migrações e contas seed](issues/issue-03.md) | ✅ | S |
 | 04 | [Subir e validar o tmServer com conteúdo](issues/issue-04.md) | ✅ | M |
 
@@ -300,7 +300,7 @@ Grafo da Fase 6:
 
 | Risco | Impacto | Mitigação |
 |-------|---------|-----------|
-| `Release/` é ignorado por padrão (`[Rr]elease/` no `.gitignore`) e já sumiu uma vez por sparse checkout | crítico — servidor sobe vazio | issue 01 + skill `wyd-server-ops` §1 |
+| O conteúdo saiu de `Release/` (LEGACY-02): os mapas em `tmserver/content/` não são versionados e faltam num clone novo até `make content-sync` | crítico — servidor sobe vazio | issue 01 + skill `wyd-server-ops` §1 |
 | Cliente fechado com proteções (`JProtectDll.dll`, `jlock10*`) e launcher que sobrescreve `serverlist.bin` | alto — login impossível de reproduzir | issue 05, skill `wyd-client-connect` |
 | Versão de protocolo divergente (7640 vs 12000) | resolvido | issue 06 **fechada em 04/11**: o cliente gráfico envia 12000 (login OK, sem mismatch) |
 | Build Docker instável nesta máquina (daemon EOF) | médio — bloqueia 03/04 | issue 02 (diagnóstico de daemon/recursos) |
@@ -335,6 +335,19 @@ Grafo da Fase 6:
   Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
   `npx vitest run` 12 arquivos / 93 testes · `tsc --noEmit` exit 0 ·
   `mkdocs build --strict` exit 0 (container) · `check-skips`/`check-comments`/`check-docs-links` verdes.
+- **2026-11-06 (LEGACY-02 executada)** — o conteúdo saiu de `Release/` e vive em
+  `tmserver/content/`, dentro da árvore do servidor: `Common/Settings` + `serv00.htm`,
+  `DBsrv/run/BaseMob`, `TMsrv/run/BaseSummon` e os textos de referência (Regions/Guard/LevelItem/
+  Language/ItemEffect.h) versionados; os dois mapas (17 MiB) fora do git com manifesto SHA-256 e
+  `make content-sync`/`content-check`; 79 arquivos do runtime Win32 (DLLs 7 MB, `data00.csv` 19 MB,
+  dumps, `.bat`/`.exe`, estado de guilda/ranking, catálogos `.bin`, insumo `npc/`) arquivados em
+  `tmserver/content/_legacy/`, ignorado e fora da imagem. Default de `-content` virou
+  `tmserver/content`; compose monta `./tmserver/content:/content:ro`; Dockerfile copia para
+  `/content`; portal, worldatlas, itemiconpack, exptool, preflight, e2e, CI e docs acompanharam.
+  Verification: `go build ./...` 0 · `go vet ./...` 0 · `go test -count=1 ./...` com 1 flake de timing (`TestTransformExpiryRevertsMesh`), verde isolado e no rerun do pacote ·
+  `bash scripts/sync-content.sh --check` 60 arquivos OK · stack reconstruída e healthy com
+  `content loaded`, `base mob templates loaded`, `walkability grid baked` · `check-docs-links` e
+  `mkdocs build --strict` verdes.
 - **2026-11-06 (legado e dados)** — três frentes de "tirar o legado do caminho".
   **(a) Auditoria fora do site:** `docs/audits/` removido; o `itemiconupload` passou a gravar a
 trilha ao lado do pack (`dist/item-icons/item-icons-upload-<versão>.json`), porque auditoria de
@@ -708,7 +721,7 @@ prioriza fechar as 11 issues 🟡 (mais 05/06) antes de abrir features novas, e 
   sessão). Sem os artefatos a tela ensina o comando do gerador.
 
 - **2026-11-03 (análise de editabilidade + issues 41–46)** — Levantamento completo do que é editável no
-  servidor em `roadmap/editabilidade.md` (conteúdo de `Release/`, tabelas de overlay, estado vivo e
+  servidor em `roadmap/editabilidade.md` (conteúdo de `tmserver/content/`, tabelas de overlay, estado vivo e
   constantes em Go) e o catálogo de áreas do mundo em `roadmap/atlas-mundo.md` (5 cidades com
   spawn/limite/arena,  52 regiões nomeadas, 23 rotas de teleporte, 49 itens fixos). Abertas seis issues
   para as lacunas: **41** atlas do mundo com mapa e camadas (gera `world-atlas.json` a partir de código

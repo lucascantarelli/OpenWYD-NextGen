@@ -9,7 +9,7 @@ essencial de arquitetura e comandos; não repita conteúdo nele.
 Reescrita big-bang em Go do servidor WYD (With Your Destiny), mirando o **`WYD.exe` 7662 sem
 modificação** (o build usado envia `ClientVersion` **12000** no login — medido em 04/11; `Basedef.h`
 documenta 7640), mais o portal de administração em Next.js (`portal/`). Os fontes
-legados em C++ ficam em `Source/`, o conteúdo do jogo em `Release/`, e a engenharia reversa em
+legados em C++ ficam em `Source/`, o conteúdo do jogo em `tmserver/content/`, e a engenharia reversa em
 `docs/migration/` (leia antes de mudar wire/format/gameplay; pontos não confirmados estão marcados
 **UNVERIFIED**).
 

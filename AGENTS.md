@@ -17,7 +17,7 @@ cliente Windows usado para conectar — tudo num único repositório.
 | `portal/` | UI de administração: BFF puro sobre o web-api, sem tocar estado vivo | Next.js 15, TypeScript |
 | `client/` | Cliente Windows modificado (WYD.exe, proteções, assets) — **ignorado no git** | Binários fechados |
 | `roadmap/` | Planejamento: o que está feito, pendente e em que ordem | Markdown |
-| `Release/` | Árvore de conteúdo do jogo (catálogos, NPCs, mapas, rates) | Dados |
+| `tmserver/content/` | Conteúdo do servidor: taxas, mapas, BaseMob/BaseSummon (LEGACY-02) | Dados |
 | `Source/` | Fontes C++ legados, referência de wire/format/gameplay | C++ |
 | `docs/` | Engenharia reversa (`docs/migration/`), integrações e planos | Markdown |
 | `.agents/skills/` | Skills de operação/desenvolvimento (WYD + UI) | Markdown |
@@ -35,7 +35,8 @@ convenções, veja `CLAUDE.md`; este arquivo cobre o repositório inteiro (servi
 ```bash
 # 0. Conteúdo que ainda vive em arquivo: taxas, mapas e BaseMob. Catálogos de item/skill,
 #    templates de NPC e spawns vêm do banco (baseline da issue 58).
-test -f Release/TMsrv/run/HeightMap.dat && test -d Release/DBsrv/run/BaseMob || echo "CONTEÚDO FALTANDO"
+test -f tmserver/content/Common/serv00.htm && test -d tmserver/content/DBsrv/run/BaseMob || echo "CONTEÚDO FALTANDO"
+test -f tmserver/content/TMsrv/run/HeightMap.dat || echo "MAPAS AUSENTES: make content-sync"
 
 # 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + tmServer)
 make run-local          # = ./scripts/run-local.sh  (conta test / test123)
@@ -78,10 +79,10 @@ Detalhes, diagnóstico e alternativas: skills `wyd-server-ops`, `wyd-client-conn
 7. **A web nunca escreve estado de personagem vivo.** Grants vão por `delivery_queue` que o
    tmServer drena (ver `docs/migration/web-platform-plan.md`). O portal é BFF: só lê e envia
    intenções pelo web-api gRPC.
-8. **`Release/` é conteúdo, não lixo.** Está no `.gitignore` por herança de template Visual Studio
-   (`[Rr]elease/`); os arquivos existentes são versionados, mas arquivos *novos* ali podem ser
-   ignorados silenciosamente. Confirme com `git status --ignored Release` antes de concluir que
-   faltou salvar algo. Nunca escreva em `Release/` pela web.
+8. **`tmserver/content/` é conteúdo, não lixo.** A config pequena é versionada com o código; os dois
+   mapas (17 MiB) ficam **fora do git** e entram por `make content-sync`, conferidos pelo SHA-256 de
+   `tmserver/content/content.sha256` (`make content-check`). `tmserver/content/_legacy/` é arquivo
+   morto do servidor Win32: ignorado, fora da imagem e nunca lido. Nunca escreva no conteúdo pela web.
 9. **`client/` não é versionado.** São ~344 MB de binários proprietários; fica no `.gitignore`.
    Nunca commite, nunca inclua no contexto de build do Docker (já está no `.dockerignore`).
 
@@ -94,12 +95,19 @@ Detalhes, diagnóstico e alternativas: skills `wyd-server-ops`, `wyd-client-conn
   com `cache-control: no-store`.
 - `SESSION_SECRET` é obrigatório fora de desenvolvimento (>= 32 caracteres). O default do compose
   é **apenas para dev**.
-- O portal não escreve em `Release/` nem em tabelas de personagem vivo; overlays têm auditoria.
+- O portal não escreve em `tmserver/content/` nem em tabelas de personagem vivo; overlays têm auditoria.
 
-## 4. Árvore de conteúdo (`Release/`)
+## 4. Árvore de conteúdo (`tmserver/content/`)
 
-O tmServer carrega isto no boot (`-content /Release`); taxas são **obrigatórias** (erro fatal se
-quebrarem), mapas e BaseMob são opcionais (warning).
+O conteúdo mora **dentro da árvore do servidor** e é a única fonte no boot: o default de `-content`
+é `tmserver/content` (nos containers, `/content`). Taxas são **obrigatórias** (erro fatal se
+quebrarem); mapas e BaseMob são opcionais (warning).
+
+**Versionamento (LEGACY-02):** a config pequena é versionada junto do código. Os dois mapas (17 MiB)
+ficam **fora do git** e entram por `make content-sync` (`W2PP_CONTENT_SOURCE=<árvore legada>`), que
+confere o SHA-256 de `tmserver/content/content.sha256`. O resíduo do servidor Win32 (DLLs, `.bat`,
+dumps, catálogos `.bin`, estado de servidor de teste) foi arquivado em
+`tmserver/content/_legacy/` — fora do git, nunca lido pelo servidor, nunca copiado para a imagem.
 
 **Catálogos não moram mais aqui** (issue 58, fase 5): `item_catalog`, `skill_catalog`,
 `npc_template`, `world_item_seed` e `npc_definition` vêm do Postgres, pelo gRPC do dbserver, e a
@@ -107,13 +115,16 @@ ausência deles recusa o boot. O `importcontent` continua existindo só para rep
 conteúdo externa (backup).
 
 ```
-Release/Common/            serv00.htm,
-                           Settings/{CompRate,SancRate,QuestsRate,CastleQuest,MobMerc}.txt
-Release/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
-                           HeightMap.dat (16 MiB, 4096²),
-                           AttributeMap.dat (1 MiB, 1024²)
-Release/DBsrv/run/BaseMob/ {TK,FM,BM,HT} — template por classe (816 B) com equip inicial
-Release/TMsrv/run/BaseSummon/ templates de invocação do BM
+tmserver/content/Common/            serv00.htm,
+                                    Settings/{CompRate,SancRate,QuestsRate,CastleQuest,
+                                    MobMerc,RefineRate}.txt
+tmserver/content/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
+                                    Language.txt, ItemEffect.h,
+                                    HeightMap.dat (16 MiB, 4096² — fora do git),
+                                    AttributeMap.dat (1 MiB, 1024² — fora do git)
+tmserver/content/DBsrv/run/BaseMob/ {TK,FM,BM,HT} — template por classe (816 B) com equip inicial
+tmserver/content/TMsrv/run/BaseSummon/ templates de invocação do BM
+tmserver/content/_legacy/           arquivo morto do servidor Win32 (não lido)
 ```
 
 Os mapas alimentam `route.Bake` (atributo → altura 127 = bloqueado) e o pathfinding dos mobs.

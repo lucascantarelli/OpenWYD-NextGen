@@ -98,7 +98,7 @@ export default async function PainelPage() {
           label="Templates de mob"
           value={fmtCount(mobs ?? 0)}
           pending={mobs === null}
-          hint={mobs === null ? "MobTemplateAdminService indisponível" : "arquivos de Release/TMsrv/run/npc"}
+          hint={mobs === null ? "MobTemplateAdminService indisponível" : "arquivos de tmserver/content/TMsrv/run/npc"}
         />
         <Stat
           label="NPCs e mercadores"
@@ -179,7 +179,7 @@ export default async function PainelPage() {
       <div className="ui-card">
         <h2 style={{ fontSize: 14, margin: "0 0 6px" }}>Como este portal grava</h2>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-          Nada aqui escreve em <code>Release/</code> nem no estado vivo do personagem. Conteúdo é
+          Nada aqui escreve em <code>tmserver/content/</code> nem no estado vivo do personagem. Conteúdo é
           overlay no Postgres, aplicado pelo tmserver no boot; concessões a jogadores vão por{" "}
           <code>delivery_queue</code>. Toda RPC admin revalida o papel da conta no servidor — o papel
           mostrado no cabeçalho é só a dica da UI. Pedidos e receita são leitura pura: o

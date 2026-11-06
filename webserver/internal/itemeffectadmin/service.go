@@ -1,12 +1,12 @@
 // Package itemeffectadmin is the web-api side of the item base-effect editor
 // (issue 44, metade de escrita): it merges the adds read from
-// Release/Common/ItemList.csv with the item_effect_override overlay, validates
-// every write against ItemEffect.h, and never touches Release/ or live game
+// tmserver/content/Common/ItemList.csv with the item_effect_override overlay, validates
+// every write against ItemEffect.h, and never touches tmserver/content/ or live game
 // state.
 //
 // A chave da edição é o código do efeito, não uma posição: a quantidade de pares
 // `EF_*` varia por item (a 1188 tem seis) e o servidor os indexa por código
-// (internal/content.BaseEffects). Release/ é conteúdo: reescrever o CSV pela web
+// (internal/content.BaseEffects). tmserver/content/ é conteúdo: reescrever o CSV pela web
 // faria o próximo reimport sobrescrever a edição em silêncio.
 package itemeffectadmin
 

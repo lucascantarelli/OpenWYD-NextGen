@@ -92,7 +92,7 @@ O orcamento de pets e **da party inteira**, nao por jogador: `generateSummon` co
   `Trovao←[1]`, `Fogo←[2]`, `Gelo←[3]`), entao os indices que ele realmente toca sao `1/2/3`:
   buffa Sagrado e deixa o Fogo de fora. A ordem real dos elementos vem do conteudo —
   `Orb_de_Fogo` carrega `EF_RESIST1` e `Orb_Sagrada` carrega `EF_RESIST3`
-  (`Release/Common/ItemList.csv:1013,1019`), e `EF_RESIST1..4` mapeiam para `Resist[0..3]`
+  (`tmserver/content/Common/ItemList.csv:1013,1019`), e `EF_RESIST1..4` mapeiam para `Resist[0..3]`
   (`Source/Code/TMSrv/CMob.cpp:640-643`) → `[0]`=Fogo, `[1]`=Gelo, `[2]`=Sagrado, `[3]`=Trovao.
   Reportado na issue #233 (print do cliente: Fogo parado em 0, os outros tres em +27 com mastery
   Elemental 255). Mesmo espirito da divergencia de duracao de buff em `world.AffectDuration` (issue #229).

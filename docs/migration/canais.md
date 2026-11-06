@@ -1,7 +1,7 @@
 # Servidores, canais, cidadania e o "canal novato"
 
 > Escrito em 05/11/2026 a partir do código legado (`Source/Code/TMSrv`), do conteúdo
-> em `Release/Common/serverlist.txt` (hoje arquivado em `docs/archive/release-common/`) e da
+> em `tmserver/content/Common/serverlist.txt` (hoje arquivado em `docs/archive/release-common/`) e da
 > documentação pública do WYD. Onde não há
 > evidência no repositório a marcação é **UNVERIFIED**.
 
@@ -183,7 +183,7 @@ netsh interface ipv4 add dns name="Ethernet 2" 8.8.8.8 index=2
 Conferência: `curl http://192.168.100.3/serv00.htm` e `curl http://192.168.100.4/serv00.htm`
 devem devolver 200, e as duas `8281` aceitar TCP.
 
-Os dois usam o **mesmo** `dbserver`/`binserver` e o mesmo `Release/` somente-leitura: conta,
+Os dois usam o **mesmo** `dbserver`/`binserver` e o mesmo `tmserver/content/` somente-leitura: conta,
 personagem e save são únicos; o que muda é o mundo em memória e o canal da cidadania.
 
 ### O que testar

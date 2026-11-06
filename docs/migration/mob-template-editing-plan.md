@@ -9,7 +9,7 @@
 ## 1. O que é o "EditaPPMob" da issue
 
 O nome na issue é uma leitura corrida de **`EDITAPPMOB`** (`Source/Code/_legacy/EDITAPPMOB/`, binário
-em `Release/{TMsrv,DBsrv}/run/EDITAPPMOB.exe`) — "Edita-App-Mob": um editor Win32 (`Main.cpp` +
+em `tmserver/content/{TMsrv,DBsrv}/run/EDITAPPMOB.exe`) — "Edita-App-Mob": um editor Win32 (`Main.cpp` +
 `File.cpp`) que lê **todos** os arquivos de `./npc/*` (cada um um `STRUCT_MOB` cru de 816 bytes,
 o mesmo formato compartilhado por players e mobs) e permite editar e salvar de volta:
 
@@ -46,7 +46,7 @@ Esta é a lacuna que este plano fecha.
 - **Cobertura completa de campos**, paridade real com o `EDITAPPMOB`, **exceto**:
   - `Carry[]` (loja) — já coberto por `npc_shop_item` (não duplicado).
   - Posição de spawn do subconjunto DB-managed — já coberto por `npc_definition.pos_x/pos_y`.
-  - Renomear/apagar o arquivo de template — `Release/` é montado **read-only** em produção
+  - Renomear/apagar o arquivo de template — `tmserver/content/` é montado **read-only** em produção
     (docker-compose); "deletar" no novo tool remove a linha de override (volta ao default do
     arquivo), nunca o arquivo em si.
   - `SpecialBonus`, `SkillBonus`, `Critical`, `GuildLevel`, `Magic` — o `EDITAPPMOB` legado
@@ -93,7 +93,7 @@ Migration `internal/migrations/0013_mob_template_stats.up.sql`, seguindo o estil
 `0005_npc_editing.up.sql`:
 
 - **`mob_template_stat`** — override completo de atributos, chaveado por `template_name`
-  (aponta pro arquivo em `Release/TMsrv/run/npc/`). Uma linha = override ativo; ausência de
+  (aponta pro arquivo em `tmserver/content/TMsrv/run/npc/`). Uma linha = override ativo; ausência de
   linha = usa os bytes crus do arquivo (comportamento de hoje, sem mudança). Cobre
   `clan/merchant/class/coin/exp/spx/spy`, o bloco de combate (`level/ac/damage/chaos_rate/
   attack_run/direction/str/intel/dex/con/special1..4/max_hp/hp/max_mp/mp`), skills

@@ -1,6 +1,6 @@
 package domain
 
-// ItemCatalogEntry is one row of the item catalog (Release/Common/ItemList.csv)
+// ItemCatalogEntry is one row of the item catalog (tmserver/content/Common/ItemList.csv)
 // as persisted in item_catalog (issue 58, fase 1). Fields keeps the raw CSV
 // columns so the import stays lossless; the derived fields mirror what
 // content.ItemList computes from them (Prices/Grades/Requirements/BaseEffects…).
@@ -37,7 +37,7 @@ type ItemCatalogEffect struct {
 	Val int16 `json:"val"`
 }
 
-// SkillCatalogEntry is one row of skill_catalog (Release/Common/SkillData.csv).
+// SkillCatalogEntry is one row of skill_catalog (tmserver/content/Common/SkillData.csv).
 // AffectTime is stored already divided by the legacy loader's divisor, matching
 // content.Spell — the database holds the value the runtime uses.
 type SkillCatalogEntry struct {
@@ -64,7 +64,7 @@ type SkillCatalogEntry struct {
 	Passive           int16
 }
 
-// NPCTemplateEntry is one STRUCT_MOB template (Release/TMsrv/run/npc/<file>) as
+// NPCTemplateEntry is one STRUCT_MOB template (tmserver/content/TMsrv/run/npc/<file>) as
 // persisted in npc_template. Blob is always the canonical 816-byte layout;
 // SourceSize records the on-disk size (756/816/920) for audit.
 type NPCTemplateEntry struct {

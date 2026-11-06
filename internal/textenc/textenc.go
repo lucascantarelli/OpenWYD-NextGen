@@ -1,5 +1,5 @@
 // Package textenc converte a codificação de texto legada dos arquivos originais
-// de Release/ para UTF-8.
+// de tmserver/content/ para UTF-8.
 //
 // Os CSVs distribuídos (ItemList.csv, SkillData.csv, NPCGener.txt, Guard.txt…) estão
 // em Windows-1252, a mesma codificação que o servidor win32 escrevia. O PostgreSQL

@@ -336,7 +336,7 @@ export function CarryEditor({ carry }: { carry: MobCarry }) {
         open={confirmReset}
         title="Restaurar o Carry do arquivo"
         onClose={() => setConfirmReset(false)}
-        description="Remove o override deste template; o drop volta a ser exatamente o do arquivo em Release/TMsrv/run/npc."
+        description="Remove o override deste template; o drop volta a ser exatamente o do arquivo em tmserver/content/TMsrv/run/npc."
         footer={
           <>
             <button type="button" className="ui-btn" onClick={() => setConfirmReset(false)}>

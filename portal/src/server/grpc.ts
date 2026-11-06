@@ -456,7 +456,7 @@ export interface SetWorldStateResponse {
 }
 
 /**
- * `MobTemplateAdminService` — stats de QUALQUER template de `Release/TMsrv/run/npc/`
+ * `MobTemplateAdminService` — stats de QUALQUER template de `tmserver/content/TMsrv/run/npc/`
  * (issue 25). `GetMobTemplateStat` faz read-through quando não há override; o
  * upsert substitui o override inteiro, **equip incluso** — por isso o BFF relê o
  * equip do servidor antes de gravar stats e o editor de equip usa

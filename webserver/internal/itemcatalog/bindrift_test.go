@@ -27,7 +27,7 @@ type binVisual struct {
 	mesh, texture, pos int32
 }
 
-// parseBin decodes Release/DBsrv/run/ItemList.bin. It is a test-only decoder:
+// parseBin decodes tmserver/content/DBsrv/run/ItemList.bin. It is a test-only decoder:
 // nothing in production reads the .bin (the Go services parse the .csv), it
 // exists purely to detect the two files drifting apart.
 func parseBin(t *testing.T, path string) map[int32]binVisual {
@@ -108,9 +108,9 @@ var driftBaseline = []int32{
 // releaseDir locates the repo's content tree from this package's directory.
 func releaseDir(t *testing.T) string {
 	t.Helper()
-	dir := filepath.Join("..", "..", "..", "Release")
+	dir := filepath.Join("..", "..", "..", "tmserver", "content")
 	if _, err := os.Stat(filepath.Join(dir, "Common", "ItemList.csv")); err != nil {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada: %v", err)
 	}
 	return dir
 }
@@ -143,7 +143,7 @@ func TestBinDriftMatchesBaseline(t *testing.T) {
 	dir := releaseDir(t)
 	binPath := filepath.Join(dir, "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 
 	catalog, err := Scan(dir)
@@ -178,7 +178,7 @@ func TestBinDriftMatchesBaseline(t *testing.T) {
 func TestBinMagicRebalanceMatchesClientCatalog(t *testing.T) {
 	binPath := filepath.Join(releaseDir(t), "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 	for _, tc := range []struct {
 		index int
@@ -279,7 +279,7 @@ func TestBinRequirementsMatchCSV(t *testing.T) {
 	dir := releaseDir(t)
 	binPath := filepath.Join(dir, "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 
 	fromBin := binRequirements(t, binPath)

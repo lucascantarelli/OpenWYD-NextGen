@@ -12,7 +12,7 @@ export const metadata = { title: "Rates e flags · WYD2" };
 /**
  * Rates de conteúdo e flags do processo (issue 36).
  *
- * SancRate/CompRate/QuestsRate são arquivos `:ro` em `Release/Common/Settings/`;
+ * SancRate/CompRate/QuestsRate são arquivos `:ro` em `tmserver/content/Common/Settings/`;
  * a edição é um overlay no Postgres e o tmserver aplica no boot com
  * `-rates-editing`. As flags de processo são só leitura: elas vivem no
  * `command:` do compose e no ambiente, e o tmserver grava o snapshot no boot.

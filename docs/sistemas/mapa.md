@@ -7,8 +7,8 @@ vem do cliente. Quem decide se um passo é possível é o servidor, a partir dos
 
 | Arquivo | Tamanho | Uso |
 |---|---|---|
-| `Release/TMsrv/run/HeightMap.dat` | 16 MiB (4096²) | altura do terreno |
-| `Release/TMsrv/run/AttributeMap.dat` | 1 MiB (1024²) | atributo por célula; altura 127 = bloqueado |
+| `tmserver/content/TMsrv/run/HeightMap.dat` | 16 MiB (4096²) | altura do terreno |
+| `tmserver/content/TMsrv/run/AttributeMap.dat` | 1 MiB (1024²) | atributo por célula; altura 127 = bloqueado |
 
 No boot, `route.Bake` converte os dois numa grade de caminhabilidade (`world/grid.go`). Sem os arquivos
 o servidor sobe, mas os mobs passam a andar "cego" (passo Chebyshev) e o multiplicador de EXP do campo

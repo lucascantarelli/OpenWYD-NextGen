@@ -1,6 +1,6 @@
 # Inventário dos generators com `Merchant != 0`
 
-Fonte reproduzível: `dbserver import-npcs -content ./Release` usa o mesmo parser e
+Fonte reproduzível: `dbserver import-npcs -content ./tmserver/content` usa o mesmo parser e
 codec do seed de produção. O catálogo atual contém **548 blocos** em 6099 slots;
 produção possuía apenas 84 antes da migration do catálogo integral.
 

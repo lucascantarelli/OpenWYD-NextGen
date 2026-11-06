@@ -67,7 +67,7 @@ export default async function MobsPage() {
         <div className="ui-card ui-empty">
           <strong>Nenhum template encontrado</strong>
           <p>
-            O web-api varre <code>Release/TMsrv/run/npc/</code> no boot — se a lista está vazia, ele
+            O web-api varre <code>tmserver/content/TMsrv/run/npc/</code> no boot — se a lista está vazia, ele
             subiu sem <code>-content</code> ou a árvore de conteúdo está faltando.
           </p>
         </div>

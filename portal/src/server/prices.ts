@@ -18,7 +18,7 @@ import { npcAdmin, type ItemPriceEntry, type ListItemPricesResponse } from "./gr
 export const BASE_PRICE_TAG = "item-base-prices";
 
 const CONTENT_DIR =
-  process.env.W2PP_CONTENT ?? path.join(process.cwd(), "..", "Release");
+  process.env.W2PP_CONTENT ?? path.join(process.cwd(), "..", "tmserver", "content");
 
 const loadBasePrices = unstable_cache(
   async (): Promise<Record<string, number>> => {

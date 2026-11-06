@@ -231,7 +231,7 @@ type Affect struct {
 // NPCDefinition is a moderator-editable NPC/spawn block (npc-editing-plan.md).
 // It is cold configuration owned by Postgres, materialized into a live entity by
 // tmServer's single-owner loop — never the reverse. Slug is the stable id;
-// TemplateName points at the 816-byte STRUCT_MOB in Release/TMsrv/run/npc/.
+// TemplateName points at the 816-byte STRUCT_MOB in tmserver/content/TMsrv/run/npc/.
 type NPCDefinition struct {
 	ID                            int64
 	Slug                          string
@@ -294,7 +294,7 @@ type WorldEventConfig struct {
 }
 
 // MobTemplateStat is a moderator-editable stat override for a raw STRUCT_MOB
-// mob/NPC template file (Release/TMsrv/run/npc/<TemplateName>) —
+// mob/NPC template file (tmserver/content/TMsrv/run/npc/<TemplateName>) —
 // mob-template-editing-plan.md, the equivalent-tool successor to the legacy
 // EDITAPPMOB. It covers every field EDITAPPMOB edits except Carry[] (already
 // npc_shop_item) and DB-managed spawn position (already NPCDefinition).

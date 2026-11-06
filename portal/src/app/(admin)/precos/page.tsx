@@ -56,7 +56,7 @@ export default async function PricesPage() {
       {!baseAvailable && (
         <p className="ui-banner" style={{ marginBottom: 12 }} role="note">
           O preço base não pôde ser lido: o portal não encontrou{" "}
-          <code>Release/Common/ItemList.csv</code>. Ajuste <code>W2PP_CONTENT</code> se o conteúdo
+          <code>tmserver/content/Common/ItemList.csv</code>. Ajuste <code>W2PP_CONTENT</code> se o conteúdo
           estiver em outro caminho — editar preço continua funcionando.
         </p>
       )}

@@ -11,7 +11,7 @@ import (
 )
 
 // defaultStatusBody is served when Config.StatusFile is unset. It mirrors the
-// shape of the distribution's Release/Common/serv00.htm (a small numeric status
+// shape of the distribution's tmserver/content/Common/serv00.htm (a small numeric status
 // list the client parses for the channel-selection screen).
 var defaultStatusBody = []byte("4\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n")
 

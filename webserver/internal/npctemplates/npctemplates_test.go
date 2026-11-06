@@ -141,7 +141,7 @@ func TestScanMissingDirErrors(t *testing.T) {
 }
 
 // TestScanDecodesLatin1Names checks accented display names survive intact:
-// STRUCT_MOB.Name is ISO-8859-1 like the rest of Release/, and 'ã' (0xE3 in
+// STRUCT_MOB.Name is ISO-8859-1 like the rest of tmserver/content/, and 'ã' (0xE3 in
 // Latin-1) is not valid UTF-8 on its own — a missing conversion would corrupt
 // it instead of erroring, which is easy to miss without an explicit check
 // (mirrors itemcatalog's TestScanDecodesLatin1Names for the same bug class).

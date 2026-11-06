@@ -15,8 +15,8 @@ Browser ──HTTPS──> Next.js (Route Handlers / Server Actions = BFF)
                      web-api (serviço Go, :7600)
                         │
                         └── lê catálogo em memória escaneado no boot:
-                            Release/Common/ItemList.csv
-                            Release/TMsrv/run/npc/*
+                            tmserver/content/Common/ItemList.csv
+                            tmserver/content/TMsrv/run/npc/*
 ```
 
 Regras:
@@ -29,7 +29,7 @@ Regras:
 
 ## 2. Pré-requisitos
 
-1. `webserver` rodando com `-content <Release/>` ou `W2PP_CONTENT=<Release/>`.
+1. `webserver` rodando com `-content <tmserver/content/>` ou `W2PP_CONTENT=<tmserver/content/>`.
 2. Conta logada com `role = 'moderator'` ou `'admin'`.
 3. Portal com stubs atualizados a partir de `api/web/v1/web.proto`.
 
@@ -46,7 +46,7 @@ O DropTool legado fazia duas leituras:
 
 No servidor Go, a origem é a mesma estrutura legada:
 
-- cada arquivo válido em `Release/TMsrv/run/npc/` deve ter 816 bytes (`STRUCT_MOB`);
+- cada arquivo válido em `tmserver/content/TMsrv/run/npc/` deve ter 816 bytes (`STRUCT_MOB`);
 - os drops de mob vêm dos 64 slots `STRUCT_MOB.Carry[]`;
 - `slot` é importante: a raridade base vem de `g_pDropRate[slot]`, não do item.
 
@@ -206,12 +206,12 @@ porcentagem final.
 
 ## 7. Notas Operacionais
 
-- O scan acontece uma vez no boot do `webserver`; alterações nos arquivos de `Release/` exigem restart
+- O scan acontece uma vez no boot do `webserver`; alterações nos arquivos de `tmserver/content/` exigem restart
   do `webserver` para aparecer no portal.
-- `ItensExceptions.txt` é opcional em `<Release>/TMsrv/run/ItensExceptions.txt`. Se existir e for
+- `ItensExceptions.txt` é opcional em `<tmserver/content>/TMsrv/run/ItensExceptions.txt`. Se existir e for
   válido, seus ranges `from,to` são aplicados ao scan, como no DropTool legado. Se não existir, nenhum
   item é excluído.
-- `ItemDropList.txt` existente no `Release/` continua sendo artefato gerado legado. O portal deve usar
+- `ItemDropList.txt` existente no `tmserver/content/` continua sendo artefato gerado legado. O portal deve usar
   as RPCs novas, não ler esse arquivo.
 - Essa tela não edita drops. Se futuramente houver edição de drops, ela deve virar outro contrato com
   validação e persistência explícitas.

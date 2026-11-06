@@ -129,7 +129,7 @@ nav:
       - NPCs no Next.js: integrations/npc-admin-nextjs.md
       - Faturamento: integrations/faturamento-nextjs.md
   - Legado:
-      - Release e dependências: analysis/release-dependencias.md
+      - Conteúdo do servidor e dependências: analysis/release-dependencias.md
       - ClientPatch (dependência do cliente): analysis/legado-clientpatch.md
   - Cliente:
       - Visão do cliente: client.md

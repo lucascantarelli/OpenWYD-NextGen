@@ -142,7 +142,7 @@ está implementado; cidadania e o bloco condicional continuam pendentes.
   leitura dos dados de NPC (Fase 2 — `NPCGener`/BaseMob) durante a migração.
 - **Grade 0 é ambíguo — e isso é legado, não bug.** `BASE_GetItemAbilityNosanc` (`:34`) devolve `0`
   quando o `Equip[0]` não tem efeito `EF_GRADE0`, então templates Merchant-100 sem esse efeito
-  (`FirstTrainer`, `Guarda_`, `Treinador1` em `Release/TMsrv/run/npc/`) caem em `QUEST_COVEIRO`
+  (`FirstTrainer`, `Guarda_`, `Treinador1` em `tmserver/content/TMsrv/run/npc/`) caem em `QUEST_COVEIRO`
   junto com o Coveiro (que tem `EF_GRADE0 0` explícito). A porta do grade 0 no Go reproduz isso de
   propósito; desambiguar quebraria a paridade.
 - **UNVERIFIED (passo-a-passo fino):** recompensas/etapas internas exatas dos blocos longos

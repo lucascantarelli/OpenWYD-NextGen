@@ -88,7 +88,7 @@ export function MobForm({
           </Badge>
           <span className="ui-field__hint" style={{ margin: 0 }}>
             {stat.overridden
-              ? "este template já tem override; o arquivo em Release/ não foi tocado"
+              ? "este template já tem override; o arquivo em tmserver/content/ não foi tocado"
               : "read-through: nada salvo ainda para este template"}
           </span>
         </div>
@@ -188,7 +188,7 @@ export function MobForm({
       >
         <p style={{ margin: 0 }}>
           O override de <span className="ui-mono">{stat.template_name}</span> sai do banco e o
-          template volta a valer pelo arquivo em <code>Release/TMsrv/run/npc/</code>. O arquivo nunca
+          template volta a valer pelo arquivo em <code>tmserver/content/TMsrv/run/npc/</code>. O arquivo nunca
           é alterado.
         </p>
       </Dialog>

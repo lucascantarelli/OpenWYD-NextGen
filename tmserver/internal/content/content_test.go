@@ -7,23 +7,23 @@ import (
 	"testing"
 )
 
-// release returns a path under the repo's Release/ tree, skipping the test when
+// release returns a path under the repo's tmserver/content/ tree, skipping the test when
 // the file is not there: the catalogs moved into Postgres and out of the
 // repository (issue 58, fase 5), so these fixtures need an external copy.
 func release(t *testing.T, parts ...string) string {
 	t.Helper()
-	p := filepath.Join(append([]string{"..", "..", "..", "Release"}, parts...)...)
+	p := filepath.Join(append([]string{"..", "..", "..", "tmserver", "content"}, parts...)...)
 	if _, err := os.Stat(p); err != nil {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada nesta árvore: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada nesta árvore: %v", err)
 	}
 	return p
 }
 
 func TestCombineVariantRatesFromRelease(t *testing.T) {
-	path := filepath.Join("..", "..", "..", "Release", "Common", "Settings", "CompRate.txt")
+	path := filepath.Join("..", "..", "..", "tmserver", "content", "Common", "Settings", "CompRate.txt")
 	c, err := LoadCompRate(path)
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada nesta árvore: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada nesta árvore: %v", err)
 	}
 	if got := c.ChanceBase("Tiny"); got != 15 {
 		t.Errorf("Tiny ChanceBase=%d, want 15", got)
@@ -42,7 +42,7 @@ func TestCombineVariantRatesFromRelease(t *testing.T) {
 func TestLoadCompRate(t *testing.T) {
 	c, err := LoadCompRate(release(t, "Common", "Settings", "CompRate.txt"))
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CompRate.txt não foi lido: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/Settings/CompRate.txt não foi lido: %v", err)
 	}
 	cases := []struct {
 		family, key string
@@ -73,7 +73,7 @@ func TestLoadCompRate(t *testing.T) {
 func TestLoadSancRate(t *testing.T) {
 	s, err := LoadSancRate(release(t, "Common", "Settings", "SancRate.txt"))
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/SancRate.txt não foi lido: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/Settings/SancRate.txt não foi lido: %v", err)
 	}
 	cases := []struct {
 		name      string
@@ -655,7 +655,7 @@ func TestSkillKindAndClass(t *testing.T) {
 func TestLoadMaps(t *testing.T) {
 	attr, err := LoadGrid(release(t, "TMsrv", "run", "AttributeMap.dat"), AttributeMapDim)
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/TMsrv/run/AttributeMap.dat não está nesta árvore: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/TMsrv/run/AttributeMap.dat não está nesta árvore: %v", err)
 	}
 	if len(attr.Data) != AttributeMapDim*AttributeMapDim {
 		t.Errorf("attribute map size %d", len(attr.Data))
@@ -663,7 +663,7 @@ func TestLoadMaps(t *testing.T) {
 
 	hm, err := LoadHeightMap(release(t, "TMsrv", "run", "HeightMap.dat"))
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/TMsrv/run/HeightMap.dat não está nesta árvore: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/TMsrv/run/HeightMap.dat não está nesta árvore: %v", err)
 	}
 	if hm.Dim != HeightMapDim || len(hm.Data) != HeightMapDim*HeightMapDim {
 		t.Errorf("height map dim %d size %d", hm.Dim, len(hm.Data))

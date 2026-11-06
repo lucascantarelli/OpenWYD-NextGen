@@ -51,7 +51,7 @@ export default async function AtlasPage() {
           <p className="ui-mono">{ATLAS_COMMAND}</p>
           <p>
             Rode na raiz do projeto (ou no container Go, ver skill{" "}
-            <code>wyd-server-ops</code>). O arquivo é read-only: nada é escrito em <code>Release/</code>.
+            <code>wyd-server-ops</code>). O arquivo é read-only: nada é escrito em <code>tmserver/content/</code>.
           </p>
         </div>
       ) : (

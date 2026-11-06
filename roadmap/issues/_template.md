@@ -21,7 +21,7 @@ que já foi tentado. Marque hipótese como **hipótese**.
 
 - Criados: `…`
 - Alterados: `…`
-- Proibido tocar: `…` (ex.: binários do cliente, `Release/` sem motivo)
+- Proibido tocar: `…` (ex.: binários do cliente, `tmserver/content/` sem motivo)
 
 ## Testes / verificação
 

@@ -10,7 +10,7 @@ import (
 )
 
 // ContentRateOverride is one moderator-edited rate cell (issue 36): the value
-// replaces the one in Release/Common/Settings for that (file, family, name).
+// replaces the one in tmserver/content/Common/Settings for that (file, family, name).
 // Name is textual because CompRate has several keys per family.
 type ContentRateOverride struct {
 	File      string

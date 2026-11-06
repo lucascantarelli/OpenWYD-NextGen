@@ -35,7 +35,7 @@ var canonicalKingTemplates = map[string]struct{}{
 }
 
 // Template is one supported STRUCT_MOB template found under
-// Release/TMsrv/run/npc/.
+// tmserver/content/TMsrv/run/npc/.
 type Template struct {
 	TemplateName string
 	DisplayName  string
@@ -50,7 +50,7 @@ type Template struct {
 // than failing the whole scan — the npc/ directory can contain non-template
 // files. Callers log the stats once instead of warning per file.
 // FromBlobs builds the merchant picker from the canonical STRUCT_MOB blobs the
-// database holds (npc_template, issue 58/62): npc/ left Release/ in phase 5, so
+// database holds (npc_template, issue 58/62): npc/ left tmserver/content/ in phase 5, so
 // the directory scan can only come up empty.
 func FromBlobs(blobs map[string][]byte) ([]Template, npctemplate.ScanStats) {
 	var out []Template

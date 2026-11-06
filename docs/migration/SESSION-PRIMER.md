@@ -9,7 +9,7 @@ Reescrita **big-bang em Go** do servidor do MMORPG **WYD (With Your Destiny)**, 
 **cliente Windows `WYD.exe` original e SEM modificações** ("Cavaleiros de Kersef").
 - **ClientVersion = `12000`** (esse build manda 12000; o tmserver roda com `-client-version 12000`).
 - Fonte C++ legada em `Source/Code/` (decompile **parcial** — algumas funções só têm declaração).
-- Conteúdo de jogo + binários legados em `Release/` (montado read-only nos containers).
+- Conteúdo de jogo + binários legados em `tmserver/content/` (montado read-only nos containers).
 - Serviços novos em `tmserver/`, `dbserver/`, `binserver/`. Módulo Go: `openwyd-nextgen`.
 
 ### Status atual (o que JÁ funciona contra o cliente real)

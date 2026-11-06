@@ -14,7 +14,7 @@ import (
 func main() {
 	clientDir := flag.String("client", "", "path containing itemicon.bin and UI/itemiconNN.wyt")
 	outputDir := flag.String("out", "dist/item-icons", "output directory")
-	contentDir := flag.String("content", "Release", "content tree used to report named-item coverage (empty = skip)")
+	contentDir := flag.String("content", "tmserver/content", "content tree used to report named-item coverage (empty = skip)")
 	flag.Parse()
 	if *clientDir == "" {
 		log.Fatal("itemiconpack: -client is required")

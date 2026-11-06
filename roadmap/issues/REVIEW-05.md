@@ -115,3 +115,13 @@ só então no dev. Rollback: o compose volta ao DSN antigo por variável de ambi
 - `DB-03` teste de `down` no CI
 - `DB-04` renomear `character` → `characters`
 - `DB-05` revisão dos 19 índices de auditoria
+
+## O que faltou analisar
+
+- por que ainda precisamos ler arquivos txt/csv já qu tudo deve  ser portadopara o banco ?
+- o que ainda não está sendo persistido no banco de dados e precisa ser migrado para lá ?
+- existe algum real motivo para o tmsrv ainda ler esses arquivos e não só o banco de dados ?
+- o banco de dados deve ser a unica fonte real de dado, não devemos mais depender de nenhum arquivo.
+- migrations e arquivos de seed devem ser analisados,atualizados, normalizados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- a inicialização do banco de dados deve ser feita apenas com migrations e arquivos de seed, não devemos mais depender de nenhum arquivo externo.
+- o banco deve ser capaz de subir do zero, completamenete, com o conteudo normalizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.

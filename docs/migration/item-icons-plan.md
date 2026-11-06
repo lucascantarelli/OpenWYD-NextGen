@@ -95,7 +95,7 @@ O web-api lê o mesmo manifesto local que foi publicado:
 
 ```bash
 webserver \
-  -content /Release \
+  -content /content \
   -item-icons-manifest /item-icons/manifest.json
 # equivalente: W2PP_ITEM_ICONS_MANIFEST=/item-icons/manifest.json
 ```

@@ -957,7 +957,7 @@ func (d *Dispatcher) pvpArenaTile(x, y int16) bool {
 	return d.attrs != nil && x >= 0 && y >= 0 && d.attrs.At(int(x)/4, int(y)/4)&attrPvPArena != 0
 }
 
-// Teleporte refusals (Release/TMsrv/run/Language.txt, cp1252).
+// Teleporte refusals (tmserver/content/TMsrv/run/Language.txt, cp1252).
 const (
 	msgCantSummonDeadPerson = "Personagem derrotado n\xe3o pode ser invocado ou transferido." // _NN_Cant_Summon_Dead_Person (48)
 	msgSummonNotAllowedHere = "Voc\xea n\xe3o pode invocar ou transferir nesta zona."         // _NN_Summon_Not_Allowed_Here (49)

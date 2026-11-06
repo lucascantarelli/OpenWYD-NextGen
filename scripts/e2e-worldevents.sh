@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Git Bash on Windows rewrites POSIX-looking arguments into Windows paths, which
-# turns container-side paths (/src, /Release) into C:\Program Files\Git\... .
+# turns container-side paths (/src, /content) into C:\Program Files\Git\... .
 # No-op everywhere else.
 export MSYS_NO_PATHCONV=1
 
@@ -199,10 +199,10 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "tower" ]; then
 	docker rm -f "$TOWER_CONTAINER" >/dev/null 2>&1 || true
 	docker run -d --name "$TOWER_CONTAINER" --network "$NETWORK" \
 		-e TZ="$ZONE" \
-		-v "$PWD/Release":/Release:ro \
+		-v "$PWD/tmserver/content":/content:ro \
 		"$TMIMAGE" \
 		-addr ":${TOWER_PORT}" -dbserver dbserver:7514 -binserver binserver:3000 \
-		-content /Release -status-addr :80 -client-version 12000 -newbie-event >/dev/null
+		-content /content -status-addr :80 -client-version 12000 -newbie-event >/dev/null
 
 	echo "==> Waiting for the tower tmserver to accept connections…"
 	for _ in $(seq 1 60); do

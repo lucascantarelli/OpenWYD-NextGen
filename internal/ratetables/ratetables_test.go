@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-// contentDir walks up from the package to the repository's Release tree, so the
+// contentDir walks up from the package to the repository content tree, so the
 // tests parse the real files the server mounts.
 func contentDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join("..", "..", "Release")
+	return filepath.Join("..", "..", "tmserver", "content")
 }
 
 func TestRowsParseRealFiles(t *testing.T) {

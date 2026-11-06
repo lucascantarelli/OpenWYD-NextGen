@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Real templates lifted out of Release/TMsrv/run/npc/. The @-prefixed pair are
+// Real templates lifted out of tmserver/content/TMsrv/run/npc/. The @-prefixed pair are
 // the legacy 756-byte records of mobs that also ship in the canonical layout,
 // which is what makes the cross-layout parity test below possible.
 const (

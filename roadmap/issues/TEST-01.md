@@ -16,7 +16,7 @@ git grep -l 't.Skip' -- '*_test.go' | wc -l    # 17 arquivos
 
 43 skips em 17 arquivos é volume suficiente para esconder uma regressão real: um teste que salta é
 reportado como `ok` no pacote. O `REVIEW-03` estimou parte legítima (conteúdo proprietário ausente,
-ex.: `Release/` fora do runner) — mas a triagem nunca foi feita arquivo a arquivo.
+ex.: `tmserver/content/` fora do runner) — mas a triagem nunca foi feita arquivo a arquivo.
 
 ## Passos
 
@@ -73,7 +73,7 @@ grep -rn 't.Skip' --include=*_test.go | grep -vc 'motivo:'   # 0
 
 | Item | Ação |
 |---|---|
-| `TestTakeInventoryRealContentTree` (`internal/npctemplate`) | **removido** — o diretório `Release/TMsrv/run/npc/` saiu do repositório na fase 5 do conteúdo; o teste não podia mais rodar em árvore nenhuma deste repo, e `TakeInventory` continua coberto por teste de unidade |
+| `TestTakeInventoryRealContentTree` (`internal/npctemplate`) | **removido** — o diretório `tmserver/content/TMsrv/run/npc/` saiu do repositório na fase 5 do conteúdo; o teste não podia mais rodar em árvore nenhuma deste repo, e `TakeInventory` continua coberto por teste de unidade |
 | `TestResolveTrimsLegacyTrailingDot`, `TestResolveCaseInsensitive`, `TestResolveAmbiguousLegacyName` | **estavam vermelhos** no Windows (não por código: o FS normaliza caixa e ponto final, então `Reiners`/`reiners` é o mesmo arquivo). Passaram a pular com `motivo: ambiente` via `requireCaseSensitiveFS`; no Linux/CI os três rodam de verdade |
 | CSVs que saíram do repo (`ItemList.csv`, `SkillData.csv`, `NPCGener.txt`) | mensagem passou a dizer **o que** falta e **por que** o caminho do banco cobre o caso; eram 20 ocorrências de "X unavailable: err" sem contexto |
 | Skips de e2e (`W2PP_E2E_*`, `W2PP_TEST_DSN`, `E2E_ADMIN_*`) | mensagem pt-BR nomeando a variável de ambiente que liga o teste |

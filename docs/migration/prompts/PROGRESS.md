@@ -360,7 +360,7 @@ ItemList/SkillData/CompRate/SancRate/mapas/NPCGener → fecham combine/quest/dro
 
 ## Fase 5 — Conteúdo (loaders) — COMPLETO (núcleo)
 
-`tmserver/internal/content/` — loaders validados contra os **arquivos reais de `Release/`**:
+`tmserver/internal/content/` — loaders validados contra os **arquivos reais de `tmserver/content/`**:
 - **`rates.go` — `CompRate`** (`Common/Settings/CompRate.txt`, `Família Chave Taxa`) e **`SancRate`**
   (`SancRate.txt`, `Anvil Nível Taxa`). **Destrava as taxas de combine/refino do Lote 6.**
 - **`catalog.go` — `ItemList`** (`Common/ItemList.csv`, index→nome + raw) e **`SkillData`**

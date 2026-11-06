@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
 
 build:
 	go build ./...
@@ -12,15 +12,25 @@ binaries:
 	go build -o bin/exptool ./tmserver/cmd/exptool
 
 # Restamp the monster templates' Exp field with the balanced curve (issue #43).
-# Run after adding/editing Release npc templates, review with -dry-run first.
+# Os templates vivem em npc_template (Postgres, issue 58); este alvo reprocessa
+# uma árvore legada antes de reimportar. Use -dry-run primeiro.
 exp-data:
-	go run ./tmserver/cmd/exptool -npc Release/TMsrv/run/npc -quiet
+	go run ./tmserver/cmd/exptool -npc tmserver/content/TMsrv/run/npc -quiet
+
+# Conteúdo do servidor (LEGACY-02). `check` confere o manifesto (config
+# versionada + mapas por bootstrap); `sync` copia de uma árvore legada o que não
+# é versionado e revalida. W2PP_CONTENT_SOURCE aponta para a árvore legada do Win32.
+content-check:
+	bash scripts/sync-content.sh --check
+
+content-sync:
+	W2PP_CONTENT_SOURCE="$(W2PP_CONTENT_SOURCE)" bash scripts/sync-content.sh --sync
 
 # Extract proprietary client icons into ignored deployment artifacts. Usage:
 #   make item-icons CLIENT_DIR=/path/to/WYD-7662
 item-icons:
 	test -n "$(CLIENT_DIR)" || (echo "CLIENT_DIR is required" >&2; exit 1)
-	go run ./webserver/cmd/itemiconpack -client "$(CLIENT_DIR)" -content Release -out "$${OUTPUT_DIR:-dist/item-icons}"
+	go run ./webserver/cmd/itemiconpack -client "$(CLIENT_DIR)" -content tmserver/content -out "$${OUTPUT_DIR:-dist/item-icons}"
 
 # Publish through Jean1dev/storage-manager-server. The command is resumable and
 # writes every returned URL to dist/item-icons/item-icons-upload-<version>.json

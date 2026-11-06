@@ -269,7 +269,7 @@ func (l *ItemList) Requirements() map[int]ItemReq {
 
 // NewItemList builds a catalog from explicit entries. It is the entry point for
 // the database-backed catalog (issue 58, fase 2) and for tests, which must not
-// depend on Release/ being present.
+// depend on tmserver/content/ being present.
 func NewItemList(entries []ItemEntry) *ItemList {
 	l := &ItemList{items: make(map[int]ItemEntry, len(entries))}
 	for _, e := range entries {

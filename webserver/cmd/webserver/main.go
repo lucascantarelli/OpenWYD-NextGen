@@ -5,7 +5,7 @@
 //
 // Usage:
 //
-//	webserver [-addr :7600] -dsn <postgres-url> [-tls-cert … -tls-key … -tls-ca …] [-content <Release/>]
+//	webserver [-addr :7600] -dsn <postgres-url> [-tls-cert … -tls-key … -tls-ca …] [-content <tmserver/content/>]
 package main
 
 import (
@@ -70,7 +70,7 @@ func run(logger *slog.Logger) error {
 	tlsCert := flag.String("tls-cert", os.Getenv("W2PP_TLS_CERT"), "server certificate (PEM)")
 	tlsKey := flag.String("tls-key", os.Getenv("W2PP_TLS_KEY"), "server private key (PEM)")
 	tlsCA := flag.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "client CA (PEM) for mTLS")
-	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree for rates and maps (catalogs come from the database)")
+	contentDir := flag.String("content", envOr("W2PP_CONTENT", "tmserver/content"), "caminho da árvore de conteúdo para taxas e mapas (catálogos vêm do banco; default tmserver/content)")
 	iconManifestPath := flag.String("item-icons-manifest", os.Getenv("W2PP_ITEM_ICONS_MANIFEST"), "generated item-icon manifest (empty = fallback-only)")
 	flag.Parse()
 
@@ -136,7 +136,7 @@ func run(logger *slog.Logger) error {
 	}
 
 	// CatÃ¡logos vÃªm do Postgres (issue 58): ItemList.csv, SkillData.csv e npc/
-	// saÃ­ram de Release/ na fase 5, entÃ£o escanear a Ã¡rvore sÃ³ produzia WARN de
+	// saÃ­ram de tmserver/content/ na fase 5, entÃ£o escanear a Ã¡rvore sÃ³ produzia WARN de
 	// catÃ¡logo vazio a cada boot (issue 62). -content fica sÃ³ com rates e mapa.
 	itemRows, err := st.ListItemCatalog(ctx)
 	if err != nil {

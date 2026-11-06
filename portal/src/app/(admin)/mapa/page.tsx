@@ -22,7 +22,7 @@ export const metadata = { title: "Mapa de colisão · WYD2" };
  *
  * Lê o arquivo do content tree, mostra o histograma e permite transformações em
  * massa com pré-visualização + download. **Não** escreve o arquivo: aplicar é
- * substituir `Release/TMsrv/run/AttributeMap.dat` (com backup) e reiniciar o
+ * substituir `tmserver/content/TMsrv/run/AttributeMap.dat` (com backup) e reiniciar o
  * tmserver.
  */
 export default async function AttributeMapPage() {
@@ -59,7 +59,7 @@ export default async function AttributeMapPage() {
           <p>{error}</p>
           <p className="ui-field__hint">
             O web-api responde <code>INVALID</code> quando subiu sem <code>-content</code>, quando o
-            arquivo não existe em <code>Release/TMsrv/run/</code> ou quando o tamanho não é
+            arquivo não existe em <code>tmserver/content/TMsrv/run/</code> ou quando o tamanho não é
             exatamente {fmtCoin(MAP_BYTES)} bytes.
           </p>
           <RetryButton />
@@ -121,7 +121,7 @@ export default async function AttributeMapPage() {
               </li>
               <li>
                 faça backup do atual e copie o novo para{" "}
-                <code>Release/TMsrv/run/AttributeMap.dat</code>;
+                <code>tmserver/content/TMsrv/run/AttributeMap.dat</code>;
               </li>
               <li>
                 <code>docker compose restart tmserver</code> e confirme{" "}

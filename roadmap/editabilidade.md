@@ -6,26 +6,26 @@
 > Colunas: **superfície** · **onde vive** · **o que muda** · **caminho hoje** · **issue**.
 > ✅ = entregue · 🔵 = issue aberta · ⚪ = lacuna sem issue (ver §5).
 
-## 1. Conteúdo em `Release/` (versionado, read-only para o portal)
+## 1. Conteúdo em `tmserver/content/` (versionado, read-only para o portal)
 
 | Superfície | Onde vive | O que muda | Caminho hoje | Issue |
 |---|---|---|---|---|
-| Catálogo de itens | `Release/Common/ItemList.csv` (3.220) | nome, display, **preço base**, grade, `slot_mask`/nPos, mesh/texture, pares `EF_*` | leitura via `ListItems`; edição = overlay no Postgres | ✅ 22 (leitura) · 🔵 33 (nome/preço) · 🔵 44 (efeitos) |
-| Skills | `Release/Common/SkillData.csv` (151) | nome, classe, nível, mana, dano, alvo | **nenhum** (só o tmserver lê) | 🔵 46 |
-| Templates de mob | `Release/TMsrv/run/npc/*.txt` (620) | nível, HP/MP, atributos, EXP, coin, skills, `Equip[16]` | `MobTemplateAdminService` (overlay `mob_template_stat`/`_equip`) | 🔵 25 |
-| Spawns | `Release/TMsrv/run/NPCGener.txt` (6.099 geradores / 11.930 mobs) | coordenada, raio, quantidade, template | leitura no boot; sem RPC de escrita | 🔵 37 |
+| Catálogo de itens | `tmserver/content/Common/ItemList.csv` (3.220) | nome, display, **preço base**, grade, `slot_mask`/nPos, mesh/texture, pares `EF_*` | leitura via `ListItems`; edição = overlay no Postgres | ✅ 22 (leitura) · 🔵 33 (nome/preço) · 🔵 44 (efeitos) |
+| Skills | `tmserver/content/Common/SkillData.csv` (151) | nome, classe, nível, mana, dano, alvo | **nenhum** (só o tmserver lê) | 🔵 46 |
+| Templates de mob | `tmserver/content/TMsrv/run/npc/*.txt` (620) | nível, HP/MP, atributos, EXP, coin, skills, `Equip[16]` | `MobTemplateAdminService` (overlay `mob_template_stat`/`_equip`) | 🔵 25 |
+| Spawns | `tmserver/content/TMsrv/run/NPCGener.txt` (6.099 geradores / 11.930 mobs) | coordenada, raio, quantidade, template | leitura no boot; sem RPC de escrita | 🔵 37 |
 | Drops | `ItemDropList.txt`, `LevelItem.txt`, `Carry[]` do template | item por slot, taxa, level item | `ListDropItems`/`ListMobDrops` (leitura) | ✅/🔵 26 (relatório) · 🔵 34 (edição) |
 | Taxa por slot de drop | **código** `DropRate[64]`/`DropBonus[64]` | divisor de chance por slot (0..63) | — | 🔵 34 |
 | Rates | `Settings/{CompRate,SancRate,QuestsRate,CastleQuest,MobMerc}.txt` | refino, combine, quest, castelo, mercador | sem RPC | 🔵 36 |
-| `gameconfig.txt` | `Release/TMsrv/run/gameconfig.txt` | evento de drop, `double`, `potioncount`, `partybonus`, **Treasure**, **Item Drop Bonus**, `PotionDelay`, `GTorreHour`/`RVRHour`/`BRHour`, `maxNightmare` | parcial (evento global via overlay) | 🔵 28 (evento) · 🔵 36 (demais chaves) · 🔵 45 (horários de guerra) |
-| Itens fixos do mapa | `Release/TMsrv/run/InitItem.csv` (49: portões/baús) | posição, item, estado | leitura no boot | 🔵 41 (catálogo) · ⚪ edição |
+| `gameconfig.txt` | `tmserver/content/TMsrv/run/gameconfig.txt` | evento de drop, `double`, `potioncount`, `partybonus`, **Treasure**, **Item Drop Bonus**, `PotionDelay`, `GTorreHour`/`RVRHour`/`BRHour`, `maxNightmare` | parcial (evento global via overlay) | 🔵 28 (evento) · 🔵 36 (demais chaves) · 🔵 45 (horários de guerra) |
+| Itens fixos do mapa | `tmserver/content/TMsrv/run/InitItem.csv` (49: portões/baús) | posição, item, estado | leitura no boot | 🔵 41 (catálogo) · ⚪ edição |
 | Item extra | `extraitem.csv` + `extraitem.bin` | item "efêmero" fora do ItemList | sem RPC | 🔵 44 |
 | Mapa de altura/colisão | `HeightMap.dat` (16 MiB), `AttributeMap.dat` (1 MiB) | relevo, bloqueio, zonas de dano | `AttributeMapAdminService` (download/transform) | 🔵 27 |
-| Regiões nomeadas | `Release/TMsrv/run/Regions.txt` (52 retângulos) | nome + retângulo (PvP, dungeon, Kefra…) | **nenhum** — só o tmserver lê | 🔵 41 |
-| Guardas de cidade | `Release/TMsrv/run/Guard.txt` | requisitos, reward, efeitos do NPC guarda | sem RPC | 🔵 45 |
-| Quest diária | `Release/TMsrv/run/QuestDiaria.txt` | missões do dia | `DailyRewardAdminService` cobre a recompensa | 🔵 30 |
-| `Language.txt` / mensagens | `Release/TMsrv/run/Language.txt` | textos do sistema | sem RPC | ⚪ |
-| Base de personagem | `Release/DBsrv/run/BaseMob/{TK,FM,BM,HT}` (816 B) | equip/stats iniciais por classe | sem RPC | 🔵 43 |
+| Regiões nomeadas | `tmserver/content/TMsrv/run/Regions.txt` (52 retângulos) | nome + retângulo (PvP, dungeon, Kefra…) | **nenhum** — só o tmserver lê | 🔵 41 |
+| Guardas de cidade | `tmserver/content/TMsrv/run/Guard.txt` | requisitos, reward, efeitos do NPC guarda | sem RPC | 🔵 45 |
+| Quest diária | `tmserver/content/TMsrv/run/QuestDiaria.txt` | missões do dia | `DailyRewardAdminService` cobre a recompensa | 🔵 30 |
+| `Language.txt` / mensagens | `tmserver/content/TMsrv/run/Language.txt` | textos do sistema | sem RPC | ⚪ |
+| Base de personagem | `tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` (816 B) | equip/stats iniciais por classe | sem RPC | 🔵 43 |
 
 ## 2. Estado morto no Postgres (overlay/config — escrita permitida)
 
@@ -76,5 +76,5 @@
 `41` (atlas) → `42` (teleportes, usa o atlas) → `25` (mobs) → `44` (adds/refino) → `43` (personagens) →
 `45` (guildas/castelo) → `46` (skills) → `33`/`34`/`35`/`36`/`37` (conteúdo) → `38`/`39` (operação/QA).
 
-> Regra que vale para todas: o portal **nunca** escreve em `Release/` nem no estado vivo. Escrita é
+> Regra que vale para todas: o portal **nunca** escreve em `tmserver/content/` nem no estado vivo. Escrita é
 > overlay no Postgres (aplicado pelo tmserver no boot/poll) ou `delivery_queue`.

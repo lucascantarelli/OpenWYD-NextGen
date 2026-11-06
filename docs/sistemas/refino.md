@@ -11,8 +11,8 @@ Dois sistemas distintos que o jogador confunde porque ambos "mudam o item":
 `internal/refine` concentra as taxas em `internal/refine/{rate,sanc,amount,classebonus,itembonus}.go`
 — chance, santuário, quanto sobe, e bônus por classe e por item.
 
-As taxas **não** estão no código: vêm de `Release/Common/Settings/SancRate.txt` e
-`Release/Common/Settings/CompRate.txt`. Arquivo de taxa quebrado é erro fatal no boot do tmServer — de
+As taxas **não** estão no código: vêm de `tmserver/content/Common/Settings/SancRate.txt` e
+`tmserver/content/Common/Settings/CompRate.txt`. Arquivo de taxa quebrado é erro fatal no boot do tmServer — de
 propósito, porque servidor subindo com taxa zero é pior que servidor fora do ar.
 
 ## Combine
@@ -28,7 +28,7 @@ recusada sem consumir item.
 | Refino | `refine.go`, `refine_feedback.go` |
 | Taxas de refino | `internal/refine/*`, `internal/ratetables` |
 | Combine | `combine.go`, `combine_catalog.go`, `combine_odin.go`, `combine_variants.go` |
-| Conteúdo de taxa | `Release/Common/Settings/{SancRate,CompRate}.txt` |
+| Conteúdo de taxa | `tmserver/content/Common/Settings/{SancRate,CompRate}.txt` |
 | Regra e fluxo | `docs/migration/game-rules.md` §3, `docs/migration/flows.md` §6 |
 
 ## Como verificar
@@ -48,4 +48,4 @@ confirmar que **nenhum** item foi consumido.
 ## Limite atual
 
 `/refino` no portal está `soon: true`: não há tela nem RPC de administração de refino. Ajustar taxa
-hoje é editar o arquivo de conteúdo e reiniciar o tmServer — o portal **não** escreve em `Release/`.
+hoje é editar o arquivo de conteúdo e reiniciar o tmServer — o portal **não** escreve em `tmserver/content/`.

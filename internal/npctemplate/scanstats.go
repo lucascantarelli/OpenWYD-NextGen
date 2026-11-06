@@ -86,7 +86,7 @@ func ScanBlobs(blobs map[string][]byte, visit func(name string, mob savefmt.Mob)
 	return stats
 }
 
-// ScanDir walks the npc template directory of a Release/ content root and calls
+// ScanDir walks the npc template directory of a tmserver/content/ content root and calls
 // visit for every file that decodes as a STRUCT_MOB in any layout savefmt knows
 // — the canonical 816-byte one plus the legacy 756/920-byte forms the shipped
 // content mixes in (data-formats.md §1.4.1). Files that cannot be read, or that

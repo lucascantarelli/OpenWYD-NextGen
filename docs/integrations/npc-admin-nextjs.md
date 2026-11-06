@@ -33,7 +33,7 @@ Regras que **não** mudam:
 3. **Conta de moderador**: a coluna `account.role` precisa ser `'moderator'` ou `'admin'`. **Não há RPC
    para promover** — é operação de DBA/seed (ex.: `UPDATE account SET role='moderator' WHERE name=...`).
    Contas normais têm `role='player'` e recebem `ADMIN_RESULT_FORBIDDEN`.
-4. **Seed dos NPCs** (uma vez): `dbserver import-npcs -content <Release/> -dsn <dsn>` popula o
+4. **Seed dos NPCs** (uma vez): `dbserver import-npcs -content <tmserver/content/> -dsn <dsn>` popula o
    catálogo de spawn (todos os blocos) a partir do `NPCGener.txt`. Antes disso, `ListNpcs` volta vazio
    e o mundo sobe sem NPCs.
 5. **Nada a ligar no tmServer**: `npc_definition` é a única fonte de spawn (issue 57). O tmServer lê o
@@ -106,7 +106,7 @@ Erros gRPC (ex.: `UNAVAILABLE`, `INTERNAL`) = falha de infraestrutura → 502/50
 message AdminNpc {
   int64  id            = 1;  // id numérico da definição (use em npc_id)
   string slug          = 2;  // chave humana estável (ex. "Karkarian-42")
-  string template_name = 3;  // arquivo do template em Release/TMsrv/run/npc/
+  string template_name = 3;  // arquivo do template em tmserver/content/TMsrv/run/npc/
   string display_name  = 4;
   bool   enabled       = 5;  // "aparece ou não"
   int32  map_id        = 6;  // carregado, mas o jogo posiciona só por x/y (grid único)
@@ -128,7 +128,7 @@ message AdminNpcShopItem {
   int32 quantity = 9; // quantidade vendida no slot; 0 é tratado como 1
 }
 
-// Um template merchant encontrado em Release/TMsrv/run/npc/ (CurrentScore.Merchant
+// Um template merchant encontrado em tmserver/content/TMsrv/run/npc/ (CurrentScore.Merchant
 // != 0). Alimenta o combobox de template_name do formulário (ver §5.5).
 message MerchantTemplate {
   string template_name = 1;  // valor exato para UpsertNpc.template_name (sem .txt)
@@ -141,7 +141,7 @@ message ListMerchantTemplatesResponse {
   repeated MerchantTemplate templates = 2;
 }
 
-// Uma linha de Release/Common/ItemList.csv, só o que o picker de item_index e o
+// Uma linha de tmserver/content/Common/ItemList.csv, só o que o picker de item_index e o
 // ícone precisam (o resto da linha — preço, efeitos — não viaja aqui).
 // A chave real vem de itemicon.bin; os demais campos dirigem busca e fallback.
 message ItemCatalogEntry {
@@ -261,7 +261,7 @@ flag: o catálogo do banco é aplicado no boot e no poll.
 ### 5.5 Combobox de `template_name` (`ListMerchantTemplates`)
 
 `template_name` é texto livre no `UpsertNpc`, mas precisa bater **exatamente** com um arquivo em
-`Release/TMsrv/run/npc/` (sem `.txt`). Um valor errado não dá erro nenhum na hora — o Postgres aceita a
+`tmserver/content/TMsrv/run/npc/` (sem `.txt`). Um valor errado não dá erro nenhum na hora — o Postgres aceita a
 definição, mas o tmServer não spawna o NPC (`npc template resolve failed` / `npc definition has no
 template — skipped` só nos logs do servidor). `ListMerchantTemplates` existe para eliminar essa classe de
 erro:
@@ -283,7 +283,7 @@ Os mesmos dois problemas de digitação existem em outros dois campos numéricos
 
 - **`item_index`** (usado em `SetNpcShop.items[].item_index` e em `SetItemPrice.item_index`): um índice
   errado não é validado contra o catálogo — o backend aceita qualquer `item_index > 0` (§5.2/§5.3). Um
-  valor que não existe em `Release/Common/ItemList.csv` faz o NPC "vender" um item inexistente/errado no
+  valor que não existe em `tmserver/content/Common/ItemList.csv` faz o NPC "vender" um item inexistente/errado no
   jogo, sem aviso nenhum na hora de salvar.
 - **`map_id`** (usado em `UpsertNpc.map_id`): hoje é só um rótulo — o mundo roda num **grid único**, então
   o spawn efetivo depende só de `pos_x`/`pos_y` (§9.2 de `npc-editing-plan.md`). Ainda assim vale
@@ -311,7 +311,7 @@ Cada definição carrega um `origin` (§4.3, campo 12):
 | `"custom"`  | criado pelo moderador no painel (`UpsertNpc`) | permitido |
 
 A regra é intencional: apagar um NPC do `NPCGener.txt` no banco não o remove do conteúdo — o próximo
-`import-npcs` o traria de volta, e nesse meio-tempo o banco e o `Release/` ficariam divergentes. A
+`import-npcs` o traria de volta, e nesse meio-tempo o banco e o `tmserver/content/` ficariam divergentes. A
 saída pretendida é **desabilitar**: `SetNpcVisibility(npc_id, enabled=false)` tira o NPC do mundo
 mantendo a definição.
 
@@ -501,7 +501,7 @@ feature). Ferramentas usuais: `@grpc/grpc-js` + `grpc-tools`/`ts-proto`, ou `buf
 | `SESSION_SECRET` | assinatura/criptografia do cookie de sessão |
 
 > **Nota (lado backend, não Next.js):** `ListMerchantTemplates` **e** `ListItemCatalog` só retornam dados
-> se o **próprio `webserver`** (web-api) tiver sido iniciado com `-content <Release/>` (ou
+> se o **próprio `webserver`** (web-api) tiver sido iniciado com `-content <tmserver/content/>` (ou
 > `W2PP_CONTENT`), o mesmo diretório montado no `tmServer` — é a mesma flag para as duas RPCs, não precisa
 > configurar duas vezes. Sem essa flag no `webserver`, ambas respondem `result = OK` com lista vazia — não
 > é um erro de configuração do Next.js, é do serviço Go. `ListMapZones` **não** depende dessa flag (tabela

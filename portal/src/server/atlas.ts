@@ -2,7 +2,7 @@
  * Atlas do mundo gerado por `webserver/cmd/worldatlas`.
  *
  * O JSON sai das **mesmas** constantes que o servidor usa (cidades e rotas de
- * teleporte vêm de `tmserver/internal/world`) mais o conteúdo de `Release/`
+ * teleporte vêm de `tmserver/internal/world`) mais o conteúdo de `tmserver/content/`
  * (Regions.txt, InitItem.csv, NPCGener.txt) — o portal só lê o artefato. Se o
  * arquivo não existir, a tela explica como gerar; nunca cai em 500.
  */
@@ -164,4 +164,4 @@ export async function readRegionMapPng(): Promise<Uint8Array | null> {
 }
 
 export const ATLAS_COMMAND =
-  "go run ./tmserver/cmd/worldatlas -content Release -out dist";
+  "go run ./tmserver/cmd/worldatlas -content tmserver/content -out dist";

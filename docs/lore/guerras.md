@@ -7,7 +7,7 @@ muda preço e acesso. Esta página descreve o que roda hoje e o que ainda é só
 
 | Peça | Onde | O que faz |
 |---|---|---|
-| Janela de disputa | `Release/Common/Settings/CastleQuest.txt` | define quando a disputa abre e o que ela paga |
+| Janela de disputa | `tmserver/content/Common/Settings/CastleQuest.txt` | define quando a disputa abre e o que ela paga |
 | Estado do castelo | tabela de estado no Postgres + memória do mundo | quem domina, desde quando |
 | Taxa de quest do castelo | `CastleQuest.txt` (rates) | multiplicador de recompensa no período |
 | Painel | `/castelo` no portal | leitura do estado e ajuste auditado |

@@ -39,14 +39,14 @@ func TestEhreEffectAndSoulResults(t *testing.T) {
 
 func startServerAilyn(t *testing.T, coin int32, validRecipe bool) (string, func()) {
 	t.Helper()
-	root := filepath.Join("..", "..", "..", "Release", "Common")
+	root := filepath.Join("..", "..", "..", "tmserver", "content", "Common")
 	items, err := content.LoadItemList(filepath.Join(root, "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	comp, err := content.LoadCompRate(filepath.Join(root, "Settings", "CompRate.txt"))
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CompRate.txt não foi lido: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/content/Common/Settings/CompRate.txt não foi lido: %v", err)
 	}
 
 	first := world.Item{Index: aylinTarget, Effects: [3]world.Effect{

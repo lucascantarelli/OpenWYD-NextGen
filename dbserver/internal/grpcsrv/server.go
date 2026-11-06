@@ -463,7 +463,7 @@ func (s *Server) SaveCastleQuestState(ctx context.Context, req *dbv1.SaveCastleQ
 func (s *Server) CreateCharacter(ctx context.Context, req *dbv1.CreateCharacterRequest) (*dbv1.CreateCharacterResponse, error) {
 	// Initialize a playable level-0 character ("Nv 1" on screen; the BaseMob
 	// templates carry BaseScore.Level 0 @44). The original DBSrv seeds these from
-	// per-class BaseMob templates (Release/DBsrv/run/BaseMob/{TK,FM,BM,HT}); until
+	// per-class BaseMob templates (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); until
 	// those are wired we set sane base stats + HP/MP and a starting position so the
 	// character can enter the world. (UNVERIFIED: exact per-class base attributes
 	// and starter equipment / spawn coords — placeholder values.)

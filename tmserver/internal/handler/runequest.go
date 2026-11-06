@@ -20,7 +20,7 @@ const itemPistaDaRunas = 5134
 // trainers, so it cannot identify Uxmal.
 const uxmalMerchant = 72
 
-// Rune track texts (Release/TMsrv/run/Language.txt).
+// Rune track texts (tmserver/content/TMsrv/run/Language.txt).
 const (
 	msgRuneQuestBusy     = "Quest em progresso."                // _NN_Night_Already
 	msgRuneQuestLeader   = "Uso restrito ao l\xedder do grupo." // _NN_Party_Leader_Only

@@ -6,7 +6,7 @@ servidor aberto de wyd
 Reescrita em **Go** (big-bang) do servidor do WYD (With Your Destiny), mirando o **client `WYD.exe`
 7662 sem modificação** — este build envia `ClientVersion` **12000** no login (medido em 2026-11-04;
 `Basedef.h` documenta 7640). Os fontes legados em C++ ficam em `Source/`, os binários
-legados + conteúdo do jogo em `Release/`, e os serviços Go novos em `tmserver/`, `dbserver/`,
+legados + conteúdo do jogo em `tmserver/content/`, e os serviços Go novos em `tmserver/`, `dbserver/`,
 `binserver/`, `webserver/`. A reescrita é guiada pela engenharia reversa documentada em
 `docs/migration/`. Agradecimentos ao pessoal que me forneceu os fontes.
 
@@ -55,7 +55,7 @@ W2PP_RATES_EDITING=true docker compose up -d tmserver   # o shell vence o arquiv
 
 Nenhuma chave é obrigatória: as flags `-x` dos binários usam `W2PP_X` como default e o argumento de
 CLI sempre vence a variável. Números de gameplay (rate, drop, preço, EXP) **não** vêm por env —
-ficam em `Release/` e nos overlays do portal. Catálogo completo: `docs/migration/config-ops.md` §0.
+ficam em `tmserver/content/` e nos overlays do portal. Catálogo completo: `docs/migration/config-ops.md` §0.
 
 ## Cliente do jogo
 

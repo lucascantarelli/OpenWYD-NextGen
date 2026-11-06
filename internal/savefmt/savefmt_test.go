@@ -214,10 +214,10 @@ func TestDetectVersion(t *testing.T) {
 // the legacy 4294 format and its AccountName read from offset 0. Full decode is
 // NOT attempted — the legacy layout is UNVERIFIED (data-formats.md §1.2).
 func TestRealAntonioSample(t *testing.T) {
-	path := filepath.Join("..", "..", "..", "Release", "DBsrv", "run", "account", "A", "antonio")
+	path := filepath.Join("..", "..", "..", "tmserver", "content", "DBsrv", "run", "account", "A", "antonio")
 	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — a amostra legacy Release/DBsrv/run/account/A/antonio não está nesta árvore: %v", err)
+		t.Skipf("motivo: conteúdo ausente — a amostra legacy tmserver/content/DBsrv/run/account/A/antonio não está nesta árvore: %v", err)
 	}
 	v := DetectVersion(len(b))
 	if v != VersionLegacy4294 {

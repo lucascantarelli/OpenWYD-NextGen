@@ -5,7 +5,7 @@
 //
 // It lives under tmserver/cmd (not webserver/cmd) because it reads
 // tmserver/internal/content and tmserver/internal/world, which Go only allows
-// inside the tmserver tree. It reads content, never writes to Release/.
+// inside the tmserver tree. It reads content, never writes to tmserver/content/.
 package main
 
 import (
@@ -140,7 +140,7 @@ type atlas struct {
 var regionLine = regexp.MustCompile(`^\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*=\s*(.+?)\s*$`)
 
 func main() {
-	contentDir := flag.String("content", "Release", "content tree (Release/): regiões e mapas")
+	contentDir := flag.String("content", "tmserver/content", "content tree (tmserver/content/): regiões e mapas")
 	outDir := flag.String("out", "dist", "output directory")
 	dsn := flag.String("dsn", os.Getenv("W2PP_DB_DSN"), "PostgreSQL DSN: itens estáticos e spawns vêm do banco")
 	flag.Parse()

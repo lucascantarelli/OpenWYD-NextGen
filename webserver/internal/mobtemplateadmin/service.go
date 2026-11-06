@@ -183,7 +183,7 @@ func validEquip(items []domain.MobTemplateEquipItem) bool {
 }
 
 // Delete removes the override, reverting the template to its raw file
-// defaults (never touches the underlying file — Release/ is read-only in
+// defaults (never touches the underlying file — tmserver/content/ is read-only in
 // production).
 func (s *Service) Delete(ctx context.Context, moderatorID int64, templateName string) (Result, error) {
 	if r, err := s.authorize(ctx, moderatorID); r != OK || err != nil {

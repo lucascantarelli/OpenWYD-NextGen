@@ -89,7 +89,7 @@ func TestLoadNPCGenerators(t *testing.T) {
 
 // TestLoadNPCGeneratorsReal parses the shipped NPCGener.txt if present.
 func TestLoadNPCGeneratorsReal(t *testing.T) {
-	path := filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "NPCGener.txt")
+	path := filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "NPCGener.txt")
 	if _, err := os.Stat(path); err != nil {
 		t.Skipf("motivo: conteúdo ausente — NPCGener.txt saiu do repositório (spawns vêm de npc_definition no banco); o loader só roda sobre árvore externa: %v", err)
 	}

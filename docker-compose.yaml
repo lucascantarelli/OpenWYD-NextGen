@@ -59,13 +59,13 @@ services:
         SVC: webserver
     environment:
       W2PP_DB_DSN: postgres://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/postgres
-      W2PP_CONTENT: /Release
+      W2PP_CONTENT: /content
       # One-time web client login codes (IssuePlayCode); empty keeps them off.
       # Same value as the portal's PLAY_CODE_SECRET, at least 32 characters.
       W2PP_PLAY_CODE_SECRET: ${W2PP_PLAY_CODE_SECRET:-}
-    command: ["-addr", ":7600", "-content", "/Release"]
+    command: ["-addr", ":7600", "-content", "/content"]
     volumes:
-      - ./Release:/Release:ro   # merchant NPC templates for ListMerchantTemplates
+      - ./tmserver/content:/content:ro   # conteúdo: taxas e templates merchant
     depends_on:
       db:
         condition: service_healthy
@@ -107,14 +107,14 @@ services:
       dockerfile: portal/Dockerfile
     environment:
       WEB_API_ADDR: webserver:7600
-      W2PP_CONTENT: /Release
+      W2PP_CONTENT: /content
       # Logs ao vivo pelo sidecar; sem isto o BFF tenta o Docker CLI do host.
       LOG_PIPE_URL: http://logpipe:7788
       # Dev-only: sobrescreva no ambiente em qualquer deploy real (>=32 chars).
       SESSION_SECRET: ${W2PP_PORTAL_SESSION_SECRET:-dev-only-portal-session-secret-32-chars}
       AUDIT_LOG_DIR: /var/log/wyd-portal
     volumes:
-      - ./Release:/Release:ro   # ItemList.csv (preços) lido pelo portal
+      - ./tmserver/content:/content:ro   # ItemList.csv opcional (preços) lido pelo portal
       - ./dist:/dist:ro         # world-atlas.json / mapas gerados (issue 41)
       - portal-audit:/var/log/wyd-portal   # trilha de auditoria (ndjson)
     depends_on:
@@ -143,7 +143,7 @@ services:
       - "-binserver"
       - "binserver:3000"
       - "-content"
-      - "/Release"
+      - "/content"
       - "-status-addr"
       - ":80"
       - "-client-version"
@@ -154,7 +154,7 @@ services:
       binserver:
         condition: service_started
     # Switches for the moderator overlays (README/test recipes assume they can be
-    # exported). Every one defaults to "false" = read strictly from Release/, so this
+    # exported). Every one defaults to "false" = read strictly from the content tree, so this
     # passthrough changes nothing unless you export it. The NPC spawn catalogue is
     # NOT an overlay: npc_definition is the single source of spawn blocks (issue 57).
     #   W2PP_RATES_EDITING=true docker compose up -d tmserver
@@ -173,7 +173,7 @@ services:
       # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
-      - ./Release:/Release:ro   # content tree (rates/catalogs/maps), validated at boot
+      - ./tmserver/content:/content:ro   # content tree (rates/catalogs/maps), validated at boot
     # Publicado por endereço, não em 0.0.0.0: dois canais no mesmo host precisam
     # de portas iguais em IPs diferentes (o serverlist.bin guarda só o host).
     # 127.0.0.1 fica para o teste local; 192.168.100.3 é o IP do canal 0.
@@ -184,7 +184,7 @@ services:
       - "192.168.100.3:80:80"          # status — canal 0
 
   # Segundo canal (docs/migration/canais.md §7). Mesma imagem, mesmo dbServer,
-  # mesmo Release/ somente-leitura e um ServerIndex diferente: é o índice que
+  # mesmo conteúdo somente-leitura e um ServerIndex diferente: é o índice que
   # define a cidadania (Citizen = ServerIndex + 1) e o id de guilda.
   # Suba com: docker compose up -d tmserver2
   tmserver2:
@@ -200,7 +200,7 @@ services:
       - "-binserver"
       - "binserver:3000"
       - "-content"
-      - "/Release"
+      - "/content"
       - "-status-addr"
       - ":8080"
       - "-client-version"
@@ -227,7 +227,7 @@ services:
       # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
-      - ./Release:/Release:ro
+      - ./tmserver/content:/content:ro
     # Canal 1 no seu próprio IP, na MESMA porta do canal 0: é assim que o cliente
     # distingue canais (o .bin não carrega porta).
     ports:

@@ -104,13 +104,19 @@ func run(logger *slog.Logger) error {
 	rejectChecksum := flag.Bool("reject-checksum", false, "drop connections on CPSock checksum mismatch (Fase 7; off by default)")
 	maxMsgPerSec := flag.Float64("max-msg-per-sec", 200, "per-connection inbound message rate limit (0 = disabled)")
 	msgBurst := flag.Int("msg-burst", 400, "per-connection message burst depth")
-	contentDir := flag.String("content", os.Getenv("W2PP_CONTENT"), "path to the Release/ content tree (empty = skip; validates rates/catalogs/maps at boot)")
+	// O conteúdo mora dentro da árvore do servidor (LEGACY-02): sem -content, o
+	// boot lê tmserver/content/ a partir do diretório do repositório/da imagem.
+	defContent := os.Getenv("W2PP_CONTENT")
+	if defContent == "" {
+		defContent = "tmserver/content"
+	}
+	contentDir := flag.String("content", defContent, "caminho da árvore de conteúdo (default tmserver/content; vazio = pula; valida taxas/mapas no boot)")
 	teleportEditing := flag.Bool("teleport-editing", envBool("W2PP_TELEPORT_EDITING", false), "enable the moderator teleport-route overlay (issue 42); needs -dbserver. Applied at boot and re-read every 15s, so an edit reaches a running world without a restart. OFF by default: with it off the world resolves strictly from the compiled table")
 	mobStatEditing := flag.Bool("mob-stat-editing", envBool("W2PP_MOB_STAT_EDITING", false), "enable the moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the equivalent-tool successor to the legacy EDITAPPMOB); needs -dbserver and -content. Applied ONCE at boot, like every other content load — a moderator edit needs a tmServer restart to take effect (EDITAPPMOB itself required a server restart too), independent of the other overlays")
 	itemEffectEditing := flag.Bool("item-effect-editing", envBool("W2PP_ITEM_EFFECT_EDITING", false), "enable the moderator item base-effect overlay (issue 44, the read-through side of the web editor); needs -dbserver (catalog and overlay source). Applied ONCE at boot: itemEffects is folded into the handler at construction, so a moderator edit needs a tmServer restart to reach a running world (same restart-to-apply as -mob-stat-editing). OFF by default: with it off the catalog is exactly item_catalog")
-	ratesEditing := flag.Bool("rates-editing", envBool("W2PP_RATES_EDITING", false), "enable the moderator content-rate overlay (issue 36: SancRate/CompRate/QuestsRate); needs -dbserver (overlay source) and -content (rate files). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the tables are exactly the files in Release/Common/Settings")
+	ratesEditing := flag.Bool("rates-editing", envBool("W2PP_RATES_EDITING", false), "enable the moderator content-rate overlay (issue 36: SancRate/CompRate/QuestsRate); needs -dbserver (overlay source) and -content (rate files). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the tables are exactly the files in tmserver/content/Common/Settings")
 	dropConfigEditing := flag.Bool("drop-config-editing", envBool("W2PP_DROP_CONFIG_EDITING", false), "enable the moderator drop-rate overlay (issue 34: DropRate[64] divisor per Carry slot); needs -dbserver (overlay source). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off the table is exactly the code defaults in tmserver/internal/loot")
-	mobCarryEditing := flag.Bool("mob-carry-editing", envBool("W2PP_MOB_CARRY_EDITING", false), "enable the moderator Carry[] overlay (issue 34: the drop table of each mob template); needs -dbserver (overlay source) and -content (mob templates). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off every template keeps exactly the Carry[] in Release/TMsrv/run/npc")
+	mobCarryEditing := flag.Bool("mob-carry-editing", envBool("W2PP_MOB_CARRY_EDITING", false), "enable the moderator Carry[] overlay (issue 34: the drop table of each mob template); needs -dbserver (overlay source) and -content (mob templates). Applied ONCE at boot, so an edit needs a tmServer restart. OFF by default: with it off every template keeps exactly the Carry[] in tmserver/content/TMsrv/run/npc")
 	defStatusAddr := os.Getenv("W2PP_STATUS_ADDR")
 	if defStatusAddr == "" {
 		defStatusAddr = ":80"
@@ -175,7 +181,7 @@ func run(logger *slog.Logger) error {
 	var odinCatalog combine.Catalog
 	var spells *content.SkillData
 	// Catálogos lidos do banco (issue 58, fase 2); nil quando o banco não tem
-	// conteúdo importado e o boot cai nos arquivos de Release/.
+	// conteúdo importado e o boot cai nos arquivos de tmserver/content/.
 	var catalogTemplates map[string][]byte
 	var worldItems []content.InitItem
 	var heights *content.Grid
@@ -546,7 +552,7 @@ func run(logger *slog.Logger) error {
 			{Name: "client-version", Value: strconv.Itoa(*clientVersion), RestartRequired: true, Hint: "versão aceita no handshake; divergente = 0x102"},
 			{Name: "dbserver", Value: *dbAddr, RestartRequired: true, Hint: "persistência; vazio = no-op"},
 			{Name: "binserver", Value: *binAddr, RestartRequired: true, Hint: "billing; vazio = allow-all"},
-			{Name: "content", Value: *contentDir, RestartRequired: true, Hint: "árvore Release/ (catálogos, taxas, mapas)"},
+			{Name: "content", Value: *contentDir, RestartRequired: true, Hint: "árvore de conteúdo (taxas, mapas, BaseMob/BaseSummon)"},
 			{Name: "double-exp", Value: strconv.FormatBool(*doubleExp), RestartRequired: true, Hint: "DOUBLEMODE: dobra EXP PvE"},
 			{Name: "newbie-event", Value: strconv.FormatBool(*newbieEvent), RestartRequired: true, Hint: "NewbieEventServer: +15% EXP e bônus abaixo do nível 100"},
 			{Name: "kefra-live", Value: strconv.FormatBool(*kefraLive), RestartRequired: true, Hint: "evento do Kefra ativo"},
@@ -782,7 +788,7 @@ func serveStatusHTTP(ctx context.Context, addr, statusFile string, logger *slog.
 	}
 }
 
-// loadContent loads and validates the Release/ content tree (Fase 5 loaders).
+// loadContent loads and validates the tmserver/content/ content tree (Fase 5 loaders).
 // The rates and catalogs are required (a broken mount is a hard error); the maps
 // are large and optional (a warning when absent). It logs what was loaded so the
 // operator can confirm the mount is correct.
@@ -829,7 +835,7 @@ func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	return &loadedContent{comp: comp, sanc: sanc, quests: quests, heights: heights, attrs: attr}, nil
 }
 
-// loadedContent is what a mounted Release/ tree yields. It is a struct rather
+// loadedContent is what a mounted tmserver/content/ tree yields. It is a struct rather
 // than a return list only because the list had grown past readability.
 type loadedContent struct {
 	comp    *content.CompRate

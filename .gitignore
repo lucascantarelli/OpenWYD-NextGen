@@ -304,6 +304,15 @@ serverlist bin/**/*.bin
 # serverlist.bin gerado com IP privado — nunca versionar
 dist/serverlist/
 
+# Conteúdo do servidor (LEGACY-02): a config pequena é versionada junto do código.
+# Os dois mapas (17 MiB) ficam fora do git e entram por `make content-sync`, que
+# copia de uma árvore legada e confere o SHA-256 de tmserver/content/content.sha256.
+# O resíduo Win32 arquivado (DLLs, launchers, dumps, estado de servidor de teste)
+# nunca é versionado nem servido.
+tmserver/content/TMsrv/run/HeightMap.dat
+tmserver/content/TMsrv/run/AttributeMap.dat
+tmserver/content/_legacy/
+
 # Saídas de build (mkdocs e logs de teste local)
 /site/
 /tmp/

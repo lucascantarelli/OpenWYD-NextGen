@@ -10,7 +10,7 @@ import (
 
 func equipmentResourcesConfig(t *testing.T) Config {
 	t.Helper()
-	items, err := requireItemList(t, filepath.Join("..", "..", "..", "Release", "Common", "ItemList.csv"))
+	items, err := requireItemList(t, filepath.Join("..", "..", "..", "tmserver", "content", "Common", "ItemList.csv"))
 	if err != nil {
 		t.Fatalf("load regression catalog: %v", err)
 	}

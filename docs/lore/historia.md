@@ -33,4 +33,4 @@ está lendo ficção ou changelog.
 - Nomes de reinos, cidades e NPCs canônicos — estão no conteúdo do cliente (`Language.txt` e afins);
   ainda não foram extraídos para uma tabela consultável.
 - A origem narrativa das guerras de castelo: o servidor implementa a **mecânica**
-  (`Release/Common/Settings/CastleQuest.txt`), não a história.
+  (`tmserver/content/Common/Settings/CastleQuest.txt`), não a história.

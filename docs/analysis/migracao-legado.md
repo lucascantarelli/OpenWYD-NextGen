@@ -57,7 +57,7 @@ código Go e os documentos de engenharia reversa (`docs/migration/`, 58/58 handl
 ## 5. Checklist para declarar o legado "arquivado"
 
 - [ ] `git grep -i "Source/"` sem referências de build (hoje só docs).
-- [ ] Nenhuma ferramenta operacional depende de `.exe` em `Release/` (`DropTool`, `ExpTool`…).
+- [ ] Nenhuma ferramenta operacional depende de `.exe` em `tmserver/content/` (`DropTool`, `ExpTool`…).
 - [ ] Spawn/quedas/catálogos editáveis **somente** pelo portal.
 - [ ] `docs/migration/` cobre 100% dos handlers com evidência (hoje 58/58).
 - [ ] `Source/` movido para `archive/` ou fora do checkout padrão, com nota no README.

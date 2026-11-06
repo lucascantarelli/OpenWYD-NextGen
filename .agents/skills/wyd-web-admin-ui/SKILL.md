@@ -21,9 +21,9 @@ Leia junto: `docs/migration/web-platform-plan.md` (decisão de arquitetura),
 2. **A web nunca escreve estado vivo de personagem.** Inventário, coin, stats e posição pertencem ao
    loop único do `tmserver`. Concessões vão por `delivery_queue`; o resto é **config fria** em
    Postgres que o tmserver lê no boot.
-3. **`Release/` é somente leitura** (bind mount `:ro` no compose). Edição de conteúdo grava
+3. **`tmserver/content/` é somente leitura** (bind mount `:ro` no compose). Edição de conteúdo grava
    **overlay no Postgres** (`npc_definition`, `mob_template_stat`, …) e o tmserver aplica no boot.
-   Nunca escrever `.txt`/`.csv`/templates binários de `Release/` a partir da web.
+   Nunca escrever `.txt`/`.csv`/templates binários de `tmserver/content/` a partir da web.
 4. **Autorização é server-side, duas vezes.** O `role` da sessão serve para mostrar/esconder a rota;
    o `web-api` revalida `account.role` em **toda** RPC admin e audita. Nunca derive `moderator_id` do
    corpo da requisição — sempre do cookie `httpOnly`.
@@ -162,7 +162,7 @@ Padrão já provado por `npc_definition` e `mob_template_stat`:
    (`-<dominio>-editing`, default OFF) e aplicado **no boot** (como `-mob-stat-editing`).
 5. Tela no portal + item no menu + teste.
 
-Nunca: escrever em `Release/`, criar caminho de escrita que toque personagem vivo, ou aplicar overlay
+Nunca: escrever em `tmserver/content/`, criar caminho de escrita que toque personagem vivo, ou aplicar overlay
 sem flag desligável.
 
 ## 8. Ciclo de verificação (o mínimo antes de dizer "pronto")
@@ -207,7 +207,7 @@ Após mexer em overlay: `docker compose up -d tmserver` e conferir no log `conte
 | Tela de erro sem saída para o operador | leitura falhou e só a mensagem aparece | use `components/RetryButton.tsx` (`router.refresh()` em `useTransition`), que também atualiza caches de boot do BFF |
 | Botão de tab/cabeçalho de tabela sem anel de foco | `all: unset` na classe cancela o `outline` da regra global de `:focus-visible` | redeclare `X:focus-visible { outline: 2px solid var(--accent) }`; o mesmo vale para qualquer classe que use `all: unset` |
 | Build de Go falhando com `Espaço insuficiente no disco` no link | o `$WORK` do Go fica no `%TEMP%` (drive `C:`), que nesta máquina encheu | `TMPDIR=D:/tmp-go GOTMPDIR=D:/tmp-go go build ./...`; se o Docker também cair com `Docker Desktop is unable to start`, é o mesmo disco — libere `C:` |
-| Provar o read-through reiniciando o `tmserver` ao vivo | o restart dispara save-on-shutdown e atrapalha teste humano | suba um container one-off da mesma imagem na rede do compose, em portas próprias: `docker run -d --name probe --network openwyd_default -v "<repo>/Release:/Release:ro" openwyd-tmserver -addr :8282 -dbserver dbserver:7514 -content /Release -status-addr :8088 -item-effect-editing`, leia o log e `docker rm -f probe` |
+| Provar o read-through reiniciando o `tmserver` ao vivo | o restart dispara save-on-shutdown e atrapalha teste humano | suba um container one-off da mesma imagem na rede do compose, em portas próprias: `docker run -d --name probe --network openwyd_default -v "<repo>/Release:/Release:ro" openwyd-tmserver -addr :8282 -dbserver dbserver:7514 -content /content -status-addr :8088 -item-effect-editing`, leia o log e `docker rm -f probe` |
 | Serviço gRPC novo respondendo `Unimplemented: unknown service` | o container `dbserver` roda a imagem antiga, não o código que você acabou de escrever | `docker compose build dbserver && docker compose up -d dbserver` antes de testar; idem para `webserver`/`tmserver` |
 | Escrever estado que o `tmserver` guarda em memória (Kefra, dono do castelo, guildas) e prometer efeito imediato | o mundo carrega isso no boot; o save do processo em execução pode até sobrescrever a linha | gravar no banco e dizer na tela que vale **no próximo restart**; para o Kefra suba a `revision` no mesmo `UPDATE` (o guard de `SaveKefraState` recusa revisão menor), e só implemente escrita ao vivo quando houver RPC no tmserver (issue 38) |
 | Bucket/porta 7600 exposta | qualquer host fala gRPC | em produção só na rede interna + mTLS |
@@ -219,7 +219,7 @@ Após mexer em overlay: `docker compose up -d tmserver` e conferir no log `conte
 - [ ] `moderator_id` vem do cookie; nenhum id sensível no body do browser
 - [ ] `AdminResult` mapeado por inteiro, com mensagem por valor (inclui `CONTENT_OWNED`)
 - [ ] Erros de infra → 502 com mensagem genérica; nada de stack/paths no cliente
-- [ ] Nenhuma escrita em `Release/`; config nova tem migração + flag OFF + applier no boot
+- [ ] Nenhuma escrita em `tmserver/content/`; config nova tem migração + flag OFF + applier no boot
 - [ ] `tsc --noEmit`, `next build` e o teste Go afetado verdes; evidência colada
 - [ ] Textos de UI em português; números formatados (coin, EXP) como o jogo
 

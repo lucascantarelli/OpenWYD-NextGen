@@ -9,7 +9,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/content"
 )
 
-// readRelease is os.ReadFile for tests that need the Release/ content tree.
+// readRelease is os.ReadFile for tests that need the tmserver/content/ content tree.
 // A missing file skips instead of failing: the content catalogs moved into
 // Postgres and out of the repository (issue 58, fase 5), so a checkout without
 // the proprietary tree must still run the rest of the suite.
@@ -17,7 +17,7 @@ func readRelease(t *testing.T, path string) ([]byte, error) {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada: %v", err)
 	}
 	return b, err
 }
@@ -28,7 +28,7 @@ func requireItemList(t *testing.T, path string) (*content.ItemList, error) {
 	t.Helper()
 	l, err := content.LoadItemList(path)
 	if err != nil {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada: %v", err)
 	}
 	return l, err
 }
@@ -38,7 +38,7 @@ func requireItemList(t *testing.T, path string) (*content.ItemList, error) {
 func releasePath(t *testing.T, path string) string {
 	t.Helper()
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore tmserver/content/ não encontrada: %v", err)
 	}
 	return path
 }

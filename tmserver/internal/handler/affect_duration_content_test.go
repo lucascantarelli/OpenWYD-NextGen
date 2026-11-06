@@ -28,7 +28,7 @@ func castDuration(sp content.Spell, special int, dur world.AffectDuration) int {
 // releaseSpells loads the real skill catalog, or skips.
 func releaseSpells(t *testing.T) *content.SkillData {
 	t.Helper()
-	s, err := content.LoadSkillData(filepath.Join("..", "..", "..", "Release", "Common", "SkillData.csv"))
+	s, err := content.LoadSkillData(filepath.Join("..", "..", "..", "tmserver", "content", "Common", "SkillData.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — SkillData.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}

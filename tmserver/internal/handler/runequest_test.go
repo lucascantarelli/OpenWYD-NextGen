@@ -10,7 +10,7 @@ import (
 
 func uxmalTemplate(t *testing.T) []byte {
 	t.Helper()
-	b, err := readRelease(t, "../../../Release/TMsrv/run/npc/Uxmal")
+	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/Uxmal")
 	if err != nil {
 		t.Fatal(err)
 	}

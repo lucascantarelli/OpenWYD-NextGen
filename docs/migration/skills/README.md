@@ -1,12 +1,12 @@
 # Skills - auditoria de paridade
 
 Esta pasta registra a auditoria inicial de todas as skills carregadas pelo servidor Go a partir de
-`Release/Common/SkillData.csv`. O objetivo é separar o que ja tem fluxo Go verificavel do que ainda
+`tmserver/content/Common/SkillData.csv`. O objetivo é separar o que ja tem fluxo Go verificavel do que ainda
 precisa de implementacao, captura Windows ou golden cases no cliente real.
 
 ## Metodologia
 
-- Fonte de catalogo: `Release/Common/SkillData.csv`, arquivo ISO-8859, lido com nomes decodificados em Latin-1.
+- Fonte de catalogo: `tmserver/content/Common/SkillData.csv`, arquivo ISO-8859, lido com nomes decodificados em Latin-1.
 - Loader auditado: `tmserver/internal/content/skilldata.go`, que usa o indice da coluna 0, ignora linhas fora de `[0,248)`, consome 20 inteiros e divide `AffectTime` por 4 (`affectTimeDivisor`), igual ao legado (`Basedef.cpp:6708`). O loader e **fiel**: nao ha tuning aqui.
 - Duracao de buff (issue #229): o tuning vive em **um unico lugar**, `world.AffectDuration`, aplicado quando um **cast** instala o affect (`SetAffect`/`SetTick`). Defaults do tmServer: `ScalePct` 15, piso 60 s (so para affects **nao agressivos**), teto 10 min — flags `-affect-scale-pct` / `-affect-min-seconds` / `-affect-max-minutes`. Zero value = formula legada exata, que e o que os testes de paridade exercitam. A issue #92 tinha tentado o mesmo objetivo dobrando o divisor do loader para 8; isso mexia so na base (o multiplicador de mastery `(100+Special)/100`, ate 5x, e quem domina) e, por ser divisao inteira no load, truncava a cauda curta da tabela alem do pretendido (issue #236). Ver `ingame-bugs.md` B14.
 - Banda alvo do tuning (issue #236, segunda metade): o `ScalePct` **nao e uniforme** — ele so se aplica fora da banda que a politica existe para cortar. `AffectDuration.withinTargetBand` isenta um affect **nao agressivo** cuja duracao **base** (`AffectTime+1`, sem mastery) ja cabe sob `MaxTicks`, entao a cauda curta do CSV (85 Escudo Dourado, 90 Toxina, 96 Poder Superior, 41 Teleporte, 216 Magia Misteriosa…) mantem a curva legada com o piso de 60 s por baixo, em vez de ser esmagada ate ele. Affects **agressivos** ficam de fora da isencao de proposito: alongar CC (Perseguicao, Nevasca, Lamina Congelante) seria mudanca de PvP que nenhuma issue pediu. Regra em uma frase: *buff amigo segue o legado ate o teto, com piso de 60 s; affect hostil e buff longo seguem no scale.* Ver `ingame-bugs.md` B15.
@@ -53,7 +53,7 @@ precisa de implementacao, captura Windows ou golden cases no cliente real.
 
 | Codigo | Fonte local |
 |--------|-------------|
-| CSV | `Release/Common/SkillData.csv`; parser em `tmserver/internal/content/skilldata.go:79-132`; legado em `Source/Code/Basedef.cpp:6657-6695`. |
+| CSV | `tmserver/content/Common/SkillData.csv`; parser em `tmserver/internal/content/skilldata.go:79-132`; legado em `Source/Code/Basedef.cpp:6657-6695`. |
 | CAST | Validacao e gasto de skill em `tmserver/internal/handler/combat.go:28-303`; legado em `Source/Code/TMSrv/_MSG_Attack.cpp:21-270`. |
 | DMG | Formulas em `tmserver/internal/combat/skill.go:29-136` e `tmserver/internal/handler/combat.go:373-415`; legado em `Source/Code/Basedef.cpp:1486-1515,6071-6077,6998-7096` e `_MSG_Attack.cpp:552-610`. |
 | AFF | Aplicacao de `SetAffect`/`SetTick` em `tmserver/internal/handler/combat.go:305-370` e `tmserver/internal/world/affect.go:98-156`; legado em `Source/Code/TMSrv/Server.cpp:9209-9290`. |

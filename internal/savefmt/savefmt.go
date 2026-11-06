@@ -34,7 +34,7 @@ const (
 )
 
 // Sizes of the legacy standalone STRUCT_MOB template variants found in
-// Release/TMsrv/run/npc/ (data-formats.md §1.4.1). These are NOT alternative
+// tmserver/content/TMsrv/run/npc/ (data-formats.md §1.4.1). These are NOT alternative
 // sizes for the modelled struct — MobSize stays 816 — they are older layouts
 // routed by DetectMobVersion and widened to MobSize by NormalizeMob.
 const (
@@ -52,7 +52,7 @@ const offMobExp = 32
 // Field offsets within the 756-byte legacy STRUCT_MOB (data-formats.md §1.4.1).
 // Reverse-engineered from the shipped assets and cross-validated against the
 // 816-byte file of the same mob across all 41 legacy/canonical name pairs in
-// Release/TMsrv/run/npc: Class agrees 100%, ScoreBonus 95%, Critical/SaveMana
+// tmserver/content/TMsrv/run/npc: Class agrees 100%, ScoreBonus 95%, Critical/SaveMana
 // 98% and Special 90%, while only the fields a rebalance touches (Level, Con,
 // Damage) diverge.
 //

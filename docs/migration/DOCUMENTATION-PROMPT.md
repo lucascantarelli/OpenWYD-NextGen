@@ -30,7 +30,7 @@ REGRAS GERAIS (válidas para todas as fases):
 - Não invente offsets, tamanhos, fórmulas ou constantes. Se precisar, extraia do código real.
 - Escreva pensando em quem NÃO conhece C++/Win32 nem o domínio WYD — defina termos.
 - Saída em Markdown, em `docs/migration/`. Pode usar tabelas, ASCII, pseudocódigo.
-- Fonte principal: `Source/Code/` (Basedef, CPSock, TMSrv, DBSrv, BISrv). Dados de exemplo: `Release/`.
+- Fonte principal: `Source/Code/` (Basedef, CPSock, TMSrv, DBSrv, BISrv). Dados de exemplo: `tmserver/content/`.
 - Reaproveite o que já existe em `docs/agents/` (overview, arquitetura, deep-dives) — NÃO repita;
   referencie e aprofunde no que falta para migrar.
 
@@ -70,7 +70,7 @@ Fonte: `CPSock.h`, `CPSock.cpp`, `Basedef.h`, `ClientPatch_v7662/`, todos os `TM
 FASE 2 — FORMATOS DE DADOS / PERSISTÊNCIA  → docs/migration/data-formats.md
 ────────────────────────────────────────────────────────
 Objetivo: ler os dados existentes e desenhar o novo schema (provável banco relacional/NoSQL).
-Fonte: `Basedef.h` (structs), `DBSrv/CFileDB.cpp`, `CReadFiles.cpp`, e exemplos em `Release/`.
+Fonte: `Basedef.h` (structs), `DBSrv/CFileDB.cpp`, `CReadFiles.cpp`, e exemplos em `tmserver/content/`.
 
 - Para cada arquivo/estrutura de persistência, documente o layout binário/textual exato:
   - Contas/personagens: `STRUCT_ACCOUNTFILE`, `STRUCT_ACCOUNTINFO` (inclua o campo de senha em
@@ -81,7 +81,7 @@ Fonte: `Basedef.h` (structs), `DBSrv/CFileDB.cpp`, `CReadFiles.cpp`, e exemplos 
   - Conteúdo: `ItemList.csv`/`.bin`, `SkillData.csv`, `NPCGener.txt`, `data00.csv`, `extraitem.bin`,
     `GuildInfo`, `Guilds.txt`, `serverlist.bin`, `ItemDropList.txt`, `LevelItem.txt`.
 - Para CADA um: campos, tipos, unidades, chaves/relacionamentos, e um trecho de exemplo real do
-  `Release/`. Aponte invariantes (tamanhos fixos, índices, sentinelas).
+  `tmserver/content/`. Aponte invariantes (tamanhos fixos, índices, sentinelas).
 - Proponha um modelo de dados alvo (tabelas/coleções) equivalente, marcando o que vira normalizado.
 
 ────────────────────────────────────────────────────────
@@ -140,7 +140,7 @@ e o caminho de billing (TMSrv→BISrv). Mostre mensagens, atores e ordem.
 ────────────────────────────────────────────────────────
 FASE 7 — CONFIGURAÇÃO E OPERAÇÃO  → docs/migration/config-ops.md
 ────────────────────────────────────────────────────────
-Catálogo de TODOS os arquivos de config em `Release/` (gameconfig.txt, Rates.txt, localip.txt,
+Catálogo de TODOS os arquivos de config em `tmserver/content/` (gameconfig.txt, Rates.txt, localip.txt,
 biserver.txt, serverlist.txt, admin.txt, config.txt, settings.txt, Mac.txt, redirect.sample.txt):
 cada campo, tipo, efeito, e valor de exemplo. Documente a topologia de deploy (3 processos, .bat de
 auto-restart), IPs hardcoded (e por que isso precisa virar config/ambiente na stack nova), e o

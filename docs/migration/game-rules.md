@@ -2,7 +2,7 @@
 
 > **Objetivo:** extrair a lógica de negócio hardcoded para pseudocódigo/tabelas determinísticas,
 > para reimplementar com **paridade**. Fonte: `MobKilled.cpp`, `_MSG_UseItem.cpp`,
-> `_MSG_CombineItem*.cpp`, `CMob.cpp`, `CItem.cpp`, configs em `Release/.../Settings/` e `Rates.txt`.
+> `_MSG_CombineItem*.cpp`, `CMob.cpp`, `CItem.cpp`, configs em `tmserver/content/.../Settings/` e `Rates.txt`.
 >
 > **Aviso de paridade:** muitas fórmulas usam `rand()` (libc do MSVC). Para reproduzir *exatamente*
 > os mesmos números seria preciso o mesmo gerador/sequência — inviável entre stacks. A estratégia é
@@ -132,7 +132,7 @@ if party.MOB.Exp + exp > g_pNextLevel[MAX_LEVEL+1]:
     party.MOB.Exp = g_pNextLevel[MAX_LEVEL+1]          # :1410-1417
 ```
 
-> **Dados (issue #43):** os templates originais de `Release/TMsrv/run/npc/` traziam `Exp` zerado
+> **Dados (issue #43):** os templates originais de `tmserver/content/TMsrv/run/npc/` traziam `Exp` zerado
 > ou absurdo em centenas de monstros. O campo é regravado offline por `tmserver/cmd/exptool`
 > usando a curva `level.MobExpForLevel` (pacing clássico em kills-por-level, invertendo o
 > pipeline acima com flags default). Rode a ferramenta após adicionar/editar templates.
@@ -229,7 +229,7 @@ g_pDropRate[64]  = {                        # quanto MAIOR, mais raro (é diviso
   slots 57-63 : 35,500,2500,5000,5000,10000,20000
 }
 ```
-> O slot do `Carry` do mob determina a raridade — não o item em si. `ItemDropList.txt` no `Release/`
+> O slot do `Carry` do mob determina a raridade — não o item em si. `ItemDropList.txt` no `tmserver/content/`
 > (formato `Item: N: Mobs:<count>`) é **gerado** pelo `DropTool.exe` (relatório inverso), **não**
 > consumido em runtime. Na migração, modelar drop como `(mob_slot → item, rate)` e tornar
 > `g_pDropRate`/`Bonus` configuráveis.
@@ -287,7 +287,7 @@ else:
 > não substituir por `rand()%100`. O sucesso é `_rand <= combine`, onde `combine` é a taxa (0..100)
 > da receita.
 
-### 3.2. Tabelas de taxa (`Release/Common/Settings/CompRate.txt`)
+### 3.2. Tabelas de taxa (`tmserver/content/Common/Settings/CompRate.txt`)
 
 Carregadas por `CReadFiles::ReadCompRate()` (`CReadFiles.h:32`). Formato `Família Chave Valor`:
 

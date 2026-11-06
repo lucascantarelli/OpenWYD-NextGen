@@ -131,7 +131,7 @@ type Service struct {
 	contentDir string
 }
 
-// New builds the service over the given store and Release/ content directory.
+// New builds the service over the given store and tmserver/content/ content directory.
 func New(s Store, contentDir string) *Service {
 	return &Service{store: s, contentDir: contentDir}
 }

@@ -26,7 +26,7 @@ export default async function ItemsPage() {
     <>
       <h1 className="ui-page-title">Catálogo de itens</h1>
       <p className="ui-page-sub">
-        Leitura de <code>Release/Common/ItemList.csv</code> via{" "}
+        Leitura de <code>tmserver/content/Common/ItemList.csv</code> via{" "}
         <code>ItemCatalogService.ListItems</code>. Somente leitura: preços são a issue 24 e a edição
         do catálogo é a 33.
       </p>
@@ -47,7 +47,7 @@ export default async function ItemsPage() {
           <strong>O web-api está no ar, mas sem catálogo</strong>
           <p>
             O serviço sobe sem itens quando não recebe a árvore de conteúdo. Suba com{" "}
-            <code>-content /Release</code> (o <code>docker-compose.yaml</code> já faz isso) e
+            <code>-content /content</code> (o <code>docker-compose.yaml</code> já faz isso) e
             reinicie o <code>webserver</code>. Enquanto o <code>ItemList.csv</code> não for lido, a
             lista fica vazia — não é erro do portal.
           </p>

@@ -1,76 +1,79 @@
-# `Release/` — o que o servidor ainda lê e o que pode sair
+# Conteúdo do servidor: o que o Go lê, onde vive e o que foi arquivado
 
-Análise de 06/11/2026 da árvore de conteúdo legada: **141 arquivos, 55 MB**, em `Common/`, `DBsrv/` e
-`TMsrv/`. Objetivo: separar o que é **entrada de runtime do servidor Go** do que é **insumo de
-importação** e do que é **resíduo do servidor Win32**, para que a dependência do legado caia a zero.
+Estado depois da **LEGACY-02** (06/11/2026). A árvore de distribuição do Win32 deixou de existir: o conteúdo
+executável vive em **`tmserver/content/`**, dentro da árvore do servidor Go, e nenhum serviço lê
+caminho fora dali.
 
-## Classificação
+## Inventário final
 
-### 1. Lido a cada boot pelo tmServer (runtime)
-
-| Arquivo | Quem lê | Observação |
+| Grupo | Onde | Versionado? |
 |---|---|---|
-| `TMsrv/run/HeightMap.dat` (16 MiB) | `route.Bake` | sem ele, mob anda "cego" e o bônus de campo de treino desliga |
-| `TMsrv/run/AttributeMap.dat` (1 MiB) | `route.Bake` | altura 127 = bloqueado |
-| `TMsrv/run/gameconfig.txt` | flags de mundo | `double`, `deadpoint`, `partybonus`, matriz 8×8 de drop, `PotionDelay` |
-| `TMsrv/run/Regions.txt`, `Guard.txt`, `LevelItem.txt` | geração/limites | citados em `config-ops.md` |
-| `Common/Settings/{SancRate,CompRate,QuestsRate,CastleQuest,MobMerc}.txt` | `refine`, `combine`, `content` | **taxa quebrada é erro fatal de boot** |
-| `DBsrv/run/BaseMob/{TK,FM,BM,HT}` (816 B) | criação de personagem | equipamento inicial vem daqui |
-| `TMsrv/run/BaseSummon/` | invocação do BM | templates de invocação |
-| `Common/serv00.htm` | listener HTTP :80 | o cliente sonda o status antes de conectar |
+| Taxas e config | `tmserver/content/Common/Settings/*.txt`, `serv00.htm` | sim |
+| Templates por classe | `tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` | sim |
+| Invocações do BM | `tmserver/content/TMsrv/run/BaseSummon/*` | sim |
+| Referência de formato | `Regions/Guard/LevelItem/Language/ItemEffect.h/Rates/QuestDiaria/gameconfig`, `ItemCSum.h` | sim |
+| **Mapas** | `TMsrv/run/HeightMap.dat` (16 MiB), `AttributeMap.dat` (1 MiB) | **não** — `make content-sync` |
+| Arquivo morto Win32 | `tmserver/content/_legacy/` | não (ignorado, nunca lido) |
 
-### 2. Insumo de importação (não é runtime desde a issue 58)
+**60 arquivos** cobertos por `tmserver/content/content.sha256` (config + mapas). O manifesto é a
+autoridade: `make content-check` reprova arquivo faltando ou alterado.
 
-`TMsrv/run/npc/*` (1.991 templates), `Common/ItemList.csv`, `Common/SkillData.csv`,
-`TMsrv/run/InitItem.csv`, `Common/NPCGener.new.txt`. Depois do import (`tmserver/cmd/importcontent`),
-o runtime lê **do Postgres**: `item_catalog`, `skill_catalog`, `npc_template`, `world_item_seed`. O
-`importcontent -check` compara os dois e falha quando divergem — é o gate para editar conteúdo.
+### Decisão de versionamento
 
-### 3. Resíduo do servidor Win32 (candidato a arquivamento)
+Os mapas são 17 MiB de binário que muda quando o mapa muda e que ninguém revisa em diff. Commitá-los
+só engorda o histórico, então ficam fora do git e entram por bootstrap:
 
-| Item | Por que é resíduo |
+```bash
+make content-sync W2PP_CONTENT_SOURCE=/caminho/para/Release   # copia o que falta
+make content-check                                            # confere o manifesto
+```
+
+O script **nunca sobrescreve** arquivo presente e confere o SHA-256 de tudo ao final. Um clone novo
+sem os mapas sobe o servidor (aviso `mob pathfinding disabled`), o que é degradação visível, não
+falha silenciosa.
+
+## O que foi arquivado (`_legacy/`, 55 MB → 17 MB de conteúdo real)
+
+| Item | Por que saiu |
 |---|---|
-| `TMsrv.bat`, `DBsrv.bat`, `deletar Logs.bat` | launchers de Windows para binários que não rodam mais |
-| `DBsrv/run/W2 - Editor de Contas.exe` | editor de conta em arquivo; conta hoje é Postgres + portal (`/contas`) |
-| `TesteDie.txt`, `AttackDieTeste.txt`, `Chall.txt`, `Chall_00_00.txt`, `Guild*.txt`, `GuildInfo/`, `Ranking.txt` | estado de servidor de teste em arquivo; hoje vive em tabela |
-| `ImportUser_sample - Copia.txt`, `ImportUser/.gitkeep` | sobra de importação manual de contas |
-| `DBsrv/run/{serverlist.bin,serverlist.txt}` | a lista de servidores do cliente é gerada por `client-tools/serverlist`; o `.bin` versionado com IP privado é justamente o que o `.gitignore` evita |
-| `extraitem.bin`, `data00.csv` | sem leitor no Go (confirmar antes de mover) |
+| `msvcr*/msvcp*/ucrtbase.dll` (7 MB) | runtime do servidor C++ no Windows |
+| `TMsrv.bat`, `DBsrv.bat`, `deletar Logs.bat` | launchers de binários que não existem mais |
+| `W2 - Editor de Contas.exe` | conta hoje é Postgres + portal (`/contas`) |
+| `AttackDieTeste.txt` (4,6 MB), `TesteDie.txt` | estado de teste de dano em arquivo |
+| `data00.csv` (19 MB) | dump sem leitor no Go |
+| `GuildInfo`, `Guild*`, `Ranking`, `Chall*`, `ChampionCity*` | estado de guilda/ranking em arquivo → tabela |
+| `ImportUser*`, `account/A/antonio` | amostra de importação manual de contas |
+| `serverlist.{bin,txt}` (TMsrv e DBsrv) | lista gerada por `client-tools/serverlist`; o `.bin` com IP privado é justamente o que o `.gitignore` evita |
+| `NPCGener.new.txt`, `boss/`, `DBsrv/run/npc`, `ItemList.bin` (910 KB) | insumo do servidor legado; catálogo e spawns vivem no Postgres desde a issue 58 |
+| `extraitem.{bin,csv}`, `Rates.txt`, `Mac/Server/settings/config/admin/localip.txt` | configs do DBsrv Win32 |
 
-## Alvo proposto
+Nada foi apagado do disco: o diretório inteiro está em `tmserver/content/_legacy/`, fora do git e
+fora da imagem (`.dockerignore`), servindo de referência para engenharia reversa.
 
-```
-tmserver/content/            # runtime do jogo: mapas, taxas, gameconfig, BaseMob, BaseSummon, serv00.htm
-tmserver/content/import/     # insumo do importcontent: npc/, ItemList.csv, SkillData.csv, InitItem.csv
-```
+## Quem lê o quê (código)
 
-O ganho não é cosmético: com o conteúdo dentro do módulo do servidor, `-content` deixa de apontar para
-uma pasta de distribuição do jogo e o teste passa a usar fixture local, em vez de depender de arquivo
-proprietário montado.
+| Consumidor | Caminho |
+|---|---|
+| `tmserver` | `Common/Settings/{CompRate,SancRate,QuestsRate,CastleQuest,RefineRate}.txt`, `Common/serv00.htm`, `DBsrv/run/BaseMob`, `TMsrv/run/BaseSummon`, os dois `.dat` |
+| `webserver` | mesmas taxas + `AttributeMap.dat` (editor de mapa) |
+| `portal` | `Common/ItemList.csv` **opcional** (preço base); hoje o catálogo vem do Postgres |
+| `worldatlas` | `TMsrv/run/{Regions.txt,HeightMap.dat,AttributeMap.dat}` |
+| `importcontent` | `Common/{ItemList.csv,SkillData.csv}`, `TMsrv/run/InitItem.csv` — insumo externo de backup; não existe mais nesta árvore |
 
-## Por que **não** foi executado nesta rodada
+Default de `-content` virou `tmserver/content` (host) e `/content` (imagem). O compose monta
+`./tmserver/content:/content:ro` em `tmserver`, `tmserver2`, `webserver` e `portal`.
 
-A movimentação é mecanicamente simples e operacionalmente arriscada, porque toca quatro superfícies ao
-mesmo tempo:
+## Regra que continua valendo
 
-1. `docker-compose.yaml` monta `./Release:/Release:ro` em `tmserver` e `webserver` (`-content /Release`).
-2. `Release/` está no `.gitignore` por herança (`[Rr]elease/`) — mover para `tmserver/content/` passa a
-   versionar binário de 16 MiB; é preciso decidir o que versionar e o que continua fora.
-3. **68 arquivos Go** citam caminhos de `Release/` (a maioria testes de conteúdo proprietário).
-4. `Dockerfile`/`.dockerignore` e os comandos de `exptool`, `worldatlas` e `importcontent` recebem o
-   caminho por flag.
+`tmserver/content/` é **entrada**, nunca saída. Nem o portal nem o web-api escrevem ali: taxa editada
+no portal vira linha em `content_rate_override` e o arquivo é o fallback. Qualquer proposta de
+"salvar direto no conteúdo" reintroduz a segunda fonte de verdade.
 
-Fazer isso de uma vez, sem o cliente Windows para validar, trocaria um problema de organização por um
-risco de servidor não subir. Fica como `LEGACY-02`, executável em quatro passos verificáveis:
+## Pendências
 
-1. Criar `tmserver/content/` com os arquivos da categoria 1 e apontar o default de `-content`.
-2. Rodar `go test ./...` e corrigir as fixtures (esperado: caminhos, não lógica).
-3. Ajustar compose/Dockerfiles e subir a stack; conferir `walkability grid baked` e `NPCs spawned`.
-4. Arquivar a categoria 3 em `Release/_legacy/` (ou fora do repo) e só então remover `Release/` do
-   caminho de build do servidor.
-
-## Regra que já vale
-
-`Release/` é **entrada**, nunca saída. Nem o portal nem o web-api escrevem ali (invariante 7 do
-`AGENTS.md`): taxa editada no portal vira linha em `content_rate_override` e o arquivo continua sendo o
-fallback. Qualquer proposta de "salvar direto no Release" reintroduz a segunda fonte de verdade.
+- `importcontent` segue aceitando uma árvore externa para reprocessar backup, mas o insumo
+  (`ItemList.csv`, `SkillData.csv`, `InitItem.csv`) não existe mais neste repositório: o caminho de
+  reprodução do catálogo é `seedgen`/seeds SQL.
+- `exptool`/`make exp-data` operam numa árvore `npc/` que não está mais aqui pelos mesmos motivos.
+- Se um dia os mapas forem regerados por ferramenta nossa, o bootstrap pode virar download versionado
+  em vez de cópia da árvore legada.

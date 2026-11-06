@@ -116,7 +116,7 @@ func (d *Dispatcher) sendClientMessage(w *world.World, s *world.Session, text st
 	w.SendTo(s, protocol.Header{Type: protocol.MsgMessagePanel}, protocol.EncodeMessagePanelBody(text))
 }
 
-// Legacy refusal panels (Release/TMsrv/run/Language.txt), in the table's
+// Legacy refusal panels (tmserver/content/TMsrv/run/Language.txt), in the table's
 // Windows-1252 bytes like the rest of the legacy string table.
 const (
 	cantDepositThatMuch  = "Esta quantia n\xe3o pode ser armazenada."      // _NN_Cant_Deposit_That_Much (44)
@@ -129,7 +129,7 @@ const (
 
 	newbieZone = "Somente n\xedvel 35 ou inferior pode entrar no campo de treinamento." // _NN_Newbie_zone (46)
 
-	// Login refusals, verbatim from Release/TMsrv/run/Language.txt (Windows-1252
+	// Login refusals, verbatim from tmserver/content/TMsrv/run/Language.txt (Windows-1252
 	// bytes, like the table). The legacy server sends these through
 	// SendClientMessage — a MSG_MessagePanel with HEADER.ID 0 — and then closes:
 	// TMSrv/ProcessDBMessage.cpp:518-570 (_Account/_Block/_Pass) and
@@ -158,7 +158,7 @@ const (
 )
 
 // Gameplay texts the legacy sends through SendClientMessage (MSG_MessagePanel,
-// HEADER.ID 0), verbatim from Release/TMsrv/run/Language.txt in the table's
+// HEADER.ID 0), verbatim from tmserver/content/TMsrv/run/Language.txt in the table's
 // Windows-1252 bytes. The number in parentheses is the Language.h id.
 //
 // They exist because the port used to answer these flows with nothing at all

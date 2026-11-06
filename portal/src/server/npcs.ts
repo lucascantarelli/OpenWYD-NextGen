@@ -35,7 +35,7 @@ export async function getNpc(npcId: number): Promise<NpcDefinition | null> {
   return res.npc ?? null;
 }
 
-/** Templates merchant do `Release/TMsrv/run/npc/`; `[]` quando o web-api sobe sem `-content`. */
+/** Templates merchant do `tmserver/content/TMsrv/run/npc/`; `[]` quando o web-api sobe sem `-content`. */
 export async function listMerchantTemplates(): Promise<MerchantTemplate[]> {
   const res = await adminCall<Record<string, never>, ListMerchantTemplatesResponse>(
     npcAdmin.listMerchantTemplates.bind(npcAdmin),

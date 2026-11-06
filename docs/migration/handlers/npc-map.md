@@ -1,7 +1,7 @@
 # Mapa de NPCs — tipos, gatilho e status de implementação
 
 > Levantamento de **todos** os tipos de NPC presentes no conteúdo
-> (`Release/TMsrv/run/npc/`, 598 templates) por `MOB.Merchant` (byte @ `CurrentScore+12`),
+> (`tmserver/content/TMsrv/run/npc/`, 598 templates) por `MOB.Merchant` (byte @ `CurrentScore+12`),
 > cruzado com [_MSG_Quest-npcs.md](./_MSG_Quest-npcs.md) e os handlers já implementados.
 > Objetivo: gap-analysis para garantir cobertura. Contagem = nº de templates com aquele Merchant.
 

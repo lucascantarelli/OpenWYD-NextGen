@@ -8,7 +8,7 @@ vem do conteúdo do cliente.
 
 | Conceito | Onde está no servidor | Observação |
 |---|---|---|
-| Mapa e colisão | `Release/TMsrv/run/HeightMap.dat` + `AttributeMap.dat` | 4096² e 1024²; alimentam `route.Bake` |
+| Mapa e colisão | `tmserver/content/TMsrv/run/HeightMap.dat` + `AttributeMap.dat` | 4096² e 1024²; alimentam `route.Bake` |
 | Teleporte entre mapas | `handler/teleport*.go`, `internal/teleportdata` | destino por tabela, não por script |
 | Cidade com loja | `npc_template` + `npc_shop_item` no Postgres | NPC vendedor e sua bolsa |
 | Zona de treino | multiplicador de EXP por região | campo de treino documentado nas regras |

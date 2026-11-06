@@ -22,7 +22,7 @@ export default function DropsPage() {
           </h1>
           <p className="ui-page-sub" style={{ margin: "var(--space-1) 0 0" }}>
             O que cada template <em>permite</em> dropar, lido de{" "}
-            <code>Release/TMsrv/run/npc/</code> no boot do web-api. Não é a chance real: o divisor
+            <code>tmserver/content/TMsrv/run/npc/</code> no boot do web-api. Não é a chance real: o divisor
             por slot está em código, em <code>loot.go</code>.
           </p>
         </div>

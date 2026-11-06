@@ -293,7 +293,7 @@ func (d *Dispatcher) teleportKefra(w *world.World, s *world.Session) {
 
 // reinoCapeSlot is the cape equip slot (Equip[15]), confirmed by _MSG_Quest.cpp:702
 // (STRUCT_ITEM *Capa = &pMob[conn].MOB.Equip[15]) and every cape's nPos=-32768
-// (bit 15) in Release/Common/ItemList.csv.
+// (bit 15) in tmserver/content/Common/ItemList.csv.
 const reinoCapeSlot = 15
 
 // capaBrancaDoMonstroIndex is ItemList.csv #550 "Capa_Branca_do_Monstro" — the neutral

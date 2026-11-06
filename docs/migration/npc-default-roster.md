@@ -61,7 +61,7 @@ A lista completa e exata é a própria migration (§4) — os 80 `INSERT INTO np
 O roster curado (80 blocos / 907 itens de loja) está **gravado como dado estático na migration**
 `internal/migrations/0006_default_npc_seed.up.sql` (`INSERT ... ON CONFLICT DO NOTHING`). Os valores
 foram gerados **uma vez**, rodando a mesma decodificação que `buildNPCDefinitions`/
-`savefmt.DecodeMob` usam contra o `Release/` real deste repo e filtrando à mão para o critério do
+`savefmt.DecodeMob` usam contra o `tmserver/content/` real deste repo e filtrando à mão para o critério do
 §2 — não existe mais um pacote de código com essa lista; a migration **é** a curadoria, já congelada
 em SQL.
 
@@ -76,7 +76,7 @@ NPCs que um moderador tenha criado à parte via o portal não são afetados.
 
 `dbserver import-npcs` **não muda** — continua importando todo bloco merchant do conteúdo
 (`Merchant != 0`), exatamente como antes desta issue, e continua útil para importar o que ficou fora
-do roster curado ou para reimportar depois de uma mudança no conteúdo `Release/`. Como todo insert é
+do roster curado ou para reimportar depois de uma mudança no conteúdo `tmserver/content/`. Como todo insert é
 `ON CONFLICT (slug) DO NOTHING`, rodá-lo depois da migration é seguro: só adiciona o que faltar, não
 duplica nem sobrescreve os 80 já seedados.
 
@@ -92,5 +92,5 @@ fonte de spawn e o tmServer materializa **só o que está na tabela**.
 
 O `dbserver` semeia o catálogo a partir de `NPCGener.txt` no boot quando `-content` está disponível
 (é o caminho do `docker compose`), então o compose já sobe com paridade. Para um banco que não passou
-por esse seed, rode `dbserver import-npcs -content <Release/> -dsn <dsn>` — ver
+por esse seed, rode `dbserver import-npcs -content <tmserver/content/> -dsn <dsn>` — ver
 [npc-editing-plan.md](./npc-editing-plan.md).

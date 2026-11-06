@@ -3,7 +3,7 @@ package savefmt
 // MobVersion identifies a standalone STRUCT_MOB template layout by its byte
 // size, the same way DetectVersion routes account files (version.go).
 //
-// Release/TMsrv/run/npc/ mixes three sizes (data-formats.md §1.4.1): 1769 files
+// tmserver/content/TMsrv/run/npc/ mixes three sizes (data-formats.md §1.4.1): 1769 files
 // at the canonical 816, 207 at 756 and 15 at 920. The 756-byte form is a
 // LEGITIMATE older STRUCT_MOB — 32-bit Exp, no Quest/Magic/GuildLevel and a
 // compact 28-byte STRUCT_SCORE — not a truncated 816 record. The 920-byte form

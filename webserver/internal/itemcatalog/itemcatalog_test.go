@@ -102,7 +102,7 @@ func TestScanDecodesLatin1Names(t *testing.T) {
 }
 
 // TestScanVisualFields pins the icon key derivation against rows copied from
-// the real Release/Common/ItemList.csv, plus the bitmask edge cases that are
+// the real tmserver/content/Common/ItemList.csv, plus the bitmask edge cases that are
 // easy to get wrong. Columns: index,name,mesh.texture,req,unique,price,nPos,
 // extra,grade,EF_* pairs.
 func TestScanVisualFields(t *testing.T) {

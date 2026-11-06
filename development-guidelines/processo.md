@@ -62,7 +62,7 @@ headless **é** evidência para servidor.
 | Regra de jogo | golden case com o número esperado (dano, drop, exp, refino) + doc da regra |
 | Persistência | migração `up` **e** `down`, teste em base efêmera, contagem por tabela |
 | Portal/BFF | teste de autorização (401 sem sessão, 403 por papel) + auditoria da ação |
-| Conteúdo (`Release/`, seeds) | contagem antes/depois e o comando que reimporta |
+| Conteúdo (`tmserver/content/`, seeds) | contagem antes/depois e o comando que reimporta |
 | Observabilidade | métrica/log com nome estável e o alerta correspondente |
 
 ## 7. Quando a mudança é grande demais

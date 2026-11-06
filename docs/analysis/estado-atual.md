@@ -19,7 +19,7 @@ Windows fechado como borda. Ordem de grandeza do repositório:
 | `binserver/` | 5 | billing gRPC (:3000), allow-all por padrão |
 | `api/` | 9 | contratos `db`, `bin`, `web` (+ gerados) |
 | `logpipe/` | 2 | sidecar de logs (socket Docker read-only) |
-| `Release/` | 2.138 | conteúdo do jogo (1.991 templates de NPC, CSVs, mapas binários) |
+| `tmserver/content/` | 2.138 | conteúdo do jogo (1.991 templates de NPC, CSVs, mapas binários) |
 | `Source/` | 198 | C++ legado: 99 `.cpp`, 44 `.h`, 12 projetos |
 | `docs/` | 104 | engenharia reversa, integrações, relatórios antigos |
 | `roadmap/` | 53 | 48 issues + índice |
@@ -40,7 +40,7 @@ de evidência in-game.
 | 4 | A documentação basta para entender o projeto? | Para **engenharia reversa**, sim (58/58 handlers, protocolo, formatos, regras). Para **produto/operação**, não: falta visão de conjunto, catálogo de sistemas de jogo, ADRs, guia de contribuição e um índice único. Este dossiê + a issue 54 fecham a lacuna. | §9 |
 | 5 | Para que serve `openspec/`? | É o fluxo **spec-driven** (proposta → design → tasks → apply/archive) de 5 mudanças antigas (`issue-309/316/321/327/344`) e 3 specs (`celestial-evolution`, `hunting-scrolls`, `arch-crystal-quest`). Foi usado antes do roadmap atual e **não é referenciado por nenhum código**; só as skills `openspec-*` o conhecem. Recomendação: manter como arquivo histórico e decidir entre adotá-lo (mudanças grandes) ou arquivá-lo. | [qualidade-e-processo.md](qualidade-e-processo.md) §6 |
 | 6 | Para que serve `project-analizer/`? | Plugin de Claude Code (3 agentes: arquitetura, componente, dependências) cujo produto está em `docs/agents/` (relatórios de 2026-06-19). Não roda em CI nem é usado pelo servidor. | [qualidade-e-processo.md](qualidade-e-processo.md) §6 |
-| 7 | `Release/` é lido pelo servidor? Dá para trocar por banco? | Sim, lido no boot. `ItemList.csv` aparece em 18 pontos do Go, `NPCGener.txt` em 13, e ainda `SkillData.csv`, `InitItem.csv`, `Regions.txt`, `Guard.txt`, `gameconfig.txt`, `CompRate/SancRate/QuestsRate`, `CastleQuest.txt`, `HeightMap/AttributeMap.dat`, `itemicon.bin`. Migração para o banco é possível para os **textuais**; ver §3.5 de [persistencia-conteudo.md](persistencia-conteudo.md). | [persistencia-conteudo.md](persistencia-conteudo.md) |
+| 7 | `tmserver/content/` é lido pelo servidor? Dá para trocar por banco? | Sim, lido no boot. `ItemList.csv` aparece em 18 pontos do Go, `NPCGener.txt` em 13, e ainda `SkillData.csv`, `InitItem.csv`, `Regions.txt`, `Guard.txt`, `gameconfig.txt`, `CompRate/SancRate/QuestsRate`, `CastleQuest.txt`, `HeightMap/AttributeMap.dat`, `itemicon.bin`. Migração para o banco é possível para os **textuais**; ver §3.5 de [persistencia-conteudo.md](persistencia-conteudo.md). | [persistencia-conteudo.md](persistencia-conteudo.md) |
 | 8 | `scripts/` tem algo que não cabe no portal? E o Makefile? | `scripts/` tem 5 itens: `preflight.sh`, `run-local.sh`, `gen-certs.sh`, `e2e-worldevents.sh`, `upload-item-icons-storage-manager.sh`. **Nada ali é exclusivo de portal**: preflight/run-local/gen-certs são operação de máquina (faz sentido manter CLI), e o upload de ícones já tem fluxo web. Makefile é atalho de desenvolvimento — não deve virar botão do portal. | [qualidade-e-processo.md](qualidade-e-processo.md) §5 |
 | 9 | `serverlist bin/` serve para quê? Dá para migrar? | Serve para **gerar o `serverlist.bin`** que o cliente usa para descobrir IP/porta (`serverlist editor.exe` + 4 pares de `.bin` gerados com IPs privados). É 100% migrável para o portal (gerar/baixar o bin por conta), e a pasta pode sair do git — hoje ela é **versionada por engano** (viola `AGENTS.md`). | [cliente-launcher.md](cliente-launcher.md) §5 |
 | 10 | `Source/` é o legado? Dá para se livrar? O que falta migrar? | Sim. Já portado: `TMSrv` (87 arquivos), `DBSrv` (12), `BISrv` (7, reescrito do zero), `CPSock`/`Basedef`/`CItem`/`CMob`/`CUser`/`CCastleZakum`/`CWarTower` e os `_MSG_*`. Falta portar: ferramentas Windows (`DropTool`, `ExpTool`, `NPTool`, `EDITAPPMOB`, `EDITAPPSHOP`, `SearchPass`, `ZerarSkill`, `AttributeMap_Editor`) — todas já substituídas por telas do portal — e o `ClientPatch_v7662`, que é do cliente. | [migracao-legado.md](migracao-legado.md) §1 |
@@ -88,7 +88,7 @@ TDD/BDD/CI sem parar a entrega.
 
 | # | Dívida | Impacto | Ação |
 |---|--------|---------|------|
-| D1 | Conteúdo lido de CSV no boot, com overlay em paralelo | dois caminhos de verdade (arquivo e tabela), deploy exige volume `Release/` | issue 50 |
+| D1 | Conteúdo lido de CSV no boot, com overlay em paralelo | dois caminhos de verdade (arquivo e tabela), deploy exige volume `tmserver/content/` | issue 50 |
 | D2 | `serverlist.bin` com IP privado **versionado** | viola `AGENTS.md`, vaza topologia | issue 56 (primeiro passo) |
 | D3 | Documentação sem índice de produto e sem ADRs | onboarding lento, decisões se perdem | issues 54 + este dossiê |
 | D4 | Testes de integração exigem banco real e apagam o schema (`resetTestSchema`) | ninguém roda; regressão de store passa batido | issue 55 |

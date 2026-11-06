@@ -226,7 +226,7 @@ reabrir e relogar:
 docker compose up -d tmserver     # volta às flags OFF (sem as variáveis)
 ```
 
-Conferir que o boot voltou ao baseline e que nada de `Release/` mudou:
+Conferir que o boot voltou ao baseline e que nada de `tmserver/content/` mudou:
 
 ```bash
 docker compose logs --tail 20 tmserver | grep -E "overlay|generators|mobs="

@@ -4,7 +4,7 @@
 
 ## Contexto
 
-Catálogo de item, skill, template de NPC e spawn viviam em CSV/TXT dentro de `Release/`, versionados
+Catálogo de item, skill, template de NPC e spawn viviam em CSV/TXT dentro de `tmserver/content/`, versionados
 junto com o binário. Editar exigia mexer em arquivo e reiniciar; duas fontes (arquivo e banco)
 conviveram e produziram duplicação real — 20 linhas de seed curado ficaram sombreadas por blocos
 importados e duplicaram os mercadores de Armia.

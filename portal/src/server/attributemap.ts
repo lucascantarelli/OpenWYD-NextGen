@@ -8,7 +8,7 @@
  *   A pré-visualização descarta os bytes (não faz sentido mandar 1 MiB por RSC)
  *   e o download os devolve crus para o navegador.
  *
- * Nada aqui escreve `Release/TMsrv/run/AttributeMap.dat`; aplicar é substituir o
+ * Nada aqui escreve `tmserver/content/TMsrv/run/AttributeMap.dat`; aplicar é substituir o
  * arquivo com backup e reiniciar o tmserver, como a tela instrui.
  */
 import type {

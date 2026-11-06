@@ -60,7 +60,7 @@ export function RatesPanel({
     return (
       <div className="ui-card ui-empty">
         <strong>Nenhuma taxa disponível</strong>
-        <p>{warning || "o web-api não conseguiu ler os arquivos de Release/Common/Settings"}</p>
+        <p>{warning || "o web-api não conseguiu ler os arquivos de tmserver/content/Common/Settings"}</p>
       </div>
     );
   }

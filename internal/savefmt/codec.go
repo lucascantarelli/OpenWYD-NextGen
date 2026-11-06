@@ -317,7 +317,7 @@ func encodeQuest(b []byte, q Quest) {
 }
 
 // DecodeMob parses a standalone 816-byte STRUCT_MOB blob (e.g. an NPC template in
-// Release/TMsrv/run/npc/). It returns an error unless b is exactly MobSize bytes.
+// tmserver/content/TMsrv/run/npc/). It returns an error unless b is exactly MobSize bytes.
 func DecodeMob(b []byte) (Mob, error) {
 	if len(b) != MobSize {
 		return Mob{}, fmt.Errorf("savefmt: DecodeMob: length %d != %d", len(b), MobSize)
@@ -327,7 +327,7 @@ func DecodeMob(b []byte) (Mob, error) {
 
 // DecodeMobAny parses a standalone STRUCT_MOB template in any layout known to
 // DetectMobVersion (mobversion.go) and reports which one it was. Use it for
-// files read straight out of Release/TMsrv/run/npc/, where 756- and 920-byte
+// files read straight out of tmserver/content/TMsrv/run/npc/, where 756- and 920-byte
 // legacy records sit alongside the canonical 816-byte ones; use DecodeMob when
 // the blob is already canonical.
 func DecodeMobAny(b []byte) (Mob, MobVersion, error) {

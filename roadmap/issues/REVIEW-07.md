@@ -89,3 +89,17 @@ apagado nesta issue — só classificado e documentado.
 - `LEGACY-01` inventário por solução C++
 - `LEGACY-02` mapa completo de hooks + o que vai para o servidor
 - `LEGACY-03` spike de hook por assinatura (se a modernização for aprovada)
+
+## O que faltou analisar
+
+- por uqe ainda precisamos ler arquivos xt/csv já quie portamos tudo para o banco ?
+- os arquivos de mapa do cliente/servidor está alinhados, são identicos ?
+- o que ainda não está sendo persistido no banco de dados e precisa ser migrado para lá ?
+- quais arquicos ainda são lidos por algum serviço ? precisa mesmo ler ? já está migrado e devidamente cadastrado no banco de dados ? 
+- o código já está sem dependencia dos arquivos de itens,skills, npcs, todos os dados estão no banco, corretamente cadastrados ?
+- quais arquivos ainda são lidos por algum serviço ? precisa mesmo ler ? já está migrado e devidamente cadastrado no banco de dados ?
+- existe algum real motivo para o tmsrv ainda ler esses arquivos e não só o banco de dados ?
+- o banco de dados deve ser a unica fonte real de dado, não devemos mais depender de nenhum arquivo.
+- migrations e arquivos de seed devem ser analisados,atualizados, normalizados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- a inicialização do banco de dados deve ser feita apenas com migrations e arquivos de seed, não devemos mais depender de nenhum arquivo externo.
+- o banco deve ser capaz de subir do zero, completamenete, com o conteudo normalizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.

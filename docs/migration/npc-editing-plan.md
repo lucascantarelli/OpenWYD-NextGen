@@ -20,9 +20,9 @@
 Os NPCs **não têm identidade estável nem configuração editável**. Eles nascem da **árvore de conteúdo
 read-only** montada no boot:
 
-- **`Release/TMsrv/run/NPCGener.txt`** — blocos de *spawn* (líder, seguidor, waypoints, `MinuteGenerate`,
+- **`tmserver/content/TMsrv/run/NPCGener.txt`** — blocos de *spawn* (líder, seguidor, waypoints, `MinuteGenerate`,
   `MaxNumMob`, `RouteType`). Parseado por `content.LoadNPCGenerators` (`tmserver/internal/content/npc.go`).
-- **`Release/TMsrv/run/npc/<nome>`** — o *template* cru de 816 bytes (`STRUCT_MOB`) de cada NPC/mob,
+- **`tmserver/content/TMsrv/run/npc/<nome>`** — o *template* cru de 816 bytes (`STRUCT_MOB`) de cada NPC/mob,
   carregado por `content.LoadNPCTemplate`. É daqui que sai o **flag `Merchant`** e o **`Carry[]`** (a
   vitrine da loja: `world/api.go:154-165`, `protocol.MobCarry`).
 - **`itemPrices`** — o preço de compra vem do **catálogo de itens** (`ItemList`), não do NPC:
@@ -129,7 +129,7 @@ Como implementado (`snake_case`, seguindo o estilo das migrations existentes):
 CREATE TABLE npc_definition (
   id            bigserial PRIMARY KEY,
   slug          text NOT NULL UNIQUE,        -- id humano estável (ex. "Karkarian-42")
-  template_name text NOT NULL,               -- nome do arquivo em Release/TMsrv/run/npc/
+  template_name text NOT NULL,               -- nome do arquivo em tmserver/content/TMsrv/run/npc/
   display_name  text NOT NULL DEFAULT '',
   enabled       boolean NOT NULL DEFAULT true,   -- "aparece ou não"
   map_id        integer NOT NULL DEFAULT 0,  -- carregado, mas o overlay usa só x/y (grid único)
@@ -314,7 +314,7 @@ banco; se `npc_definition` estivesse **vazia** (seed não rodou), os NPCs de loj
 > curado (63 templates / 80 blocos) direto no `npc_definition`, e `store.Migrate` roda automaticamente
 > no boot de qualquer serviço. O risco passou de "seed não rodou" para "seed rodou, mas é só o
 > subconjunto curado": sem `import-npcs` o catálogo tem 80 dos 6.099 blocos, e o mundo nasce com
-> poucos NPCs. Para paridade completa, rode `dbserver import-npcs -content <Release/> -dsn <dsn>`.
+> poucos NPCs. Para paridade completa, rode `dbserver import-npcs -content <tmserver/content/> -dsn <dsn>`.
 
 ## 11. Relação com o resto da plataforma
 

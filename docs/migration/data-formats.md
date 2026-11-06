@@ -1,7 +1,7 @@
 # Fase 2 — Formatos de Dados / Persistência (w2pp-OpenWYD)
 
 > **Objetivo:** ler os dados existentes e desenhar o novo schema. Fonte: `Basedef.h` (structs),
-> `DBSrv/CFileDB.cpp`, `DBSrv/CRanking.cpp`, `TMSrv/CReadFiles.cpp`, e exemplos reais em `Release/`.
+> `DBSrv/CFileDB.cpp`, `DBSrv/CRanking.cpp`, `TMSrv/CReadFiles.cpp`, e exemplos reais em `tmserver/content/`.
 >
 > **Reuso:** complementa `docs/agents/component-deep-analyzer/component-analysis-DBSrv-*.md` e
 > `component-analysis-Basedef-*.md`. Aqui o foco é o **layout binário/textual exato** para migração.
@@ -147,7 +147,7 @@ off  tam  campo
 1. `check = strupr(AccountName)` — nome **em maiúsculas** (`:2423`).
 2. Rejeita nomes reservados do DOS: `COM0..9` e `LPT0..9` (`:2425-2428`) — herança Win32.
 3. `BASE_GetFirstKey(check, First)` deriva o subdiretório (`:2432`). Pelo exemplo real
-   `Release/DBsrv/run/account/A/antonio`, `First` = **primeira letra** do nome (uppercased): `"A"`.
+   `tmserver/content/DBsrv/run/account/A/antonio`, `First` = **primeira letra** do nome (uppercased): `"A"`.
 4. Caminho final: `./account/<First>/<check>` (`:2436`).
 5. Abre com `_open(..., O_RDWR|O_CREAT|O_BINARY, _S_IREAD|_S_IWRITE)`, `_lseek(0)`,
    `_write(account, sizeof(STRUCT_ACCOUNTFILE))` — sobrescreve o arquivo inteiro a cada save.
@@ -262,8 +262,8 @@ no build de referência (§0.1).
 `Basedef.h` da versão antiga **não** está em `Source/`, então não há citação de fonte C++ para o
 layout em si). Issue #244.
 
-`Release/TMsrv/run/npc/` **não é homogêneo**. Censo reproduzível
-(`go run ./tmserver/cmd/exptool -inventory -npc Release/TMsrv/run/npc`):
+`tmserver/content/TMsrv/run/npc/` **não é homogêneo**. Censo reproduzível
+(`go run ./tmserver/cmd/exptool -inventory -npc tmserver/content/TMsrv/run/npc`):
 
 | tamanho | arquivos | natureza |
 |---------|----------|----------|
@@ -440,7 +440,7 @@ cliente e o tamanho do arquivo legado não mudam.
 ### 3.1. `ItemList.csv` / `ItemList.bin` → `STRUCT_ITEMLIST` (`Basedef.h:1162-1185`)
 
 `g_pItemList[MAX_ITEMLIST]` (`Basedef.h:2878`). O `.csv` é a fonte editável; o `.bin`
-(`Release/DBsrv/run/ItemList.bin`, ~910 KB) é a forma compilada carregada em runtime.
+(`tmserver/content/DBsrv/run/ItemList.bin`, ~910 KB) é a forma compilada carregada em runtime.
 
 Struct (≈104 bytes; comentários de offset no próprio código):
 
@@ -456,7 +456,7 @@ Struct (≈104 bytes; comentários de offset no próprio código):
 | `Extra` | `short` | 100 |
 | `Grade` | `short` | 102 (1=Normal 2=Místico 3=Arcano 4=Lendário) |
 
-Exemplo real (`Release/Common/ItemList.csv:1`):
+Exemplo real (`tmserver/content/Common/ItemList.csv:1`):
 ```
 1,TransKnight,0.0,0.0.0.0.0,0,0,1,0,0,EF_CLASS,1,EF_RANGE,1,EF_REGENHP,2,EF_REGENMP,2,EF_CRITICAL,10
 ```
@@ -481,10 +481,10 @@ por teste em `webserver/internal/itemcatalog`):
 **UNVERIFIED** ainda: `IndexVisualEffect` (o servidor zera; 0 em 100% do `.bin`) e o `EF_GRID`
 (0 em todo o catálogo atual).
 
-> **`ItemCSum.h`** (`Release/TMsrv/` e `DBsrv/`) é um header de checksum da `ItemList` — provável
+> **`ItemCSum.h`** (`tmserver/content/TMsrv/` e `DBsrv/`) é um header de checksum da `ItemList` — provável
 > anti-tamper para garantir que TMSrv e DBSrv usam a mesma lista. Confirmar uso.
 
-**Layout do `.bin` (CONFIRMADO):** `Release/DBsrv/run/ItemList.bin` = **6500 registros × 140 bytes,
+**Layout do `.bin` (CONFIRMADO):** `tmserver/content/DBsrv/run/ItemList.bin` = **6500 registros × 140 bytes,
 ofuscados com XOR 0x5A plano, sem cabeçalho** (sobram 4 bytes no fim; 910 004 = 6500×140 + 4). Os
 comentários de offset da struct (`Price // 92`) são de uma versão antiga com nome curto — com
 `ITEMNAME_LENGTH=64` (`Basedef.h:203`) o layout real é `Name[64] + 8×short (mesh, texture, vfx,
@@ -503,7 +503,7 @@ o teste roda no CI). Consumo desses campos pelo front em [item-icons-plan.md](it
 Range, InstanceType, InstanceValue, TickType, TickValue, AffectType, AffectValue, AffectTime,
 Act[8], InstanceAttribute, TickAttribute, ...`.
 
-Exemplo real (`Release/Common/SkillData.csv:1`):
+Exemplo real (`tmserver/content/Common/SkillData.csv:1`):
 ```
 0,24,3,15,3,5,4,5,0,0,0,0,0,10.0.0.10.0.0.0.0,10.0.0.10.0.0.0.0,4,0,1,13,0,3,0,1,Giro_da_Furia
 ```
@@ -512,7 +512,7 @@ Exemplo real (`Release/Common/SkillData.csv:1`):
 
 ### 3.3. `NPCGener.txt` (spawns de mob/NPC)
 
-Texto chaveado por blocos `# [n]` (`Release/TMsrv/run/NPCGener.txt`). Campos por bloco:
+Texto chaveado por blocos `# [n]` (`tmserver/content/TMsrv/run/NPCGener.txt`). Campos por bloco:
 
 ```
 #  [0]

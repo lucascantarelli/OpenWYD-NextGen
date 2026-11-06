@@ -1,5 +1,5 @@
 // Package mobtemplates scans the read-only content tree for EVERY STRUCT_MOB
-// template under Release/TMsrv/run/npc/, so the moderator UI can offer a
+// template under tmserver/content/TMsrv/run/npc/, so the moderator UI can offer a
 // searchable picker for MobTemplateAdminService.GetMobTemplateStat/
 // UpsertMobTemplateStat's template_name (mob-template-editing-plan.md, the
 // equivalent-tool successor to the legacy EDITAPPMOB).
@@ -23,7 +23,7 @@ import (
 	"openwyd-nextgen/webserver/internal/npctemplates"
 )
 
-// File is one STRUCT_MOB template file found under Release/TMsrv/run/npc/.
+// File is one STRUCT_MOB template file found under tmserver/content/TMsrv/run/npc/.
 type File struct {
 	TemplateName string
 	DisplayName  string
@@ -41,7 +41,7 @@ type File struct {
 // whole scan — the npc/ directory can contain non-template files. Callers log
 // the stats once instead of warning per file.
 // FromBlobs builds the unfiltered template picker from the canonical STRUCT_MOB
-// blobs the database holds (npc_template, issue 58/62): npc/ left Release/ in
+// blobs the database holds (npc_template, issue 58/62): npc/ left tmserver/content/ in
 // phase 5, so the directory scan can only come up empty.
 func FromBlobs(blobs map[string][]byte) ([]File, npctemplate.ScanStats) {
 	var out []File

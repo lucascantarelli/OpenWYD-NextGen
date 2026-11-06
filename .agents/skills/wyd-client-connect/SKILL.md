@@ -24,7 +24,7 @@ Consequências práticas:
 
 - **As duas portas precisam estar acessíveis a partir da máquina do cliente**: `8281/tcp` (jogo) e
   `80/tcp` (status). Firewall do Windows/host, NAT ou VPN quebram uma sem quebrar a outra.
-- O status é servido pelo tmServer lendo `Release/Common/serv00.htm`. Se esse arquivo faltar, o
+- O status é servido pelo tmServer lendo `tmserver/content/Common/serv00.htm`. Se esse arquivo faltar, o
   servidor responde um corpo padrão — o cliente normalmente aceita, mas o canal aparece estranho.
 - `serverlist.bin` é **binário ofuscado** pela tabela estática do CPSock. Não edite com editor de
   texto: use a ferramenta oficial.
@@ -108,7 +108,7 @@ Sem Go no host, rode dentro do container (ver skill `wyd-testing-bots`).
 | Aparece, mas "servidor em manutenção"/sem status | `curl http://<IP>/serv00.htm` do host do cliente | liberar porta 80, conferir IP |
 | Trava em "conectando" | `docker compose logs tmserver` mostra `recv packet type=0x020d`? | se não mostra, TCP 8281 bloqueado |
 | Cai após o login, com `0x102` no log | `got=` vs `want=` | alinhar `-client-version` |
-| Loga, escolhe personagem e o cliente fecha | falta template de classe / `CNFCharacterLogin` sem BaseMob | conferir `Release/DBsrv/run/BaseMob/{TK,FM,BM,HT}` e log `base mob templates loaded` |
+| Loga, escolhe personagem e o cliente fecha | falta template de classe / `CNFCharacterLogin` sem BaseMob | conferir `tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` e log `base mob templates loaded` |
 | Personagem entra mas sem equip visual | BaseMob não carregado (fallback relacional) | mesmo caminho acima |
 | Tela preta / erro de render | `WYD.log`, `d3dx9_42.dll`, aceleração | não é rede; ajustar `Graphics.ini` |
 | Dois clientes não se veem | conta/personagem distintos e mesmo canal | usar `test` e `test2`, ambos na mesma porta |

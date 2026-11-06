@@ -6,7 +6,7 @@
 #
 #   1. checkout: é a raiz do repo (go.mod + docker-compose.yaml) e não um sparse
 #      checkout sem pasta irmã;
-#   2. conteúdo: `Release/` completo (sem ItemList.csv o servidor sobe "vazio");
+#   2. conteúdo: `tmserver/content/` (taxas e templates; mapas por bootstrap);
 #   3. Docker: daemon respondendo + compose v2/v1 (o build usa um dos dois);
 #   4. portas: 80/8281 (cliente) e 7600/3000 (web-api/portal) — ocupadas pela
 #      própria stack contam como OK, ocupadas por OUTRO processo são suspeita;
@@ -108,25 +108,26 @@ else
 	fail "não parece a raiz do repo (go.mod e docker-compose.yaml devem existir aqui)"
 fi
 if [ -f .git/info/sparse-checkout ]; then
-	warn "sparse checkout ativo: confira se Release/ e api/ estão materializados"
+	warn "sparse checkout ativo: confira se tmserver/content e api/ estão materializados"
 fi
 need_file Makefile
 
-section "conteúdo (Release/)"
-need_file Release/Common/ItemList.csv
-need_file Release/Common/SkillData.csv
-need_file Release/TMsrv/run/NPCGener.txt
-need_dir Release/TMsrv/run/npc
-need_file Release/DBsrv/run/BaseMob/TK
-need_file Release/DBsrv/run/BaseMob/FM
-need_file Release/DBsrv/run/BaseMob/BM
-need_file Release/DBsrv/run/BaseMob/HT
+section "conteúdo (tmserver/content/)"
+need_file tmserver/content/Common/Settings/CompRate.txt
+need_file tmserver/content/Common/Settings/SancRate.txt
+need_file tmserver/content/Common/Settings/QuestsRate.txt
+need_file tmserver/content/Common/serv00.htm
+need_file tmserver/content/DBsrv/run/BaseMob/TK
+need_file tmserver/content/DBsrv/run/BaseMob/FM
+need_file tmserver/content/DBsrv/run/BaseMob/BM
+need_file tmserver/content/DBsrv/run/BaseMob/HT
 
 # Mapas são opcionais no boot (warning), mas sem eles os mobs andam "cego".
-if [ -f Release/TMsrv/run/HeightMap.dat ] && [ -f Release/TMsrv/run/AttributeMap.dat ]; then
+# Eles não são versionados: `make content-sync` os copia de uma árvore legada.
+if [ -f tmserver/content/TMsrv/run/HeightMap.dat ] && [ -f tmserver/content/TMsrv/run/AttributeMap.dat ]; then
 	ok "mapas de altura e atributo"
 else
-	warn "HeightMap.dat/AttributeMap.dat ausentes: mobs sem pathfinding e EXP de treino desligada"
+	warn "HeightMap.dat/AttributeMap.dat ausentes: rode 'make content-sync' (mobs sem pathfinding e EXP de treino desligada)"
 fi
 
 section "Docker"

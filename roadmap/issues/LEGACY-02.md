@@ -1,6 +1,6 @@
 # LEGACY-02 — Mover o conteúdo de runtime para dentro do servidor Go
 
-**Fase:** remoção de legado · **Depende de:** — · **Esforço:** M · **Estado:** ⏳ planejada
+**Fase:** remoção de legado · **Depende de:** — · **Esforço:** M · **Estado:** ✅ concluída (06/11/2026)
 
 ## Objetivo
 
@@ -44,10 +44,10 @@ docker compose run --rm --entrypoint importcontent dbserver -content /content -d
 
 ## Critérios de aceite
 
-- [ ] `tmserver` sobe com `-content` apontando para dentro do módulo, sem `Release/` montado.
-- [ ] `go test ./...` verde sem fixture lendo caminho de distribuição do Win32.
-- [ ] Nenhum `.bat`, `.exe` ou estado de servidor de teste no caminho de build.
-- [ ] `AGENTS.md` §4 e `config-ops.md` descrevem a nova árvore.
+- [x] `tmserver` sobe com `-content` apontando para dentro do módulo, sem `Release/` montado.
+- [x] `go test ./...` verde sem fixture lendo caminho de distribuição do Win32.
+- [x] Nenhum `.bat`, `.exe` ou estado de servidor de teste no caminho de build.
+- [x] `AGENTS.md` §4 e `config-ops.md` descrevem a nova árvore.
 
 ## Riscos/rollback
 

@@ -186,7 +186,7 @@ func baseMortalState(level int) world.CharacterState {
 }
 
 func TestKibitaSoulWithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Kibita"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Kibita"))
 	if err != nil {
 		t.Fatalf("read real Kibita template: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestKibitaSoulRejectsInvalidRequirementsWithoutMutation(t *testing.T) {
 }
 
 func TestJardineiroStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Jardineiro"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Jardineiro"))
 	if err != nil {
 		t.Fatalf("read real Jardineiro template: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestJardineiroRejectsInvalidRequirements(t *testing.T) {
 }
 
 func TestCoveiroStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Coveiro"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Coveiro"))
 	if err != nil {
 		t.Fatalf("read real Coveiro template: %v", err)
 	}
@@ -702,7 +702,7 @@ func TestBlackOracleMissingSoulNoop(t *testing.T) {
 
 // TestCompSephiCraftsSephirotForClass: each Mestre de Skills crafts the
 // Sephirot 1759+Class (_MSG_Quest.cpp:2157). The real templates carry Class
-// 1..4 at STRUCT_MOB offset 20 (Release/TMsrv/run/npc), so they yield
+// 1..4 at STRUCT_MOB offset 20 (tmserver/content/TMsrv/run/npc), so they yield
 // 1760..1763, the range kingArch reads back as class Equip[11]-1760 (#390).
 func TestCompSephiCraftsSephirotForClass(t *testing.T) {
 	tests := []struct {
@@ -834,7 +834,7 @@ func TestKingArchRejectsMissingPedraIdeal(t *testing.T) {
 }
 
 func mestreGrifoTemplate(t *testing.T) []byte {
-	if b, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo")); err == nil && len(b) == 816 {
+	if b, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Mestre_Grifo")); err == nil && len(b) == 816 {
 		return b
 	}
 	b := make([]byte, 816)
@@ -1087,7 +1087,7 @@ func TestMestreGrifoQuestFlagPreventsImmediateRecall(t *testing.T) {
 }
 
 func TestMestreGrifoRealTemplateTeleportsAndSurvivesGuard(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Mestre_Grifo"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Mestre_Grifo"))
 	if err != nil {
 		t.Fatalf("read real Mestre_Grifo template: %v", err)
 	}
@@ -1294,7 +1294,7 @@ func TestQuest256TicketSecondUseOnEmptySlotIsNoop(t *testing.T) {
 }
 
 func TestGuardaStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Guarda"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Guarda"))
 	if err != nil {
 		t.Fatalf("read real Guarda template: %v", err)
 	}
@@ -1375,7 +1375,7 @@ func TestGuardaRejectsInvalidRequirements(t *testing.T) {
 // only EF_GRADE0 (2 vs 3) and the ticket tell them apart, so both load the real
 // template to prove the pair resolves to different steps.
 func TestPatrulhaKaizenStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha_"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Patrulha_"))
 	if err != nil {
 		t.Fatalf("read real Patrulha_ template: %v", err)
 	}
@@ -1454,7 +1454,7 @@ func TestPatrulhaKaizenRejectsInvalidRequirements(t *testing.T) {
 }
 
 func TestPatrulhaHidraStartsQuest256WithRealTemplate(t *testing.T) {
-	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "npc", "Patrulha"))
+	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Patrulha"))
 	if err != nil {
 		t.Fatalf("read real Patrulha template: %v", err)
 	}

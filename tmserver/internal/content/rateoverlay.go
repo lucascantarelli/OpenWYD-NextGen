@@ -8,7 +8,7 @@ import (
 )
 
 // ApplyRateOverrides folds the moderator overlay (issue 36) into the tables
-// loaded from Release/Common/Settings.
+// loaded from tmserver/content/Common/Settings.
 //
 // The identity of a cell is (file, family, name) — the same key the web editor
 // and content_rate_override use — never a numeric position: CompRate has several

@@ -6,7 +6,7 @@ na memória do mundo e chegam ao cliente por pacote — o cliente não calcula n
 ## Fluxo
 
 1. **Criação**: o cliente envia nome e classe; `character.go` valida e monta o `STRUCT_MOB` (816 bytes)
-   a partir do template da classe em `Release/DBsrv/run/BaseMob/{TK,FM,BM,HT}` — equipamento inicial
+   a partir do template da classe em `tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` — equipamento inicial
    vem daí, não de código.
 2. **Seleção**: `protocol/selchar.go` monta o `STRUCT_SELCHAR` (840 bytes) com a prévia de atributos
    (nível, HP/MP, STR/INT/DEX/CON) que a tela de seleção mostra antes de entrar.

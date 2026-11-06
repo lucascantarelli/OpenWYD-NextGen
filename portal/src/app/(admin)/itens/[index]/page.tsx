@@ -98,7 +98,7 @@ export default async function ItemPage({ params }: { params: Promise<{ index: st
         )}
         <p className="ui-field__hint">
           Os pares acima vêm do <code>ItemList.csv</code>; abaixo você edita o overlay do Postgres
-          (issue 44). O CSV não é reescrito: <code>Release/</code> é conteúdo.
+          (issue 44). O CSV não é reescrito: <code>tmserver/content/</code> é conteúdo.
         </p>
         {itemEffects ? (
           <ItemEffectEditor

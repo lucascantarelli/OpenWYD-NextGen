@@ -412,7 +412,7 @@ func TestWaterPartyExp(t *testing.T) {
 }
 
 func TestWaterReleaseContent(t *testing.T) {
-	dir := filepath.Join("..", "..", "..", "Release", "TMsrv", "run")
+	dir := filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run")
 	gens, err := content.LoadNPCGenerators(releasePath(t, filepath.Join(dir, "NPCGener.txt")))
 	if err != nil {
 		t.Fatal(err)
@@ -427,7 +427,7 @@ func TestWaterReleaseContent(t *testing.T) {
 				if name == "" {
 					continue
 				}
-				tmpl, err := content.LoadNPCTemplate(filepath.Join("..", "..", "..", "Release"), name)
+				tmpl, err := content.LoadNPCTemplate(filepath.Join("..", "..", "..", "tmserver", "content"), name)
 				if err != nil || len(tmpl) != 816 {
 					t.Errorf("generator %d template %s: %v", base+offset, name, err)
 				}

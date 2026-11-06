@@ -1,5 +1,5 @@
 // Package content loads the read-only game-content files (data-formats.md §2-3)
-// from Release/: combine/refine rate tables, the item/skill catalogs and the
+// from tmserver/content/: combine/refine rate tables, the item/skill catalogs and the
 // terrain maps. The loaders are validated against the real files (content_test).
 package content
 

@@ -41,7 +41,7 @@ agora vive em `client-tools/serverlist`.
    `client-tools/serverlist/servers.txt` (grupo, canal, endereço) e escreve o `.bin` de 7.040 bytes com
    a mesma ofuscação do `Basedef.cpp`. É a base do "escolher canal" do launcher.
 2. **Manifesto versionado** — `launcher-manifest.json` (schema: `version`, `files[]`), servido
-   pelo portal, gerado por um script que varre o `Release/` limpo. O launcher compara hash e só
+   pelo portal, gerado por um script que varre o `tmserver/content/` limpo. O launcher compara hash e só
    baixa o diferencial.
 3. **Updater seguro** — download para `tmp`, verificação SHA-256, aplicação por `rename`, e um
    `.bak` da versão anterior (rollback de uma linha). Nunca escrever direto no arquivo em uso.
@@ -71,7 +71,7 @@ agora vive em `client-tools/serverlist`.
    assinatura privada (`client/` e `.freebuff/` já estão fora do git).
 2. O launcher **não** fala gRPC nem toca o banco: ele é cliente HTTP do portal, como qualquer
    navegador. Segredos e DSN ficam do lado do servidor.
-3. Patch por hash exige que o `Release/` versionado seja a fonte; arquivos gerados (mapas
+3. Patch por hash exige que o `tmserver/content/` versionado seja a fonte; arquivos gerados (mapas
    `dist/`, `world-atlas.json`) entram no manifesto por script, não à mão.
 4. Antes de distribuir, testar em uma cópia do cliente com backup do `serverlist.bin` e do
    `WYD.exe` (ver skill `wyd-client-connect`).

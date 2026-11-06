@@ -43,7 +43,7 @@ docker exec openwyd-db-1 psql -U postgres -d postgres -c "select count(*) from n
 
 # migrations: aplicadas no boot de dbserver/webserver/importadores (idempotente)
 # importar catálogos de conteúdo (idempotente; -check compara banco × arquivos)
-docker compose run --rm --entrypoint importcontent dbserver -content /Release
+docker compose run --rm --entrypoint importcontent dbserver -content /content
 # gerar os seeds de referência a partir do banco populado
 seedgen -dsn "postgres://postgres:<senha>@db:5432/postgres" -out internal/migrations
 

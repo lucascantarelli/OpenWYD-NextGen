@@ -1,6 +1,6 @@
 # Fase 7 — Configuração e Operação (w2pp-OpenWYD)
 
-> Catálogo de TODOS os arquivos de config em `Release/`, topologia de deploy, IPs/portas hardcoded e
+> Catálogo de TODOS os arquivos de config em `tmserver/content/`, topologia de deploy, IPs/portas hardcoded e
 > o que deve virar variável de ambiente/secret na stack nova.
 
 ---
@@ -44,10 +44,10 @@ Precedência em toda a stack:
 
 | Camada | Fonte | Exemplo |
 |---|---|---|
-| Argumento de CLI | vence tudo | o compose fixa `-addr :8281`, `-content /Release`, `-client-version 12000` |
+| Argumento de CLI | vence tudo | o compose fixa `-addr :8281`, `-content /content`, `-client-version 12000` |
 | Variável de ambiente | default da flag (`os.Getenv`) | `W2PP_RATES_EDITING`, `W2PP_CONTENT`, `W2PP_DB_DSN` |
 | `./.env` | interpolado pelo compose (`${VAR:-default}`) | `POSTGRES_PASSWORD`, `W2PP_PORTAL_SESSION_SECRET` |
-| Banco / `Release/` | **conteúdo**, nunca env | rates, drop, preço, EXP, NPCs (overlays do portal) |
+| Banco / `tmserver/content/` | **conteúdo**, nunca env | rates, drop, preço, EXP, NPCs (overlays do portal) |
 
 Como o compose passa `-addr`, `-content` e `-dbserver` explicitamente, mudar `W2PP_CONTENT` no
 `.env` **não** afeta os containers — só os binários rodando no host. Porta e caminho dentro do
@@ -92,7 +92,7 @@ recorte de desenvolvimento, não uma topologia jogável.
 - **Auto-restart por `.bat`:** ex. `DBsrv/run/DBsrv.bat` é um loop `:Loop … DBsrv.exe … goto Loop`
   — reinicia o processo se ele cair. (Há `.bat` equivalente para o TMSrv.) Substituir por
   supervisor real (systemd/k8s/Docker restart policy) na stack nova.
-- `deletar Logs.bat` na raiz de `Release/` — housekeeping manual de logs.
+- `deletar Logs.bat` na raiz de `tmserver/content/` — housekeeping manual de logs.
 
 ---
 
@@ -175,19 +175,19 @@ Carregados na inicialização (detalhados nas Fases 2 e 4): `ItemList.csv/.bin`,
 | `TMsrv/run/npc/*` (STRUCT_MOB) | `npc_template` | `npc-template` |
 | `TMsrv/run/InitItem.csv` | `world_item_seed` | `world-item` |
 
-Reimportar de uma árvore **externa** (o `Release/` do repositório não tem mais esses arquivos) e
+Reimportar de uma árvore **externa** (o `tmserver/content/` do repositório não tem mais esses arquivos) e
 conferir:
 
 ```bash
 docker compose run --rm --entrypoint importcontent dbserver \
-  -content /Release -dsn "postgres://postgres:<senha>@db:5432/postgres"
+  -content /content -dsn "postgres://postgres:<senha>@db:5432/postgres"
 docker compose run --rm --entrypoint importcontent dbserver \
-  -content /Release -dsn "postgres://postgres:<senha>@db:5432/postgres" -check
+  -content /content -dsn "postgres://postgres:<senha>@db:5432/postgres" -check
 ```
 
 O comando é `tmserver/cmd/importcontent` (os parsers vivem em `tmserver/internal/content`, que o
 `dbserver` não pode importar por visibilidade de `internal`); a imagem do tmserver o contém. O
-`-check` sai 1 quando o banco diverge do conteúdo — é o gate para editar `Release/` sem reimportar.
+`-check` sai 1 quando o banco diverge do conteúdo — é o gate para editar `tmserver/content/` sem reimportar.
 
 **Encoding:** os CSVs são **Windows-1252**. Qualquer import que grave texto no Postgres precisa
 passar por `internal/textenc.ToUTF8`; sem isso o banco recusa com

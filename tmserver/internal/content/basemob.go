@@ -11,7 +11,7 @@ import (
 const BaseMobSize = 816
 
 // baseMobFiles maps the class index to its BaseMob template file name
-// (Release/DBsrv/run/BaseMob/{TK,FM,BM,HT}); confirmed by each template's
+// (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); confirmed by each template's
 // Class byte @20: TK=0, FM=1, BM=2, HT=3.
 var baseMobFiles = map[int]string{0: "TK", 1: "FM", 2: "BM", 3: "HT"}
 

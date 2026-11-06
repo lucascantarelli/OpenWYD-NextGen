@@ -21,7 +21,7 @@ func (d *Dispatcher) reqShopList(w *world.World, s *world.Session, _ protocol.He
 	}
 	// Merchant==2 is the cargo guard (Guarda-Carga): it opens the account
 	// warehouse, not a buy/sell list. UNVERIFIED: the Merchant==2 tagging of the
-	// Release/ NPCs is not yet confirmed by capture.
+	// tmserver/content/ NPCs is not yet confirmed by capture.
 	if npc.Merchant == 2 {
 		d.openCargo(w, s)
 		return

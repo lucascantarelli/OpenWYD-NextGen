@@ -30,7 +30,7 @@ O estado é por personagem e por dia, no servidor. Reivindicar duas vezes no mes
 | RuneQuest e contagem de kill | `runequest.go`, `runequest_kills.go` |
 | Reset por área | `quest_area_reset.go` |
 | Diária | RPC do web-api, tela `/diaria` no portal |
-| Taxa de quest | `Release/Common/Settings/QuestsRate.txt` |
+| Taxa de quest | `tmserver/content/Common/Settings/QuestsRate.txt` |
 
 ## Como verificar
 

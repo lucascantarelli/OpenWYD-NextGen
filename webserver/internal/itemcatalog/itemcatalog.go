@@ -1,5 +1,5 @@
 // Package itemcatalog reads the item lookup the web front-end needs from
-// Release/Common/ItemList.csv: the index/name pair the moderator shop-item
+// tmserver/content/Common/ItemList.csv: the index/name pair the moderator shop-item
 // picker labels its rows with, plus the fallback metadata every item-facing
 // screen needs when a classic-client icon is unavailable.
 //

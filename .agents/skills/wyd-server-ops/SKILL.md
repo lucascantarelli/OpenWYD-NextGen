@@ -1,6 +1,6 @@
 ---
 name: wyd-server-ops
-description: Sobe, inspeciona, reinicia e faz backup da stack local do servidor WYD2 (Postgres + dbServer + binServer + tmServer + webServer) em Docker, incluindo semear contas, conferir a árvore de conteúdo Release/, validar as portas 8281/80 e diagnosticar boot que falha ou loga "logins report no account". Use sempre que a tarefa envolver rodar o servidor, derrubar/subir containers, ver logs, resetar banco, aplicar migrações ou investigar por que o servidor não aceita conexão.
+description: Sobe, inspeciona, reinicia e faz backup da stack local do servidor WYD2 (Postgres + dbServer + binServer + tmServer + webServer) em Docker, incluindo semear contas, conferir a árvore de conteúdo tmserver/content/, validar as portas 8281/80 e diagnosticar boot que falha ou loga "logins report no account". Use sempre que a tarefa envolver rodar o servidor, derrubar/subir containers, ver logs, resetar banco, aplicar migrações ou investigar por que o servidor não aceita conexão.
 ---
 
 # Operação do servidor WYD local
@@ -23,9 +23,9 @@ protocolo legado com o cliente**. Os outros são internos (gRPC) e um Postgres.
 
 # a) a árvore de conteúdo obrigatória está completa? (catálogo de item/skill/NPC vem do Postgres
 #    desde a issue 58; o fail-closed do boot é sobre o banco, não sobre arquivo)
-test -f Release/Common/Settings/SancRate.txt && echo "taxas ok"
-ls -l Release/TMsrv/run/HeightMap.dat Release/TMsrv/run/AttributeMap.dat
-ls Release/DBsrv/run/BaseMob                                        # TK FM BM HT (816 B cada)
+test -f tmserver/content/Common/Settings/SancRate.txt && echo "taxas ok"
+ls -l tmserver/content/TMsrv/run/HeightMap.dat tmserver/content/TMsrv/run/AttributeMap.dat
+ls tmserver/content/DBsrv/run/BaseMob                                        # TK FM BM HT (816 B cada)
 
 # b) as portas estão livres? (80 é a mais disputada no Windows)
 netstat -ano | grep LISTENING | grep -E ":(80|8281)\b"
@@ -34,7 +34,7 @@ netstat -ano | grep LISTENING | grep -E ":(80|8281)\b"
 docker compose ps
 ```
 
-Se `Release/` não existir, a causa quase certa é **sparse checkout** parcial:
+Se `tmserver/content/` não existir, a causa quase certa é **sparse checkout** parcial:
 
 ```bash
 git sparse-checkout disable     # restaura a árvore completa versionada
@@ -99,7 +99,7 @@ Definidas em `tmserver/cmd/tmserver/main.go`; quase todas têm equivalente `W2PP
 | Flag | Padrão | Efeito |
 |------|-------:|--------|
 | `-addr` | `:8281` | porta do jogo |
-| `-content` | env `W2PP_CONTENT` | árvore `Release/`; vazio = sem conteúdo (inútil para jogar) |
+| `-content` | env `W2PP_CONTENT` | árvore `tmserver/content/`; vazio = sem conteúdo (inútil para jogar) |
 | `-dbserver` / `-binserver` | env | vazio = persistência no-op / billing allow-all |
 | `-status-addr` | `:80` | página de status; vazio desliga |
 | `-client-version` | `7640` | versão exigida no login; o compose passa **12000**, que é o valor medido no cliente real (2026-11-04) |
@@ -154,7 +154,7 @@ Regras aprendidas na prática:
 
 | Sintoma | Causa provável | Ação |
 |---------|----------------|------|
-| `content: ... no such file` no boot | `Release/` ausente ou sparse checkout | `git sparse-checkout disable` |
+| `content: ... no such file` no boot | `tmserver/content/` ausente ou sparse checkout | `git sparse-checkout disable` |
 | Login para em "conectando" | link gRPC tmServer↔dbServer morto | `docker compose restart dbserver tmserver`; ver logs dos dois |
 | `logins report no account` | tmServer sem `-dbserver` | subir via compose, não `go run` sem flag |
 | Cliente vê servidor mas cai no login | `ClientVersion` diferente | skill `wyd-client-connect` (0x102) |

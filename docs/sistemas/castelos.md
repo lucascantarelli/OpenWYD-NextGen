@@ -12,7 +12,7 @@ que o servidor não cumpre:
 ## Castelo
 
 `castle.go` aplica o resultado da disputa e persiste o dono. `internal/worldevents/castle.go` controla a
-janela do evento (quando abre, quando fecha) e `Release/Common/Settings/CastleQuest.txt` define o que a
+janela do evento (quando abre, quando fecha) e `tmserver/content/Common/Settings/CastleQuest.txt` define o que a
 disputa paga. O portal mostra o estado em `/castelo`.
 
 ## Kefra
@@ -35,7 +35,7 @@ líder. São mecânicas separadas da guerra: não misture na mesma tela nem no m
 | Kefra | `kefra.go`, `kefra_event.go`, `internal/world/kefra.go` |
 | Guerra de torre | `towerwar.go`, `internal/worldevents/tower.go` |
 | Reino e coroa | `kingdom.go`, `liderapprentice.go` |
-| Conteúdo | `Release/Common/Settings/CastleQuest.txt` |
+| Conteúdo | `tmserver/content/Common/Settings/CastleQuest.txt` |
 | Fluxos | `docs/migration/flows.md` §7 (torre) e §8 (castelo) |
 | Portal | `/castelo` |
 

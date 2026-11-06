@@ -1,5 +1,5 @@
 // Package npctemplate resolves raw STRUCT_MOB template files from the legacy
-// Release/TMsrv/run/npc content tree.
+// tmserver/content/TMsrv/run/npc content tree.
 package npctemplate
 
 import (
@@ -18,7 +18,7 @@ const (
 
 // Resolution identifies the concrete file selected for a requested template.
 type Resolution struct {
-	// Name is the actual file name under Release/TMsrv/run/npc.
+	// Name is the actual file name under tmserver/content/TMsrv/run/npc.
 	Name string
 	// Path is the absolute or relative path used to read the file.
 	Path string
@@ -27,13 +27,13 @@ type Resolution struct {
 	Version savefmt.MobVersion
 }
 
-// Dir returns the NPC template directory for a Release/ content root.
+// Dir returns the NPC template directory for a tmserver/content/ content root.
 func Dir(contentDir string) string {
 	return filepath.Join(contentDir, "TMsrv", "run", "npc")
 }
 
 // Resolve maps a template name from legacy content/config to the actual file in
-// Release/TMsrv/run/npc. It first honors exact Linux file names, then falls back
+// tmserver/content/TMsrv/run/npc. It first honors exact Linux file names, then falls back
 // to Windows-like matching for the original server data: case-insensitive, with
 // trailing dots ignored in path components.
 func Resolve(contentDir, name string) (Resolution, error) {

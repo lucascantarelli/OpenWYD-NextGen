@@ -46,7 +46,7 @@ func (f *fakeStore) LatestInstanceFlags(context.Context, string) ([]byte, time.T
 
 func releaseDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join("..", "..", "..", "Release")
+	return filepath.Join("..", "..", "..", "tmserver", "content")
 }
 
 func TestListMergesOverlay(t *testing.T) {
