@@ -79,6 +79,8 @@ src/server/errors.ts       AdminError + toResponse
 src/server/audit.ts        trilha de auditoria (console + ndjson opcional)
 src/server/session.ts      cookie httpOnly HS256, getSession/requireStaff
 src/server/catalog.ts      cache do catálogo de itens
+src/server/guias.ts        leitura de /guias (JSON gerado a partir de docs/)
+scripts/build-guias.mjs    gerador do conteúdo de /guias (npm run guias)
 ```
 
 ## Rodando no Docker (stack completa)
@@ -93,6 +95,24 @@ A imagem (`portal/Dockerfile`) usa o output `standalone` do Next. O contexto de 
 repositório** (não `portal/`) porque a imagem precisa de `api/web/v1/web.proto`. No container,
 `WEB_API_ADDR=webserver:7600`, `W2PP_CONTENT=/Release` e `AUDIT_LOG_DIR` vêm do compose;
 `SESSION_SECRET` tem default apenas de desenvolvimento (>= 32 caracteres em produção).
+
+### Guias públicos (`/guias`)
+
+`/guias` e `/guias/<slug>` publicam a documentação escrita em `docs/guias/` (jogador e
+administrador), `docs/sistemas/` e `docs/lore/` (história, guerras, reinos) — **os mesmos arquivos**
+que alimentam o site mkdocs, sem cópia paralela. A rota é pública de propósito: não entra no
+`matcher` do middleware nem no menu administrativo.
+
+- `npm run guias` (ou `make guias`) gera `src/content/guias.json`, que é **versionado**. A imagem
+  copia só `portal/`, então `docs/` não existe dentro do container — gerar no build do Next não
+  funcionaria.
+- O gerador reescreve link relativo para `/guias/<slug>`, converte `!!! tipo` (admonition do mkdocs)
+  em citação — o `marked` não conhece essa sintaxe — e mantém como texto o link que sai do conjunto
+  publicado, porque link morto é pior que texto.
+- `src/server/guias.ts` expõe `listGuias`/`getGuia`/`groupGuias`; as páginas são estáticas
+  (`generateStaticParams`), então o conteúdo só muda quando o JSON é regenerado.
+- CI: `_portal.yml` roda `npm run guias` e `git diff --exit-code`; `docs/` alterado sem regenerar
+  reprova o pipeline (`make guias-check` reproduz local).
 
 ### Logs ao vivo (`/logs`, issue 40)
 

@@ -98,7 +98,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
 | Postgres acessado só como superusuário; sem restore testado | DSN linhas 34/58 | [DB-01](issues/DB-01.md) |
 | Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
-| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde + 6 ADRs (06/11); falta página por sistema | [DOC-01](issues/DOC-01.md) |
+| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde, 6 ADRs, tema do portal e `/guias` no portal lendo `docs/` (7 páginas, JSON versionado); falta página por sistema | [DOC-01](issues/DOC-01.md) |
 | Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](issues/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](issues/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
@@ -335,6 +335,19 @@ Grafo da Fase 6:
   Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
   `npx vitest run` 12 arquivos / 93 testes · `tsc --noEmit` exit 0 ·
   `mkdocs build --strict` exit 0 (container) · `check-skips`/`check-comments`/`check-docs-links` verdes.
+- **2026-11-06 (mkdocs → portal)** — a documentação passou a alimentar o portal. O site ganhou a
+  identidade visual do portal (`docs/assets/portal-theme.css` com os tokens de `portal/src/app/globals.css`,
+  `font: false` para não baixar Roboto) e as features **built-in** do Material (tabs, sections, top,
+  `toc.follow`, busca com sugestão/realce/compartilhar, copiar código) — só o plugin `search`, que já
+  vem na imagem; `social` ficou de fora porque renderiza imagem por página e dobra o build. Conteúdo
+  novo: `docs/guias/` (jogador e administrador), `docs/lore/` (história, guerras, reinos) e
+  `docs/analysis/portal-papeis.md`. O portal publica os **mesmos arquivos** em `/guias` por
+  `portal/scripts/build-guias.mjs` → `portal/src/content/guias.json` versionado (a imagem do portal
+  copia só `portal/`, então `docs/` não existe no container): 7 páginas, link interno reescrito para
+  `/guias/<slug>` e admonition convertida em citação para o `marked` não imprimir `!!!`.
+  Verification: `npx vitest run` 13 arquivos / 99 testes · `tsc --noEmit` exit 0 ·
+  `mkdocs build --strict` exit 0 (62,56 s) · `check-docs-links` 124 links / 0 quebrado ·
+  `make guias-check` (regenera e reprova divergência, também no CI).
 - **2026-11-06 (revisão profunda + fechamento barato)** — duas frentes executadas.
   **(a) Canais e feedback in-game:** [CANAL-01](issues/CANAL-01.md) (dois canais na lista, canal novato
   fixo, regras do `sn.bin`/`serverlist.bin` medidas e documentadas), [CANAL-02](issues/CANAL-02.md)

@@ -1,6 +1,7 @@
 # DOC-01 — Esqueleto mkdocs, índice de sistemas e ADRs
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 quase concluída (site e ADRs de 06/11)
+**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 quase concluída (site, ADRs
+e integração com o portal de 06/11)
 
 ## Objetivo
 
@@ -40,6 +41,9 @@ ls docs/adr                     # não existe
 
 - `mkdocs.yml`, `docker-compose.yaml` (serviço `docs`), `.github/workflows/docs.yml`
 - `docs/adr/**` (novo), `docs/sistemas/**` (novo)
+- `docs/assets/portal-theme.css`, `docs/guias/**`, `docs/lore/**` (integração portal, 06/11)
+- `portal/scripts/build-guias.mjs`, `portal/src/content/guias.json`,
+  `portal/src/app/(public)/guias/**`, `portal/src/server/guias.ts` (integração portal, 06/11)
 - `roadmap/doc_legacy/**` (novo), `README.md`, `AGENTS.md` §6
 
 ## Testes/verificação
@@ -64,6 +68,8 @@ mkdocs build --strict            # link quebrado falha
 | `mkdocs build --strict` verde | ✅ |
 | Todo doc do `AGENTS.md` §6 em ≤2 cliques | ✅ (nav do `mkdocs.yml` é o §6 traduzido em seções) |
 | Uma página por sistema de jogo | 🟡 só o índice (`docs/sistemas/README.md`) |
+| Mesma identidade visual do portal | ✅ `docs/assets/portal-theme.css` (tokens de `globals.css`) |
+| Docs alimentam áreas do portal | ✅ `/guias` publica 7 páginas de `docs/` via JSON versionado |
 | ≥6 ADRs | ✅ 6 (0001–0006) |
 | `doc_legacy/` com README de substituição | ❌ não criado |
 
