@@ -1,20 +1,22 @@
-# Site de documentação.
+# Site de documentação — a config vive dentro de docs/ de propósito: um só lugar
+# para conteúdo, config e Dockerfile.
 #
-# O `nav` abaixo é a semente do mapa do AGENTS.md §6 ("preciso de X → leio Y"),
-# que até 06/11 vivia apenas em Markdown disperso.
+# `docs_dir: .` porque este arquivo está na raiz do próprio conteúdo. `site_dir`
+# fica FORA de docs_dir (o mkdocs recusa aninhar build no conteúdo) e já está no
+# .gitignore.
 #
-# Build em container, sem instalar nada no host (o host é Windows, sem Python):
+# O `nav` é a semente do mapa do AGENTS.md §6 ("preciso de X → leio Y").
 #
-#   docker run --rm -v "$PWD:/docs" squidfunk/mkdocs-material build --strict
+# Como rodar (sem instalar nada no host — o host é Windows, sem Python):
 #
-# Escopo atual: `docs_dir: docs`. Material de planejamento (roadmap/), portal
-# (portal/README.md) e skills (.agents/skills/) ficam fora do site por enquanto —
-# link para eles a partir daqui é link morto em `--strict`, e migrar esses links
-# é o que falta para a DOC-01 fechar.
+#   docker compose --profile docs up mkdocs      # http://localhost:8000
+#   docker run --rm -v "$PWD:/project" -w /project squidfunk/mkdocs-material \
+#     build -f docs/mkdocs.yml --strict          # gate, o mesmo do CI
 
 site_name: OpenWYD — documentação
 site_description: Servidor local de WYD2 em Go, portal Next.js e cliente Windows
-docs_dir: docs
+docs_dir: .
+site_dir: ../site
 use_directory_urls: true
 
 theme:

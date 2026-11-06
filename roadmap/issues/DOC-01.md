@@ -93,8 +93,10 @@ check-docs-links: 119 link(s) relativos, 0 quebrado(s), 3 fora de docs/
 1. **Página por sistema**: combate, skills/afects, guildas, castelos, quests, drops, refino,
    comércio. O índice liga handler e doc de regra, mas não explica o sistema.
 2. **`roadmap/doc_legacy/`**: mover o doc superado com README de substituição (nada foi apagado).
-3. **Serviço `docs` no compose** (porta 8000) — não criado; hoje o build é um `docker run` documentado
-   no cabeçalho do `mkdocs.yml`.
+3. ~~Serviço `docs` no compose (porta 8000)~~ — **feito**: `docs/mkdocs.yml`, `docs/Dockerfile` e o
+   serviço `mkdocs` no compose, sob `--profile docs`, para nada subir junto com o jogo:
+   `docker compose --profile docs up mkdocs` (http://localhost:8000) e
+   `docker compose --profile docs run --rm mkdocs build -f docs/mkdocs.yml --strict` como gate.
 
 Nenhum destes é bloqueio técnico: são conteúdo e decisão de mover arquivo, e ficam registrados aqui
 em vez de sumirem num "em andamento".

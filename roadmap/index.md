@@ -328,7 +328,8 @@ Grafo da Fase 6:
   (`workflow_call`) e `ci.yml` orquestrando com path filter; `make ci` roda exatamente os mesmos
   passos. **REFACTOR-03** avançou a fatia `internal/{textenc,droprate,crossover}` com
   `scripts/check-comments.sh` (a primeira versão do script passava em diretório ainda sujo — padrão
-  frouxo — e foi corrigida). **DOC-01** entregou `mkdocs.yml`, `docs/index.md`, `docs/sistemas/`,
+  frouxo — e foi corrigida). **DOC-01** entregou `docs/mkdocs.yml` + `docs/Dockerfile` + serviço `mkdocs` no compose
+  (`--profile docs`, porta 8000), `docs/index.md`, `docs/sistemas/`,
   seis ADRs e `scripts/check-docs-links.sh`; `mkdocs build --strict` verde depois de tirar 3 links
   que saíam de `docs/`.
   Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
