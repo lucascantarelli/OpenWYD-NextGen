@@ -199,6 +199,9 @@ essa marcação em vez de tratá-la como fato.
   os mercadores de Armia (B18, 04/11). Se a migração ainda não terminou, a remoção fica registrada
   como issue de fechamento (ex.: 57), não como pendência informal.
 - Siga `development-guidelines/Go-development-guidelines.md` para Go.
+- **Definition of Done única:** `development-guidelines/processo.md` (as seis linhas de evidência, a
+  regra de issue, a regra de comentário e a DoD por tipo de mudança). Em divergência com este arquivo,
+  vale o `processo.md`.
 - Prefira editar o que existe a criar arquivo novo; o roadmap já diz onde cada coisa mora.
 - Docs, UI e mensagens em português; commits pequenos e descritivos em português.
 - Nunca versione segredos, `serverlist.bin` gerado com IP privado, dumps de conta, binários do

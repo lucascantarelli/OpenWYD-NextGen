@@ -1,5 +1,8 @@
 # REVIEW-09 — Observabilidade e segurança operacional
 
+> **Análise profunda 06/11/2026:** números medidos, correções das afirmações envelhecidas e
+> referências externas em [`REVISAO-PROFUNDA-2026-11-06.md`](../REVISAO-PROFUNDA-2026-11-06.md) §4.
+
 **Fase:** revisão · **Depende de:** 55 · **Esforço:** M · **Estado:** ⏳ proposta
 
 ## Objetivo

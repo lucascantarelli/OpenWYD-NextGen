@@ -8,30 +8,13 @@ import { SESSION_COOKIE, sessionKey } from "@/server/session-key";
  * (middleware roda no edge). A autorização real continua no web-api e, para a
  * UI, no `(admin)/layout.tsx`.
  *
- * A lista abaixo espelha `SHELL_ROUTES` em `src/components/nav.ts` — o matcher
- * do Next precisa ser literal, então a sincronia é manual e vale a pena revisar
- * as duas ao adicionar uma seção.
+ * O `matcher` do Next precisa ser literal, então a lista não pode ser derivada
+ * em runtime — antes havia aqui um array `GUARDED` morto (`void GUARDED`) que
+ * prometia cobrir as rotas e não cobria nada. `/precos` e `/atlas` ficaram de
+ * fora do matcher por isso; ao criar uma rota nova, acrescente-a aqui e teste
+ * com `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/<rota>`
+ * sem cookie (esperado 307 para /login).
  */
-const GUARDED = [
-  "/painel",
-  "/npcs",
-  "/mobs",
-  "/precos", "/atlas", "/itens",
-  "/teleportes",
-  "/personagens",
-  "/drops",
-  "/mapa",
-  "/eventos",
-  "/loja",
-  "/diaria",
-  "/faturamento",
-  "/contas",
-  "/config",
-  "/operacao",
-  "/logs",
-];
-
-void GUARDED;
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -56,6 +39,8 @@ export const config = {
     "/npcs/:path*",
     "/mobs/:path*",
     "/itens/:path*",
+    "/precos/:path*",
+    "/atlas/:path*",
     "/teleportes/:path*",
     "/personagens/:path*",
     "/drops/:path*",

@@ -91,16 +91,16 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 |---|---|---|
 | Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
 | `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
-| Comentário em inglês / citação de issue dentro do código | 187 / 80 arquivos | [REFACTOR-03](issues/REFACTOR-03.md) |
-| `t.Skip` escondendo teste | 43 em 17 arquivos | [TEST-01](issues/TEST-01.md) |
+| Comentário em inglês / citação de issue dentro do código | 396 / 109 referências (medido 06/11) | [REFACTOR-03](issues/REFACTOR-03.md) |
+| `t.Skip` escondendo teste | 42 em 17 arquivos (medido 06/11) | [TEST-01](issues/TEST-01.md) |
 | Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
 | Sem `make ci` nem workflow reutilizável | 0 alvo `ci`, 21 alvos | [CI-01](issues/CI-01.md) |
 | Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
 | Postgres acessado só como superusuário; sem restore testado | DSN linhas 34/58 | [DB-01](issues/DB-01.md) |
 | Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
-| Sem hub de documentação/ADRs | 283 `.md`, 0 mkdocs, 0 ADR | [DOC-01](issues/DOC-01.md) |
-| Leitura do portal sem middleware default-deny | 0 `middleware.ts` | [PORTAL-01](issues/PORTAL-01.md) |
-| Definition of Done espalhada em três documentos | — | [CLEAN-05](issues/CLEAN-05.md) |
+| Sem hub de documentação/ADRs | 423 `.md` no repo (174 em `docs/`), 0 mkdocs, 0 ADR | [DOC-01](issues/DOC-01.md) |
+| Leitura do portal sem middleware default-deny | middleware existe; `/precos` e `/atlas` estavam fora do matcher (corrigido 06/11) — falta teste de 403 | [PORTAL-01](issues/PORTAL-01.md) |
+| Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](issues/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
 | Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](issues/NORMALIZE-01.md) ✅ |
 | Busca compara Unicode cru: termo em NFD não acha o nome em NFC | NFD 0 × NFC 20 no mesmo item | [NORMALIZE-02](issues/NORMALIZE-02.md) ✅ |
@@ -316,6 +316,23 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-06 (revisão profunda + fechamento barato)** — duas frentes executadas.
+  **(a) Canais e feedback in-game:** [CANAL-01](issues/CANAL-01.md) (dois canais na lista, canal novato
+  fixo, regras do `sn.bin`/`serverlist.bin` medidas e documentadas), [CANAL-02](issues/CANAL-02.md)
+  (`/srv` com token de crossover assinado, tmServer + dbServer, sem RPC novo) e a correção do ganho de
+  EXP, que saía como `MSG_MessageChat` (o personagem "falava" o valor) e agora usa
+  `MSG_Exp_Msg_Panel_` 0x5000 como em `MobKilled.cpp:2606`; teste `TestApplyMobExpUsesExpPanel` trava
+  o canal.
+  **(b) Revisão do roadmap:** [`REVISAO-PROFUNDA-2026-11-06.md`](REVISAO-PROFUNDA-2026-11-06.md) mede
+  584 arquivos Go (149.305 linhas), 270 de teste, 396 comentários em inglês, 109 citações de issue no
+  código, 42 `t.Skip`, 174 `.md` em `docs/`, 30 páginas e 0 e2e no portal, 1 workflow e 13 migrations;
+  corrige sete afirmações envelhecidas nas REVIEW e registra dois achados de segurança
+  (**N2**: `/precos` e `/atlas` fora do `matcher` do middleware — corrigido; **N3**: lista `GUARDED`
+  morta, que documentava uma proteção inexistente). `CLEAN-05` fechada com
+  `development-guidelines/processo.md`.
+  Verification: `go build ./...` e `go vet` exit 0; suíte de `handler` e `internal/crossover` verde;
+  containers `tmserver`/`tmserver2`/`dbserver` reconstruídos e no ar.
 - **2026-11-05 (BUILD-01 fechado: gate de path antigo e de protos no CI)** —
   `scripts/check-build.sh` reprova se o path antigo aparecer em **qualquer** arquivo versionado (1.312
   conferidos) ou se `make proto` alterar `api/` (8 artefatos comparados por sha256); `make gate` é o
