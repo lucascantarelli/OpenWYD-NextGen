@@ -1,6 +1,6 @@
 # CANAL-02 — Troca de canal em jogo (`/srv`) com token de crossover
 
-**Fase:** 7 · **Depende de:** CANAL-01 · **Esforço:** M · **Estado:** 🟡 implementada, falta teste no cliente
+**Fase:** 7 · **Depende de:** CANAL-01 · **Esforço:** M · **Estado:** 🟡 testada no e2e; falta teste no cliente gráfico
 
 ## Objetivo
 
@@ -22,7 +22,7 @@ fluxo de crossover do legado.
 ## Implementação nossa (sem RPC novo)
 
 O token é **assinado** com `W2PP_CROSSOVER_KEY` em vez de persistido: evita coluna nova no Postgres e
-RPC de troca em `api/db/v1/db.proto` (o `protoc` nem está no host).
+RPC de troca em `api/db/v1/db.proto`.
 
 | Peça | Arquivo |
 |---|---|
@@ -33,28 +33,31 @@ RPC de troca em `api/db/v1/db.proto` (o `protoc` nem está no host).
 | chave compartilhada nos 3 serviços | `docker-compose.yaml` (`W2PP_CROSSOVER_KEY`) |
 
 Endurecimento aplicado: `Build`/`Verify` recusam **chave vazia** (sem isso, HMAC de chave vazia é
-determinístico e qualquer um forja um token).
+determinístico e qualquer um forja um token) e o canal do prefixo `*` tem de concordar com o alvo
+assinado.
 
-## Evidência
+## Evidência (06/11/2026)
 
 ```
-go build ./...                                        exit 0
-go vet (6 pacotes)                                    exit 0
-go test ./internal/crossover/                         PASS  (round-trip, 7 rejeições, chave vazia)
-go test -run 'ServerChange' ./tmserver/internal/handler/  PASS  (frame 42 + token válido; mesmo canal não emite)
-docker compose config | grep CROSSOVER                 openwyd-dev-crossover nos 3 serviços
-containers reconstruídos e no ar                       tmserver role=novice / tmserver2 role=regular
+go build ./...                                             exit 0
+go vet ./...                                               exit 0
+go test ./internal/crossover/                              PASS
+go test -run 'ServerChange' ./tmserver/internal/handler/   PASS
+TestE2EChannelChange        PASS  canal 1 → /srv 2 → token 38 B → canal 2
+TestE2EChannelChangeBack    PASS  canal 2 → /srv 1 → token 38 B → canal 1
+TestE2EServerChangeSameChannel PASS  mesmo canal não emite token
+docker compose logs --since=10m db | grep -c 42P01          0
 ```
 
 ## O que falta
 
-- [ ] Teste no cliente real: `/srv 2` a partir do canal 1 e `/srv 1` a partir do canal 2, com o
+- [ ] Teste no cliente gráfico: `/srv 2` a partir do canal 1 e `/srv 1` a partir do canal 2, com o
       personagem entrando no outro servidor sem pedir senha.
-- [ ] Se o cliente não reagir ao frame, capturar o que ele faz (o frame é o mesmo que o legado envia).
+- [ ] Confirmar no cliente que a janela do **ESC** não envia troca (o servidor não recebe pacote
+      desse caminho); o caminho suportado é o comando.
 
 ## Riscos
 
-- O cliente pode esperar o `Enc` no formato `"*<srv> <8 números> <slot>"` em vez do nosso token. Se o
-  reconectar falhar com "senha inválida", o primeiro suspeito é o formato, não a assinatura.
 - `W2PP_CROSSOVER_KEY` diferente entre canais faz o token ser recusado — o log do dbServer mostra
   `BAD_PASSWORD` sem indicar o motivo.
+- A janela do ESC é client-side e não tem correção server-side; não confundir com falha do `/srv`.

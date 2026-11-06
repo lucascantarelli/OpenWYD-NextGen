@@ -42,7 +42,7 @@ serverlist  grupo 0: célula 0 = URL de status (contiguidade exigida pelo client
 
 - A janela do ESC lista os canais mas **não envia pacote ao servidor** (medido: nenhum `recv packet`
   durante a tentativa), então ela não troca de servidor sozinha. A troca funciona por `/srv` — ver
-  `CANAL-02`.
+  [`CANAL-02`](../test/CANAL-02.md).
 - A segunda entrada (`NextGen2`) usa o número do dia no rótulo (`NextGen-5` em 05/11), comportamento do
   caminho degenerado do binário; não é configurável pelo `sn.bin`.
 

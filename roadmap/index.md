@@ -420,7 +420,7 @@ problema` · `check-docs-links` 140 links / 0 quebrado / 0 fora · `mkdocs build
   `make guias-check` (regenera e reprova divergência, também no CI).
 - **2026-11-06 (revisão profunda + fechamento barato)** — duas frentes executadas.
   **(a) Canais e feedback in-game:** [CANAL-01](issues/CANAL-01.md) (dois canais na lista, canal novato
-  fixo, regras do `sn.bin`/`serverlist.bin` medidas e documentadas), [CANAL-02](issues/CANAL-02.md)
+  fixo, regras do `sn.bin`/`serverlist.bin` medidas e documentadas), [CANAL-02](test/CANAL-02.md)
   (`/srv` com token de crossover assinado, tmServer + dbServer, sem RPC novo) e a correção do ganho de
   EXP, que saía como `MSG_MessageChat` (o personagem "falava" o valor) e agora usa
   `MSG_Exp_Msg_Panel_` 0x5000 como em `MobKilled.cpp:2606`; teste `TestApplyMobExpUsesExpPanel` trava
