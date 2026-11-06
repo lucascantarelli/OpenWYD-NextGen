@@ -34,3 +34,8 @@
 *.trn binary
 *.tga binary
 *.dds binary
+
+# Conteudo do servidor (LEGACY-02): sao dados de jogo (tabelas cp1252, templates
+# de tamanho fixo, serv00.htm servido cru). Normalizar fim de linha mudaria os
+# bytes; aqui o blob do git e copia exata do arquivo.
+tmserver/content/** -text
