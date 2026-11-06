@@ -5,8 +5,11 @@ import { SESSION_COOKIE, sessionKey } from "@/server/session-key";
 
 /**
  * Guarda de rota do portal: valida presença + assinatura do cookie, sem gRPC
- * (middleware roda no edge). A autorização real continua no web-api e, para a
- * UI, no `(admin)/layout.tsx`.
+ * (o proxy roda no edge). A autorização real continua no web-api e, para a UI,
+ * no `(admin)/layout.tsx`.
+ *
+ * Next 16 renomeou a convenção `middleware.ts` para `proxy.ts`; o arquivo e o
+ * export seguem o nome novo, senão o build avisa que a convenção está obsoleta.
  *
  * O `matcher` do Next precisa ser literal, então a lista não pode ser derivada
  * em runtime — antes havia aqui um array `GUARDED` morto (`void GUARDED`) que
@@ -16,7 +19,7 @@ import { SESSION_COOKIE, sessionKey } from "@/server/session-key";
  * sem cookie (esperado 307 para /login).
  */
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (token) {
     try {
