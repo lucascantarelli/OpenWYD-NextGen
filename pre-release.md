@@ -1,11 +1,10 @@
-# /mission — ANÁLISE, REORGANIZAÇÃO DO ROADMAP E MODERNIZAÇÃO COMPLETA DO PROJETO
+# ANÁLISE, REORGANIZAÇÃO DO ROADMAP E MODERNIZAÇÃO COMPLETA DO PROJETO
 
 ## 1. IDENTIFICAÇÃO DA MISSÃO
 
 **Nome:** Análise de Roadmap, Auditoria Técnica e Modernização Completa do Projeto.
 
-**Objetivo principal:** Realizar uma auditoria técnica abrangente de todo o projeto, revisar e reorganizar integralmente o roadmap, identificar todas as pendências, inconsistências, problemas arquiteturais e oportunidades de melhoria e, posteriormente, executar as atividades necessárias para alcançar um estado de excelência técnica, funcional e operacional.
-
+**Objetivo principal:** Realizar uma auditoria técnica abrangente de todo o projeto, revisar e reorganizar integralmente o roadmap, identificar todas as pendências, inconsistências, problemas arquiteturais e oportunidades de melhoria e, posteriormente, executar as atividades necessárias para alcançar um estado de excelência técnica, funcional e operacional
 Esta missão envolve todas as áreas do projeto, incluindo:
 
 - Backend e servidor.
@@ -30,1719 +29,2175 @@ O resultado esperado é um projeto completamente organizado, modernizado, docume
 
 ---
 
-# 2. REGRAS FUNDAMENTAIS DE EXECUÇÃO
+# 1. DIRETRIZES GERAIS E REGRAS DE EXECUÇÃO
 
-Estas regras devem ser seguidas durante toda a missão.
+## 1.1. Análise antes da implementação
 
-## 2.1. Análise antes da implementação
+Antes de modificar qualquer componente:
 
-- Não comece implementando funcionalidades sem antes compreender a arquitetura atual, as dependências e o estado real do projeto.
-- Analise os arquivos, implementações, documentação, migrations, testes, configurações e infraestrutura antes de propor mudanças.
-- Não presuma que uma issue está concluída apenas porque está em `done/`.
-- Não presuma que uma implementação está ausente apenas porque não existe uma issue correspondente.
-- Verifique o código real para confirmar o estado de cada implementação.
-- Identifique dependências entre funcionalidades e possíveis impactos das alterações.
-- Priorize a eliminação de problemas estruturais antes da implementação de novas funcionalidades.
+- Analise a estrutura atual do projeto.
+- Entenda a arquitetura e as dependências existentes.
+- Identifique implementações concluídas, incompletas, redundantes ou obsoletas.
+- Investigue o funcionamento real dos componentes antes de propor substituições.
+- Consulte a documentação oficial das tecnologias utilizadas.
+- Avalie alternativas modernas e tecnicamente adequadas.
+- Identifique impactos e riscos de cada alteração.
+- Preserve funcionalidades que já estejam corretas.
 
-## 2.2. Preservação do conhecimento do projeto
+Não implemente mudanças apenas por preferência pessoal ou por considerar uma tecnologia mais moderna.
 
-- Utilize integralmente a estrutura existente de documentação, skills, agentes, instruções e arquivos de contexto de IA.
-- Sempre consulte as skills pertinentes antes de iniciar uma implementação.
-- Identifique quais skills precisam ser atualizadas ou complementadas.
-- Mantenha as decisões arquiteturais, ADRs, padrões e convenções documentados.
-- Não crie documentação redundante ou desnecessária.
-- Não descarte informações técnicas relevantes durante a reorganização.
+Toda decisão deve ter justificativa técnica.
 
-## 2.3. Integridade e rastreabilidade
+## 1.2. Preservação do conhecimento
 
-- Toda implementação relevante deve estar vinculada a uma issue.
-- Toda issue deve possuir critérios de aceitação claros.
-- Toda alteração deve respeitar as dependências e os bloqueios identificados.
-- Toda conclusão deve possuir evidências verificáveis.
-- Não marque issues como `done` sem comprovação da implementação e dos testes aplicáveis.
-- Não oculte problemas, testes falhos ou limitações encontradas.
-- Não considere uma funcionalidade concluída apenas porque o código foi desenvolvido.
+O projeto contém conhecimento acumulado em código, Issues, documentação, scripts, arquivos de configuração, implementações existentes e engenharia reversa.
 
-## 2.4. Autonomia e tomada de decisão
+Esse conhecimento não pode ser perdido durante a reorganização.
 
-Execute autonomamente as atividades que possam ser realizadas com segurança e que estejam suficientemente especificadas.
+Antes de remover, substituir ou consolidar qualquer implementação:
 
-Quando encontrar decisões arquiteturais relevantes, alternativas com impactos significativos, mudanças irreversíveis ou questões que dependam de aprovação:
+- Verifique sua finalidade.
+- Identifique suas dependências.
+- Verifique se existem funcionalidades que não estão documentadas.
+- Preserve informações relevantes.
+- Registre decisões e mudanças arquiteturais.
+- Atualize a documentação correspondente.
 
-1. Investigue profundamente o problema.
-2. Desenvolva alternativas tecnicamente fundamentadas.
-3. Compare vantagens, desvantagens, custos, riscos e complexidade.
-4. Registre uma recomendação técnica.
-5. Documente a decisão para análise e aprovação.
+Não exclua arquivos, funcionalidades ou implementações sem compreender suas responsabilidades.
 
-Não interrompa toda a missão por causa de uma decisão isolada. Continue com as atividades independentes que possam ser executadas com segurança.
+## 1.3. Rastreabilidade
+
+Toda atividade relevante deve possuir rastreabilidade.
+
+Relacionar:
+
+- Problema identificado.
+- Issue correspondente.
+- Diagnóstico técnico.
+- Solução proposta.
+- Arquivos e componentes afetados.
+- Implementação realizada.
+- Testes executados.
+- Resultado da validação.
+- Documentação atualizada.
+
+Quando uma atividade não possuir Issue, avalie se é necessário criar uma.
+
+## 1.4. Autonomia com responsabilidade
+
+Trabalhe com autonomia para:
+
+- Investigar.
+- Auditar.
+- Comparar tecnologias.
+- Identificar problemas.
+- Propor soluções.
+- Reorganizar documentação.
+- Criar Issues.
+- Implementar melhorias de baixo risco.
+- Executar testes.
+- Corrigir problemas identificados.
+
+Entretanto, não execute alterações destrutivas ou de alto impacto sem avaliação adequada.
+
+Exemplos de ações que exigem cuidado especial:
+
+- Exclusão de dados.
+- Alterações irreversíveis no banco.
+- Mudanças incompatíveis no protocolo cliente-servidor.
+- Alterações em sistemas de autenticação.
+- Mudanças em produção.
+- Remoção de funcionalidades existentes.
+- Alterações que possam prejudicar personagens, itens ou progressão dos jogadores.
+
+Quando necessário, apresente alternativas e solicite aprovação antes de prosseguir.
+
+## 1.5. Qualidade técnica
+
+Todas as implementações devem priorizar:
+
+- Arquitetura clara.
+- Baixo acoplamento.
+- Alta coesão.
+- Responsabilidade única.
+- Reutilização adequada.
+- Tipagem e contratos explícitos.
+- Tratamento consistente de erros.
+- Segurança.
+- Observabilidade.
+- Testabilidade.
+- Documentação.
+- Manutenibilidade.
+- Compatibilidade entre componentes.
+
+Evite soluções improvisadas, duplicação de código, dependências desnecessárias e complexidade sem justificativa.
 
 ---
 
-# 3. FASE 1 — AUDITORIA COMPLETA E REORGANIZAÇÃO DO ROADMAP
+# FASE 1 — AUDITORIA COMPLETA DO ROADMAP E ORGANIZAÇÃO DAS ISSUES
 
-Esta fase é prioritária. Antes de iniciar a execução em larga escala, estabeleça uma visão real e confiável de todo o trabalho existente e necessário.
+## 1.1. Auditoria do estado atual
 
-## 3.1. Auditoria das issues concluídas — `done/`
+Realize uma análise completa do roadmap existente.
 
-Analise individualmente todas as issues existentes em `done/`.
+Examine:
 
-Para cada issue:
-
-- Verifique se a implementação realmente existe.
-- Confira se está integralmente implementada.
-- Verifique se os testes foram executados e estão passando.
-- Confira se a documentação correspondente foi atualizada.
-- Verifique se os critérios de aceitação foram atendidos.
-- Procure implementações parciais ou pendências não registradas.
-- Verifique se existem bugs relacionados ainda não resolvidos.
-- Identifique issues abertas que tornem a conclusão da issue obsoleta, incompleta ou contraditória.
-- Verifique se a implementação foi posteriormente substituída por outra abordagem.
-- Identifique funcionalidades que foram removidas, alteradas ou descontinuadas.
-
-Classifique cada issue conforme seu estado real.
-
-Caso uma issue não esteja efetivamente concluída, corrija sua classificação e mova-a para o local adequado.
-
-Não mantenha uma issue em `done/` apenas por conveniência histórica.
-
-## 3.2. Auditoria das issues aguardando testes — `test/`
-
-Analise todas as issues existentes em `test/`.
-
-Elabore um roteiro completo de testes, contemplando todas as funcionalidades e implementações que aguardam validação.
-
-Para cada issue:
-
-- Identifique o que precisa ser testado.
-- Analise os cenários positivos e negativos.
-- Identifique requisitos funcionais e não funcionais.
-- Determine a estratégia de testes adequada.
-- Verifique se já existem testes automatizados.
-- Identifique testes ausentes ou insuficientes.
-- Determine quais testes podem ser executados autonomamente.
-- Execute os testes que puderem ser realizados com segurança.
-
-Avalie individualmente a necessidade de:
-
-- Testes unitários.
-- Testes de integração.
-- Testes de contrato.
-- Testes de API.
-- Testes end-to-end.
-- Testes de regressão.
-- Testes de segurança.
-- Testes de performance.
-
-Quando a funcionalidade exigir validação de um fluxo real de utilização, implemente os testes E2E utilizando Playwright.
-
-Não crie testes E2E desnecessários para funcionalidades que podem ser validadas de forma mais eficiente em outras camadas.
-
-Organize os testes seguindo as boas práticas e os padrões estabelecidos pelas skills do projeto.
-
-## 3.3. Reorganização completa das issues
-
-Faça uma reorganização integral do roadmap.
-
-Objetivos:
-
-- Identificar issues obsoletas.
-- Identificar issues já resolvidas.
-- Identificar issues duplicadas.
-- Identificar issues parcialmente implementadas.
-- Identificar issues com informações desatualizadas.
-- Identificar issues sem critérios de aceitação.
-- Identificar issues com escopo inadequado.
-- Identificar dependências não documentadas.
-- Identificar issues que precisam ser divididas.
-- Identificar issues que precisam ser agrupadas.
-- Identificar problemas que estão documentados em outros locais, mas ainda não possuem issue.
-- Corrigir classificações incorretas.
-- Atualizar descrições, referências, prioridades e dependências.
-
-Reorganize as issues por categoria, área técnica, prioridade e sequência de execução.
-
-Dê atenção especial a:
-
-1. Refatoração de código.
-2. Remoção de código legado.
-3. Remoção de implementações obsoletas.
-4. Qualidade de código.
-5. Padronização.
-6. Arquitetura.
-7. Segurança.
-8. Performance.
-9. Infraestrutura.
-10. Testes.
-11. Documentação.
-12. Funcionalidades pendentes.
-
-Construa uma sequência de execução coerente, considerando dependências técnicas e funcionais.
-
-Issues bloqueantes devem ser identificadas explicitamente.
-
-O roadmap deve permitir compreender facilmente:
-
-- O que precisa ser feito.
-- Por que precisa ser feito.
-- Quais problemas serão resolvidos.
-- Quais issues dependem dessa implementação.
-- Quais issues estão bloqueadas.
-- Qual é a ordem correta de execução.
-- Quais resultados são esperados.
-
-## 3.4. Investigação completa do projeto para identificação de gaps
-
-Faça uma varredura completa de todo o repositório.
-
-Investigue:
-
-- Código-fonte.
-- Estrutura de diretórios.
-- Arquivos de configuração.
+- Todas as Issues abertas.
+- Issues fechadas.
+- Issues em andamento.
+- Milestones.
+- Labels.
 - Dependências.
-- Scripts.
-- Infraestrutura.
-- Banco de dados.
-- Migrations.
-- Seeds.
-- Testes.
-- Documentação.
-- Workflows.
-- Dockerfiles.
-- Arquivos de deploy.
-- Configurações de monitoramento.
-- Arquivos de IA.
-- Skills.
-- Agentes.
-- Integrações.
-- Componentes do portal.
-- Arquivos e recursos do cliente.
+- Projetos e quadros.
+- Documentação relacionada.
+- Diretórios utilizados para armazenar Issues concluídas ou testes.
 
-Procure especificamente por:
+Analise especialmente os diretórios:
+
+- `done/`
+- `test/`
+
+Verifique se as Issues nesses diretórios realmente representam atividades concluídas, testes realizados, experimentos, implementações temporárias ou atividades que ainda precisam ser incorporadas ao roadmap.
+
+Não considere uma Issue concluída apenas porque foi movida para `done/`.
+
+Verifique se existe evidência concreta da implementação e validação.
+
+## 1.2. Reorganização das Issues
+
+Revise a organização atual e identifique:
+
+- Issues duplicadas.
+- Issues obsoletas.
+- Issues sem objetivo claro.
+- Issues excessivamente abrangentes.
+- Issues que misturam responsabilidades.
+- Issues sem critérios de aceitação.
+- Issues sem dependências identificadas.
+- Issues que deveriam ser divididas.
+- Issues que deveriam ser agrupadas.
+- Issues concluídas que ainda estão abertas.
+- Issues abertas que já foram implementadas.
+- Issues que precisam ser reabertas.
+
+Organize as Issues por domínio técnico e prioridade.
+
+A estrutura deve facilitar a identificação do estado real do projeto e permitir acompanhar sua evolução.
+
+## 1.3. Identificação de lacunas
+
+Faça uma varredura completa no projeto procurando:
 
 - TODO.
 - FIXME.
-- HACK.
 - XXX.
-- Implementações incompletas.
+- HACK.
+- Implementações temporárias.
 - Código morto.
-- Código duplicado.
-- Imports não utilizados.
+- Funcionalidades incompletas.
+- Tratamentos de erro ausentes.
 - Dependências desnecessárias.
-- Funções sem utilização.
-- Arquivos obsoletos.
-- Configurações inconsistentes.
-- Bugs documentados.
-- Bugs conhecidos ainda não corrigidos.
-- Workarounds temporários.
-- Implementações que não seguem os padrões atuais.
-- Funcionalidades planejadas, mas não implementadas.
-- Ausência de tratamento de erros.
+- Problemas arquiteturais.
 - Problemas de segurança.
-- Falhas de observabilidade.
 - Falhas de testes.
-- Problemas de performance.
-- Inconsistências entre cliente e servidor.
+- Débitos técnicos.
+- Documentação desatualizada.
 
-Tudo que for identificado e ainda não estiver registrado deverá ser transformado em issues detalhadas.
+Cruze os resultados com as Issues existentes.
 
-**Padrão obrigatório:** Utilize o padrão atual de abertura de issues do projeto. Antes de criar novas issues, estude os modelos existentes e mantenha sua estrutura, nomenclatura, detalhamento, organização e convenções.
+Não crie Issues duplicadas para problemas que já estejam adequadamente registrados.
 
-Evite criar issues genéricas. Cada issue deve descrever claramente o problema, a justificativa, o escopo, as dependências, a solução esperada, os critérios de aceitação e a estratégia de testes.
+## 1.4. Skills e agentes de IA
 
-## 3.5. Skills e instruções de implementação
-
-Sempre leia as skills relacionadas às atividades que serão executadas.
-
-Consulte, entre outras, as skills de:
-
-- Desenvolvimento.
-- Arquitetura.
-- Qualidade de código.
-- Testes.
-- Backend.
-- Frontend.
-- Go.
-- Next.js.
-- Banco de dados.
-- DevOps.
-- CI/CD.
-- Segurança.
-- Documentação.
-- Observabilidade.
-- Engenharia reversa.
-- Cliente do jogo.
-- Agentes de IA.
-
-Nas issues, sempre inclua referências às skills e aos documentos que orientam sua implementação.
-
-O agente responsável pela execução deve conseguir identificar facilmente:
-
-- Qual skill precisa consultar.
-- Quais padrões devem ser seguidos.
-- Quais convenções precisam ser respeitadas.
-- Quais ADRs são relevantes.
-- Quais restrições arquiteturais existem.
-- Como validar a implementação.
-
-Caso uma skill esteja desatualizada, incompleta ou não contemple determinada tecnologia, pesquise as boas práticas atuais e atualize-a.
-
-## 3.6. Issues de REVIEW — documentos vivos
-
-Identifique todas as issues de review existentes.
-
-Elas são documentos vivos e representam a memória técnica das revisões realizadas no projeto.
-
-Não trate essas issues como tarefas descartáveis ou revisões pontuais.
-
-Elas devem registrar continuamente:
-
-- O que já foi analisado.
-- O que foi corrigido.
-- O que ainda precisa ser analisado.
-- O que ainda precisa ser corrigido.
-- Problemas encontrados.
-- Bugs identificados.
-- Melhorias propostas.
-- Inconsistências arquiteturais.
-- Violações de padrões.
-- Pendências técnicas.
-- Novos pontos de investigação.
-- Riscos identificados.
-
-Preserve os apontamentos anteriores e seu histórico.
-
-Sempre que identificar novos problemas ou oportunidades de melhoria durante uma revisão, registre-os nas respectivas issues de review.
-
-Organize as reviews por área do projeto.
-
-Caso alguma área ainda não possua uma issue de review, crie-a.
-
-As issues de review devem servir como referência permanente para as próximas análises, evitando que problemas já conhecidos sejam esquecidos ou analisados repetidamente sem evolução.
-
----
-
-# 4. FASE 2 — EXECUÇÃO DO ROADMAP E CICLO DE QUALIDADE
-
-Após concluir a auditoria e a reorganização do roadmap, inicie a execução das issues.
-
-## 4.1. Execução sequencial
-
-Execute as issues respeitando:
-
-- Prioridade.
-- Dependências.
-- Bloqueios.
-- Sequência arquitetural.
-- Impactos entre sistemas.
-- Critérios de aceitação.
-
-Priorize a eliminação de problemas estruturais, código legado, inconsistências arquiteturais e dependências desnecessárias antes de expandir funcionalidades.
-
-Não execute issues bloqueadas sem resolver ou tratar previamente suas dependências.
-
-Sempre consulte as skills e ADRs pertinentes antes de implementar.
-
-## 4.2. Validação de cada implementação
-
-Para cada issue:
-
-1. Analise o escopo.
-2. Consulte as skills e referências técnicas.
-3. Examine a implementação atual.
-4. Planeje a solução.
-5. Implemente as alterações.
-6. Execute os testes adequados.
-7. Analise possíveis regressões.
-8. Atualize a documentação.
-9. Atualize a issue com as evidências.
-10. Atualize as issues de review relacionadas.
-11. Atualize o roadmap e seus indicadores.
-
-Não marque uma issue como concluída enquanto houver critérios de aceitação pendentes.
-
-## 4.3. Review a cada 10 issues concluídas
-
-A cada 10 issues efetivamente fechadas, execute obrigatoriamente uma revisão técnica abrangente.
-
-Utilize as skills de review, qualidade, arquitetura, testes e demais instruções aplicáveis.
-
-A revisão deverá verificar:
-
-- Aderência às regras do projeto.
-- Adoção dos padrões arquiteturais.
-- Conformidade com os ADRs.
-- Qualidade do código.
-- Organização dos diretórios.
-- Consistência das implementações.
-- Cobertura e qualidade dos testes.
-- Atualização da documentação.
-- Segurança.
-- Performance.
-- Observabilidade.
-- Regressões.
-- Pendências introduzidas durante a execução.
-
-Atualize as issues de review com todos os novos apontamentos.
-
-Caso sejam encontrados problemas, registre-os no roadmap e priorize sua correção.
-
-A revisão não deve ser apenas uma conferência superficial: deve avaliar se as últimas 10 implementações mantiveram a qualidade e a coerência global do projeto.
-
----
-
-# 5. FASE 3 — METAS ESTRATÉGICAS DE MODERNIZAÇÃO
-
-As metas abaixo representam os resultados que devem orientar a reorganização e a execução do roadmap.
-
-## 5.1. Modernização completa do servidor
-
-**Objetivo:** Eliminar completamente o código legado do servidor.
-
-- Remover integralmente implementações legadas.
-- Remover código morto.
-- Eliminar arquivos obsoletos.
-- Eliminar dependências desnecessárias.
-- Modernizar a infraestrutura.
-- Melhorar a organização do código.
-- Aplicar corretamente os padrões arquiteturais.
-- Padronizar as implementações.
-- Melhorar legibilidade e manutenibilidade.
-- Garantir consistência entre os módulos.
-- Eliminar workarounds e soluções temporárias desnecessárias.
-
-A remoção do legado deve ser comprovada por análise de dependências, referências, funcionalidades e testes de regressão.
-
-## 5.2. Eliminação da dependência de arquivos TXT e CSV
-
-O servidor não deve mais depender de arquivos TXT ou CSV para consultar dados operacionais do jogo.
-
-Objetivos:
-
-- Identificar todas as consultas realizadas nesses arquivos.
-- Mapear quais sistemas dependem deles.
-- Identificar a origem e a finalidade de cada informação.
-- Migrar os dados necessários para o banco de dados.
-- Criar ou atualizar as estruturas necessárias.
-- Implementar consultas utilizando o banco.
-- Garantir integridade e consistência dos dados.
-- Remover as dependências de leitura desses arquivos no servidor.
-- Remover código, scripts e configurações obsoletas relacionados a essa abordagem.
-
-Ao final, o servidor deve obter todas as informações operacionais necessárias diretamente do banco de dados.
-
-Não confunda arquivos de dados operacionais com recursos estáticos necessários ao funcionamento do cliente.
-
-## 5.3. Compatibilidade completa entre cliente e servidor
-
-Faça uma análise integral de todos os arquivos do cliente e compare-os com os arquivos utilizados pelo servidor.
-
-Investigue especialmente:
-
-- Arquivos de mapas.
-- Arquivos de configuração.
-- Definições de itens.
-- Recursos do jogo.
-- Estruturas de dados.
-- Identificadores.
-- Tabelas e registros.
-- Arquivos de eventos.
-- Arquivos de NPCs.
-- Arquivos de cidades.
-- Outros recursos compartilhados.
-
-Identifique:
-
-- Arquivos duplicados.
-- Arquivos divergentes.
-- Versões diferentes.
-- Arquivos desatualizados.
-- Recursos utilizados apenas pelo cliente.
-- Recursos utilizados apenas pelo servidor.
-- Dependências implícitas.
-- Incompatibilidades de estrutura ou conteúdo.
-
-Crie um mapeamento completo de compatibilidade.
-
-Sempre que possível, implemente mecanismos automatizados de validação para garantir que cliente e servidor permaneçam sincronizados.
-
----
-
-# 6. FASE 4 — BANCO DE DADOS E ENRIQUECIMENTO DO CONHECIMENTO DO JOGO
-
-## 6.1. Normalização e integridade
-
-O banco de dados deve estar completamente normalizado, coerente e otimizado.
-
-Realize uma auditoria de todas as tabelas, relacionamentos e estruturas.
+Analise as Skills, instruções, agentes e configurações utilizados pelo projeto.
 
 Verifique:
 
-- Normalização.
-- Integridade referencial.
-- Chaves primárias e estrangeiras.
+- Se estão atualizados.
+- Se possuem responsabilidades claras.
+- Se existem instruções conflitantes.
+- Se existem regras duplicadas.
+- Se faltam conhecimentos especializados.
+- Se os agentes conseguem compreender a arquitetura real.
+- Se as Skills refletem as tecnologias e convenções atuais.
+
+Crie ou atualize Skills especializadas quando necessário.
+
+## 1.5. Issues de revisão permanentes
+
+Estabeleça Issues de acompanhamento contínuo para os principais domínios.
+
+Essas Issues devem funcionar como pontos de controle técnico, permitindo registrar:
+
+- Evolução.
+- Problemas encontrados.
+- Pendências.
+- Débitos técnicos.
+- Melhorias futuras.
+- Resultados de auditorias.
+- Decisões arquiteturais.
+
+Não feche essas Issues apenas porque uma rodada de revisão terminou.
+
+Elas devem continuar vivas enquanto o domínio correspondente precisar de acompanhamento.
+
+## 1.6. Entregáveis
+
+Ao finalizar esta fase, apresente:
+
+1. Diagnóstico completo do roadmap.
+2. Inventário de Issues.
+3. Lista de duplicidades e inconsistências.
+4. Lista de Issues concluídas que precisam ser regularizadas.
+5. Lista de lacunas identificadas.
+6. Proposta de reorganização.
+7. Nova estrutura de prioridades.
+8. Plano de execução.
+9. Issues de revisão contínua.
+10. Atualização das Skills necessárias.
+
+---
+
+# FASE 2 — EXECUÇÃO CONTROLADA E EVOLUÇÃO SEQUENCIAL DO ROADMAP
+
+Após a auditoria e reorganização, inicie a execução das atividades.
+
+## 2.1. Execução por Issue
+
+Trabalhe preferencialmente uma Issue por vez.
+
+Para cada Issue:
+
+1. Leia integralmente a descrição.
+2. Analise o contexto técnico.
+3. Identifique dependências.
+4. Inspecione o código relacionado.
+5. Confirme o problema.
+6. Defina a abordagem de implementação.
+7. Implemente a solução.
+8. Execute os testes necessários.
+9. Revise a implementação.
+10. Atualize a documentação.
+11. Atualize a Issue.
+12. Registre o resultado.
+
+Não marque uma Issue como concluída sem validação.
+
+## 2.2. Revisões periódicas
+
+A cada 10 Issues concluídas, execute uma revisão técnica consolidada.
+
+Avalie:
+
+- Qualidade das implementações.
+- Consistência arquitetural.
+- Regressões.
+- Cobertura de testes.
+- Débitos técnicos introduzidos.
+- Documentação.
+- Integração entre componentes.
+- Necessidade de reorganizar o roadmap.
+
+A revisão deve identificar problemas antes que eles se propaguem para as próximas atividades.
+
+Se forem encontrados problemas relevantes, corrija-os antes de continuar.
+
+## 2.3. Priorização
+
+A ordem de execução deve considerar:
+
+- Dependências técnicas.
+- Criticidade.
+- Risco.
+- Impacto nos jogadores.
+- Impacto operacional.
+- Segurança.
+- Complexidade.
+- Ganhos estruturais.
+- Possibilidade de desbloquear outras atividades.
+
+Não execute atividades apenas pela ordem em que aparecem no GitHub.
+
+## 2.4. Atualização contínua
+
+Mantenha o roadmap sincronizado com a realidade do projeto.
+
+Quando uma implementação revelar novos problemas:
+
+- Registre o problema.
+- Verifique se já existe Issue.
+- Crie uma nova Issue quando necessário.
+- Identifique dependências.
+- Atualize as prioridades.
+
+---
+
+# FASE 3 — MODERNIZAÇÃO E PROFISSIONALIZAÇÃO DO SERVIDOR
+
+Realize uma auditoria completa da arquitetura do servidor WYD.
+
+## 3.1. Arquitetura
+
+Avalie:
+
+- Organização dos módulos.
+- Responsabilidades.
+- Dependências.
+- Acoplamento.
+- Fluxos de execução.
+- Concorrência.
+- Gerenciamento de memória.
+- Gerenciamento de conexões.
+- Tratamento de erros.
+- Ciclo de vida dos serviços.
+- Configurações.
+- Logs.
+- Comunicação entre componentes.
+
+Identifique oportunidades de modernização sem comprometer o funcionamento do jogo.
+
+## 3.2. Código legado
+
+Procure:
+
+- Código duplicado.
+- Funções excessivamente grandes.
+- Estruturas de dados inadequadas.
+- Dependências desnecessárias.
+- Implementações obsoletas.
+- Tratamentos inconsistentes.
+- Código morto.
+- Acoplamento excessivo.
+- Responsabilidades misturadas.
+
+Avalie refatorações progressivas.
+
+Não faça reescritas completas sem demonstrar que são necessárias.
+
+## 3.3. Arquivos TXT e CSV
+
+Analise a dependência do servidor em relação a arquivos TXT e CSV.
+
+Identifique quais arquivos são utilizados para:
+
+- Configuração.
+- Dados de itens.
+- Skills.
+- NPCs.
+- Mobs.
+- Quests.
+- Balanceamento.
+- Sistemas auxiliares.
+- Dados persistentes.
+- Informações estáticas.
+
+Avalie a migração dos dados que precisam de gerenciamento centralizado para soluções mais adequadas, especialmente banco de dados.
+
+Não confunda arquivos de dados operacionais com recursos estáticos necessários ao cliente.
+
+O objetivo é eliminar dependências inadequadas, não remover arquivos que sejam parte legítima do funcionamento do jogo.
+
+## 3.4. Compatibilidade
+
+Todas as modernizações devem considerar:
+
+- Compatibilidade com o cliente.
+- Persistência dos dados.
+- Integridade dos personagens.
+- Sistemas de combate.
+- Itens.
+- Skills.
+- NPCs.
+- Mobs.
+- Quests.
+- Eventos.
+- Sistemas de progressão.
+
+Identifique as mudanças que exigem atualização simultânea do cliente e servidor.
+
+---
+
+# FASE 4 — MODERNIZAÇÃO E EVOLUÇÃO DO BANCO DE DADOS
+
+Realize uma auditoria completa da estrutura atual do banco de dados.
+
+## 4.1. Modelagem
+
+Analise:
+
+- Tabelas.
+- Colunas.
+- Relacionamentos.
+- Chaves primárias.
+- Chaves estrangeiras.
 - Índices.
 - Constraints.
 - Tipos de dados.
-- Campos obrigatórios.
-- Campos nulos indevidos.
-- Registros duplicados.
-- Registros incompletos.
-- Dados incorretos.
-- Relacionamentos inconsistentes.
-- Performance das consultas.
-- Estruturas redundantes.
+- Normalização.
+- Redundâncias.
+- Integridade referencial.
+- Consultas.
+- Performance.
+- Estratégias de persistência.
 
-Garanta que todos os dados estejam corretamente preenchidos, validados e organizados.
+Identifique problemas de modelagem e oportunidades de otimização.
 
-## 6.2. Migrations e seeds
+## 4.2. Migrações
 
-Revise integralmente o sistema de migrations e seeds.
+Estabeleça uma estratégia consistente para:
 
-- Atualize migrations obsoletas.
-- Corrija inconsistências.
-- Remova estruturas desnecessárias.
-- Garanta que a sequência de migrations seja coerente.
-- Verifique a possibilidade de reconstrução completa do banco.
-- Garanta consistência entre migrations e modelos.
-- Atualize seeds.
-- Garanta que os dados iniciais sejam suficientes e corretos.
-- Documente os procedimentos de inicialização e atualização.
+- Migrations.
+- Versionamento de schema.
+- Seeds.
+- Dados iniciais.
+- Atualizações.
+- Rollback.
+- Reprodutibilidade.
+- Ambientes de desenvolvimento e produção.
 
-O banco deve ser independente e reproduzível em relação à estrutura e aos dados: deve ser possível reconstruí-lo de forma confiável utilizando migrations e seeds, sem depender de arquivos TXT ou CSV externos.
+Evite scripts manuais e alterações de schema sem rastreabilidade.
 
-## 6.3. Enriquecimento dos registros de itens e skills
+## 4.3. Enriquecimento dos dados do jogo
 
-Todos os itens e skills cadastrados no banco de dados devem possuir informações descritivas suficientes para compreender sua finalidade, utilização e relação com os sistemas do jogo.
+Analise os dados existentes e identifique oportunidades de enriquecimento.
 
-Não mantenha registros contendo apenas nome, identificador e descrição superficial.
+O banco deve representar adequadamente os sistemas do jogo.
 
-Expanda o modelo de informações para permitir documentar:
+Considere:
 
-**Itens:**
-
-- Nome e identificação.
-- Descrição detalhada.
-- Finalidade.
-- Categoria.
-- Tipo.
-- Sistemas em que pode ser utilizado.
-- Funções desempenhadas.
-- Formas de utilização.
-- Requisitos.
-- Restrições.
-- Possibilidades de combinação.
-- Possibilidades de transformação.
-- Utilização em eventos.
-- Utilização em trocas.
-- Utilização em consumíveis.
-- Utilização em evolução de personagens.
-- Utilização em quests.
-- Utilização em sistemas especiais.
-- Relações com outros itens.
-- Origem e obtenção.
-- Comercialização.
-- Utilização em sistemas de donate, quando aplicável.
-
-Exemplo de enriquecimento:
-
-A Pedra Ideal pode ser utilizada no sistema de evolução de personagens, incluindo a transformação de um personagem Arch em Celestial.
-
-Esse exemplo não representa todos os usos do item. É necessário pesquisar e mapear suas demais aplicações.
-
-Pesquise na internet, em fontes relacionadas ao WYD, para identificar as utilizações reais dos itens.
-
-Não invente funcionalidades. Diferencie informações confirmadas, informações encontradas em fontes externas e hipóteses ainda não verificadas.
-
-## 6.4. Expansão do modelo de conhecimento
-
-Analise como o mesmo conceito de enriquecimento pode ser aplicado às demais entidades e tabelas do jogo.
-
-Investigue especialmente:
-
+- Itens.
+- Equipamentos.
+- Armas.
+- Armaduras.
+- Acessórios.
+- Pedras.
+- Refinamentos.
 - Skills.
-- Sistemas.
+- Magias.
+- Classes.
+- Personagens.
+- NPCs.
+- Mobs.
 - Quests.
 - Eventos.
-- NPCs.
-- Monstros.
 - Mapas.
-- Cidades.
-- Equipamentos.
-- Itens especiais.
+- Sistemas de progressão.
+- Sistemas de fabricação.
 - Sistemas de evolução.
-- Sistemas de troca.
-- Sistemas de crafting.
-- Sistemas de guerras.
-- Sistemas de comércio.
-- Outros sistemas existentes.
+- Regras de combate.
 
-O objetivo é construir uma base de conhecimento estruturada, que permita entender como cada elemento do jogo funciona, onde é utilizado, quais sistemas afeta e quais dependências possui.
+Exemplo: analisar a estrutura de evolução de uma Pedra Ideal, desde Arch até Celestial, verificando atributos, requisitos, modificadores e regras de transformação.
 
-Proponha melhorias no modelo de dados e registre as alterações necessárias em issues.
+Não limite o enriquecimento a esse exemplo.
+
+Investigue todos os sistemas relevantes.
+
+## 4.4. Consistência
+
+Verifique se os dados:
+
+- São coerentes com as regras do jogo.
+- Estão completos.
+- Não possuem duplicidades indevidas.
+- Possuem relacionamentos corretos.
+- São compatíveis com o servidor.
+- São compatíveis com o cliente.
+- Podem ser utilizados por ferramentas externas e pelo portal.
 
 ---
 
-# 7. FASE 5 — MODERNIZAÇÃO DE DEVOPS E CI/CD
+# FASE 5 — MODERNIZAÇÃO DO DEVOPS E CI/CD
 
-## 7.1. Auditoria completa da infraestrutura
+Realize uma auditoria completa dos processos de build, integração, validação e entrega.
 
-Revise toda a infraestrutura de desenvolvimento, execução, deploy e monitoramento.
+## 5.1. GitHub Actions
 
-Garanta que:
+Analise todos os workflows existentes.
 
-- A infraestrutura esteja coerente com a arquitetura.
-- Os serviços estejam corretamente configurados.
-- As dependências estejam atualizadas.
-- Os containers estejam organizados.
-- Os ambientes estejam padronizados.
-- As configurações sejam centralizadas.
-- Os serviços possuam health checks adequados.
-- Os recursos estejam corretamente dimensionados.
-- Os procedimentos de inicialização e encerramento sejam confiáveis.
-- Não existam serviços desnecessários.
-- Não existam configurações legadas.
+Verifique:
 
-## 7.2. Modernização completa do CI — GitHub Actions
-
-Faça uma auditoria e modernização completa dos pipelines do GitHub Actions.
-
-Pesquise profundamente as melhores práticas atuais da plataforma e atualize as skills relacionadas.
-
-Objetivos:
-
-- Separar os jobs por responsabilidade.
-- Organizar corretamente os estágios do pipeline.
-- Reutilizar workflows e actions quando apropriado.
-- Evitar duplicação de configurações.
-- Implementar estratégias adequadas de cache.
-- Otimizar o empacotamento.
-- Otimizar o tempo de execução.
-- Organizar corretamente os artefatos.
-- Implementar validações de qualidade.
-- Implementar verificações de segurança.
-- Executar os testes adequados.
-- Garantir consistência entre ambientes.
-- Utilizar corretamente os recursos modernos do GitHub Actions.
-- Configurar permissões mínimas necessárias.
-- Utilizar corretamente secrets e variáveis.
-- Evitar exposição de informações sensíveis.
-- Implementar estratégias adequadas de concorrência.
-- Implementar cancelamento de execuções redundantes quando aplicável.
-- Melhorar a rastreabilidade dos pipelines.
-
-Avalie também:
-
-- Matriz de versões.
-- Jobs condicionais.
+- Estrutura.
+- Duplicidades.
+- Jobs.
+- Stages.
+- Dependências.
+- Condições de execução.
+- Estratégias de cache.
+- Artifacts.
 - Reutilização de workflows.
-- Composite actions.
-- Dependências entre jobs.
-- Upload e download de artefatos.
-- Cache de dependências.
-- Cache de build.
-- Estratégias de release.
-- Versionamento.
+- Paralelismo.
+- Tempo de execução.
+- Segurança.
+- Permissões.
+- Secrets.
+- Variáveis.
+- Versionamento de Actions.
+
+Reorganize os pipelines para que sejam previsíveis, eficientes e fáceis de manter.
+
+## 5.2. Estratégia de pipelines
+
+Defina uma estrutura adequada para:
+
+- Lint.
+- Formatação.
+- Análise estática.
+- Build.
+- Testes unitários.
+- Testes de integração.
+- Testes E2E.
+- Security scanning.
+- Análise de dependências.
+- Validação de migrations.
+- Empacotamento.
 - Publicação.
-- Geração de relatórios.
+- Deploy.
 
-Não adote recursos apenas por serem recentes. Avalie sua utilidade real para a arquitetura do projeto.
+Não execute tarefas redundantes em diferentes workflows sem necessidade.
 
-## 7.3. CI e validação final
+## 5.3. Segurança do CI/CD
 
-Após as alterações:
+Avalie:
 
-- Execute os pipelines.
-- Valide todos os jobs.
-- Verifique permissões.
-- Identifique warnings.
-- Corrija falhas.
-- Faça push das alterações no GitHub.
-- Utilize GitHub CLI para consultar as execuções.
-- Verifique o resultado de todos os workflows.
-- Investigue eventuais falhas.
-- Garanta que os pipelines estejam funcionando completamente.
+- Permissões mínimas.
+- Proteção de branches.
+- Secrets.
+- Tokens.
+- Dependências de terceiros.
+- Supply chain.
+- Proveniência dos artifacts.
+- Scans de vulnerabilidade.
+- Proteção contra exposição de credenciais.
 
-Não considere o CI concluído apenas porque os arquivos YAML estão corretos localmente.
+## 5.4. Git e GitHub CLI
+
+Analise a utilização de Git e GitHub CLI.
+
+Melhore os processos de:
+
+- Criação de Issues.
+- Atualização de Issues.
+- Pull Requests.
+- Releases.
+- Labels.
+- Milestones.
+- Automação de tarefas.
+- Consulta do estado do roadmap.
+
+## 5.5. Resultado esperado
+
+O CI/CD deve fornecer confiança sobre a qualidade do código e impedir que implementações inconsistentes avancem para os próximos estágios.
 
 ---
 
-# 8. FASE 6 — OBSERVABILIDADE, MONITORAMENTO E SEGURANÇA
+# FASE 6 — OBSERVABILIDADE, MONITORAMENTO E SEGURANÇA
 
-## 8.1. Prometheus e Grafana
+Realize uma revisão completa da infraestrutura de observabilidade e segurança.
 
-Implemente e configure corretamente Prometheus e Grafana na infraestrutura.
+## 6.1. Observabilidade
 
-Garanta:
+Avalie a arquitetura atual e as ferramentas existentes.
 
-- Coleta de métricas.
-- Exportação de métricas.
-- Configuração de targets.
-- Dashboards.
-- Alertas.
-- Monitoramento dos serviços.
-- Monitoramento do banco.
-- Monitoramento da infraestrutura.
-- Monitoramento do servidor.
-- Monitoramento dos recursos computacionais.
-- Identificação de falhas.
-- Histórico de métricas.
-- Visibilidade operacional.
-
-As informações relevantes devem ser disponibilizadas no portal, permitindo visualizar o estado operacional do projeto.
-
-## 8.2. Integração com o portal
-
-O portal deve apresentar as informações disponíveis de monitoramento de forma clara e organizada.
-
-Investigue quais métricas podem ser expostas com segurança para usuários e administradores.
-
-Separe as informações públicas das informações operacionais restritas.
-
-Implemente visualizações adequadas para:
-
-- Estado dos serviços.
-- Disponibilidade.
-- Performance.
-- Consumo de recursos.
-- Métricas do servidor.
-- Métricas do banco.
-- Infraestrutura.
-- Alertas.
-- Histórico.
-- Indicadores operacionais.
-
-## 8.3. Análise de redundância e arquitetura de observabilidade
-
-Investigue profundamente a relação entre:
+Considere:
 
 - Prometheus.
 - Grafana.
-- `openwyd-logpipe`.
-- `openwyd-node-exporter`.
+- Logs centralizados.
+- Métricas.
+- Traces.
+- Alertas.
+- Health checks.
+- Monitoramento de infraestrutura.
+- Monitoramento dos serviços.
+- Monitoramento do banco.
+- Monitoramento do servidor do jogo.
+- Monitoramento de aplicações auxiliares.
 
-Responda tecnicamente:
+Avalie especialmente os componentes:
 
-- Prometheus e Grafana substituem nosso sistema de logs `openwyd-logpipe`?
-- Prometheus e Grafana substituem `openwyd-node-exporter`?
-- Existe redundância entre esses componentes?
-- Eles se complementam?
-- Estamos aumentando desnecessariamente a complexidade?
-- Existem riscos operacionais ou de manutenção?
-- Quais componentes devemos manter?
-- Quais podem ser removidos?
-- Quais devem ser modernizados?
-- Estamos utilizando a melhor arquitetura possível?
-- Existem alternativas melhores?
+- `openwyd-logpipe`
+- `openwyd-node-exporter`
 
-Avalie as responsabilidades individuais de cada componente.
+Investigue se existem responsabilidades redundantes, sobreposição de funcionalidades ou oportunidades de consolidação.
 
-Não confunda coleta de métricas, armazenamento de métricas, visualização, exportação e gerenciamento de logs.
+Não remova componentes sem compreender suas funções e dependências.
 
-Apresente uma arquitetura recomendada, com justificativas técnicas, responsabilidades, fluxos de dados e possíveis simplificações.
+## 6.2. Métricas
 
-## 8.4. Segurança
+Identifique métricas relevantes para:
 
-Faça uma revisão completa da segurança do projeto.
+- Disponibilidade.
+- CPU.
+- Memória.
+- Disco.
+- Rede.
+- Conexões.
+- Banco de dados.
+- Consultas.
+- Latência.
+- Erros.
+- Processamento.
+- Filas.
+- Sessões.
+- Jogadores conectados.
+- Atividade do servidor.
 
-Investigue:
+Diferencie métricas técnicas, operacionais e métricas relacionadas ao jogo.
+
+## 6.3. Segurança
+
+Faça uma auditoria abrangente.
+
+Avalie:
 
 - Autenticação.
 - Autorização.
-- Gestão de permissões.
-- Secrets.
-- Variáveis de ambiente.
-- Segurança das APIs.
-- Segurança do banco.
-- Segurança dos containers.
-- Segurança dos pipelines.
-- Controle de acesso.
-- Exposição de serviços.
-- Validação de entradas.
-- Proteção de dados.
-- Dependências vulneráveis.
-- Configurações inseguras.
-- Monitoramento de eventos de segurança.
+- Gerenciamento de usuários.
+- Gerenciamento de permissões.
+- Banco de dados.
+- Credenciais.
+- Segredos.
+- APIs.
+- Comunicação.
+- Configurações.
+- Dependências.
+- Containers.
+- Infraestrutura.
+- CI/CD.
+- Superfície de ataque.
+- Proteção contra abuso.
+- Auditoria de operações administrativas.
 
-Registre todas as vulnerabilidades e melhorias necessárias.
+## 6.4. db-roles e migrations
+
+Investigue a relação entre `db-roles` e o mecanismo de migrations.
+
+Determine:
+
+- Responsabilidades de cada componente.
+- Possíveis sobreposições.
+- Dependências.
+- Estratégia correta de permissões.
+- Separação entre usuários administrativos e usuários de aplicação.
+- Estratégia de execução das migrations.
+
+Proponha uma arquitetura coerente e segura.
 
 ---
 
-# 9. FASE 7 — PORTAL WEB COMPLETO E MODERNIZADO
+# FASE 7 — PORTAL WEB, EXPERIÊNCIA DO USUÁRIO E ECOSSISTEMA DIGITAL
 
-## 9.1. Auditoria e modernização do portal
+Realize uma auditoria completa do portal web desenvolvido com Next.js.
 
-Realize uma análise completa da aplicação Next.js.
+O objetivo é transformar o portal em uma aplicação profissional, integrada ao ecossistema do jogo.
 
-Revise:
+## 7.1. Arquitetura Next.js
 
-- Arquitetura.
-- Componentes.
-- Páginas.
+Analise:
+
+- Estrutura de diretórios.
+- Organização de componentes.
 - Rotas.
 - Layouts.
-- Navegação.
-- Estado.
-- Integração com APIs.
+- Server Components.
+- Client Components.
+- API.
 - Autenticação.
 - Autorização.
-- Formulários.
-- Validações.
-- Tratamento de erros.
+- Estado.
+- Cache.
 - Performance.
-- Responsividade.
 - Acessibilidade.
 - Segurança.
-- Testes.
-
-Aplique boas práticas atuais de desenvolvimento Next.js, React, TypeScript e UI/UX.
-
-## 9.2. Portal de usuário e administrador
-
-O projeto deve possuir um portal completo, funcional e visualmente moderno.
-
-Pesquise referências de portais de servidores privados de WYD e de outros MMORPGs.
-
-Explore detalhadamente:
-
-- Sites.
-- Estrutura de navegação.
-- Paths.
-- Páginas.
-- Áreas de usuário.
-- Áreas administrativas.
-- Lojas.
-- Sistemas de contas.
-- Notícias.
-- Rankings.
-- Informações do jogo.
-- Painéis administrativos.
-- Sistemas de gerenciamento.
-- Experiência do usuário.
-
-Utilize essas referências para identificar boas soluções e oportunidades de melhoria.
-
-O portal deverá contemplar as funcionalidades necessárias para usuários e administradores.
-
-## 9.3. Integração com MkDocs
-
-Integre o portal com a documentação publicada pelo MkDocs.
-
-Disponibilize acesso organizado a:
-
-- Guias de usuários.
-- Sistemas do jogo.
-- Informações sobre guerras.
-- Tutoriais.
-- Manuais.
-- Informações técnicas pertinentes aos usuários.
-- Outros conteúdos necessários.
-
-A integração deve ser coerente com a navegação e identidade visual do portal.
-
-## 9.4. Identidade visual e UI/UX
-
-Aplique a identidade visual em todas as páginas.
-
-Garanta:
-
-- Consistência visual.
-- Componentes padronizados.
-- Tipografia coerente.
-- Paleta de cores.
-- Temas.
-- Iconografia.
-- Hierarquia visual.
 - Responsividade.
-- Acessibilidade.
-- Feedbacks visuais.
-- Estados de carregamento.
-- Estados vazios.
-- Mensagens de erro.
-- Confirmações.
-- Navegação intuitiva.
 
-O portal deve possuir informações claras, recursos visuais ricos, aparência moderna e excelente experiência de utilização.
+Proponha melhorias estruturais e implemente-as de forma consistente.
 
-Não mantenha páginas com layouts provisórios, funcionalidades fictícias ou componentes sem implementação real.
+## 7.2. Portal do usuário
 
-## 9.5. Mapa do jogo no portal
+Avalie e desenvolva as funcionalidades necessárias para os jogadores.
 
-Modernize completamente o mapa do jogo apresentado no portal.
+Considere:
 
-Pesquise bibliotecas modernas para renderização, desenho e interação com mapas.
-
-Avalie alternativas adequadas à representação de mapas de MMORPGs.
-
-Objetivos:
-
-- Melhorar a qualidade gráfica.
-- Melhorar a identificação das cidades.
-- Melhorar a identificação de regiões.
-- Melhorar a navegação.
-- Melhorar a experiência visual.
-- Implementar recursos interativos.
-- Melhorar zoom e movimentação.
-- Identificar locais importantes.
-- Organizar camadas e informações.
-- Permitir navegação intuitiva.
-
-Investigue as possibilidades de utilização dos mapas e recursos gráficos originais do WYD.
-
-## 9.6. Imagens, logos e artes
-
-Faça um levantamento dos recursos visuais disponíveis.
-
-O WYD possui uma biblioteca extensa de imagens e materiais gráficos espalhados pela internet.
-
-Pesquise referências e recursos que possam ser utilizados no projeto.
-
-Quando necessário:
-
-- Localize imagens originais.
-- Identifique logos.
-- Identifique artes.
-- Identifique ícones.
-- Identifique mapas.
-- Identifique recursos gráficos.
-- Avalie a qualidade dos arquivos.
-- Verifique compatibilidade e direitos de utilização.
-
-Caso não existam referências adequadas, proponha ou crie novos recursos visuais.
-
-Organize corretamente os assets no projeto.
-
-## 9.7. Dados reais e funcionalidades completas
-
-O portal deve possuir informações atualizadas, coerentes e dados reais cadastrados.
-
-Não deixe funcionalidades importantes utilizando dados fictícios ou placeholders.
-
-Garanta:
-
-- Sistemas efetivamente implementados.
-- Produtos reais cadastrados.
-- Informações corretas.
-- Dados atualizados.
-- Integrações funcionais.
-- Fluxos completos.
-- Validações.
-- Tratamento de erros.
-
-### Loja de donate
-
-Revise a loja de donate.
-
-Pesquise referências de lojas de donate de outros servidores de WYD e MMORPGs.
-
-Investigue nossa própria base de dados para identificar os itens que devem ser cadastrados na loja.
-
-Objetivos:
-
-- Identificar itens de donate.
-- Mapear seus identificadores.
-- Conferir descrições.
-- Conferir imagens.
-- Conferir categorias.
-- Organizar os produtos.
-- Definir informações comerciais necessárias.
-- Garantir consistência com os dados do jogo.
-- Preparar os produtos para utilização real.
-
-Utilize referências externas para melhorar a apresentação e a organização da loja.
-
-## 9.8. Testes E2E do portal
-
-Todas as funcionalidades do portal devem possuir validação adequada.
-
-Utilize Playwright para implementar testes E2E dos principais fluxos de usuário e administrador.
-
-Cubra:
-
-- Navegação.
-- Autenticação.
 - Cadastro.
-- Recuperação de acesso, quando aplicável.
-- Área do usuário.
+- Login.
+- Perfil.
+- Conta.
+- Personagens.
+- Informações do jogo.
+- Notícias.
+- Eventos.
+- Rankings.
+- Histórico.
+- Informações de itens.
+- Skills.
+- Guias.
+- Suporte.
+- Área do jogador.
+
+As funcionalidades devem utilizar dados reais sempre que houver integração disponível.
+
+## 7.3. Portal administrativo
+
+Analise e melhore a área administrativa.
+
+Considere:
+
+- Gestão de usuários.
+- Gestão de personagens.
+- Gestão de conteúdo.
+- Gestão de itens.
+- Gestão de eventos.
+- Gestão de notícias.
+- Monitoramento.
+- Logs.
+- Auditoria.
+- Métricas.
+- Configurações.
+
+As operações administrativas devem respeitar permissões e registrar ações relevantes.
+
+## 7.4. Identidade visual
+
+Revise a identidade visual do portal.
+
+Analise:
+
+- Paleta de cores.
+- Tipografia.
+- Componentes.
+- Ícones.
+- Espaçamentos.
+- Grid.
+- Layouts.
+- Temas.
+- Dark mode.
+- Light mode.
+- Responsividade.
+- Consistência visual.
+
+Estabeleça um Design System reutilizável.
+
+## 7.5. Mapa do jogo
+
+Analise a implementação do mapa.
+
+Verifique:
+
+- Estrutura.
+- Dados geográficos.
+- Mapas disponíveis.
+- Regiões.
+- Coordenadas.
+- NPCs.
+- Mobs.
+- Pontos de interesse.
+- Rotas.
+- Interações.
+- Performance.
+
+Avalie como integrar os dados do servidor e do banco ao mapa.
+
+## 7.6. Imagens, logos e artes
+
+Faça um levantamento dos assets utilizados pelo portal.
+
+Identifique:
+
+- Imagens ausentes.
+- Imagens inadequadas.
+- Logos.
+- Ícones.
+- Artes.
+- Banners.
+- Imagens de itens.
+- Imagens de NPCs.
+- Imagens de mobs.
+- Elementos visuais do jogo.
+
+Organize os assets e padronize sua utilização.
+
+Não utilize imagens aleatórias ou produtos fictícios como se fossem recursos oficiais.
+
+## 7.7. Loja e sistema de donate
+
+Revise a loja e o sistema de donate.
+
+Avalie:
+
+- Produtos.
+- Pacotes.
+- Preços.
+- Moedas.
+- Entrega de benefícios.
+- Integração com o jogo.
+- Histórico de compras.
+- Segurança.
+- Auditoria.
+- Fluxo de pagamento.
+- Confirmação de transações.
+- Prevenção contra duplicidade.
+- Tratamento de falhas.
+
+A entrega de produtos deve ser rastreável e consistente com o estado do personagem e da conta.
+
+## 7.8. Testes E2E com Playwright
+
+Implemente ou modernize testes E2E para os principais fluxos.
+
+Considere:
+
+- Cadastro.
+- Login.
+- Logout.
+- Recuperação de conta.
+- Navegação.
+- Perfil.
 - Área administrativa.
 - Loja.
-- Produtos.
-- Sistemas.
-- Formulários.
-- Integrações.
+- Donate.
+- Gestão de conteúdo.
 - Permissões.
-- Navegação da documentação.
-- Funcionalidades do mapa.
-- Fluxos operacionais.
-
-Garanta que os testes validem o comportamento real da aplicação, não apenas a existência dos elementos visuais.
+- Responsividade.
+- Fluxos críticos.
 
 ---
 
-# 10. FASE 8 — CLIENTE WYD: ENGENHARIA REVERSA E MODERNIZAÇÃO
+# FASE 8 — ENGENHARIA REVERSA E MODERNIZAÇÃO DO CLIENTE WYD
 
-Esta fase deve ser preparada a partir do conhecimento consolidado durante a modernização do servidor.
+Realize uma investigação aprofundada do cliente do jogo.
 
-Antes de realizar alterações extensas no cliente, finalize o mapeamento de compatibilidade entre cliente e servidor e estabeleça uma documentação técnica confiável.
+Esta fase trata especificamente do funcionamento interno do cliente, dos executáveis, das bibliotecas, dos recursos visuais e da comunicação com o servidor.
 
-## 10.1. Mapeamento da dependência ClientPatch_v7662
+A matemática e o balanceamento das regras do jogo serão tratados separadamente na FASE 10.
 
-A dependência do cliente sobre `ClientPatch_v7662` precisa ser completamente mapeada.
-
-Investigue:
-
-- Origem da biblioteca.
-- Finalidade.
-- Funções.
-- Dependências.
-- Pontos de integração.
-- Interfaces.
-- Símbolos exportados.
-- Funções utilizadas.
-- Interações com o executável.
-- Impactos sobre o funcionamento do cliente.
-
-Existe a suspeita de que essa biblioteca tenha sido injetada no executável `wyd.exe`, possivelmente utilizando OllyDbg, e que tenha recebido hooks implementados por usuários há alguns anos.
-
-Pesquise profundamente na internet referências sobre:
-
-- `ClientPatch_v7662`.
-- Injeção de DLL no `wyd.exe`.
-- Hooks.
-- Funcionamento da biblioteca.
-- Modificações do cliente.
-- Técnicas utilizadas pela comunidade WYD.
-
-Investigue como a biblioteca é carregada, como se integra ao executável e quais funcionalidades modifica.
-
-Documente exatamente onde o cliente depende dela e quais funcionalidades seriam afetadas por sua remoção ou substituição.
-
-## 10.2. Engenharia reversa completa do cliente
-
-Realize um levantamento técnico abrangente da estrutura interna do cliente.
+## 8.1. Auditoria do cliente
 
 Investigue:
 
-- Executável principal.
-- Bibliotecas.
+- Executáveis.
 - DLLs.
-- Dependências externas.
-- Comunicação com o servidor.
-- Protocolos.
-- Estruturas de pacotes.
+- Bibliotecas.
 - Arquivos de configuração.
+- Assets.
+- Estrutura de diretórios.
 - Recursos gráficos.
-- Mapas.
-- Texturas.
-- Modelos.
-- Animações.
-- Interfaces.
-- Sistemas de renderização.
-- Áudio.
 - Scripts.
-- Sistemas de carregamento.
-- Hooks.
-- Extensões.
-- Mecanismos de customização.
+- Protocolos.
+- Inicialização.
+- Atualização.
+- Comunicação.
+- Dependências externas.
 
-O objetivo é entender completamente como o cliente funciona internamente e identificar todas as possibilidades de modernização.
+Documente a arquitetura identificada.
 
-Mapeie o que pode ser:
+## 8.2. ClientPatch_v7662
 
-- Modificado.
-- Modernizado.
-- Substituído.
-- Estendido.
-- Customizado.
-- Automatizado.
-- Melhorado visualmente.
+Investigue especificamente o `ClientPatch_v7662`.
 
-## 10.3. Modernização da comunicação cliente/servidor
+Verifique:
 
-Mapeie completamente a comunicação atual.
-
-Investigue:
-
-- Protocolo.
-- Formato dos pacotes.
-- Serialização.
-- Autenticação.
-- Sessões.
-- Criptografia.
+- Estrutura.
+- Funcionalidades.
+- Alterações introduzidas.
 - Compatibilidade.
 - Dependências.
-- Limitações.
-- Performance.
-- Segurança.
+- Integração com o cliente.
+- Mecanismos de carregamento.
+- Possíveis problemas.
 
-Analise se é possível modernizar a comunicação sem comprometer a compatibilidade com o jogo.
+Investigue a hipótese de utilização de DLL Injection no `wyd.exe`.
 
-Pesquise alternativas e ferramentas.
+Avalie ferramentas de análise e depuração, incluindo OllyDbg, quando tecnicamente apropriado.
 
-Avalie se podemos desenvolver uma biblioteca própria para substituir ou complementar dependências existentes.
+Não assuma que a hipótese de DLL Injection está correta: comprove o comportamento por meio de análise.
 
-Investigue possibilidades de injetar uma dependência desenvolvida por nós, caso tecnicamente viável.
+## 8.3. Engenharia reversa
 
-Apresente diferentes abordagens, com riscos, vantagens, limitações e recomendações.
+Investigue o funcionamento do cliente para compreender:
 
-## 10.4. Modernização visual e customização
+- Inicialização.
+- Carregamento de recursos.
+- Renderização.
+- Interface.
+- Eventos.
+- Processamento de pacotes.
+- Comunicação com o servidor.
+- Tratamento de erros.
+- Sistemas de atualização.
+- Integração com bibliotecas.
 
-Faça um mapeamento completo das possibilidades de evolução visual do cliente.
+Preserve evidências, documentação e resultados dos experimentos.
 
-Investigue:
+## 8.4. Comunicação cliente-servidor
+
+Mapeie a comunicação entre cliente e servidor.
+
+Identifique:
+
+- Estrutura dos pacotes.
+- Identificadores.
+- Campos.
+- Tipos.
+- Tamanhos.
+- Codificação.
+- Serialização.
+- Fluxos de requisição e resposta.
+- Estados.
+- Validações.
+- Compatibilidade de versões.
+
+Documente os contratos identificados.
+
+Não altere protocolos sem avaliar o impacto sobre clientes existentes.
+
+A investigação matemática dos dados transmitidos, dos atributos e das regras de combate será aprofundada na FASE 10.
+
+## 8.5. Personalizações visuais
+
+Avalie possibilidades de customização:
 
 - Interface.
 - HUD.
 - Menus.
-- Janelas.
-- Elementos gráficos.
-- Resolução.
-- Escalabilidade.
+- Fontes.
+- Ícones.
 - Texturas.
-- Modelos.
+- Sprites.
 - Animações.
 - Efeitos.
-- Mapas.
-- Ícones.
-- Fontes.
-- Recursos visuais.
-- Experiência de utilização.
+- Recursos gráficos.
 
-Avalie o que pode ser modernizado sem reconstruir completamente o cliente.
+Identifique o que pode ser modificado sem comprometer a estabilidade ou compatibilidade.
 
-Pesquise ferramentas, bibliotecas, técnicas e boas práticas de modificação de jogos legados.
+## 8.6. Launcher
 
-Elabore um mapa completo das possibilidades de customização e modernização.
+Revise o launcher do jogo.
 
-## 10.5. Launcher como ferramenta auxiliar
+Avalie a possibilidade de organizá-lo como uma ferramenta independente, com interface CLI e arquitetura reutilizável.
 
-Planeje a criação de um launcher como ferramenta adicional dentro do CLI do projeto.
+Considere:
 
-O launcher deverá ajudar a executar funções auxiliares relacionadas ao cliente.
-
-Investigue e proponha funcionalidades como:
-
-- Gerenciamento do cliente.
 - Inicialização.
-- Verificação de integridade.
-- Atualização de arquivos.
-- Verificação de versões.
-- Sincronização de recursos.
-- Diagnóstico.
+- Atualização.
+- Verificação de arquivos.
+- Integridade.
+- Versionamento.
+- Download.
 - Configurações.
 - Logs.
-- Verificações de compatibilidade.
-- Integração com os serviços do projeto.
-
-Não implemente funcionalidades arbitrariamente. Faça primeiro o mapeamento de necessidades, arquitetura, possibilidades técnicas e dependências.
-
-Crie o planejamento completo da implementação do launcher e registre as issues correspondentes.
+- Diagnóstico.
+- Compatibilidade.
+- Segurança.
 
 ---
 
-# 11. FASE 9 — ORGANIZAÇÃO DOS ARQUIVOS DE IA E FREEBUFF
+# FASE 9 — INTELIGÊNCIA ARTIFICIAL, FREEBUFF, SKILLS E AGENTES
 
-Garanta que o agente do FreeBuff utilize corretamente toda a estrutura de arquivos de IA existente no projeto.
+Realize uma revisão completa da estrutura de IA e das ferramentas auxiliares do projeto.
 
-Faça uma auditoria completa de:
+## 9.1. Estrutura de arquivos de IA
 
-- Arquivos de contexto.
-- Instruções.
+Analise todos os arquivos relacionados a:
+
+- Agents.
+- Skills.
+- Instructions.
+- Prompts.
+- Templates.
+- Configurações.
+- Ferramentas.
+- Contextos.
+- Documentação.
+- Automação.
+
+Identifique duplicidades, inconsistências e instruções obsoletas.
+
+## 9.2. Skills especializadas
+
+Organize Skills por domínio.
+
+Considere especializações para:
+
+- Arquitetura do servidor.
+- Banco de dados.
+- DevOps.
+- CI/CD.
+- Observabilidade.
+- Segurança.
+- Next.js.
+- Portal.
+- Engenharia reversa.
+- Cliente WYD.
+- Matemática do jogo.
+- Combate e balanceamento.
+- Testes.
+- Documentação.
+- Release engineering.
+
+As Skills devem possuir instruções objetivas, contexto suficiente e critérios de qualidade.
+
+## 9.3. Agentes especializados
+
+Avalie a criação ou reorganização de agentes especializados.
+
+Cada agente deve possuir:
+
+- Responsabilidade definida.
+- Escopo.
+- Contexto.
+- Ferramentas permitidas.
+- Regras de execução.
+- Critérios de validação.
+- Limites de atuação.
+
+Evite agentes redundantes ou com responsabilidades conflitantes.
+
+## 9.4. FreeBuff
+
+Analise a compatibilidade e a organização dos recursos relacionados ao FreeBuff.
+
+Investigue:
+
+- Arquivos.
+- Configurações.
+- Funcionalidades.
+- Dependências.
+- Integração.
+- Compatibilidade.
+- Manutenção.
+
+Preserve o conhecimento existente e identifique oportunidades de melhoria.
+
+## 9.5. Padronização
+
+Estabeleça uma estrutura consistente para:
+
+- Prompts.
 - Skills.
 - Agentes.
 - Templates.
-- Prompts.
-- Referências técnicas.
+- Instruções.
 - Documentação.
-- Configurações específicas do FreeBuff.
-
-Verifique se os arquivos estão:
-
-- Corretamente organizados.
-- Padronizados.
-- Atualizados.
-- Sem duplicações desnecessárias.
-- Coerentes com a arquitetura.
-- Compatíveis com o funcionamento do FreeBuff.
-- Corretamente referenciados.
-
-Garanta que o agente saiba localizar e utilizar as informações necessárias antes de executar suas tarefas.
-
-Mapeie eventuais limitações da estrutura atual e proponha melhorias.
+- Versionamento.
+- Manutenção.
 
 ---
 
-# 12. FASE 10 — DOCUMENTAÇÃO E PADRONIZAÇÃO GLOBAL
+# FASE 10 — ENGENHARIA REVERSA MATEMÁTICA DO WYD/WYD2, BUG HUNTING E BALANCEAMENTO COMPLETO
 
-## 12.1. Documentação completa
+## 10.1. Objetivo geral
 
-Mantenha toda a documentação atualizada durante a execução da missão.
+Realize uma investigação matemática e funcional completa do WYD, incluindo as particularidades do WYD2 e das versões relacionadas que sejam relevantes para o projeto.
 
-Revise os documentos existentes e elimine informações obsoletas, inconsistentes ou duplicadas.
+O objetivo é compreender como o jogo realmente funciona, identificar as fórmulas utilizadas, encontrar bugs matemáticos e inconsistências, validar os cálculos e propor um modelo de balanceamento tecnicamente fundamentado.
 
-O projeto deve possuir documentação real, organizada e útil.
+Esta fase deve ir além da simples leitura do código.
+
+É necessário combinar:
+
+- Análise do código-fonte disponível.
+- Engenharia reversa.
+- Análise de dados.
+- Pesquisa histórica.
+- Documentação.
+- Testes controlados.
+- Simulações matemáticas.
+- Observação do comportamento real do jogo.
+- Comparação entre cliente e servidor.
+
+Não presuma que as fórmulas atuais estejam corretas apenas porque estão implementadas há muito tempo.
+
+## 10.2. Pesquisa profunda sobre WYD e WYD2
+
+Pesquise referências disponíveis na internet sobre:
+
+- WYD.
+- WYD2.
+- Versões antigas.
+- Versões posteriores.
+- Mecânicas de combate.
+- Atributos.
+- Classes.
+- Builds.
+- Skills.
+- Magias.
+- Itens.
+- Equipamentos.
+- Velocidade.
+- Crítico.
+- Dano.
+- Defesa.
+- Resistências.
+- NPCs.
+- Mobs.
+- Sistemas de evolução.
+- Sistemas do jogo
+- Sistemas de guerra
+- Sistemas de cidades
+- Sistemas de guild
+- Sistemas de quests
+- Sistemas de montarias, amagos e criar
+- Sistemas de evocação
+- Quests executáveis
+- Bugs conhecidos.
+- Correções históricas.
+- Mudanças de balanceamento.
+
+Investigue fóruns, comunidades, documentação, wikis, repositórios públicos, discussões técnicas e materiais históricos.
+
+Procure informações que ajudem a reconstruir as regras originais e identificar diferenças entre versões.
+
+Diferencie claramente:
+
+1. Comportamento confirmado no código.
+2. Comportamento observado no jogo.
+3. Informação encontrada em documentação.
+4. Relato de jogadores.
+5. Hipótese ainda não validada.
+
+Não transforme relatos de fóruns em verdades técnicas sem validação.
+
+## 10.3. Mapeamento matemático dos atributos
+
+Mapeie todos os atributos utilizados pelo jogo.
+
+Investigue, entre outros:
+
+- Força.
+- Inteligência.
+- Destreza.
+- Constituição.
+- HP.
+- MP.
+- Ataque físico.
+- Ataque mágico.
+- Defesa.
+- Precisão.
+- Evasão.
+- Velocidade de ataque.
+- Velocidade de movimento.
+- Chance crítica.
+- Dano crítico.
+- Resistências.
+- Absorção.
+- Regeneração.
+- Penetração.
+- Bloqueio.
+- Modificadores percentuais.
+- Atributos derivados.
+
+Para cada atributo, identifique:
+
+- Origem.
+- Tipo.
+- Unidade.
+- Faixa de valores.
+- Limites.
+- Fórmula.
+- Dependências.
+- Arredondamento.
+- Conversões.
+- Aplicação no servidor.
+- Representação no cliente.
+- Persistência no banco.
+
+Documente as equações completas.
+
+## 10.4. Matemática de combate e cálculo de dano
+
+Reconstrua o cálculo de dano de ponta a ponta.
+
+Investigue:
+
+- Dano base.
+- Atributos do personagem.
+- Arma.
+- Equipamentos.
+- Refinamentos.
+- Buffs.
+- Debuffs.
+- Skills.
+- Crítico.
+- Defesa do alvo.
+- Resistências.
+- Absorção.
+- Redução percentual.
+- Multiplicadores.
+- Modificadores condicionais.
+- Arredondamentos.
+- Limites mínimos e máximos.
+
+Identifique a ordem em que cada modificador é aplicado.
+
+Exemplo de investigação:
+
+1. Cálculo do ataque base.
+2. Aplicação dos atributos.
+3. Aplicação dos bônus de equipamentos.
+4. Aplicação dos modificadores de skill.
+5. Aplicação dos efeitos temporários.
+6. Cálculo de crítico.
+7. Aplicação da defesa do alvo.
+8. Aplicação das resistências.
+9. Aplicação das reduções.
+10. Resultado final.
+
+Essa sequência é apenas um roteiro de investigação, não uma afirmação sobre a ordem real do WYD.
+
+Descubra a sequência efetivamente implementada.
+
+## 10.5. Velocidade de ataque, quantidade de hits e crítico
+
+Esta é uma das áreas prioritárias da investigação.
+
+Analise detalhadamente a relação entre:
+
+- Velocidade de ataque.
+- Percentual de velocidade.
+- Intervalo entre ataques.
+- Quantidade de hits.
+- Quantidade de animações.
+- Dano por segundo.
+- Críticos.
+- Multiplicadores.
+- Limites internos.
+- Arredondamento.
+- Frequência de processamento.
+
+Existe um comportamento observado que precisa ser investigado:
+
+Personagens de dano físico, ao atingirem aproximadamente 200% de velocidade, aparentemente começam a realizar hits duplicados ou apresentar aumento anormal de hits/críticos.
+
+Investigue se isso é:
+
+- Um comportamento previsto pelo jogo.
+- Uma mecânica de escalonamento.
+- Um limite interno.
+- Um erro de cálculo.
+- Um problema de arredondamento.
+- Uma falha de sincronização.
+- Um problema de animação.
+- Um problema de processamento de pacotes.
+- Um bug no cliente.
+- Um bug no servidor.
+- Uma combinação desses fatores.
+
+Não considere o comportamento como correto ou incorreto antes de identificar sua origem.
+
+### Modelo matemático a investigar
+
+Avalie a possibilidade de existir uma curva de escalonamento da velocidade que aumente gradualmente a quantidade de ataques.
+
+Exemplo hipotético de comportamento desejado:
+
+| Velocidade | Hits esperados |
+|---|---:|
+| 100% | 1 |
+| 200% | 2 |
+| 300% | 2 |
+| 400% | 3 |
+| 500% | 3 |
+| 600% | 4 |
+
+Essa tabela é apenas uma referência para investigação, não uma fórmula definitiva.
+
+Analise diferentes funções matemáticas que possam representar esse comportamento.
+
+Considere:
+
+- Funções lineares.
+- Funções por intervalos.
+- Funções com retornos decrescentes.
+- Curvas progressivas.
+- Limites máximos.
+- Curvas com suavização.
+- Fórmulas com frequência de ataque.
+- Relação entre velocidade e tempo de execução.
+
+Compare os resultados e identifique qual modelo oferece melhor coerência matemática e jogabilidade.
+
+### Investigações obrigatórias
+
+Verifique:
+
+- Se o aumento de velocidade está produzindo ataques adicionais corretamente.
+- Se os críticos são contabilizados de forma independente.
+- Se existe duplicação indevida de dano.
+- Se o cliente mostra uma quantidade de hits diferente da processada pelo servidor.
+- Se a animação influencia o processamento real.
+- Se existe limite de velocidade no servidor.
+- Se o cliente consegue informar valores incompatíveis.
+- Se há possibilidade de exploração por manipulação de pacotes.
+- Se a frequência de ataques é consistente com o tempo real.
+- Se o DPS aumenta de forma proporcional ou descontrolada.
+
+Crie testes que permitam reproduzir os cenários.
+
+## 10.6. Engenharia reversa de skills e magias
+
+Investigue todas as skills e magias.
+
+Para cada uma, documente:
+
+- Nome.
+- Classe.
+- Tipo.
+- Requisitos.
+- Nível.
+- Custo de MP.
+- Cooldown.
+- Alcance.
+- Área de efeito.
+- Alvos.
+- Dano.
+- Cura.
+- Buffs.
+- Debuffs.
+- Duração.
+- Escalonamento.
+- Modificadores.
+- Efeitos secundários.
+- Interações com atributos.
+- Interações com equipamentos.
+
+Reconstrua as fórmulas utilizadas.
+
+Investigue também:
+
+- Skills sem implementação.
+- Skills parcialmente implementadas.
+- Skills com parâmetros inconsistentes.
+- Skills com comportamento divergente entre cliente e servidor.
+- Skills com escalonamento desproporcional.
+- Skills com efeitos duplicados.
+- Skills com problemas de cooldown.
+- Skills que podem ser exploradas.
+
+## 10.7. Equipamentos, itens e modificadores
+
+Analise como cada tipo de item influencia o personagem.
+
+Considere:
+
+- Armas.
+- Armaduras.
+- Elmos.
+- Luvas.
+- Botas.
+- Escudos.
+- Acessórios.
+- Anéis.
+- Colares.
+- Pedras.
+- Refinamentos.
+- Itens especiais.
+- Itens de evolução.
+- Itens temporários.
+- Buffs associados.
+
+Identifique como os atributos são somados, multiplicados, limitados ou convertidos.
+
+Verifique se existem bônus aplicados duas vezes ou ignorados.
+
+## 10.8. NPCs e mobs
+
+Realize uma análise completa dos NPCs e mobs.
+
+Para cada entidade, investigue:
+
+- Identificador.
+- Nome.
+- Tipo.
+- Classe.
+- Nível.
+- HP.
+- MP.
+- Ataque.
+- Defesa.
+- Velocidade.
+- Alcance.
+- Precisão.
+- Evasão.
+- Resistências.
+- Skills.
+- Magias.
+- Comportamento.
+- Inteligência artificial.
+- Agressividade.
+- Perseguição.
+- Área de atuação.
+- Recompensas.
+- Experiência.
+- Drops.
+- Respawn.
+
+Reconstrua as fórmulas de combate utilizadas por essas entidades.
+
+Identifique mobs com atributos desproporcionais, comportamento incorreto, dano anormal ou recompensas inconsistentes.
+
+Analise também o comportamento da IA e sua relação com as regras de combate.
+
+## 10.9. Classes e balanceamento de builds
+
+Realize uma análise comparativa de todas as classes.
+
+Investigue:
+
+- Potencial ofensivo.
+- Potencial defensivo.
+- Dano físico.
+- Dano mágico.
+- Velocidade.
+- Mobilidade.
+- Resistência.
+- Sustentação.
+- Eficiência em PvE.
+- Eficiência em PvP.
+- Dependência de equipamentos.
+- Dependência de atributos.
+- Eficiência de diferentes builds.
+
+Compare as classes em condições equivalentes.
+
+Considere diferentes níveis, equipamentos, atributos, buffs e situações de combate.
+
+Identifique:
+
+- Builds dominantes.
+- Builds inviáveis.
+- Classes subdimensionadas.
+- Classes excessivamente fortes.
+- Combinações exploráveis.
+- Dependências exageradas de equipamentos.
+- Desbalanceamento entre PvE e PvP.
+
+Proponha melhorias fundamentadas em simulações e evidências.
+
+Não faça balanceamento baseado apenas em opinião ou percepção individual.
+
+## 10.10. Progressão e evolução
+
+Investigue os sistemas de progressão.
+
+Considere:
+
+- Experiência.
+- Níveis.
+- Evoluções.
+- Classes.
+- Requisitos.
+- Atributos por nível.
+- Pontos de distribuição.
+- Equipamentos.
+- Refinamentos.
+- Sistemas especiais.
+- Recompensas.
+- Quests.
+- Progressão econômica.
+
+Avalie se a progressão é coerente e se existem pontos em que a dificuldade ou a recompensa cresce de maneira desproporcional.
+
+## 10.11. Comunicação cliente-servidor sob a perspectiva matemática
+
+Cruze os resultados desta fase com a engenharia reversa realizada na FASE 8.
+
+Investigue como os atributos, estados e resultados de combate são transmitidos.
+
+Identifique:
+
+- Quais cálculos são realizados no cliente.
+- Quais cálculos são realizados no servidor.
+- Quais valores são enviados.
+- Quais valores são recebidos.
+- Quais valores são persistidos.
+- Quais validações são executadas.
+- Quais informações são apenas visuais.
+- Quais informações representam o estado autoritativo do jogo.
+
+O servidor deve ser a referência autoritativa para cálculos sensíveis de combate, progressão e integridade do jogo.
+
+Identifique possíveis vulnerabilidades de manipulação de atributos, velocidade, dano, cooldown e resultados de combate.
+
+## 10.12. Bug Hunter matemático
+
+Realize uma busca sistemática por bugs.
+
+Investigue:
+
+- Overflow.
+- Underflow.
+- Divisão por zero.
+- Arredondamento incorreto.
+- Conversão de tipos.
+- Perda de precisão.
+- Multiplicação de percentuais.
+- Ordem incorreta de operações.
+- Limites inconsistentes.
+- Valores negativos indevidos.
+- Multiplicadores duplicados.
+- Condições de corrida.
+- Inconsistência entre cliente e servidor.
+- Falhas de sincronização.
+- Exploração de pacotes.
+- Resultados determinísticos incorretos.
+
+Classifique cada problema por:
+
+- Severidade.
+- Impacto.
+- Reprodutibilidade.
+- Causa raiz.
+- Componentes afetados.
+- Risco de exploração.
+- Correção proposta.
+
+## 10.13. Laboratório matemático e simulações
+
+Crie uma abordagem sistemática para validar as fórmulas.
+
+Quando apropriado, implemente um simulador ou conjunto de ferramentas independentes do servidor de produção.
+
+O laboratório deve permitir:
+
+- Simular atributos.
+- Simular builds.
+- Simular ataques.
+- Simular críticos.
+- Simular velocidade.
+- Simular dano.
+- Simular defesa.
+- Simular resistências.
+- Simular skills.
+- Simular equipamentos.
+- Simular NPCs e mobs.
+- Comparar classes.
+- Comparar versões de fórmulas.
+- Executar milhares de combinações.
+
+Crie cenários reproduzíveis.
+
+Os resultados devem permitir comparar o comportamento atual com o comportamento proposto.
+
+Não utilize o simulador como substituto dos testes de integração com o jogo real.
+
+## 10.14. Documentação matemática
+
+Crie documentação técnica organizada contendo:
+
+- Catálogo de atributos.
+- Fórmulas.
+- Equações.
+- Unidades.
+- Limites.
+- Regras de arredondamento.
+- Cálculos de combate.
+- Cálculos de velocidade.
+- Skills.
+- Magias.
+- NPCs.
+- Mobs.
+- Classes.
+- Builds.
+- Progressão.
+- Bugs identificados.
+- Resultados dos experimentos.
+- Referências externas.
+- Hipóteses ainda não comprovadas.
+
+Toda fórmula deve indicar sua origem e nível de confiança.
+
+## 10.15. Integração com Skills, arquitetura e roadmap
+
+Atualize as Skills de IA para que os agentes consigam compreender:
+
+- Matemática do WYD.
+- Fórmulas.
+- Combate.
+- Balanceamento.
+- Atributos.
+- Skills.
+- NPCs.
+- Mobs.
+- Engenharia reversa.
+- Testes matemáticos.
+
+Crie Issues específicas para:
+
+- Correção de bugs.
+- Implementação de fórmulas.
+- Testes de regressão.
+- Simulações.
+- Balanceamento.
+- Documentação.
+- Atualizações de banco.
+- Alterações no cliente.
+- Alterações no servidor.
+
+Não misture todas essas atividades em uma única Issue abrangente.
+
+## 10.16. Critérios de conclusão
+
+Esta fase só poderá ser considerada concluída quando:
+
+1. Os principais atributos estiverem documentados.
+2. As fórmulas críticas estiverem identificadas ou formalmente classificadas como desconhecidas.
+3. O cálculo de dano estiver mapeado.
+4. A velocidade de ataque estiver investigada.
+5. O comportamento de hits duplicados estiver reproduzido ou descartado com evidências.
+6. O sistema de críticos estiver compreendido.
+7. Skills e magias estiverem catalogadas.
+8. NPCs e mobs tiverem seus parâmetros analisados.
+9. As classes e builds tiverem sido comparadas.
+10. Os bugs identificados estiverem registrados.
+11. As hipóteses estiverem separadas dos fatos.
+12. Existirem testes e simulações reproduzíveis.
+13. As correções propostas tiverem critérios de validação.
+14. A documentação estiver atualizada.
+15. O roadmap refletir todas as atividades pendentes.
+
+Não é obrigatório inventar uma fórmula quando não houver evidências suficientes.
+
+É preferível documentar uma lacuna de conhecimento do que apresentar uma fórmula incorreta como se fosse verdadeira.
+
+---
+
+# FASE 11 — DOCUMENTAÇÃO E PADRONIZAÇÃO COMPLETA
+
+Realize uma revisão de toda a documentação do projeto.
+
+## 11.1. MkDocs
+
+Analise a documentação oficial construída com MkDocs.
+
+Verifique:
+
+- Estrutura.
+- Navegação.
+- Organização.
+- Conteúdo.
+- Links.
+- Imagens.
+- Exemplos.
+- Diagramas.
+- Referências.
+- Atualização.
+- Consistência.
+
+A documentação deve refletir o estado real do projeto.
+
+## 11.2. Documentação interna
 
 Separe claramente:
 
-**Documentação oficial do MkDocs:**
+- Documentação oficial.
+- Documentação de desenvolvimento.
+- Documentação de arquitetura.
+- Documentação operacional.
+- Documentação de engenharia reversa.
+- Documentação matemática.
+- Documentação de troubleshooting.
+- Documentação de deploy.
+- Documentação de segurança.
 
-- Manuais do projeto.
-- Documentação técnica de desenvolvimento.
-- Arquitetura.
-- Diagramas.
-- Sistemas do jogo.
-- Guias de utilização.
-- Manuais de usuários.
-- Manuais de administradores.
-- Infraestrutura.
-- Procedimentos operacionais.
-- Referências técnicas.
+Evite duplicar conteúdos sem necessidade.
 
-**Documentação interna de desenvolvimento:**
+## 11.3. Padronização tecnológica
 
-- Análises técnicas.
-- Relatórios de auditoria.
-- Investigações.
-- Estudos.
-- Reviews.
-- Propostas de melhoria.
-- Planejamentos.
-- Documentos temporários.
-- Relatórios de implementação.
+Revise a padronização ponta a ponta das tecnologias utilizadas, especialmente:
 
-O MkDocs deve conter apenas documentação oficial de utilização do projeto e documentação técnica de desenvolvimento.
-
-Remova da estrutura oficial do MkDocs documentos gerados durante o desenvolvimento que não pertençam a essas categorias, como análises pontuais e relatórios de investigação.
-
-Não descarte essas informações: organize-as em locais apropriados.
-
-## 12.2. Padronização completa
-
-O projeto deve ser completamente padronizado de ponta a ponta.
-
-Revise:
-
-- Estrutura de pastas.
-- Nomenclatura.
-- Organização dos módulos.
-- Arquitetura.
-- Código.
-- Comentários.
-- Docstrings.
-- Logs.
-- Tratamento de erros.
-- Testes.
+- Go.
+- Next.js.
+- TypeScript.
+- JavaScript.
+- SQL.
 - Configurações.
-- Infraestrutura.
-- DevOps.
-- Skills.
-- Agentes.
-- Documentação.
-- Migrations.
-- Seeds.
-- Workflows.
 - Scripts.
-- Processos de desenvolvimento.
+- Containers.
+- CI/CD.
 
-Aplique os padrões apropriados aos projetos Go e Next.js.
+Estabeleça convenções consistentes de:
 
-Pesquise profundamente as melhores práticas atuais de ambas as tecnologias.
+- Estrutura.
+- Nomenclatura.
+- Formatação.
+- Organização.
+- Testes.
+- Logs.
+- Erros.
+- Configurações.
+- Documentação.
 
-Avalie as ferramentas, bibliotecas, padrões e arquiteturas mais adequados.
+## 11.4. Diagramas
 
-Atualize as skills correspondentes para refletir as práticas recomendadas e as convenções específicas do projeto.
+Crie ou atualize diagramas para:
 
-Não padronize tecnologias diferentes utilizando regras inadequadas. Cada stack deve possuir suas próprias convenções, respeitando os princípios arquiteturais globais.
+- Arquitetura.
+- Infraestrutura.
+- Comunicação.
+- Banco de dados.
+- Fluxos operacionais.
+- CI/CD.
+- Sistemas do jogo.
+- Cliente-servidor.
+- Matemática de combate.
+- Dependências.
+
+Os diagramas devem representar o funcionamento real.
 
 ---
 
-# 13. FASE 11 — DASHBOARD DO ROADMAP
+# FASE 12 — DASHBOARD E VISUALIZAÇÃO DO ESTADO DO PROJETO
 
-Após a auditoria e reorganização das issues, atualize o índice principal do roadmap.
+Revise a estrutura de dashboards existentes e proponha uma visão consolidada do ecossistema.
 
-O índice deve funcionar como um dashboard completo de acompanhamento da modernização do projeto.
+## 12.1. Métricas do projeto
 
-Não crie apenas uma lista de issues. Desenvolva uma visão gerencial e técnica do andamento de todas as metas.
+Considere métricas de:
 
-## 13.1. Indicadores gerais
-
-Apresente:
-
-- Total de issues.
-- Issues concluídas.
-- Issues aguardando testes.
-- Issues em andamento.
-- Issues abertas.
-- Issues bloqueadas.
-- Issues obsoletas identificadas.
-- Issues reabertas.
-- Issues criadas durante a auditoria.
-- Percentual de conclusão.
-- Progresso por área.
-- Progresso por fase.
-- Pendências críticas.
-
-## 13.2. Indicadores por área
-
-Crie indicadores individuais para:
-
+- Roadmap.
+- Issues.
+- Pull Requests.
+- CI/CD.
+- Builds.
+- Testes.
+- Cobertura.
+- Segurança.
+- Dependências.
+- Infraestrutura.
+- Banco.
+- Observabilidade.
+- Portal.
 - Servidor.
 - Cliente.
-- Banco de dados.
-- Infraestrutura.
+- Releases.
+- Débitos técnicos.
+
+## 12.2. Métricas do jogo
+
+Quando houver dados disponíveis, considere:
+
+- Jogadores conectados.
+- Sessões.
+- Personagens.
+- Atividade.
+- Eventos.
+- Desempenho.
+- Combate.
+- Erros.
+- NPCs.
+- Mobs.
+- Sistemas operacionais.
+
+## 12.3. Visualização
+
+Avalie a criação de dashboards separados por domínio.
+
+A interface deve permitir identificar:
+
+- Estado atual.
+- Evolução.
+- Problemas.
+- Alertas.
+- Tendências.
+- Gargalos.
+- Atividades pendentes.
+
+Não invente números, métricas ou resultados.
+
+Utilize dados reais e identifique explicitamente informações indisponíveis.
+
+---
+
+# FASE 13 — PROPOSTAS TÉCNICAS E MELHORIAS ESTRUTURAIS
+
+Após as auditorias, consolide propostas de evolução que não estejam contempladas adequadamente no roadmap.
+
+## 13.1. Avaliação de oportunidades
+
+Investigue melhorias em:
+
+- Arquitetura.
+- Servidor.
+- Cliente.
+- Banco.
 - DevOps.
 - CI/CD.
 - Segurança.
 - Observabilidade.
 - Portal.
-- Testes.
-- Documentação.
-- Skills e agentes.
-- Engenharia reversa.
-- Launcher.
-- Modernização geral.
-
-## 13.3. Apresentação visual
-
-Utilize:
-
-- Tabelas.
-- Indicadores percentuais.
-- Barras de progresso, quando suportadas pelo formato do roadmap.
-- Status.
-- Cores.
-- Emojis.
-- Agrupamentos.
-- Links para as issues.
-- Links para reviews.
-- Links para documentação.
-
-A apresentação deve ser intuitiva, organizada e de fácil compreensão.
-
-Utilize uma legenda consistente para os estados.
-
-Exemplo:
-
-- 🟢 Concluído.
-- 🔵 Em andamento.
-- 🟡 Aguardando testes.
-- 🔴 Bloqueado.
-- ⚪ Pendente.
-- 🟠 Necessita revisão.
-
-## 13.4. Evolução contínua
-
-O dashboard deve ser atualizado continuamente conforme as issues forem modificadas.
-
-As métricas devem refletir o estado real das issues, sem percentuais inventados ou estimativas apresentadas como fatos.
-
-Quando possível, automatize a geração dos indicadores a partir dos dados reais do roadmap.
-
-O índice deve permitir identificar rapidamente:
-
-- Onde estamos.
-- O que já foi concluído.
-- O que ainda falta.
-- Quais são os principais bloqueios.
-- Quais áreas estão atrasadas.
-- Quais são as próximas prioridades.
-- Como está evoluindo a modernização.
-
-Inclua também uma seção específica com o escopo completo desta missão e suas metas estratégicas.
-
----
-
-# 14. FASE 12 — ANÁLISE TÉCNICA E PROPOSTAS DE MELHORIA
-
-Além das atividades obrigatórias, faça uma análise crítica de todo o projeto.
-
-Não se limite às soluções atualmente utilizadas.
-
-Investigue oportunidades de modernização, simplificação, otimização e evolução arquitetural.
-
-Todas as propostas devem ser documentadas em um documento específico para análise e aprovação.
-
-## 14.1. Observabilidade: Prometheus, Grafana e componentes próprios
-
-Avalie profundamente:
-
-- Prometheus.
-- Grafana.
-- openwyd-logpipe.
-- openwyd-node-exporter.
-
-Responda às questões:
-
-1. Prometheus e Grafana substituem o openwyd-logpipe?
-2. Prometheus e Grafana substituem o openwyd-node-exporter?
-3. Quais funcionalidades são redundantes?
-4. Quais funcionalidades são complementares?
-5. Existe complexidade desnecessária?
-6. Existem riscos de manutenção?
-7. Quais componentes devemos manter?
-8. Quais componentes devemos remover?
-9. Quais componentes devemos modernizar?
-10. Qual seria a arquitetura ideal para nosso projeto?
-
-Apresente uma recomendação fundamentada.
-
-## 14.2. Serviço db-roles
-
-Analise a real necessidade de manter um serviço separado chamado `db-roles`.
-
-Investigue:
-
-- Qual responsabilidade ele possui.
-- Quais operações executa.
-- Quais dependências possui.
-- Como é utilizado pela infraestrutura.
-- Quais problemas resolve.
-- Quais riscos evita.
-- Se existe dependência de inicialização.
-- Se pode ser substituído por migrations.
-- Se as responsabilidades podem ser incorporadas a outro componente.
-
-Responda:
-
-1. Qual é a real necessidade de utilizar um serviço separado?
-2. Isso poderia ser resolvido diretamente pelas migrations?
-3. Precisamos realmente manter um serviço dedicado?
-4. Por que essa arquitetura foi adotada?
-5. Ela representa a melhor prática para nosso cenário?
-6. Quais são as alternativas?
-7. Quais melhorias podem ser implementadas?
-
-Compare as alternativas considerando segurança, privilégios, inicialização, manutenção, complexidade e confiabilidade.
-
-Não recomende simplesmente remover o serviço sem compreender suas responsabilidades e garantias de segurança.
-
-## 14.3. Propostas gerais de melhoria
-
-Analise o projeto completo e identifique oportunidades adicionais.
-
-Investigue:
-
-- Melhorias arquiteturais.
-- Melhorias de performance.
-- Melhorias de segurança.
-- Simplificação de infraestrutura.
-- Redução de dependências.
-- Melhorias de automação.
-- Modernização de ferramentas.
-- Melhorias de desenvolvimento.
-- Melhorias de observabilidade.
-- Melhorias de UX.
-- Melhorias de manutenção.
-- Melhorias de escalabilidade.
-- Melhorias no processo de release.
-- Melhorias no fluxo de trabalho dos agentes de IA.
-
-Crie um documento específico de propostas de melhoria.
-
-Para cada proposta, apresente:
-
-- Identificação.
-- Área afetada.
-- Problema atual.
-- Justificativa.
-- Solução proposta.
-- Alternativas consideradas.
-- Benefícios.
-- Custos e complexidade.
-- Riscos.
-- Dependências.
-- Prioridade.
-- Impacto esperado.
-- Necessidade de aprovação.
-
-Separe claramente:
-
-- Melhorias obrigatórias.
-- Melhorias recomendadas.
-- Melhorias opcionais.
-- Melhorias experimentais.
-
-Não implemente mudanças arquiteturais relevantes que dependam de aprovação sem antes documentar a proposta.
-
----
-
-# 15. FASE 13 — PESQUISA TÉCNICA E ATUALIZAÇÃO DAS SKILLS
-
-As decisões técnicas devem ser fundamentadas em boas práticas atuais.
-
-Faça pesquisas profundas na internet sempre que a atividade envolver tecnologias, ferramentas, arquiteturas ou bibliotecas cuja evolução possa impactar a decisão.
-
-Pesquise prioritariamente:
-
-- Documentações oficiais.
-- Repositórios oficiais.
-- Guias de arquitetura.
-- Recomendações dos mantenedores.
-- Padrões reconhecidos.
-- Projetos de referência.
-- Estudos técnicos relevantes.
-- Experiências reais de implementação.
-
-Evite depender exclusivamente de artigos antigos, tutoriais desatualizados ou opiniões sem fundamentação.
-
-Para cada área relevante:
-
-1. Identifique as práticas atualmente adotadas.
-2. Compare com as recomendações atuais.
-3. Identifique divergências.
-4. Avalie se a mudança é realmente vantajosa.
-5. Registre as conclusões.
-6. Atualize a skill correspondente.
-7. Utilize a skill atualizada nas implementações seguintes.
-
-As skills devem refletir tanto as boas práticas gerais das tecnologias quanto as decisões específicas do nosso projeto.
-
----
-
-# 16. FASE 14 — REVISÃO TÉCNICA FINAL PRÉ-RELEASE
-
-Após concluir as atividades previstas, execute uma auditoria técnica final antes da release.
-
-Esta revisão deverá abranger o projeto inteiro.
-
-## 16.1. Código e arquitetura
-
-- Código legado.
-- Código morto.
-- Dependências.
-- Organização.
-- Padronização.
-- Arquitetura.
-- Qualidade.
-- Tratamento de erros.
-- Segurança.
 - Performance.
+- Escalabilidade.
+- Testes.
+- Automação.
+- Engenharia reversa.
+- Matemática do jogo.
 
-## 16.2. Banco de dados
+## 13.2. Avaliação de tecnologias
 
-- Normalização.
-- Integridade.
-- Dados.
-- Migrations.
-- Seeds.
-- Índices.
-- Relacionamentos.
-- Consistência.
-- Independência de arquivos TXT e CSV.
+Para cada oportunidade, compare:
 
-## 16.3. Servidor e cliente
-
+- Tecnologia atual.
+- Alternativas.
+- Maturidade.
 - Compatibilidade.
-- Recursos compartilhados.
-- Arquivos.
-- Protocolos.
-- Dependências.
-- Sistemas.
-- Funcionalidades.
-- Integrações.
+- Custo operacional.
+- Complexidade.
+- Benefícios.
+- Riscos.
+- Impacto da migração.
+- Manutenibilidade.
 
-## 16.4. Portal
+Não introduza tecnologias apenas por serem populares.
 
-- Funcionalidades.
-- Interface.
-- Responsividade.
-- Segurança.
-- Acessibilidade.
-- Integrações.
-- Dados.
-- Loja.
-- Área administrativa.
-- Mapa.
-- Documentação.
-- Testes E2E.
+## 13.3. ADRs e decisões arquiteturais
 
-## 16.5. Infraestrutura
+Quando uma decisão tiver impacto arquitetural significativo, registre:
 
-- Docker.
-- Serviços.
+- Contexto.
+- Problema.
+- Alternativas.
+- Decisão.
+- Justificativa.
+- Consequências.
+- Riscos.
+
+## 13.4. Priorização das propostas
+
+Classifique as propostas por:
+
+- Obrigatórias.
+- Alta prioridade.
+- Média prioridade.
+- Baixa prioridade.
+- Experimentais.
+- Futuras.
+
+Crie Issues para as propostas aprovadas e incorpore-as ao roadmap.
+
+Não execute automaticamente mudanças de alto risco sem aprovação.
+
+---
+
+# FASE 14 — PESQUISA TÉCNICA CONTÍNUA E ATUALIZAÇÃO DO CONHECIMENTO
+
+Realize pesquisas aprofundadas para identificar soluções modernas que possam melhorar o ecossistema.
+
+## 14.1. Pesquisa de tecnologias
+
+Investigue tecnologias, bibliotecas, ferramentas, padrões e arquiteturas relevantes para:
+
+- Go.
+- Next.js.
+- TypeScript.
+- Banco de dados.
 - DevOps.
 - CI/CD.
-- GitHub Actions.
-- Monitoramento.
-- Prometheus.
-- Grafana.
-- Logs.
+- Observabilidade.
 - Segurança.
-- Configurações.
+- Testes.
+- Automação.
+- Engenharia reversa.
+- Desenvolvimento de jogos.
+- Matemática computacional.
 
-## 16.6. Testes
+## 14.2. Pesquisa de WYD/WYD2
+
+Continue a pesquisa de referências históricas e técnicas do jogo.
+
+Busque informações que possam ajudar a validar:
+
+- Fórmulas.
+- Atributos.
+- Combate.
+- Skills.
+- Velocidade.
+- Classes.
+- Itens.
+- Mobs.
+- NPCs.
+- Bugs.
+- Balanceamento.
+- Diferenças entre versões.
+
+Cruze as informações externas com as evidências encontradas no projeto.
+
+## 14.3. Atualização das Skills
+
+Atualize as Skills e agentes sempre que novas informações relevantes forem confirmadas.
+
+Evite registrar hipóteses como conhecimento consolidado.
+
+## 14.4. Relatório de pesquisa
+
+Para cada pesquisa relevante, registre:
+
+- Tema.
+- Fontes.
+- Data.
+- Evidências.
+- Conclusões.
+- Limitações.
+- Aplicabilidade.
+- Recomendações.
+- Issues relacionadas.
+
+---
+
+# FASE 15 — AUDITORIA FINAL E PREPARAÇÃO PARA RELEASE
+
+Realize uma revisão consolidada antes de considerar o projeto pronto para release.
+
+## 15.1. Auditoria técnica
+
+Verifique:
+
+- Arquitetura.
+- Código.
+- Banco.
+- Cliente.
+- Servidor.
+- Portal.
+- DevOps.
+- CI/CD.
+- Observabilidade.
+- Segurança.
+- Testes.
+- Documentação.
+- Skills.
+- Agentes.
+- Matemática do jogo.
+- Compatibilidade.
+
+## 15.2. Validação funcional
+
+Execute testes de:
+
+- Inicialização.
+- Integração.
+- Persistência.
+- Comunicação.
+- Autenticação.
+- Autorização.
+- Combate.
+- Skills.
+- Itens.
+- Personagens.
+- NPCs.
+- Mobs.
+- Portal.
+- Launcher.
+- Sistemas administrativos.
+
+Verifique possíveis regressões.
+
+## 15.3. Validação de segurança
+
+Execute as verificações necessárias para identificar:
+
+- Vulnerabilidades.
+- Dependências inseguras.
+- Configurações incorretas.
+- Credenciais expostas.
+- Falhas de autorização.
+- Problemas de comunicação.
+- Riscos de manipulação do cliente.
+- Problemas de integridade.
+
+## 15.4. Release engineering
+
+Revise:
+
+- Versionamento.
+- Changelog.
+- Artifacts.
+- Migrations.
+- Configurações.
+- Deploy.
+- Rollback.
+- Documentação.
+- Compatibilidade.
+- Procedimentos operacionais.
+
+## 15.5. Relatório final
+
+Produza um relatório consolidado contendo:
+
+1. Estado inicial.
+2. Estado atual.
+3. Atividades concluídas.
+4. Issues encerradas.
+5. Issues pendentes.
+6. Melhorias implementadas.
+7. Problemas encontrados.
+8. Riscos conhecidos.
+9. Resultados dos testes.
+10. Resultados de segurança.
+11. Estado da infraestrutura.
+12. Estado do cliente.
+13. Estado do servidor.
+14. Estado do banco.
+15. Estado do portal.
+16. Estado da matemática e do balanceamento.
+17. Débitos técnicos restantes.
+18. Recomendações futuras.
+19. Situação do release.
+
+---
+
+# 16. ORDEM ESTRATÉGICA DE EXECUÇÃO
+
+As fases representam domínios de trabalho e não necessariamente uma sequência rígida em que uma fase precisa estar 100% concluída antes de iniciar a seguinte.
+
+A execução deve respeitar dependências técnicas.
+
+Ordem estratégica recomendada:
+
+1. Auditoria completa e organização do roadmap.
+2. Definição do plano de execução.
+3. Modernização do servidor.
+4. Modernização do banco de dados.
+5. Modernização do CI/CD e DevOps.
+6. Observabilidade e segurança.
+7. Portal web e experiência do usuário.
+8. Engenharia reversa e modernização do cliente.
+9. Organização de IA, FreeBuff, Skills e agentes.
+10. Engenharia reversa matemática, Bug Hunting e balanceamento do WYD.
+11. Documentação e padronização.
+12. Dashboard e métricas.
+13. Propostas técnicas e melhorias estruturais.
+14. Pesquisa técnica contínua.
+15. Auditoria final e preparação do release.
+
+A FASE 10 deve começar com a coleta e análise das evidências disponíveis, podendo avançar em paralelo com as demais fases quando não houver dependências impeditivas.
+
+A documentação deve ser atualizada durante todas as fases, não apenas ao chegar à FASE 11.
+
+Da mesma forma, a segurança, os testes e a observabilidade devem ser considerados continuamente.
+
+---
+
+# 17. PADRÃO DE ENTREGA E CRITÉRIOS GERAIS DE QUALIDADE
+
+Toda atividade deve respeitar os seguintes critérios:
+
+## 17.1. Implementação
+
+- Código consistente.
+- Arquitetura adequada.
+- Ausência de duplicação desnecessária.
+- Tratamento de erros.
+- Segurança.
+- Testabilidade.
+- Documentação.
+- Compatibilidade.
+
+## 17.2. Testes
+
+Executar os testes adequados ao escopo:
 
 - Unitários.
 - Integração.
+- Contratos.
 - E2E.
 - Regressão.
-- Contrato.
-- Segurança.
 - Performance.
+- Segurança.
+- Testes matemáticos.
+- Testes de compatibilidade.
 
-## 16.7. Documentação e governança
+Não declare uma implementação validada sem apresentar evidências.
 
-- MkDocs.
-- Documentação técnica.
-- Manuais.
-- ADRs.
-- Skills.
-- Agentes.
-- Issues.
-- Reviews.
-- Dashboard.
-- Padronização.
+## 17.3. Issues
 
-## 16.8. Validação de release
+Toda Issue deve conter:
 
-- Execute todos os testes aplicáveis.
-- Execute os pipelines.
-- Corrija erros e warnings relevantes.
-- Verifique o estado dos serviços.
-- Valide migrations.
-- Valide os processos de inicialização.
-- Verifique a integridade dos dados.
-- Verifique a compatibilidade.
-- Faça push das alterações.
-- Utilize GitHub CLI para acompanhar as execuções.
-- Confirme que os workflows finalizaram com sucesso.
-- Documente eventuais limitações ou pendências.
-
-A release somente deverá ser considerada tecnicamente pronta quando os critérios de aceitação forem atendidos e as evidências estiverem registradas.
-
-Não esconda pendências para apresentar um resultado artificialmente positivo.
-
----
-
-# 17. ORDEM DE EXECUÇÃO ESTRATÉGICA
-
-Organize o trabalho respeitando a seguinte sequência lógica:
-
-| Fase | Atividade | Prioridade |
-|---|---|---|
-| 01 | Auditoria completa do roadmap | Crítica |
-| 02 | Validação de issues done/ e test/ | Crítica |
-| 03 | Varredura completa do projeto e identificação de gaps | Crítica |
-| 04 | Reorganização das issues, reviews e dependências | Crítica |
-| 05 | Atualização das skills e instruções | Alta |
-| 06 | Auditoria arquitetural do servidor | Alta |
-| 07 | Remoção de legado e modernização do servidor | Alta |
-| 08 | Migração das dependências TXT/CSV para o banco | Alta |
-| 09 | Normalização e enriquecimento do banco | Alta |
-| 10 | Compatibilidade cliente/servidor | Alta |
-| 11 | Modernização da infraestrutura e DevOps | Alta |
-| 12 | Modernização do CI/CD | Alta |
-| 13 | Observabilidade e segurança | Alta |
-| 14 | Modernização e conclusão do portal | Alta |
-| 15 | Documentação e integração MkDocs | Alta |
-| 16 | Engenharia reversa do cliente | Média/Alta |
-| 17 | Planejamento de modernização do cliente | Média/Alta |
-| 18 | Planejamento e desenvolvimento do launcher | Média |
-| 19 | Organização dos arquivos de IA e FreeBuff | Alta |
-| 20 | Dashboard completo do roadmap | Alta |
-| 21 | Propostas de melhoria e decisões arquiteturais | Contínua |
-| 22 | Revisão técnica final pré-release | Crítica |
-
-**Importante:** Esta tabela representa uma sequência estratégica, não uma autorização para ignorar dependências técnicas. Durante a auditoria, ajuste a ordem quando necessário, documentando os motivos.
-
-Atividades independentes podem ser executadas em paralelo quando isso não comprometer a integridade do projeto.
-
----
-
-# 18. CRITÉRIOS GERAIS DE CONCLUSÃO
-
-A missão deverá perseguir os seguintes resultados:
-
-1. Roadmap integralmente auditado e reorganizado.
-2. Issues com estados reais e verificáveis.
-3. Nenhuma pendência conhecida sem registro.
-4. Issues de review funcionando como documentos vivos.
-5. Skills atualizadas e referenciadas nas issues.
-6. Servidor completamente livre de código legado desnecessário.
-7. Servidor independente de consultas a arquivos TXT e CSV operacionais.
-8. Compatibilidade cliente/servidor mapeada e validada.
-9. Banco normalizado, íntegro, documentado e reproduzível.
-10. Registros de itens e skills enriquecidos com informações reais.
-11. Infraestrutura modernizada e padronizada.
-12. CI/CD completo e funcional.
-13. Observabilidade coerente, integrada e segura.
-14. Portal de usuário e administrador completo.
-15. Portal com dados reais e funcionalidades implementadas.
-16. Mapa do jogo modernizado.
-17. Testes unitários, integração e E2E organizados e funcionais.
-18. Documentação oficial e interna corretamente separadas.
-19. Cliente completamente mapeado para modernização.
-20. Dependência ClientPatch_v7662 documentada.
-21. Launcher planejado e integrado à estratégia do projeto.
-22. Estrutura de IA e FreeBuff organizada.
-23. Dashboard do roadmap atualizado.
-24. Skills e boas práticas atualizadas.
-25. Todas as áreas padronizadas.
-26. Propostas de melhorias documentadas.
-27. Revisão técnica pré-release concluída.
-
-Os resultados devem ser comprovados por implementações, testes, documentação e evidências.
-
----
-
-# 19. RELATÓRIO E ACOMPANHAMENTO CONTÍNUO
-
-Durante toda a missão, mantenha o roadmap como fonte central de acompanhamento.
-
-Atualize continuamente:
-
-- Status das issues.
+- Título objetivo.
+- Contexto.
+- Problema.
+- Objetivo.
+- Escopo.
+- Requisitos.
+- Critérios de aceitação.
 - Dependências.
-- Prioridades.
-- Reviews.
-- Documentação.
-- Skills.
-- Indicadores.
-- Dashboard.
-- Evidências.
-- Propostas.
-- Decisões técnicas.
+- Testes.
+- Documentação relacionada.
 
-Ao concluir cada etapa relevante, registre um resumo contendo:
+Evite Issues genéricas que não permitam identificar quando o trabalho estará realmente concluído.
 
-- O que foi analisado.
-- O que foi implementado.
-- O que foi corrigido.
-- Quais issues foram concluídas.
-- Quais issues foram criadas.
-- Quais problemas foram encontrados.
-- Quais testes foram executados.
-- Quais resultados foram obtidos.
-- Quais pendências permanecem.
-- Quais são as próximas atividades.
+## 17.4. Relatórios de progresso
 
-Mantenha o histórico técnico para que qualquer agente consiga compreender o estado atual do projeto e continuar o trabalho sem perder conhecimento.
+Durante a missão, mantenha relatórios com:
+
+- Fase atual.
+- Atividades concluídas.
+- Atividades em andamento.
+- Issues afetadas.
+- Problemas encontrados.
+- Decisões tomadas.
+- Testes realizados.
+- Riscos.
+- Próximas atividades.
+
+## 17.5. Critério de conclusão global
+
+A missão não estará concluída apenas porque todas as Issues foram fechadas.
+
+É necessário comprovar que:
+
+- O roadmap representa o estado real do projeto.
+- A arquitetura está documentada.
+- Os principais débitos técnicos foram tratados ou registrados.
+- O servidor e o cliente possuem compatibilidade validada.
+- O banco está versionado e consistente.
+- Os pipelines são confiáveis.
+- A segurança foi revisada.
+- A observabilidade permite acompanhar o ambiente.
+- O portal está funcional e validado.
+- O conhecimento de engenharia reversa está documentado.
+- A matemática do jogo foi investigada com evidências.
+- Os bugs críticos estão corrigidos ou formalmente registrados.
+- A documentação está atualizada.
+- As ferramentas de IA estão organizadas.
+- Os testes são reproduzíveis.
+- O processo de release é confiável.
 
 ---
 
-# 20. DIRETRIZ FINAL
+# INSTRUÇÃO FINAL AO AGENTE
 
-Esta não é uma missão de simplesmente reorganizar arquivos ou fechar issues.
+Não trate esta missão como uma simples lista de tarefas.
 
-É uma missão de engenharia, auditoria, modernização, padronização e evolução completa do projeto.
+Trate-a como um programa completo de auditoria, engenharia, modernização e evolução de um ecossistema de software e de um jogo online.
 
-Atue como um engenheiro de software responsável pela qualidade técnica global da solução, considerando arquitetura, manutenção, segurança, performance, experiência do usuário, infraestrutura e sustentabilidade do desenvolvimento.
+Comece pela compreensão profunda do estado atual.
 
-Seja crítico com as implementações existentes. Questione decisões arquiteturais quando necessário. Pesquise alternativas. Identifique problemas que não foram percebidos anteriormente.
+Não implemente mudanças sem entender suas consequências.
 
-Não introduza complexidade sem justificativa.
+Não descarte conhecimento existente.
 
-Não mantenha código legado apenas porque já funciona.
+Não invente resultados, métricas, fórmulas ou funcionalidades.
 
-Não implemente soluções improvisadas quando existe uma abordagem tecnicamente superior e viável.
+Não considere hipóteses como fatos.
 
-Não crie funcionalidades sem compreender suas relações com o restante do sistema.
+Não encerre Issues sem evidências.
 
-Não considere uma tarefa concluída sem validação.
+Não deixe a documentação divergir da implementação.
 
-Não deixe documentação desatualizada.
+Não sacrifique compatibilidade, segurança ou integridade dos dados por velocidade de execução.
 
-Não deixe conhecimento importante restrito ao histórico de conversas dos agentes.
+Quando encontrar problemas, investigue a causa raiz.
 
-**O objetivo final é entregar um projeto tecnicamente consistente, moderno, organizado, seguro, totalmente documentado, testável, observável, funcional e preparado para uma release de qualidade profissional.**
+Quando encontrar oportunidades, compare alternativas.
+
+Quando identificar melhorias necessárias, registre-as no roadmap.
+
+Quando implementar, valide.
+
+Quando validar, documente.
+
+Quando concluir um conjunto de 10 Issues, execute uma revisão técnica consolidada antes de prosseguir.
+
+Mantenha o roadmap, o código, os testes, a documentação, as Skills e os agentes alinhados durante toda a missão.
+
+**O resultado esperado é um ecossistema WYD tecnicamente profissional, moderno, sustentável, seguro, observável, documentado e com suas regras internas — incluindo a matemática do jogo — compreendidas, testáveis e evoluíveis.**
