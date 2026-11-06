@@ -15,14 +15,12 @@ func TestPurchaseKingdomCapeRevisionIsSingleWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// O baseline cria `sapphire_balance`, mas nenhum seed insere a linha única
-	// (issue DB-03). Este teste mede a corrida de revisão, não o seed.
-	if _, err := s.pool.Exec(ctx, `INSERT INTO sapphire_balance (singleton) VALUES (TRUE) ON CONFLICT DO NOTHING`); err != nil {
-		t.Fatalf("seed sapphire_balance: %v", err)
-	}
 	quote, err := s.QuoteKingdomCape(ctx)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if quote.Revision != defaultCapeRevision || quote.HekalotiaCost != defaultCapeCost || quote.AkeloniaCost != defaultCapeCost {
+		t.Fatalf("initial quote = %+v, want revision=%d costs=%d/%d", quote, defaultCapeRevision, defaultCapeCost, defaultCapeCost)
 	}
 
 	var wg sync.WaitGroup
@@ -62,6 +60,43 @@ func TestPurchaseKingdomCapeRevisionIsSingleWinner(t *testing.T) {
 	}
 	if updated.HekalotiaCost < minimumCapeCost || updated.HekalotiaCost > maximumCapeCost || updated.AkeloniaCost < minimumCapeCost || updated.AkeloniaCost > maximumCapeCost {
 		t.Fatalf("out-of-range quote: %+v", updated)
+	}
+}
+
+func TestQuoteKingdomCapeRepairsMissingSingleton(t *testing.T) {
+	s, ctx := freshStore(t)
+	accountID, err := s.SaveAccount(ctx, domain.Account{Name: "cape-missing", PassHash: "hash", Characters: []domain.Character{{Slot: 0, Name: "Hero"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.pool.Exec(ctx, `DELETE FROM sapphire_balance`); err != nil {
+		t.Fatalf("delete singleton: %v", err)
+	}
+
+	quote, err := s.QuoteKingdomCape(ctx)
+	if err != nil {
+		t.Fatalf("quote without singleton: %v", err)
+	}
+	if quote.Revision != defaultCapeRevision || quote.HekalotiaCost != defaultCapeCost || quote.AkeloniaCost != defaultCapeCost {
+		t.Fatalf("fallback quote = %+v, want defaults", quote)
+	}
+
+	updated, ok, err := s.PurchaseKingdomCape(ctx, accountID, quote.Revision, kingdomAkelonia, domain.Character{Slot: 0, Clan: kingdomAkelonia, Equip: []domain.Item{{Slot: 15, Index: 546}}})
+	if err != nil {
+		t.Fatalf("purchase without singleton: %v", err)
+	}
+	if !ok {
+		t.Fatal("purchase without singleton was rejected")
+	}
+	if updated.Revision != quote.Revision+1 || updated.HekalotiaCost != defaultCapeCost-1 || updated.AkeloniaCost != defaultCapeCost+1 {
+		t.Fatalf("repaired quote = %+v, want revision=%d costs=%d/%d", updated, quote.Revision+1, defaultCapeCost-1, defaultCapeCost+1)
+	}
+	var rows int
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM sapphire_balance`).Scan(&rows); err != nil {
+		t.Fatalf("count singleton: %v", err)
+	}
+	if rows != 1 {
+		t.Fatalf("sapphire_balance rows = %d, want 1", rows)
 	}
 }
 

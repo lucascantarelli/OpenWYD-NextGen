@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	kingdomHekalotia = 7
-	kingdomAkelonia  = 8
-	minimumCapeCost  = 4
-	maximumCapeCost  = 32
+	kingdomHekalotia    = 7
+	kingdomAkelonia     = 8
+	minimumCapeCost     = 4
+	maximumCapeCost     = 32
+	defaultCapeRevision = 1
+	defaultCapeCost     = 8
 )
 
 // QuoteKingdomCape returns the durable price snapshot used for optimistic purchases.
@@ -22,10 +24,23 @@ func (s *Store) QuoteKingdomCape(ctx context.Context) (domain.KingdomCapeQuote, 
 	var q domain.KingdomCapeQuote
 	err := s.pool.QueryRow(ctx, `SELECT version, hekalotia_cost, akelonia_cost FROM sapphire_balance WHERE singleton`).Scan(
 		&q.Revision, &q.HekalotiaCost, &q.AkeloniaCost)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Defesa para banco restaurado sem a linha: a cotação inicial é a mesma
+		// dos defaults da tabela e a compra abaixo materializa a singleton.
+		return defaultKingdomCapeQuote(), nil
+	}
 	if err != nil {
 		return q, fmt.Errorf("store: quote kingdom cape: %w", err)
 	}
 	return q, nil
+}
+
+func defaultKingdomCapeQuote() domain.KingdomCapeQuote {
+	return domain.KingdomCapeQuote{
+		Revision:      defaultCapeRevision,
+		HekalotiaCost: defaultCapeCost,
+		AkeloniaCost:  defaultCapeCost,
+	}
 }
 
 // PurchaseKingdomCape atomically persists payment/cape state and advances prices.
@@ -35,6 +50,12 @@ func (s *Store) PurchaseKingdomCape(ctx context.Context, accountID, expectedRevi
 		return domain.KingdomCapeQuote{}, false, fmt.Errorf("store: begin kingdom cape purchase: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// A linha pode faltar num banco restaurado antes da migration 0007; o
+	// INSERT ... ON CONFLICT mantém a compra funcionando e serializa a criação.
+	if _, err := tx.Exec(ctx, `INSERT INTO sapphire_balance (singleton) VALUES (TRUE) ON CONFLICT (singleton) DO NOTHING`); err != nil {
+		return domain.KingdomCapeQuote{}, false, fmt.Errorf("store: ensure kingdom cape quote: %w", err)
+	}
 
 	var q domain.KingdomCapeQuote
 	err = tx.QueryRow(ctx, `SELECT version, hekalotia_cost, akelonia_cost FROM sapphire_balance WHERE singleton FOR UPDATE`).Scan(
