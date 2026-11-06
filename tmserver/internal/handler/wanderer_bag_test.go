@@ -49,6 +49,10 @@ func TestWandererBagUnlocksFirstExtraPage(t *testing.T) {
 	if got := updateCarryIndex(carry, wandererBagSlot1); got != itemWandererBag {
 		t.Fatalf("marker slot 60 = %d, want Bolsa do Andarilho", got)
 	}
+	// A ativação tem de confirmar: antes a bolsa saía da mochila em silêncio.
+	if got := readPanel(t, c); got != bagActivatedText {
+		t.Fatalf("aviso = %q, quer %q", got, bagActivatedText)
+	}
 	if got := updateCarryIndex(carry, 0); got != 0 {
 		t.Fatalf("source slot 0 = %d, want consumed", got)
 	}
@@ -77,6 +81,9 @@ func TestWandererBagSecondUseAndMaxBag(t *testing.T) {
 
 	useCarryItem(t, c, 0)
 	expect(t, c, protocol.MsgUpdateCarry)
+	if got := readPanel(t, c); got != bagActivatedText { // confirmação da 1ª bolsa
+		t.Fatalf("aviso = %q, quer %q", got, bagActivatedText)
+	}
 
 	tradeItemFrame(t, c, world.ItemPlaceCarry, 1, world.ItemPlaceCarry, 45, 0)
 	if ty, _, ok := readMaybe(t, c); ok {
@@ -95,8 +102,8 @@ func TestWandererBagSecondUseAndMaxBag(t *testing.T) {
 	expect(t, c, protocol.MsgSendItem)
 
 	useCarryItem(t, c, 0)
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeMaxBag {
-		t.Fatalf("third bag use got %#x ok=%v, want max-bag notice", ty, ok)
+	if got := readNotice(t, c); got != NoticeMaxBag {
+		t.Fatalf("third bag use got %d, want max-bag notice", got)
 	}
 	if ty, _, ok := readMaybe(t, c); ok {
 		t.Fatalf("max-bag use produced extra frame %#x", ty)

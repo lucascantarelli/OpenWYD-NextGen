@@ -85,8 +85,8 @@ func TestGateNoKeyRejected(t *testing.T) {
 	defer c.Close()
 
 	send(t, c, protocol.MsgUpdateItem, (&protocol.MsgUpdateItemBody{ItemID: itemID, State: world.StateOpen}).Encode())
-	if got := noticeCode(t, expect(t, c, protocol.MsgMessageBoxOk)); got != NoticeNoKey {
-		t.Errorf("notice = %d, want NoticeNoKey", got)
+	if got := readPanel(t, c); got != noticeText(NoticeNoKey) {
+		t.Errorf("notice = %q, quer %q", got, noticeText(NoticeNoKey))
 	}
 	if ty, _, ok := readMaybe(t, c); ok && ty == protocol.MsgUpdateItem {
 		t.Error("gate opened without the key")

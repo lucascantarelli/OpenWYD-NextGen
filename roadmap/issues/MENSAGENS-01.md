@@ -1,6 +1,6 @@
 # MENSAGENS-01 — Auditoria das mensagens cliente ↔ servidor
 
-**Fase:** correção in-game · **Depende de:** issue 32 (painel de mensagem) · **Esforço:** M · **Estado:** 🔄 em andamento (fatia 1 entregue em 06/11/2026)
+**Fase:** correção in-game · **Depende de:** issue 32 (painel de mensagem) · **Esforço:** M · **Estado:** 🔄 em andamento (fatias 1 e 2 entregues em 06/11/2026)
 
 ## Objetivo
 
@@ -32,6 +32,30 @@ handler já chamava `NoticeNotEnoughMoney`; o aviso é que sumia no caminho.
 - Efeito colateral **correto**: `_NN_ItemSold` agora chega ao vendedor quando um item sai da loja —
   antes era invisível.
 
+## Fatia 2 (entregue) — o QA in-game apontou o que ainda estava mudo
+
+Relatos: pedra adamantita, âmagos de montaria, esferas da sorte nos Perzens e bolsa do andarilho.
+
+- **Refino (adamantita, beril, tectita, spinner):** o handler já chamava
+  `NoticeRefineSuccess`/`NoticeFailToRefine`; o que faltava era o **texto** (176/76). Com o registro da
+  fatia 1, a mensagem passou a sair no painel visível — nenhuma mudança de fluxo.
+- **Âmagos de montaria:** já falavam por `sendRefineMessage` (`refine_feedback.go`) e
+  `refineDustReject`; conferidos contra 74/75/76/176.
+- **Perzens (místico e arcano):** a troca da esfera da sorte entregava a montaria em silêncio, e sem o
+  item exigido o `return` era mudo. Agora confirma a troca e pede o item (`perzenDoneText`,
+  `perzenNeedText`), ambos por `sendClientMessage` (painel ID 0).
+- **Bolsa do Andarilho:** só o teto das duas bolsas avisava (`NoticeMaxBag`, 531); a ativação não dizia
+  nada. Agora confirma (`bagActivatedText`).
+- **Bônus na mesma linha:** jóia da recuperação sem efeito a limpar e selo do guerreiro (+10 Fama)
+  também confirmam/avisam.
+- **Testes:** `TestWandererBagUnlocksFirstExtraPage` (painel com o texto da bolsa),
+  `TestPerzenMissingItem` (pedido do item), `readNotice` (aceita painel **ou** caixa numérica e
+  traduz o texto de volta para o `Notice` — texto desconhecido reprova). `TestBuyRejectsMissingPrice`
+  e `TestBuyNegativePriceSpeaks` passaram a exigir `_NN_Wrong_Trade_Packet1` em vez de silêncio.
+- Textos que o `Language.txt` não tem (`bagActivatedText`, `perzenDoneText`, `perzenNeedText`,
+  `noCleanseText`, `fameGainedText`) são **de projeto**, curtos, e só informam sucesso — nunca
+  substituem a tabela em recusas.
+
 ## Lacunas conhecidas (a fechar)
 
 | Grupo | Avisos ainda sem texto | Onde |
@@ -56,5 +80,6 @@ o teste `TestNoticeTextCoversShopAndTradeTexts` deve crescer junto.
 
 - [x] Compra na loja pessoal sem gold mostra "Não possui gold suficiente." no cliente.
 - [ ] Todos os `Notice` usados por handler têm texto confirmado (tabela acima zerada).
-- [ ] Nenhum handler recusa uma ação sem responder nada (`return` silencioso revisado).
+- [ ] Nenhum handler recusa uma ação sem responder nada (`return` silencioso revisado) — loja
+  pessoal, compra de NPC, Perzen e bolsa já cobertos; faltam as lacunas da tabela acima.
 - [ ] Avisos de guerra/global conferidos contra `_MSG_MessageChat` e `MSG_MagicTrumpet`.

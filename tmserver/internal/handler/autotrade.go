@@ -79,7 +79,11 @@ func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.
 	}
 	cargo := w.Cargo(s.AccountID)
 	if cargo == nil {
-		return // no warehouse loaded — nothing to sell from
+		// No warehouse loaded — nothing to sell from. Fala em vez de sumir: uma
+		// loja que não abre sem explicar é o defeito que o QA reporta como
+		// "clicou e não aconteceu nada".
+		d.sendClientMessage(w, s, tradeWrongPacket)
+		return
 	}
 
 	// Validate every slot, building the shop; nothing commits until the whole
@@ -199,6 +203,10 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 	cargoItem := sellerCargo.Items[cpos]
 	if m.Tax != int32(seller.AutoTrade.Tax) || m.Price != slot.Price ||
 		!sameItem(m.Item, slot.Item) || !itemsEqual(slot.Item, cargoItem) {
+		// Anti-tamper: a oferta não confere com a loja. O legado fecha o comércio em
+		// silêncio; aqui o jogador recebe _NN_Wrong_Trade_Packet1 (80), senão a
+		// compra recusada parece "o servidor travou".
+		d.sendClientMessage(w, s, tradeWrongPacket)
 		d.removeTrade(w, s)
 		return
 	}

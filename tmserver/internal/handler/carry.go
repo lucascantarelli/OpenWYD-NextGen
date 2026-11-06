@@ -99,6 +99,9 @@ func (d *Dispatcher) useWandererBag(w *world.World, s *world.Session, e *world.E
 	d.sendScore(w, s, e)
 	d.sendEtc(w, s, e)
 	d.sendCarry(w, s, e)
+	// A bag só mudava a capacidade: sem esta linha o jogador não tinha como saber
+	// que a ativação funcionou (a bolsa "sumia" da mochila e nada mais).
+	d.sendClientMessage(w, s, bagActivatedText)
 }
 
 func (d *Dispatcher) expireWandererBags(w *world.World, s *world.Session, e *world.Entity, now int64) {

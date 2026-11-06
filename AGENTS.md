@@ -178,6 +178,7 @@ humano terminar, e só então mexa.
 | Fórmulas (dano, exp, drop, refino) | `docs/migration/game-rules.md` |
 | Contrato de um `_MSG_*` | `docs/migration/handlers/` (58/58) |
 | Fluxos ponta-a-ponta | `docs/migration/flows.md` |
+| Mensagens ao cliente (canais, regra, catálogo aviso→Language.txt, lacunas) | `docs/migration/game-messages.md` |
 | Estado real do que funciona | `docs/migration/SESSION-PRIMER.md` |
 | Comandos in-game e de GM | `docs/game.md` |
 | Histórico de bugs in-game | `docs/migration/ingame-bugs.md` |

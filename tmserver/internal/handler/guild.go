@@ -57,7 +57,7 @@ func (d *Dispatcher) inviteGuild(w *world.World, s *world.Session, _ protocol.He
 		cost = guildSpecialCost
 	}
 	if e.Coin < cost {
-		d.notify(w, s, NoticeNotEnoughCoin)
+		d.notifyf(w, s, NoticeNotEnoughCoin, cost)
 		return
 	}
 
@@ -80,7 +80,7 @@ func (d *Dispatcher) createGuild(w *world.World, s *world.Session, args []byte) 
 	name := strings.TrimSpace(cstr(args))
 	if !validGuildName(name) || e.Guild != 0 || e.Coin < guildCreateCost || (e.Clan != 7 && e.Clan != 8) || e.Citizen == 0 {
 		if e.Coin < guildCreateCost {
-			d.notify(w, s, NoticeNotEnoughCoin)
+			d.notifyf(w, s, NoticeNotEnoughCoin, guildCreateCost)
 		}
 		return
 	}
@@ -132,7 +132,7 @@ func (d *Dispatcher) subcreate(w *world.World, s *world.Session, args []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || s.Mode != world.UserPlay || e.Guild == 0 || e.GuildLevel != guildLeaderLevel || e.Coin < guildSubCost {
 		if e != nil && e.Coin < guildSubCost {
-			d.notify(w, s, NoticeNotEnoughCoin)
+			d.notifyf(w, s, NoticeNotEnoughCoin, guildSubCost)
 		}
 		return
 	}

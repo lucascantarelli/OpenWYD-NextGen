@@ -92,7 +92,7 @@ func (d *Dispatcher) learnSkill(w *world.World, s *world.Session, e *world.Entit
 			return
 		}
 		if e.Coin < eighthSkillCoin {
-			d.notify(w, s, NoticeNotEnoughCoin)
+			d.notifyf(w, s, NoticeNotEnoughCoin, eighthSkillCoin)
 			return
 		}
 	}

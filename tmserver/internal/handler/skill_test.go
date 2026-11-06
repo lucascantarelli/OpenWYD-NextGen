@@ -469,20 +469,20 @@ func TestLearnSkill(t *testing.T) {
 
 	// Learning it again refuses (already learned).
 	send(t, c, protocol.MsgApplyBonus, learnBody(5000))
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeAlreadyLearned {
-		t.Errorf("got %#x/%d, want already-learned notice", ty, noticeCode(t, p))
+	if got := readNotice(t, c); got != NoticeAlreadyLearned {
+		t.Errorf("got %d, want already-learned notice", got)
 	}
 
 	// Another class's skill (Foema index 24 → detail 5024) refuses.
 	send(t, c, protocol.MsgApplyBonus, learnBody(5024))
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeOtherClassSkill {
-		t.Errorf("got %#x/%d, want other-class notice", ty, noticeCode(t, p))
+	if got := readNotice(t, c); got != NoticeOtherClassSkill {
+		t.Errorf("got %d, want other-class notice", got)
 	}
 
 	// The 8th skill (detail 5007) needs the 7 previous ones first.
 	send(t, c, protocol.MsgApplyBonus, learnBody(5007))
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeLearnPrereq {
-		t.Errorf("got %#x/%d, want prereq notice", ty, noticeCode(t, p))
+	if got := readNotice(t, c); got != NoticeLearnPrereq {
+		t.Errorf("got %d, want prereq notice", got)
 	}
 }
 

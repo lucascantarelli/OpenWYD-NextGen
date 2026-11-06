@@ -1359,6 +1359,9 @@ func (d *Dispatcher) useJoiaRecovery(w *world.World, s *world.Session, e *world.
 			d.refreshScore(e)
 			d.sendScore(w, s, e)
 			d.sendAffect(w, s, e)
+		} else {
+			// Nada a limpar: sem aviso, o item era consumido em silêncio.
+			d.sendClientMessage(w, s, noCleanseText)
 		}
 	}
 	consumeOneItem(&e.Carry[src])
@@ -1522,6 +1525,8 @@ func (d *Dispatcher) useSeloDoGuerreiro(w *world.World, s *world.Session, e *wor
 
 	consumeOneItem(&e.Carry[src])
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
+	// +10 de Fama sem retorno visual nenhum: confirmar evita "usei o selo e nada".
+	d.sendClientMessage(w, s, fameGainedText)
 }
 
 const celestialArchLevelReq = 355

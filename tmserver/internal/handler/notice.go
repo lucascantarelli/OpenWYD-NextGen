@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/binary"
+	"fmt"
 	"strings"
 
 	"openwyd-nextgen/tmserver/internal/protocol"
@@ -89,50 +90,124 @@ const (
 	NoticeAlreadyDone
 )
 
-// notify sends a client notification.
-//
-// O aviso vai como **texto** (`MSG_MessagePanel`, HEADER.ID 0), pelo mesmo
-// caminho do `SendClientMessage` legado: é o único formato que o cliente 7662
-// realmente desenha. O corpo numérico antigo (`MSG_MessageBoxOk` com 4 bytes)
-// deixava o `String[96]` vazio — o cliente abria uma caixa em branco, ou nada —,
-// e foi por isso que "comprar sem gold" e dezenas de outras recusas pareciam
-// "não fazer nada" (QA 05/11, loja pessoal 06/11).
-//
-// O código numérico continua sendo o último recurso, só para um aviso que ainda
-// não tem texto confirmado em Language.txt: nesse caso o handler loga em Debug
-// (`notice without text`) para a lacuna aparecer na auditoria em vez de sumir.
+// notify envia um aviso sem valor. Ver notifyf.
 func (d *Dispatcher) notify(w *world.World, s *world.Session, n Notice) {
+	d.notifyf(w, s, n)
+}
+
+// notifyf envia um aviso ao cliente como **texto** (`MSG_MessagePanel`,
+// HEADER.ID 0), pelo caminho do `SendClientMessage` legado: é o único formato
+// que o cliente 7662 desenha. `args` preenche os textos com `%d` (hoje só o
+// Language.txt 204, "Você precisa de %d Gold.").
+//
+// Regra do projeto (docs/migration/game-messages.md): **todo aviso tem texto**. O
+// corpo numérico (`MSG_MessageBoxOk` com 4 bytes) deixava o `String[96]` vazio —
+// o cliente abria uma caixa em branco, ou nada —, e foi por isso que "comprar
+// sem gold" e dezenas de outras recusas pareciam "não fazer nada" (QA 05/11,
+// loja pessoal 06/11). Ele fica só como último recurso, com log em Warn: uma
+// lacuna tem de aparecer no log, não sumir calada.
+func (d *Dispatcher) notifyf(w *world.World, s *world.Session, n Notice, args ...any) {
 	if text := noticeText(n); text != "" {
+		if len(args) > 0 {
+			text = fmt.Sprintf(text, args...)
+		}
 		d.sendClientMessage(w, s, text)
 		return
 	}
-	d.log.Debug("notice without text", "conn", s.Conn, "code", uint32(n))
+	d.log.Warn("aviso sem texto: a caixa numerica e invisivel no cliente 7662",
+		"conn", s.Conn, "code", uint32(n))
 	var b [4]byte
 	binary.LittleEndian.PutUint32(b[:], uint32(n))
 	w.Send(s, protocol.MsgMessageBoxOk, b[:])
 }
 
-// noticeText mapeia cada aviso ao texto de Language.txt. Só entram aqui os
-// textos confirmados na tabela; o resto continua no caminho numérico (invisível)
-// até ser conferido — inventar string é pior que a caixa vazia, porque parece
-// funcionar.
-func noticeText(n Notice) string {
-	switch n {
-	case NoticeNotEnoughMoney:
-		return notEnoughMoney // _NN_Not_Enough_Money (113)
-	case NoticeNoSpaceToTrade:
-		return tradeNoSpace // _NN_You_Have_No_Space_To_Trade (86)
-	case NoticeNotConnected:
-		return partyTargetGone // _NN_Not_Connected (91)
-	case NoticeItemSold:
-		return itemSoldText // _NN_ItemSold (171)
-	case NoticeOnlyVillage:
-		return onlyVillageText // _NN_OnlyVillage (172)
-	case NoticeCantDropHere:
-		return cantDropHereText // _NN_Cant_Drop_Here (117)
-	}
-	return ""
+// noticeTexts é o registro único aviso → texto de
+// tmserver/content/TMsrv/run/Language.txt, nos bytes Windows-1252 da tabela
+// (`\xe3` = ã, `\xe7` = ç, …). O número no comentário é o id do Language.h.
+//
+// Só entram textos copiados da tabela: inventar string é pior que a caixa vazia,
+// porque parece funcionar. Um aviso sem texto fica de fora de propósito e o
+// notifyf loga em Warn — e `TestEveryLiveNoticeHasText` reprova a lacuna.
+//
+// Os códigos marcados obsoletos no bloco de constantes (NoticeDuel*,
+// NoticeReinoCapeRequired) não entram: nada os envia.
+var noticeTexts = map[Notice]string{
+	// Login, conta e seleção de personagem.
+	NoticeVersionMismatch: versionMismatchText,                        // 36
+	NoticeLoginNow:        "Realizando login. Aguarde...",             // 470
+	Notice3WrongPass:      threeWrongPassText,                         // 37
+	NoticeBadPass:         wrongPasswordText,                          // 133
+	NoticeNoAccount:       noAccountText,                              // 131
+	NoticeBlocked:         blockedAccountText,                         // 132
+	NoticeSelectCharacter: "Por favor selecione um personagem.",       // 34
+	NoticeDeletingWait:    "Excluindo personagem. Aguarde...",         // 469
+	NoticeDBError:         "Resultou em falha.",                       // 476
+	NoticeBillingDenied:   "Voc\xea usou todo o tempo de servi\xe7o.", // 126
+
+	// Comércio, grupo e chat.
+	NoticeNotConnected:   partyTargetGone,                                                    // 91
+	NoticeDenyWhisper:    denyWhisper,                                                        // 165
+	NoticeCargoFull:      "N\xe3o \xe9 poss\xedvel armazenar mais que 2 bilh\xf5es de Gold.", // 273
+	NoticeCantDropHere:   cantDropHereText,                                                   // 117
+	NoticeCantAutoTrade:  "N\xe3o \xe9 poss\xedvel durante a auto venda.",                    // 170
+	NoticeOnlyVillage:    onlyVillageText,                                                    // 172
+	NoticeNotEnoughMoney: notEnoughMoney,                                                     // 113
+	NoticeCantGetMore2G:  "N\xe3o \xe9 poss\xedvel receber mais que 2 bilh\xf5es de Gold.",   // 273 (lado de quem recebe)
+	NoticeNoSpaceToTrade: tradeNoSpace,                                                       // 86
+	NoticeItemSold:       itemSoldText,                                                       // 171
+
+	// Itens, refino e montaria.
+	NoticeReqNotMet:      "N\xedvel Insuficiente. Isto n\xe3o pode ser utilizado.",    // 298
+	NoticeCantUseHere:    "N\xe3o est\xe1 dispon\xedvel nesta \xe1rea.",               // 96
+	NoticeCantEatMore:    "N\xe3o \xe9 poss\xedvel comer mais.",                       // 345
+	NoticeOnlyToEquips:   "Poss\xedvel somente com armas e armaduras equipadas.",      // 74
+	NoticeCantRefineMore: "Este item n\xe3o pode ser mais refinado.",                  // 75
+	NoticeFailToRefine:   "Refina\xe7\xe3o falhou.",                                   // 76
+	NoticeRefineSuccess:  "Obteve sucesso na refina\xe7\xe3o.",                        // 176
+	NoticeIncubated:      "Incuba\xe7\xe3o sucedida.",                                 // 253
+	NoticeIncuWaitMore:   "Incuba\xe7\xe3o n\xe3o est\xe1 pronta.",                    // 261
+	NoticeMountLevel:     "Sua montaria cresceu.",                                     // 263
+	NoticeNoEmptySlot:    "N\xe3o h\xe1 espa\xe7o para o Arch. Exclua um personagem.", // 307
+	NoticeMaxBag:         "Voc\xea j\xe1 possui as 2 bolsas ativadas.",                // 531
+	NoticeNoKey:          "Voc\xea n\xe3o possui uma chave.",                          // 79
+	NoticeSetWarp:        "Localiza\xe7\xe3o foi armazenada.",                         // 186
+
+	// Skills e progressão.
+	NoticeOtherClassSkill:     "N\xe3o pode aprender habilidades de outra classe.",                 // 107
+	NoticeNotEnoughSkillPoint: "N\xe3o possui pontos suficientes.",                                 // 108
+	NoticeAlreadyLearned:      "Voc\xea j\xe1 aprendeu essa habilidade.",                           // 109
+	NoticeOnlyOneEighthSkill:  "8\xba Skill pode ser somente da 1\xaa Classe.",                     // 402
+	NoticeLearnPrereq:         "\xc9 necess\xe1rio aprender todas as skills antes da 8\xaa Skill.", // 403
+	NoticeMaxPoint:            "N\xe3o pode colocar mais pontos.",                                  // 105
+	NoticeNotEnoughCoin:       "Voc\xea precisa de %d Gold.",                                       // 204
+
+	// Quests.
+	NoticeAlreadyDone: "Voc\xea j\xe1 completou esta Quest.", // 71
 }
+
+// noticeText devolve o texto do aviso (vazio = sem texto confirmado).
+func noticeText(n Notice) string { return noticeTexts[n] }
+
+// Textos de CONFIRMAÇÃO que o Language.txt não tem. A regra do catálogo (todo
+// texto vem da tabela) vale para recusas, onde o cliente compara string; para
+// confirmar que uma ação deu certo não existe linha na tabela, e ficar calado foi
+// exatamente o defeito relatado no QA ("usei e não avisou nada"):
+//
+//   - bolsa do andarilho: 15 slots a mais, sem nenhum aviso;
+//   - Perzen (místico/arcano): a troca da esfera da sorte entregava a montaria
+//     em silêncio, e sem o item exigido também não dizia nada;
+//   - jóia da recuperação sem nada para limpar;
+//   - selo do guerreiro: +10 de fama sem confirmação.
+//
+// São textos de projeto, curtos, no mesmo encoding do resto (Windows-1252), e
+// nunca são usados para impedir ação — só para informar.
+const (
+	bagActivatedText = "Bolsa do Andarilho ativada: mais 15 espa\xe7os no invent\xe1rio."
+	perzenDoneText   = "Troca realizada: sua recompensa est\xe1 na mochila."
+	perzenNeedText   = "Voc\xea precisa trazer o item exigido por este NPC."
+	noCleanseText    = "Nenhum efeito para remover."
+	fameGainedText   = "Voc\xea ganhou 10 pontos de Fama."
+)
 
 // sendClientMessage mirrors the legacy SendClientMessage (SendFunc.cpp:27-43): a
 // MSG_MessagePanel with HEADER.ID 0. The 7662 client only handles a message

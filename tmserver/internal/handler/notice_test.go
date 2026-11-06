@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net"
 	"testing"
 
@@ -27,6 +28,26 @@ func readPanel(t *testing.T, c net.Conn) string {
 	}
 	t.Fatal("nenhum MSG_MessagePanel entre os frames")
 	return ""
+}
+
+// readNotice lê o próximo aviso e devolve o seu código, aceitando as duas formas
+// (painel de texto — o padrão — e a caixa numérica legada). Substitui as
+// asserções que exigiam MsgMessageBoxOk cru, que passaram a falhar quando os
+// avisos viraram texto visível.
+func readNotice(t *testing.T, c net.Conn) Notice {
+	t.Helper()
+	for i := 0; i < 20; i++ {
+		ty, payload, ok := readMaybe(t, c)
+		if !ok {
+			t.Fatal("nenhum aviso chegou (esperava painel de texto ou caixa numérica)")
+		}
+		switch ty {
+		case protocol.MsgMessagePanel, protocol.MsgMessageBoxOk:
+			return noticeCode(t, payload)
+		}
+	}
+	t.Fatal("nenhum aviso entre os frames")
+	return 0
 }
 
 // TestAutoTradeBuyWithoutGoldShowsMessage reproduz o relato do teste ao vivo de
@@ -79,5 +100,75 @@ func TestNoticeTextCoversShopAndTradeTexts(t *testing.T) {
 		if got := noticeText(n); got != want {
 			t.Errorf("noticeText(%d) = %q, quer %q", uint32(n), got, want)
 		}
+	}
+}
+
+// TestEveryLiveNoticeHasText é a trava da regra "todo aviso tem texto"
+// (docs/migration/game-messages.md): cada código que o servidor realmente envia
+// precisa de uma linha em noticeTexts, senão o cliente 7662 abre uma caixa
+// vazia — o defeito que fez "comprar sem gold" parecer travamento.
+//
+// A lista é explícita porque Go não itera constantes: ao declarar um aviso novo,
+// acrescente-o aqui e ao mapa. Os códigos marcados obsoletos no bloco de
+// constantes ficam de fora.
+func TestEveryLiveNoticeHasText(t *testing.T) {
+	live := map[string]Notice{
+		"VersionMismatch":     NoticeVersionMismatch,
+		"LoginNow":            NoticeLoginNow,
+		"3WrongPass":          Notice3WrongPass,
+		"BadPass":             NoticeBadPass,
+		"NoAccount":           NoticeNoAccount,
+		"Blocked":             NoticeBlocked,
+		"SelectCharacter":     NoticeSelectCharacter,
+		"DeletingWait":        NoticeDeletingWait,
+		"DBError":             NoticeDBError,
+		"BillingDenied":       NoticeBillingDenied,
+		"CantDropHere":        NoticeCantDropHere,
+		"CantAutoTrade":       NoticeCantAutoTrade,
+		"NotConnected":        NoticeNotConnected,
+		"DenyWhisper":         NoticeDenyWhisper,
+		"CargoFull":           NoticeCargoFull,
+		"ReqNotMet":           NoticeReqNotMet,
+		"CantEatMore":         NoticeCantEatMore,
+		"OtherClassSkill":     NoticeOtherClassSkill,
+		"NotEnoughSkillPoint": NoticeNotEnoughSkillPoint,
+		"OnlyOneEighthSkill":  NoticeOnlyOneEighthSkill,
+		"LearnPrereq":         NoticeLearnPrereq,
+		"AlreadyLearned":      NoticeAlreadyLearned,
+		"NotEnoughCoin":       NoticeNotEnoughCoin,
+		"MaxPoint":            NoticeMaxPoint,
+		"OnlyToEquips":        NoticeOnlyToEquips,
+		"CantRefineMore":      NoticeCantRefineMore,
+		"FailToRefine":        NoticeFailToRefine,
+		"RefineSuccess":       NoticeRefineSuccess,
+		"Incubated":           NoticeIncubated,
+		"IncuWaitMore":        NoticeIncuWaitMore,
+		"MountLevel":          NoticeMountLevel,
+		"NoEmptySlot":         NoticeNoEmptySlot,
+		"MaxBag":              NoticeMaxBag,
+		"NoKey":               NoticeNoKey,
+		"CantUseHere":         NoticeCantUseHere,
+		"SetWarp":             NoticeSetWarp,
+		"OnlyVillage":         NoticeOnlyVillage,
+		"NotEnoughMoney":      NoticeNotEnoughMoney,
+		"CantGetMore2G":       NoticeCantGetMore2G,
+		"NoSpaceToTrade":      NoticeNoSpaceToTrade,
+		"ItemSold":            NoticeItemSold,
+		"AlreadyDone":         NoticeAlreadyDone,
+	}
+	for name, n := range live {
+		if got := noticeText(n); got == "" {
+			t.Errorf("Notice%s (%d) sem texto em noticeTexts: o cliente não desenha a caixa numérica", name, uint32(n))
+		}
+	}
+}
+
+// TestNotEnoughCoinCarriesTheAmount garante que o aviso de custo sai com o valor
+// (_DN_D_Cost 204): "Você precisa de %d Gold." sem número não informa nada.
+func TestNotEnoughCoinCarriesTheAmount(t *testing.T) {
+	// O texto é o _DN_D_Cost (204) de Language.txt; o %d tem de ser preenchido.
+	want := "Voc\xea precisa de 30000000 Gold."
+	if got := fmt.Sprintf(noticeText(NoticeNotEnoughCoin), 30000000); got != want {
+		t.Fatalf("formatação do aviso = %q, quer %q", got, want)
 	}
 }

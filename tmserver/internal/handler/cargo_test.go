@@ -46,6 +46,12 @@ func withdrawFrame(t *testing.T, c net.Conn, coin int32) {
 
 // expect drains frames until it sees want, returning that frame's payload. It
 // fails if the stream goes quiet first (the ack never arrived).
+//
+// Desde a padronização das mensagens (docs/migration/game-messages.md) um aviso
+// vai como TEXTO em MSG_MessagePanel com HEADER.ID 0, não mais como a caixa
+// numérica de 4 bytes. Os testes que pedem MsgMessageBoxOk aceitam o painel e o
+// `noticeCode` traduz o texto de volta para o Notice — assim a asserção continua
+// falando em código de aviso, e um texto desconhecido reprova.
 func expect(t *testing.T, c net.Conn, want protocol.Type) []byte {
 	t.Helper()
 	for {
@@ -54,6 +60,9 @@ func expect(t *testing.T, c net.Conn, want protocol.Type) []byte {
 			t.Fatalf("expected %#x, stream went quiet", want)
 		}
 		if ty == want {
+			return payload
+		}
+		if want == protocol.MsgMessageBoxOk && ty == protocol.MsgMessagePanel {
 			return payload
 		}
 	}
@@ -130,8 +139,9 @@ func TestCargoDepositOverflow(t *testing.T) {
 	defer c.Close()
 
 	depositFrame(t, c, 1) // cargo already at the 2G ceiling
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeCargoFull {
-		t.Errorf("overflow got %#x ok=%v; want cargo-full notice", ty, ok)
+	// Aviso padrão: texto de Language.txt (273), não a caixa numérica invisível.
+	if got := readPanel(t, c); got != noticeText(NoticeCargoFull) {
+		t.Errorf("overflow = %q, quer %q", got, noticeText(NoticeCargoFull))
 	}
 }
 

@@ -336,6 +336,22 @@ Grafo da Fase 6:
 
 ## Changelog
 
+- **2026-11-06 (mensagens de jogo: todo aviso tem texto)** — o port respondia parte das recusas com
+  `MSG_MessageBoxOk` de 4 bytes numéricos, que o cliente 7662 **não desenha** (o `String[96]` fica
+  vazio): daí "comprei sem gold e não aconteceu nada". Agora `notice.go` tem um registro único
+  `Notice → texto de Language.txt` cobrindo os 42 códigos vivos, `notifyf` formata os que levam valor
+  (`Você precisa de %d Gold.`, 204 — usado por guilda e 8ª skill) e o fallback numérico loga em Warn
+  para a lacuna aparecer. Recusas que voltavam caladas passaram a falar: anti-tamper da loja pessoal
+  e compra de NPC sem preço (`_NN_Wrong_Trade_Packet1`, 80), loja sem armazém carregado. Trava:
+  `TestEveryLiveNoticeHasText` reprova código novo sem texto. Catálogo, canais (`MessagePanel`,
+  chat, sussurro, painel de EXP, Trombeta) e lacunas conhecidas (grito entre canais, guerras,
+  Batalha Real, quests) em [docs/migration/game-messages.md](docs/migration/game-messages.md).
+  **Segunda leva, do QA in-game:** a pedra adamantita já mandava 176/76 (agora visíveis); Perzen
+  místico/arcano e bolsa do andarilho não diziam **nada** e passaram a confirmar a troca/ativação e a
+  pedir o item exigido; jóia da recuperação sem efeito e selo do guerreiro (+10 Fama) também falam. Os
+  testes de aviso ganharam `readNotice`, que aceita o painel de texto e traduz de volta para o código —
+  nenhuma asserção foi afrouxada.
+
 - **2026-11-06 (DEVOPS-01: nomes e camadas do Docker)** — um nome por coisa: **serviço =
   container = imagem** (`openwyd-nextgen1-tmsrv`, `openwyd-nextgen2-tmsrv`, `openwyd-dbserver`,
   `openwyd-binserver`, `openwyd-webserver`, `openwyd-postgres`, `openwyd-portal`, `openwyd-grafana`,

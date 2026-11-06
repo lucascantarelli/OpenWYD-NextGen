@@ -828,8 +828,8 @@ func TestKingArchRejectsMissingPedraIdeal(t *testing.T) {
 	defer c.Close()
 
 	send(t, c, protocol.MsgQuest, protocol.EncodeStandardParm2(int32(npcID), 1))
-	if ty, _, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk {
-		t.Fatalf("missing Pedra da Imortalidade produced %#x, ok=%v; want rejection notice", ty, ok)
+	if got := readNotice(t, c); got != NoticeReqNotMet {
+		t.Fatalf("missing Pedra da Imortalidade produced %d; want NoticeReqNotMet", got)
 	}
 }
 
@@ -931,8 +931,10 @@ func TestPerzenMissingItem(t *testing.T) {
 	defer c.Close()
 
 	questFrame(t, c, npcID)
-	if ty, _, ok := readMaybe(t, c); ok {
-		t.Errorf("exchange without the item produced %#x; should be a no-op", ty)
+	// A troca continua recusada, mas agora FALA (antes o jogador via o NPC
+	// "não fazer nada"): painel de texto com o pedido do item.
+	if got := readPanel(t, c); got != perzenNeedText {
+		t.Errorf("aviso = %q, quer %q", got, perzenNeedText)
 	}
 }
 

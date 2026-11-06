@@ -764,8 +764,8 @@ func TestUseMagicBeanPaintsEquippedSet(t *testing.T) {
 
 	useMagicBeanFrame(t, c, 1)
 
-	if code := noticeCode(t, expect(t, c, protocol.MsgMessageBoxOk)); code != NoticeRefineSuccess {
-		t.Fatalf("notice = %d, want RefineSuccess", code)
+	if got := readPanel(t, c); got != noticeText(NoticeRefineSuccess) {
+		t.Fatalf("notice = %q, quer %q", got, noticeText(NoticeRefineSuccess))
 	}
 	expect(t, c, protocol.MsgUpdateScore)
 	item := expect(t, c, protocol.MsgSendItem)
@@ -832,8 +832,8 @@ func TestUseMagicBeanAllowsWeaponForModerators(t *testing.T) {
 
 	useMagicBeanFrame(t, c, weaponSlotR)
 
-	if code := noticeCode(t, expect(t, c, protocol.MsgMessageBoxOk)); code != NoticeRefineSuccess {
-		t.Fatalf("notice = %d, want RefineSuccess", code)
+	if got := readPanel(t, c); got != noticeText(NoticeRefineSuccess) {
+		t.Fatalf("notice = %q, quer %q", got, noticeText(NoticeRefineSuccess))
 	}
 	expect(t, c, protocol.MsgUpdateScore)
 	item := expect(t, c, protocol.MsgSendItem)
@@ -1711,7 +1711,7 @@ func TestUsePaintBeanAppliesColorOverWire(t *testing.T) {
 			break
 		}
 		switch ty {
-		case protocol.MsgMessageBoxOk:
+		case protocol.MsgMessageBoxOk, protocol.MsgMessagePanel:
 			if noticeCode(t, payload) != NoticeRefineSuccess {
 				t.Fatalf("notice = %v, want NoticeRefineSuccess", noticeCode(t, payload))
 			}
@@ -1817,8 +1817,8 @@ func TestUsePaintBeanRejectsForbiddenEquipSlot(t *testing.T) {
 
 	sendPaintUse(t, c, 8)
 
-	if ty, payload, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != NoticeOnlyToEquips {
-		t.Fatalf("forbidden slot notice = %#x/%v ok=%v, want NoticeOnlyToEquips", ty, noticeCode(t, payload), ok)
+	if got := readNotice(t, c); got != NoticeOnlyToEquips {
+		t.Fatalf("forbidden slot notice = %d, want NoticeOnlyToEquips", got)
 	}
 	item := expect(t, c, protocol.MsgSendItem)
 	if place, slot, idx := le16(item[0:2]), le16(item[2:4]), le16(item[4:6]); place != world.ItemPlaceCarry || slot != 0 || idx != 3408 {
@@ -1839,8 +1839,8 @@ func TestUsePaintRemoverRejectsWithoutEmptyOrPaintSlot(t *testing.T) {
 
 	sendPaintUse(t, c, 1)
 
-	if ty, payload, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != NoticeCantRefineMore {
-		t.Fatalf("remover reject notice = %#x/%v ok=%v, want NoticeCantRefineMore", ty, noticeCode(t, payload), ok)
+	if got := readNotice(t, c); got != NoticeCantRefineMore {
+		t.Fatalf("remover reject notice = %d, want NoticeCantRefineMore", got)
 	}
 	item := expect(t, c, protocol.MsgSendItem)
 	if place, slot, idx := le16(item[0:2]), le16(item[2:4]), le16(item[4:6]); place != world.ItemPlaceCarry || slot != 0 || idx != 3417 {
@@ -2816,8 +2816,8 @@ func TestUseSilverBarOver2G(t *testing.T) {
 	body := protocol.MsgUseItemBody{SourType: world.ItemPlaceCarry, SourPos: 0}
 	send(t, c, protocol.MsgUseItem, body.Encode())
 
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeCargoFull {
-		t.Fatalf("overflow notice = %#x/%v ok=%v, want NoticeCargoFull", ty, noticeCode(t, p), ok)
+	if got := readNotice(t, c); got != NoticeCargoFull {
+		t.Fatalf("overflow notice = %d, want NoticeCargoFull", got)
 	}
 	item := expect(t, c, protocol.MsgSendItem)
 	if le16(item[2:4]) != 0 || le16(item[4:6]) != 4011 {
@@ -3145,8 +3145,8 @@ func TestUseGemaEstelarBlockedInCity(t *testing.T) {
 	defer c.Close()
 
 	useItemFrame(t, c, 0)
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeCantUseHere {
-		t.Fatalf("notice = %#x/%v ok=%v, want NoticeCantUseHere", ty, noticeCode(t, p), ok)
+	if got := readNotice(t, c); got != NoticeCantUseHere {
+		t.Fatalf("notice = %d, want NoticeCantUseHere", got)
 	}
 	item := expect(t, c, protocol.MsgSendItem)
 	if got := le16(item[4:6]); got != gema {
@@ -3195,8 +3195,8 @@ func TestUsePortalScrollBlockedFromPesadeloSavePoint(t *testing.T) {
 	defer c.Close()
 
 	useItemFrame(t, c, 0)
-	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeCantUseHere {
-		t.Fatalf("notice = %#x/%v ok=%v, want NoticeCantUseHere", ty, noticeCode(t, p), ok)
+	if got := readNotice(t, c); got != NoticeCantUseHere {
+		t.Fatalf("notice = %d, want NoticeCantUseHere", got)
 	}
 	item := expect(t, c, protocol.MsgSendItem)
 	if got := le16(item[4:6]); got != portal {

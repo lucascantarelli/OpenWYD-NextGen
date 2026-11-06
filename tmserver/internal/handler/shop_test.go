@@ -200,9 +200,8 @@ func TestBuyRejectsMissingPrice(t *testing.T) {
 	defer c.Close()
 
 	buyFrame(t, c, shopNPCID, 0, 3)
-	if ty, _, ok := readMaybe(t, c); ok {
-		t.Errorf("missing-price buy produced %#x; should be rejected", ty)
-	}
+	// Recusa que antes voltava calada: o jogador clicava e nada acontecia.
+	expectPanel(t, c, tradeWrongPacket)
 }
 
 // TestBuyNotEnoughMoney: short of gold, the legacy answers _NN_Not_Enough_Money
@@ -220,18 +219,17 @@ func TestBuyNotEnoughMoney(t *testing.T) {
 	}
 }
 
-// TestBuyNegativePriceSilent: the legacy returns without a panel on a negative
-// price (_MSG_Buy.cpp, "if (Price < 0) return").
-func TestBuyNegativePriceSilent(t *testing.T) {
+// TestBuyNegativePriceSpeaks: o legado retorna calado num preço negativo
+// (_MSG_Buy.cpp, "if (Price < 0) return"), mas silêncio no cliente é lido como
+// "o jogo travou" — o port responde _NN_Wrong_Trade_Packet1 (80).
+func TestBuyNegativePriceSpeaks(t *testing.T) {
 	addr, stop := startServerShop(t, shopDB(1000), map[int]int32{1100: -1})
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
 	buyFrame(t, c, shopNPCID, 0, 3)
-	if ty, _, ok := readMaybe(t, c); ok {
-		t.Errorf("negative-price buy produced %#x; should be silent", ty)
-	}
+	expectPanel(t, c, tradeWrongPacket)
 }
 
 func sellFrame(t *testing.T, c net.Conn, targetID, carrySlot int) {

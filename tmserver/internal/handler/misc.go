@@ -1245,8 +1245,11 @@ func (d *Dispatcher) perzenExchange(w *world.World, s *world.Session, npc *world
 	}
 	if slot < 0 {
 		// UNVERIFIED: the original SendSay shows "bring item <name>" dialogue; the
-		// _MSG_NPCQuiz/Say wire format is not captured, so we just no-op for now.
+		// _MSG_NPCQuiz/Say wire format is not captured. Falar pelo painel de texto é
+		// o caminho confirmado (MSG_MessagePanel, ID 0) e resolve o relato de que a
+		// troca da esfera da sorte "não fazia nada".
 		d.log.Info("perzen: player lacks input item", "conn", s.Conn, "want", input)
+		d.sendClientMessage(w, s, perzenNeedText)
 		return
 	}
 	// Consume the input and grant the reward mount with a 30-day expiry
@@ -1258,6 +1261,9 @@ func (d *Dispatcher) perzenExchange(w *world.World, s *world.Session, npc *world
 		ExpiresAt: time.Now().Add(mountExpiryDays * 24 * time.Hour).Unix(),
 	}
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, slot, itemToSel(e.Carry[slot])))
+	// A montaria entra na mochila sem nenhuma confirmação no legado; sem isto a
+	// troca parece que não aconteceu (o ícone demora a aparecer na mochila cheia).
+	d.sendClientMessage(w, s, perzenDoneText)
 	d.log.Info("perzen exchange", "conn", s.Conn, "npc", npc.ID, "input", input, "reward", reward.Index)
 }
 

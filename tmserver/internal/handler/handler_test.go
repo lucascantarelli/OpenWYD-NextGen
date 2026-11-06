@@ -596,12 +596,33 @@ func loginBody(name, pass string, version int32) []byte {
 	return b.Encode()
 }
 
+// noticeCode devolve o código do aviso a partir do corpo do frame. Aceita as duas
+// formas: o painel de TEXTO (padrão desde a padronização das mensagens) e o corpo
+// numérico legado de 4 bytes. O texto é traduzido de volta pelo registro
+// noticeTexts; um texto que não está lá reprova o teste em vez de virar zero.
 func noticeCode(t *testing.T, payload []byte) Notice {
 	t.Helper()
+	if n, ok := noticeFromText(cstr(payload)); ok {
+		return n
+	}
 	if len(payload) < 4 {
 		t.Fatalf("notice payload too short: %d", len(payload))
 	}
 	return Notice(binary.LittleEndian.Uint32(payload))
+}
+
+// noticeFromText inverte noticeTexts. Textos com %d (valor formatado) não entram:
+// esses testes comparam a string, não o código.
+func noticeFromText(text string) (Notice, bool) {
+	if text == "" {
+		return 0, false
+	}
+	for n, t := range noticeTexts {
+		if t == text {
+			return n, true
+		}
+	}
+	return 0, false
 }
 
 // --- tests ---
@@ -804,8 +825,8 @@ func TestWrongModeRejectsSecondLogin(t *testing.T) {
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
 	read(t, c) // CNFAccountLogin → now in SELCHAR
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
-	if ty, p := read(t, c); ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeLoginNow {
-		t.Errorf("second login: got %#x/%d, want login-now notice", ty, noticeCode(t, p))
+	if got := readPanel(t, c); got != noticeText(NoticeLoginNow) {
+		t.Errorf("second login: got %q, quer %q", got, noticeText(NoticeLoginNow))
 	}
 }
 
@@ -1162,8 +1183,8 @@ func TestCharacterLoginBillingDenied(t *testing.T) {
 	var body protocol.MsgCharacterLoginBody
 	body.Slot = 0
 	send(t, c, protocol.MsgCharacterLogin, body.Encode())
-	if ty, p := read(t, c); ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeBillingDenied {
-		t.Errorf("got %#x/%d, want billing-denied notice", ty, noticeCode(t, p))
+	if got := readPanel(t, c); got != noticeText(NoticeBillingDenied) {
+		t.Errorf("got %q, quer %q", got, noticeText(NoticeBillingDenied))
 	}
 }
 
@@ -1176,7 +1197,7 @@ func TestCharacterLoginBadSlot(t *testing.T) {
 	var body protocol.MsgCharacterLoginBody
 	body.Slot = 9 // out of [0,4)
 	send(t, c, protocol.MsgCharacterLogin, body.Encode())
-	if ty, p := read(t, c); ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeSelectCharacter {
-		t.Errorf("got %#x/%d, want select-character notice", ty, noticeCode(t, p))
+	if got := readPanel(t, c); got != noticeText(NoticeSelectCharacter) {
+		t.Errorf("got %q, quer %q", got, noticeText(NoticeSelectCharacter))
 	}
 }

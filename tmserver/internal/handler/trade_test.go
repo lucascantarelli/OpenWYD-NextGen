@@ -307,7 +307,7 @@ func TestTradeNoRoomRollsBack(t *testing.T) {
 	readForwarded(t, b)
 	sendTrade(t, b, tradeBody(1, world.Item{}, 0, 0, true))
 
-	if n := noticeCode(t, expectType(t, b, protocol.MsgMessageBoxOk)); n != NoticeNoEmptySlot {
+	if n := readNotice(t, b); n != NoticeNoEmptySlot {
 		t.Fatalf("B notice = %d, want NoticeNoEmptySlot", n)
 	}
 	expectType(t, b, protocol.MsgQuitTrade)

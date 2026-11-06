@@ -649,8 +649,8 @@ func TestWhisperBlocked(t *testing.T) {
 	}
 
 	whisperFrame(t, a, "HeroB", "hi")
-	if ty, p, ok := readMaybe(t, a); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeDenyWhisper {
-		t.Errorf("got %#x/%d, want deny-whisper notice", ty, noticeCode(t, p))
+	if got := readPanel(t, a); got != noticeText(NoticeDenyWhisper) {
+		t.Errorf("got %q, want deny-whisper text %q", got, noticeText(NoticeDenyWhisper))
 	}
 }
 

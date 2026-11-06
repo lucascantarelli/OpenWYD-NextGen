@@ -87,10 +87,14 @@ func (d *Dispatcher) buy(w *world.World, s *world.Session, _ protocol.Header, pa
 	price, ok := d.itemPrices[int(item.Index)]
 	if !ok || price < 0 || price > e.Coin {
 		d.log.Info("buy denied", "conn", s.Conn, "item", item.Index, "price", price, "gold", e.Coin)
-		// Only the gold check answers (_MSG_Buy.cpp:147-151); a negative price
-		// returns in silence there, and a missing price has no legacy path.
-		if ok && price >= 0 {
+		// Só a falta de gold responde no legado (_MSG_Buy.cpp:147-151); preço
+		// negativo e item sem preço voltavam em silêncio. Aqui os três casos falam:
+		// o jogador precisa saber que a compra foi recusada, não que o NPC travou.
+		switch {
+		case ok && price >= 0:
 			d.sendClientMessage(w, s, notEnoughMoney)
+		default:
+			d.sendClientMessage(w, s, tradeWrongPacket)
 		}
 		return
 	}
