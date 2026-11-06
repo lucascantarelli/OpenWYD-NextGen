@@ -1,13 +1,15 @@
-# mTLS overlay for the internal gRPC links (Fase 7). Apply on top of the base
-# compose AFTER generating dev certs (`make certs`):
+# Overlay de mTLS para os links gRPC internos (Fase 7). Aplique sobre a base
+# DEPOIS de gerar os certificados de desenvolvimento (`make certs`):
 #
-#   docker compose -f docker-compose.yaml -f docker-compose.mtls.yaml up --build
+#   docker compose -f docker-compose.yaml -f docker-compose.override.yaml \
+#                  -f docker-compose.mtls.yaml up -d --build
 #
-# The shared server cert carries SANs for both dbserver and binserver, so
-# tmServer's client verifies each by its dial authority (no ServerName override
-# needed). Servers require a valid client cert (RequireAndVerifyClientCert).
+# O certificado de servidor carrega SANs com os nomes de serviço do compose
+# (`openwyd-dbserver`, `openwyd-binserver`, `openwyd-webserver`), então o tmServer
+# verifica cada peer pela authority do dial, sem `W2PP_TLS_SERVER_NAME`. Os
+# servidores exigem certificado de cliente válido (RequireAndVerifyClientCert).
 services:
-  dbserver:
+  openwyd-dbserver:
     environment:
       W2PP_TLS_CERT: /certs/server.crt
       W2PP_TLS_KEY: /certs/server.key
@@ -15,7 +17,7 @@ services:
     volumes:
       - ./certs:/certs:ro
 
-  binserver:
+  openwyd-binserver:
     environment:
       W2PP_TLS_CERT: /certs/server.crt
       W2PP_TLS_KEY: /certs/server.key
@@ -23,7 +25,7 @@ services:
     volumes:
       - ./certs:/certs:ro
 
-  webserver:
+  openwyd-webserver:
     environment:
       W2PP_TLS_CERT: /certs/server.crt
       W2PP_TLS_KEY: /certs/server.key
@@ -31,7 +33,17 @@ services:
     volumes:
       - ./certs:/certs:ro
 
-  tmserver:
+  # Os dois canais usam o MESMO certificado de cliente: o dial deles é para os
+  # três servidores acima, e o overlay vale para qualquer canal.
+  openwyd-nextgen1-tmsrv:
+    environment:
+      W2PP_TLS_CERT: /certs/client.crt
+      W2PP_TLS_KEY: /certs/client.key
+      W2PP_TLS_CA: /certs/ca.crt
+    volumes:
+      - ./certs:/certs:ro
+
+  openwyd-nextgen2-tmsrv:
     environment:
       W2PP_TLS_CERT: /certs/client.crt
       W2PP_TLS_KEY: /certs/client.key

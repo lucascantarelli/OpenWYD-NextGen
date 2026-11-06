@@ -22,31 +22,33 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  - job_name: tmserver
+  # Nomes de serviço do compose (docker-compose.yaml): container = serviço =
+  # imagem. Os dois canais são jobs separados porque a porta INTERNA é a mesma.
+  - job_name: nextgen1-tmsrv
     static_configs:
-      - targets: ["tmserver:9101"]
+      - targets: ["openwyd-nextgen1-tmsrv:9101"]
 
   # Segundo canal (/srv): mesmo binário, ServerIndex 1. Sem ele o alvo fica DOWN
-  # e é assim que o operador vê que o canal 1 não subiu.
-  - job_name: tmserver2
+  # e é assim que o operador vê que o canal 2 não subiu.
+  - job_name: nextgen2-tmsrv
     static_configs:
-      - targets: ["tmserver2:9101"]
+      - targets: ["openwyd-nextgen2-tmsrv:9101"]
 
   - job_name: dbserver
     static_configs:
-      - targets: ["dbserver:9102"]
+      - targets: ["openwyd-dbserver:9102"]
 
   - job_name: binserver
     static_configs:
-      - targets: ["binserver:9103"]
+      - targets: ["openwyd-binserver:9103"]
 
   - job_name: webserver
     static_configs:
-      - targets: ["webserver:9104"]
+      - targets: ["openwyd-webserver:9104"]
 
   # Exportador do host. Em Docker Desktop/Windows ele mede os sistemas de
   # arquivos da VM Linux do Docker, não o volume C: — ver a seção
   # "Observabilidade" em docs/migration/config-ops.md.
   - job_name: node
     static_configs:
-      - targets: ["node-exporter:9100"]
+      - targets: ["openwyd-node-exporter:9100"]

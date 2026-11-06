@@ -46,7 +46,7 @@ Antes de abrir o cliente, rode o que não precisa dele:
 ```bash
 # 1. login headless (prova protocolo, versão e credencial)
 MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" \
-  -e W2PP_E2E_ADDR=tmserver:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 \
+  -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 \
   -e W2PP_E2E_VERSION=12000 golang:1.26-alpine \
   sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
 

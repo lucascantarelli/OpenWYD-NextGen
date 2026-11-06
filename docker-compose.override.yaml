@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Override de DESENVOLVIMENTO — carregado automaticamente por `docker compose up`
+# (o Compose aplica `docker-compose.override.yaml` sobre a base sem precisar de
+# `-f`). Aqui ficam só as portas publicadas e nada de regra de negócio: produção
+# sobe a base pura (`-f docker-compose.yaml`), sem porta aberta no host.
+#
+# Duas regras de porta, medidas no cliente 7662 (docs/migration/canais.md §7.1):
+#   - o jogo usa SEMPRE 8281/TCP e o status :80; a porta interna não importa;
+#   - o `serverlist.bin` guarda só o HOST, então canais no mesmo host precisam de
+#     IPs diferentes — daí as publicações em 192.168.100.3/.4 além do loopback.
+#
+# Se os IPs 192.168.100.3/.4 não existirem na sua máquina, `up` falha com
+# "cannot assign requested address": crie-os (docs/migration/canais.md §7.1) ou
+# comente as quatro linhas correspondentes.
+services:
+  openwyd-postgres:
+    # Publicado só em loopback para ferramentas do host (VS Code/DBeaver/pgAdmin).
+    # Nunca use 0.0.0.0: este Postgres é de desenvolvimento e a senha é a do compose.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  openwyd-dbserver:
+    ports:
+      - "127.0.0.1:9102:9102"       # métricas/health (Prometheus)
+
+  openwyd-binserver:
+    ports:
+      - "127.0.0.1:9103:9103"       # métricas/health (Prometheus)
+
+  openwyd-webserver:
+    # Publicado para ferramentas do host (grpcurl, probes); o portal fala com ele
+    # pela rede do compose em openwyd-webserver:7600.
+    ports:
+      - "127.0.0.1:7600:7600"
+      - "127.0.0.1:9104:9104"       # métricas/health (Prometheus)
+
+  openwyd-portal:
+    ports:
+      - "127.0.0.1:3000:3000"       # UI de administração
+
+  openwyd-nextgen1-tmsrv:
+    # Canal 1: loopback para teste local + IP do canal para o cliente real.
+    ports:
+      - "127.0.0.1:8281:8281"       # TMSrv CPSock (jogo)
+      - "127.0.0.1:80:80"           # status serv00.htm
+      - "192.168.100.3:8281:8281"   # jogo — canal 0
+      - "192.168.100.3:80:80"       # status — canal 0
+      - "127.0.0.1:9101:9101"       # métricas/health (Prometheus)
+
+  openwyd-nextgen2-tmsrv:
+    # Canal 2: mesma porta interna 8282; no loopback usa 8282 (é o que os testes
+    # e2e e o `make test-channel` esperam) e no IP do canal usa 8281, porque o
+    # cliente disca 8281 sempre.
+    ports:
+      - "127.0.0.1:8282:8282"       # jogo — loopback (teste)
+      - "127.0.0.1:8080:8080"       # status — loopback (teste)
+      - "192.168.100.4:8281:8282"   # jogo — canal 1
+      - "192.168.100.4:80:8080"     # status — canal 1
+      - "127.0.0.1:9111:9101"       # métricas/health — canal 1
+
+  openwyd-prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"       # UI/API do Prometheus
+
+  openwyd-grafana:
+    ports:
+      - "127.0.0.1:3001:3000"       # 3000 é do portal; 3001 é o Grafana
+
+  openwyd-node-exporter:
+    ports:
+      - "127.0.0.1:9100:9100"
+
+  openwyd-mkdocs:
+    ports:
+      - "127.0.0.1:8000:8000"

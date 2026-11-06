@@ -20,15 +20,21 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 
-/** Whitelist única: nada de serviço vindo do cliente sem validação. */
+/**
+ * Whitelist única: nada de serviço vindo do cliente sem validação.
+ *
+ * Os nomes são os do compose (docker-compose.yaml), onde serviço = container =
+ * imagem. Como o `container_name` é explícito, o mesmo nome vale para o logpipe
+ * (que casa por nome de container) e para o `docker logs` do modo CLI.
+ */
 export const SERVICES = [
-  "tmserver",
-  "tmserver2",
-  "dbserver",
-  "binserver",
-  "webserver",
-  "db",
-  "portal",
+  "openwyd-nextgen1-tmsrv",
+  "openwyd-nextgen2-tmsrv",
+  "openwyd-dbserver",
+  "openwyd-binserver",
+  "openwyd-webserver",
+  "openwyd-postgres",
+  "openwyd-portal",
 ] as const;
 export type ServiceName = (typeof SERVICES)[number];
 

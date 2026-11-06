@@ -30,7 +30,7 @@ MODE=${1:-all}
 PROJECT=${W2PP_E2E_PROJECT:-$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-')}
 NETWORK=${W2PP_E2E_NETWORK:-${PROJECT}_default}
 GOIMAGE=${W2PP_E2E_GOIMAGE:-golang:1.26-alpine}
-TMIMAGE=${W2PP_E2E_TMIMAGE:-${PROJECT}-tmserver}
+TMIMAGE=${W2PP_E2E_TMIMAGE:-openwyd-nextgen1-tmsrv}
 TOWER_CONTAINER=w2pp-e2e-tower
 TOWER_PORT=8281
 
@@ -111,7 +111,7 @@ run_go_test() {
 	docker run --rm \
 		-v "$PWD":/src -v w2pp-gocache:/go/pkg/mod -w /src \
 		--network "$NETWORK" \
-		-e W2PP_E2E_ADDR="${W2PP_E2E_ADDR:-tmserver:8281}" \
+		-e W2PP_E2E_ADDR="${W2PP_E2E_ADDR:-openwyd-nextgen1-tmsrv:8281}" \
 		-e W2PP_E2E_ACCOUNT="${W2PP_E2E_ACCOUNT:-test}" \
 		-e W2PP_E2E_PASSWORD="${W2PP_E2E_PASSWORD:-test123}" \
 		-e W2PP_E2E_ACCOUNT2="${W2PP_E2E_ACCOUNT2:-}" \
@@ -201,7 +201,7 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "tower" ]; then
 		-e TZ="$ZONE" \
 		-v "$PWD/tmserver/content":/content:ro \
 		"$TMIMAGE" \
-		-addr ":${TOWER_PORT}" -dbserver dbserver:7514 -binserver binserver:3000 \
+		-addr ":${TOWER_PORT}" -dbserver openwyd-dbserver:7514 -binserver openwyd-binserver:3000 \
 		-content /content -status-addr :80 -client-version 12000 -newbie-event >/dev/null
 
 	echo "==> Waiting for the tower tmserver to accept connections…"

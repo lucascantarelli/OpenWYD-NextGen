@@ -33,7 +33,8 @@ describe("trace", () => {
     const md = traceMetadata("texto livre\ncom quebra");
     const got = md.get(TRACE_HEADER);
     expect(got).toHaveLength(1);
-    expect(validTraceId(got[0])).toBe(true);
+    // get() devolve MetadataValue (string | Buffer); o header é sempre texto.
+    expect(validTraceId(got?.[0]?.toString())).toBe(true);
   });
 
   it("promisify manda o trace_id recebido no metadata da RPC", async () => {
@@ -73,6 +74,7 @@ describe("trace", () => {
     await promisify(fn)({});
     const got = seen?.get(TRACE_HEADER);
     expect(got).toHaveLength(1);
-    expect(validTraceId(got[0])).toBe(true);
+    // get() devolve MetadataValue (string | Buffer); o header é sempre texto.
+    expect(validTraceId(got?.[0]?.toString())).toBe(true);
   });
 });

@@ -50,7 +50,7 @@ versionado, e `.env.example` documenta cada chave com o seu default:
 
 ```bash
 cp .env.example .env                                   # primeira vez
-W2PP_RATES_EDITING=true docker compose up -d tmserver   # o shell vence o arquivo
+W2PP_RATES_EDITING=true docker compose up -d openwyd-nextgen1-tmsrv   # o shell vence o arquivo
 ```
 
 Nenhuma chave é obrigatória: as flags `-x` dos binários usam `W2PP_X` como default e o argumento de

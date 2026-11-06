@@ -77,7 +77,7 @@ Servidor roda nesta máquina Linux; o cliente real roda no **Windows do usuário
 
 ```bash
 docker compose up -d --build            # sobe tudo (db, dbserver, binserver, tmserver)
-docker compose run --rm dbserver seed-account -name test -pass test123   # conta de teste
+docker compose run --rm openwyd-dbserver seed-account -name test -pass test123   # conta de teste
 docker compose logs --since 2m tmserver # logs (todo pacote logado: "recv packet type=0x....")
 ```
 

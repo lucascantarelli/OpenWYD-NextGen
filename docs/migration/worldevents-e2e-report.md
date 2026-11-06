@@ -151,7 +151,7 @@ O que os testes acima **não** conseguem afirmar é o lado da renderização. Co
 ```bash
 ./scripts/run-local.sh
 docker compose exec db psql -U postgres -c "UPDATE account SET role='admin' WHERE name='test'"
-docker compose run --rm dbserver seed-account -name test2 -pass test123   # snapshot de login
+docker compose run --rm openwyd-dbserver seed-account -name test2 -pass test123   # snapshot de login
 
 ./scripts/e2e-worldevents.sh weather
 ./scripts/e2e-worldevents.sh newbie

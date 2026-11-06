@@ -106,7 +106,7 @@ Sem Go no host, rode dentro do container (ver skill `wyd-testing-bots`).
 |---------|-----------|----------|
 | Servidor não aparece na lista | `serverlist.bin` foi sobrescrito? `.remote_serverlist.bin` mudou de data? | regenerar e não abrir o launcher |
 | Aparece, mas "servidor em manutenção"/sem status | `curl http://<IP>/serv00.htm` do host do cliente | liberar porta 80, conferir IP |
-| Trava em "conectando" | `docker compose logs tmserver` mostra `recv packet type=0x020d`? | se não mostra, TCP 8281 bloqueado |
+| Trava em "conectando" | `docker compose logs openwyd-nextgen1-tmsrv` mostra `recv packet type=0x020d`? | se não mostra, TCP 8281 bloqueado |
 | Cai após o login, com `0x102` no log | `got=` vs `want=` | alinhar `-client-version` |
 | Loga, escolhe personagem e o cliente fecha | falta template de classe / `CNFCharacterLogin` sem BaseMob | conferir `tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` e log `base mob templates loaded` |
 | Personagem entra mas sem equip visual | BaseMob não carregado (fallback relacional) | mesmo caminho acima |

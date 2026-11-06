@@ -121,7 +121,7 @@ logs:
 
 # psql no banco de dev (superusuário do compose).
 db-psql:
-	docker exec -it openwyd-db-1 psql -U postgres -d postgres
+	docker exec -it openwyd-postgres psql -U postgres -d postgres
 
 # Verificador do `down` do baseline (DB-02): derruba o schema do banco vivo — só
 # rode contra banco descartável. O caminho de CI é `make test-db` (TestBaselineDown).
@@ -144,10 +144,11 @@ test-e2e:
 	go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
 
 # Troca de canal real: login+seleção no canal 1, /srv 2, token e login no canal 2.
-# O canal 2 é publicado em 192.168.100.4:8281 (-> :8282 no container).
+# Default = loopback, que o override de dev publica (127.0.0.1:8281 e :8282). Para
+# exercitar o caminho do cliente real, use W2PP_E2E_ADDR2=192.168.100.4:8281.
 test-channel:
 	W2PP_E2E_ADDR=$${W2PP_E2E_ADDR:-127.0.0.1:8281} \
-	W2PP_E2E_ADDR2=$${W2PP_E2E_ADDR2:-192.168.100.4:8281} \
+	W2PP_E2E_ADDR2=$${W2PP_E2E_ADDR2:-127.0.0.1:8282} \
 	W2PP_E2E_ACCOUNT=$${W2PP_E2E_ACCOUNT:-test} \
 	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
 	W2PP_E2E_SLOT=$${W2PP_E2E_SLOT:-0} \
@@ -180,8 +181,8 @@ portal-build:
 # reinicia. É o alvo para publicar mudanças do portal no ambiente local; para
 # subir/atualizar a stack inteira (e semear a conta de teste) use run-local.
 portal-image:
-	docker compose build portal logpipe
-	docker compose up -d portal logpipe
+	docker compose build openwyd-portal openwyd-logpipe
+	docker compose up -d openwyd-portal openwyd-logpipe
 
 # Generate gRPC code from api/ (requires protoc + protoc-gen-go / protoc-gen-go-grpc
 # on PATH; install with `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`

@@ -37,7 +37,7 @@ liga/desliga por execução continua valendo:
 
 ```bash
 cp .env.example .env                                 # primeira vez
-W2PP_RATES_EDITING=true docker compose up -d tmserver  # só nesta subida
+W2PP_RATES_EDITING=true docker compose up -d openwyd-nextgen1-tmsrv  # só nesta subida
 ```
 
 Precedência em toda a stack:
@@ -62,11 +62,65 @@ os geradores e materializa as entidades a partir dela, e sem `-dbserver`/`-conte
 NPCs. O portal tem catálogo próprio em `portal/.env.example` para rodar no host com
 `make portal-dev`.
 
-O `docker-compose.dev.yaml` (hot-reload do tmserver com `go run`) lê o **mesmo** `.env`, mas só a
-senha do Postgres se aplica: aquele recorte sobe sem `-dbserver` e sem `-content`, então os
-overlays `W2PP_*_EDITING` ficam de fora de propósito — com eles ligados o boot falha com
+O hot-reload do tmserver não tem mais compose próprio (o antigo `docker-compose.dev.yaml` foi
+removido na DEVOPS-01): suba só o banco com `docker compose up -d openwyd-postgres` e rode
+`make run` (`go run ./tmserver/cmd/tmserver`). Esse recorte não passa `-dbserver`/`-content`, então
+os overlays `W2PP_*_EDITING` ficam de fora de propósito — com eles ligados o boot falha com
 `-teleport-editing requires -dbserver (config source)`. Sem catálogo o mundo sobe **sem NPCs**: é o
 recorte de desenvolvimento, não uma topologia jogável.
+
+## 0.0 Camadas do compose e padrão de nomes (DEVOPS-01)
+
+Um nome por coisa: **serviço = container = imagem**, para `docker ps` não ter apelido genérico. As
+imagens de terceiro mantêm o nome upstream (`postgres`, `prom/prometheus`), porque renomear o que
+não é nosso só cria divergência com a doc do fornecedor.
+
+| Serviço / container | Imagem | Papel |
+|---|---|---|
+| `openwyd-nextgen1-tmsrv` | `openwyd-nextgen1-tmsrv:latest` | canal 1 (ServerIndex 0), CPSock 8281 |
+| `openwyd-nextgen2-tmsrv` | `openwyd-nextgen2-tmsrv:latest` | canal 2 (ServerIndex 1), CPSock 8282 |
+| `openwyd-dbserver` | `openwyd-dbserver:latest` | persistência gRPC 7514 |
+| `openwyd-binserver` | `openwyd-binserver:latest` | billing gRPC 3000 |
+| `openwyd-webserver` | `openwyd-webserver:latest` | web-api gRPC 7600 |
+| `openwyd-postgres` | `postgres:17-alpine` | banco |
+| `openwyd-db-roles` | `postgres:17-alpine` | one-shot das roles (DB-01) |
+| `openwyd-portal` | `openwyd-portal:latest` | Next.js 3000 |
+| `openwyd-logpipe` | `openwyd-logpipe:latest` | logs por SSE |
+| `openwyd-prometheus` | `prom/prometheus:v3.5.0` | métricas (perfil `monitoring`) |
+| `openwyd-grafana` | `grafana/grafana:12.2.0` | dashboards (perfil `monitoring`) |
+| `openwyd-node-exporter` | `prom/node-exporter:v1.9.1` | disco do host (perfil `monitoring`) |
+| `openwyd-mkdocs` | `openwyd-mkdocs:latest` | site de docs (perfil `docs`) |
+
+Três arquivos, cada um com um papel, sem duplicar definição:
+
+| Arquivo | Camada | O que acrescenta |
+|---|---|---|
+| `docker-compose.yaml` | base | serviço/imagem/comando, healthchecks, dependências, volumes. **Nenhuma porta publicada** |
+| `docker-compose.override.yaml` | dev (automático) | publica portas (loopback + IPs de canal `192.168.100.3/.4`) |
+| `docker-compose.mtls.yaml` | opcional | certificados de cliente/servidor nos links gRPC |
+
+```bash
+docker compose up -d                    # base + override (dev)
+docker compose --profile monitoring up -d
+docker compose -f docker-compose.yaml up -d      # produção: sem porta no host
+docker compose -f docker-compose.yaml -f docker-compose.override.yaml \
+               -f docker-compose.mtls.yaml up -d --build   # mTLS local
+```
+
+**Ordem de subida é declarada, não implícita.** `depends_on` com `condition:` e healthcheck de
+verdade em cada serviço:
+
+- `openwyd-postgres` → healthcheck `pg_isready`;
+- `openwyd-db-roles` (one-shot) → `service_completed_successfully` antes de dbserver/webserver;
+- `openwyd-dbserver`/`openwyd-webserver` → depois do Postgres saudável e das roles;
+- `openwyd-nextgen{1,2}-tmsrv` → só com dbserver e binserver **saudáveis** (não `started`);
+- `openwyd-portal` → depois de webserver e logpipe saudáveis;
+- `openwyd-grafana` → depois do Prometheus saudável.
+
+Os serviços Go são `distroless` (sem shell, sem `wget`), então o healthcheck é o próprio binário:
+`CMD ["/app", "healthcheck"]` consulta `http://127.0.0.1:<porta>/healthz` e sai 0/1
+(`internal/metrics/healthcheck.go`; a porta vem de `W2PP_METRICS_ADDR`, default 9101–9104).
+Isso evita copiar `grpc_health_probe` e mantém a imagem mínima.
 
 ## 0.1 Segredos: gate, rotação e restore
 

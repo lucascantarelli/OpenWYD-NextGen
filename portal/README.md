@@ -93,7 +93,7 @@ docker compose up -d --build portal   # http://localhost:3000
 
 A imagem (`portal/Dockerfile`) usa o output `standalone` do Next. O contexto de build é a **raiz do
 repositório** (não `portal/`) porque a imagem precisa de `api/web/v1/web.proto`. No container,
-`WEB_API_ADDR=webserver:7600`, `W2PP_CONTENT=/Release` e `AUDIT_LOG_DIR` vêm do compose;
+`WEB_API_ADDR=openwyd-webserver:7600`, `W2PP_CONTENT=/Release` e `AUDIT_LOG_DIR` vêm do compose;
 `SESSION_SECRET` tem default apenas de desenvolvimento (>= 32 caracteres em produção).
 
 ### Guias públicos (`/guias`)

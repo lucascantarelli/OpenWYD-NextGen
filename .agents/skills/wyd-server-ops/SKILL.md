@@ -55,7 +55,7 @@ Equivale a:
 
 ```bash
 docker compose up -d --build db binserver dbserver webserver
-docker compose run --rm dbserver seed-account -name test -pass test123   # idempotente
+docker compose run --rm openwyd-dbserver seed-account -name test -pass test123   # idempotente
 docker compose up -d --build tmserver
 ```
 
@@ -65,7 +65,7 @@ criados no cliente. Para outra conta:
 ```bash
 W2PP_LOCAL_ACCOUNT=jl W2PP_LOCAL_PASSWORD=segredo make run-local
 # ou direto:
-docker compose run --rm dbserver seed-account -name jl -pass segredo
+docker compose run --rm openwyd-dbserver seed-account -name jl -pass segredo
 ```
 
 O script imprime o `IP:porta` para apontar o cliente. Em Windows, esse IP é o da interface de rede
@@ -111,13 +111,13 @@ Definidas em `tmserver/cmd/tmserver/main.go`; quase todas têm equivalente `W2PP
 | `-mob-stat-editing` | off | overlay de edição por moderador (exige DB + conteúdo); o catálogo de NPCs **não** tem flag: `npc_definition` é a fonte |
 | `-reject-checksum` | **off** | só ligue com captura que confirme checksums corretos |
 
-Mudar flag = `docker compose up -d tmserver` com o `command:` ajustado (ou `docker compose run`).
+Mudar flag = `docker compose up -d openwyd-nextgen1-tmsrv` com o `command:` ajustado (ou `docker compose run`).
 O compose fixa `-client-version 12000` porque este build do cliente manda 12000.
 
 ## 5. Ciclo de vida seguro
 
 ```bash
-docker compose logs -f tmserver          # acompanhar
+docker compose logs -f openwyd-nextgen1-tmsrv          # acompanhar
 docker compose restart tmserver          # reinício (dispara save-on-shutdown)
 docker compose down                      # para tudo, preserva o volume pgdata
 docker compose down -v                   # APAGA o banco (só com pedido explícito)

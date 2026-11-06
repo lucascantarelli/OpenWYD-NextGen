@@ -40,7 +40,7 @@ Não fecha aqui: 33 (overlay de `ItemList`), 35 (curva de EXP), 37 (spawns), 38 
 ```bash
 W2PP_MOB_STAT_EDITING=true W2PP_DROP_CONFIG_EDITING=true W2PP_MOB_CARRY_EDITING=true \
 W2PP_RATES_EDITING=true W2PP_ITEM_EFFECT_EDITING=true W2PP_TELEPORT_EDITING=true \
-docker compose up -d tmserver && docker compose logs --tail 40 tmserver
+docker compose up -d openwyd-nextgen1-tmsrv && docker compose logs --tail 40 openwyd-nextgen1-tmsrv
 ```
 
 Confira no log, antes de abrir o cliente (se faltar uma linha, aquele passo fica sem prova):
@@ -223,7 +223,7 @@ reabrir e relogar:
 # no portal: Reset em /precos (907), /drops/editar (slot 12), /drops/carry (slot 56),
 #            /config (célula de refino), /itens (EF_AC), /castelo (taxa e Kefra),
 #            /eventos (desligar tudo) e apagar a oferta de /diaria
-docker compose up -d tmserver     # volta às flags OFF (sem as variáveis)
+docker compose up -d openwyd-nextgen1-tmsrv     # volta às flags OFF (sem as variáveis)
 ```
 
 Conferir que o boot voltou ao baseline e que nada de `tmserver/content/` mudou:

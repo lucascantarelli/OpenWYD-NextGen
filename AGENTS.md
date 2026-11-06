@@ -38,11 +38,14 @@ convenções, veja `CLAUDE.md`; este arquivo cobre o repositório inteiro (servi
 test -f tmserver/content/Common/serv00.htm && test -d tmserver/content/DBsrv/run/BaseMob || echo "CONTEÚDO FALTANDO"
 test -f tmserver/content/TMsrv/run/HeightMap.dat || echo "MAPAS AUSENTES: make content-sync"
 
-# 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + tmServer)
+# 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + canais)
+#    Compose em camadas: `docker-compose.yaml` (base, sem portas) + `docker-compose.override.yaml`
+#    (dev, carregado automático). Serviço = container = imagem, ex.: openwyd-nextgen1-tmsrv.
+#    A ordem de subida é declarada por healthcheck (DEVOPS-01, docs/migration/config-ops.md §0.0).
 make run-local          # = ./scripts/run-local.sh  (conta test / test123)
 
 # 2. Ver o servidor de jogo e o portal respondendo
-docker compose logs -f tmserver        # "tmserver listening" + "NPCs spawned"
+docker compose logs -f openwyd-nextgen1-tmsrv        # "tmserver listening" + "NPCs spawned"
 curl -s http://127.0.0.1/ | head       # status HTTP :80 (serv00.htm) que o cliente sonda
 #    portal: http://localhost:3000     (login com conta de papel moderator/admin)
 
@@ -158,7 +161,7 @@ Prefixe `MSYS_NO_PATHCONV=1` e passe o projeto em caminho Windows. No Docker Des
 `--network host`: use a rede do compose e o nome do serviço.
 
 ```bash
-MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=tmserver:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
+MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
 ```
 
 Não reinicie serviços no meio de um teste do usuário: o restart dispara save-on-shutdown e

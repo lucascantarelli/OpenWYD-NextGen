@@ -5,9 +5,10 @@
 #   server.crt / server.key  shared by dbServer + binServer (serverAuth)
 #   client.crt / client.key  presented by tmServer (clientAuth)
 #
-# The server cert carries SANs for the docker-compose service names so the
-# tmServer client can verify each peer by its dial authority (dbserver:7514,
-# binserver:3000, webserver:7600) without setting W2PP_TLS_SERVER_NAME.
+# O certificado de servidor carrega SANs com os nomes de serviço do compose, de
+# modo que o tmServer verifica cada peer pela authority do dial
+# (openwyd-dbserver:7514, openwyd-binserver:3000, openwyd-webserver:7600) sem
+# precisar de W2PP_TLS_SERVER_NAME.
 # localhost/127.0.0.1 are
 # included for running the binaries directly on the host.
 #
@@ -22,7 +23,9 @@ set -euo pipefail
 CERT_DIR=${CERT_DIR:-certs}
 DAYS=${DAYS:-825}        # < 825d keeps the leaf certs within common TLS limits
 FORCE=${FORCE:-0}
-SERVER_SAN=${SERVER_SAN:-DNS:dbserver,DNS:binserver,DNS:webserver,DNS:localhost,IP:127.0.0.1}
+# SANs = nomes de serviço do compose (docker-compose.yaml). O cliente verifica o
+# peer pela authority do dial (`openwyd-dbserver:7514`), sem W2PP_TLS_SERVER_NAME.
+SERVER_SAN=${SERVER_SAN:-DNS:openwyd-dbserver,DNS:openwyd-binserver,DNS:openwyd-webserver,DNS:localhost,IP:127.0.0.1}
 
 if [[ -f "$CERT_DIR/server.crt" && "$FORCE" != "1" ]]; then
 	echo "certs already present in $CERT_DIR (set FORCE=1 to regenerate)"
@@ -53,7 +56,7 @@ newkey client.key
 openssl req -new -key client.key -out client.csr -subj "/CN=w2pp-tmserver"
 openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
 	-days "$DAYS" -out client.crt \
-	-extfile <(printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=clientAuth\nsubjectAltName=DNS:tmserver\n')
+	-extfile <(printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=clientAuth\nsubjectAltName=DNS:openwyd-nextgen1-tmsrv,DNS:openwyd-nextgen2-tmsrv\n')
 
 rm -f server.csr client.csr ca.srl
 # World-readable on purpose: the keys are bind-mounted into the distroless

@@ -34,11 +34,11 @@ go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
 Sem Go no host (Windows sem toolchain é o caso comum):
 
 ```bash
-MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=tmserver:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
+MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
 ```
 
 Receita verificada no Windows/Docker Desktop: `MSYS_NO_PATHCONV=1` impede o Git Bash
-de reescrever `/src`, e a rede do compose resolve `tmserver:8281` sem `--network host`.
+de reescrever `/src`, e a rede do compose resolver `openwyd-nextgen1-tmsrv:8281` sem `--network host`.
 Esperado: `LOGIN OK — CNFAccountLogin, conn=30002, body=1996 bytes` + `PASS`.
 
 
@@ -47,7 +47,7 @@ Detalhes que fazem a diferença:
 - `W2PP_E2E_VERSION` é **obrigatório** e tem de casar com `-client-version` do servidor. Errado →
   resposta `0x102` (version mismatch) e o teste "falha" por um motivo que não é bug de jogo.
 - `--network host` só existe no Linux. No Docker Desktop use `--network openwyd_default` e
-  `W2PP_E2E_ADDR=tmserver:8281` (verificado); `host.docker.internal` é alternativa.
+  `W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281` (verificado); `host.docker.internal` é alternativa.
 - A conta precisa existir (`dbserver seed-account`) e começar **sem personagens**.
 
 ## 3. Harness de protocolo

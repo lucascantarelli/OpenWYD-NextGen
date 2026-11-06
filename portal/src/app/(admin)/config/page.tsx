@@ -51,7 +51,7 @@ export default async function ConfigPage() {
           O tmserver aplica o overlay de taxas com <code>-rates-editing</code> /{" "}
           <code>W2PP_RATES_EDITING=true</code>, no boot. Sem a flag, o mundo usa só os arquivos.
           Nenhuma flag de processo é recarregada em runtime: mudar uma exige editar o compose/ambiente e{" "}
-          <code>docker compose up -d tmserver</code>.
+          <code>docker compose up -d openwyd-nextgen1-tmsrv</code>.
         </p>
       </div>
 

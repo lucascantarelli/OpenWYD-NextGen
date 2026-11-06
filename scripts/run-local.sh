@@ -43,22 +43,25 @@ lan_ip() {
 HOST_IP=$(lan_ip)
 [ -n "$HOST_IP" ] || HOST_IP="<this-machine-LAN-IP>"
 
-echo "==> Building and starting the stack (db, dbserver, binserver, webserver, portal, tmserver)…"
-# Boot persistence before the game edge: dbserver must survive Migrate (it races
-# webserver on a fresh DB) or logins hang with no response while tmserver waits
-# on a dead gRPC backend.
-"${COMPOSE[@]}" up -d --build db binserver dbserver webserver portal
-for _ in $(seq 1 30); do
-	if "${COMPOSE[@]}" ps dbserver 2>/dev/null | grep -qE 'dbserver.*Up'; then
+echo "==> Building and starting the stack (openwyd-postgres, dbserver, binserver, webserver, portal, logpipe)…"
+# Persistência antes da borda do jogo: o compose já ordena por healthcheck
+# (postgres → db-roles → dbserver/webserver), então basta esperar o dbserver
+# ficar saudável em vez de dormir um tempo fixo. Sem ele, o login fica mudo
+# enquanto o canal espera um backend gRPC morto.
+"${COMPOSE[@]}" up -d --build \
+	openwyd-postgres openwyd-binserver openwyd-webserver openwyd-logpipe openwyd-portal openwyd-dbserver
+for _ in $(seq 1 90); do
+	if "${COMPOSE[@]}" ps openwyd-dbserver 2>/dev/null | grep -q 'healthy'; then
 		break
 	fi
-	sleep 1
+	sleep 2
 done
-if ! "${COMPOSE[@]}" ps dbserver 2>/dev/null | grep -qE 'dbserver.*Up'; then
-	echo "error: dbserver is not running — check: ${COMPOSE[*]} logs dbserver" >&2
+if ! "${COMPOSE[@]}" ps openwyd-dbserver 2>/dev/null | grep -q 'healthy'; then
+	echo "error: openwyd-dbserver is not healthy — check: ${COMPOSE[*]} logs openwyd-dbserver" >&2
 	exit 1
 fi
-"${COMPOSE[@]}" up -d --build tmserver
+# Canais: o healthcheck do compose já espera dbserver/binserver saudáveis.
+"${COMPOSE[@]}" up -d --build openwyd-nextgen1-tmsrv openwyd-nextgen2-tmsrv
 
 # Portal: o build da imagem Next pode terminar depois do `up`; espere a UI responder.
 for _ in $(seq 1 60); do
@@ -71,7 +74,7 @@ done
 echo "==> Seeding test account '${ACCOUNT}' (idempotent)…"
 # One-off container on the compose network; waits for db (depends_on healthy) and
 # reads W2PP_DB_DSN from the dbserver service env. argon2id hash, never plaintext.
-"${COMPOSE[@]}" run --rm dbserver seed-account -name "$ACCOUNT" -pass "$PASSWORD"
+"${COMPOSE[@]}" run --rm openwyd-dbserver seed-account -name "$ACCOUNT" -pass "$PASSWORD"
 
 cat <<EOF
 
@@ -91,7 +94,7 @@ cat <<EOF
       create one in the client.
 
  Portal: http://localhost:3000  (login: conta com papel moderator/admin)
- Logs:   ${COMPOSE[*]} logs -f tmserver
+ Logs:   ${COMPOSE[*]} logs -f openwyd-nextgen1-tmsrv
  Stop:   ${COMPOSE[*]} down
 ────────────────────────────────────────────────────────────────────────
 EOF

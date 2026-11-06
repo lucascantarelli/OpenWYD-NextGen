@@ -336,6 +336,20 @@ Grafo da Fase 6:
 
 ## Changelog
 
+- **2026-11-06 (DEVOPS-01: nomes e camadas do Docker)** — um nome por coisa: **serviço =
+  container = imagem** (`openwyd-nextgen1-tmsrv`, `openwyd-nextgen2-tmsrv`, `openwyd-dbserver`,
+  `openwyd-binserver`, `openwyd-webserver`, `openwyd-postgres`, `openwyd-portal`, `openwyd-grafana`,
+  `openwyd-prometheus`; `logpipe`/`db-roles`/`node-exporter`/`mkdocs` com o mesmo prefixo). O compose
+  virou **base + override**: a base (sem porta publicada) tem healthchecks e `depends_on` com
+  `condition:` — postgres saudável → roles → dbserver/webserver → canais → portal → Grafana — e o
+  override de dev publica só o que o host precisa (loopback + IPs de canal `192.168.100.3/.4`).
+  Os serviços Go ganharam healthcheck real sem shell: o próprio binário (`/app healthcheck`)
+  consulta `/healthz` (`internal/metrics/healthcheck.go`), já que a imagem é distroless. Renomear
+  exigiu atualizar a whitelist do `logpipe`, os alvos do Prometheus, a whitelist de logs do portal,
+  os SANs do `gen-certs.sh`, `run-local.sh`, `e2e-worldevents.sh`, `Makefile` e docs.
+  `docker-compose.dev.yaml` e `Dockerfile.dev` foram removidos (hot-reload virou `make run` com o
+  Postgres do compose). Detalhes: [DEVOPS-01](done/DEVOPS-01.md).
+
 - **2026-11-06 (OBS-02 e OBS-03: trace_id e monitoring)** — a observabilidade fechou o par que
   faltava. **OBS-02** deu `trace_id` a toda requisição: nasce no aceite CPSock e no BFF, viaja no
   metadata gRPC `x-trace-id` (tmServer→dbServer/binServer, portal→web-api) e sai em cada linha de
@@ -643,7 +657,7 @@ prioriza fechar as 11 issues 🟡 (mais 05/06) antes de abrir features novas, e 
 - **2026-11-04 (reestruturação — portal e roadmap dentro do repo)** — o portal passou a viver em
   `portal/` e o planejamento em `roadmap/`, com o cliente do jogo em `client/` (ignorado no git). O portal entrou na infraestrutura: imagem `portal/Dockerfile` (Next standalone,
   contexto da raiz para levar `api/web/v1/web.proto`), serviço `portal` no `docker-compose.yaml`
-  (`:3000`, `WEB_API_ADDR=webserver:7600`), alvos `make portal-*`, bootstrap do `run-local.sh` e job
+  (`:3000`, `WEB_API_ADDR=openwyd-webserver:7600`), alvos `make portal-*`, bootstrap do `run-local.sh` e job
   de CI (typecheck, testes, build e imagem). Os arquivos de IA da raiz foram consolidados em
   `AGENTS.md`/`CLAUDE.md` + `.agents/skills`.
 

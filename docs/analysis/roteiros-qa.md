@@ -22,18 +22,18 @@ docker compose exec -T db psql -U postgres -d postgres -c \
 Regras que valem para todos os roteiros:
 
 - **Não reinicie serviço no meio de um teste.** Editar conteúdo no portal não aplica em runtime: o
-  ciclo é *salvar → fechar o cliente → `docker compose up -d tmserver` com a flag → reabrir*.
+  ciclo é *salvar → fechar o cliente → `docker compose up -d openwyd-nextgen1-tmsrv` com a flag → reabrir*.
 - Toda flag de overlay é **de boot** (`-mob-stat-editing`, `-drop-config-editing`,
   `-mob-carry-editing`, `-rates-editing`, `-item-effect-editing`, `-teleport-editing`) e **não** está
   no `docker-compose.yaml` por padrão. O catálogo de NPCs **não** tem flag desde a issue 57:
   `npc_definition` é a única fonte de spawn e o tmServer a lê sempre.
-- Flags ligadas por ambiente exigem `docker compose up -d tmserver` **com** a variável (o container
+- Flags ligadas por ambiente exigem `docker compose up -d openwyd-nextgen1-tmsrv` **com** a variável (o container
   é recriado). Comando padrão do resto do documento:
 
 ```bash
 W2PP_MOB_STAT_EDITING=true W2PP_DROP_CONFIG_EDITING=true \
 W2PP_MOB_CARRY_EDITING=true W2PP_RATES_EDITING=true W2PP_ITEM_EFFECT_EDITING=true \
-docker compose up -d tmserver && docker compose logs --tail 30 tmserver
+docker compose up -d openwyd-nextgen1-tmsrv && docker compose logs --tail 30 openwyd-nextgen1-tmsrv
 ```
 
 - Registre cada execução no fim deste arquivo (tabela §12), mesmo quando falhar.
@@ -84,7 +84,7 @@ lista o canal. **Reprovado:** status OK e sem CPSock → firewall/porta; CPSock 
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" \
-  -e W2PP_E2E_ADDR=tmserver:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 \
+  -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 \
   -e W2PP_E2E_VERSION=<valor da issue 06> golang:1.26-alpine \
   sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
 ```
@@ -136,9 +136,9 @@ tmserver, ou a mensagem é genérica ("senha inválida").
 **Preparar** (seed é pré-requisito; rode uma vez):
 
 ```bash
-docker compose run --rm dbserver import-npcs -content /content \
+docker compose run --rm openwyd-dbserver import-npcs -content /content \
   -dsn "postgres://postgres:<senha>@db:5432/postgres"
-docker compose up -d tmserver
+docker compose up -d openwyd-nextgen1-tmsrv
 docker compose logs --tail 20 tmserver | grep -E "npc generators registered|npc config applied at boot"
 ```
 
@@ -189,7 +189,7 @@ reiniciar com `W2PP_MOB_STAT_EDITING=true`.
 ```bash
 docker compose exec -T db psql -U postgres -d postgres -c \
   "select template_name, exp, level, max_hp from mob_template_stat;"
-docker compose logs --tail 30 tmserver | grep -iE "mob stat|overlay"
+docker compose logs --tail 30 openwyd-nextgen1-tmsrv | grep -iE "mob stat|overlay"
 ```
 
 **No cliente:** anotar a EXP atual (barra/`/nick`), matar **um** mob do mesmo tipo antes e depois do

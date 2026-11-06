@@ -154,8 +154,8 @@ O plano dos 4 canais (§6) começa com dois, que já dá para exercitar tudo o q
 de `ServerIndex`: cidadania por canal, id de guilda, NPC de outra cidade.
 
 ```bash
-docker compose up -d tmserver tmserver2
-docker compose logs -f tmserver2               # "refine policy ... server_index=1"
+docker compose up -d openwyd-nextgen1-tmsrv openwyd-nextgen2-tmsrv
+docker compose logs -f openwyd-nextgen2-tmsrv               # "refine policy ... server_index=1"
 ```
 
 | Serviço | Endereço de jogo | Porta interna | Status HTTP | `ServerIndex` | Cidadania vendida |
@@ -220,7 +220,7 @@ http://192.168.100.4/serv00.htm
 192.168.100.4:8281
 ```
 
-São dois processos distintos: `docker compose logs tmserver2` mostra
+São dois processos distintos: `docker compose logs openwyd-nextgen2-tmsrv` mostra
 `refine policy ... server_index=1`, e o login aparece **só** nele quando o cliente entra pelo
 canal 1. Os nomes UP-1/PVP-1 vêm do `sn.bin` do cliente, não do servidor — duas entradas
 apontando para o mesmo IP caem no mesmo processo.

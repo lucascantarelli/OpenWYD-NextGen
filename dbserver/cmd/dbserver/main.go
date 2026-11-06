@@ -42,6 +42,9 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	// Healthcheck do compose: a imagem final é distroless (sem shell), então o
+	// próprio binário consulta /healthz e sai 0/1.
+	metrics.HealthcheckArgs(":9102")
 	if len(os.Args) < 2 {
 		usage()
 		os.Exit(2)

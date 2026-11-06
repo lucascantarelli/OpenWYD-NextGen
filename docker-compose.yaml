@@ -1,35 +1,61 @@
-# Full microservice topology (migration-plan.md §3.5): tmServer (CPSock edge) →
-# dbServer + binServer (gRPC) → PostgreSQL. Production images are built from the
-# multi-stage ./Dockerfile, one binary per service.
+# ─────────────────────────────────────────────────────────────────────────────
+# Stack OpenWYD — arquivo BASE.
 #
-#   docker compose up --build
+# Aqui ficam apenas definições de produção: imagem, comando, dependências reais
+# (healthcheck), volumes e configuração. Portas publicadas e ajustes de
+# desenvolvimento moram em `docker-compose.override.yaml`, que o Compose carrega
+# automaticamente com `docker compose up`. Overlays opcionais:
 #
-# Internal links run insecure here for out-of-the-box bring-up. To enable mTLS,
-# run `make certs` then add the overlay:
-#   docker compose -f docker-compose.yaml -f docker-compose.mtls.yaml up --build
+#   docker compose up -d                                  # base + override (dev)
+#   docker compose -f docker-compose.yaml up -d           # só a base (sem portas)
+#   docker compose -f docker-compose.yaml \
+#                  -f docker-compose.override.yaml \
+#                  -f docker-compose.mtls.yaml up -d      # base + dev + mTLS
 #
-# Secrets (DB DSN) come from the environment, never hardcoded in code.
+# Padrão de nomes: o serviço, o container e a imagem usam o MESMO nome, para não
+# existir "qual container é esse?" no `docker ps`:
+#
+#   openwyd-postgres           banco (upstream postgres:17-alpine)
+#   openwyd-db-roles           one-shot: roles DDL/DML/RO (DB-01)
+#   openwyd-dbserver           persistência gRPC 7514
+#   openwyd-binserver          billing gRPC 3000
+#   openwyd-webserver          web-api gRPC 7600
+#   openwyd-logpipe            sidecar de logs (socket do Docker, read-only)
+#   openwyd-portal             UI Next.js :3000
+#   openwyd-nextgen1-tmsrv     canal 1 (ServerIndex 0) — CPSock :8281
+#   openwyd-nextgen2-tmsrv     canal 2 (ServerIndex 1) — CPSock :8282
+#   openwyd-prometheus         série temporal (perfil monitoring)
+#   openwyd-grafana            dashboards (perfil monitoring)
+#   openwyd-node-exporter      métricas do host (perfil monitoring)
+#   openwyd-mkdocs             site de documentação (perfil docs)
+#
+# O `name:` fixa o projeto: a rede continua `openwyd_default` e os volumes
+# `openwyd_*`, que é o que scripts e testes já usam.
+name: openwyd
+
 services:
-  db:
+  # ─────────────────────────────────────────────────────────────── persistência
+  openwyd-postgres:
     image: postgres:17-alpine
+    container_name: openwyd-postgres
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # Publicado só em loopback para ferramentas do host (VS Code/DBeaver/pgAdmin).
-    # Nunca use 0.0.0.0: este Postgres é de desenvolvimento e a senha é a do compose.
-    ports:
-      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
 
   # DB-01: um único passo com superusuário, antes dos serviços. Cria/atualiza
   # openwyd_migrator (DDL), openwyd_app (DML) e openwyd_ro (SELECT) e transfere a
   # posse dos objetos. Idempotente: roda a cada `up` e não muda nada no segundo.
-  db-roles:
+  openwyd-db-roles:
     image: postgres:17-alpine
+    container_name: openwyd-db-roles
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-dev}
       OPENWYD_MIGRATOR_PASSWORD: ${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}
@@ -37,56 +63,84 @@ services:
       OPENWYD_RO_PASSWORD: ${OPENWYD_RO_PASSWORD:-dev-ro}
     volumes:
       - ./scripts/db-roles.sql:/db-roles.sql:ro
-    entrypoint: ["psql", "-h", "db", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-f", "/db-roles.sql"]
+    entrypoint:
+      - "psql"
+      - "-h"
+      - "openwyd-postgres"
+      - "-U"
+      - "postgres"
+      - "-d"
+      - "postgres"
+      - "-v"
+      - "ON_ERROR_STOP=1"
+      - "-f"
+      - "/db-roles.sql"
     depends_on:
-      db:
+      openwyd-postgres:
         condition: service_healthy
     restart: "no"
 
-  dbserver:
+  # ────────────────────────────────────────────────────── serviços Go internos
+  openwyd-dbserver:
+    image: openwyd-dbserver:latest
+    container_name: openwyd-dbserver
     build:
       context: .
       args:
         SVC: dbserver
     environment:
       # Aplicação nunca conecta como superusuário: DML apenas (DB-01).
-      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@db:5432/postgres
+      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@openwyd-postgres:5432/postgres
       # DDL/migrations usam a role migrator, que é a dona dos objetos.
-      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@db:5432/postgres
+      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@openwyd-postgres:5432/postgres
       # Chave HMAC do token de troca de canal (/srv): a MESMA nos dois canais e
       # aqui (canais.md §8.1.2). Vazia desativa a troca in-game.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     command: ["serve", "-addr", ":7514"]
-    restart: unless-stopped
     depends_on:
-      db:
+      openwyd-postgres:
         condition: service_healthy
-      db-roles:
+      openwyd-db-roles:
         condition: service_completed_successfully
+    healthcheck:
+      # distroless não tem shell: o próprio binário consulta /healthz e sai.
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     expose:
       - "7514"
-    ports:
-      - "127.0.0.1:9102:9102"       # métricas/health (Prometheus)
+    restart: unless-stopped
 
-  binserver:
+  openwyd-binserver:
+    image: openwyd-binserver:latest
+    container_name: openwyd-binserver
     build:
       context: .
       args:
         SVC: binserver
     command: ["-addr", ":3000"]
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     expose:
       - "3000"
-    ports:
-      - "127.0.0.1:9103:9103"       # métricas/health (Prometheus)
+    restart: unless-stopped
 
-  webserver:
+  openwyd-webserver:
+    image: openwyd-webserver:latest
+    container_name: openwyd-webserver
     build:
       context: .
       args:
         SVC: webserver
     environment:
-      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@db:5432/postgres
-      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@db:5432/postgres
+      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@openwyd-postgres:5432/postgres
+      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@openwyd-postgres:5432/postgres
       W2PP_CONTENT: /content
       # One-time web client login codes (IssuePlayCode); empty keeps them off.
       # Same value as the portal's PLAY_CODE_SECRET, at least 32 characters.
@@ -95,25 +149,30 @@ services:
     volumes:
       - ./tmserver/content:/content:ro   # conteúdo: taxas e templates merchant
     depends_on:
-      db:
+      openwyd-postgres:
         condition: service_healthy
-      db-roles:
+      openwyd-db-roles:
         condition: service_completed_successfully
-    # Published so host-side tools (grpcurl, probes) can reach the web-api; the
-    # portal talks to it over the compose network as webserver:7600.
-    ports:
-      - "7600:7600"
-      - "127.0.0.1:9104:9104"       # métricas/health (Prometheus)
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    expose:
+      - "7600"
+    restart: unless-stopped
 
   # Sidecar de logs (issue 40): ÚNICO processo com o socket do Docker, montado
   # read-only. Serve /status e /logs/<serviço> na rede interna do compose; o
   # portal autentica a sessão e repassa. Nenhuma operação de escrita, sem exec,
   # sem acesso a arquivos — e a porta não é publicada.
-  logpipe:
+  openwyd-logpipe:
+    image: openwyd-logpipe:latest
+    container_name: openwyd-logpipe
     build:
       context: .
       dockerfile: logpipe/Dockerfile
-    image: openwyd-logpipe:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     # O socket pertence a root:root (0660) no Docker Desktop; a imagem distroless
@@ -125,22 +184,24 @@ services:
       - no-new-privileges:true
     expose:
       - "7788"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "/logpipe", "-healthcheck"]
       interval: 15s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
 
-  portal:
+  openwyd-portal:
+    image: openwyd-portal:latest
+    container_name: openwyd-portal
     build:
       context: .
       dockerfile: portal/Dockerfile
     environment:
-      WEB_API_ADDR: webserver:7600
+      WEB_API_ADDR: openwyd-webserver:7600
       W2PP_CONTENT: /content
       # Logs ao vivo pelo sidecar; sem isto o BFF tenta o Docker CLI do host.
-      LOG_PIPE_URL: http://logpipe:7788
+      LOG_PIPE_URL: http://openwyd-logpipe:7788
       # Dev-only: sobrescreva no ambiente em qualquer deploy real (>=32 chars).
       SESSION_SECRET: ${W2PP_PORTAL_SESSION_SECRET:-dev-only-portal-session-secret-32-chars}
       AUDIT_LOG_DIR: /var/log/wyd-portal
@@ -149,19 +210,25 @@ services:
       - ./dist:/dist:ro         # world-atlas.json / mapas gerados (issue 41)
       - portal-audit:/var/log/wyd-portal   # trilha de auditoria (ndjson)
     depends_on:
-      webserver:
-        condition: service_started
-      logpipe:
-        condition: service_started
-    ports:
-      - "3000:3000"            # UI de administração
+      openwyd-webserver:
+        condition: service_healthy
+      openwyd-logpipe:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
-  tmserver:
+  # ───────────────────────────────────────────────────────────── canais / jogo
+  # Canal 1 (ServerIndex 0). Cada canal é um processo: ele tem o próprio mundo em
+  # memória, mas compartilha save/guilda pelo openwyd-dbserver. O canal verde
+  # (novato) é fixo por W2PP_NOVICE_CHANNEL, não gira por calendário.
+  openwyd-nextgen1-tmsrv:
+    image: openwyd-nextgen1-tmsrv:latest
+    container_name: openwyd-nextgen1-tmsrv
     build:
       context: .
       args:
@@ -170,25 +237,27 @@ services:
       - "-addr"
       - ":8281"
       - "-dbserver"
-      - "dbserver:7514"
+      - "openwyd-dbserver:7514"
       - "-binserver"
-      - "binserver:3000"
+      - "openwyd-binserver:3000"
       - "-content"
       - "/content"
       - "-status-addr"
       - ":80"
       - "-client-version"
       - "12000"
+      - "-server-index"
+      - "0"
     depends_on:
-      dbserver:
-        condition: service_started
-      binserver:
-        condition: service_started
+      openwyd-dbserver:
+        condition: service_healthy
+      openwyd-binserver:
+        condition: service_healthy
     # Switches for the moderator overlays (README/test recipes assume they can be
     # exported). Every one defaults to "false" = read strictly from the content tree, so this
     # passthrough changes nothing unless you export it. The NPC spawn catalogue is
     # NOT an overlay: npc_definition is the single source of spawn blocks (issue 57).
-    #   W2PP_RATES_EDITING=true docker compose up -d tmserver
+    #   W2PP_RATES_EDITING=true docker compose up -d openwyd-nextgen1-tmsrv
     environment:
       W2PP_MOB_STAT_EDITING: "${W2PP_MOB_STAT_EDITING:-false}"
       W2PP_ITEM_EFFECT_EDITING: "${W2PP_ITEM_EFFECT_EDITING:-false}"
@@ -205,21 +274,24 @@ services:
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
       - ./tmserver/content:/content:ro   # content tree (rates/catalogs/maps), validated at boot
-    # Publicado por endereço, não em 0.0.0.0: dois canais no mesmo host precisam
-    # de portas iguais em IPs diferentes (o serverlist.bin guarda só o host).
-    # 127.0.0.1 fica para o teste local; 192.168.100.3 é o IP do canal 0.
-    ports:
-      - "127.0.0.1:8281:8281"          # TMSrv CPSock (jogo), loopback
-      - "127.0.0.1:80:80"              # status serv00.htm, loopback
-      - "192.168.100.3:8281:8281"      # jogo — canal 0
-      - "192.168.100.3:80:80"          # status — canal 0
-      - "127.0.0.1:9101:9101"          # métricas/health (Prometheus)
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      # O boot carrega catálogo do banco + 10k NPCs: ~10 s medidos.
+      start_period: 45s
+    expose:
+      - "8281"
+      - "80"
+    restart: unless-stopped
 
-  # Segundo canal (docs/migration/canais.md §7). Mesma imagem, mesmo dbServer,
-  # mesmo conteúdo somente-leitura e um ServerIndex diferente: é o índice que
-  # define a cidadania (Citizen = ServerIndex + 1) e o id de guilda.
-  # Suba com: docker compose up -d tmserver2
-  tmserver2:
+  # Canal 2 (ServerIndex 1) — mesmo binário, mesmo dbServer, mesmo conteúdo
+  # read-only. É o destino da troca de canal (`/srv 2`): a cidadania é
+  # ServerIndex+1 e o id de guilda carrega o índice nos bits altos.
+  openwyd-nextgen2-tmsrv:
+    image: openwyd-nextgen2-tmsrv:latest
+    container_name: openwyd-nextgen2-tmsrv
     build:
       context: .
       args:
@@ -228,9 +300,9 @@ services:
       - "-addr"
       - ":8282"
       - "-dbserver"
-      - "dbserver:7514"
+      - "openwyd-dbserver:7514"
       - "-binserver"
-      - "binserver:3000"
+      - "openwyd-binserver:3000"
       - "-content"
       - "/content"
       - "-status-addr"
@@ -240,10 +312,10 @@ services:
       - "-server-index"
       - "1"
     depends_on:
-      dbserver:
-        condition: service_started
-      binserver:
-        condition: service_started
+      openwyd-dbserver:
+        condition: service_healthy
+      openwyd-binserver:
+        condition: service_healthy
     environment:
       W2PP_MOB_STAT_EDITING: "${W2PP_MOB_STAT_EDITING:-false}"
       W2PP_ITEM_EFFECT_EDITING: "${W2PP_ITEM_EFFECT_EDITING:-false}"
@@ -251,31 +323,31 @@ services:
       W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
       W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
       W2PP_MOB_CARRY_EDITING: "${W2PP_MOB_CARRY_EDITING:-false}"
-      # Canal verde (novato) é FIXO, como em produção: W2PP_NOVICE_CHANNEL é o
-      # número do canal (1-based) que roda o evento newbie e recusa PvP. Cada
-      # instância compara com o seu W2PP_SERVER_INDEX, então o mesmo valor vai
-      # para todos os containers. 0 desliga o canal verde.
       W2PP_NOVICE_CHANNEL: "${W2PP_NOVICE_CHANNEL:-1}"
-      # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
       - ./tmserver/content:/content:ro
-    # Canal 1 no seu próprio IP, na MESMA porta do canal 0: é assim que o cliente
-    # distingue canais (o .bin não carrega porta).
-    ports:
-      - "192.168.100.4:8281:8282"      # jogo — canal 1
-      - "192.168.100.4:80:8080"        # status — canal 1
-      - "127.0.0.1:9111:9101"          # métricas/health — canal 1
-  # ---------------------------------------------------------------- monitoring
-  # Observabilidade (OBS-03). Perfil OPCIONAL: sem `--profile monitoring` a
-  # stack de jogo não muda. Prometheus coleta os cinco alvos Go + o exportador
-  # do host; Grafana provisiona o dashboard versionado de monitoring/grafana.
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 45s
+    expose:
+      - "8282"
+      - "8080"
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────── monitoring
+  # Perfil OPCIONAL: sem `--profile monitoring` a stack de jogo não muda.
+  # Prometheus coleta os cinco alvos Go + o exportador do host; Grafana
+  # provisiona o dashboard versionado de monitoring/grafana.
   #   docker compose --profile monitoring up -d
-  #   http://127.0.0.1:9090  (Prometheus)   http://127.0.0.1:3001 (Grafana)
   # Não confundir com o logpipe: aqui é série temporal; o texto por requisição
   # continua vindo do logpipe para o /logs do portal.
-  prometheus:
+  openwyd-prometheus:
     image: prom/prometheus:v3.5.0
+    container_name: openwyd-prometheus
     profiles: ["monitoring"]
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -285,12 +357,17 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - promdata:/prometheus
-    ports:
-      - "127.0.0.1:9090:9090"       # UI/API do Prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/ready >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
-  grafana:
+  openwyd-grafana:
     image: grafana/grafana:12.2.0
+    container_name: openwyd-grafana
     profiles: ["monitoring"]
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
@@ -303,18 +380,23 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
-    ports:
-      - "127.0.0.1:3001:3000"       # 3000 é do portal; 3001 é o Grafana
     depends_on:
-      prometheus:
-        condition: service_started
+      openwyd-prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   # Exportador do host para o alerta de disco. Mede os sistemas de arquivos da
   # VM Linux do Docker (no Docker Desktop/Windows, NÃO o volume C:) — o limite
   # está documentado em docs/migration/config-ops.md.
-  node-exporter:
+  openwyd-node-exporter:
     image: prom/node-exporter:v1.9.1
+    container_name: openwyd-node-exporter
     profiles: ["monitoring"]
     command:
       - "--path.rootfs=/host"
@@ -327,22 +409,27 @@ services:
     # mount"). `:ro` basta para ler os sistemas de arquivos da VM.
     volumes:
       - /:/host:ro
-    ports:
-      - "127.0.0.1:9100:9100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9100/metrics >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
+  # ──────────────────────────────────────────────────────────────────── docs
   # Site de documentação (DOC-01). Config, Dockerfile e conteúdo vivem em docs/;
   # o repositório é montado em /project porque o `-f docs/mkdocs.yml` é relativo a
   # ele. `serve` recarrega ao editar; o gate é `build --strict`:
-  #   docker compose --profile docs up mkdocs
-  #   docker compose --profile docs run --rm mkdocs build -f docs/mkdocs.yml --strict
-  mkdocs:
+  #   docker compose --profile docs up -d openwyd-mkdocs
+  #   docker compose --profile docs run --rm openwyd-mkdocs build -f docs/mkdocs.yml --strict
+  openwyd-mkdocs:
+    image: openwyd-mkdocs:latest
+    container_name: openwyd-mkdocs
     build:
       context: .
       dockerfile: docs/Dockerfile
     command: ["serve", "-f", "docs/mkdocs.yml", "-a", "0.0.0.0:8000"]
-    ports:
-      - "8000:8000"
     volumes:
       - .:/project
     profiles: ["docs"]
@@ -358,6 +445,7 @@ volumes:
 # A daemon restart clears the leak; this keeps local dev unblocked meanwhile.
 networks:
   default:
+    name: openwyd_default
     ipam:
       config:
         - subnet: 172.28.0.0/24

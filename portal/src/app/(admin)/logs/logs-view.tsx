@@ -5,15 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { Tabs } from "@/components/Tabs";
 
+// `id` é o nome do serviço/container do compose; `label` é só o rótulo curto da aba.
 const TABS = [
   { id: "all", label: "Tudo" },
-  { id: "tmserver", label: "tmserver" },
-  { id: "tmserver2", label: "tmserver2" },
-  { id: "dbserver", label: "dbserver" },
-  { id: "binserver", label: "binserver" },
-  { id: "webserver", label: "webserver" },
-  { id: "db", label: "db" },
-  { id: "portal", label: "portal" },
+  { id: "openwyd-nextgen1-tmsrv", label: "canal 1" },
+  { id: "openwyd-nextgen2-tmsrv", label: "canal 2" },
+  { id: "openwyd-dbserver", label: "dbserver" },
+  { id: "openwyd-binserver", label: "binserver" },
+  { id: "openwyd-webserver", label: "webserver" },
+  { id: "openwyd-postgres", label: "postgres" },
+  { id: "openwyd-portal", label: "portal" },
 ] as const;
 
 /** Buffer da tela: o tmserver passa de 30 linhas/s em briga de mob. */

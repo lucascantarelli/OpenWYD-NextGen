@@ -40,7 +40,18 @@ import (
 )
 
 // known é a whitelist única. Nada fora dela é lido, mesmo que exista container.
-var known = []string{"tmserver", "tmserver2", "dbserver", "binserver", "webserver", "db", "portal"}
+// Os nomes são os serviços/containers do compose (docker-compose.yaml): cada
+// componente tem nome próprio, igual ao do container e ao da imagem.
+var known = []string{
+	"openwyd-nextgen1-tmsrv",
+	"openwyd-nextgen2-tmsrv",
+	"openwyd-dbserver",
+	"openwyd-binserver",
+	"openwyd-webserver",
+	"openwyd-postgres",
+	"openwyd-portal",
+	"openwyd-logpipe",
+}
 
 var sincePattern = regexp.MustCompile(`^\d{1,4}[smh]$`)
 
@@ -87,7 +98,8 @@ type container struct {
 }
 
 // resolve mapeia serviço → container. O nome vem do compose
-// (`openwyd-tmserver-1`, `openwyd_tmserver_1`), então comparamos por token, e
+// (`openwyd-nextgen1-tmsrv-1`, `openwyd_nextgen1_tmsrv_1`), então comparamos por
+// prefixo com o separador, e
 // preferimos o container em execução quando existem réplicas/parados.
 func (d *docker) resolve(ctx context.Context) (map[string]container, error) {
 	res, err := d.get(ctx, "/containers/json?all=1")
@@ -123,15 +135,15 @@ func (d *docker) resolve(ctx context.Context) (map[string]container, error) {
 	return out, nil
 }
 
+// matchesService casa container → serviço. O compose atual nomeia o container
+// com o MESMO nome do serviço (`openwyd-dbserver`), então a comparação direta
+// resolve; o prefixo com separador continua aceito para o nome antigo
+// (`openwyd-dbserver-1`) e para o separador de projeto do compose (`_`).
 func matchesService(name, service string) bool {
-	for _, part := range strings.FieldsFunc(name, func(r rune) bool {
-		return r == '-' || r == '_' || r == '.'
-	}) {
-		if part == service {
-			return true
-		}
+	if name == service {
+		return true
 	}
-	return false
+	return strings.HasPrefix(name, service+"-") || strings.HasPrefix(name, service+"_")
 }
 
 type serviceStatus struct {
