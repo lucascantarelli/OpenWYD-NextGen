@@ -104,9 +104,9 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | `/srv` no cliente gráfico: `Enc` sem `*<canal>` | ✅ 06/11: `*<canal> ~x1:...` (38 B); e2e 1→2 e 2→1; ESC segue sem pacote (limite do cliente) | [CHANNEL-02](done/CHANNEL-02.md) |
 | Rename `character`→`characters` incompleto no runtime | ✅ 06/11: banco só com `characters`, queries Go no nome novo, stack reconstruída, login e2e sem 42P01 | [DB-05](done/DB-05.md) |
 | Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
-| `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | 0 rows no banco de dev | [DB-03](issues/DB-03.md) |
+| `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | ✅ 06/11: migration `0007` + fallback/upsert; quote `1/8/8`, compra concorrente com um vencedor | [DB-03](done/DB-03.md) ✅ |
 | Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](done/DB-01.md) ✅ |
-| Sem `/metrics`, `trace_id` nem alertas | ✅ 06/11: `/metrics` nos 4 serviços + `tmserver2` (`:9101-9104`, `:9111`), conexões CPSock, tick, fila, pool e RPC; e2e verde e zero 42P01 | [OBS-01](done/OBS-01.md) ✅ · `trace_id` em [OBS-02](issues/OBS-02.md) · alertas em [OBS-03](issues/OBS-03.md) · `gitleaks` em [OBS-04](issues/OBS-04.md) |
+| Sem `/metrics`, `trace_id` nem alertas | ✅ 06/11: `/metrics` nos 4 serviços + `tmserver2` (`:9101-9104`, `:9111`), conexões CPSock, tick, fila, pool e RPC; e2e verde e zero 42P01 | [OBS-01](done/OBS-01.md) ✅ · `trace_id` em [OBS-02](issues/OBS-02.md) · alertas em [OBS-03](issues/OBS-03.md) · `gitleaks` em [OBS-04](done/OBS-04.md) ✅ |
 | Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](done/DOC-01.md) |
 | Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](done/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](done/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
@@ -116,6 +116,11 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 
 Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
 de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.
+
+O lote seguinte passou do marco de 10: 18 issues distintas foram para `done/`/`test/` depois do
+commit de revisão `3157207` (a medição conservadora soma `9ba6cd7`, `cc499a4`, `5558bfa` e
+`0499bcd`). O review do lote está em [REVIEW-11](REVIEW-11-2026-11-06.md), com o contador
+**reiniciado em 0** nesta data.
 
 ## Sessão de QA in-game (05/11/2026)
 
@@ -325,6 +330,19 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-06 (DB-03, OBS-04 e review do lote)** — o manto ganhou a singleton que faltava:
+  `0007_sapphire_balance_singleton` insere `1/8/8` com `ON CONFLICT DO NOTHING`, e o store passou a
+  devolver os defaults/upsertar quando a linha não existe, então banco novo e restaurado funcionam
+  sem intervenção. O teste de integração não semeia mais a linha e há um caso que apaga a singleton
+  e prova a reparação. O gate ganhou `scripts/check-secrets.sh` (`.env` versionado, `SESSION_SECRET`
+  default/curto fora de dev e `gitleaks` com allowlist mínima) e o CI um job `Secret scan` em todo
+  push/PR; a prova de vermelho usou um segredo sintético (`exit 1`) e o scan real não achou nada.
+  O review do lote de 18 issues está em [REVIEW-11](REVIEW-11-2026-11-06.md) e corrigiu a migration
+  `down`, paths obsoletos de conteúdo/migrations e o split de nomes no script de segredos.
+  Verification: `go test -tags=integration ./internal/store/ -run KingdomCape` PASS · banco vivo
+  `1|8|8` e `schema_migrations=0007` · `gitleaks` RC 1 plantado / 0 limpo · `make gate`,
+  `go build ./...`, `go vet ./...` e `go test ./...` exit 0.
 
 - **2026-11-06 (OBS-01 e CHANNEL-02)** — observabilidade numérica e troca de canal no cliente.
   **OBS-01** entregou `/metrics` (texto Prometheus, sem dependência nova) nos quatro serviços e no

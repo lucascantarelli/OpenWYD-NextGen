@@ -33,7 +33,7 @@ são **gRPC (+mTLS opcional)**.
   loop e mutam estado direto. Chamadas bloqueantes (dbServer/billing) vão para fora do loop via
   `World.Go(...)` e o resultado re-entra no loop por callback.
 - **dbServer** (`dbserver/`, porta **7514**): persistência (PostgreSQL/pgx v5). Subcomandos:
-  `serve`, `convert`, `seed-account`. Migrations embutidas em `dbserver/migrations/*.up.sql`
+  `serve`, `convert`, `seed-account`. Migrations embutidas em `internal/migrations/*.up.sql`
   (aplicadas em ordem no boot).
 - **binServer** (`binserver/`, porta **3000**): billing (allow-all por padrão).
 
