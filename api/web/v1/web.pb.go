@@ -2757,7 +2757,7 @@ func (x *DeleteNpcRequest) GetNpcId() int64 {
 }
 
 // MerchantTemplate is one supported STRUCT_MOB template found under
-// Release/TMsrv/run/npc/.
+// tmserver/content/TMsrv/run/npc/.
 type MerchantTemplate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TemplateName  string                 `protobuf:"bytes,1,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"` // exact value for UpsertNpc.template_name (no .txt)
@@ -2914,7 +2914,7 @@ func (x *ListMerchantTemplatesResponse) GetTemplates() []*MerchantTemplate {
 	return nil
 }
 
-// ItemCatalogEntry is one row of Release/Common/ItemList.csv, trimmed to what
+// ItemCatalogEntry is one row of tmserver/content/Common/ItemList.csv, trimmed to what
 // the shop-item picker and the item icons need (the full row also carries
 // price/effects, not relevant here — see tmserver/internal/content.ItemEntry).
 //
@@ -3161,7 +3161,7 @@ func (x *ListItemCatalogResponse) GetIconPackVersion() string {
 
 type DropItemMob struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TemplateName  string                 `protobuf:"bytes,1,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"` // Release/TMsrv/run/npc file name
+	TemplateName  string                 `protobuf:"bytes,1,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"` // tmserver/content/TMsrv/run/npc file name
 	MobName       string                 `protobuf:"bytes,2,opt,name=mob_name,json=mobName,proto3" json:"mob_name,omitempty"`                // STRUCT_MOB.Name decoded as Latin-1
 	MobLevel      int32                  `protobuf:"varint,3,opt,name=mob_level,json=mobLevel,proto3" json:"mob_level,omitempty"`            // STRUCT_MOB.CurrentScore.Level
 	Slot          int32                  `protobuf:"varint,4,opt,name=slot,proto3" json:"slot,omitempty"`                                    // Carry[] slot; controls the base drop divisor
@@ -3493,7 +3493,7 @@ func (x *MobDropItem) GetRateDivisor() int32 {
 
 type MobDropEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TemplateName  string                 `protobuf:"bytes,1,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"` // Release/TMsrv/run/npc file name
+	TemplateName  string                 `protobuf:"bytes,1,opt,name=template_name,json=templateName,proto3" json:"template_name,omitempty"` // tmserver/content/TMsrv/run/npc file name
 	MobName       string                 `protobuf:"bytes,2,opt,name=mob_name,json=mobName,proto3" json:"mob_name,omitempty"`                // STRUCT_MOB.Name decoded as Latin-1
 	MobLevel      int32                  `protobuf:"varint,3,opt,name=mob_level,json=mobLevel,proto3" json:"mob_level,omitempty"`            // STRUCT_MOB.CurrentScore.Level
 	Items         []*MobDropItem         `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
@@ -3980,7 +3980,7 @@ func (x *ListMapZonesResponse) GetZones() []*MapZone {
 	return nil
 }
 
-// MobTemplateFile is one STRUCT_MOB template found under Release/TMsrv/run/npc/,
+// MobTemplateFile is one STRUCT_MOB template found under tmserver/content/TMsrv/run/npc/,
 // unfiltered (see ListMobTemplates).
 type MobTemplateFile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -11556,7 +11556,7 @@ type AdminCharacterItem struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Slot      int32                  `protobuf:"varint,1,opt,name=slot,proto3" json:"slot,omitempty"`
 	ItemIndex int32                  `protobuf:"varint,2,opt,name=item_index,json=itemIndex,proto3" json:"item_index,omitempty"`
-	// name/icon_url come from the item catalog (Release/Common/ItemList.csv).
+	// name/icon_url come from the item catalog (tmserver/content/Common/ItemList.csv).
 	// The UI shows the name; the index stays for the link to /itens/<index>.
 	Name          string `protobuf:"bytes,10,opt,name=name,proto3" json:"name,omitempty"`
 	IconUrl       string `protobuf:"bytes,11,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`

@@ -507,7 +507,7 @@ const (
 // screens that have to render an item (donate shop, daily reward, drop tables,
 // world events). Unlike NpcAdminService.ListItemCatalog it takes no
 // moderator_id: the catalog is public, immutable content read from the
-// read-only Release/ mount at boot, not account data.
+// read-only tmserver/content/ mount at boot, not account data.
 //
 // The whole list is ~3.2k entries; the BFF is expected to fetch it once and
 // cache it against catalog_version rather than call per item.
@@ -543,7 +543,7 @@ func (c *itemCatalogServiceClient) ListItems(ctx context.Context, in *ListItemsR
 // screens that have to render an item (donate shop, daily reward, drop tables,
 // world events). Unlike NpcAdminService.ListItemCatalog it takes no
 // moderator_id: the catalog is public, immutable content read from the
-// read-only Release/ mount at boot, not account data.
+// read-only tmserver/content/ mount at boot, not account data.
 //
 // The whole list is ~3.2k entries; the BFF is expected to fetch it once and
 // cache it against catalog_version rather than call per item.
@@ -661,11 +661,11 @@ type NpcAdminServiceClient interface {
 	// DeleteNpc removes a definition.
 	DeleteNpc(ctx context.Context, in *DeleteNpcRequest, opts ...grpc.CallOption) (*AdminAck, error)
 	// ListMerchantTemplates returns the supported NPC templates found in the
-	// content tree (Release/TMsrv/run/npc/), so the moderator UI can offer a
+	// content tree (tmserver/content/TMsrv/run/npc/), so the moderator UI can offer a
 	// searchable picker instead of a free-text template_name field. Scanned once
 	// at web-api boot from -content/W2PP_CONTENT; empty when that flag is unset.
 	ListMerchantTemplates(ctx context.Context, in *ListMerchantTemplatesRequest, opts ...grpc.CallOption) (*ListMerchantTemplatesResponse, error)
-	// ListItemCatalog returns the item catalog (Release/Common/ItemList.csv:
+	// ListItemCatalog returns the item catalog (tmserver/content/Common/ItemList.csv:
 	// item_index, name), so the shop-item editor (SetNpcShop/SetItemPrice) can
 	// offer a searchable picker instead of a raw item_index typed by hand.
 	// Scanned once at web-api boot from -content/W2PP_CONTENT; empty when unset.
@@ -851,11 +851,11 @@ type NpcAdminServiceServer interface {
 	// DeleteNpc removes a definition.
 	DeleteNpc(context.Context, *DeleteNpcRequest) (*AdminAck, error)
 	// ListMerchantTemplates returns the supported NPC templates found in the
-	// content tree (Release/TMsrv/run/npc/), so the moderator UI can offer a
+	// content tree (tmserver/content/TMsrv/run/npc/), so the moderator UI can offer a
 	// searchable picker instead of a free-text template_name field. Scanned once
 	// at web-api boot from -content/W2PP_CONTENT; empty when that flag is unset.
 	ListMerchantTemplates(context.Context, *ListMerchantTemplatesRequest) (*ListMerchantTemplatesResponse, error)
-	// ListItemCatalog returns the item catalog (Release/Common/ItemList.csv:
+	// ListItemCatalog returns the item catalog (tmserver/content/Common/ItemList.csv:
 	// item_index, name), so the shop-item editor (SetNpcShop/SetItemPrice) can
 	// offer a searchable picker instead of a raw item_index typed by hand.
 	// Scanned once at web-api boot from -content/W2PP_CONTENT; empty when unset.
@@ -1267,7 +1267,7 @@ const (
 // EDITAPPMOB's own restart-to-apply behavior).
 type MobTemplateAdminServiceClient interface {
 	// ListMobTemplates returns every STRUCT_MOB template file found in the
-	// content tree (Release/TMsrv/run/npc/) — unlike NpcAdminService's
+	// content tree (tmserver/content/TMsrv/run/npc/) — unlike NpcAdminService's
 	// ListMerchantTemplates, this is NOT filtered to merchants: monsters are the
 	// primary rebalancing use case for this tool.
 	ListMobTemplates(ctx context.Context, in *ListMobTemplatesRequest, opts ...grpc.CallOption) (*ListMobTemplatesResponse, error)
@@ -1284,7 +1284,7 @@ type MobTemplateAdminServiceClient interface {
 	// NpcAdminService.SetNpcShop on the NPC definition existing).
 	SetMobTemplateEquip(ctx context.Context, in *SetMobTemplateEquipRequest, opts ...grpc.CallOption) (*AdminAck, error)
 	// DeleteMobTemplateStat removes the override, reverting the template to its
-	// raw file defaults (never deletes the underlying file — Release/ is
+	// raw file defaults (never deletes the underlying file — tmserver/content/ is
 	// read-only in production).
 	DeleteMobTemplateStat(ctx context.Context, in *DeleteMobTemplateStatRequest, opts ...grpc.CallOption) (*AdminAck, error)
 }
@@ -1363,7 +1363,7 @@ func (c *mobTemplateAdminServiceClient) DeleteMobTemplateStat(ctx context.Contex
 // EDITAPPMOB's own restart-to-apply behavior).
 type MobTemplateAdminServiceServer interface {
 	// ListMobTemplates returns every STRUCT_MOB template file found in the
-	// content tree (Release/TMsrv/run/npc/) — unlike NpcAdminService's
+	// content tree (tmserver/content/TMsrv/run/npc/) — unlike NpcAdminService's
 	// ListMerchantTemplates, this is NOT filtered to merchants: monsters are the
 	// primary rebalancing use case for this tool.
 	ListMobTemplates(context.Context, *ListMobTemplatesRequest) (*ListMobTemplatesResponse, error)
@@ -1380,7 +1380,7 @@ type MobTemplateAdminServiceServer interface {
 	// NpcAdminService.SetNpcShop on the NPC definition existing).
 	SetMobTemplateEquip(context.Context, *SetMobTemplateEquipRequest) (*AdminAck, error)
 	// DeleteMobTemplateStat removes the override, reverting the template to its
-	// raw file defaults (never deletes the underlying file — Release/ is
+	// raw file defaults (never deletes the underlying file — tmserver/content/ is
 	// read-only in production).
 	DeleteMobTemplateStat(context.Context, *DeleteMobTemplateStatRequest) (*AdminAck, error)
 	mustEmbedUnimplementedMobTemplateAdminServiceServer()
@@ -1563,7 +1563,7 @@ const (
 //
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
 // Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
-// Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
+// tmserver/content/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.
 type AttributeMapAdminServiceClient interface {
@@ -1610,7 +1610,7 @@ func (c *attributeMapAdminServiceClient) TransformAttributeMap(ctx context.Conte
 //
 // AttributeMapAdminService is the moderator-facing replacement for the legacy
 // Source/Code/_legacy/AttributeMap_Editor tool. It reads the binary
-// Release/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
+// tmserver/content/TMsrv/run/AttributeMap.dat asset, applies bulk transformations, and
 // returns a new .dat payload for controlled operator replacement. It never
 // mutates live tmServer state; the game consumes AttributeMap.dat at boot.
 type AttributeMapAdminServiceServer interface {
@@ -5164,7 +5164,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // ContentRatesService edits the percentage tables under
-// Release/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
+// tmserver/content/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
 // QuestsRate (recompensas de quest). The files are mounted read-only, so an edit
 // is an overlay row in content_rate_override; tmServer applies it at boot behind
 // `-rates-editing`. The process flags are NOT editable here.
@@ -5234,7 +5234,7 @@ func (c *contentRatesServiceClient) GetServerFlags(ctx context.Context, in *GetS
 // for forward compatibility.
 //
 // ContentRatesService edits the percentage tables under
-// Release/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
+// tmserver/content/Common/Settings (issue 36): SancRate (refino), CompRate (combine) and
 // QuestsRate (recompensas de quest). The files are mounted read-only, so an edit
 // is an overlay row in content_rate_override; tmServer applies it at boot behind
 // `-rates-editing`. The process flags are NOT editable here.

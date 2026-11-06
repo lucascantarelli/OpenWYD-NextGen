@@ -2065,7 +2065,7 @@ const (
 // ContentRateConfigService serves the moderator rate overlay (issue 36) to
 // tmServer. READ-ONLY from tmServer's side: the web-api writes
 // content_rate_override and tmServer fetches the rows once at boot, behind
-// -rates-editing. The files in Release/Common/Settings stay the fallback for
+// -rates-editing. The files in tmserver/content/Common/Settings stay the fallback for
 // every cell without a row.
 type ContentRateConfigServiceClient interface {
 	// ListContentRateOverrides returns every overlay row.
@@ -2097,7 +2097,7 @@ func (c *contentRateConfigServiceClient) ListContentRateOverrides(ctx context.Co
 // ContentRateConfigService serves the moderator rate overlay (issue 36) to
 // tmServer. READ-ONLY from tmServer's side: the web-api writes
 // content_rate_override and tmServer fetches the rows once at boot, behind
-// -rates-editing. The files in Release/Common/Settings stay the fallback for
+// -rates-editing. The files in tmserver/content/Common/Settings stay the fallback for
 // every cell without a row.
 type ContentRateConfigServiceServer interface {
 	// ListContentRateOverrides returns every overlay row.
