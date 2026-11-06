@@ -1,8 +1,8 @@
-// Package billing is the binServer's billing policy, DESIGNED FROM SCRATCH
-// (migration-plan.md §4, Fase 6): the legacy _AUTH_GAME 196-byte link is
-// UNVERIFIED and is NOT reproduced. Instead the new binServer exposes a clean
-// gRPC contract (api/bin/v1) with its own policy. The tmServer character-login
-// billing gate calls Check; this service is the source of truth.
+// Package billing é a política de cobrança do binServer, DESENHADA DO ZERO: o
+// link legado _AUTH_GAME de 196 bytes não foi verificado e NÃO é reproduzido. O
+// binServer novo expõe um contrato gRPC limpo (api/bin/v1) com política própria.
+// O gate de cobrança no login de personagem do tmServer chama Check; este
+// serviço é a fonte da verdade.
 package billing
 
 import (
@@ -10,18 +10,18 @@ import (
 	"time"
 )
 
-// Status is an account's billing standing.
+// Status é a situação de cobrança de uma conta.
 type Status int
 
-// Billing statuses.
+// Situações de cobrança.
 const (
-	StatusUnknown Status = iota // no record (policy decides allow/deny)
-	StatusActive                // paying / free-to-play active
-	StatusBlocked               // administratively blocked
-	StatusExpired               // subscription lapsed
+	StatusUnknown Status = iota // sem registro (a política decide liberar/negar)
+	StatusActive                // pagante / free-to-play ativo
+	StatusBlocked               // bloqueado por decisão administrativa
+	StatusExpired               // assinatura vencida
 )
 
-// String renders a status for logs/wire.
+// String rende a situação para log e wire.
 func (s Status) String() string {
 	switch s {
 	case StatusActive:
@@ -35,42 +35,43 @@ func (s Status) String() string {
 	}
 }
 
-// Account is a billing record. A zero ExpiresAt means "never expires".
+// Account é um registro de cobrança. ExpiresAt zero significa "nunca expira".
 type Account struct {
 	Name      string
 	Status    Status
 	ExpiresAt time.Time
 }
 
-// Decision is the result of a billing check.
+// Decision é o resultado de uma checagem de cobrança.
 type Decision struct {
 	Allowed bool
 	Status  Status
 }
 
-// Service holds billing records. The in-memory map is a stand-in for persistent
-// storage; the policy and API are stable regardless of backing store. Safe for
-// concurrent use (a gRPC server handles requests on many goroutines).
+// Service guarda os registros de cobrança. O mapa em memória é um substituto
+// do armazenamento persistente; a política e a API são estáveis qualquer que
+// seja o back-end. Seguro para uso concorrente (o servidor gRPC atende em muitas
+// goroutines).
 type Service struct {
 	mu           sync.RWMutex
 	accounts     map[string]Account
-	allowUnknown bool // free-to-play default for accounts without a record
+	allowUnknown bool // padrão free-to-play para conta sem registro
 }
 
-// New creates a Service. allowUnknown sets the policy for accounts with no
-// record (true = free-to-play: allow; false = require a record).
+// New cria um Service. allowUnknown define a política para conta sem registro
+// (true = free-to-play: libera; false = exige registro).
 func New(allowUnknown bool) *Service {
 	return &Service{accounts: make(map[string]Account), allowUnknown: allowUnknown}
 }
 
-// Set inserts or replaces an account record.
+// Set insere ou substitui o registro de uma conta.
 func (s *Service) Set(acc Account) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.accounts[acc.Name] = acc
 }
 
-// Check decides whether an account may log in at time now.
+// Check decide se a conta pode logar no instante now.
 func (s *Service) Check(name string, now time.Time) Decision {
 	s.mu.RLock()
 	acc, ok := s.accounts[name]

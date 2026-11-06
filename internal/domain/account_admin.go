@@ -2,9 +2,9 @@ package domain
 
 import "time"
 
-// AccountRow is one account as the moderation UI sees it. It never carries
-// pass_hash, pin_hash or block_pass_hash: the read path is deliberately shaped
-// so a secret cannot be serialized by accident (issue 32).
+// AccountRow é uma conta como a UI de moderação a vê. Nunca carrega pass_hash,
+// pin_hash nem block_pass_hash: o caminho de leitura é moldado de propósito para
+// um segredo não ser serializado por acidente.
 type AccountRow struct {
 	ID            int64
 	Name          string
@@ -14,15 +14,15 @@ type AccountRow struct {
 	BlockedReason string
 	DonateBalance int32
 	CreatedAt     time.Time
-	// RoleChangedAt/RoleChangedBy are nil for accounts never touched by the web.
+	// RoleChangedAt/RoleChangedBy são nil em conta que a web nunca tocou.
 	RoleChangedAt *time.Time
 	RoleChangedBy *int64
 	Characters    int32
 }
 
-// AccountFilter is the /contas query. Query is a login prefix (the canonical name
-// is lowercase), Role is an exact match ("" = any) and Blocked uses the
-// Blocked* constants. AfterID is the keyset cursor (0 = from the start).
+// AccountFilter é a consulta de /contas. Query é prefixo de login (o nome
+// canônico é minúsculo), Role é casamento exato ("" = qualquer) e Blocked usa as
+// constantes Blocked*. AfterID é o cursor de keyset (0 = desde o início).
 type AccountFilter struct {
 	Query   string
 	Role    string
@@ -31,14 +31,14 @@ type AccountFilter struct {
 	Limit   int
 }
 
-// Blocked* are the tri-state values of AccountFilter.Blocked.
+// Blocked* são os valores tri-estado de AccountFilter.Blocked.
 const (
 	BlockedAny int32 = -1
 	BlockedNo  int32 = 0
 	BlockedYes int32 = 1
 )
 
-// AccountAudit is one row of account_admin_audit.
+// AccountAudit é uma linha de account_admin_audit.
 type AccountAudit struct {
 	ID        int64
 	ActorID   int64

@@ -9,8 +9,9 @@ import (
 
 const testSecret = "wyd-play-code-test-secret-0123456789abcdef"
 
-// nodeVector is the same assertion signed by the portal (node:crypto) in
-// wyd-plataforma src/lib/play-code.test.ts; both sides must agree byte for byte.
+// nodeVector é a mesma asserção assinada pelo portal (node:crypto) em
+// wyd-plataforma src/lib/play-code.test.ts; os dois lados precisam concordar byte
+// a byte.
 const nodeVector = "eyJzdWIiOiI0MiIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkwMDAwMDYwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiJ9.O52BvFIj7L-JOw8oVCdC6Sh5IxFUtDc-yDM4VhheYgE"
 
 var vectorClaims = Claims{Sub: "42", Iat: 1790000000, Exp: 1790000060, Jti: "0123456789abcdef0123456789abcdef"}

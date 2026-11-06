@@ -40,8 +40,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/content"
 )
 
-// defaultSets is what a bare run imports.
-const defaultSets = "item,skill,npc-template,world-item"
+// defaultSets is what a bare run imports: everything. A partial default would
+// leave the database describing an older content tree than the server reads.
+const defaultSets = "all"
 
 // catalog is everything parsed from tmserver/content/ in one pass.
 type catalog struct {
@@ -49,6 +50,15 @@ type catalog struct {
 	Skills     []domain.SkillCatalogEntry
 	Templates  []domain.NPCTemplateEntry
 	WorldItems []domain.WorldItemSeedEntry
+	Guards     []domain.GuardSpawnEntry
+	LevelItems []domain.LevelItemEntry
+	MobMercs   []domain.MobMercEntry
+	Settings   []domain.GameSetting
+	Matrix     []domain.GameDropBonus
+	Regions    []domain.RegionEntry
+	// Sources is the provenance written to content_source_file: path, sha256,
+	// size and row count of each imported file (issue 50, passo 1).
+	Sources []domain.ContentSourceFile
 	// Skipped lists files that could not be decoded (wrong size). They are
 	// reported but never fatal: one stray file in npc/ must not block the
 	// catalog.
@@ -84,6 +94,9 @@ func main() {
 	logger.Info("conteúdo lido",
 		"items", len(cat.Items), "skills", len(cat.Skills),
 		"templates", len(cat.Templates), "world_items", len(cat.WorldItems),
+		"guards", len(cat.Guards), "level_items", len(cat.LevelItems),
+		"mob_mercs", len(cat.MobMercs), "settings", len(cat.Settings),
+		"drop_matrix", len(cat.Matrix), "regions", len(cat.Regions),
 		"templates_ignorados", len(cat.Skipped))
 
 	if *dsn == "" {
@@ -142,19 +155,75 @@ func main() {
 		}
 		logger.Info("objetos do mundo importados", "rows", n)
 	}
+	if want["guard"] {
+		n, err := s.UpsertGuardSpawns(ctx, cat.Guards)
+		if err != nil {
+			logger.Error("importar guardas", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("guardas importadas", "rows", n)
+	}
+	if want["level-item"] {
+		n, err := s.UpsertLevelItems(ctx, cat.LevelItems)
+		if err != nil {
+			logger.Error("importar itens por nível", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("itens por nível importados", "rows", n)
+	}
+	if want["mob-merc"] {
+		n, err := s.UpsertMobMercs(ctx, cat.MobMercs)
+		if err != nil {
+			logger.Error("importar mercadores", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("mercadores importados", "rows", n)
+	}
+	if want["game-settings"] {
+		n, err := s.UpsertGameConfig(ctx, cat.Settings, cat.Matrix)
+		if err != nil {
+			logger.Error("importar gameconfig", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("gameconfig importado", "rows", n)
+	}
+	if want["regions"] {
+		n, err := s.UpsertRegions(ctx, cat.Regions)
+		if err != nil {
+			logger.Error("importar regiões", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("regiões importadas", "rows", n)
+	}
+	n, err := s.RecordContentSources(ctx, cat.Sources)
+	if err != nil {
+		logger.Error("registrar proveniência", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("proveniência registrada", "arquivos", n)
 }
 
 // parseSets validates and expands the -sets flag.
 func parseSets(list string) (map[string]bool, error) {
-	valid := map[string]bool{"item": true, "skill": true, "npc-template": true, "world-item": true}
+	valid := map[string]bool{
+		"item": true, "skill": true, "npc-template": true, "world-item": true,
+		"guard": true, "level-item": true, "mob-merc": true,
+		"game-settings": true, "regions": true,
+	}
 	want := make(map[string]bool, len(valid))
 	for _, name := range strings.Split(list, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
+		if name == "all" {
+			for set := range valid {
+				want[set] = true
+			}
+			continue
+		}
 		if !valid[name] {
-			return nil, fmt.Errorf("conjunto desconhecido %q (use %s)", name, defaultSets)
+			return nil, fmt.Errorf("conjunto desconhecido %q (use all ou %s)", name, defaultSets)
 		}
 		want[name] = true
 	}
@@ -196,7 +265,74 @@ func buildCatalog(contentDir string, want map[string]bool, logger *slog.Logger) 
 		}
 		cat.WorldItems = buildWorldItems(items)
 	}
+	if want["guard"] {
+		guards, err := content.LoadGuardSpawns(filepath.Join(contentDir, "TMsrv", "run", "Guard.txt"))
+		if err != nil {
+			return catalog{}, err
+		}
+		cat.Guards = guards
+		if err := addSource(&cat, contentDir, "TMsrv/run/Guard.txt", len(guards)); err != nil {
+			return catalog{}, err
+		}
+	}
+	if want["level-item"] {
+		items, err := content.LoadLevelItems(filepath.Join(contentDir, "TMsrv", "run", "LevelItem.txt"))
+		if err != nil {
+			return catalog{}, err
+		}
+		cat.LevelItems = items
+		if err := addSource(&cat, contentDir, "TMsrv/run/LevelItem.txt", len(items)); err != nil {
+			return catalog{}, err
+		}
+	}
+	if want["mob-merc"] {
+		mercs, err := content.LoadMobMercs(filepath.Join(contentDir, "Common", "Settings", "MobMerc.txt"))
+		if err != nil {
+			return catalog{}, err
+		}
+		cat.MobMercs = mercs
+		if err := addSource(&cat, contentDir, "Common/Settings/MobMerc.txt", len(mercs)); err != nil {
+			return catalog{}, err
+		}
+	}
+	if want["game-settings"] {
+		cfg, err := content.LoadGameConfig(filepath.Join(contentDir, "TMsrv", "run", "gameconfig.txt"))
+		if err != nil {
+			return catalog{}, err
+		}
+		cat.Settings, cat.Matrix = cfg.Settings, cfg.Matrix
+		if err := addSource(&cat, contentDir, "TMsrv/run/gameconfig.txt", len(cfg.Settings)+len(cfg.Matrix)); err != nil {
+			return catalog{}, err
+		}
+	}
+	if want["regions"] {
+		regions, err := content.LoadRegions(filepath.Join(contentDir, "TMsrv", "run", "Regions.txt"))
+		if err != nil {
+			return catalog{}, err
+		}
+		cat.Regions = regions
+		if err := addSource(&cat, contentDir, "TMsrv/run/Regions.txt", len(regions)); err != nil {
+			return catalog{}, err
+		}
+	}
 	return cat, nil
+}
+
+// addSource records the provenance of an imported file. The hash is what
+// -check compares, so an edit without reimport fails the gate instead of
+// silently drifting.
+func addSource(cat *catalog, contentDir, rel string, rows int) error {
+	path := filepath.Join(contentDir, filepath.FromSlash(rel))
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("ler %s: %w", rel, err)
+	}
+	sum := sha256.Sum256(raw)
+	cat.Sources = append(cat.Sources, domain.ContentSourceFile{
+		Path: rel, SHA256: hex.EncodeToString(sum[:]),
+		SizeBytes: int64(len(raw)), Rows: int32(rows),
+	})
+	return nil
 }
 
 // buildItems joins content.ItemList's derived accessors into one row per item.
@@ -378,6 +514,49 @@ func runCheck(ctx context.Context, s *store.Store, cat catalog, want map[string]
 			bad = true
 		}
 		logger.Info("check", "tabela", r.name, "arquivo", r.file, "banco", r.db, "status", status)
+	}
+	extra, err := s.CountContentSettings(ctx)
+	if err != nil {
+		logger.Error("contar configuração de conteúdo", "err", err)
+		return 1
+	}
+	rows2 := []struct {
+		set      string
+		name     string
+		file, db int
+	}{
+		{"guard", "guard_spawn", len(cat.Guards), extra.Guards},
+		{"level-item", "level_item", len(cat.LevelItems), extra.LevelItems},
+		{"mob-merc", "mob_merc", len(cat.MobMercs), extra.MobMercs},
+		{"game-settings", "game_setting", len(cat.Settings), extra.Settings},
+		{"game-settings", "game_drop_bonus", len(cat.Matrix), extra.Matrix},
+		{"regions", "region", len(cat.Regions), extra.Regions},
+	}
+	for _, r := range rows2 {
+		if !want[r.set] {
+			continue
+		}
+		status := "ok"
+		if r.file != r.db {
+			status = "DIVERGE"
+			bad = true
+		}
+		logger.Info("check", "tabela", r.name, "arquivo", r.file, "banco", r.db, "status", status)
+	}
+
+	hashes, err := s.ContentSourceHashes(ctx)
+	if err != nil {
+		logger.Error("ler proveniência", "err", err)
+		return 1
+	}
+	for _, src := range cat.Sources {
+		got, ok := hashes[src.Path]
+		status := "ok"
+		if !ok || got != src.SHA256 {
+			status = "DIVERGE"
+			bad = true
+		}
+		logger.Info("check", "arquivo", src.Path, "linhas", src.Rows, "sha256", status)
 	}
 	if bad {
 		logger.Error("catálogos divergem do conteúdo — rode o importador")

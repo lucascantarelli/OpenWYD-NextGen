@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// Real templates lifted out of tmserver/content/TMsrv/run/npc/. The @-prefixed pair are
-// the legacy 756-byte records of mobs that also ship in the canonical layout,
-// which is what makes the cross-layout parity test below possible.
+// Templates reais tirados de tmserver/content/TMsrv/run/npc/. O par com prefixo @
+// são os registros legados de 756 bytes de mobs que também são entregues no layout
+// canônico, e é isso que torna possível o teste de paridade entre layouts abaixo.
 const (
 	fxLegacy756Gargula = "mob_legacy756_gargula.bin"      // @Gargula, monster
 	fxLegacy756Tauron  = "mob_legacy756_tauron.bin"       // @Tauron, monster
@@ -47,8 +47,8 @@ func TestDetectMobVersion(t *testing.T) {
 	}
 }
 
-// TestDetectMobVersionMatchesFixtures pins the size→version routing against the
-// three layouts that actually ship in the content tree.
+// TestDetectMobVersionMatchesFixtures fixa o roteamento tamanho→versão contra os
+// três layouts que de fato acompanham a árvore de conteúdo.
 func TestDetectMobVersionMatchesFixtures(t *testing.T) {
 	tests := []struct {
 		file string

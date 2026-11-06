@@ -1,5 +1,5 @@
-// Command itemiconpack extracts the classic client item icons into a
-// versioned, CDN-ready directory without adding proprietary pixels to Git.
+// Command itemiconpack extrai os ícones de item do cliente clássico para um
+// diretório versionado e pronto para CDN, sem pôr pixel proprietário no Git.
 package main
 
 import (

@@ -2,30 +2,30 @@ package domain
 
 import "time"
 
-// TeleportRequirement values accepted by teleport_route.requirement.
+// Valores de TeleportRequirement aceitos por teleport_route.requirement.
 const (
 	TeleportRequirementNone  = "none"
 	TeleportRequirementFairy = "fairy"
 	TeleportRequirementKefra = "kefra"
 )
 
-// TeleportRoute is one moderator-editable teleport route (issue 42).
+// TeleportRoute é uma rota de teleporte editável pelo moderador.
 //
-// It is an OVERLAY, not a copy of the world table: a row replaces the compiled
-// teleportTable entry for the same origin tile, `Enabled=false` removes it, and
-// an origin with no row keeps the compiled route. SrcX/SrcY are the rounded tile
-// (multiple of 4) — the exact key teleportDest looks up.
+// É um OVERLAY, não uma cópia da tabela do mundo: a linha substitui a entrada
+// compilada de teleportTable no mesmo tile de origem, `Enabled=false` a remove e
+// uma origem sem linha mantém a rota compilada. SrcX/SrcY são o tile arredondado
+// (múltiplo de 4) — a chave exata que teleportDest consulta.
 type TeleportRoute struct {
 	SrcX int `json:"src_x"`
 	SrcY int `json:"src_y"`
 	DstX int `json:"dst_x"`
 	DstY int `json:"dst_y"`
-	// Cost is gold charged on arrival (>= 0).
+	// Cost é o ouro cobrado na chegada (>= 0).
 	Cost int `json:"cost"`
-	// Requirement is one of TeleportRequirement*.
-	Requirement string `json:"requirement"`
-	Enabled     bool   `json:"enabled"`
-	Note        string `json:"note"`
-	UpdatedBy   int64  `json:"updated_by"`
+	// Requirement é um dos TeleportRequirement*.
+	Requirement string    `json:"requirement"`
+	Enabled     bool      `json:"enabled"`
+	Note        string    `json:"note"`
+	UpdatedBy   int64     `json:"updated_by"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

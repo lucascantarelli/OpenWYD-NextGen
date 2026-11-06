@@ -1,6 +1,6 @@
 # REFACTOR-03 — Comentários e docstrings em português, sem referência a issue/roadmap/legado
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 em andamento (fatia de 06/11 entregue)
+**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 em andamento (fátias de 06/11: 9 diretórios no gate; dívida repo-wide medida em 8.297 linhas)
 
 ## Objetivo
 
@@ -108,6 +108,101 @@ palavras que não ocorrem em português e reduzi a fatia ao que ficou de fato li
 `internal/savefmt` ficou fora da lista do gate mesmo com a tradução parcial já feita: ainda tem
 `Basedef.h`/`data-formats.md` em várias constantes, e listar um diretório meio limpo é pior que não
 listar.
+
+## Fatia 2 (06/11/2026)
+
+**Diretórios migrados nesta fatia:** `internal/migrations`, `internal/playcode`, `internal/secret`,
+`internal/secure`, `internal/itemeffects`, `internal/teleportdata`. O gate passou de 3 para
+**9 diretórios**.
+
+Antes/depois medido com o mesmo regex do gate, dentro dos seis diretórios:
+
+| Diretório | inglês antes | depois | refs históricas antes | depois |
+|---|---:|---:|---:|---:|
+| `internal/migrations` | 2 | 0 | 0 | 0 |
+| `internal/playcode` | 16 | 0 | 0 | 0 |
+| `internal/secret` | 15 | 0 | 0 | 0 |
+| `internal/secure` | 16 | 0 | 0 | 0 |
+| `internal/itemeffects` | 34 | 0 | 2 | 0 |
+| `internal/teleportdata` | 21 | 0 | 3 | 0 |
+| **total** | **104** | **0** | **5** | **0** |
+
+O que mudou: docstrings de pacote e de símbolo exportado em português; as referências a
+`Source/Code/ItemEffect.h`, `GetFunc.cpp`, `internal/migrations/0034_…`, `game-rules.md`,
+`migration-plan.md` e `issue 44` saíram do código, e o porquê de cada regra continuou escrito (a
+ordem das resistências, o portão da Fada do Vale, o limite de 12 bytes do campo de senha). Nenhuma
+linha de código executável mudou de semântica; os testes dos seis pacotes seguem os mesmos.
+
+Provas desta fatia: `bash scripts/check-comments.sh` RC 0 (**9 diretórios**), `go test -race -count=1`
+nos seis pacotes RC 0 (18 s), `go build ./...` RC 0 (42 s), `go vet ./...` RC 0 (15 s),
+`check-skips` RC 0 (47, inalterado), `check-docs-links` RC 0 (141, inalterado), `gofmt -l` vazio.
+
+## Fatia 4 (06/11/2026)
+
+**Diretórios migrados:** `webserver/cmd` (17 → 0) e `binserver` (22 → 0). Gate: 11 → **13
+diretórios**. Migração por arquivo inteiro (ler o arquivo, reescrever todos os comentários numa edição),
+com verificação de lote (`gofmt -w` + `go build ./...` + detector) ao fim de cada bloco. Saíram
+`web-platform-plan.md`, `migration-plan.md §4`, `issue 32/34/58/62`; ficou o porquê (códigos de login
+só por ambiente para não aparecerem na lista de processos, catálogo vazio = seed faltando e não
+"sem conteúdo", `_AUTH_GAME` de 196 bytes não reproduzido).
+
+O detector pegou um falso positivo real de redação: `papéis` casa `\bis\b` porque `é` não é caractere
+de palavra no grep; a linha foi reescrita com `permissões` em vez de afrouxar o regex.
+
+## Fatia 3 (06/11/2026)
+
+**Diretórios migrados:** `internal/ratetables` e `internal/npctemplate`. Placar pelo detector do
+próprio gate (`bash scripts/check-comments.sh <dir>`, contando as linhas de violação que ele imprime):
+
+| Diretório | violações antes | depois |
+|---|---:|---:|
+| `internal/ratetables` | 45 | 0 |
+| `internal/npctemplate` | 56 | 0 |
+| **total** | **101** | **0** |
+
+O gate passou de 9 para **11 diretórios**. Traduções de docstring de pacote, de símbolo exportado e
+de comentário de teste; saíram as referências a `data-formats.md`, `issue #244` e `issue 58`, e o
+porquê continuou escrito (a tabela de refino só sobrescreve índices listados, o cardume de chaves por
+família no CompRate, o layout cp1252 do SancRate, a normalização 756/920→816 bytes). Nenhuma linha
+executável mudou de semântica.
+
+Provas desta fatia: `bash scripts/check-comments.sh` RC 0 (11 diretórios),
+`go test -race -count=1 ./internal/ratetables/ ./internal/npctemplate/` RC 0 (15 s), `gofmt -l` nos
+sete arquivos vazio. O gate continua reprovando diretório sujo:
+`bash scripts/check-comments.sh tmserver/internal/world` → RC 1.
+
+### Dívida restante, medida (não estimada)
+
+O critério repo-wide desta issue **não** está cumprido. Placar autoritativo = detector do gate por
+diretório, medido em 06/11 depois das três fatias:
+
+| Área | violações do gate |
+|---|---:|
+| `tmserver/internal/handler` | 6.095 |
+| `tmserver/internal/world` | 1.497 |
+| resto de `tmserver/internal` (content, protocol, dbclient, …) | 2.221 |
+| `webserver/internal` | 1.239 |
+| `internal/store` | 808 |
+| `tmserver/cmd` | 359 |
+| `dbserver` | 198 |
+| `internal/domain` | 173 |
+| `internal/savefmt` | 164 |
+| **total** | **12.754** |
+
+Zero: `internal/{crossover,droprate,itemeffects,migrations,npctemplate,playcode,ratetables,secret,secure,teleportdata,textenc}`,
+`binserver` e `webserver/cmd` (13 diretórios, os que o gate cobre).
+
+Essa é a razão de a issue continuar aberta: são ~12,8 mil comentários distintos, e a maioria exige
+ler o código do símbolo para traduzir sem mentir — o risco que a própria issue nomeia. O gate já roda
+no CI (`.github/workflows/_go.yml`), então a dívida não cresce enquanto é paga, e o placar acima é o
+roteiro: próximo lote `internal/domain` (173) e `internal/savefmt` (164), depois `internal/store`
+(808); `tmserver/internal/handler` (6.095) precisa ser fatiado por arquivo.
+
+Por que a issue continua aberta: o volume é de ~8,2 mil linhas de comentário em mais de 500 arquivos.
+Traduzir isso em massa, sem ler o código de cada símbolo, produz exatamente o defeito que o risco
+desta issue descreve — comentário que mente —, então a migração segue pacote a pacote, com o gate
+crescendo a cada fatia. O gate já roda no CI (`.github/workflows/_go.yml`), então a dívida não
+cresce enquanto é paga.
 
 ## Riscos/rollback
 

@@ -1,16 +1,16 @@
-// Package ratetables is the single parser for the editable rate tables in
-// tmserver/content/Common/Settings — the refine table (SancRate), the combine/recipe table
-// (CompRate) and the quest reward tiers (QuestsRate).
+// Package ratetables é o único parser das tabelas de taxa editáveis em
+// tmserver/content/Common/Settings — a tabela de refino (SancRate), a de
+// combine/receita (CompRate) e as faixas de recompensa de quest (QuestsRate).
 //
-// It exists so the web-api and tmServer cannot drift: the moderator UI serves the
-// same rows tmServer loads, with the same defaults and the same quirk rules
-// (SancRate only overrides the indices the file lists, and Âmago lands on its own
-// row instead of the legacy copy-paste bug into the Ori row).
+// Existe para que a web-api e o tmServer não divirjam: a UI do moderador serve
+// as mesmas linhas que o tmServer carrega, com os mesmos defaults e as mesmas
+// regras de exceção (SancRate só sobrescreve os índices que o arquivo lista, e
+// Âmago cai na própria linha em vez do erro de cópia do legado na linha Ori).
 //
-// A cell is identified by (file, family, name) and NOT by a numeric position:
-// CompRate has many keys per family ("Compositor Item_+7", "Compositor Item_+8"),
-// so a positional key would make them collide. name is stable against the file
-// growing new lines:
+// Uma célula é identificada por (file, family, name) e NÃO por posição
+// numérica: CompRate tem muitas chaves por família ("Compositor Item_+7",
+// "Compositor Item_+8"), então uma chave posicional as faria colidir. name é
+// estável quando o arquivo ganha linhas novas:
 //
 //	SancRate   family "PO"/"PL"/"AMAGO"      name "0".."11"  (índice do refino)
 //	CompRate   family "Compositor"/"Ehre"/…  name "Item_+7"   (chave do arquivo)
@@ -27,25 +27,25 @@ import (
 	"strings"
 )
 
-// File names, as stored in content_rate_override.file.
+// Nomes de arquivo, como guardados em content_rate_override.file.
 const (
 	FileSancRate   = "SancRate"
 	FileCompRate   = "CompRate"
 	FileQuestsRate = "QuestsRate"
 )
 
-// MaxPercent is the limit for every rate column of SancRate/CompRate.
+// MaxPercent é o limite de toda coluna de taxa de SancRate/CompRate.
 const MaxPercent = 100
 
-// MaxReward bounds the QuestsRate EXP/COIN columns (the loader uses the same
-// ceiling: 2_000_000_000).
+// MaxReward limita as colunas EXP/COIN de QuestsRate (o loader usa o mesmo teto:
+// 2_000_000_000).
 const MaxReward = 2_000_000_000
 
-// MaxLevel bounds the QuestsRate level windows.
+// MaxLevel limita as janelas de nível de QuestsRate.
 const MaxLevel = 399
 
-// Row is one editable cell: (file, family, name) → value, plus the range the
-// backend enforces and a label for the UI.
+// Row é uma célula editável: (file, family, name) → valor, mais a faixa que o
+// backend impõe e um rótulo para a UI.
 type Row struct {
 	File   string
 	Family string
@@ -56,7 +56,7 @@ type Row struct {
 	Label  string
 }
 
-// Override is one moderator edit loaded from content_rate_override.
+// Override é uma edição do moderador carregada de content_rate_override.
 type Override struct {
 	File   string
 	Family string
@@ -64,16 +64,17 @@ type Override struct {
 	Value  int64
 }
 
-// FileRefineRate is the dust-refine ceiling table (RefineRate.txt). Its rows are
-// "POLICY <KEY> <VALUE>" and tmServer consumes them as a policy, not as a
-// percentage table.
+// FileRefineRate é a tabela de teto do refino com poeira (RefineRate.txt). As
+// linhas são "POLICY <CHAVE> <VALOR>" e o tmServer as consome como política, não
+// como tabela de percentuais.
 const FileRefineRate = "RefineRate"
 
-// Files lists the tables the editor exposes.
+// Files lista as tabelas que o editor expõe.
 func Files() []string { return []string{FileSancRate, FileCompRate, FileQuestsRate, FileRefineRate} }
 
-// refinePolicyKeys are the editable RefineRate cells, with the range a moderator
-// may set (tmServer clamps the dust ceilings to HARD_CAP on load).
+// refinePolicyKeys são as células editáveis de RefineRate, com a faixa que o
+// moderador pode definir (o tmServer limita os tetos de poeira a HARD_CAP ao
+// carregar).
 var refinePolicyKeys = []struct {
 	Name  string
 	Label string
@@ -84,12 +85,13 @@ var refinePolicyKeys = []struct {
 	{"HARD_CAP", "Teto absoluto do refino"},
 }
 
-// RefineRateMax bounds every RefineRate value (no legacy path refines past +12).
+// RefineRateMax limita todo valor de RefineRate (nenhum caminho do legado refina
+// além de +12).
 const RefineRateMax = 15
 
-// refineRows reads RefineRate.txt the same way tmServer does: "POLICY key value",
-// skipping comments and malformed lines. A missing file yields the legacy
-// defaults so the editor still shows the effective ceiling.
+// refineRows lê RefineRate.txt do mesmo jeito que o tmServer: "POLICY chave
+// valor", ignorando comentários e linhas malformadas. Arquivo ausente rende os
+// defaults do legado, para o editor ainda mostrar o teto efetivo.
 func refineRows(path string) ([]Row, error) {
 	values := map[string]int64{"PO_MAX": 6, "PL_MAX": 9, "GEM_LEVEL": 10, "HARD_CAP": 11}
 	f, err := os.Open(path)
@@ -129,8 +131,9 @@ func refineRows(path string) ([]Row, error) {
 	return out, nil
 }
 
-// Rows parses every editable table under contentDir/Common/Settings, in a stable
-// order (file, then family, then name) so the UI and tests can compare slices.
+// Rows lê todas as tabelas editáveis de contentDir/Common/Settings numa ordem
+// estável (arquivo, depois família, depois nome), para a UI e os testes
+// compararem fatias.
 func Rows(contentDir string) ([]Row, error) {
 	settings := filepath.Join(contentDir, "Common", "Settings")
 	sanc, err := sancRows(filepath.Join(settings, "SancRate.txt"))
@@ -157,9 +160,9 @@ func Rows(contentDir string) ([]Row, error) {
 	return out, nil
 }
 
-// Apply folds the overrides into the parsed rows and reports how many landed.
-// Keys with no matching row are ignored (counted), never invented: the file is
-// the source of which cells exist.
+// Apply aplica os overrides nas linhas lidas e informa quantos entraram. Chave
+// sem linha correspondente é ignorada (e contada), nunca inventada: o arquivo é
+// a fonte de quais células existem.
 func Apply(rows []Row, overrides []Override) ([]Row, int, int) {
 	if len(overrides) == 0 {
 		return rows, 0, 0
@@ -183,7 +186,7 @@ func Apply(rows []Row, overrides []Override) ([]Row, int, int) {
 	return out, applied, ignored
 }
 
-// Validate checks one value against a row's range.
+// Validate confere um valor contra a faixa da linha.
 func Validate(row Row, value int64) error {
 	if value < row.Min || value > row.Max {
 		return fmt.Errorf("%s/%s/%s: valor %d fora da faixa %d..%d",
@@ -196,10 +199,10 @@ type key struct {
 	File, Family, Name string
 }
 
-// SancAnvils are the three refine rows, in table order.
+// SancAnvils são as três linhas de refino, na ordem da tabela.
 var SancAnvils = []string{"PO", "PL", "AMAGO"}
 
-// SancRowCount is the fixed [3][12] shape of the refine table.
+// SancRowCount é a forma fixa [3][12] da tabela de refino.
 const SancRowCount = 12
 
 func sancRows(path string) ([]Row, error) {
@@ -257,8 +260,9 @@ func parseSanc(r io.Reader) ([]Row, error) {
 	return out, nil
 }
 
-// sancAnvil maps an anvil token to its row using the same byte matching the game
-// does (the file is cp1252, so strings.ToUpper would mangle 0xC2).
+// sancAnvil mapeia o token da bigorna para a sua linha com a mesma comparação de
+// bytes que o jogo faz (o arquivo é cp1252, então strings.ToUpper estragaria
+// 0xC2).
 func sancAnvil(token string) (int, bool) {
 	switch asciiUpper(token) {
 	case "PO":
@@ -313,7 +317,8 @@ func questsRows(path string) ([]Row, error) {
 	return parseQuests(f)
 }
 
-// questColumns describes the four slots of a "Level" line, in file order.
+// questColumns descreve os quatro campos de uma linha "Level", na ordem do
+// arquivo.
 var questColumns = []string{"mortal min", "mortal max", "arch min", "arch max"}
 
 func parseQuests(r io.Reader) ([]Row, error) {
@@ -403,8 +408,9 @@ func parseQuests(r io.Reader) ([]Row, error) {
 	return out, nil
 }
 
-// asciiUpper uppercases only a-z, mirroring the C runtime's _strupr in the "C"
-// locale: the cp1252 0xC2 is not valid UTF-8, so strings.ToUpper would replace it.
+// asciiUpper converte só a-z para maiúscula, espelhando _strupr do runtime C no
+// locale "C": o byte cp1252 0xC2 não é UTF-8 válido, então strings.ToUpper o
+// substituiria.
 func asciiUpper(s string) string {
 	b := []byte(s)
 	for i, c := range b {

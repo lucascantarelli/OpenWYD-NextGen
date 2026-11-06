@@ -1,7 +1,7 @@
-// Package secret hashes and verifies account secrets (passwords, PINs, block
-// passwords) with argon2id. The legacy plaintext credentials (data-formats.md
-// §1.3) are NEVER carried into the new stack — migration-plan.md §5. It is the
-// single hashing implementation shared by the dbServer importer and the web-api.
+// Package secret calcula e confere hash de segredos de conta (senhas, PINs,
+// senhas de bloqueio) com argon2id. Credencial em texto plano do legado NUNCA
+// entra na pilha nova: este é o único ponto de hashing, compartilhado pelo
+// importador do dbServer e pela web-api.
 package secret
 
 import (
@@ -14,7 +14,8 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// argonParams are the argon2id cost parameters used for all imported secrets.
+// argonParams são os parâmetros de custo do argon2id usados em todo segredo
+// importado.
 type argonParams struct {
 	memory  uint32
 	time    uint32
@@ -23,12 +24,12 @@ type argonParams struct {
 	saltLen uint32
 }
 
-// defaultArgon follows OWASP's argon2id guidance (64 MiB, t=1, p=4).
+// defaultArgon segue a orientação do OWASP para argon2id (64 MiB, t=1, p=4).
 var defaultArgon = argonParams{memory: 64 * 1024, time: 1, threads: 4, keyLen: 32, saltLen: 16}
 
-// HashSecret returns an argon2id PHC-encoded hash of plain, or "" when plain is
-// empty (an unset secret — e.g. no block password). A fresh random salt is used
-// per call, so the same input yields different hashes.
+// HashSecret devolve o hash PHC do argon2id para plain, ou "" quando plain é
+// vazio (segredo não definido — por exemplo, sem senha de bloqueio). O sal é
+// aleatório por chamada, então a mesma entrada gera hashes diferentes.
 func HashSecret(plain string) (string, error) {
 	if plain == "" {
 		return "", nil
@@ -44,14 +45,15 @@ func HashSecret(plain string) (string, error) {
 		b64.EncodeToString(salt), b64.EncodeToString(h)), nil
 }
 
-// ErrBadHash is returned by VerifySecret when phc is not a hash this package
-// produced (wrong scheme, version, or malformed encoding).
+// ErrBadHash é devolvido por VerifySecret quando phc não é um hash produzido por
+// este pacote (esquema errado, versão errada ou codificação malformada).
 var ErrBadHash = errors.New("secret: malformed argon2id hash")
 
-// VerifySecret reports whether plain matches the argon2id PHC hash produced by
-// HashSecret. The comparison is constant-time. An empty stored hash means the
-// secret was unset on import, so it only matches an empty plain. Plaintext is
-// never reconstructed — we re-derive the hash from plain and compare digests.
+// VerifySecret diz se plain casa com o hash PHC do argon2id produzido por
+// HashSecret. A comparação é de tempo constante. Hash guardado vazio significa
+// segredo não definido na importação, então ele só casa com plain vazio. O texto
+// plano nunca é reconstruído: o hash é derivado de novo a partir de plain e os
+// resumos são comparados.
 func VerifySecret(plain, phc string) (bool, error) {
 	if phc == "" {
 		return plain == "", nil
@@ -62,7 +64,7 @@ func VerifySecret(plain, phc string) (bool, error) {
 		threads          uint8
 		saltB64, hashB64 string
 	)
-	// Matches the exact format written by HashSecret.
+	// Casa com o formato exato escrito por HashSecret.
 	if _, err := fmt.Sscanf(phc, "$argon2id$v=%d$m=%d,t=%d,p=%d$%s",
 		&version, &memory, &time, &threads, &saltB64); err != nil {
 		return false, fmt.Errorf("%w: %v", ErrBadHash, err)
@@ -70,7 +72,7 @@ func VerifySecret(plain, phc string) (bool, error) {
 	if version != argon2.Version {
 		return false, fmt.Errorf("%w: version %d", ErrBadHash, version)
 	}
-	// Sscanf's trailing %s captured "salt$hash"; split on the separator.
+	// O %s final do Sscanf capturou "salt$hash"; separa no cifrão.
 	sep := -1
 	for i := 0; i < len(saltB64); i++ {
 		if saltB64[i] == '$' {

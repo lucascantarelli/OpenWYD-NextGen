@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// legacyEnc é o formato exato do sprintf de CFileDB.cpp:2009: "*" seguido de
+// legacyEnc é o formato exato do sprintf do legado: "*" seguido de
 // dez inteiros decimais separados por um espaço. O cliente 7662 lê o primeiro
 // com "*%d" (literal no WYD.exe), então nada fora disso pode sair do servidor.
 var legacyEnc = regexp.MustCompile(`^\*\d+( \d+){9}$`)
@@ -155,8 +155,8 @@ func TestRealPasswordIsNotAToken(t *testing.T) {
 	}
 }
 
-// TestBuildProducesTenDecimalFields is the byte-level check the client's parser
-// depends on: ten fields, all decimal, first one the channel.
+// TestBuildProducesTenDecimalFields é a checagem byte a byte da qual o parser do
+// cliente depende: dez campos, todos decimais, o primeiro é o canal.
 func TestBuildProducesTenDecimalFields(t *testing.T) {
 	tok := Build("key", "test", 0, 2, time.Unix(1_800_000_000, 0))
 	parts := strings.Split(strings.TrimPrefix(tok, "*"), " ")

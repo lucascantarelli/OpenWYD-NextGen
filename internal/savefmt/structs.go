@@ -2,24 +2,22 @@ package savefmt
 
 import "encoding/binary"
 
-// Effect is one of the three effect/value pairs in a STRUCT_ITEM
-// (data-formats.md §1.5, Basedef.h:500-522).
+// Effect é um dos três pares efeito/valor de um STRUCT_ITEM.
 type Effect struct {
 	Effect uint8
 	Value  uint8
 }
 
-// Item is STRUCT_ITEM (8 bytes). sIndex==0 means an empty slot.
+// Item é STRUCT_ITEM (8 bytes). sIndex==0 significa slot vazio.
 type Item struct {
 	Index   int16
 	Effects [3]Effect
 }
 
-// Empty reports whether the item slot is empty (sIndex==0).
+// Empty informa se o slot de item está vazio (sIndex==0).
 func (it Item) Empty() bool { return it.Index == 0 }
 
-// Score is STRUCT_SCORE (48 bytes) — base or current attributes
-// (data-formats.md §1.5, Basedef.h:524-546).
+// Score é STRUCT_SCORE (48 bytes) — atributos base ou atuais.
 type Score struct {
 	Level     int32
 	AC        int32
@@ -39,8 +37,7 @@ type Score struct {
 	Special   [4]int16
 }
 
-// Affect is STRUCT_AFFECT (8 bytes) — a persisted, timed buff/debuff
-// (data-formats.md §1.5, Basedef.h:735-741).
+// Affect é STRUCT_AFFECT (8 bytes) — um buff/debuff persistido e temporizado.
 type Affect struct {
 	Type  uint8
 	Value uint8
@@ -48,9 +45,9 @@ type Affect struct {
 	Time  uint32
 }
 
-// Mob is STRUCT_MOB (816 bytes, natural alignment) — a persisted character
-// (data-formats.md §0.1/§1.4, Basedef.h:556-599). Players and mobs share this
-// struct in memory (Phase 3); here it is the on-disk character.
+// Mob é STRUCT_MOB (816 bytes, alinhamento natural) — um personagem persistido.
+// Jogadores e mobs compartilham esta struct em memória; aqui ela é o personagem
+// em disco.
 type Mob struct {
 	Name         [16]byte
 	Clan         uint8
@@ -67,7 +64,7 @@ type Mob struct {
 	CurrentScore Score
 	Equip        [MaxEquip]Item
 	Carry        [MaxCarry]Item
-	LearnedSkill int32 // long (4 bytes on Win32 x86)
+	LearnedSkill int32 // long (4 bytes no Win32 x86)
 	Magic        uint32
 	ScoreBonus   uint16
 	SpecialBonus uint16
@@ -81,12 +78,11 @@ type Mob struct {
 	Resist       [4]int8
 }
 
-// AccountInfo is STRUCT_ACCOUNTINFO (216 bytes) — account-level data
-// (data-formats.md §1.3, Basedef.h:1017-1032).
+// AccountInfo é STRUCT_ACCOUNTINFO (216 bytes) — dados de nível de conta.
 //
-// AccountPass and NumericToken are PLAINTEXT on disk — a critical security debt
-// that the converter hashes on import (Phase 2/7); they are never persisted in
-// clear by the new stack.
+// AccountPass e NumericToken estão em TEXTO PLANO no disco — dívida de segurança
+// crítica que o conversor resolve com hash na importação; a stack nova nunca os
+// persiste em claro.
 type AccountInfo struct {
 	AccountName  [16]byte
 	AccountPass  [12]byte
@@ -101,8 +97,7 @@ type AccountInfo struct {
 	YearDay      int32
 }
 
-// Quest is STRUCT_QUEST (56 bytes, align 8) — the active daily quest
-// (data-formats.md §1.5, Basedef.h:865-882).
+// Quest é STRUCT_QUEST (56 bytes, alinhamento 8) — a quest diária ativa.
 type Quest struct {
 	IndexQuest int16
 	Nivel      int16
@@ -115,7 +110,7 @@ type Quest struct {
 	ExpReward  int32 // long
 	GoldReward int32
 	Item       [2]Item
-	LastTime   int64 // time_t (8 bytes; UNVERIFIED width — see §0.1)
+	LastTime   int64 // time_t (8 bytes; largura não verificada)
 	MobCount   [3]int16
 }
 
@@ -130,36 +125,36 @@ type MobExtra struct {
 	Raw [MobExtraSize]byte
 }
 
-// ClassMaster returns the low byte of ClassMaster (offset 0).
+// ClassMaster devolve o byte baixo de ClassMaster (offset 0).
 func (m MobExtra) ClassMaster() uint8 { return m.Raw[0] }
 
-// Citizen returns the Citizen byte (offset 2).
+// Citizen devolve o byte Citizen (offset 2).
 func (m MobExtra) Citizen() uint8 { return m.Raw[2] }
 
-// SecLearnedSkill returns the secondary learned-skill bitmask (offset 4).
+// SecLearnedSkill devolve a máscara de skills secundárias aprendidas (offset 4).
 func (m MobExtra) SecLearnedSkill() int32 {
 	return int32(binary.LittleEndian.Uint32(m.Raw[4:8]))
 }
 
-// Fame returns the MobExtra Fame field (offset 8).
+// Fame devolve o campo Fame do MobExtra (offset 8).
 func (m MobExtra) Fame() int32 { return int32(binary.LittleEndian.Uint32(m.Raw[8:12])) }
 
-// KefraTicket returns the remaining Hall entries (STRUCT_MOBEXTRA offset 452).
+// KefraTicket devolve as entradas restantes no Salão (offset 452 do MOBEXTRA).
 func (m MobExtra) KefraTicket() int32 {
 	return int32(binary.LittleEndian.Uint32(m.Raw[452:456]))
 }
 
-// Soul returns the soul attribute byte (offset 12).
+// Soul devolve o byte de atributo alma (offset 12).
 func (m MobExtra) Soul() uint8 { return m.Raw[12] }
 
-// MortalFace returns the MortalFace field (offset 14).
+// MortalFace devolve o campo MortalFace (offset 14).
 func (m MobExtra) MortalFace() int16 {
 	return int16(binary.LittleEndian.Uint16(m.Raw[14:16]))
 }
 
-// AccountFile is STRUCT_ACCOUNTFILE (7952 bytes) — the whole on-disk account
-// blob (data-formats.md §0.1/§1.2, Basedef.h:1085-1108). Models the CURRENT
-// format only; legacy 4294 / 7500–7600 layouts are UNVERIFIED (version.go).
+// AccountFile é STRUCT_ACCOUNTFILE (7952 bytes) — o blob inteiro da conta em
+// disco. Modela só o formato ATUAL; os layouts legados de 4294 / 7500–7600 não
+// estão verificados (version.go).
 type AccountFile struct {
 	Info         AccountInfo
 	Char         [MobPerAccount]Mob
@@ -176,12 +171,12 @@ type AccountFile struct {
 	IsBlocked    bool
 }
 
-// NightmareEntries returns NT (STRUCT_MOBEXTRA offset 448).
+// NightmareEntries devolve NT (offset 448 do MOBEXTRA).
 func (m MobExtra) NightmareEntries() int32 {
 	return int32(binary.LittleEndian.Uint32(m.Raw[448:452]))
 }
 
-// LastNightmareUse returns LastNT, an MSVC time_t (offset 440, 8 bytes).
+// LastNightmareUse devolve LastNT, um time_t do MSVC (offset 440, 8 bytes).
 func (m MobExtra) LastNightmareUse() int64 {
 	return int64(binary.LittleEndian.Uint64(m.Raw[440:448]))
 }

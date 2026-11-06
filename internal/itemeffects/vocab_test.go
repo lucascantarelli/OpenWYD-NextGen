@@ -2,8 +2,8 @@ package itemeffects
 
 import "testing"
 
-// TestCodeRoundTrip: the catalog token resolves to the ItemEffect.h code, unknown
-// tokens do not, and the whole vocabulary is non-empty and sorted.
+// TestCodeRoundTrip: o token de catálogo resolve para o código, token desconhecido
+// não resolve, e o vocabulário inteiro é não vazio e ordenado.
 func TestCodeRoundTrip(t *testing.T) {
 	code, ok := Code("EF_CRITICAL")
 	if !ok || code != 42 {
@@ -27,8 +27,8 @@ func TestCodeRoundTrip(t *testing.T) {
 	}
 }
 
-// TestKnown guards the grant/edit validation: 43 (refino) exists, 98/99 do not —
-// the header jumps from 91 to 100.
+// TestKnown protege a validação de concessão/edição: 43 (refino) existe, 98/99
+// não — o vocabulário salta de 91 para 100.
 func TestKnown(t *testing.T) {
 	if !Known(43) {
 		t.Error("Known(43) = false, want true (EF_SANC)")

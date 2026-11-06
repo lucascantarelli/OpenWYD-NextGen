@@ -1,5 +1,5 @@
-// Command itemiconupload publishes a generated pack through
-// storage-manager-server and writes a resumable URL audit.
+// Command itemiconupload publica um pack gerado pelo storage-manager-server e
+// grava uma trilha de URLs retomável.
 package main
 
 import (
@@ -26,9 +26,9 @@ func main() {
 		log.Fatal(err)
 	}
 	if *auditPath == "" {
-		// A trilha fica ao lado do pack publicado, não em docs/: `docs/` é
-		// conteúdo de site versionado, e um JSON de execução lá dentro polui o
-		// site (e o gate de links) com artefato de máquina.
+		// A trilha fica ao lado do pack publicado, não na árvore de documentação:
+		// lá dentro um JSON de execução polui o site (e o gate de links) com
+		// artefato de máquina.
 		*auditPath = filepath.Join(*packDir, "item-icons-upload-"+manifest.PackVersion+".json")
 	}
 	audit, err := itemicons.Upload(itemicons.UploadConfig{

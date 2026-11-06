@@ -223,3 +223,24 @@ essa marcação em vez de tratá-la como fato.
   cliente (`client/`) ou o `project-id` do Freebuff (`.freebuff/`).
 - Ao concluir uma issue do roadmap, atualize o status em `roadmap/index.md` e a linha
   correspondente em `docs/migration/SESSION-PRIMER.md` quando o comportamento mudar.
+
+## Comandos
+
+```bash
+make build          # go build ./...
+make binaries       # binários em bin/ (tmserver, dbserver, binserver, webserver)
+make test           # go test -race -cover ./...
+make lint           # golangci-lint run
+make vet            # go vet ./...
+make fmt            # gofmt + goimports
+make proto          # regen gRPC de api/*.proto
+make certs          # certs mTLS de dev (gitignored)
+
+make run            # tmserver sozinho, persistência no-op
+make run-local      # stack completa (db, dbServer, binServer, webServer, portal, tmServer) + conta test/test123
+
+make portal-install # npm ci em portal/
+make portal-dev     # portal em http://127.0.0.1:3000 (hot reload)
+make portal-test    # tsc --noEmit + vitest
+make portal-build   # next build (standalone)
+```

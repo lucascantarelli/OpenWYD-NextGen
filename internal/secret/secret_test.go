@@ -38,7 +38,7 @@ func TestHashSaltIsRandom(t *testing.T) {
 }
 
 func TestVerifyEmptySecret(t *testing.T) {
-	// An unset secret hashes to "" and only matches an empty plaintext.
+	// Um segredo não definido vira "" e só casa com texto plano vazio.
 	ok, err := VerifySecret("", "")
 	if err != nil || !ok {
 		t.Fatalf("empty/empty should match: ok=%v err=%v", ok, err)

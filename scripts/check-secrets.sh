@@ -6,8 +6,15 @@
 # Reprova:
 #   - .env real versionado (só .env.example/.sample/.template são permitidos);
 #   - SESSION_SECRET ausente, curto ou igual ao default fora de desenvolvimento;
+#   - W2PP_PLAY_CODE_SECRET curto;
+#   - certificado ou chave privada versionada (*.pem/key/p12/pfx/jks/crt);
+#   - allowlist do gitleaks cobrindo arquivo VERSIONADO (o scan ficaria cego ali);
 #   - segredo de alta confiança em arquivo versionado (gitleaks, com fallback
 #     determinístico quando o binário não está instalado).
+#
+# O fallback cobre chave privada, AWS, GitHub (token e PAT), GitLab, Slack,
+# OpenAI, Stripe live, npm e Google. Ele existe para o gate local não ficar mudo
+# sem o binário; no CI quem roda é o gitleaks pinado, com as regras padrão.
 #
 # O gitleaks roda em modo diretório para pegar também o que ainda não foi
 # commitado. O scan do CI usa o checkout limpo; localmente, as allowlists de
@@ -68,6 +75,41 @@ if [ -n "${W2PP_PLAY_CODE_SECRET:-}" ] && [ "${#W2PP_PLAY_CODE_SECRET}" -lt 32 ]
   fail=1
 fi
 
+# 2b. Material de chave não entra no índice: o mTLS de desenvolvimento é gerado
+#     por scripts/gen-certs.sh e fica fora do git.
+tracked_keys=$(git ls-files 2>/dev/null | grep -Ei '\.(pem|key|p12|pfx|jks|crt)$' || true)
+if [ -n "$tracked_keys" ]; then
+  say "FAIL: certificado ou chave privada versionado:"
+  printf '%s\n' "$tracked_keys" | sed 's/^/  /'
+  fail=1
+else
+  say "OK: nenhum certificado ou chave privada versionado"
+fi
+
+# 2c. A allowlist do gitleaks só pode citar caminho NÃO versionado. Se um padrão
+#     dela casar com arquivo do índice, o scan fica cego justamente ali. O único
+#     caso aceito é o catálogo público .env.example/.sample/.template.
+if [ -f "$ROOT/.gitleaks.toml" ]; then
+  blind=""
+  while IFS= read -r pat; do
+    [ -z "$pat" ] && continue
+    hits=$(git ls-files 2>/dev/null | grep -E "$pat" | grep -vE '\.(example|sample|template)$' || true)
+    if [ -n "$hits" ]; then
+      blind="$blind$(printf '%s\n' "$hits" | sed 's/^/  /')"$'\n'
+    fi
+  done < <(sed -n '/^paths = \[/,/^\]/p' "$ROOT/.gitleaks.toml" | grep -oE "'''[^']+'''" | sed "s/'''//g")
+  if [ -n "$blind" ]; then
+    say "FAIL: allowlist do gitleaks cobre arquivo versionado (scan cego):"
+    printf '%s' "$blind"
+    fail=1
+  else
+    say "OK: allowlist do gitleaks só cobre material não versionado"
+  fi
+else
+  say "FAIL: .gitleaks.toml ausente (o CI instala o gitleaks e precisa da config)"
+  fail=1
+fi
+
 # 3. Gitleaks. O binário pode estar no PATH ou em .tools/bin (instalado por
 #    `GOBIN=$PWD/.tools/bin go install ...`). Sem ele, o fallback cobre os
 #    formatos de maior confiança para o gate local não ficar cego.
@@ -99,7 +141,11 @@ else
   slack_token="xox[baprs]""-[A-Za-z0-9-]{10,}"
   openai_key="sk-""[A-Za-z0-9]{32,}"
   google_key="AIza""[0-9A-Za-z_-]{35}"
-  pattern="$private_key|$aws_key|$github_token|$slack_token|$openai_key|$google_key"
+  gitlab_token="glpat""-[A-Za-z0-9_-]{20,}"
+  stripe_live="sk_live""_[A-Za-z0-9]{20,}"
+  npm_token="npm""_[A-Za-z0-9]{36}"
+  github_pat="github_pat""_[A-Za-z0-9_]{30,}"
+  pattern="$private_key|$aws_key|$github_token|$github_pat|$gitlab_token|$slack_token|$openai_key|$stripe_live|$npm_token|$google_key"
 
   hits=$(git grep -nI -E "$pattern" -- . ':(exclude)scripts/check-secrets.sh' 2>&1)
   rc=$?

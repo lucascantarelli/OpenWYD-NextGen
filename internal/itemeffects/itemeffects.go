@@ -1,16 +1,16 @@
-// Package itemeffects names the STRUCT_EFFECT.cEffect codes carried in a
-// STRUCT_ITEM's Eff1..Eff3 fields, so an admin screen can say "Dano +70"
-// instead of "2:70".
+// Package itemeffects dá nome aos códigos de STRUCT_EFFECT.cEffect carregados
+// em Eff1..Eff3 de um STRUCT_ITEM, para que uma tela de administração diga
+// "Dano +70" em vez de "2:70".
 //
-// The vocabulary is ItemEffect.h (Source/Code/ItemEffect.h), the same header the
-// legacy server and the client compile against; names[] mirrors its
-// `#define EF_*` constants one-to-one. labels[] is the short Portuguese label
-// the portal shows, limited on purpose to the codes that appear as adds on real
-// saves — the rest fall back to the constant name (Name) and, when the code has
-// no constant at all, to "" so the caller can render the raw number.
+// O vocabulário é o mesmo cabeçalho que o servidor legado e o cliente compilam;
+// names[] espelha as constantes `#define EF_*` uma a uma. labels[] é o rótulo
+// curto em português que o portal mostra, limitado de propósito aos códigos que
+// aparecem como adds em saves reais — o resto cai no nome da constante (Name) e,
+// quando o código não tem constante nenhuma, em "" para o chamador mostrar o
+// número cru.
 //
-// This is a leaf package: no imports beyond the standard library, so both the
-// website (webserver) and the future editors of issue 44 can share it.
+// É um pacote folha: nenhum import além da biblioteca padrão, então tanto o site
+// (webserver) quanto os editores da web podem compartilhá-lo.
 package itemeffects
 
 import (
@@ -18,7 +18,7 @@ import (
 	"sync"
 )
 
-// names maps a code to its ItemEffect.h constant, without the EF_ prefix.
+// names mapeia um código para a sua constante, sem o prefixo EF_.
 var names = map[int32]string{
 	0: "NONE", 1: "LEVEL", 2: "DAMAGE", 3: "AC", 4: "HP", 5: "MP", 6: "EXP",
 	7: "STR", 8: "INT", 9: "DEX", 10: "CON",
@@ -43,10 +43,9 @@ var names = map[int32]string{
 	112: "MOBTYPE", 113: "ITEMTYPE", 126: "NOSANC", 127: "NOTRADE",
 }
 
-// labels are the portal's short names for the codes that actually show up as
-// adds. Resist order follows the content (game-rules.md §refino): EF_RESIST1 is
-// Fogo, 2 Gelo, 3 Sagrado, 4 Relâmpago — the same order Orb de Fogo/Gelo/Sagrada/
-// Relâmpago rely on.
+// labels são os nomes curtos do portal para os códigos que de fato aparecem
+// como adds. A ordem das resistências segue o conteúdo: EF_RESIST1 é Fogo, 2
+// Gelo, 3 Sagrado, 4 Relâmpago — a mesma ordem de que as orbes dependem.
 var labels = map[int32]string{
 	2: "Dano", 3: "Defesa", 4: "HP", 5: "MP", 6: "EXP",
 	7: "Força", 8: "Inteligência", 9: "Destreza", 10: "Constituição",
@@ -66,7 +65,7 @@ var labels = map[int32]string{
 	126: "Sem refino", 127: "Intransferível",
 }
 
-// Type is one row of the vocabulary, for UIs that need the whole table.
+// Type é uma linha do vocabulário, para UIs que precisam da tabela inteira.
 type Type struct {
 	Code  int32
 	Name  string
@@ -88,20 +87,21 @@ func codeIndex() map[string]int32 {
 	return codes
 }
 
-// Code resolves a catalog token such as "EF_CRITICAL" to its numeric code.
+// Code resolve um token de catálogo como "EF_CRITICAL" para o código numérico.
 func Code(token string) (int32, bool) {
 	code, ok := codeIndex()[token]
 	return code, ok
 }
 
-// Known reports whether the code exists in ItemEffect.h. A grant or an edit
-// must never store a code the client cannot interpret.
+// Known diz se o código existe no vocabulário. Uma concessão ou edição nunca
+// pode guardar um código que o cliente não sabe interpretar.
 func Known(code int32) bool {
 	_, ok := names[code]
 	return ok
 }
 
-// All returns the vocabulary sorted by code, for the portal's effect pickers.
+// All devolve o vocabulário ordenado por código, para os seletores de efeito do
+// portal.
 func All() []Type {
 	out := make([]Type, 0, len(names))
 	for code, name := range names {
@@ -111,13 +111,13 @@ func All() []Type {
 	return out
 }
 
-// Name returns the ItemEffect.h constant for a code (without the EF_ prefix).
-// Empty means the code is not in the header.
+// Name devolve a constante do código (sem o prefixo EF_). Vazio significa que o
+// código não está no vocabulário.
 func Name(code int32) string { return names[code] }
 
-// Label returns the portal label for a code: the curated Portuguese name when
-// there is one, otherwise the raw constant. Empty means the code is unknown and
-// the caller should show the number.
+// Label devolve o rótulo do portal para um código: o nome curado em português
+// quando existe, senão a constante crua. Vazio significa que o código é
+// desconhecido e o chamador deve mostrar o número.
 func Label(code int32) string {
 	if label, ok := labels[code]; ok {
 		return label

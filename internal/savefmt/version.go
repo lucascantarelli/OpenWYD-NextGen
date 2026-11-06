@@ -2,21 +2,21 @@ package savefmt
 
 import "strings"
 
-// Version identifies an account-file layout by its byte size. The original DBSrv
-// accepts (fsize>=7500 && fsize<=7600) || fsize==sizeof(STRUCT_ACCOUNTFILE)
-// (DBSrv/CRanking.cpp:175); the 4294-byte form is an even older pre-expansion
-// layout seen in account/A/antonio (data-formats.md §1.2).
+// Version identifica o layout de um arquivo de conta pelo tamanho em bytes. O
+// DBSrv original aceita (fsize>=7500 && fsize<=7600) ||
+// fsize==sizeof(STRUCT_ACCOUNTFILE); a forma de 4294 bytes é um layout ainda mais
+// antigo, anterior à expansão, visto em account/A/antonio.
 type Version int
 
-// Known account-file versions.
+// Versões conhecidas de arquivo de conta.
 const (
 	VersionUnknown      Version = iota
-	VersionLegacy4294           // 4294 B — pre-expansion; layout UNVERIFIED
-	VersionIntermediate         // 7500–7600 B — layout UNVERIFIED
-	VersionCurrent              // 7952 B — fully modelled (Decode/Encode)
+	VersionLegacy4294           // 4294 B — anterior à expansão; layout não verificado
+	VersionIntermediate         // 7500–7600 B — layout não verificado
+	VersionCurrent              // 7952 B — modelado por inteiro (Decode/Encode)
 )
 
-// String renders the version for logs.
+// String rende a versão para log.
 func (v Version) String() string {
 	switch v {
 	case VersionLegacy4294:
@@ -30,12 +30,13 @@ func (v Version) String() string {
 	}
 }
 
-// Modelled reports whether this stack can fully decode the version. Only the
-// current 7952-byte format is modelled; the others are detected but their field
-// layout is UNVERIFIED and must be reversed from a reference build/capture.
+// Modelled informa se esta stack decodifica a versão por inteiro. Só o formato
+// atual de 7952 bytes é modelado; os outros são detectados, mas seu layout de
+// campo não está verificado e precisa ser revertido de um build/captura de
+// referência.
 func (v Version) Modelled() bool { return v == VersionCurrent }
 
-// DetectVersion maps a file size to its layout version (data-formats.md §1.2).
+// DetectVersion mapeia um tamanho de arquivo para a versão do layout.
 func DetectVersion(size int) Version {
 	switch {
 	case size == AccountFileSize:
@@ -49,10 +50,10 @@ func DetectVersion(size int) Version {
 	}
 }
 
-// AccountNameAt0 reads the AccountName field at offset 0 — the one field stable
-// across all known versions (STRUCT_ACCOUNTINFO begins the file in every layout).
-// It trims trailing spaces and NULs (legacy files space-pad; see the antonio
-// sample). Returns "" if b is too short.
+// AccountNameAt0 lê o campo AccountName no offset 0 — o único campo estável em
+// todas as versões conhecidas (STRUCT_ACCOUNTINFO abre o arquivo em todo layout).
+// Remove espaços e NULs à direita (arquivos legados preenchem com espaço; ver a
+// amostra antonio). Devolve "" se b for curto demais.
 func AccountNameAt0(b []byte) string {
 	if len(b) < 16 {
 		return ""

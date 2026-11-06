@@ -1,7 +1,6 @@
-// Package grpcsrv implements the binServer's gRPC BillingService (api/bin/v1)
-// over the billing policy. This is the new, clean billing boundary tmServer
-// calls at character-login; the legacy _AUTH_GAME link is not reproduced
-// (migration-plan.md §4, Fase 6).
+// Package grpcsrv implementa o BillingService gRPC do binServer (api/bin/v1)
+// sobre a política de cobrança. É a fronteira nova e limpa que o tmServer chama
+// no login de personagem; o link legado _AUTH_GAME não é reproduzido.
 package grpcsrv
 
 import (
@@ -12,17 +11,17 @@ import (
 	"openwyd-nextgen/binserver/internal/billing"
 )
 
-// Clock returns the current time; injectable for deterministic tests.
+// Clock devolve o instante atual; injetável para testes determinísticos.
 type Clock func() time.Time
 
-// Server implements binv1.BillingServiceServer.
+// Server implementa binv1.BillingServiceServer.
 type Server struct {
 	binv1.UnimplementedBillingServiceServer
 	svc *billing.Service
 	now Clock
 }
 
-// New builds a BillingService over the given policy. A nil clock uses time.Now.
+// New monta o BillingService sobre a política dada. Clock nil usa time.Now.
 func New(svc *billing.Service, clock Clock) *Server {
 	if clock == nil {
 		clock = time.Now
@@ -30,7 +29,7 @@ func New(svc *billing.Service, clock Clock) *Server {
 	return &Server{svc: svc, now: clock}
 }
 
-// CheckBilling decides whether an account may enter the world.
+// CheckBilling decide se a conta pode entrar no mundo.
 func (s *Server) CheckBilling(_ context.Context, req *binv1.CheckBillingRequest) (*binv1.CheckBillingResponse, error) {
 	d := s.svc.Check(req.GetAccountName(), s.now())
 	return &binv1.CheckBillingResponse{

@@ -28,18 +28,19 @@ import (
 )
 
 const (
-	// Length is the code length; it must stay below the 12-byte password field.
+	// Length é o comprimento do código; precisa ficar abaixo dos 12 bytes do
+	// campo de senha.
 	Length = 10
-	// Alphabet has 32 symbols without look-alikes (no 0/o, 1/l), so each byte
-	// of randomness maps to a symbol without modulo bias.
+	// Alphabet tem 32 símbolos sem parecidos (sem 0/o, 1/l), então cada byte
+	// aleatório vira um símbolo sem viés de módulo.
 	Alphabet = "abcdefghijkmnpqrstuvwxyz23456789"
-	// TTL is how long an issued code stays valid.
+	// TTL é por quanto tempo um código emitido continua válido.
 	TTL = 2 * time.Minute
 
-	// AssertionLabel domain-separates the portal's request signature from the
-	// web client's play ticket, which uses the same token format.
+	// AssertionLabel separa por domínio a assinatura da requisição do portal do
+	// ticket de jogo do cliente web, que usa o mesmo formato de token.
 	AssertionLabel = "wyd-play-code.v1."
-	// MinSecretLength is the minimum PLAY_CODE_SECRET length.
+	// MinSecretLength é o tamanho mínimo de PLAY_CODE_SECRET.
 	MinSecretLength = 32
 
 	maxAssertionBytes = 1024
@@ -48,7 +49,7 @@ const (
 	maxSeen           = 4096
 )
 
-// New returns a fresh random code.
+// New devolve um código aleatório novo.
 func New() (string, error) {
 	b := make([]byte, Length)
 	if _, err := rand.Read(b); err != nil {
@@ -60,14 +61,14 @@ func New() (string, error) {
 	return string(b), nil
 }
 
-// Hash is the stored form of a code.
+// Hash é a forma guardada de um código.
 func Hash(code string) []byte {
 	h := sha256.Sum256([]byte(code))
 	return h[:]
 }
 
-// Valid reports whether s has the shape of a code, so a password that cannot
-// be one never costs a database round-trip.
+// Valid diz se s tem a forma de um código, para que uma senha que não pode ser
+// um código nunca custe uma ida ao banco.
 func Valid(s string) bool {
 	if len(s) != Length {
 		return false
@@ -89,12 +90,12 @@ type Claims struct {
 	Jti string `json:"jti"`
 }
 
-// Sign encodes claims as base64url(JSON) "." base64url(HMAC-SHA256(secret,
-// AssertionLabel + payload)), the format of the web client's play ticket.
+// Sign codifica claims como base64url(JSON) "." base64url(HMAC-SHA256(segredo,
+// AssertionLabel + payload)), o formato do ticket de jogo do cliente web.
 func Sign(secret []byte, c Claims) string {
 	b, err := json.Marshal(c)
 	if err != nil {
-		panic(err) // Claims holds only strings and ints
+		panic(err) // Claims só tem strings e inteiros
 	}
 	payload := base64.RawURLEncoding.EncodeToString(b)
 	return payload + "." + base64.RawURLEncoding.EncodeToString(mac(secret, payload))
@@ -106,18 +107,18 @@ func mac(secret []byte, payload string) []byte {
 	return m.Sum(nil)
 }
 
-// Verifier checks portal assertions and refuses a jti seen before. It is safe
-// for concurrent use; it lives in the webserver, outside the game loop.
+// Verifier confere asserções do portal e recusa um jti já visto. É seguro para
+// uso concorrente; vive no webserver, fora do loop do jogo.
 type Verifier struct {
 	secret []byte
 	now    func() time.Time
 
 	mu   sync.Mutex
-	seen map[string]time.Time // jti -> expiry
+	seen map[string]time.Time // jti -> validade
 }
 
-// NewVerifier returns a Verifier, or nil when the secret is too short (the
-// feature then stays off).
+// NewVerifier devolve um Verifier, ou nil quando o segredo é curto demais (a
+// funcionalidade então fica desligada).
 func NewVerifier(secret string) *Verifier {
 	if len(secret) < MinSecretLength {
 		return nil

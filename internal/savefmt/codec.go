@@ -5,8 +5,8 @@ import (
 	"math"
 )
 
-// Fixed-width little-endian field helpers. Offsets are relative to the start of
-// the slice passed in (callers pass the struct's base slice).
+// Auxiliares de campo little-endian de largura fixa. Os offsets são relativos ao
+// início do slice recebido (o chamador passa o slice base da struct).
 func getU16(b []byte, off int) uint16    { return le.Uint16(b[off:]) }
 func getU32(b []byte, off int) uint32    { return le.Uint32(b[off:]) }
 func getI16(b []byte, off int) int16     { return int16(le.Uint16(b[off:])) }
@@ -89,11 +89,11 @@ func encodeScore(b []byte, s Score) {
 
 // --- STRUCT_SCORE, legacy compact form (28) ---
 
-// decodeScoreCompact reads the 28-byte STRUCT_SCORE of the 756-byte legacy mob
-// layout (data-formats.md §1.4.1). Relative to the 48-byte form it narrows
-// Level/AC/Damage to 16 bits and Special[] to 8, and drops Direction,
-// ChaosRate, MaxMp and Mp entirely — all four are zero in the current-format
-// npc templates too, so widening loses nothing.
+// decodeScoreCompact lê a STRUCT_SCORE de 28 bytes do layout legado de 756
+// bytes. Em relação à forma de 48 bytes, estreita Level/AC/Damage para 16 bits e
+// Special[] para 8, e descarta Direction, ChaosRate, MaxMp e Mp por inteiro — os
+// quatro são zero também nos templates npc do formato atual, então alargar não
+// perde nada.
 func decodeScoreCompact(b []byte) Score {
 	var s Score
 	s.Level = int32(getU16(b, 0))
@@ -125,7 +125,7 @@ func encodeAffect(b []byte, a Affect) {
 	putU32(b, 4, a.Time)
 }
 
-// --- STRUCT_MOB (816), offsets from data-formats.md §0.1 ---
+// --- STRUCT_MOB (816), offsets documentados em data-formats.md §0.1 ---
 
 func decodeMob(b []byte) Mob {
 	var m Mob
@@ -201,11 +201,11 @@ func encodeMob(b []byte, m Mob) {
 	}
 }
 
-// decodeMobLegacy756 parses the 756-byte legacy STRUCT_MOB layout into the
-// current Mob shape (data-formats.md §1.4.1). Fields absent from that layout
-// (Quest, Magic, and the score's Direction/ChaosRate/MaxMp/Mp) stay zero, which
-// is what the 816-byte templates carry anyway. b must be at least
-// MobSizeLegacy756 bytes; the caller routes by DetectMobVersion.
+// decodeMobLegacy756 converte o layout legado de 756 bytes para a forma atual de
+// Mob. Campos ausentes nele (Quest, Magic e Direction/ChaosRate/MaxMp/Mp do
+// score) ficam zero, que é o que os templates de 816 bytes trazem mesmo. b
+// precisa ter ao menos MobSizeLegacy756 bytes; o chamador roteia por
+// DetectMobVersion.
 func decodeMobLegacy756(b []byte) Mob {
 	var m Mob
 	copy(m.Name[:], b[0:16])
@@ -316,8 +316,9 @@ func encodeQuest(b []byte, q Quest) {
 	}
 }
 
-// DecodeMob parses a standalone 816-byte STRUCT_MOB blob (e.g. an NPC template in
-// tmserver/content/TMsrv/run/npc/). It returns an error unless b is exactly MobSize bytes.
+// DecodeMob lê um blob STRUCT_MOB avulso de 816 bytes (por exemplo um template de
+// NPC em tmserver/content/TMsrv/run/npc/). Devolve erro a menos que b tenha
+// exatamente MobSize bytes.
 func DecodeMob(b []byte) (Mob, error) {
 	if len(b) != MobSize {
 		return Mob{}, fmt.Errorf("savefmt: DecodeMob: length %d != %d", len(b), MobSize)
@@ -325,11 +326,11 @@ func DecodeMob(b []byte) (Mob, error) {
 	return decodeMob(b), nil
 }
 
-// DecodeMobAny parses a standalone STRUCT_MOB template in any layout known to
-// DetectMobVersion (mobversion.go) and reports which one it was. Use it for
-// files read straight out of tmserver/content/TMsrv/run/npc/, where 756- and 920-byte
-// legacy records sit alongside the canonical 816-byte ones; use DecodeMob when
-// the blob is already canonical.
+// DecodeMobAny lê um template STRUCT_MOB avulso em qualquer layout conhecido por
+// DetectMobVersion (mobversion.go) e informa qual foi. Use para arquivo lido
+// direto de tmserver/content/TMsrv/run/npc/, onde registros legados de 756 e 920
+// bytes convivem com os canônicos de 816; use DecodeMob quando o blob já é
+// canônico.
 func DecodeMobAny(b []byte) (Mob, MobVersion, error) {
 	v := DetectMobVersion(len(b))
 	switch v {
@@ -345,13 +346,13 @@ func DecodeMobAny(b []byte) (Mob, MobVersion, error) {
 	}
 }
 
-// NormalizeMob converts a template of any known layout into a canonical
-// MobSize blob, reporting the layout it came from. Loaders call this at the
-// content boundary so no variant-sized slice ever reaches the runtime — several
-// consumers (protocol.ParseMobBasics, EncodeCNFCharacterLoginRaw) index the
-// 816-byte layout directly. The 756→816 conversion only widens fields, so it is
-// lossless; the reverse is never needed because nothing rewrites templates on
-// the read path.
+// NormalizeMob converte um template de qualquer layout conhecido num blob
+// canônico de MobSize bytes e informa de qual layout veio. Os loaders chamam no
+// limite do conteúdo, para nenhum slice de tamanho variante chegar ao runtime —
+// vários consumidores (protocol.ParseMobBasics, EncodeCNFCharacterLoginRaw)
+// indexam o layout de 816 bytes direto. A conversão 756→816 só alarga campos,
+// então é sem perda; a inversa nunca é necessária, porque nada reescreve
+// template no caminho de leitura.
 func NormalizeMob(b []byte) ([]byte, MobVersion, error) {
 	v := DetectMobVersion(len(b))
 	if v == MobVersionCurrent {
@@ -366,8 +367,8 @@ func NormalizeMob(b []byte) ([]byte, MobVersion, error) {
 	return EncodeMob(m), v, nil
 }
 
-// PutMobExp overwrites the kill-reward Exp of a standalone STRUCT_MOB template
-// no lugar, no layout que b já tem, sem tocar em nenhum outro byte nem no
+// PutMobExp sobrescreve, no lugar, o Exp de recompensa de kill de um template
+// STRUCT_MOB avulso no layout que b já tem, sem tocar em nenhum outro byte nem no
 // comprimento do slice. O cmd/exptool regrava a curva balanceada por aqui, então
 // a árvore de conteúdo de layouts mistos recebe uma passada consistente sem
 // nenhum template mudar de tamanho em disco.
@@ -393,9 +394,9 @@ func PutMobExp(b []byte, exp int64) error {
 	}
 }
 
-// EncodeMob serializes m into a standalone 816-byte STRUCT_MOB blob — the
-// counterpart to DecodeMob, used to write a moderator-edited NPC/mob template
-// back to raw bytes (e.g. tmserver's template-stat overlay).
+// EncodeMob serializa m num blob STRUCT_MOB avulso de 816 bytes — o par de
+// DecodeMob, usado para gravar de volta em bytes crus um template de NPC/mob
+// editado pelo moderador (o overlay de atributos de template do tmserver).
 func EncodeMob(m Mob) []byte {
 	b := make([]byte, MobSize)
 	encodeMob(b, m)
@@ -404,9 +405,9 @@ func EncodeMob(m Mob) []byte {
 
 // --- STRUCT_ACCOUNTFILE (7952) ---
 
-// Decode parses a current-format (7952-byte) account blob. It returns an error
-// if b is not exactly AccountFileSize bytes; legacy formats must be routed by
-// DetectVersion first (version.go).
+// Decode lê um blob de conta no formato atual (7952 bytes). Devolve erro se b não
+// tiver exatamente AccountFileSize bytes; formatos legados precisam ser roteados
+// antes por DetectVersion (version.go).
 func Decode(b []byte) (AccountFile, error) {
 	if len(b) != AccountFileSize {
 		return AccountFile{}, fmt.Errorf("savefmt: Decode: length %d != %d (current format)", len(b), AccountFileSize)
@@ -441,9 +442,10 @@ func Decode(b []byte) (AccountFile, error) {
 	return af, nil
 }
 
-// Encode serializes af back to a 7952-byte current-format blob. Unmodeled
-// padding bytes are written as zero, so Decode∘Encode is the identity for blobs
-// produced by Encode (round-trip parity — DoD "dump round-trip confere").
+// Encode serializa af de volta num blob de 7952 bytes no formato atual. Bytes de
+// padding não modelados são escritos como zero, então Decode∘Encode é a
+// identidade para blob produzido por Encode (paridade de round-trip — DoD "dump
+// round-trip confere").
 func Encode(af AccountFile) []byte {
 	b := make([]byte, AccountFileSize)
 	encodeAccountInfo(b[offInfo:], af.Info)

@@ -1,65 +1,66 @@
-// Package savefmt decodes and encodes the legacy WYD account save files
-// (account/<First>/<name>), which are raw dumps of the C struct
-// STRUCT_ACCOUNTFILE written by DBSrv/CFileDB.cpp:2469.
+// Package savefmt decodifica e codifica os arquivos de save legados do WYD
+// (account/<Primeira>/<nome>), que são dumps crus da struct C STRUCT_ACCOUNTFILE.
 //
-// CRITICAL — two layout regimes (data-formats.md §0.1): the save structs use
-// NATURAL alignment (MSVC x86, with padding), NOT pack(1) like the network
-// messages of Phase 1. Everything here is read/written by EXPLICIT OFFSET,
-// little-endian, emulating the MSVC-x86 layout regardless of host OS (long=4,
-// time_t=8). The documented sizeof/offset values are locked by golden tests in
-// savefmt_test.go (the static_assert equivalent the docs require).
+// CRÍTICO — dois regimes de layout: as structs de save usam alinhamento NATURAL
+// (MSVC x86, com padding), NÃO pack(1) como as mensagens de rede. Tudo aqui é
+// lido/escrito por OFFSET EXPLÍCITO, little-endian, emulando o layout MSVC x86
+// qualquer que seja o SO hospedeiro (long=4, time_t=8). Os valores documentados
+// de sizeof/offset são travados por testes golden em savefmt_test.go (o
+// equivalente Go do static_assert).
 //
-// Only the CURRENT 7952-byte format is fully modelled (it is the only layout
-// verified field-by-field). The legacy 4294 and 7500–7600 formats are detected
-// by size but their internal layout is UNVERIFIED — see version.go.
+// Só o formato ATUAL de 7952 bytes está modelado por inteiro (é o único layout
+// verificado campo a campo). Os formatos legados de 4294 e 7500–7600 são
+// detectados pelo tamanho, mas seu layout interno não está verificado — ver
+// version.go.
 package savefmt
 
 import "encoding/binary"
 
-// le is the byte order of the save files (little-endian, x86).
+// le é a ordem de bytes dos arquivos de save (little-endian, x86).
 var le = binary.LittleEndian
 
-// Sizes of the save structs under MSVC-x86 natural alignment, time_t=8
-// (data-formats.md §0.1/§1.5). These are contractually exact and asserted by
-// tests; do not change without re-confirming against a reference build.
+// Tamanhos das structs de save sob alinhamento natural MSVC x86, time_t=8. São
+// exatos por contrato e afirmados por teste; não mude sem reconfirmar contra um
+// build de referência.
 const (
-	ItemSize        = 8    // STRUCT_ITEM           (Basedef.h:500-522)
-	ScoreSize       = 48   // STRUCT_SCORE          (Basedef.h:524-546)
-	AffectSize      = 8    // STRUCT_AFFECT         (Basedef.h:735-741)
-	QuestSize       = 56   // STRUCT_QUEST          (Basedef.h:865-882)
-	MobSize         = 816  // STRUCT_MOB            (Basedef.h:556-599)
-	MobExtraSize    = 552  // STRUCT_MOBEXTRA       (Basedef.h:620-733)
-	AccountInfoSize = 216  // STRUCT_ACCOUNTINFO    (Basedef.h:1017-1032)
-	AccountFileSize = 7952 // STRUCT_ACCOUNTFILE    (Basedef.h:1085-1108)
+	ItemSize        = 8    // STRUCT_ITEM
+	ScoreSize       = 48   // STRUCT_SCORE
+	AffectSize      = 8    // STRUCT_AFFECT
+	QuestSize       = 56   // STRUCT_QUEST
+	MobSize         = 816  // STRUCT_MOB
+	MobExtraSize    = 552  // STRUCT_MOBEXTRA
+	AccountInfoSize = 216  // STRUCT_ACCOUNTINFO
+	AccountFileSize = 7952 // STRUCT_ACCOUNTFILE
 )
 
-// Sizes of the legacy standalone STRUCT_MOB template variants found in
-// tmserver/content/TMsrv/run/npc/ (data-formats.md §1.4.1). These are NOT alternative
-// sizes for the modelled struct — MobSize stays 816 — they are older layouts
-// routed by DetectMobVersion and widened to MobSize by NormalizeMob.
+// Tamanhos das variantes legadas de template STRUCT_MOB avulso encontradas em
+// tmserver/content/TMsrv/run/npc/. NÃO são tamanhos alternativos da struct
+// modelada — MobSize continua 816 — e sim layouts mais antigos roteados por
+// DetectMobVersion e alargados para MobSize por NormalizeMob.
 const (
-	ScoreSizeLegacy756     = 28  // compact STRUCT_SCORE of the 756-byte layout
-	MobSizeLegacy756       = 756 // pre-expansion STRUCT_MOB
-	MobSizeLegacy756Padded = 920 // 756-byte record + 164 B of uninitialized junk
+	ScoreSizeLegacy756     = 28  // STRUCT_SCORE compacta do layout de 756 bytes
+	MobSizeLegacy756       = 756 // STRUCT_MOB anterior à expansão
+	MobSizeLegacy756Padded = 920 // registro de 756 bytes + 164 B de lixo não inicializado
 )
 
-// offMobExp pins the kill-reward Exp within the canonical 816-byte STRUCT_MOB
-// (int64). It is the only canonical STRUCT_MOB offset with a name — the rest
-// stay inline in codec.go — because PutMobExp has to write it opposite the
-// legacy offL756Exp below, and a bare 32 next to a bare 28 reads as a typo.
+// offMobExp fixa o Exp de recompensa de kill dentro do STRUCT_MOB canônico de
+// 816 bytes (int64). É o único offset canônico de STRUCT_MOB com nome — os
+// demais ficam inline em codec.go — porque PutMobExp precisa escrevê-lo em
+// oposição ao offL756Exp legado abaixo, e um 32 solto ao lado de um 28 solto se
+// lê como erro de digitação.
 const offMobExp = 32
 
-// Field offsets within the 756-byte legacy STRUCT_MOB (data-formats.md §1.4.1).
-// Reverse-engineered from the shipped assets and cross-validated against the
-// 816-byte file of the same mob across all 41 legacy/canonical name pairs in
-// tmserver/content/TMsrv/run/npc: Class agrees 100%, ScoreBonus 95%, Critical/SaveMana
-// 98% and Special 90%, while only the fields a rebalance touches (Level, Con,
-// Damage) diverge.
+// Offsets de campo do STRUCT_MOB legado de 756 bytes. Reengenheirados dos assets
+// que acompanham o projeto e conferidos contra o arquivo de 816 bytes do mesmo
+// mob nos 41 pares legado/canônico de tmserver/content/TMsrv/run/npc: Class
+// concorda em 100%, ScoreBonus 95%, Critical/SaveMana 98% e Special 90%, e só os
+// campos que um rebalance toca (Level, Con, Damage) divergem.
 //
-// Relative to the current layout this one has no Quest byte, a 32-bit Exp, a
-// 28-byte STRUCT_SCORE, no Magic, and 8-bit RegenHP/RegenMP. The whole struct
-// aligns to 4 (no int64 member), so it closes at 756 with no trailing padding —
-// 8 (header) + 2*20 (scores) + 12 (tail) = 60 = MobSize - MobSizeLegacy756.
+// Em relação ao layout atual, este não tem byte de Quest, tem Exp de 32 bits,
+// STRUCT_SCORE de 28 bytes, sem Magic e RegenHP/RegenMP de 8 bits. A struct
+// inteira alinha em 4 (nenhum membro int64), então fecha em 756 sem padding
+// final — 8 (cabeçalho) + 2*20 (scores) + 12 (rabo) = 60 = MobSize −
+// MobSizeLegacy756.
 const (
 	offL756Clan         = 16
 	offL756Merchant     = 17
@@ -67,7 +68,7 @@ const (
 	offL756Class        = 20
 	offL756Rsv          = 22
 	offL756Coin         = 24
-	offL756Exp          = 28 // long (4 bytes) — 816 widened this to 8
+	offL756Exp          = 28 // long (4 bytes) — o layout de 816 alargou para 8
 	offL756SPX          = 32
 	offL756SPY          = 34
 	offL756BaseScore    = 36
@@ -75,19 +76,19 @@ const (
 	offL756Equip        = 92
 	offL756Carry        = 220
 	offL756LearnedSkill = 732
-	offL756ScoreBonus   = 736 // 816 inserts Magic (uint32) before this
+	offL756ScoreBonus   = 736 // o layout de 816 insere Magic (uint32) antes disto
 	offL756SpecialBonus = 738
 	offL756SkillBonus   = 740
 	offL756Critical     = 742
 	offL756SaveMana     = 743
 	offL756SkillBar     = 744
-	offL756GuildLevel   = 748 // 1 byte of padding follows, as at 816's offset 801
-	offL756RegenHP      = 750 // uchar — 816 widened RegenHP/RegenMP to uint16
+	offL756GuildLevel   = 748 // segue 1 byte de padding, como no offset 801 de 816
+	offL756RegenHP      = 750 // uchar — o layout de 816 alargou RegenHP/RegenMP para uint16
 	offL756RegenMP      = 751
-	offL756Resist       = 752 // int8[4]; struct closes at 756 with no trailing pad
+	offL756Resist       = 752 // int8[4]; a struct fecha em 756 sem padding final
 )
 
-// Array bounds (Basedef.h).
+// Limites de array.
 const (
 	MobPerAccount  = 4   // MOB_PER_ACCOUNT
 	MaxEquip       = 16  // MAX_EQUIP
@@ -107,11 +108,11 @@ const (
 	offCoin       = 4504 // int
 	offShortSkill = 4508 // uchar[4][16] (64)
 	offAffect     = 4572 // affect[4][32] (4·32·8 = 1024)
-	offMobExtra   = 5600 // mobExtra[4]  (4 × 552 = 2208); 4-byte pad before (5596→5600, align 8)
+	offMobExtra   = 5600 // mobExtra[4]  (4 × 552 = 2208); 4 bytes de padding antes (5596→5600, alinhamento 8)
 	offDonate     = 7808 // int
 	offTempKey    = 7812 // char[52]
 	offReceived   = 7864 // bool
-	offQuestDaily = 7872 // STRUCT_QUEST (7-byte pad after ReceivedItem, align 8)
+	offQuestDaily = 7872 // STRUCT_QUEST (7 bytes de padding depois de ReceivedItem, alinhamento 8)
 	offBlockPass  = 7928 // char[16]
 	offIsBlocked  = 7944 // bool; struct rounds to 7952 (align 8)
 )

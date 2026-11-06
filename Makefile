@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build check-secrets portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e test-channel
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build check-secrets portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e test-channel bot-test bot-validate botlab
 
 build:
 	go build ./...
@@ -170,6 +170,20 @@ portal-install:
 
 portal-dev:
 	cd portal && npm run dev
+
+# Laboratório de bots: testa o núcleo determinístico (sem rede) e valida os
+# cenários versionados. O alvo não abre conexão: é seguro em CI.
+bot-test:
+	go test -race ./tmserver/internal/bot/...
+
+bot-validate:
+	go run ./tmserver/cmd/botlab validate -scenario tmserver/internal/bot/scenarios/smoke.json
+	go run ./tmserver/cmd/botlab validate -scenario tmserver/internal/bot/scenarios/populacao.json
+
+# Executa um cenário contra a stack local (loopback). Não use em carga alta
+# enquanto alguém estiver testando à mão: o laço do mundo é único.
+botlab:
+	go run ./tmserver/cmd/botlab run -scenario tmserver/internal/bot/scenarios/smoke.json
 
 portal-test:
 	cd portal && npm run typecheck && npm test
