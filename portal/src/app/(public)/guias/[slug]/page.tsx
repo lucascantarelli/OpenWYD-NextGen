@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { marked } from "marked";
 
-import { getGuia, listGuias } from "@/server/guias";
+import { getGuia, guiaStaticParams, renderGuia } from "@/server/guias";
 
 import "../guias.css";
 
@@ -12,7 +11,7 @@ interface Params {
 
 /** Todas as páginas são estáticas: o conteúdo só muda quando `npm run guias` roda. */
 export function generateStaticParams() {
-  return listGuias().map((guia) => ({ slug: guia.slug }));
+  return guiaStaticParams();
 }
 
 export async function generateMetadata({ params }: Params) {
@@ -30,14 +29,9 @@ export default async function GuiaPage({ params }: Params) {
   if (!guia) notFound();
 
   // Markdown vem do repositório (docs/), não de entrada de usuário: o HTML é
-  // gerado aqui, no servidor, e servido como conteúdo estático.
-  const html = marked.parse(guia.body, { async: false }) as string;
-
-  // Navegação dentro da seção: com 12 páginas de sistema, chegar em "combate"
-  // e não ver o resto da seção deixaria o guia sem saída.
-  const siblings = listGuias().filter(
-    (candidate) => candidate.section === guia.section && candidate.slug !== guia.slug,
-  );
+  // gerado no servidor e servido como conteúdo estático. A navegação dentro da
+  // seção evita que "combate" fique sem saída para as outras 11 páginas.
+  const { html, siblings } = renderGuia(guia);
 
   return (
     <main className="guias">
