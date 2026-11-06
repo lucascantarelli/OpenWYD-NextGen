@@ -27,6 +27,13 @@ func (w *World) metricAdd(name, help string, v float64) {
 	w.metrics.Add(name, help, v, w.metricLabels())
 }
 
+func (w *World) metricSet(name, help string, v float64) {
+	if w.metrics == nil {
+		return
+	}
+	w.metrics.Set(name, help, v, w.metricLabels())
+}
+
 func (w *World) metricObserve(name, help string, v float64, extra ...string) {
 	if w.metrics == nil {
 		return

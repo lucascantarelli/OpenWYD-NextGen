@@ -1,0 +1,52 @@
+# Prometheus da stack OpenWYD (perfil `monitoring`).
+#
+#   docker compose --profile monitoring up -d
+#   curl -s http://127.0.0.1:9090/-/ready
+#   curl -s 'http://127.0.0.1:9090/api/v1/targets?state=active' | jq -r '.data.activeTargets[] | "\(.labels.instance) \(.health)"'
+#
+# Cada serviço Go expõe /metrics na própria porta de observabilidade
+# (docs/migration/config-ops.md): 9101 tmserver, 9102 dbserver, 9103 binserver,
+# 9104 webserver, 9111->9101 o segundo canal. Dentro da rede do compose todos
+# usam a porta INTERNA 9101, então tmserver e tmserver2 são jobs separados.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: openwyd-local
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: tmserver
+    static_configs:
+      - targets: ["tmserver:9101"]
+
+  # Segundo canal (/srv): mesmo binário, ServerIndex 1. Sem ele o alvo fica DOWN
+  # e é assim que o operador vê que o canal 1 não subiu.
+  - job_name: tmserver2
+    static_configs:
+      - targets: ["tmserver2:9101"]
+
+  - job_name: dbserver
+    static_configs:
+      - targets: ["dbserver:9102"]
+
+  - job_name: binserver
+    static_configs:
+      - targets: ["binserver:9103"]
+
+  - job_name: webserver
+    static_configs:
+      - targets: ["webserver:9104"]
+
+  # Exportador do host. Em Docker Desktop/Windows ele mede os sistemas de
+  # arquivos da VM Linux do Docker, não o volume C: — ver a seção
+  # "Observabilidade" em docs/migration/config-ops.md.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]

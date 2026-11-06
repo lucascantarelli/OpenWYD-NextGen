@@ -266,6 +266,71 @@ services:
       - "192.168.100.4:8281:8282"      # jogo — canal 1
       - "192.168.100.4:80:8080"        # status — canal 1
       - "127.0.0.1:9111:9101"          # métricas/health — canal 1
+  # ---------------------------------------------------------------- monitoring
+  # Observabilidade (OBS-03). Perfil OPCIONAL: sem `--profile monitoring` a
+  # stack de jogo não muda. Prometheus coleta os cinco alvos Go + o exportador
+  # do host; Grafana provisiona o dashboard versionado de monitoring/grafana.
+  #   docker compose --profile monitoring up -d
+  #   http://127.0.0.1:9090  (Prometheus)   http://127.0.0.1:3001 (Grafana)
+  # Não confundir com o logpipe: aqui é série temporal; o texto por requisição
+  # continua vindo do logpipe para o /logs do portal.
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"       # UI/API do Prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      # Troque em qualquer deploy real: o default é só de desenvolvimento.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"       # 3000 é do portal; 3001 é o Grafana
+    depends_on:
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
+
+  # Exportador do host para o alerta de disco. Mede os sistemas de arquivos da
+  # VM Linux do Docker (no Docker Desktop/Windows, NÃO o volume C:) — o limite
+  # está documentado em docs/migration/config-ops.md.
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    profiles: ["monitoring"]
+    command:
+      - "--path.rootfs=/host"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run)($|/)"
+    pid: host
+    # A montagem padrão do exporter é `/:/host:ro,rslave`, mas o propagate
+    # `rslave` é recusado pelo daemon do Docker Desktop ("not a shared or slave
+    # mount"). `:ro` basta para ler os sistemas de arquivos da VM.
+    volumes:
+      - /:/host:ro
+    ports:
+      - "127.0.0.1:9100:9100"
+    restart: unless-stopped
+
   # Site de documentação (DOC-01). Config, Dockerfile e conteúdo vivem em docs/;
   # o repositório é montado em /project porque o `-f docs/mkdocs.yml` é relativo a
   # ele. `serve` recarrega ao editar; o gate é `build --strict`:
@@ -285,6 +350,8 @@ services:
 volumes:
   pgdata:
   portal-audit:
+  promdata:
+  grafanadata:
 
 # Pin an explicit subnet so the stack comes up even when Docker's auto address
 # pool is exhausted (leaked IPAM state after many network create/remove cycles).

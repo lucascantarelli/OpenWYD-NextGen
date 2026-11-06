@@ -106,7 +106,7 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
 | `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | ✅ 06/11: migration `0007` + fallback/upsert; quote `1/8/8`, compra concorrente com um vencedor | [DB-03](done/DB-03.md) ✅ |
 | Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](done/DB-01.md) ✅ |
-| Sem `/metrics`, `trace_id` nem alertas | ✅ 06/11: `/metrics` nos 4 serviços + `tmserver2` (`:9101-9104`, `:9111`), conexões CPSock, tick, fila, pool e RPC; e2e verde e zero 42P01 | [OBS-01](done/OBS-01.md) ✅ · `trace_id` em [OBS-02](issues/OBS-02.md) · alertas em [OBS-03](issues/OBS-03.md) · `gitleaks` em [OBS-04](done/OBS-04.md) ✅ |
+| Sem `/metrics`, `trace_id` nem alertas | ✅ 06/11: `/metrics` nos 4 serviços + `tmserver2` (`:9101-9104`, `:9111`), conexões CPSock, tick, fila, pool e RPC; `trace_id` no aceite CPSock e no BFF, propagado por metadata gRPC; Prometheus + Grafana (perfil `monitoring`) com 7 alvos UP e 4 alertas | [OBS-01](done/OBS-01.md) ✅ · [OBS-02](done/OBS-02.md) ✅ · [OBS-03](done/OBS-03.md) ✅ · [OBS-04](done/OBS-04.md) ✅ |
 | Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](done/DOC-01.md) |
 | Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](done/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](done/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
@@ -121,6 +121,10 @@ O lote seguinte passou do marco de 10: 18 issues distintas foram para `done/`/`t
 commit de revisão `3157207` (a medição conservadora soma `9ba6cd7`, `cc499a4`, `5558bfa` e
 `0499bcd`). O review do lote está em [REVIEW-11](REVIEW-11-2026-11-06.md), com o contador
 **reiniciado em 0** nesta data.
+
+Depois deste review, `OBS-02` e `OBS-03` fecharam em `done/` (06/11), levando o contador a **2 de
+10** — abaixo do marco, então **não** houve novo review completo; o registro está no §5 do
+REVIEW-11.
 
 ## Sessão de QA in-game (05/11/2026)
 
@@ -330,6 +334,22 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-06 (OBS-02 e OBS-03: trace_id e monitoring)** — a observabilidade fechou o par que
+  faltava. **OBS-02** deu `trace_id` a toda requisição: nasce no aceite CPSock e no BFF, viaja no
+  metadata gRPC `x-trace-id` (tmServer→dbServer/binServer, portal→web-api) e sai em cada linha de
+  log (`connection accepted`, `account login`, `grpc request`); é validado (32 hex) — um header
+  forjado é descartado — e nunca vira label de métrica. O login e2e provou o mesmo id no tmserver e
+  no dbserver. **OBS-03** subiu Prometheus + Grafana + node-exporter num perfil `monitoring`
+  opcional, com os cinco alvos Go coletados (7 targets `up`), dashboard provisionado e quatro
+  regras versionadas (fila > 50/2min, erro de RPC > 1%, mundo sem tick > 5 s via
+  `world_tick_timestamp_seconds`, disco < 10%), validadas por `promtool test rules` (seis casos).
+  O `logpipe`/`/logs` continua sendo o caminho de **texto** por requisição: as camadas são
+  complementares, sem coletor de logs novo.  
+  Verification: `go test ./internal/metrics/` (8 testes) · `go test ./tmserver/internal/world/` ·
+  `npx vitest run src/server/trace.test.ts` 6/6 · `TestE2ESmokeLogin` PASS · `promtool check rules`
+  e `test rules` exit 0 · 7 targets `up` · 4 regras `health=ok` · `make gate`, `go build ./...`,
+  `go vet ./...`, `go test ./...` e `check-docs-links` exit 0.
 
 - **2026-11-06 (DB-03, OBS-04 e review do lote)** — o manto ganhou a singleton que faltava:
   `0007_sapphire_balance_singleton` insere `1/8/8` com `ON CONFLICT DO NOTHING`, e o store passou a

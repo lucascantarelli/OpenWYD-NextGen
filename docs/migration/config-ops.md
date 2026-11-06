@@ -135,6 +135,34 @@ recria `.env` nem secrets: eles vêm do secret store e devem ser reaplicados ant
   `/logs` do portal mostra o texto linha a linha, com filtro e pausa. O primeiro responde
   "quantos/quão rápido/quando piorou"; o segundo responde "o que aconteceu nesta
   requisição". Não se substituem e não precisam de um segundo coletor de logs.
+- **`trace_id` ponta a ponta (OBS-02):** cada conexão CPSock e cada ação admin do BFF gera
+  um id de 32 hex. Ele viaja no metadata gRPC `x-trace-id` (tmServer→dbServer/binServer,
+  portal→web-api) e aparece como `trace_id=` nas linhas de log dos quatro serviços. Use
+  `docker compose logs --since=10m | grep <id>` para seguir uma requisição inteira. O id
+  **nunca** é label de métrica (cardenalidade).
+- **Prometheus + Grafana (OBS-03), perfil opcional:**
+  ```bash
+  docker compose --profile monitoring up -d
+  curl -s http://127.0.0.1:9090/-/ready
+  curl -s 'http://127.0.0.1:9090/api/v1/alertmanagers' >/dev/null   # sem Alertmanager: os alertas aparecem em /api/v1/alerts
+  ```
+  Publica `127.0.0.1:9090` (Prometheus), `127.0.0.1:3001` (Grafana, admin/admin por
+  default de dev) e `127.0.0.1:9100` (node-exporter). Prometheus coleta os cinco alvos
+  Go (`tmserver:9101`, `tmserver2:9101`, `dbserver:9102`, `binserver:9103`,
+  `webserver:9104`) mais o exportador do host. As regras vivem em
+  `monitoring/alerts.yml`: fila de entrega > 50 por 2 min, RPC com erro > 1%,
+  mundo sem tick (`time() - world_tick_timestamp_seconds > 5`) e disco < 10% livre.
+  O dashboard `monitoring/grafana/dashboards/wyd-overview.json` é provisionado no
+  boot (tick p50/p95/p99, RPC por código, pool, fila, disco).
+  Validar as regras sem subir a stack:
+  ```bash
+  docker run --rm -v "$PWD/monitoring:/m" --entrypoint promtool \
+    prom/prometheus:v3.5.0 test rules /m/alerts_test.yml
+  ```
+  Em Docker Desktop/Windows o node-exporter mede os sistemas de arquivos da VM
+  Linux do Docker, **não** o volume `C:` — o alerta de disco continua útil para
+  a VM que hospeda o Postgres, mas não vê o disco do Windows.
+  Sem `--profile monitoring` nada disto sobe: a stack de jogo não muda.
 - **Auto-restart por `.bat`:** ex. `DBsrv/run/DBsrv.bat` é um loop `:Loop … DBsrv.exe … goto Loop`
   — reinicia o processo se ele cair. (Há `.bat` equivalente para o TMSrv.) Substituir por
   supervisor real (systemd/k8s/Docker restart policy) na stack nova.

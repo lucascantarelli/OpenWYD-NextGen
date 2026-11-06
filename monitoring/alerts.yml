@@ -1,0 +1,69 @@
+# Regras de alerta do OpenWYD (OBS-03). Carregadas por monitoring/prometheus.yml.
+#
+# Os quatro alertas da issue:
+#   1. DeliveryQueueBacklog  — grants da web parados na fila (dbserver).
+#   2. GRPCErrorRate         — RPC com erro acima de 1% na janela.
+#   3. WorldTickStalled      — loop do mundo sem tick (mundo travado).
+#   4. DiskSpaceLow          — menos de 10% de espaço livre no host.
+#
+# Validar sem subir a stack:
+#   docker run --rm -v "$PWD/monitoring:/m" --entrypoint promtool \
+#     prom/prometheus:latest test rules /m/alerts_test.yml
+groups:
+  - name: openwyd
+    rules:
+      # A fila é drenada pelo tmServer a cada login/ação; um acúmulo acima de 50
+      # linhas por 2 min significa que o dreno parou (servidor fora, erro de
+      # grant ou prêmio inválido preso) — item pago que o jogador não recebe.
+      - alert: DeliveryQueueBacklog
+        expr: delivery_queue_rows{service="dbserver"} > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fila de entrega da web com {{ $value }} linhas presas"
+          description: "delivery_queue não drena há 2 min; verifique o tmServer e os grants pendentes (docs/migration/web-platform-plan.md)."
+
+      # Erro de negócio não conta: AdminResult viaja no corpo. Isto pega falha
+      # de transporte/handler (Unavailable, Internal, deadline) — o que o
+      # interceptor gRPC registra em grpc_requests_total{code}.
+      - alert: GRPCErrorRate
+        expr: |
+          sum(rate(grpc_requests_total{code!="OK"}[5m]))
+            /
+          sum(rate(grpc_requests_total[5m])) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RPC com erro acima de 1%"
+          description: "Falha de transporte/handler no web-api, dbServer ou binServer; o trace_id da linha de log correlaciona a requisição."
+
+      # world_tick_timestamp_seconds é gravado pelo loop a cada tick (1 s). Sem
+      # tick por 5 s o mundo está travado: mobs param, EXP/HP não atualizam e o
+      # cliente parece congelado. `for: 5s` evita ruído de um scrape atrasado.
+      - alert: WorldTickStalled
+        expr: time() - world_tick_timestamp_seconds > 5
+        for: 5s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mundo sem tick em {{ $labels.service }}"
+          description: "O loop do jogo parou de avançar (world.World.Run). Verifique o log do tmServer pelo trace_id da última requisição."
+
+      # Abaixo de 10% livres o Postgres começa a falhar escrita e o save de
+      # personagem (delivery_queue, character) pode ser perdido. Filtra pseudo
+      # filesystems e os bind mounts de /etc/hosts do container.
+      - alert: DiskSpaceLow
+        expr: |
+          max by (instance, mountpoint) (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay|nsfs", mountpoint!~"/etc/hosts|/etc/hostname|/etc/resolv.conf"}
+              /
+            node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay|nsfs", mountpoint!~"/etc/hosts|/etc/hostname|/etc/resolv.conf"}
+          ) < 0.10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disco com menos de 10% livre em {{ $labels.mountpoint }}"
+          description: "Libere espaço antes que o Postgres pare de escrever; em Docker Desktop isto mede a VM do Docker, não o volume do Windows."

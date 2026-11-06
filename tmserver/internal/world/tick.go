@@ -25,6 +25,10 @@ func (w *World) SetTickHandler(interval time.Duration, fn func(*World)) {
 type tickEvent struct{}
 
 func (tickEvent) apply(w *World) {
+	// Timestamp do último tick (OBS-03): o alerta "mundo sem tick" compara
+	// time() com este gauge. Gravado ANTES do hook, então um tick que trava
+	// (não retorna) também para de atualizar o valor e dispara o alerta.
+	w.metricSet("world_tick_timestamp_seconds", "Unix time (s) do último tick aplicado pelo loop; alerta de mundo travado.", float64(time.Now().Unix()))
 	if w.onTick != nil {
 		w.onTick(w)
 	}
