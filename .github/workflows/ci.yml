@@ -22,6 +22,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Roda em todo push/PR, inclusive mudança só de documentação: um segredo pode
+  # entrar por qualquer arquivo. O checkout limpo evita .env/.next locais; a
+  # allowlist do .gitleaks.toml cobre apenas material não versionado.
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Pinado pelo módulo: o Go verifica o checksum antes de compilar, sem
+      # baixar um binário de release sem conferência.
+      - name: Install gitleaks
+        run: go install github.com/zricethezav/gitleaks/v8@v8.28.0
+
+      - name: Scan tracked tree
+        run: $(go env GOPATH)/bin/gitleaks dir . --config .gitleaks.toml --redact --no-banner --max-target-megabytes 5
+
   changes:
     name: Changed paths
     runs-on: ubuntu-24.04

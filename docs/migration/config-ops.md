@@ -68,6 +68,42 @@ overlays `W2PP_*_EDITING` ficam de fora de propósito — com eles ligados o boo
 `-teleport-editing requires -dbserver (config source)`. Sem catálogo o mundo sobe **sem NPCs**: é o
 recorte de desenvolvimento, não uma topologia jogável.
 
+## 0.1 Segredos: gate, rotação e restore
+
+`make gate` executa `scripts/check-secrets.sh`. O script recusa `.env` real versionado, exige
+`SESSION_SECRET` diferente do default e com pelo menos 32 caracteres quando `W2PP_ENV` (ou
+`APP_ENV`/`NODE_ENV`) é `production`, `staging` ou `homolog`, e roda `gitleaks` sobre a árvore. Sem o
+binário no `PATH`, ele usa `.tools/bin/gitleaks` ou, em último caso, uma varredura determinística de
+fallback — e diz qual caminho usou. No CI, o job `Secret scan` instala o gitleaks **pinado** e roda
+em todo push/PR, inclusive mudança só de documentação.
+
+```bash
+# local (uma vez por máquina, fica em .tools/ que é gitignored)
+GOBIN="$PWD/.tools/bin" go install github.com/zricethezav/gitleaks/v8@v8.28.0
+
+# gate local; em dev o default é aceito, fora de dev não
+bash scripts/check-secrets.sh
+W2PP_ENV=production W2PP_PORTAL_SESSION_SECRET="$(openssl rand -base64 48)" \
+  bash scripts/check-secrets.sh
+```
+
+O `.gitleaks.toml` só permite material **não versionado** (`.env`, `portal/.next`, `client`,
+`.tools`, `tmp`) e os defaults de desenvolvimento já públicos (senha `dev` do Postgres e a chave
+`openwyd-dev-crossover`). Nenhuma regra do gitleaks é desligada; um achado novo reprova o job.
+
+**Rotação do `SESSION_SECRET` do portal:** gere um valor novo com `openssl rand -base64 48`, grave no
+secret store do ambiente (ou no `.env` local, nunca no git), recrie só o portal
+(`docker compose up -d --force-recreate portal`) e confirme que a sessão antiga deixa de valer
+(requisição autenticada → 401/redirecionamento para `/login`). Rotacione também
+`W2PP_PLAY_CODE_SECRET` quando ele estiver ligado; os códigos de uso único emitidos antes deixam de
+valer. As senhas das roles (`OPENWYD_MIGRATOR_PASSWORD`, `OPENWYD_APP_PASSWORD`,
+`OPENWYD_RO_PASSWORD`) são trocadas rodando o serviço one-shot `db-roles` com os novos valores e
+recriando `dbserver`/`webserver`; o backup não guarda segredo em texto claro.
+
+**Backup/restore:** `scripts/db-backup.sh` gera o dump e `scripts/db-restore.sh` o aplica num banco
+descartável; registre a data do último restore validado no runbook de operação. Um restore não
+recria `.env` nem secrets: eles vêm do secret store e devem ser reaplicados antes de subir a stack.
+
 ---
 
 ## 1. Topologia de deploy
