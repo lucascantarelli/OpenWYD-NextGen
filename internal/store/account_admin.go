@@ -39,7 +39,7 @@ func ValidRole(role string) bool {
 const accountRowCols = `
 	a.id, a.name, a.email, a.role, a.is_blocked, a.blocked_reason, a.donate_balance,
 	a.created_at, a.role_changed_at, a.role_changed_by,
-	(SELECT count(*) FROM character c WHERE c.account_id = a.id)`
+	(SELECT count(*) FROM characters c WHERE c.account_id = a.id)`
 
 const accountRowFrom = ` FROM account a`
 

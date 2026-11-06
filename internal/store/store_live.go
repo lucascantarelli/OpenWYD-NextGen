@@ -116,7 +116,7 @@ func (s *Store) ListCharacters(ctx context.Context, accountID int64) ([]domain.C
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, slot, name, class, guild_id, level, exp, coin,
 		        max_hp, hp, max_mp, mp, str, int, dex, con
-		   FROM character WHERE account_id = $1 ORDER BY slot`, accountID)
+		   FROM characters WHERE account_id = $1 ORDER BY slot`, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("store: list characters: %w", err)
 	}
@@ -168,7 +168,7 @@ func (s *Store) LoadCharacter(ctx context.Context, accountID int64, slot int) (d
 		       base_str, base_int, base_dex, base_con, base_max_hp, base_max_mp, newbie_quest, molar_gargula, pilula_orc, celestial_reset,
 		       celestial_add120, celestial_add150, celestial_add180, celestial_add200,
 		       celestial_level, sub_celestial_level, save_celestial
-		  FROM character WHERE account_id = $1 AND slot = $2`, accountID, slot).
+		  FROM characters WHERE account_id = $1 AND slot = $2`, accountID, slot).
 		Scan(&charID, &ch.Slot, &ch.Name, &ch.Class, &ch.Clan, &ch.GuildID, &ch.GuildLevel,
 			&ch.Level, &ch.Exp, &ch.Coin, &ch.Str, &ch.Int, &ch.Dex, &ch.Con,
 			&ch.ScoreBonus, &ch.SpecialBonus, &ch.SkillBonus, &ch.MaxHp, &ch.MaxMp, &ch.Hp, &ch.Mp,
@@ -289,7 +289,7 @@ func (s *Store) CreateArchCharacter(ctx context.Context, accountID int64, ch dom
 		return 0, 0, fmt.Errorf("store: lock account %d for arch create: %w", accountID, err)
 	}
 
-	rows, err := tx.Query(ctx, `SELECT slot FROM character WHERE account_id = $1 ORDER BY slot`, accountID)
+	rows, err := tx.Query(ctx, `SELECT slot FROM characters WHERE account_id = $1 ORDER BY slot`, accountID)
 	if err != nil {
 		return 0, 0, fmt.Errorf("store: list slots for arch create: %w", err)
 	}
@@ -346,7 +346,7 @@ func (s *Store) CreateArchCharacter(ctx context.Context, accountID int64, ch dom
 // CASCADE) by account and slot. Returns ErrNotFound when the slot is empty.
 func (s *Store) DeleteCharacter(ctx context.Context, accountID int64, slot int) error {
 	tag, err := s.pool.Exec(ctx,
-		`DELETE FROM character WHERE account_id = $1 AND slot = $2`, accountID, slot)
+		`DELETE FROM characters WHERE account_id = $1 AND slot = $2`, accountID, slot)
 	if err != nil {
 		return fmt.Errorf("store: delete character a=%d slot=%d: %w", accountID, slot, err)
 	}
@@ -394,7 +394,7 @@ func (s *Store) SaveCharacter(ctx context.Context, accountID int64, ch domain.Ch
 
 	var charID int64
 	err = tx.QueryRow(ctx, `
-		UPDATE character SET
+		UPDATE characters SET
 			clan=$3, guild_id=$4, guild_level=$5, level=$6, coin=$7,
 			str=$8, int=$9, dex=$10, con=$11, hp=$12, max_hp=$13, last_city=$14, exp=$15,
 			mp=$16, max_mp=$17,

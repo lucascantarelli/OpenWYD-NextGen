@@ -38,7 +38,7 @@ func (s *Store) CreateGuild(ctx context.Context, accountID int64, slot int, char
 	var coin int32
 	err = tx.QueryRow(ctx, `
 		SELECT id, guild_id, coin
-		  FROM character
+		  FROM characters
 		 WHERE account_id = $1 AND slot = $2 AND name = $3
 		 FOR UPDATE`,
 		accountID, slot, characterName,
@@ -98,7 +98,7 @@ func (s *Store) SetGuildMember(ctx context.Context, accountID int64, slot int, c
 
 	var charID int64
 	err = tx.QueryRow(ctx, `
-		SELECT id FROM character
+		SELECT id FROM characters
 		 WHERE account_id = $1 AND slot = $2 AND name = $3
 		 FOR UPDATE`,
 		accountID, slot, characterName,
@@ -128,7 +128,7 @@ func (s *Store) LeaveGuild(ctx context.Context, accountID int64, slot int) error
 
 	var charID int64
 	err = tx.QueryRow(ctx,
-		`SELECT id FROM character WHERE account_id = $1 AND slot = $2 FOR UPDATE`,
+		`SELECT id FROM characters WHERE account_id = $1 AND slot = $2 FOR UPDATE`,
 		accountID, slot,
 	).Scan(&charID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -169,7 +169,7 @@ func (s *Store) PromoteGuildMember(ctx context.Context, guildID uint16, leaderAc
 	var currentLevel int
 	err = tx.QueryRow(ctx, `
 		SELECT id, name, guild_id, guild_level
-		  FROM character
+		  FROM characters
 		 WHERE account_id = $1 AND slot = $2
 		 FOR UPDATE`,
 		accountID, slot,
@@ -269,7 +269,7 @@ func lockGuildCharacter(ctx context.Context, tx pgx.Tx, accountID int64, slot in
 	var guildID, guildLevel int
 	err := tx.QueryRow(ctx, `
 		SELECT id, name, guild_id, guild_level
-		  FROM character
+		  FROM characters
 		 WHERE account_id = $1 AND slot = $2
 		 FOR UPDATE`,
 		accountID, slot,
@@ -290,7 +290,7 @@ func lockGuildCharacterWithCoin(ctx context.Context, tx pgx.Tx, accountID int64,
 	var coin int32
 	err := tx.QueryRow(ctx, `
 		SELECT id, name, guild_id, guild_level, coin
-		  FROM character
+		  FROM characters
 		 WHERE account_id = $1 AND slot = $2
 		 FOR UPDATE`,
 		accountID, slot,
@@ -308,7 +308,7 @@ func spendCharacterCoinTx(ctx context.Context, tx pgx.Tx, charID int64, cost int
 	if cost == 0 {
 		return nil
 	}
-	tag, err := tx.Exec(ctx, `UPDATE character SET coin = coin - $2 WHERE id = $1 AND coin >= $2`, charID, cost)
+	tag, err := tx.Exec(ctx, `UPDATE characters SET coin = coin - $2 WHERE id = $1 AND coin >= $2`, charID, cost)
 	if err != nil {
 		return fmt.Errorf("store: spend character coin: %w", err)
 	}
@@ -320,7 +320,7 @@ func spendCharacterCoinTx(ctx context.Context, tx pgx.Tx, charID int64, cost int
 
 func setGuildMemberTx(ctx context.Context, tx pgx.Tx, accountID int64, slot int, charID int64, name string, guildID uint16, guildLevel uint8) error {
 	if _, err := tx.Exec(ctx,
-		`UPDATE character SET guild_id = $3, guild_level = $4 WHERE account_id = $1 AND slot = $2`,
+		`UPDATE characters SET guild_id = $3, guild_level = $4 WHERE account_id = $1 AND slot = $2`,
 		accountID, slot, guildID, guildLevel,
 	); err != nil {
 		return fmt.Errorf("store: update character guild fields: %w", err)

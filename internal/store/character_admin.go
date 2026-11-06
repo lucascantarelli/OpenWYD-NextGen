@@ -38,7 +38,7 @@ func (s *Store) SearchCharacters(ctx context.Context, query string, limit int) (
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT c.id, c.name, c.slot, c.class, c.level, c.exp, c.coin, c.account_id, a.name
-		  FROM character c
+		  FROM characters c
 		  JOIN account a ON a.id = c.account_id
 		 WHERE c.name ILIKE $1 OR a.name ILIKE $1
 		 ORDER BY c.level DESC, c.name
@@ -73,7 +73,7 @@ func (s *Store) LoadCharacterByID(ctx context.Context, id int64) (domain.Charact
 	var accountID int64
 	var slot int
 	err := s.pool.QueryRow(ctx,
-		`SELECT account_id, slot FROM character WHERE id = $1`, id).Scan(&accountID, &slot)
+		`SELECT account_id, slot FROM characters WHERE id = $1`, id).Scan(&accountID, &slot)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Character{}, 0, "", ErrNotFound
 	}

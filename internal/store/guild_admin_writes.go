@@ -55,11 +55,11 @@ func (s *Store) SetGuildMasterByCharacter(ctx context.Context, guildID int32, ch
 		}
 		// Mirror in `character`: the login/save path reads guild_level from there.
 		if _, err := tx.Exec(ctx,
-			`UPDATE character SET guild_level = 0 WHERE guild_id = $1 AND guild_level = 9`, guildID); err != nil {
+			`UPDATE characters SET guild_level = 0 WHERE guild_id = $1 AND guild_level = 9`, guildID); err != nil {
 			return fmt.Errorf("store: demote character guild level for %d: %w", guildID, err)
 		}
 		if _, err := tx.Exec(ctx,
-			`UPDATE character SET guild_level = 9 WHERE id = $1 AND guild_id = $2`,
+			`UPDATE characters SET guild_level = 9 WHERE id = $1 AND guild_id = $2`,
 			characterID, guildID); err != nil {
 			return fmt.Errorf("store: promote character %d guild level: %w", characterID, err)
 		}
@@ -102,7 +102,7 @@ func (s *Store) RemoveGuildMemberByCharacter(ctx context.Context, guildID int32,
 			return fmt.Errorf("store: delete guild member %d/%d: %w", guildID, characterID, err)
 		}
 		if _, err := tx.Exec(ctx,
-			`UPDATE character SET guild_id = 0, guild_level = 0 WHERE id = $1 AND guild_id = $2`,
+			`UPDATE characters SET guild_id = 0, guild_level = 0 WHERE id = $1 AND guild_id = $2`,
 			characterID, guildID); err != nil {
 			return fmt.Errorf("store: clear character %d guild: %w", characterID, err)
 		}

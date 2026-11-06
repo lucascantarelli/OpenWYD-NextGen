@@ -1,5 +1,5 @@
 -- Gerado por `tmserver/cmd/seedgen` (issue 58) — NÃO EDITAR À MÃO.
--- Tabela: npc_shop_item (6711 linhas). Regerar: `seedgen -dsn <dsn>`.
+-- Tabela: npc_shop_item (6708 linhas). Regerar: `seedgen -dsn <dsn>`.
 -- Dados de referência: nenhum dado de jogador entra aqui (allowlist em internal/store/seed.go).
 
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -61,6 +61,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 128, "quantity": 1, "item_index": 412}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 129, "quantity": 1, "item_index": 907}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 13, "quantity": 1, "item_index": 5000}$json$::json)
@@ -435,7 +438,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3684, "quantity": 1, "item_index": 5953}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 120, "item_index": 3322}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5000}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 0, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 3310}$json$::json)
@@ -825,6 +828,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 12, "quantity": 255, "item_index": 2421}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 129, "quantity": 1, "item_index": 5134}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 13, "quantity": 1, "item_index": 5001}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -1056,7 +1062,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3684, "quantity": 1, "item_index": 5954}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 120, "item_index": 3323}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5001}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 1, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 3319}$json$::json)
@@ -1365,6 +1371,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 14, "quantity": 1, "item_index": 5009}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5033}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 5128}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -1396,6 +1405,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5081}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5033}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2786, "quantity": 1, "item_index": 5057}$json$::json)
@@ -1473,7 +1485,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3195, "quantity": 1, "item_index": 2390}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 4031}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5009}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 3312}$json$::json)
@@ -1713,6 +1725,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 15, "quantity": 1, "item_index": 1618}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5034}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 5119}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -1744,6 +1759,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5082}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5034}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2765, "quantity": 1, "item_index": 879}$json$::json)
@@ -1827,7 +1845,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3195, "quantity": 5, "item_index": 2420}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5373}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5010}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 3321}$json$::json)
@@ -2088,6 +2106,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 14, "quantity": 1, "item_index": 5011}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5035}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 5110}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -2119,6 +2140,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5083}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5035}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2765, "quantity": 1, "item_index": 864}$json$::json)
@@ -2541,7 +2565,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 13, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 4039}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 13, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 4039}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 13, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5036}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 13, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 4039}$json$::json)
@@ -3246,7 +3270,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 4039}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 4039}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5037}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 4039}$json$::json)
@@ -3424,6 +3448,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5085}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5037}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2689, "quantity": 1, "item_index": 425}$json$::json)
@@ -3720,6 +3747,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 15, "quantity": 1, "item_index": 1624}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5038}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 4127}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -3751,6 +3781,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5086}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5038}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2765, "quantity": 1, "item_index": 1704}$json$::json)
@@ -3966,6 +3999,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 14, "quantity": 1, "item_index": 5015}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5039}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 5135}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -4000,6 +4036,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5087}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5039}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2689, "quantity": 1, "item_index": 683}$json$::json)
@@ -4041,7 +4080,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3513, "quantity": 1, "item_index": 413}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 410}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5015}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3718, "quantity": 240, "item_index": 3433}$json$::json)
@@ -4212,9 +4251,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3513, "quantity": 1, "item_index": 412}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 10, "item_index": 411}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3718, "quantity": 240, "item_index": 3434}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -4339,6 +4375,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 15, "quantity": 1, "item_index": 1616}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5040}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 646}$json$::json)
@@ -4540,6 +4579,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 14, "quantity": 1, "item_index": 5017}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5041}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 647}$json$::json)
@@ -5559,7 +5601,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 21, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 410}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 21, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 410}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 21, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5043}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 21, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 755}$json$::json)
@@ -6105,7 +6147,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 22, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 683}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 22, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 683}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 22, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5044}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 22, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 683}$json$::json)
@@ -7014,7 +7056,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 24, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 419}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 24, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 419}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 24, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5046}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 24, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 419}$json$::json)
@@ -7410,7 +7452,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 25, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 4040}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 25, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 4040}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 25, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5047}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 25, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 4040}$json$::json)
@@ -7933,9 +7975,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 26, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 419}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 26, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 419}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 26, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 419}$json$::json)
@@ -8532,7 +8571,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 3, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3513, "quantity": 1, "item_index": 420}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 3, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5364}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 3, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5003}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 3, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 374, "quantity": 1, "item_index": 5075}$json$::json)
@@ -8940,7 +8979,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 4, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3513, "quantity": 1, "item_index": 413}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 4, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5365}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 4, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5004}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 4, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 787}$json$::json)
@@ -9657,7 +9696,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 6, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3195, "quantity": 1, "item_index": 4017}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 6, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 700}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 6, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5006}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 6, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 3320}$json$::json)
@@ -9972,7 +10011,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 2444}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 2444}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5031}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 2444}$json$::json)
@@ -10251,7 +10290,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 36, "quantity": 1, "item_index": 2444}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 699}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5007}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 7, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3707, "quantity": 255, "item_index": 416}$json$::json)
@@ -10584,9 +10623,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 8, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3195, "quantity": 10, "item_index": 411}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 8, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 10, "item_index": 776}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 8, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3718, "quantity": 1, "item_index": 774}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -10713,6 +10749,9 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 15, "quantity": 1, "item_index": 1615}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 5032}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 16, "quantity": 1, "item_index": 5120}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -10735,6 +10774,9 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 26, "quantity": 1, "item_index": 5080}$json$::json)
+ON CONFLICT DO NOTHING;
+INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 5032}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 2765, "quantity": 1, "item_index": 834}$json$::json)
@@ -10815,7 +10857,7 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 3195, "quantity": 1, "item_index": 2300}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 4030}$json$::json)
+SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 37, "quantity": 1, "item_index": 5008}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 0, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 374, "quantity": 1, "item_index": 5080}$json$::json)
@@ -11844,9 +11886,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 852}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 852}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 852}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -12765,9 +12804,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 837}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 837}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 101, "eff2": 0, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 837}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -13023,9 +13059,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 866}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 866}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 866}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -13275,9 +13308,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 821}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 821}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 821}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -13524,9 +13554,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 1170}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 1170}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 14, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 1170}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -13765,9 +13792,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 1173}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 1173}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 1173}$json$::json)
@@ -14011,9 +14035,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 1161}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 1161}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 1161}$json$::json)
@@ -14395,9 +14416,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 262, "quantity": 1, "item_index": 1171}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 263, "quantity": 1, "item_index": 1171}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 102, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 264, "quantity": 1, "item_index": 1171}$json$::json)
@@ -15048,9 +15066,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 822}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 822}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 15, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 822}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -15412,9 +15427,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 868}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 868}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 16, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 868}$json$::json)
@@ -15787,9 +15799,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 867}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 867}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 17, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 867}$json$::json)
@@ -16167,9 +16176,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 899}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 899}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 18, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 899}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -16528,9 +16534,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 854}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 854}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 103, "eff2": 0, "eff3": 0, "slot": 19, "effv1": 0, "effv2": 0, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 854}$json$::json)
@@ -18186,9 +18189,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 454}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 10, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -18555,9 +18555,6 @@ INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, e
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 454}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 11, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
@@ -18916,9 +18913,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 454}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 12, "effv1": 0, "effv2": 87, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 454}$json$::json)
@@ -19288,9 +19282,6 @@ SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 151, "quantity": 1, "item_index": 454}$json$::json)
-ON CONFLICT DO NOTHING;
-INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
-SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 152, "quantity": 1, "item_index": 454}$json$::json)
 ON CONFLICT DO NOTHING;
 INSERT INTO npc_shop_item (npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity)
 SELECT npc_id, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, quantity FROM json_populate_record(NULL::npc_shop_item, $json${"eff1": 36, "eff2": 37, "eff3": 0, "slot": 9, "effv1": 0, "effv2": 45, "effv3": 0, "npc_id": 153, "quantity": 1, "item_index": 454}$json$::json)

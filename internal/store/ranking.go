@@ -12,7 +12,7 @@ import (
 func (s *Store) ListExpRanking(ctx context.Context, limit, offset int) ([]domain.RankingEntry, int, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT name, class, clan, guild_id, level, exp, class_master, count(*) OVER()
-		  FROM character
+		  FROM characters
 		 WHERE level < 1000
 		 ORDER BY
 		       CASE class_master WHEN 2 THEN 1 WHEN 1 THEN 2 ELSE class_master END DESC,
@@ -46,7 +46,7 @@ func (s *Store) ListExpRanking(ctx context.Context, limit, offset int) ([]domain
 
 func (s *Store) countExpRanking(ctx context.Context) (int, error) {
 	var total int
-	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM character WHERE level < 1000`).Scan(&total); err != nil {
+	if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM characters WHERE level < 1000`).Scan(&total); err != nil {
 		return 0, fmt.Errorf("store: count exp ranking: %w", err)
 	}
 	return total, nil

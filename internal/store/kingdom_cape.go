@@ -50,7 +50,7 @@ func (s *Store) PurchaseKingdomCape(ctx context.Context, accountID, expectedRevi
 	}
 
 	var characterID int64
-	err = tx.QueryRow(ctx, `UPDATE character SET clan=$3 WHERE account_id=$1 AND slot=$2 RETURNING id`, accountID, ch.Slot, ch.Clan).Scan(&characterID)
+	err = tx.QueryRow(ctx, `UPDATE characters SET clan=$3 WHERE account_id=$1 AND slot=$2 RETURNING id`, accountID, ch.Slot, ch.Clan).Scan(&characterID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return q, false, ErrNotFound
 	}

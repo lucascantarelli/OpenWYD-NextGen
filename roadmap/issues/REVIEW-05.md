@@ -17,12 +17,15 @@ Reconciliado contra o HEAD, achado por achado:
   (linhas 34 e 58) — é a `DB-01`.
 - **Restore: aberto.** `scripts/db-backup.sh`, `db-baseline.sh` e `db-audit.sql` existem;
   `db-restore.sh` não.
-- **`character` → `characters`: aberto e sem issue própria.** A tabela continua `character`
-  (`internal/store/character_admin.go`), então renomear ainda quebra código: decidir antes de abrir.
-- **Skills da FM: bug de dado confirmado, não de schema.** `npc_shop_item` vende `item_index = 2444`
-  (`Garnet`) em slot de skill, enquanto o catálogo está certo (`Destino` = 5007). O conserto é no seed,
-  com um verificador catálogo × classe — precisa de issue própria, porque
-  `seed_npc_shop_item.up.sql` é gerado por `seedgen` e não se edita à mão.
+- **`character` → `characters`: feito.** A migration `0003_rename_character_to_characters` renomeia a
+  tabela e os três índices, e o `store` consulta `characters` nas 27 referências — sem alias nem view
+  de compatibilidade.
+- **Skills da FM: corrigido.** `npc_shop_item` vendia `Garnet` (2444) no slot da 8ª magia branca e
+  trazia a magia negra (5032–5039) e parte da especial trocadas por itens nos NPCs 152 e 263; o 37
+  (Cap.Cavaleiros) tinha 14 skills espalhadas entre poções e equipamento. A
+  `0004_fix_skill_shop_layout` repõe o layout canônico de 24 skills (3 famílias de 8) copiando o NPC
+  de referência, e o seed foi regerado por `seedgen`. Um teste em `internal/migrations` (roda em
+  `go test ./...`) falha quando um slot de skill aponta para item e prova que detecta o caso antigo.
 - **`docs/audits/`: removido.** A auditoria vive em `docs/analysis/banco-de-dados.md`.
 
 ## Objetivo

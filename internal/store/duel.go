@@ -28,7 +28,7 @@ func (s *Store) RecordDuelResult(ctx context.Context, winnerName, loserName stri
 func bumpDuelWins(ctx context.Context, tx pgx.Tx, name string) error {
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO character_pvp_stats (character_id, wins, updated_at)
-		SELECT id, 1, now() FROM character WHERE name = $1
+		SELECT id, 1, now() FROM characters WHERE name = $1
 		ON CONFLICT (character_id) DO UPDATE
 		SET wins = character_pvp_stats.wins + 1, updated_at = now()`,
 		name)
@@ -44,7 +44,7 @@ func bumpDuelWins(ctx context.Context, tx pgx.Tx, name string) error {
 func bumpDuelLosses(ctx context.Context, tx pgx.Tx, name string) error {
 	tag, err := tx.Exec(ctx, `
 		INSERT INTO character_pvp_stats (character_id, losses, updated_at)
-		SELECT id, 1, now() FROM character WHERE name = $1
+		SELECT id, 1, now() FROM characters WHERE name = $1
 		ON CONFLICT (character_id) DO UPDATE
 		SET losses = character_pvp_stats.losses + 1, updated_at = now()`,
 		name)
@@ -63,7 +63,7 @@ func (s *Store) ListDuelRanking(ctx context.Context, limit, offset int) ([]domai
 	rows, err := s.pool.Query(ctx, `
 		SELECT c.name, c.class, c.clan, c.guild_id, p.wins, p.losses, count(*) OVER()
 		  FROM character_pvp_stats p
-		  JOIN character c ON c.id = p.character_id
+		  JOIN characters c ON c.id = p.character_id
 		 ORDER BY p.wins DESC, p.losses ASC, c.name ASC
 		 LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {

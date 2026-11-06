@@ -89,7 +89,7 @@ func insertCharacter(ctx context.Context, tx pgx.Tx, accountID int64, ch domain.
 		pkPoint = 75
 	}
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO character
+		INSERT INTO characters
 			(account_id, slot, name, class, clan, guild_id, guild_level, level, exp, coin,
 			 str, int, dex, con, score_bonus, special_bonus, skill_bonus,
 			 max_hp, max_mp, hp, mp, critical, regen_hp, regen_mp,

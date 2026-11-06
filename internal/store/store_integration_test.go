@@ -112,7 +112,7 @@ func TestMigrateAndSaveAccount(t *testing.T) {
 	}
 
 	var charCount, itemCount, affectCount int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM character WHERE account_id=$1`, accID).Scan(&charCount); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM characters WHERE account_id=$1`, accID).Scan(&charCount); err != nil {
 		t.Fatal(err)
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM item`).Scan(&itemCount); err != nil {

@@ -68,10 +68,11 @@ Decisões para o baseline:
 Também: **12 identidades (`GENERATED ALWAYS`) e 12 `BIGSERIAL`** convivem. O baseline padroniza
 identidade; `BIGSERIAL` fica só onde já existe dado e a troca exigiria reescrever a coluna.
 
-Nomenclatura: `character` é **palavra reservada** e precisa de aspas em toda query; `class`, `int`,
-`con`, `level`, `name`, `value`, `type`, `time`, `kind` também são reservadas ou ambíguas. Renomear
-`character` → `characters` é a única mudança que compensa (aparece em quase todo SQL e no BFF), e é
-P2 porque quebra código: precisa de migration + `store` + portal na mesma entrega.
+Nomenclatura: `character` era **palavra reservada** e obrigava aspas em toda query; `class`, `int`,
+`con`, `level`, `name`, `value`, `type`, `time`, `kind` também são reservadas ou ambíguas. O rename
+`character` → `characters` foi feito em 06/11 pela migration `0003_rename_character_to_characters`
+(tabela + três índices) junto com o `store`, na mesma entrega: hoje nenhuma query precisa de aspas e
+não existe alias de compatibilidade.
 
 ## 5. Comentários e documentação viva
 
@@ -146,7 +147,7 @@ nunca reutilizar número.
 | **P1** | Comentários de tabela em todo o domínio + colunas ambíguas | baseline | ✅ 04/11 (0053: 49/49 tabelas, 18 colunas) |
 | **P1** | Roles separadas (`openwyd_app`, `openwyd_ro`) e DSN sem superusuário | após baseline | ⏳ pendente |
 | **P1** | Retenção de backup + teste de restauração | scripts | ⏳ pendente |
-| **P2** | `character` → `characters` (quebra código, precisa de uma entrega só para isso) | issue própria | ⏳ |
+| **P2** | `character` → `characters` (quebra código, precisa de uma entrega só para isso) | `0003_rename_character_to_characters` | ✅ 06/11 |
 | **P2** | Views de relatório do portal | com as telas | ⏳ |
 | **P2** | Revisar os 19 índices de auditoria sem leitura (manter ou remover com critério) | após portal ler | ⏳ |
 
