@@ -94,7 +94,7 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 	defer pool.Close()
-	if err := store.Migrate(ctx, pool); err != nil {
+	if err := store.MigrateWithEnv(ctx, pool); err != nil {
 		return err
 	}
 

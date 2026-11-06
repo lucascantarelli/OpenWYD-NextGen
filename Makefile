@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen
 
 build:
 	go build ./...
@@ -20,6 +20,13 @@ exp-data:
 # Conteúdo do servidor (LEGACY-02). `check` confere o manifesto (config
 # versionada + mapas por bootstrap); `sync` copia de uma árvore legada o que não
 # é versionado e revalida. W2PP_CONTENT_SOURCE aponta para a árvore legada do Win32.
+# Regenera os seeds de referência a partir do banco (issue 58). Idempotente: rodar
+# duas vezes seguidas não muda um byte — é o que prova que o seed reflete o banco.
+# Usa o DSN do migrator (DB-01) quando definido; seedgen precisa de DML no catálogo.
+seedgen:
+	@test -n "$${W2PP_DB_MIGRATE_DSN:-$${W2PP_DB_DSN}}" || { echo "defina W2PP_DB_MIGRATE_DSN ou W2PP_DB_DSN"; exit 1; }
+	go run ./tmserver/cmd/seedgen -dsn "$${W2PP_DB_MIGRATE_DSN:-$${W2PP_DB_DSN}}"
+
 content-check:
 	bash scripts/sync-content.sh --check
 

@@ -100,7 +100,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
-	if err := store.Migrate(ctx, pool); err != nil {
+	if err := store.MigrateWithEnv(ctx, pool); err != nil {
 		logger.Error("migrar", "err", err)
 		os.Exit(1)
 	}

@@ -13,10 +13,15 @@ Reconciliado contra o HEAD, achado por achado:
   `instance_flag` nem `audit_log`; a tabela é `server_instance_flags` e as colunas `version` existem em
   `sapphire_balance`, `npc_config_meta` e `world_event_meta`. Eram consultas de uma versão anterior,
   não migration faltando.
-- **Roles/DSN: aberto.** `docker-compose.yaml` ainda conecta todos os serviços como `postgres`
-  (linhas 34 e 58) — é a `DB-01`.
-- **Restore: aberto.** `scripts/db-backup.sh`, `db-baseline.sh` e `db-audit.sql` existem;
-  `db-restore.sh` não.
+- **Roles/DSN: feito (DB-01).** `docker-compose.yaml` não tem mais DSN de superusuário nos serviços:
+  `W2PP_DB_DSN` usa `openwyd_app` (DML) e `W2PP_DB_MIGRATE_DSN` usa `openwyd_migrator` (DDL), criadas
+  pelo serviço one-shot `db-roles` a partir de `scripts/db-roles.sql`. Provado no banco: `openwyd_app`
+  lê `characters`/`npc_shop_item` e `CREATE TABLE` é negado.
+- **Restore: provado.** `scripts/db-restore.sh` restaura o dump num banco descartável e compara a
+  contagem de todas as tabelas: **50 tabelas idênticas à origem** (06/11), banco descartável removido.
+- **Stack local no HEAD:** reconstruído e reiniciado; o e2e `TestE2ESmokeLogin` passa
+  (`LOGIN OK — CNFAccountLogin`) e o `dbserver` lista `characters` como `openwyd_app` sem erro de
+  relação. `make seedgen` rodou duas vezes com hash idêntico (18229 linhas, 12 tabelas).
 - **`character` → `characters`: feito.** A migration `0003_rename_character_to_characters` renomeia a
   tabela e os três índices, e o `store` consulta `characters` nas 27 referências — sem alias nem view
   de compatibilidade.
@@ -133,11 +138,8 @@ só então no dev. Rollback: o compose volta ao DSN antigo por variável de ambi
 
 ## Issues que este review abre
 
-- `DB-01` roles e DSN por serviço
-- `DB-02` `db-restore.sh` + rotina mensal
-- `DB-03` teste de `down` no CI
-- `DB-04` renomear `character` → `characters`
-- `DB-05` revisão dos 19 índices de auditoria
+- `DB-01` roles e DSN por serviço + restore testado — ✅ concluída 06/11
+- `DB-02` teste de `down` no CI + revisão dos índices de auditoria (o que sobrou desta review) — aberta
 
 ## O que faltou analisar
 

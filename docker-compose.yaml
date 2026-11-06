@@ -25,13 +25,34 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
 
+  # DB-01: um único passo com superusuário, antes dos serviços. Cria/atualiza
+  # openwyd_migrator (DDL), openwyd_app (DML) e openwyd_ro (SELECT) e transfere a
+  # posse dos objetos. Idempotente: roda a cada `up` e não muda nada no segundo.
+  db-roles:
+    image: postgres:17-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-dev}
+      OPENWYD_MIGRATOR_PASSWORD: ${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}
+      OPENWYD_APP_PASSWORD: ${OPENWYD_APP_PASSWORD:-dev-app}
+      OPENWYD_RO_PASSWORD: ${OPENWYD_RO_PASSWORD:-dev-ro}
+    volumes:
+      - ./scripts/db-roles.sql:/db-roles.sql:ro
+    entrypoint: ["psql", "-h", "db", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-f", "/db-roles.sql"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   dbserver:
     build:
       context: .
       args:
         SVC: dbserver
     environment:
-      W2PP_DB_DSN: postgres://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/postgres
+      # Aplicação nunca conecta como superusuário: DML apenas (DB-01).
+      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@db:5432/postgres
+      # DDL/migrations usam a role migrator, que é a dona dos objetos.
+      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@db:5432/postgres
       # Chave HMAC do token de troca de canal (/srv): a MESMA nos dois canais e
       # aqui (canais.md §8.1.2). Vazia desativa a troca in-game.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
@@ -40,6 +61,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-roles:
+        condition: service_completed_successfully
     expose:
       - "7514"
 
@@ -58,7 +81,8 @@ services:
       args:
         SVC: webserver
     environment:
-      W2PP_DB_DSN: postgres://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/postgres
+      W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@db:5432/postgres
+      W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@db:5432/postgres
       W2PP_CONTENT: /content
       # One-time web client login codes (IssuePlayCode); empty keeps them off.
       # Same value as the portal's PLAY_CODE_SECRET, at least 32 characters.
@@ -69,6 +93,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-roles:
+        condition: service_completed_successfully
     # Published so host-side tools (grpcurl, probes) can reach the web-api; the
     # portal talks to it over the compose network as webserver:7600.
     ports:

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"os"
 	"sort"
 	"strings"
 
@@ -24,6 +25,24 @@ const migrationLockKey int64 = 0x77327070
 // Migrate applies every not-yet-applied *.up.sql migration in lexical order,
 // each in its own transaction, recording applied versions in schema_migrations.
 // It is idempotent and safe to run on every boot.
+// MigrateWithEnv aplica as migrations com o DSN privilegiado quando o deploy
+// separa DDL do papel da aplicação (DB-01): W2PP_DB_MIGRATE_DSN pertence ao
+// openwyd_migrator, dono dos objetos, enquanto W2PP_DB_DSN é a role de DML.
+// Sem a variável, o comportamento é exatamente o de Migrate — um host local sem
+// roles separadas continua funcionando.
+func MigrateWithEnv(ctx context.Context, pool *pgxpool.Pool) error {
+	dsn := os.Getenv("W2PP_DB_MIGRATE_DSN")
+	if dsn == "" {
+		return Migrate(ctx, pool)
+	}
+	mpool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return fmt.Errorf("store: connect migrator: %w", err)
+	}
+	defer mpool.Close()
+	return Migrate(ctx, mpool)
+}
+
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {

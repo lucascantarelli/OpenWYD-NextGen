@@ -121,7 +121,7 @@ func runSeedAccount(args []string, logger *slog.Logger) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 	defer pool.Close()
-	if err := store.Migrate(ctx, pool); err != nil {
+	if err := store.MigrateWithEnv(ctx, pool); err != nil {
 		return err
 	}
 	s := store.New(pool)
@@ -165,7 +165,7 @@ func runServe(args []string, logger *slog.Logger) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 	defer pool.Close()
-	if err := store.Migrate(ctx, pool); err != nil {
+	if err := store.MigrateWithEnv(ctx, pool); err != nil {
 		return err
 	}
 	// O catálogo de spawn vem do banco e SÓ dele (issue 57/58): NPCGener.txt saiu
@@ -278,7 +278,7 @@ func persist(rep *convert.Report, dsn string, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	if err := store.Migrate(ctx, pool); err != nil {
+	if err := store.MigrateWithEnv(ctx, pool); err != nil {
 		return err
 	}
 	s := store.New(pool)
