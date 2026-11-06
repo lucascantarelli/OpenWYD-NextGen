@@ -69,18 +69,30 @@ Fixtures ficam em `tmserver/test/fixtures/`; templates reais podem ser lidos de
 
 ## 4. Bots de QA
 
-Duas opções legítimas:
+**A. Bot interno (é o padrão do projeto desde 06/11/2026).** O laboratório mora em
+`tmserver/internal/bot` (biblioteca) e `tmserver/cmd/botlab` (CLI), e fala CPSock com o
+`internal/protocol` do próprio servidor — o bot quebra do mesmo jeito que o cliente quebraria.
 
-**A. Bot interno (recomendado).** Um `cmd/`/teste Go que fala CPSock usando `internal/protocol` e
-`internal/world` (cliente headless). Vantagens: mesma versão dos offsets, roda no CI, sem binário de
-terceiro. Escopo típico de um bot útil aqui:
-`login → selecionar char → walk para coordenada → atacar mob → pegar loot → abrir loja/comprar →
-deslogar`, com verificação de invariantes a cada passo (HP, exp, gold, item no inventário).
+```bash
+# (comandos rodam na raiz do repositório)
+make bot-test                       # núcleo inteiro, offline, com -race
+go run ./tmserver/cmd/botlab validate -scenario tmserver/internal/bot/scenarios/smoke.json
+go run ./tmserver/cmd/botlab run -scenario tmserver/internal/bot/scenarios/smoke.json
+go run ./tmserver/cmd/botlab metrics # métricas que um cenário pode usar em Success/Failure
+```
+
+O que existe hoje: conexão + INITCODE + login + seleção de personagem, FSM com guardas e histórico,
+9 perfis determinísticos, cenário JSON versionado (semente, duração, população, critérios), métricas
+`openwyd_bot_*` com p95/p99 e recusa de alvo não loopback (`-allow-remote` libera).
+
+O que **não** existe ainda: ação de ataque, movimento, loot e comércio por pacote real — elas hoje só
+mutam o modelo local e contam `sim_*`. Não trate `sim_*` como comportamento do servidor; o escopo para
+trocar por tráfego real está em `roadmap/issues/BOT-03.md`.
 
 **B. Bot externo.** `kevinkouketsu/WYD2Bot` (C/C++, headless) e `kevinkouketsu/Wyd2Client` (C#)
-estão catalogados em `docs/agents/CLIENT-RESEARCH-2026-06-27.md`. Servem para QA do **nosso**
-servidor, ajustando offsets/versão. **Risco 🟡**: são bots; não rode binário pré-compilado de origem
-duvidosa, e nunca aponte para servidor de terceiros.
+estão catalogados em `docs/agents/CLIENT-RESEARCH-2026-06-27.md`. Servem para comparação, mas exigem
+offsets próprios e divergem em silêncio do binário 7662; **não** são o caminho do projeto. Risco 🟡:
+nunca rode binário pré-compilado de origem duvidosa, e nunca aponte para servidor de terceiros.
 
 Regras para qualquer bot:
 

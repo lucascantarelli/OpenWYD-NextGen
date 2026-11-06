@@ -13,7 +13,7 @@
 //
 // # A gramática do Enc não é livre
 //
-// O legado monta o campo com um único sprintf (CFileDB.cpp:2009):
+// O legado monta o campo com um único sprintf de dez inteiros:
 //
 //	sprintf(sm.Enc, "*%d %d %d %d %d %d %d %d %d %d", NewServerID, Enc[0..7], Slot);
 //
@@ -171,7 +171,7 @@ func Build(key, account string, slot, target int, now time.Time) string {
 	return b.String()
 }
 
-// IsToken reports whether a login credential is one of our crossover tokens.
+// IsToken informa se a credencial de login é um dos nossos tokens de crossover.
 // Só a gramática decimal do legado conta: uma senha comum nunca começa com "*"
 // e nunca tem dez campos numéricos, então não há ambiguidade com senha real.
 func IsToken(token string) bool {

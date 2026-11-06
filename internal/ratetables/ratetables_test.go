@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// contentDir walks up from the package to the repository content tree, so the
-// tests parse the real files the server mounts.
+// contentDir sobe do pacote até a árvore de conteúdo do repositório, para os
+// testes lerem os arquivos reais que o servidor monta.
 func contentDir(t *testing.T) string {
 	t.Helper()
 	return filepath.Join("..", "..", "tmserver", "content")
@@ -19,19 +19,20 @@ func TestRowsParseRealFiles(t *testing.T) {
 	}
 	cells := index(rows)
 
-	// SancRate.txt declares PO 3 85 → the refine table must show 85 there.
+	// SancRate.txt declara PO 3 85 → a tabela de refino precisa mostrar 85 ali.
 	if got := cells[FileSancRate+"/PO/3"]; got != 85 {
 		t.Errorf("PO índice 3 = %d; quer 85 do arquivo", got)
 	}
-	// Âmago is listed after PO and, unlike the legacy bug, lands on its own row.
+	// Âmago vem depois de PO e, diferente do erro do legado, cai na própria linha.
 	if got := cells[FileSancRate+"/AMAGO/11"]; got != 5 {
 		t.Errorf("AMAGO índice 11 = %d; quer 5", got)
 	}
-	// Indices the file omits keep the compiled default.
+	// Índices que o arquivo omite mantêm o default compilado.
 	if got := cells[FileSancRate+"/PO/7"]; got != 0 {
 		t.Errorf("PO índice 7 = %d; quer 0 compilado", got)
 	}
-	// CompRate keys are the identity: two keys of the same family cannot collide.
+	// As chaves de CompRate são a identidade: duas chaves da mesma família não
+	// podem colidir.
 	if got := cells[FileCompRate+"/Compositor/Item_+7"]; got != 2 {
 		t.Errorf("Compositor Item_+7 = %d; quer 2", got)
 	}
@@ -45,7 +46,7 @@ func TestRowsParseRealFiles(t *testing.T) {
 		t.Errorf("tier 0 arch min = %d; quer 39", got)
 	}
 
-	// Every cell carries a usable range, or the UI has nothing to validate with.
+	// Toda célula carrega uma faixa utilizável, senão a UI não tem com que validar.
 	for _, row := range rows {
 		if row.Max <= row.Min {
 			t.Fatalf("linha sem faixa válida: %+v", row)
@@ -56,7 +57,7 @@ func TestRowsParseRealFiles(t *testing.T) {
 	}
 }
 
-// index folds rows into "file/family/name" → value, the key the editor uses.
+// index dobra as linhas em "file/family/name" → valor, a chave que o editor usa.
 func index(rows []Row) map[string]int64 {
 	out := make(map[string]int64, len(rows))
 	for _, row := range rows {
@@ -86,12 +87,14 @@ func TestApplyReplacesOnlyKnownCells(t *testing.T) {
 	if got[FileQuestsRate+"/COIN/4.0"] != 7 {
 		t.Errorf("COIN tier 4 = %d; quer 7", got[FileQuestsRate+"/COIN/4.0"])
 	}
-	// Sibling CompRate keys must stay untouched by an edit to another key.
+	// Chaves vizinhas de CompRate não podem ser tocadas por uma edição de outra
+	// chave.
 	out2, _, _ := Apply(rows, []Override{{File: FileCompRate, Family: "Compositor", Name: "Item_+7", Value: 1}})
 	if got := index(out2)[FileCompRate+"/Compositor/Item_+8"]; got != 4 {
 		t.Errorf("Item_+8 virou %d ao editar Item_+7", got)
 	}
-	// Original slice untouched: the server keeps the file values as the fallback.
+	// A fatia original fica intacta: o servidor usa os valores do arquivo como
+	// fallback.
 	if index(rows)[FileSancRate+"/PO/3"] != 85 {
 		t.Error("Apply mutou as linhas de origem")
 	}

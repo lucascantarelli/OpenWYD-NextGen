@@ -93,9 +93,10 @@ func TestLoadRejectsWrongSize(t *testing.T) {
 	}
 }
 
-// TestLoadNormalizesLegacyLayouts is the loader contract that keeps the legacy
-// 756/920-byte templates out of the runtime: whatever the file size, callers
-// get one canonical Size-byte blob plus the layout it came from.
+// TestLoadNormalizesLegacyLayouts é o contrato do loader que mantém os templates
+// legados de 756/920 bytes fora do runtime: qualquer que seja o tamanho do
+// arquivo, o chamador recebe um blob canônico de Size bytes e o layout de
+// origem.
 func TestLoadNormalizesLegacyLayouts(t *testing.T) {
 	tests := []struct {
 		name string

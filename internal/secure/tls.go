@@ -1,11 +1,12 @@
-// Package secure builds gRPC transport credentials for the internal service
-// links (tm↔db, tm↔bin). Those links are modern and owned on both ends, so they
-// run mTLS (migration-plan.md §5: "mTLS nos links internos") — unlike the
-// client edge, which is stuck on the legacy CPSock.
+// Package secure monta as credenciais de transporte gRPC dos links internos
+// entre serviços (tm↔db, tm↔bin). Esses links são modernos e controlados nas duas
+// pontas, então rodam mTLS — diferente da borda do cliente, presa ao CPSock
+// legado.
 //
-// Certificate material is referenced only by file path (from flags/env); nothing
-// is embedded. When no paths are configured the credentials fall back to
-// insecure transport for local bring-up — production must set all three paths.
+// O material de certificado é referenciado só por caminho de arquivo (vindo de
+// flag/ambiente); nada é embutido. Sem caminhos configurados, as credenciais
+// caem em transporte inseguro para o bring-up local — produção precisa definir
+// os três caminhos.
 package secure
 
 import (
@@ -18,22 +19,22 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Config points at the PEM files for one side of an mTLS link.
+// Config aponta para os arquivos PEM de um lado do link mTLS.
 type Config struct {
-	CertFile   string // this peer's certificate
-	KeyFile    string // this peer's private key
-	CAFile     string // CA that signs the other peer's certificate
-	ServerName string // expected server name (client side only)
+	CertFile   string // certificado deste par
+	KeyFile    string // chave privada deste par
+	CAFile     string // CA que assina o certificado do outro par
+	ServerName string // nome esperado do servidor (só no lado cliente)
 }
 
-// Enabled reports whether any TLS material was configured. When false the
-// credentials helpers return insecure transport.
+// Enabled diz se algum material TLS foi configurado. Quando falso, os helpers de
+// credencial devolvem transporte inseguro.
 func (c Config) Enabled() bool {
 	return c.CertFile != "" || c.KeyFile != "" || c.CAFile != ""
 }
 
-// ServerCreds builds credentials for a gRPC server. With TLS enabled it requires
-// and verifies a client certificate (mutual TLS).
+// ServerCreds monta as credenciais de um servidor gRPC. Com TLS ligado, exige e
+// confere o certificado do cliente (TLS mútuo).
 func ServerCreds(c Config) (credentials.TransportCredentials, error) {
 	if !c.Enabled() {
 		return insecure.NewCredentials(), nil
@@ -50,8 +51,8 @@ func ServerCreds(c Config) (credentials.TransportCredentials, error) {
 	}), nil
 }
 
-// ClientCreds builds credentials for a gRPC client, presenting this peer's
-// certificate and verifying the server against the configured CA.
+// ClientCreds monta as credenciais de um cliente gRPC, apresentando o
+// certificado deste par e conferindo o servidor contra a CA configurada.
 func ClientCreds(c Config) (credentials.TransportCredentials, error) {
 	if !c.Enabled() {
 		return insecure.NewCredentials(), nil
@@ -68,7 +69,7 @@ func ClientCreds(c Config) (credentials.TransportCredentials, error) {
 	}), nil
 }
 
-// load reads the keypair and CA pool, requiring all three paths to be set.
+// load lê o par de chaves e o pool de CAs, exigindo os três caminhos.
 func load(c Config) (tls.Certificate, *x509.CertPool, error) {
 	if c.CertFile == "" || c.KeyFile == "" || c.CAFile == "" {
 		return tls.Certificate{}, nil, fmt.Errorf("secure: cert, key and CA files are all required for mTLS")

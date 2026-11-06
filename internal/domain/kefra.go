@@ -1,7 +1,8 @@
 package domain
 
-// KefraState is the durable weekly boss cycle. Revision zero means no saved
-// cycle exists yet; timestamps are Unix seconds scheduled by the local calendar.
+// KefraState é o ciclo semanal durável do chefe. Revision zero significa que
+// ainda não há ciclo salvo; os instantes são segundos Unix agendados pelo
+// calendário local.
 type KefraState struct {
 	Defeated      bool
 	NextSpawnUnix int64

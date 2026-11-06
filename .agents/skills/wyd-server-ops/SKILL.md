@@ -94,7 +94,7 @@ sentido S→C).
 
 ## 4. Flags do tmServer que importam na operação
 
-Definidas em `tmserver/cmd/tmserver/main.go`; quase todas têm equivalente `W2PP_*` no ambiente.
+Definidas em `tmserver/cmd/tmserver/app.go` (`parseConfig`); quase todas têm equivalente `W2PP_*` no ambiente.
 
 | Flag | Padrão | Efeito |
 |------|-------:|--------|

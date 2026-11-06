@@ -1,4 +1,4 @@
-# TEST-01 — Triagem dos 43 `t.Skip`: justificar, converter em issue ou apagar
+# TEST-01 — Triagem dos `t.Skip`: justificar, converter em issue ou apagar
 
 **Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** ✅ concluída (06/11/2026)
 
@@ -54,18 +54,30 @@ grep -rn "t.Skip" --include=*_test.go . | grep -v "motivo:" | wc -l   # 0
 
 ## Triagem concluída (06/11/2026)
 
-Antes: **43** ocorrências em 17 arquivos, nenhuma classificada. Depois: **42**, todas com
+Antes: **43** ocorrências em 17 arquivos, nenhuma classificada (hoje 44, ver recontagem abaixo).
+Depois da triagem: **42**, todas com
 `motivo: <classe> — <razão>` no próprio texto do skip.
+
+**Recontagem de 06/11/2026: 47 ocorrências em 19 arquivos** — 43 na onda 1 mais 4 skips novos e
+justificados: um da paridade de conteúdo (`tmserver/internal/content/settings_test.go`) e três da
+paridade de regiões do worldatlas (dois de conteúdo e um de banco ausente);
+um skip já tinha entrado depois da triagem
+(na classe `ambiente`) e já nasceu com `motivo:`. Medição e prova:
+
+```bash
+bash scripts/check-skips.sh     # check-skips: 47 skip(s), todos com motivo declarado
+grep -rIn 't.Skip' --include='*_test.go' . | grep -vc 'motivo:'   # 0
+```
 
 | Classe | Qtde | O que significa |
 |---|---:|---|
-| `conteúdo` | 32 | falta arquivo/árvore (CSV que saiu do repo, mapa, `ItemList.bin`, captura de transporte) |
-| `ambiente` | 8 | exige DSN, segunda conta, segunda instância ou FS case-sensitive |
+| `conteúdo` | 36 | falta arquivo/árvore (CSV que saiu do repo, mapa, `ItemList.bin`, captura de transporte, árvore `tmserver/content` fora do checkout) |
+| `ambiente` | 9 | exige DSN, segunda conta, segunda instância, FS case-sensitive ou serviço externo (recontagem de 06/11) |
 | `feature` | 2 | comportamento UNVERIFIED que precisa de captura real (layout 4294, `_AUTH_GAME`) |
 | `morto` | 0 restantes | 1 removido |
 
 ```bash
-bash scripts/check-skips.sh          # 42 skip(s), todos com motivo declarado
+bash scripts/check-skips.sh          # 47 skip(s), todos com motivo declarado (06/11)
 grep -rn 't.Skip' --include=*_test.go | grep -vc 'motivo:'   # 0
 ```
 
@@ -86,7 +98,7 @@ Sem isso, o número volta a crescer e a triagem de hoje vira fotografia.
 
 ### Pendências registradas (não fecháveis agora)
 
-- Os 32 de `conteúdo` só deixam de pular quando a árvore externa estiver montada no runner (CI-02/
+- Os 36 de `conteúdo` só deixam de pular quando a árvore externa estiver montada no runner (CI-02/
   DB-01 para o caminho do banco; fixtures reais para o transporte).
 - `tmserver/internal/handler/combat_special_test.go` precisa de alvo vivo→morto na mesma sessão; é
   reescrita de teste, não triagem.

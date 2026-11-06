@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// TestStructSizes locks the documented sizeof values (data-formats.md §0.1) —
-// the Go equivalent of the C static_assert contract. A mismatch here means the
-// layout drifted and the whole file would misalign.
+// TestStructSizes trava os valores documentados de sizeof — o equivalente Go do
+// contrato static_assert em C. Divergência aqui significa que o layout derivou e
+// o arquivo inteiro sairia desalinhado.
 func TestStructSizes(t *testing.T) {
 	cases := map[string]int{
 		"STRUCT_ITEM":        ItemSize,
@@ -33,8 +33,8 @@ func TestStructSizes(t *testing.T) {
 	}
 }
 
-// TestAccountFileOffsetMap verifies the top-level offsets close to exactly 7952
-// and match the documented offsetof anchors (data-formats.md §0.1 static_assert).
+// TestAccountFileOffsetMap confere que os offsets de topo fecham exatamente em
+// 7952 e batem com as âncoras de offsetof documentadas (static_assert).
 func TestAccountFileOffsetMap(t *testing.T) {
 	anchors := []struct {
 		name string
@@ -52,7 +52,7 @@ func TestAccountFileOffsetMap(t *testing.T) {
 			t.Errorf("offsetof(%s) = %d, want %d", a.name, a.off, a.want)
 		}
 	}
-	// Sequentially: Info+4·Mob = Cargo; +128·Item = Coin; +int+ShortSkill = affect;
+	// Em sequência: Info+4·Mob = Cargo; +128·Item = Coin; +int+ShortSkill = affect;
 	// +affect = 5596, pad 4 → mobExtra; +4·MobExtra = Donate; … → 7952.
 	if offChar+MobPerAccount*MobSize != offCargo {
 		t.Errorf("Char block does not end at Cargo: %d", offChar+MobPerAccount*MobSize)
@@ -63,7 +63,8 @@ func TestAccountFileOffsetMap(t *testing.T) {
 	if offMobExtra+MobPerAccount*MobExtraSize != offDonate {
 		t.Errorf("MobExtra block does not end at Donate: %d", offMobExtra+MobPerAccount*MobExtraSize)
 	}
-	// Final field + bool, rounded to align 8, must be the file size.
+	// O último campo + bool, arredondado para alinhamento 8, tem de ser o tamanho
+	// do arquivo.
 	end := offIsBlocked + 1
 	rounded := (end + 7) &^ 7
 	if rounded != AccountFileSize {
@@ -71,8 +72,8 @@ func TestAccountFileOffsetMap(t *testing.T) {
 	}
 }
 
-// TestMobFieldOffsets checks the critical STRUCT_MOB offsets land where the
-// static_assert says (Coin@28, Exp@32, BaseScore@44, Equip@140, Carry@268).
+// TestMobFieldOffsets confere que os offsets críticos de STRUCT_MOB caem onde o
+// static_assert diz (Coin@28, Exp@32, BaseScore@44, Equip@140, Carry@268).
 func TestMobFieldOffsets(t *testing.T) {
 	var m Mob
 	m.Coin = 0x11223344
@@ -129,8 +130,8 @@ func TestMobExtraLeadingFieldOffsets(t *testing.T) {
 	}
 }
 
-// TestAccountFileRoundTrip is the DoD "dump round-trip confere": a populated
-// AccountFile encodes to exactly 7952 bytes and decodes back identically.
+// TestAccountFileRoundTrip é a DoD "dump round-trip confere": um AccountFile
+// povoado codifica em exatamente 7952 bytes e decodifica de volta idêntico.
 func TestAccountFileRoundTrip(t *testing.T) {
 	var af AccountFile
 	copy(af.Info.AccountName[:], "tester")
@@ -176,7 +177,8 @@ func TestAccountFileRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got, af) {
 		t.Errorf("round-trip mismatch")
 	}
-	// Decode∘Encode∘Decode is also stable (encode of decoded == original bytes).
+	// Decode∘Encode∘Decode também é estável (encode do decodificado == bytes
+	// originais).
 	if b2 := Encode(got); !reflect.DeepEqual(b, b2) {
 		t.Errorf("re-encode produced different bytes")
 	}
@@ -210,9 +212,9 @@ func TestDetectVersion(t *testing.T) {
 	}
 }
 
-// TestRealAntonioSample uses the only real sample file: it must be detected as
-// the legacy 4294 format and its AccountName read from offset 0. Full decode is
-// NOT attempted — the legacy layout is UNVERIFIED (data-formats.md §1.2).
+// TestRealAntonioSample usa a única amostra real: precisa ser detectada como o
+// formato legado de 4294 e ter o AccountName lido do offset 0. A decodificação
+// completa NÃO é tentada — o layout legado não está verificado.
 func TestRealAntonioSample(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "tmserver", "content", "DBsrv", "run", "account", "A", "antonio")
 	b, err := os.ReadFile(path)

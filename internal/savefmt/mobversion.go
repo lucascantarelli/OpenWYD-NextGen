@@ -1,28 +1,29 @@
 package savefmt
 
-// MobVersion identifies a standalone STRUCT_MOB template layout by its byte
-// size, the same way DetectVersion routes account files (version.go).
+// MobVersion identifica o layout de um template STRUCT_MOB avulso pelo tamanho em
+// bytes, do mesmo jeito que DetectVersion roteia arquivos de conta (version.go).
 //
-// tmserver/content/TMsrv/run/npc/ mixes three sizes (data-formats.md §1.4.1): 1769 files
-// at the canonical 816, 207 at 756 and 15 at 920. The 756-byte form is a
-// LEGITIMATE older STRUCT_MOB — 32-bit Exp, no Quest/Magic/GuildLevel and a
-// compact 28-byte STRUCT_SCORE — not a truncated 816 record. The 920-byte form
-// is that same 756-byte record followed by 164 bytes of uninitialized heap
-// garbage from whichever legacy tool wrote it, so one decoder serves both.
+// tmserver/content/TMsrv/run/npc/ mistura três tamanhos: 1769 arquivos no
+// canônico de 816, 207 em 756 e 15 em 920. A forma de 756 bytes é um STRUCT_MOB
+// mais antigo LEGÍTIMO — Exp de 32 bits, sem Quest/Magic/GuildLevel e com
+// STRUCT_SCORE compacta de 28 bytes — e não um registro de 816 truncado. A forma
+// de 920 bytes é esse mesmo registro de 756 seguido de 164 bytes de lixo de heap
+// não inicializado da ferramenta legada que o escreveu, então um decodificador
+// serve aos dois.
 type MobVersion int
 
-// Known STRUCT_MOB template versions.
+// Versões conhecidas de template STRUCT_MOB.
 const (
 	MobVersionUnknown MobVersion = iota
-	// MobVersionLegacy756 is the pre-expansion layout (mobLegacy756 offsets).
+	// MobVersionLegacy756 é o layout anterior à expansão (offsets L756).
 	MobVersionLegacy756
-	// MobVersionLegacy756Padded is MobVersionLegacy756 plus trailing junk.
+	// MobVersionLegacy756Padded é MobVersionLegacy756 mais lixo no fim.
 	MobVersionLegacy756Padded
-	// MobVersionCurrent is the 816-byte layout modelled by decodeMob/encodeMob.
+	// MobVersionCurrent é o layout de 816 bytes modelado por decodeMob/encodeMob.
 	MobVersionCurrent
 )
 
-// String renders the version for logs and inventory reports.
+// String rende a versão para log e relatório de inventário.
 func (v MobVersion) String() string {
 	switch v {
 	case MobVersionLegacy756:
@@ -36,7 +37,8 @@ func (v MobVersion) String() string {
 	}
 }
 
-// DetectMobVersion maps a template file size to its layout version.
+// DetectMobVersion mapeia o tamanho de um arquivo de template para a versão do
+// layout.
 func DetectMobVersion(size int) MobVersion {
 	switch size {
 	case MobSize:

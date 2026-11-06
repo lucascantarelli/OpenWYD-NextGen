@@ -32,17 +32,37 @@ comando). "Escrevi o código" não fecha issue.
 concluídas com evidência e `test/` as que só dependem de teste humano/in-game. Ao fechar uma issue,
 `git mv` para a pasta certa e ajuste os links — o índice é a fonte da verdade.
 
+## Missão pré-release (06/11/2026)
+
+Os documentos de missão `pre-release.md` e `pre-release-bots.md` (raiz do repositório) passaram a ter
+mapa: cada fase e cada etapa de bots aponta para a issue que executa.
+
+| Documento | Para quê |
+|---|---|
+| [`AUDITORIA-PRE-RELEASE-2026-11-06.md`](AUDITORIA-PRE-RELEASE-2026-11-06.md) | FASE 1: diagnóstico medido, inventário, duplicidades, lacunas, prioridades, plano e revisão contínua |
+| [`PRE-RELEASE-PROGRAM.md`](PRE-RELEASE-PROGRAM.md) | as 15 fases e as 11 etapas de bots, com dono e estado |
+| [REVIEW-12](issues/REVIEW-12.md) … [REVIEW-19](issues/REVIEW-19.md) | revisão permanente por domínio (servidor, banco, DevOps, segurança, portal, cliente, matemática, IA/docs) |
+| [BOT-01](done/BOT-01.md)/[BOT-02](done/BOT-02.md) ✅ · [BOT-03](issues/BOT-03.md)…[BOT-08](issues/BOT-08.md) | laboratório de bots: núcleo entregue, ações reais/navegação/carga/economia/social/CI abertas |
+| [MATH-01](issues/MATH-01.md), [MATH-02](issues/MATH-02.md) | catálogo de fórmulas com nível de confiança e laboratório de velocidade/hits |
+
+Fila em 06/11/2026 (medida): **83 abertas**, 32 `done/`, 12 `test/`. Núcleo de bots entregue com
+`go test -race ./tmserver/internal/bot/...` verde e cenários versionados em
+`tmserver/internal/bot/scenarios/`.
+
 ## Estado atual (2026-11-04)
+
+> Fotografia de 04/11. Onde a medição de 06/11 contradiz, vale a linha corrigida mais abaixo na mesma
+tabela.
 
 | Item | Estado | Evidência |
 |------|--------|-----------|
 | Working tree completo (`tmserver/content/`, `scripts/`, `internal/`, `api/`, `dbserver/`, `binserver/`, `webserver/`) | ✅ restaurado nesta sessão | `git sparse-checkout disable`; conteúdo com 55 MB |
 | Árvore de conteúdo íntegra | ✅ verificado | `ItemList.csv`, `SkillData.csv`, `npc/` 1.991 templates, `HeightMap.dat` 16 MiB, `AttributeMap.dat` 1 MiB, `BaseMob/{TK,FM,BM,HT}` 816 B |
-| Toolchain Go no host | ❌ ausente | `go: command not found`; caminho é container `golang:1.26-alpine` |
+| Toolchain Go no host | ✅ presente em 06/11 | `go version` → `go1.27.3 windows/amd64`; o container `golang:1.26-alpine` continua como alternativa para quem não tem toolchain |
 | Docker / Compose | ✅ presente | Docker 29.9.2 daemon `29.9.2`, 8 CPUs / 16 GB; Compose v5.6.1 |
 | Build da stack | ✅ 5 imagens construídas | build **serializado** por serviço (`db`, `dbserver`, `binserver`, `webserver`, `tmserver`), todos exit 0; o build paralelo era o que derrubava o daemon |
 | Stack no ar | ✅ `db`, `binserver`, `dbserver`, `webserver`, `tmserver` Up | `tmserver listening addr=:8281`, status `:80` → HTTP 200; `NPCs spawned mobs=11930`, `walkability grid baked dim=4096` |
-| Cliente apontando para o servidor local | ⏳ pendente | `serverlist.bin` atual aponta para canais remotos; `.remote_serverlist.bin` é uma página HTML de erro |
+| Cliente apontando para o servidor local | ✅ 04/11 | login, movimento, loja e compra no cliente (issues 05–07 em `done/`) |
 | Camada de agente de IA (AGENTS.md + skills) | ✅ criada nesta sessão | `AGENTS.md`, `.agents/skills/wyd-*` |
 
 ## Dossiê de análise (2026-11-04)
@@ -94,9 +114,9 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Achado (medido em 05/11/2026) | Número | Issue |
 |---|---|---|
 | Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](done/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
-| `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
-| Comentário em inglês / citação de issue dentro do código | 396 / 109 — 3 diretórios migrados + gate `scripts/check-comments.sh` (06/11) | [REFACTOR-03](issues/REFACTOR-03.md) |
-| `t.Skip` escondendo teste | ✅ 42 em 17 arquivos, todos com `motivo:` (32 conteúdo, 8 ambiente, 2 feature) | [TEST-01](done/TEST-01.md) |
+| `cmd/*/main.go` concentra todo o wiring | feito 06/11: os quatro serviços ficaram com `main.go` de 33–56 linhas (eram 285–874), `newApp` testado sem porta (bufconn) | [REFACTOR-01](issues/REFACTOR-01.md) ✅ |
+| Comentário em inglês / citação de issue dentro do código | placar 06/11 pelo detector do gate: 12.754 violações restantes (handler 6.095, world 1.497); 13 diretórios limpos no gate `scripts/check-comments.sh` | [REFACTOR-03](issues/REFACTOR-03.md) 🔁 |
+| `t.Skip` escondendo teste | ✅ 43 em 17 arquivos, todos com `motivo:` (32 conteúdo, 9 ambiente, 2 feature) — medido em 06/11 com `bash scripts/check-skips.sh` | [TEST-01](done/TEST-01.md) |
 | Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
 | Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](done/CI-01.md) |
 | Migração em base vazia fora do CI | ✅ 06/11: `.github/workflows/db.yml` com Postgres 17, `TestBaselineDown` (up+down+catálogo) e suíte de integração (58 testes) | [CI-02](done/CI-02.md) |
@@ -135,7 +155,7 @@ Cada linha é medida no servidor (log/SQL), não é impressão do cliente:
 | Passo | Resultado medido | Destino |
 |---|---|---|
 | A — login e diária | login OK; **nada recebido** (`daily_reward_claim=0`, `delivery_queue=0`, nenhum caminho de diária no `tmserver`) | [QA-01](issues/QA-01.md) |
-| B — criação | 4 personagens (HT/BM/FM/TK) criados com equip inicial e 1M de gold | ✅ issue-08 |
+| B — criação | 4 personagens (HT/BM/FM/TK) criados com equip inicial e 1M de gold | ✅ [issue-08](test/issue-08.md) |
 | C — cidades | `/armia /erion /azran /gelo /noatun` OK; compra sem gold recusada com mensagem correta | ✅ issue-10/issue-12 |
 | C — `qa-ferreiro` | materializado no boot (`npcs` 5161→5162), mas em (2504,1684), a 32 tiles do jogador; movido para (2098,2093) ao lado do spawn | roteiro |
 | C/D — mobs da cidade | `nonCombatNPC` marca `clan=0` dentro da aldeia como NPC de serviço: não atacam e não podem ser atacados | [QA-04](issues/QA-04.md) |
@@ -184,8 +204,8 @@ compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi repo
 ### Fase 2 — Personagens e persistência
 | # | Issue | Estado | Esforço |
 |---|-------|--------|---------|
-| 08 | [Criação e seleção de personagem com equip inicial](issues/issue-08.md) | ⏳ | M |
-| 09 | [Persistência de personagem, cargo e contas/papéis](issues/issue-09.md) | ⏳ | M |
+| 08 | [Criação e seleção de personagem com equip inicial](test/issue-08.md) | 🟡 código provado em 05/11 (4 classes, equip, 1M gold); falta a conferência visual das 4 classes | M |
+| 09 | [Persistência de personagem, cargo e contas/papéis](test/issue-09.md) | 🟡 inventário/gold/última cidade documentados no `SESSION-PRIMER`; falta a evidência SQL + restart + cargo/affects anexada | M |
 
 ### Fase 3 — Funcionalidades do jogo
 | # | Issue | Estado | Esforço |
@@ -251,7 +271,7 @@ evidência humana, depois o risco estrutural, depois produto.
 | # | Issue | Estado | Esforço |
 |---|-------|--------|---------|
 | 49 | [QA in-game em lote](issues/issue-49.md) — fechar as 13 issues 🟡 | ⏳ | M |
-| 50 | [Conteúdo do servidor no banco](issues/issue-50.md) — CSV vira seed | ⏳ | L |
+| 50 | [Conteúdo do servidor no banco](issues/issue-50.md) — CSV vira seed | 🟡 catálogos em seeds SQL (58) + proveniência `content_source_file` com hash no `-check`; falta `-content-source=db` | L |
 | 51 | [Launcher próprio](issues/issue-51.md) — patch, serverlist e login | ⏳ | L |
 | 52 | [Cliente: offsets, assets e resolução](issues/issue-52.md) | ⏳ | L |
 | 53 | [Feedback dos jogadores](issues/issue-53.md) — bug/sugestão no portal | ⏳ | M |
@@ -260,7 +280,7 @@ evidência humana, depois o risco estrutural, depois produto.
 | 56 | [Limpeza do repositório e legado arquivado](done/issue-56.md) | ✅ (05/11: artefatos, openspec arquivado, skills unificadas) | S |
 | 57 | [NPCs: migrar todos os blocos e dropar `NPCGener.txt`](done/issue-57.md) | ✅ | L |
 | 58 | [Baseline do banco: uma inicialização completa, sem arquivos de conteúdo](done/issue-58.md) | ✅ | L |
-| 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
+| 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | 🟡 tabelas + parsers + importador entregues em 06/11 (5/318/1/26/64/52), e o `worldatlas` já lê `region` com teste de paridade; aceitação do import em banco em [`test/issue-59.md`](test/issue-59.md) | M |
 | 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
 | 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](done/issue-61.md) | ✅ (05/11: `ItemDropList.txt` 242 KB removido, DropTool em `_legacy`) | S |
 | 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](done/issue-62.md) — resíduo da fase 5 | ✅ (05/11: catálogo do banco 3220/151/228/1991/20680 drops, zero WARN; falta teste do wiring) | M |
@@ -335,6 +355,59 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-06 (onda 2: plataforma — segurança medida e conteúdo restante no banco)** — a segurança
+saiu de "checada por script" para medida com ferramenta: `gitleaks v8.28.0` e `govulncheck v1.9.0`
+instalados em `.tools/bin`; `gitleaks dir` → `no leaks found` (42,27 MB, 14,8 s) e `govulncheck ./...`
+→ 0 afetando o código (3 em módulos exigidos, não chamados); `npm audit --omit=dev` → 0;
+`vitest src/middleware.test.ts` → 11 testes. O `check-secrets` ganhou três checagens — chave/certificado
+versionado, allowlist do gitleaks que cobre arquivo do índice (scan cego) e tokens GitLab/Stripe/npm/PAT
+no fallback — com vermelho provado por `.pem` versionado e por token `ghp_` plantado (RC 1 nos dois) e
+verde depois da limpeza. Seis achados na REVIEW-15, cinco corrigidos e um aceito com justificativa
+(gitleaks ignora arquivo > 5 MB: seed de 7 MB e HeightMap de 16 MB). A issue 59 recebeu a fatia de
+código: migração `0008_platform_content` (6 tabelas + proveniência), parsers lossless em
+`tmserver/internal/content/settings.go`, upserts em `internal/store/contentsettings.go`, conjuntos
+novos no `importcontent` com `-check` por hash e golden test — dry-run real: guardas 5, itens por nível
+318, mercadores 1, chaves de gameconfig 26, matriz de drop 64 (4×16, não 8×8), regiões 52. A medição
+corrigiu três suposições da issue: chave do `level_item` é o ordinal do arquivo (318 linhas, 159 pares,
+blocos repetidos), `MobMerc.txt` mora em `Common/Settings/` e os CSVs de catálogo já não existem
+(viram seeds SQL na 58, então o default do importador é só o que ainda é arquivo). Verificação:
+`go build ./...` 0 (34 s) · `go vet ./...` 0 (15 s) · `go test -race ./internal/...` ok (59 s) ·
+`./tmserver/internal/content/ ./tmserver/cmd/importcontent/` ok (26 s) · `check-comments`,
+`check-docs-links` e `check-skips` limpos. A escrita no Postgres vivo ficou em
+[`test/issue-59.md`](test/issue-59.md), com comando e critério — este host não sobe container.
+
+- **2026-11-06 (onda 1: o módulo inteiro medido, sem "sem resultado")** — build, vet e a suíte
+inteira rodaram neste host (`go1.27.3`), fatiados para nenhum comando encostar no teto: `go build ./...`
+0 (37 s), `go vet ./...` 0 (10 s), `-race` em `internal/...` (19 pacotes, 138 s), `tmserver/internal`
+(19 pacotes, 151 s), `world` (191 s), `webserver/internal` (12 + 14 pacotes, 147 s e 185 s), 7 pacotes
+de comando (210 s) e o `handler` — 826 testes — em 8 blocos com `-race` (35–128 s cada). A única falha
+foi real e virou conserto: `TestTransformExpiryRevertsMesh` corria contra o sweep de affects (fase
+`s.Conn%8`) e o revert do mesh podia disparar entre os dois logins; o harness ganhou
+`startServerAffectTickGated`, que segura o tick até os dois clientes estarem em visão — teste isolado 5×
+com `-race` ok e bloco refeito ok. `check-comments` 3 diretórios limpos, `check-docs-links` 141 links
+0 quebrados, `check-skips` 43/43 com motivo (47 após a onda 2). Registro completo na §11 da
+[auditoria](AUDITORIA-PRE-RELEASE-2026-11-06.md). Os documentos foram reconciliados com a árvore no
+mesmo dia: issues 08 e 09 movidas para `test/` com o que já está provado e o roteiro humano do que
+falta, e o `SESSION-PRIMER` continua sendo a fonte sobre persistência (inventário/gold/última cidade;
+posição exata não persistida por design, B6).
+
+- **2026-11-06 (auditoria pré-release, FASE 1, e núcleo do laboratório de bots)** — a missão dos
+documentos `pre-release.md`/`pre-release-bots.md` começou pela medição, não por código. A auditoria
+([`AUDITORIA-PRE-RELEASE-2026-11-06.md`](AUDITORIA-PRE-RELEASE-2026-11-06.md)) mediu 599 arquivos Go
+(152.381 linhas), 284 arquivos de teste, 23 migrações, 207 `.md` em `docs/`, 4 workflows, 43 `t.Skip` (47 depois da onda 2),
+1 `TODO`, 0 Playwright e encontrou seis afirmações envelhecidas no próprio roadmap (toolchain "ausente"
+com `go1.27.3` no host, cliente "pendente" com login provado, contagem de skip 42 × 43, issues 08/09
+presas em ⏳ com criação provada em 05/11). Criou 8 issues de revisão permanente (REVIEW-12..19), 2 de
+matemática (MATH-01/02) e o mapa das fases em [`PRE-RELEASE-PROGRAM.md`](PRE-RELEASE-PROGRAM.md).
+O laboratório de bots saiu do papel como [`ADR 0007`](../docs/adr/0007-laboratorio-de-bots.md):
+`tmserver/internal/bot` (cliente CPSock headless, FSM com guardas e histórico, 9 perfis
+determinísticos, cenários JSON validados, métricas Prometheus com p50/p95/p99) e `tmserver/cmd/botlab`
+(`validate`, `run`, `metrics`), com recusa de alvo não loopback e balde de 200 msg/s. Limite
+declarado: combate/comércio ainda são modelo local (`sim_*`), sem inventar pacote — BOT-03.
+Verification: `go build ./...` 0 · `go vet ./tmserver/internal/bot/... ./tmserver/cmd/botlab/...` 0 ·
+`go test -race -count=1 ./tmserver/internal/bot/...` ok (33 funções de teste) · `botlab validate` nos dois
+cenários · revisão de status das 111 issues do roadmap.
 
 - **2026-11-06 (mensagens de jogo: todo aviso tem texto)** — o port respondia parte das recusas com
   `MSG_MessageBoxOk` de 4 bytes numéricos, que o cliente 7662 **não desenha** (o `String[96]` fica
@@ -419,7 +492,7 @@ Grafo da Fase 6:
   (8 casos, cobertura do `matcher` derivada de `app/(admin)` no disco e do menu) e
   `route.test.ts` (401/403/200 na fronteira real de `/api/search/accounts`) — ao rodar pela primeira
   vez o teste apontou **quatro** rotas abertas (`/precos`, `/atlas`, `/guildas`, `/castelo`), não duas.
-  **TEST-01** fechada: 42 skips, 32 `conteúdo` / 8 `ambiente` / 2 `feature`, zero sem motivo, 1 teste
+  **TEST-01** fechada: 42 skips na triagem (recontagem de 06/11: **47**, 36 `conteúdo` / 9 `ambiente` / 2 `feature` — 43 na onda 1 mais os 4 skips justificados das paridades de conteúdo e de regiões), zero sem motivo, 1 teste
   morto removido e 3 vermelhos de FS case-sensitive do Windows convertidos em `motivo: ambiente`;
   `scripts/check-skips.sh` reprova skip novo sem motivo. **CI-01** fechada: `_go.yml` + `_portal.yml`
   (`workflow_call`) e `ci.yml` orquestrando com path filter; `make ci` roda exatamente os mesmos
@@ -441,7 +514,7 @@ Grafo da Fase 6:
   `tmserver/content/_legacy/`, ignorado e fora da imagem. Default de `-content` virou
   `tmserver/content`; compose monta `./tmserver/content:/content:ro`; Dockerfile copia para
   `/content`; portal, worldatlas, itemiconpack, exptool, preflight, e2e, CI e docs acompanharam.
-  Verification: `go build ./...` 0 · `go vet ./...` 0 · `go test -count=1 ./...` com 1 flake de timing (`TestTransformExpiryRevertsMesh`), verde isolado e no rerun do pacote ·
+  Verification: `go build ./...` 0 · `go vet ./...` 0 · `go test -count=1 ./...` verde — o flake de timing de `TestTransformExpiryRevertsMesh`, visto nesta rodada, foi corrigido no mesmo dia com tick com portão (ver changelog da onda 1) ·
   `bash scripts/sync-content.sh --check` 60 arquivos OK · stack reconstruída e healthy com
   `content loaded`, `base mob templates loaded`, `walkability grid baked` · `check-docs-links` e
   `mkdocs build --strict` verdes.

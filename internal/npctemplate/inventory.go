@@ -8,22 +8,23 @@ import (
 	"openwyd-nextgen/internal/savefmt"
 )
 
-// Inventory is the reproducible census of one npc template directory, grouped
-// by on-disk layout (issue #244 asks for exactly this: a repeatable list of the
-// valid, legacy and non-template files, so a content tree can be audited
-// without reading a deployment's log).
+// Inventory é o censo reproduzível de um diretório de templates: cada arquivo
+// classificado pelo layout em disco. É uma lista repetível dos válidos, dos
+// legados e dos que não são template, para auditar uma árvore de conteúdo sem
+// ler o log de um deploy.
 type Inventory struct {
 	Dir   string
 	Stats ScanStats
-	// Names lists the file names of each layout, sorted. Files that could not
-	// be read at all are keyed under savefmt.MobVersionUnknown alongside the
-	// non-template ones, since neither yields a usable template.
+	// Names lista, ordenados, os nomes de arquivo de cada layout. Arquivos que
+	// não puderam ser lidos ficam em savefmt.MobVersionUnknown junto dos que não
+	// são template, porque nenhum dos dois rende um template utilizável.
 	Names map[savefmt.MobVersion][]string
 }
 
-// TakeInventory walks dir (one file per template, no recursion) and classifies
-// every entry by savefmt.DetectMobVersion. It only stats files — nothing is
-// decoded or written — so it is safe to run against a read-only content mount.
+// TakeInventory percorre dir (um arquivo por template, sem recursão) e
+// classifica cada entrada por savefmt.DetectMobVersion. Só faz stat nos
+// arquivos — nada é decodificado nem escrito —, então é seguro rodar contra uma
+// árvore de conteúdo somente leitura.
 func TakeInventory(dir string) (Inventory, error) {
 	inv := Inventory{Dir: dir, Names: make(map[savefmt.MobVersion][]string)}
 	entries, err := os.ReadDir(dir)
@@ -51,14 +52,13 @@ func TakeInventory(dir string) (Inventory, error) {
 	return inv, nil
 }
 
-// Report renders the inventory as human-readable lines: one summary line per
-// layout, then the names of every non-canonical file (the canonical set is too
-// large and too uninteresting to list).
+// Report rende o inventário em linhas legíveis: um resumo por layout e depois
+// os nomes de cada arquivo não canônico (o conjunto canônico é grande e
+// desinteressante demais para listar).
 func (inv Inventory) Report(sample int) []string {
-	// Only the non-canonical layouts get their names listed; the canonical set
-	// is summarised. Keeping that list separate (rather than slicing the
-	// summary order) means reordering the summary can't start dumping 1769
-	// canonical file names.
+	// Só os layouts não canônicos têm os nomes listados; o conjunto canônico é
+	// resumido. Manter essa lista separada (em vez de fatiar a ordem do resumo)
+	// evita que reordenar o resumo passe a despejar 1769 nomes canônicos.
 	nonCanonical := []savefmt.MobVersion{
 		savefmt.MobVersionLegacy756,
 		savefmt.MobVersionLegacy756Padded,

@@ -14,9 +14,21 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CLEAN_DIRS=(
+  binserver
   internal/crossover
+  internal/domain
   internal/droprate
+  internal/itemeffects
+  internal/migrations
+  internal/npctemplate
+  internal/playcode
+  internal/ratetables
+  internal/savefmt
+  internal/secret
+  internal/secure
+  internal/teleportdata
   internal/textenc
+  webserver/cmd
 )
 
 if [ "$#" -gt 0 ]; then

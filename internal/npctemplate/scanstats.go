@@ -10,21 +10,21 @@ import (
 	"openwyd-nextgen/internal/savefmt"
 )
 
-// ScanStats tallies one walk of the npc template directory by on-disk layout.
+// ScanStats conta uma varredura do diretório de templates por layout em disco.
 //
-// It exists so the services report the catalog as a single summary line instead
-// of the hundreds of per-file WARNs the mixed-layout content tree used to
-// produce (issue #244): with warnings-per-file, a deployment that silently
-// dropped 11% of the catalog still looked healthy in the logs.
+// Existe para os serviços reportarem o catálogo numa única linha de resumo, em
+// vez das centenas de WARN por arquivo que a árvore de layouts misturados
+// produzia: com aviso por arquivo, um deploy que perdeu 11% do catálogo em
+// silêncio ainda parecia saudável no log.
 type ScanStats struct {
 	Current816      int // savefmt.MobVersionCurrent
 	Legacy756       int // savefmt.MobVersionLegacy756
 	Legacy756Padded int // savefmt.MobVersionLegacy756Padded
-	Unreadable      int // os.ReadFile/Stat failed
-	Rejected        int // read fine but is no known layout (non-template files)
+	Unreadable      int // falha em os.ReadFile/os.Stat
+	Rejected        int // leu bem, mas não é layout conhecido (arquivo que não é template)
 }
 
-// Count records one successfully read file under its detected layout.
+// Count registra um arquivo lido com sucesso sob o layout detectado.
 func (s *ScanStats) Count(v savefmt.MobVersion) {
 	switch v {
 	case savefmt.MobVersionCurrent:
@@ -38,18 +38,18 @@ func (s *ScanStats) Count(v savefmt.MobVersion) {
 	}
 }
 
-// CountUnreadable records one file that could not be read at all.
+// CountUnreadable registra um arquivo que não pôde ser lido.
 func (s *ScanStats) CountUnreadable() { s.Unreadable++ }
 
-// Loaded reports how many files decoded into usable templates.
+// Loaded informa quantos arquivos decodificaram como template utilizável.
 func (s ScanStats) Loaded() int {
 	return s.Current816 + s.Legacy756 + s.Legacy756Padded
 }
 
-// Total reports how many files were considered.
+// Total informa quantos arquivos foram considerados.
 func (s ScanStats) Total() int { return s.Loaded() + s.Unreadable + s.Rejected }
 
-// LogValue renders the tally as one grouped slog attribute:
+// LogValue rende a contagem como um atributo agrupado do slog:
 //
 //	logger.Info("npc template catalog", "layouts", stats)
 func (s ScanStats) LogValue() slog.Value {
@@ -64,10 +64,11 @@ func (s ScanStats) LogValue() slog.Value {
 	)
 }
 
-// ScanBlobs is ScanDir's in-memory twin: it decodes the canonical STRUCT_MOB
-// blobs the database holds (npc_template, issue 58) and calls visit for every one
-// that decodes as a known layout. Names are visited in sorted order, so the
-// catalogs built from them are deterministic without a second sort.
+// ScanBlobs é o par em memória de ScanDir: decodifica os blobs STRUCT_MOB
+// canônicos que o banco guarda (npc_template) e chama visit para cada um que
+// decodifica como layout conhecido. Os nomes são visitados em ordem, então os
+// catálogos construídos a partir deles são determinísticos sem uma segunda
+// ordenação.
 func ScanBlobs(blobs map[string][]byte, visit func(name string, mob savefmt.Mob)) ScanStats {
 	var stats ScanStats
 	names := make([]string, 0, len(blobs))
@@ -86,17 +87,17 @@ func ScanBlobs(blobs map[string][]byte, visit func(name string, mob savefmt.Mob)
 	return stats
 }
 
-// ScanDir walks the npc template directory of a tmserver/content/ content root and calls
-// visit for every file that decodes as a STRUCT_MOB in any layout savefmt knows
-// — the canonical 816-byte one plus the legacy 756/920-byte forms the shipped
-// content mixes in (data-formats.md §1.4.1). Files that cannot be read, or that
-// are not templates at all, are counted in the returned stats rather than
-// failing the walk: the directory legitimately holds non-template files.
+// ScanDir percorre o diretório de templates de uma raiz de conteúdo e chama
+// visit para cada arquivo que decodifica como STRUCT_MOB em qualquer layout que
+// savefmt conheça — o canônico de 816 bytes e as formas legadas de 756/920 bytes
+// que o conteúdo embarca. Arquivo ilegível, ou que não é template, entra na
+// contagem devolvida em vez de derrubar a varredura: é legítimo o diretório ter
+// arquivos que não são template.
 //
-// This is the single walk shared by the three moderator-facing catalog scanners
-// (webserver's npctemplates, mobtemplates and droptool), which differ only in
-// what they build from each decoded mob. Entries arrive in os.ReadDir order,
-// i.e. sorted by file name.
+// É a única varredura compartilhada pelos três catálogos do moderador
+// (npctemplates, mobtemplates e droptool do webserver), que diferem só no que
+// constroem a partir de cada mob decodificado. As entradas chegam na ordem de
+// os.ReadDir, ou seja, ordenadas por nome de arquivo.
 func ScanDir(contentDir string, logger *slog.Logger, visit func(name string, mob savefmt.Mob)) (ScanStats, error) {
 	var stats ScanStats
 	dir := Dir(contentDir)

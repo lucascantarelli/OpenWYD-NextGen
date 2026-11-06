@@ -1,7 +1,7 @@
 // Command worldatlas publishes the world layout the server actually uses: the
 // fixed city table and teleport routes (from tmserver/internal/world), the named
-// regions of Regions.txt, the static objects of world_item_seed, the NPC spawn
-// generators of npc_definition and a downsampled PNG of AttributeMap.dat.
+// regions of the `region` table, the static objects of world_item_seed, the NPC
+// spawn generators of npc_definition and a downsampled PNG of AttributeMap.dat.
 //
 // It lives under tmserver/cmd (not webserver/cmd) because it reads
 // tmserver/internal/content and tmserver/internal/world, which Go only allows
@@ -29,6 +29,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"openwyd-nextgen/internal/domain"
 	"openwyd-nextgen/tmserver/internal/content"
 	"openwyd-nextgen/tmserver/internal/world"
 )
@@ -148,13 +149,9 @@ func main() {
 	cities := world.AtlasCities()
 	teleports := world.AtlasTeleports()
 
-	regions, err := loadRegions(filepath.Join(*contentDir, "TMsrv", "run", "Regions.txt"))
-	if err != nil {
-		log.Fatalf("worldatlas: regions: %v", err)
-	}
-
-	// Itens estáticos e spawns vêm do banco (issue 58, fase 5): InitItem.csv e
-	// NPCGener.txt saíram do conteúdo, e o atlas não pode ficar preso a eles.
+	// Itens estáticos, spawns e regiões vêm do banco (issues 58 e 59): InitItem.csv,
+	// NPCGener.txt e Regions.txt deixaram de ser lidos em runtime, e o atlas não
+	// pode ficar preso a eles.
 	if *dsn == "" {
 		log.Fatalf("worldatlas: -dsn (or W2PP_DB_DSN) is required: static items and spawns come from the database")
 	}
@@ -172,6 +169,10 @@ func main() {
 	spawns, err := loadSpawns(ctx, pool)
 	if err != nil {
 		log.Fatalf("worldatlas: spawns: %v", err)
+	}
+	regions, err := loadRegionsFromDB(ctx, pool)
+	if err != nil {
+		log.Fatalf("worldatlas: regions: %v", err)
 	}
 
 	if err := os.MkdirAll(*outDir, 0o755); err != nil {
@@ -232,17 +233,14 @@ func main() {
 	// O hash cobre arquivos E o payload do banco: mudar um item em
 	// world_item_seed/npc_definition também invalida o cache do portal.
 	dbPayload, err := json.Marshal(struct {
-		Items  []staticItem `json:"items"`
-		Spawns []spawn      `json:"spawns"`
-	}{staticItems, spawns})
+		Items   []staticItem `json:"items"`
+		Spawns  []spawn      `json:"spawns"`
+		Regions []region     `json:"regions"`
+	}{staticItems, spawns, regions})
 	if err != nil {
 		log.Fatalf("worldatlas: marshal sources: %v", err)
 	}
-	payload.SourceHash = hashSources([]string{
-		filepath.Join(*contentDir, "TMsrv", "run", "Regions.txt"),
-		mapPath,
-		heightPath,
-	}, dbPayload)
+	payload.SourceHash = hashSources([]string{mapPath, heightPath}, dbPayload)
 
 	raw, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
@@ -256,7 +254,51 @@ func main() {
 		len(cities), len(teleports), len(regions), len(staticItems), len(spawns), payload.SourceHash)
 }
 
-func loadRegions(path string) ([]region, error) {
+// loadRegionsFromDB reads the named regions from the `region` table — the one
+// issue 59 created and `importcontent` fills from Regions.txt. Ordering by name
+// keeps the JSON and the palette stable between runs; the file parser below is
+// kept for the parity test that proves both sides agree.
+func loadRegionsFromDB(ctx context.Context, pool *pgxpool.Pool) ([]region, error) {
+	rows, err := pool.Query(ctx, `SELECT name, x1, y1, x2, y2 FROM region ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []domain.RegionEntry
+	for rows.Next() {
+		var e domain.RegionEntry
+		if err := rows.Scan(&e.Name, &e.X1, &e.Y1, &e.X2, &e.Y2); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("region vazia: rode o importcontent (issue 59) antes de gerar o atlas")
+	}
+	return regionsFromEntries(entries), nil
+}
+
+// regionsFromEntries maps database rows to the atlas payload. Pure so the parity
+// test can exercise the mapping without a connection.
+func regionsFromEntries(entries []domain.RegionEntry) []region {
+	out := make([]region, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, region{
+			Name: e.Name, X1: int(e.X1), Y1: int(e.Y1), X2: int(e.X2), Y2: int(e.Y2),
+			Source: "region",
+		})
+	}
+	return out
+}
+
+// loadRegionsFile parses Regions.txt. The atlas no longer reads it in runtime;
+// this exists so the parity test can compare the file the importer consumed with
+// the rows the atlas reads.
+func loadRegionsFile(path string) ([]region, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -282,7 +324,6 @@ func loadRegions(path string) ([]region, error) {
 	}
 	return out, nil
 }
-
 
 // renderTerrain draws the world from the grids the server itself uses:
 // HeightMap.dat (4096², one byte per block — the same grid route.Bake walks) for

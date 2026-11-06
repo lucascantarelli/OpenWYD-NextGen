@@ -1,9 +1,9 @@
 package domain
 
-// ItemCatalogEntry is one row of the item catalog (tmserver/content/Common/ItemList.csv)
-// as persisted in item_catalog (issue 58, fase 1). Fields keeps the raw CSV
-// columns so the import stays lossless; the derived fields mirror what
-// content.ItemList computes from them (Prices/Grades/Requirements/BaseEffects…).
+// ItemCatalogEntry é uma linha do catálogo de itens, persistida em item_catalog.
+// Fields guarda as colunas cruas do CSV para a importação ficar sem perda; os
+// campos derivados espelham o que content.ItemList calcula delas
+// (Prices/Grades/Requirements/BaseEffects…).
 type ItemCatalogEntry struct {
 	Index    int
 	Name     string
@@ -19,27 +19,27 @@ type ItemCatalogEntry struct {
 	ReqDex   int16
 	ReqCon   int16
 
-	// Volatile is EF_VOLATILE's value (item action class); nil = not volatile.
+	// Volatile é o valor de EF_VOLATILE (classe de ação do item); nil = não volátil.
 	Volatile *int16
-	// AttackRange is EF_RANGE; nil = the item grants no reach of its own.
+	// AttackRange é EF_RANGE; nil = o item não concede alcance próprio.
 	AttackRange *int16
 
 	Effects []ItemCatalogEffect
 	Fields  []string
-	// SHA256 hashes the canonical CSV row, so a reimport can report drift
-	// between the file and the database instead of silently overwriting.
+	// SHA256 hasheia a linha canônica do CSV, para uma reimportação relatar
+	// divergência entre arquivo e banco em vez de sobrescrever em silêncio.
 	SHA256 string
 }
 
-// ItemCatalogEffect is one resolved EF_* effect of an item's base stats.
+// ItemCatalogEffect é um efeito EF_* resolvido dos atributos base do item.
 type ItemCatalogEffect struct {
 	Eff uint8 `json:"eff"`
 	Val int16 `json:"val"`
 }
 
-// SkillCatalogEntry is one row of skill_catalog (tmserver/content/Common/SkillData.csv).
-// AffectTime is stored already divided by the legacy loader's divisor, matching
-// content.Spell — the database holds the value the runtime uses.
+// SkillCatalogEntry é uma linha de skill_catalog. AffectTime é gravado já
+// dividido pelo divisor do loader legado, como em content.Spell — o banco guarda
+// o valor que o runtime usa.
 type SkillCatalogEntry struct {
 	Index             int
 	Name              string
@@ -64,9 +64,9 @@ type SkillCatalogEntry struct {
 	Passive           int16
 }
 
-// NPCTemplateEntry is one STRUCT_MOB template (tmserver/content/TMsrv/run/npc/<file>) as
-// persisted in npc_template. Blob is always the canonical 816-byte layout;
-// SourceSize records the on-disk size (756/816/920) for audit.
+// NPCTemplateEntry é um template STRUCT_MOB persistido em npc_template. Blob é
+// sempre o layout canônico de 816 bytes; SourceSize registra o tamanho em disco
+// (756/816/920) para auditoria.
 type NPCTemplateEntry struct {
 	Name       string
 	FileName   string
@@ -75,7 +75,7 @@ type NPCTemplateEntry struct {
 	Blob       []byte
 }
 
-// WorldItemSeedEntry is one static world object from InitItem.csv.
+// WorldItemSeedEntry é um objeto estático do mundo vindo de InitItem.csv.
 type WorldItemSeedEntry struct {
 	Index  int16
 	X      int16

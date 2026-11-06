@@ -9,14 +9,14 @@ import (
 
 func name16(m Mob) string { return strings.TrimRight(string(m.Name[:]), "\x00") }
 
-// TestDecodeMobAnyLegacy756 pins the reverse-engineered 756-byte layout against
-// two real templates: a monster (@Gargula) and a weapon shop (Armas[D], whose
-// populated Carry[] is what proves the Equip/Carry offsets).
+// TestDecodeMobAnyLegacy756 fixa o layout reengenheirado de 756 bytes contra
+// templates reais: um monstro (@Gargula) e uma loja de armas (Armas[D], cujo
+// Carry[] povoado é o que prova os offsets de Equip/Carry).
 func TestDecodeMobAnyLegacy756(t *testing.T) {
 	tests := []struct {
 		file string
 		want Mob
-		// carry lists the leading Carry[] item indices that must be present.
+		// carry lista os índices iniciais de Carry[] que precisam estar presentes.
 		carry []int16
 		equip []int16
 	}{
@@ -56,8 +56,9 @@ func TestDecodeMobAnyLegacy756(t *testing.T) {
 			equip: []int16{59, 120, 121, 122, 123, 124},
 		},
 		{
-			// @Tauron is the file that settles the tail: RegenHP/RegenMP are
-			// 8-bit here (30/9), matching the canonical Tauron's 16-bit fields.
+			// @Tauron é o arquivo que fecha a questão do rabo: aqui RegenHP/RegenMP
+			// são de 8 bits (30/9), batendo com os campos de 16 bits do Tauron
+			// canônico.
 			file: fxLegacy756Tauron,
 			want: Mob{
 				Clan: 1, Merchant: 0, Class: 1,
@@ -87,7 +88,7 @@ func TestDecodeMobAnyLegacy756(t *testing.T) {
 			if version != MobVersionLegacy756 {
 				t.Fatalf("version = %v, want %v", version, MobVersionLegacy756)
 			}
-			// BaseScore mirrors CurrentScore on a freshly authored template.
+			// Num template recém-criado, BaseScore espelha CurrentScore.
 			if got.BaseScore != got.CurrentScore {
 				t.Errorf("BaseScore != CurrentScore:\n base %+v\n cur  %+v", got.BaseScore, got.CurrentScore)
 			}
@@ -105,7 +106,7 @@ func TestDecodeMobAnyLegacy756(t *testing.T) {
 					t.Errorf("Carry[%d].Index = %d, want %d", i, got.Carry[i].Index, want)
 				}
 			}
-			// Fields the legacy layout does not carry must stay zero.
+			// Campos que o layout legado não carrega precisam ficar zero.
 			if got.Quest != 0 || got.Magic != 0 {
 				t.Errorf("Quest/Magic = %d/%d, want 0/0 (absent from the 756 layout)", got.Quest, got.Magic)
 			}
@@ -146,10 +147,10 @@ func checkScalars(t *testing.T, got, want Mob) {
 	}
 }
 
-// TestDecodeMobAnyLegacy920 proves the 920-byte form is the same 756-byte
-// record with trailing junk: decoding it must equal decoding its first 756
-// bytes, and the junk must differ from zero (otherwise the fixture would not be
-// exercising the case it claims to).
+// TestDecodeMobAnyLegacy920 prova que a forma de 920 bytes é o mesmo registro de
+// 756 com lixo no fim: decodificá-la tem de dar o mesmo que decodificar os
+// primeiros 756 bytes, e o lixo precisa diferir de zero (senão a fixture não
+// exercita o caso que diz exercitar).
 func TestDecodeMobAnyLegacy920(t *testing.T) {
 	raw := fixture(t, fxLegacy920NPC1)
 	got, version, err := DecodeMobAny(raw)
@@ -184,10 +185,10 @@ func TestDecodeMobAnyLegacy920(t *testing.T) {
 	}
 }
 
-// TestLegacy756MatchesCanonicalTwin is the evidence for the layout: @Gargula
-// and Gargula (and the Tauron pair) are the same mob shipped in the two
-// formats. The fields a rebalance would not touch have to agree exactly across
-// the two completely different offset maps.
+// TestLegacy756MatchesCanonicalTwin é a evidência do layout: @Gargula e Gargula
+// (e o par Tauron) são o mesmo mob entregue nos dois formatos. Os campos que um
+// rebalance não tocaria têm de concordar exatamente entre os dois mapas de
+// offset completamente diferentes.
 func TestLegacy756MatchesCanonicalTwin(t *testing.T) {
 	pairs := []struct{ legacy, canonical string }{
 		{fxLegacy756Gargula, fxCurrent816Gargul},
@@ -244,9 +245,9 @@ func TestLegacy756MatchesCanonicalTwin(t *testing.T) {
 	}
 }
 
-// TestLegacy756RegenIsByteWide guards the one field width the offset map got
-// wrong at first: reading RegenHP/RegenMP as uint16 turned Tauron's 30/9 into
-// 0/2334.
+// TestLegacy756RegenIsByteWide protege a única largura de campo que o mapa de
+// offset errou no começo: ler RegenHP/RegenMP como uint16 transformava o 30/9 do
+// Tauron em 0/2334.
 func TestLegacy756RegenIsByteWide(t *testing.T) {
 	legacy, _, err := DecodeMobAny(fixture(t, fxLegacy756Tauron))
 	if err != nil {
@@ -270,8 +271,8 @@ func TestDecodeMobAnyRejectsUnknownLayout(t *testing.T) {
 	}
 }
 
-// TestNormalizeMob is the loader contract: every accepted layout comes out as
-// one canonical MobSize blob that decodes to the same Mob.
+// TestNormalizeMob é o contrato do loader: todo layout aceito sai como um blob
+// canônico de MobSize bytes que decodifica para o mesmo Mob.
 func TestNormalizeMob(t *testing.T) {
 	for _, f := range []string{fxCurrent816Gargul, fxLegacy756Gargula, fxLegacy756Shop, fxLegacy920NPC1} {
 		t.Run(f, func(t *testing.T) {
@@ -297,8 +298,8 @@ func TestNormalizeMob(t *testing.T) {
 			if got != want {
 				t.Error("DecodeMob(NormalizeMob(x)) != DecodeMobAny(x)")
 			}
-			// An already-canonical blob must survive byte for byte, and the
-			// result must never alias the caller's slice.
+			// Um blob já canônico precisa sobreviver byte a byte, e o resultado
+			// nunca pode aliasar o slice do chamador.
 			if version == MobVersionCurrent && !bytes.Equal(canonical, raw) {
 				t.Error("canonical input was modified by NormalizeMob")
 			}
@@ -310,10 +311,10 @@ func TestNormalizeMob(t *testing.T) {
 	}
 }
 
-// TestPutMobExp is the restamp contract cmd/exptool depends on: the Exp field
-// of every accepted layout is writable in place, nothing else moves, and the
-// file keeps its size — that is what lets the legacy templates join the balance
-// pass without rewriting a shipped asset.
+// TestPutMobExp é o contrato de regravação de que cmd/exptool depende: o campo
+// Exp de todo layout aceito é gravável no lugar, nada mais se move e o arquivo
+// mantém o tamanho — é isso que permite os templates legados entrarem na passada
+// de balanceamento sem reescrever um asset entregue.
 func TestPutMobExp(t *testing.T) {
 	const want = 1234567
 	for _, f := range []string{fxCurrent816Gargul, fxLegacy756Gargula, fxLegacy756Shop, fxLegacy920NPC1} {
@@ -337,7 +338,7 @@ func TestPutMobExp(t *testing.T) {
 			if after.Exp != want {
 				t.Errorf("Exp = %d, want %d", after.Exp, want)
 			}
-			// Exp is the only field that may differ.
+			// Exp é o único campo que pode diferir.
 			before.Exp, after.Exp = 0, 0
 			if before != after {
 				t.Error("PutMobExp changed a field other than Exp")
@@ -346,9 +347,9 @@ func TestPutMobExp(t *testing.T) {
 	}
 }
 
-// TestPutMobExpRejects covers the two refusals: a value too wide for the legacy
-// 32-bit field (truncating it would silently corrupt the balance data) and a
-// slice that is not a template at all.
+// TestPutMobExpRejects cobre as duas recusas: valor largo demais para o campo
+// legado de 32 bits (truncar corromperia os dados de balanceamento em silêncio) e
+// slice que não é template.
 func TestPutMobExpRejects(t *testing.T) {
 	tests := []struct {
 		name string

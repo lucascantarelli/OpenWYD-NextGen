@@ -3,7 +3,7 @@
  *
  * O JSON sai das **mesmas** constantes que o servidor usa (cidades e rotas de
  * teleporte vêm de `tmserver/internal/world`) mais o conteúdo de `tmserver/content/`
- * (Regions.txt, InitItem.csv, NPCGener.txt) — o portal só lê o artefato. Se o
+ * (tabelas `region`, `world_item_seed` e `npc_definition`, via worldatlas) — o portal só lê o artefato. Se o
  * arquivo não existir, a tela explica como gerar; nunca cai em 500.
  */
 import { readFile, stat } from "node:fs/promises";

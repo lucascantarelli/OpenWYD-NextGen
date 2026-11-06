@@ -39,7 +39,7 @@ func TestTakeInventory(t *testing.T) {
 	if got, want := inv.Stats.Loaded(), 4; got != want {
 		t.Errorf("Loaded = %d, want %d", got, want)
 	}
-	// Names are sorted so the report is stable across runs.
+	// Os nomes são ordenados para o relatório ser estável entre execuções.
 	canonical := inv.Names[savefmt.MobVersionCurrent]
 	if len(canonical) != 2 || canonical[0] != "AlsoCanonical" || canonical[1] != "Canonical" {
 		t.Errorf("canonical names = %v, want sorted [AlsoCanonical Canonical]", canonical)
@@ -51,7 +51,7 @@ func TestTakeInventory(t *testing.T) {
 			t.Errorf("report is missing %q:\n%s", want, report)
 		}
 	}
-	// The canonical set is summarised, never enumerated.
+	// O conjunto canônico é resumido, nunca enumerado.
 	if strings.Contains(report, "Canonical\n") {
 		t.Errorf("report enumerates canonical templates:\n%s", report)
 	}

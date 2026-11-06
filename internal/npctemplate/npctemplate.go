@@ -1,5 +1,5 @@
-// Package npctemplate resolves raw STRUCT_MOB template files from the legacy
-// tmserver/content/TMsrv/run/npc content tree.
+// Package npctemplate resolve os arquivos crus de template STRUCT_MOB da árvore
+// de conteúdo em tmserver/content/TMsrv/run/npc.
 package npctemplate
 
 import (
@@ -12,30 +12,30 @@ import (
 )
 
 const (
-	// Size is sizeof(STRUCT_MOB), the raw NPC/mob template format.
+	// Size é sizeof(STRUCT_MOB), o formato cru de template de NPC/mob.
 	Size = savefmt.MobSize
 )
 
-// Resolution identifies the concrete file selected for a requested template.
+// Resolution identifica o arquivo concreto escolhido para o template pedido.
 type Resolution struct {
-	// Name is the actual file name under tmserver/content/TMsrv/run/npc.
+	// Name é o nome real do arquivo em tmserver/content/TMsrv/run/npc.
 	Name string
-	// Path is the absolute or relative path used to read the file.
+	// Path é o caminho absoluto ou relativo usado para ler o arquivo.
 	Path string
-	// Version is the on-disk layout Load found, so callers can report how much
-	// of the catalog needed conversion. Zero value on a failed resolve.
+	// Version é o layout em disco que Load encontrou, para o chamador informar
+	// quanto do catálogo precisou de conversão. Zero quando a resolução falha.
 	Version savefmt.MobVersion
 }
 
-// Dir returns the NPC template directory for a tmserver/content/ content root.
+// Dir devolve o diretório de templates de NPC para uma raiz de conteúdo.
 func Dir(contentDir string) string {
 	return filepath.Join(contentDir, "TMsrv", "run", "npc")
 }
 
-// Resolve maps a template name from legacy content/config to the actual file in
-// tmserver/content/TMsrv/run/npc. It first honors exact Linux file names, then falls back
-// to Windows-like matching for the original server data: case-insensitive, with
-// trailing dots ignored in path components.
+// Resolve mapeia um nome de template do conteúdo/config para o arquivo real em
+// tmserver/content/TMsrv/run/npc. Primeiro honra o nome exato do Linux; depois cai
+// na comparação parecida com a do Windows, que os dados originais exigem: sem
+// distinção de caixa e ignorando pontos finais.
 func Resolve(contentDir, name string) (Resolution, error) {
 	if name == "" {
 		return Resolution{}, fmt.Errorf("npctemplate: empty template name")
@@ -83,11 +83,11 @@ func Resolve(contentDir, name string) (Resolution, error) {
 	}
 }
 
-// Load reads a template resolved by Resolve and returns it as one canonical
-// Size-byte STRUCT_MOB blob. The legacy 756/920-byte layouts that the shipped
-// content mixes into the same directory are widened here (savefmt.NormalizeMob,
-// data-formats.md §1.4.1) so that everything downstream — which indexes the
-// 816-byte layout directly — only ever sees the canonical form.
+// Load lê um template resolvido por Resolve e devolve um blob STRUCT_MOB
+// canônico de Size bytes. Os layouts legados de 756/920 bytes que o conteúdo
+// embarca no mesmo diretório são normalizados aqui (savefmt.NormalizeMob), para
+// que tudo a jusante — que indexa o layout de 816 bytes direto — veja sempre a
+// forma canônica.
 func Load(contentDir, name string) ([]byte, Resolution, error) {
 	res, err := Resolve(contentDir, name)
 	if err != nil {

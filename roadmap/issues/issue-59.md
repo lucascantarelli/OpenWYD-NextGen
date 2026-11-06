@@ -1,6 +1,6 @@
 # Issue 59 — Migrar as configs de conteúdo restantes para o banco (guard, level item, mob merc, game settings)
 
-**Fase:** 7 · **Depende de:** 58 · **Esforço:** M · **Estado:** ⏳ proposta
+**Fase:** 7 · **Depende de:** 58 · **Esforço:** M · **Estado:** 🟡 fatia entregue em 06/11 (tabelas + importador + testes); falta rodar contra o Postgres vivo e o worldatlas ler `region`
 
 ## Por que
 
@@ -101,6 +101,37 @@ CREATE TABLE region (
 0047_level_item…     0050_mob_merc…      0053_game_setting + game_drop_bonus…
 0056_region…
 ```
+
+## Entregue em 06/11/2026
+
+| Peça | Onde | Prova |
+|---|---|---|
+| Tabelas `guard_spawn`, `level_item`, `mob_merc`, `game_setting`, `game_drop_bonus`, `region` + `content_source_file` | `internal/migrations/0008_platform_content.up.sql` | migração aplicada no `go test` do store? não: sem banco neste host — ver `test/issue-59.md` |
+| Parsers lossless | `tmserver/internal/content/settings.go` | `go test -race ./tmserver/internal/content/` ok |
+| Upserts idempotentes | `internal/store/contentsettings.go` | compila e `go vet` ok; escrita provada só com banco |
+| Conjuntos no importador | `tmserver/cmd/importcontent/main.go` (`guard,level-item,mob-merc,game-settings,regions`, `all`, `-check` com hash) | dry-run: `guards=5 level_items=318 mob_mercs=1 settings=26 drop_matrix=64 regions=52` |
+| Golden de paridade | `tmserver/internal/content/settings_test.go` | fixa 5/318/1/26/64/52 e a forma 4×16 da matriz |
+
+Decisões que a medição forçou (e que corrigem o texto original desta issue):
+
+- `level_item` não pode ter `(level, arch, slot)` como chave: o arquivo tem 318 linhas com 159 pares
+  `classe/seq` distintos (blocos repetidos, linha 13 = linha 256). A chave é o **ordinal** da linha.
+- A matriz de drop é **4×16** (64 células), não 8×8.
+- `MobMerc.txt` está em `Common/Settings/`, não em `TMsrv/run/`.
+- `Guard.txt` declara 13 campos no cabeçalho e traz 8 por regra; por isso `rules` é jsonb + `raw`, em vez
+  de colunas `req_*` inventadas.
+
+## O que ainda falta
+
+1. Rodar `importcontent -dsn` contra o Postgres e validar contagens + `-check` (comando e critério em
+   [`test/issue-59.md`](../test/issue-59.md), porque este host não sobe container).
+2. ~~`worldatlas` passar a ler `region` em vez de `Regions.txt`~~ — **feito em 06/11**: o atlas consulta
+   `SELECT name, x1, y1, x2, y2 FROM region ORDER BY name`, o parser de arquivo ficou só como referência
+   de paridade, e o `source_hash` passou a cobrir as regiões do banco (editar a tabela invalida o cache
+   do portal). Prova offline: `go test -race ./tmserver/cmd/worldatlas/` (paridade arquivo × importador,
+   mapeamento puro e teste de banco gated por `W2PP_TEST_DSN`).
+3. Comportamento de guarda de cidade, item por nível e restock: continuam sem consumidor Go — a
+   tabela guarda o dado, não implementa o sistema (caveat mantido).
 
 ## Critérios de aceite
 

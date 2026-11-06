@@ -260,6 +260,15 @@ func TestTransformDamageMultiplier(t *testing.T) {
 // the affect sweep runs — the transform-expiry path needs it.
 func startServerAffectTick(t *testing.T, persist world.Persistence) (string, func()) {
 	t.Helper()
+	return startServerAffectTickGated(t, persist, nil)
+}
+
+// startServerAffectTickGated is startServerAffectTick with a gate: while the
+// gate reads false the dispatcher tick never runs, so a test can finish setting
+// up the scene (players in view) before any affect timer moves. nil means
+// "always ticking". The tick still runs inside the world loop, as in production.
+func startServerAffectTickGated(t *testing.T, persist world.Persistence, gate *atomic.Bool) (string, func()) {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -269,7 +278,15 @@ func startServerAffectTick(t *testing.T, persist world.Persistence) (string, fun
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 16, Now: clock.Load}, log, persist, d.Handle)
-	w.SetTickHandler(10*time.Millisecond, d.Tick)
+	if gate == nil {
+		w.SetTickHandler(10*time.Millisecond, d.Tick)
+	} else {
+		w.SetTickHandler(10*time.Millisecond, func(w *world.World) {
+			if gate.Load() {
+				d.Tick(w)
+			}
+		})
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() { _ = w.Serve(ctx, ln); close(done) }()
@@ -372,13 +389,21 @@ func TestTransformExpiryRevertsMesh(t *testing.T) {
 	st.Equip[0] = world.Item{Index: 21}
 	st.Equip[12] = world.Item{Index: 4188, Effects: [3]world.Effect{{Effect: efSanc, Value: 9}}}
 	db.loadResult = st
-	addr, stop := startServerAffectTick(t, db)
+	// The sweep only touches a player on its conn%8 phase tick, so with Time=1
+	// the very first phase tick after login reverts the mesh. Ticks are gated
+	// until both clients are in view: otherwise a loaded box can let the revert
+	// fire between the two logins, it reaches the owner alone (correct: nobody
+	// else is watching yet), and this test fails looking for a broadcast that
+	// was never due to the observer.
+	gate := &atomic.Bool{}
+	addr, stop := startServerAffectTickGated(t, db, gate)
 	defer stop()
 
 	c := enterWorld(t, addr)
 	defer c.Close()
 	observer := enterWorldAs(t, addr, "tradeb")
 	defer observer.Close()
+	gate.Store(true)
 
 	deadline := time.Now().Add(wireTimeout)
 	for time.Now().Before(deadline) {

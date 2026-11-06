@@ -31,6 +31,23 @@ que já foi tentado. Marque hipótese como **hipótese**.
 
 Saída esperada: trecho literal do log ou resultado.
 
+## Skills Relacionadas do freebuff
+
+- .agents/skills/* - incluir as skills que o agente deve usar para executar essa issue.
+
+## Documentação de referencia
+
+- docs/* - incluir links para documentação de referência, se houver.
+
+## Subtasks
+
+- [ ] Codificar issue
+- [ ] Testar issue
+- [ ] Revisar issue
+- [ ] Documentar issue
+- [ ] Versionar issue, mergear branch e fechar issue
+- [ ] Limpar branch (se aplicável)
+
 ## Critérios de aceite
 
 - [ ] Critério objetivo 1

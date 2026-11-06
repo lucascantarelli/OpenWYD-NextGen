@@ -2,8 +2,9 @@ package itemeffects
 
 import "testing"
 
-// TestLabelCoversRealAdds pins the codes that show up on real saves: the score
-// stats plus the refine marker, with the resist order from the content.
+// TestLabelCoversRealAdds fixa os códigos que aparecem em saves reais: os
+// atributos de score e o marcador de refino, com a ordem de resistência do
+// conteúdo.
 func TestLabelCoversRealAdds(t *testing.T) {
 	cases := map[int32]string{
 		2:  "Dano",
@@ -23,8 +24,8 @@ func TestLabelCoversRealAdds(t *testing.T) {
 	}
 }
 
-// TestLabelFallsBackToConstant: a code with no curated label still gets a name
-// from the header instead of a bare number.
+// TestLabelFallsBackToConstant: um código sem rótulo curado ainda recebe o nome
+// do vocabulário em vez de um número cru.
 func TestLabelFallsBackToConstant(t *testing.T) {
 	if code, known := int32(1), "LEVEL"; Name(code) != known {
 		t.Fatalf("Name(%d) = %q, want %q", code, Name(code), known)
@@ -34,8 +35,8 @@ func TestLabelFallsBackToConstant(t *testing.T) {
 	}
 }
 
-// TestLabelUnknownIsEmpty: a code outside ItemEffect.h returns "", so the UI
-// shows the raw number rather than inventing a meaning.
+// TestLabelUnknownIsEmpty: um código fora do vocabulário devolve "", então a UI
+// mostra o número cru em vez de inventar um significado.
 func TestLabelUnknownIsEmpty(t *testing.T) {
 	if got := Label(98); got != "" {
 		t.Errorf("Label(98) = %q, want empty (not in ItemEffect.h)", got)

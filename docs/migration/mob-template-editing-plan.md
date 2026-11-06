@@ -81,7 +81,7 @@ pra **qualquer** template `npc/<nome>`, incluindo monstros comuns que nascem só
 `NPCGener.txt` — esse é o caso de uso principal de rebalanceamento que o `EDITAPPMOB` servia. Por
 isso o overlay é ligado por uma **flag própria**, independente de `-npc-editing`
 (`-mob-stat-editing` / `W2PP_MOB_STAT_EDITING`), e o ponto de aplicação fica nos dois lugares que
-chamam `content.LoadNPCTemplate` em `tmserver/cmd/tmserver/main.go`: o closure `load` dentro de
+chamam `content.LoadNPCTemplate` em `tmserver/cmd/tmserver/app.go`: o closure `load` dentro de
 `spawnNPCs` (cobre todo spawn vindo de `NPCGener.txt`) e o `TemplateLoader` passado a
 `dbclient.NewNpcConfig` (cobre os NPCs geridos pelo banco). Os dois sistemas
 (`npc_definition`/posição-loja vs. `mob_template_stat`/atributos) permanecem ortogonais — nenhum
@@ -134,11 +134,11 @@ no-op). Ações novas: `create_template_stat`, `update_template_stat`, `set_temp
 - **web-api:** `webserver/internal/mobtemplates` (scan **sem filtro** do conteúdo, ao contrário
   de `npctemplates`), `webserver/internal/mobtemplateadmin` (papel + validação + leitura
   through, testes em `service_test.go`), `webserver/internal/grpcsrv/mobtemplateadmin.go`,
-  wiring em `webserver/cmd/webserver/main.go`.
+  wiring em `webserver/cmd/webserver/app.go`.
 - **tmServer:** `tmserver/internal/mobstat` (tipo `Override` + `Apply`, testes em
   `mobstat_test.go`), `tmserver/internal/dbclient/mobstatconfig.go` (`MobStatSource.Fetch`),
   wiring da flag `-mob-stat-editing` + os dois pontos de aplicação (`spawnNPCs`'s `load` e o
-  `TemplateLoader` de `dbclient.NewNpcConfig`) em `tmserver/cmd/tmserver/main.go`.
+  `TemplateLoader` de `dbclient.NewNpcConfig`) em `tmserver/cmd/tmserver/app.go`.
 
 ### Flag (opt-in), independente de `-npc-editing`
 

@@ -1,6 +1,6 @@
 # Issue 50 — Conteúdo do servidor no banco (CSV vira seed)
 
-**Fase:** 8 · **Depende de:** 22–34 (overlays), 04 · **Esforço:** L · **Estado:** ⏳ aberta
+**Fase:** 8 · **Depende de:** 22–34 (overlays), 04 · **Esforço:** L · **Estado:** 🟡 catálogos já em banco (issue 58) e proveniência entregue em 06/11; falta o `-content-source=db` das configs restantes e o hash no CI
 
 ## Objetivo
 
@@ -17,6 +17,23 @@ runtime (só para importar e para os mapas binários).
   `content_rate_override`, `teleport_route`, `world_event_config`, `daily_reward_item`), provando o
   padrão "arquivo base + banco".
 - `HeightMap.dat`/`AttributeMap.dat` (17 MiB) **não** vão para o banco (lidos inteiros e baked).
+
+## Entregue em 06/11/2026
+
+- **Passo 1 (proveniência):** `content_source_file(path, sha256, size_bytes, rows, imported_at)` em
+  `internal/migrations/0008_platform_content.up.sql`; o importador grava um registro por arquivo
+  (`addSource` + `RecordContentSources`) e o `-check` compara o hash, então editar conteúdo sem
+  reimportar reprova.
+- Os cinco conjuntos de configuração da issue 59 entram pelo mesmo importador, com o mesmo `-check`.
+- Descoberta que muda o plano: `ItemList.csv`, `SkillData.csv`, `InitItem.csv` e `npc/` **já não existem**
+  na árvore — a issue 58 os substituiu por seeds SQL. O importador os mantém apenas para reprocessar
+  uma árvore externa de backup (`-sets all`); o default é o que ainda é arquivo.
+
+## O que ainda falta
+
+- `-content-source=db|files` no tmServer para as configs que continuam sendo lidas de arquivo.
+- Paridade por hash no CI (hoje só o importador sabe comparar).
+- Remover `./content:/content:ro` dos serviços que passarem a ler tudo do banco (mapas ficam).
 
 ## Passos
 
