@@ -6,7 +6,6 @@ package grpcsrv
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -106,7 +105,7 @@ func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest
 	// sends a signed token in the password field instead of the password. The
 	// signature covers the account name, so a token cannot be replayed by another
 	// account; an invalid or expired one is just a wrong password.
-	if tok := req.GetPassword(); s.crossoverKey != "" && strings.HasPrefix(tok, crossover.Prefix) {
+	if tok := req.GetPassword(); s.crossoverKey != "" && crossover.IsToken(tok) {
 		if _, ok := crossover.Verify(s.crossoverKey, req.GetAccountName(), tok, time.Now()); !ok {
 			return &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BAD_PASSWORD}, nil
 		}

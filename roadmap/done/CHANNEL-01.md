@@ -1,5 +1,8 @@
 # CHANNEL-01 — `/srv` e login entre instâncias de ponta a ponta
 
+> **Complemento (06/11/2026):** o frame agora leva o prefixo legado `*<canal> ` no `Enc`; sem ele
+> o cliente gráfico não reconhecia o destino. Ver [CHANNEL-02](CHANNEL-02.md).
+
 Fase 6 · Depende de DB-04/CI-02 · Esforço M
 
 ## Objetivo

@@ -101,11 +101,12 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](done/CI-01.md) |
 | Migração em base vazia fora do CI | ✅ 06/11: `.github/workflows/db.yml` com Postgres 17, `TestBaselineDown` (up+down+catálogo) e suíte de integração (58 testes) | [CI-02](done/CI-02.md) |
 | `/srv` e login entre instâncias | ✅ 06/11: token assinado + `CloseUser` legado; e2e canal 1→2 e aviso no mesmo canal; token aceito no canal 2 | [CHANNEL-01](done/CHANNEL-01.md) |
+| `/srv` no cliente gráfico: `Enc` sem `*<canal>` | ✅ 06/11: `*<canal> ~x1:...` (38 B); e2e 1→2 e 2→1; ESC segue sem pacote (limite do cliente) | [CHANNEL-02](done/CHANNEL-02.md) |
 | Rename `character`→`characters` incompleto no runtime | ✅ 06/11: banco só com `characters`, queries Go no nome novo, stack reconstruída, login e2e sem 42P01 | [DB-05](done/DB-05.md) |
 | Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
 | `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | 0 rows no banco de dev | [DB-03](issues/DB-03.md) |
 | Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](done/DB-01.md) ✅ |
-| Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
+| Sem `/metrics`, `trace_id` nem alertas | ✅ 06/11: `/metrics` nos 4 serviços + `tmserver2` (`:9101-9104`, `:9111`), conexões CPSock, tick, fila, pool e RPC; e2e verde e zero 42P01 | [OBS-01](done/OBS-01.md) ✅ · `trace_id` em [OBS-02](issues/OBS-02.md) · alertas em [OBS-03](issues/OBS-03.md) · `gitleaks` em [OBS-04](issues/OBS-04.md) |
 | Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](done/DOC-01.md) |
 | Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](done/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](done/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
@@ -324,6 +325,19 @@ Grafo da Fase 6:
 - Todo comando citado deve rodar de `` salvo indicação contrária.
 
 ## Changelog
+
+- **2026-11-06 (OBS-01 e CHANNEL-02)** — observabilidade numérica e troca de canal no cliente.
+  **OBS-01** entregou `/metrics` (texto Prometheus, sem dependência nova) nos quatro serviços e no
+  segundo canal (`:9101`–`:9104`, `:9111`): conexões CPSock, duração do loop por tipo de evento,
+  fila `delivery_queue`, pool e RPC por método/código. A instrumentação do mundo é só memória e
+  não bloqueia `World.Run`; a coleta de fila/pool acontece no scrape. O `logpipe`/`/logs` continua
+  sendo o caminho de **texto** por requisição — as duas camadas são complementares, não
+  redundantes. `trace_id`, dashboard/alertas e `gitleaks` ficaram nas filhas OBS-02/03/04.
+  **CHANNEL-02** corrigiu o `Enc` do `/srv`: o cliente legado lê o primeiro campo `*<canal> ` para
+  escolher o destino, e o token emitido antes começava em `~x1:`; o servidor aceitava, mas o
+  cliente não reconectava. O token agora é `*<canal> ~x1:...` (38 B) e o e2e prova 1→2 e 2→1.
+  Verification: `make gate` OK · `go build ./...` 0 · `go vet ./...` 0 · `go test ./...` 0 ·
+  `TestE2EChannelChange`/`Back`/`SameChannel`/`SmokeLogin` PASS · 42P01 = 0.
 
 - **2026-11-06 (Fila A executada: A1–A5 fechadas, A6 quase)** — `CLEAN-05` já estava fechada; esta
   passagem fechou o resto do que se prova localmente. **PORTAL-01** virou teste: `middleware.test.ts`

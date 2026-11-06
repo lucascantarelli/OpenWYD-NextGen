@@ -65,6 +65,8 @@ services:
         condition: service_completed_successfully
     expose:
       - "7514"
+    ports:
+      - "127.0.0.1:9102:9102"       # métricas/health (Prometheus)
 
   binserver:
     build:
@@ -74,6 +76,8 @@ services:
     command: ["-addr", ":3000"]
     expose:
       - "3000"
+    ports:
+      - "127.0.0.1:9103:9103"       # métricas/health (Prometheus)
 
   webserver:
     build:
@@ -99,6 +103,7 @@ services:
     # portal talks to it over the compose network as webserver:7600.
     ports:
       - "7600:7600"
+      - "127.0.0.1:9104:9104"       # métricas/health (Prometheus)
 
   # Sidecar de logs (issue 40): ÚNICO processo com o socket do Docker, montado
   # read-only. Serve /status e /logs/<serviço> na rede interna do compose; o
@@ -208,6 +213,7 @@ services:
       - "127.0.0.1:80:80"              # status serv00.htm, loopback
       - "192.168.100.3:8281:8281"      # jogo — canal 0
       - "192.168.100.3:80:80"          # status — canal 0
+      - "127.0.0.1:9101:9101"          # métricas/health (Prometheus)
 
   # Segundo canal (docs/migration/canais.md §7). Mesma imagem, mesmo dbServer,
   # mesmo conteúdo somente-leitura e um ServerIndex diferente: é o índice que
@@ -259,6 +265,7 @@ services:
     ports:
       - "192.168.100.4:8281:8282"      # jogo — canal 1
       - "192.168.100.4:80:8080"        # status — canal 1
+      - "127.0.0.1:9111:9101"          # métricas/health — canal 1
   # Site de documentação (DOC-01). Config, Dockerfile e conteúdo vivem em docs/;
   # o repositório é montado em /project porque o `-f docs/mkdocs.yml` é relativo a
   # ele. `serve` recarrega ao editar; o gate é `build --strict`:

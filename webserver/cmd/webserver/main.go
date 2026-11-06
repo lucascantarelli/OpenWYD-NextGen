@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc"
 
 	webv1 "openwyd-nextgen/api/web/v1"
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/internal/playcode"
 	"openwyd-nextgen/internal/secure"
 	"openwyd-nextgen/internal/store"
@@ -72,6 +73,7 @@ func run(logger *slog.Logger) error {
 	tlsCA := flag.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "client CA (PEM) for mTLS")
 	contentDir := flag.String("content", envOr("W2PP_CONTENT", "tmserver/content"), "caminho da árvore de conteúdo para taxas e mapas (catálogos vêm do banco; default tmserver/content)")
 	iconManifestPath := flag.String("item-icons-manifest", os.Getenv("W2PP_ITEM_ICONS_MANIFEST"), "generated item-icon manifest (empty = fallback-only)")
+	metricsAddr := flag.String("metrics-addr", envOr("W2PP_METRICS_ADDR", ":9104"), "endpoint de métricas/health (Prometheus) em porta separada; vazio desliga")
 	flag.Parse()
 
 	if *dsn == "" {
@@ -98,11 +100,16 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	metricsReg := metrics.New("webserver")
+	go metrics.Serve(ctx, *metricsAddr, metricsReg, logger)
+	metrics.RegisterPGXPool(metricsReg, "webserver", pool)
+	metrics.RegisterTableRows(metricsReg, "webserver", "delivery_queue_rows", "Linhas na delivery_queue.", "SELECT count(*) FROM delivery_queue", pool)
+
 	creds, err := secure.ServerCreds(secure.Config{CertFile: *tlsCert, KeyFile: *tlsKey, CAFile: *tlsCA})
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("webserver", metricsReg)))
 	st := store.New(pool)
 	npcAdmin := npcadmin.New(st)
 	npcAdmin.SetLogger(logger)

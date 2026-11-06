@@ -36,6 +36,12 @@ const (
 	// minúsculas e o argon2id compara o valor cru que enviamos.
 	Prefix = "~x1:"
 
+	// WirePrefix é o começo do Enc que o cliente legado entende: o primeiro
+	// campo é o número do canal de destino ("*2 ..."). O corpo assinado vem
+	// depois. Sem esse campo o servidor aceita o token, mas o cliente não sabe
+	// para onde reconectar e o /srv parece não fazer nada.
+	WirePrefix = "*"
+
 	// EncSize é a largura legada de Enc/TempKey (MSG_DBCNFServerChange).
 	// O token precisa caber no mesmo campo Zero[52] que o cliente devolve.
 	EncSize = 52
@@ -68,7 +74,29 @@ func Build(key, account string, slot, target int, now time.Time) string {
 		return ""
 	}
 	exp := now.Add(TTL).Unix()
-	return fmt.Sprintf("%s%d:%d:%d:%s", Prefix, target, slot, exp, mac(key, account, slot, target, exp))
+	signed := fmt.Sprintf("%s%d:%d:%d:%s", Prefix, target, slot, exp, mac(key, account, slot, target, exp))
+	return fmt.Sprintf("%s%d %s", WirePrefix, target, signed)
+}
+
+// IsToken reports whether a login credential is one of our crossover tokens.
+// It accepts the legacy-compatible wire form ("*<canal> ~x1:...") and the
+// pre-fix form ("~x1:...") while old tokens are still within their TTL.
+func IsToken(token string) bool {
+	if strings.HasPrefix(token, Prefix) {
+		return true
+	}
+	if !strings.HasPrefix(token, WirePrefix) {
+		return false
+	}
+	rest := strings.TrimPrefix(token, WirePrefix)
+	sp := strings.IndexByte(rest, ' ')
+	if sp <= 0 {
+		return false
+	}
+	if _, err := strconv.Atoi(rest[:sp]); err != nil {
+		return false
+	}
+	return strings.HasPrefix(rest[sp+1:], Prefix)
 }
 
 // Verify confere o token contra a conta a que ele diz pertencer. Devolve false
@@ -80,11 +108,29 @@ func Verify(key, account, token string, now time.Time) (Claims, bool) {
 	if key == "" {
 		return Claims{}, false
 	}
-	body, ok := strings.CutPrefix(token, Prefix)
+	// O cliente devolve o Enc inteiro ("*<canal> ~x1:..."); o primeiro campo
+	// tem de concordar com o alvo assinado, senão um token para o canal 2
+	// poderia ser reapresentado como se fosse para o canal 1.
+	body := token
+	wireTarget := 0
+	if strings.HasPrefix(token, WirePrefix) {
+		rest := strings.TrimPrefix(token, WirePrefix)
+		sp := strings.IndexByte(rest, ' ')
+		if sp <= 0 {
+			return Claims{}, false
+		}
+		n, err := strconv.Atoi(rest[:sp])
+		if err != nil || n <= 0 {
+			return Claims{}, false
+		}
+		wireTarget = n
+		body = rest[sp+1:]
+	}
+	signed, ok := strings.CutPrefix(body, Prefix)
 	if !ok {
 		return Claims{}, false
 	}
-	parts := strings.Split(body, ":")
+	parts := strings.Split(signed, ":")
 	if len(parts) != 4 {
 		return Claims{}, false
 	}
@@ -101,6 +147,9 @@ func Verify(key, account, token string, now time.Time) (Claims, bool) {
 		return Claims{}, false
 	}
 	if now.Unix() > exp {
+		return Claims{}, false
+	}
+	if wireTarget != 0 && target != wireTarget {
 		return Claims{}, false
 	}
 	return Claims{Target: target, Slot: slot, Expires: exp}, true

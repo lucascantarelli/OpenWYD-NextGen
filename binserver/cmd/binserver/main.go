@@ -27,6 +27,7 @@ import (
 
 	"openwyd-nextgen/binserver/internal/billing"
 	"openwyd-nextgen/binserver/internal/grpcsrv"
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/internal/secure"
 )
 
@@ -39,22 +40,33 @@ func main() {
 	logger.Info("binserver stopped")
 }
 
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
 func run(logger *slog.Logger) error {
 	addr := flag.String("addr", ":3000", "gRPC listen address")
 	allowUnknown := flag.Bool("allow-unknown", true, "free-to-play: allow accounts with no billing record")
 	tlsCert := flag.String("tls-cert", os.Getenv("W2PP_TLS_CERT"), "server certificate (PEM)")
 	tlsKey := flag.String("tls-key", os.Getenv("W2PP_TLS_KEY"), "server private key (PEM)")
 	tlsCA := flag.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "client CA (PEM) for mTLS")
+	metricsAddr := flag.String("metrics-addr", envOr("W2PP_METRICS_ADDR", ":9103"), "endpoint de métricas/health (Prometheus) em porta separada; vazio desliga")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	metricsReg := metrics.New("binserver")
+	go metrics.Serve(ctx, *metricsAddr, metricsReg, logger)
+
 	creds, err := secure.ServerCreds(secure.Config{CertFile: *tlsCert, KeyFile: *tlsKey, CAFile: *tlsCA})
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("binserver", metricsReg)))
 	binv1.RegisterBillingServiceServer(srv, grpcsrv.New(billing.New(*allowUnknown), nil))
 
 	ln, err := net.Listen("tcp", *addr)

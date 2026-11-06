@@ -89,6 +89,16 @@ recorte de desenvolvimento, não uma topologia jogável.
 
 - **Portas hardcoded** (`Basedef.h:104-105`): `GAME_PORT = 8281` (cliente→TMSrv),
   `DB_PORT = 7514` (TMSrv→DBSrv). Billing em `:3000` (de `biserver.txt`).
+- **Portas de observabilidade (stack Go):** `tmserver :9101`, `dbserver :9102`,
+  `binserver :9103`, `webserver :9104`; o segundo canal `tmserver2` publica `:9111`.
+  Servem `/metrics` (texto Prometheus), `/healthz` e `/readyz`; a flag `-metrics-addr`
+  (`W2PP_METRICS_ADDR`) controla o endereço e vazio desliga. São publicadas em `127.0.0.1`
+  pelo compose e não substituem as portas de jogo/gRPC.
+- **Métricas × logs (não são redundantes):** `/metrics` é série temporal numérica para
+  scrape/alerta (contadores, gauges, histogramas); o `logpipe` lê o socket do Docker e o
+  `/logs` do portal mostra o texto linha a linha, com filtro e pausa. O primeiro responde
+  "quantos/quão rápido/quando piorou"; o segundo responde "o que aconteceu nesta
+  requisição". Não se substituem e não precisam de um segundo coletor de logs.
 - **Auto-restart por `.bat`:** ex. `DBsrv/run/DBsrv.bat` é um loop `:Loop … DBsrv.exe … goto Loop`
   — reinicia o processo se ele cair. (Há `.bat` equivalente para o TMSrv.) Substituir por
   supervisor real (systemd/k8s/Docker restart policy) na stack nova.

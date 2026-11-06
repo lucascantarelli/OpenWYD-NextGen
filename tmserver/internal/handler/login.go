@@ -57,7 +57,7 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	}
 
 	pass := cstr(body.AccountPassword[:])
-	if tok := cstr(body.Zero[:]); strings.HasPrefix(tok, crossover.Prefix) {
+	if tok := cstr(body.Zero[:]); crossover.IsToken(tok) {
 		// Channel change (canais.md §8.1.2): a client that came from another
 		// channel sends the /srv token in Zero[52] instead of the password — the
 		// same field the legacy compares against TempKey. It travels as the

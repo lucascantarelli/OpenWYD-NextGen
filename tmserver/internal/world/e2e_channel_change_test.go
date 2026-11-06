@@ -166,8 +166,8 @@ func TestE2EChannelChange(t *testing.T) {
 	if gotAccount != account {
 		t.Fatalf("frame account = %q, want %q", gotAccount, account)
 	}
-	if !strings.HasPrefix(token, "~x1:") {
-		t.Fatalf("token %q does not carry the crossover prefix", token)
+	if !strings.HasPrefix(token, "*2 ") {
+		t.Fatalf("token %q does not start with the legacy channel prefix %q (the graphic client uses it to reconnect)", token, "*2 ")
 	}
 	t.Logf("channel 1: /srv 2 issued token (%d bytes)", len(token))
 
@@ -191,6 +191,60 @@ func TestE2EChannelChange(t *testing.T) {
 	defer c2.Close()
 	liveSelectCharacter(t, c2, slot)
 	t.Logf("channel 2: token login OK, selected slot %d", slot)
+}
+
+// TestE2EChannelChangeBack is the reverse path of TestE2EChannelChange: a
+// character on channel 2 runs "/srv 1", receives a token whose legacy wire
+// prefix names channel 1, and logs back into channel 1 with that token.
+func TestE2EChannelChangeBack(t *testing.T) {
+	addr1 := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
+	addr2 := env("W2PP_E2E_ADDR2", "127.0.0.1:8282")
+	account := env("W2PP_E2E_ACCOUNT", "smoke")
+	password := env("W2PP_E2E_PASSWORD", "smoke123")
+	slot := e2eSlot(t)
+
+	c2 := liveLogin(t, addr2, account, password, "")
+	defer c2.Close()
+	liveSelectCharacter(t, c2, slot)
+	t.Logf("channel 2: logged in and selected slot %d", slot)
+
+	var wb protocol.MsgWhisperBody
+	copy(wb.MobName[:], "srv")
+	wb.String = []byte("1")
+	wire, err := protocol.Encode(protocol.Header{Type: protocol.MsgMessageWhisper}, wb.Encode(), 12)
+	if err != nil {
+		t.Fatalf("encode /srv: %v", err)
+	}
+	if _, err := c2.Write(wire); err != nil {
+		t.Fatalf("write /srv 1: %v", err)
+	}
+
+	var token string
+	for i := 0; i < 100; i++ {
+		h, payload, ok := liveReadMaybe(c2, 5*time.Second)
+		if !ok {
+			break
+		}
+		if h.Type == protocol.MsgCNFServerChange {
+			if len(payload) != protocol.MsgCNFServerChangeBodySize {
+				t.Fatalf("MsgCNFServerChange body = %d, want %d", len(payload), protocol.MsgCNFServerChangeBodySize)
+			}
+			token = strings.TrimRight(string(payload[16:]), "\x00")
+			break
+		}
+	}
+	if token == "" {
+		t.Fatal("/srv 1 from channel 2: no MsgCNFServerChange token")
+	}
+	if !strings.HasPrefix(token, "*1 ") {
+		t.Fatalf("token %q does not start with the legacy channel prefix %q", token, "*1 ")
+	}
+	t.Logf("channel 2: /srv 1 issued token (%d bytes)", len(token))
+
+	c1 := liveLogin(t, addr1, account, "", token)
+	defer c1.Close()
+	liveSelectCharacter(t, c1, slot)
+	t.Logf("channel 1: token login OK, selected slot %d", slot)
 }
 
 // TestE2EServerChangeSameChannel confirms the guard answers a notice (not a

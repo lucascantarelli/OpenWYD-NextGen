@@ -34,6 +34,7 @@ import (
 	"openwyd-nextgen/dbserver/internal/convert"
 	"openwyd-nextgen/dbserver/internal/grpcsrv"
 	"openwyd-nextgen/internal/domain"
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/internal/secret"
 	"openwyd-nextgen/internal/secure"
 	"openwyd-nextgen/internal/store"
@@ -74,18 +75,11 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  dbserver seed-account -name <login> -pass <password> [-dsn <postgres-url>]")
 }
 
-
-
 // shopCarrySlot maps a MSG_ShopList display index (0..26) to the NPC Carry slot
 // it occupies (3 tabs of 9: Carry[0..8],[27..35],[54..62]). Mirrors
 // protocol.ShopSlot, which dbserver cannot import (tmserver internal package).
 
-
-
-
-
 // cString trims a fixed-size C string field at its first NUL.
-
 
 // runSeedAccount creates one password-only account for local testing. The name
 // is canonicalized to lowercase (matching the converter, convert.Account); the
@@ -150,6 +144,7 @@ func runServe(args []string, logger *slog.Logger) error {
 	tlsCert := fs.String("tls-cert", os.Getenv("W2PP_TLS_CERT"), "server certificate (PEM)")
 	tlsKey := fs.String("tls-key", os.Getenv("W2PP_TLS_KEY"), "server private key (PEM)")
 	tlsCA := fs.String("tls-ca", os.Getenv("W2PP_TLS_CA"), "client CA (PEM) for mTLS")
+	metricsAddr := fs.String("metrics-addr", envOr("W2PP_METRICS_ADDR", ":9102"), "endpoint de métricas/health (Prometheus) em porta separada; vazio desliga")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -182,11 +177,16 @@ func runServe(args []string, logger *slog.Logger) error {
 		logger.Info("npc catalogue ready", "content_definitions", n)
 	}
 
+	metricsReg := metrics.New("dbserver")
+	go metrics.Serve(ctx, *metricsAddr, metricsReg, logger)
+	metrics.RegisterPGXPool(metricsReg, "dbserver", pool)
+	metrics.RegisterTableRows(metricsReg, "dbserver", "delivery_queue_rows", "Linhas na delivery_queue.", "SELECT count(*) FROM delivery_queue", pool)
+
 	creds, err := secure.ServerCreds(secure.Config{CertFile: *tlsCert, KeyFile: *tlsKey, CAFile: *tlsCA})
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("dbserver", metricsReg)))
 	st := store.New(pool)
 	dbv1.RegisterAccountServiceServer(srv, grpcsrv.New(st).WithCrossoverKey(os.Getenv("W2PP_CROSSOVER_KEY")))
 	dbv1.RegisterNpcConfigServiceServer(srv, grpcsrv.NewNpcConfig(st))

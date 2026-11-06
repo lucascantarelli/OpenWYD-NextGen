@@ -54,6 +54,8 @@ func (e connectEvent) apply(w *World) {
 	}
 	w.sessions[conn] = s
 	w.entities[conn] = &Entity{ID: conn, Mode: MobUserDock}
+	w.metricAdd("cpsock_connections_active", "Conexões CPSock ativas.", 1)
+	w.metricInc("cpsock_connections_total", "Conexões CPSock aceitas desde o boot.")
 	go w.readLoop(s)
 	go w.writeLoop(s)
 	w.log.Info("connection accepted", "conn", conn, "ip", e.ip)
@@ -149,6 +151,7 @@ func (w *World) removeSession(s *Session) {
 	if s == nil || w.sessions[s.Conn] != s {
 		return
 	}
+	w.metricAdd("cpsock_connections_active", "Conexões CPSock ativas.", -1)
 	// Shared-state teardown (the party bond and its summons) while the session and
 	// its entity are still addressable — the legacy calls RemoveParty from CloseUser
 	// for the same reason (Server.cpp:7654).

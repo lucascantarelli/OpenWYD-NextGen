@@ -26,6 +26,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/internal/ratetables"
 	"openwyd-nextgen/internal/secure"
 	"openwyd-nextgen/tmserver/internal/binclient"
@@ -122,6 +123,11 @@ func run(logger *slog.Logger) error {
 		defStatusAddr = ":80"
 	}
 	statusAddr := flag.String("status-addr", defStatusAddr, "HTTP channel-status listen address (serv00.htm); real WYD serves status on :80, separate from the game port. Empty disables")
+	defMetricsAddr := os.Getenv("W2PP_METRICS_ADDR")
+	if defMetricsAddr == "" {
+		defMetricsAddr = ":9101"
+	}
+	metricsAddr := flag.String("metrics-addr", defMetricsAddr, "endpoint de métricas/health (Prometheus) em porta separada; vazio desliga")
 	maxNightmare := flag.Int("max-nightmare", envInt("W2PP_MAX_NIGHTMARE", 3), "counted Nightmare admissions per map and cycle")
 	kefraEntriesPerScroll := flag.Int("kefra-entries-per-scroll", envInt("W2PP_KEFRA_ENTRIES_PER_SCROLL", 100), "Hall of Kefra entries one sealed scroll grants at the Sobrevivente (legacy 100; servers commonly use 50 or 100)")
 	clientVersion := flag.Int("client-version", envInt("W2PP_CLIENT_VERSION", 7640), "MSG_AccountLogin.ClientVersion the client must send (protocol-spec says 7640; this 7662 'Cavaleiros de Kersef' build sends 12000)")
@@ -222,6 +228,9 @@ func run(logger *slog.Logger) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	metricsReg := metrics.New("tmserver")
+	go metrics.Serve(ctx, *metricsAddr, metricsReg, logger)
 
 	clientCreds, err := secure.ClientCreds(secure.Config{
 		CertFile: *tlsCert, KeyFile: *tlsKey, CAFile: *tlsCA, ServerName: *tlsServerName,
@@ -608,6 +617,7 @@ func run(logger *slog.Logger) error {
 		StatusFile:     statusFile,
 		ItemRanges:     itemRanges,
 		LogSends:       *logSends,
+		Metrics:        metricsReg,
 	}, logger, persist, dispatch.Handle)
 	// Mob-AI pulse: monsters acquire/chase/melee nearby players each tick (mobai.go).
 	w.SetTickHandler(world.DefaultMobTick, dispatch.Tick)

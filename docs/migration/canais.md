@@ -470,9 +470,15 @@ legado usa é um comando, em três saltos:
 **Implementação nossa** (`/srv`, sem RPC novo): o token é *assinado* com `W2PP_CROSSOVER_KEY` em vez
  de persistido, então não é preciso coluna nova nem RPC de troca em `api/db/v1/db.proto`.
 
+> **Compatibilidade com o cliente (06/11/2026):** o `Enc` começa com o campo legado
+> `*<canal> `, porque é dele que o cliente extrai o servidor de destino. A primeira versão
+> emitia só `~x1:...`; o servidor aceitava o token, mas o cliente não sabia para onde
+> reconectar e o `/srv` parecia não fazer nada. O corpo assinado vem depois do campo.
+
+
 | peça | onde |
 |------|------|
-| token `~x1:<canal>:<slot>:<exp>:<hmac>` (≤ 52 bytes, TTL 2 min) | `internal/crossover` |
+| token `*<canal> ~x1:<canal>:<slot>:<exp>:<hmac>` (≤ 52 bytes, TTL 2 min) | `internal/crossover` |
 | frame `MSG_DBCNFServerChange` (42) com `AccountName[16]+Enc[52]` | `tmserver/internal/protocol/serverchange.go` |
 | comando `/srv <n>` que emite o frame | `tmserver/internal/handler/serverchange.go` |
 | token aceito no campo `Zero[52]` do login, enviado ao db como senha | `handler/login.go` |

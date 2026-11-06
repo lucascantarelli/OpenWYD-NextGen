@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/tmserver/internal/protocol"
 	"openwyd-nextgen/tmserver/internal/rng"
 )
@@ -117,6 +118,10 @@ type Config struct {
 	// built-in default. The client-edge HTTP status check is undocumented in
 	// protocol-spec.md (CPSock-only) — discovered from a live client capture.
 	StatusFile string
+
+	// Metrics recebe os contadores do loop (tick, conexões) e é exportado pelo
+	// endpoint /metrics do processo. nil desliga a instrumentação (testes).
+	Metrics *metrics.Registry
 }
 
 // World holds all mutable game state. Every field is touched only by Run's
@@ -124,6 +129,7 @@ type Config struct {
 type World struct {
 	cfg     Config
 	log     *slog.Logger
+	metrics *metrics.Registry
 	persist Persistence
 	billing Billing
 	handler Handler
@@ -217,6 +223,7 @@ func New(cfg Config, log *slog.Logger, persist Persistence, handler Handler) *Wo
 	return &World{
 		cfg:       cfg,
 		log:       log,
+		metrics:   cfg.Metrics,
 		persist:   persist,
 		billing:   AllowAllBilling{},
 		handler:   handler,
@@ -274,6 +281,17 @@ func (w *World) applyTimed(ev event) {
 	start := time.Now()
 	ev.apply(w)
 	d := time.Since(start)
+	kind := "other"
+	switch ev.(type) {
+	case frameEvent:
+		kind = "frame"
+	case tickEvent:
+		kind = "tick"
+	case callbackEvent:
+		kind = "callback"
+	}
+	w.metricObserve("world_event_duration_seconds", "Duração de um evento do loop.", d.Seconds(), "kind", kind)
+	w.metricInc("world_events_total", "Eventos processados pelo loop.", "kind", kind)
 	if d < slowEventThreshold {
 		return
 	}

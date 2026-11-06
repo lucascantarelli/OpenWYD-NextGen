@@ -26,7 +26,7 @@ RPC de troca em `api/db/v1/db.proto` (o `protoc` nem está no host).
 
 | Peça | Arquivo |
 |---|---|
-| token `~x1:<canal>:<slot>:<exp>:<hmac>` (≤52 B, TTL 2 min, HMAC-SHA256 truncado) | `internal/crossover/crossover.go` |
+| token `*<canal> ~x1:<canal>:<slot>:<exp>:<hmac>` (≤52 B, TTL 2 min, HMAC-SHA256 truncado) | `internal/crossover/crossover.go` |
 | frame `MSG_DBCNFServerChange` (42) com `AccountName[16]+Enc[52]` | `tmserver/internal/protocol/serverchange.go` |
 | comando `/srv <n>` (valida canal, recusa o próprio canal, emite o frame) | `tmserver/internal/handler/serverchange.go` |
 | token aceito no `Zero[52]` do login e validado no dbServer | `handler/login.go`, `dbserver/internal/grpcsrv/server.go` (`WithCrossoverKey`) |

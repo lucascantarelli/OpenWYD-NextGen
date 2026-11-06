@@ -7,8 +7,8 @@ import (
 )
 
 // TestBuildVerifyRoundTrip trava o contrato do token: um token assinado para uma
-// conta/canal só verifica para aquela conta, e o orçamento de 52 bytes que o
-// campo Zero[52] do cliente impõe é respeitado.
+// conta/canal só verifica para aquela conta, começa com o campo legado
+// "*<canal> " que o cliente usa para escolher o servidor, e cabe no Zero[52].
 func TestBuildVerifyRoundTrip(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	tok := Build("key", "Test", 2, 1, now)
@@ -16,8 +16,11 @@ func TestBuildVerifyRoundTrip(t *testing.T) {
 	if len(tok) > EncSize {
 		t.Fatalf("token %q has %d bytes, must fit Enc[%d]", tok, len(tok), EncSize)
 	}
-	if !strings.HasPrefix(tok, Prefix) {
-		t.Fatalf("token %q does not carry the %q prefix", tok, Prefix)
+	if !strings.HasPrefix(tok, "*1 ") {
+		t.Fatalf("token %q does not start with the legacy wire prefix %q", tok, "*1 ")
+	}
+	if !IsToken(tok) {
+		t.Fatalf("IsToken rejected a freshly built token %q", tok)
 	}
 	claims, ok := Verify("key", "test", tok, now)
 	if !ok {
@@ -29,7 +32,7 @@ func TestBuildVerifyRoundTrip(t *testing.T) {
 }
 
 // TestVerifyRejects cobre todo jeito de um token falhar: outra conta, outra
-// chave, campo adulterado, token expirado e lixo.
+// chave, campo adulterado, token expirado, alvo do Enc divergente e lixo.
 func TestVerifyRejects(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	good := Build("key", "test", 0, 2, now)
@@ -45,7 +48,9 @@ func TestVerifyRejects(t *testing.T) {
 		{"other key", "outra-chave", "test", good, now},
 		{"expired", "key", "test", good, now.Add(TTL + time.Second)},
 		{"tampered target", "key", "test", strings.Replace(good, ":2:", ":3:", 1), now},
-		{"no prefix", "key", "test", strings.TrimPrefix(good, Prefix), now},
+		{"wire target disagrees", "key", "test", strings.Replace(good, "*2 ", "*1 ", 1), now},
+		{"wire without space", "key", "test", strings.Replace(good, "*2 ", "*2", 1), now},
+		{"malformed wire target", "key", "test", "*x ~x1:2:0:1:deadbeefdeadbeef", now},
 		{"garbage", "key", "test", "~x1:1:2", now},
 		{"empty", "key", "test", "", now},
 	}
@@ -62,6 +67,9 @@ func TestVerifyRejects(t *testing.T) {
 // token, e que chave vazia desliga o caminho em vez de aceitar qualquer coisa.
 func TestRealPasswordIsNotAToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
+	if IsToken("test123") {
+		t.Fatal("a plain password was classified as a crossover token")
+	}
 	if _, ok := Verify("key", "test", "test123", now); ok {
 		t.Fatal("a plain password verified as a crossover token")
 	}

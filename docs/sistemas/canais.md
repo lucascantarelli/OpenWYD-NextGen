@@ -15,6 +15,10 @@ O compose sobe `tmserver` e `tmserver2` (novato e regular). O canal novato é fi
 2. O servidor emite um token de uso único, válido por 2 minutos, assinado com a chave de crossover.
 3. O cliente reconecta no outro canal e devolve o token; o login valida sem pedir senha de novo.
 
+O `Enc` do frame começa com `*<canal> ` (formato legado) e só depois traz o token assinado. Esse
+primeiro campo é o que o cliente usa para escolher o servidor de destino; sem ele o servidor
+aceita o token, mas o cliente não reconecta.
+
 Peça central: `tmserver/internal/crossover`. Os dois tmServer e o dbServer precisam da **mesma**
 `W2PP_CROSSOVER_KEY`; chave diferente aparece como "senha inválida" na reconexão.
 
@@ -36,7 +40,7 @@ O menu de canais do ESC **lista** canais, mas não envia troca ao servidor — s
 ## Como verificar
 
 ```bash
-go test ./tmserver/internal/crossover/ ./tmserver/internal/handler/ -run 'ServerChange|NewbieChannel'
+go test ./internal/crossover/ ./tmserver/internal/handler/ -run 'ServerChange|NewbieChannel'
 ```
 
 No jogo: `/srv 2` e conferir que o personagem entra no outro canal sem redigitar senha; repetir o mesmo
