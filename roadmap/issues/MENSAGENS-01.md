@@ -1,6 +1,6 @@
 # MENSAGENS-01 — Auditoria das mensagens cliente ↔ servidor
 
-**Fase:** correção in-game · **Depende de:** issue 32 (painel de mensagem) · **Esforço:** M · **Estado:** 🔄 em andamento (fatias 1 e 2 entregues em 06/11/2026)
+**Fase:** correção in-game · **Depende de:** issue 32 (painel de mensagem) · **Esforço:** M · **Estado:** 🔄 em andamento (fatias 1, 2 e 3 entregues em 06/11/2026; lacunas restantes justificadas)
 
 ## Objetivo
 
@@ -55,6 +55,27 @@ Relatos: pedra adamantita, âmagos de montaria, esferas da sorte nos Perzens e b
 - Textos que o `Language.txt` não tem (`bagActivatedText`, `perzenDoneText`, `perzenNeedText`,
   `noCleanseText`, `fameGainedText`) são **de projeto**, curtos, e só informam sucesso — nunca
   substituem a tabela em recusas.
+
+## Fatia 3 (entregue) — varredura completa
+
+Depois do QA de mensagens, a varredura foi refeita sobre **todo** o `tmserver`, não por amostragem:
+165 chamadas de `notify`/`sendClientMessage`/chat/sussurro/painel revisadas e 172 logs de handler
+triados para achar `return` silencioso em caminho de jogador.
+
+- **Caixa numérica eliminada.** `notifyf` não envia mais `MSG_MessageBoxOk` de 4 bytes: aviso sem
+  texto cai em `genericRefusalText` ("Ação não permitida.") com `log.Error` nomeando o código. O único
+  `MsgMessageBoxOk` do repositório é o `Type` em `protocol/types.go`.
+- **Mestre Grifo:** nível fora da faixa (298) e WarpID desconhecido (96) respondiam nada.
+- **Guilda:** convite sem medalha/cargo, domingo, alvo offline e alvo de outro clã eram quatro
+  `return` mudos; criar guilda só falava por gold. Agora cada recusa tem texto (147, 144, 390, 91,
+  429, 535, 537) e o gold continua em 204 com o valor.
+- **Loja pessoal:** listar/comprar fora de alcance fala (96).
+- **Prêmio com mochila cheia** (celestial, Arch, evento de mundo) fala (86) em vez de sumir.
+- **Testes:** `TestMestreGrifoOutOfLevelRangeSpeaks`, `TestMasterGriffUnknownWarpSpeaks`,
+  `TestGuildInviteWithoutGuildSpeaks` e `TestCreateGuildWithoutKingdomSpeaks`, todos por
+  `readNotice`/`readPanel` (texto desconhecido reprova).
+- **Lacunas restantes** (grito entre canais, guerra, Batalha Real, NPC sem handler, mute, morte/PvP,
+  anti-tamper, `/gm`) estão em `docs/migration/game-messages.md` §4.4 com o motivo de cada uma.
 
 ## Lacunas conhecidas (a fechar)
 

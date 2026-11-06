@@ -265,3 +265,40 @@ func TestGuildInvite(t *testing.T) {
 		t.Errorf("leader got %#x ok=%v, want CreateMob (tag refresh)", ty, ok)
 	}
 }
+
+// Convidar para guilda sem pertencer a uma precisa falar: o clique no convite
+// antes voltava calado e parecia que o servidor tinha travado.
+func TestGuildInviteWithoutGuildSpeaks(t *testing.T) {
+	addr, stop, _ := startServerClock(t, newDB())
+	defer stop()
+	a := enterWorldAs(t, addr, "tester")
+	defer a.Close()
+	b := enterWorldAs(t, addr, "tradeb")
+	defer b.Close()
+	drainRaw(t, a)
+	drainRaw(t, b)
+
+	send(t, a, protocol.MsgInviteGuild, protocol.EncodeStandardParm2(2, 0))
+	if got := readPanel(t, a); got != guildNoMedalText {
+		t.Fatalf("aviso = %q, quer %q", got, guildNoMedalText)
+	}
+}
+
+// Criar guilda sem pertencer a reino respondia nada (so o gold insuficiente falava).
+func TestCreateGuildWithoutKingdomSpeaks(t *testing.T) {
+	db := newDB()
+	db.loadResult = world.CharacterState{
+		Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000,
+		Coin: guildCreateCost + 1,
+	}
+	addr, stop, _ := startServerClock(t, db)
+	defer stop()
+	a := enterWorldAs(t, addr, "tester")
+	defer a.Close()
+	drainRaw(t, a)
+
+	whisperFrame(t, a, "create", "TesteGld")
+	if got := readPanel(t, a); got != guildNeedsKingdomText {
+		t.Fatalf("aviso = %q, quer %q", got, guildNeedsKingdomText)
+	}
+}

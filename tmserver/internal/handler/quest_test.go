@@ -1198,6 +1198,47 @@ func TestMasterGriffWarpIDZeroDefaultsToFirstDestination(t *testing.T) {
 	}
 }
 
+// Um WarpID que nao existe na tabela do Mestre Grifo nao pode terminar calado: o
+// cliente manda o pacote depois da animacao e o jogador espera viajar.
+func TestMasterGriffUnknownWarpSpeaks(t *testing.T) {
+	st := world.CharacterState{
+		Slot: 0, Name: "Hero", Level: 200, X: 2113, Y: 2079,
+		HP: 1000, MaxHP: 1000, LastCity: 0, ClassMaster: classMasterMortal,
+	}
+	addr, stop, _ := startServerMestreGrifo(t, st, false)
+	defer stop()
+	c := enterWorld(t, addr)
+	defer c.Close()
+
+	send(t, c, protocol.MsgMasterGriff, protocol.EncodeStandardParm2(99, 0))
+	if got := readNotice(t, c); got != NoticeCantUseHere {
+		t.Fatalf("aviso = %d, quer NoticeCantUseHere", got)
+	}
+}
+
+// Level fora da faixa da Quest 256: o NPC precisa recusar com texto, nao ficar mudo.
+func TestMestreGrifoOutOfLevelRangeSpeaks(t *testing.T) {
+	level := 1
+	for _, step := range quest256Steps {
+		if int(step.maxLevel) > level {
+			level = int(step.maxLevel)
+		}
+	}
+	st := world.CharacterState{
+		Slot: 0, Name: "Hero", Level: level, X: 2116, Y: 2080,
+		HP: 1000, MaxHP: 1000, LastCity: 0, ClassMaster: classMasterMortal,
+	}
+	addr, stop, npcID := startServerMestreGrifo(t, st, false)
+	defer stop()
+	c := enterWorld(t, addr)
+	defer c.Close()
+
+	questFrame(t, c, npcID)
+	if got := readNotice(t, c); got != NoticeReqNotMet {
+		t.Fatalf("aviso = %d, quer NoticeReqNotMet", got)
+	}
+}
+
 func TestQuest256TicketTravelsImmediately(t *testing.T) {
 	tests := []struct {
 		name  string

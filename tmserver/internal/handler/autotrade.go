@@ -148,6 +148,7 @@ func (d *Dispatcher) reqTradeList(w *world.World, s *world.Session, _ protocol.H
 	}
 	if !autoTradeInRange(e, te) {
 		d.log.Info("autotrade list too far", "conn", s.Conn, "seller", autoID)
+		d.notify(w, s, NoticeCantUseHere)
 		return
 	}
 	d.sendShopList(w, s, int(autoID))
@@ -183,6 +184,7 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 	}
 	if !autoTradeInRange(e, te) {
 		d.log.Info("autotrade buy too far", "conn", s.Conn, "seller", targetID)
+		d.notify(w, s, NoticeCantUseHere)
 		return
 	}
 	pos := int(m.Pos)

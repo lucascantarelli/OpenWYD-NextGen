@@ -115,6 +115,9 @@ func (d *Dispatcher) tryWorldEventDrop(w *world.World, reward *world.Entity) {
 			conn = reward.ID
 		}
 		d.log.Warn("world event drop lost: carry full", "conn", conn, "item", cfg.ItemIndex, "serial", serial)
+		if s := w.Session(reward.ID); s != nil {
+			d.notify(w, s, NoticeNoSpaceToTrade)
+		}
 		return
 	}
 	reward.Carry[slot] = item

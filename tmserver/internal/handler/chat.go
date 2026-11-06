@@ -563,7 +563,10 @@ func (d *Dispatcher) grantCarry(w *world.World, s *world.Session, e *world.Entit
 		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, i, itemToSel(e.Carry[i])))
 		return
 	}
+	// Sem slot livre o item e perdido (comportamento do PutItem legado), mas o
+	// jogador precisa saber: antes o premio sumia sem nenhuma linha.
 	d.log.Info("grantCarry: inventory full", "conn", s.Conn, "index", index)
+	d.notify(w, s, NoticeNoSpaceToTrade)
 }
 
 // playUnlockEmote sends the celestial-unlock emotion (MsgMotion 14/3) to the caller
