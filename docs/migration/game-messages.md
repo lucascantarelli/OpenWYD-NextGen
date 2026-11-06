@@ -29,9 +29,10 @@ simplesmente não desenha nada. Foi a causa raiz do "comprei sem gold e não aco
 4. **Recusa fala.** Se uma ação pode ser recusada (sem gold, inventário cheio, caixa do armazém no
    teto de 2G, anti-tamper da loja), o caminho de recusa envia texto. `return` silencioso só vale
    para pacote malformado ou estado inconsistente, nunca para regra de jogo.
-5. **Lacuna aparece no log.** Aviso sem texto cai no fallback numérico com `log.Warn`
-   ("aviso sem texto: a caixa numérica é invisível no cliente 7662"), para a auditoria achar o que
-   falta. `TestEveryLiveNoticeHasText` reprova qualquer código novo sem texto.
+5. **Lacuna aparece no log e nunca no silêncio.** Aviso sem texto cai num texto genérico de
+   projeto (`Ação não permitida.`) com `log.Error` nomeando o código — a caixa numérica não é mais
+   enviada por ninguém. `TestEveryLiveNoticeHasText` reprova qualquer código novo sem texto, e
+   `grep -rn MsgMessageBoxOk tmserver/ --include='*.go'` só encontra o `Type` em `protocol/types.go`.
 
 ## 3. Catálogo aviso → Language.txt
 
@@ -117,14 +118,34 @@ usados só para informar — nunca para impedir ação nem para recusas cujo tex
 
 ### 4.2 Lacunas
 
-| Sistema | Situação | Por quê |
+### 4.3 Terceira leva: varredura completa do tmserver (06/11)
+
+Todos os `return` de caminho de jogador e todos os pontos de resposta foram varridos (165 chamadas de
+`notify`/`sendClientMessage`/chat/sussurro/painel revisadas, 172 logs de handler triados). O que
+estava calado e passou a falar:
+
+| Fluxo | Antes | Agora |
 |---|---|---|
-| Grito global entre canais | `MSG_MagicTrumpet` alcança só o canal atual | o legado relayava pelo DBSrv (`CFileDB.cpp:1616`); falta RPC de anúncio no dbServer |
-| Guerra de guildas / reino / canais | sem anúncio (`_SS_War_*`, `_NN_Guild_Battle_Notice*`, `_DN_ChannelWar*`) | sistema de guerra não modelado; os textos já estão na tabela |
-| Batalha Real / quiz / leilão | sem anúncio (`_NN_BR_*`, `_DD_QUIZ`, `_SN_AUCTION_*`) | eventos não implementados |
-| Quests | só as mensagens de conclusão existentes; sem o "quest em progresso" (`_NN_NoHave_Quest`) | quests pontuais; o motor de quests não existe |
-| Mute de chat (`MuteChat`) | não modelado | `/gm` ainda não tem mute; "Chat foi bloqueado pelo GM" (352) fica sem uso |
-| Morte/PvP | fala por `sendClientMessage`, sem texto de perda de EXP localizado | `_DN_lose_D_exp` (142) exige formatação; hoje o handler usa chat |
+| Mestre Grifo com nível fora da faixa da Quest 256 | `return` calado depois de um `log.Debug` | `Nível Insuficiente. Isto não pode ser utilizado.` (298) |
+| Mestre Grifo com WarpID desconhecido | `return` calado | `Não está disponível nesta área.` (96) |
+| Convite de guilda sem medalha/cargo, domingo, alvo offline, alvo de outro clã | quatro `return` calados | 147 "O usuário não possui a medalha de líder de guilda.", 144 "Uso restrito ao Mestre de Guilda.", 390 "Não é possivel utilizar domingo.", 91 e texto de projeto para o alvo inelegível |
+| Criar guilda: nome inválido, já tem guilda, reino errado, sem cidadania, domingo | só o gold insuficiente respondia | 429, projeto, 535, 537, 390 (o gold continua em 204 com o valor) |
+| Loja pessoal: listar ou comprar de vendedor fora de alcance | `return` com `log.Info` | `Não está disponível nesta área.` (96) |
+| Prêmio com mochila cheia (desbloqueio celestial, quest do Arch, drop de evento) | item perdido com log só do servidor | `Não há espaço no inventário para realizar transações.` (86) |
+| Qualquer aviso sem texto no `noticeTexts` | caixa numérica invisível | texto genérico de projeto + `log.Error` com o código |
+
+### 4.4 Lacunas remanescentes (justificadas)
+
+| Sistema | Situação | Por que não é um aviso de jogador mapeável agora |
+|---|---|---|
+| Grito global entre canais | `MSG_MagicTrumpet` alcança só o canal atual | o legado relayava pelo DBSrv (`CFileDB.cpp:1616`); falta RPC de anúncio no dbServer. É lacuna de **transporte**, não de texto: o grito funciona dentro do canal e o texto já é emitido |
+| Guerra de guildas / reino / canais | sem anúncio (`_SS_War_*`, `_NN_Guild_Battle_Notice*`, `_DN_ChannelWar*`) | não existe estado de guerra no mundo Go; emitir "Guerra iniciada" sem evento seria mentira. Os textos (135-140, 210-221) estão na tabela e entram junto com o sistema |
+| Batalha Real / quiz / leilão | sem anúncio (`_NN_BR_*`, `_DD_QUIZ`, `_SN_AUCTION_*`) | eventos não implementados no port; nada os dispara |
+| NPC de quest sem handler | `misc.go` registra `quest NPC not implemented` em Debug e não responde | não é recusa de regra: o NPC não existe no conteúdo portado. Um texto ali prometeria uma quest que o servidor não tem; a lacuna é de conteúdo, e o log nomeia o NPC |
+| Mute de chat (`MuteChat`) | não modelado | `/gm` não tem mute; "Chat foi bloqueado pelo GM" (352) fica sem uso até o comando existir |
+| Morte/PvP | fala por `sendClientMessage`, sem texto de perda de EXP localizado | `_DN_lose_D_exp` (142) exige formatação e o handler usa chat hoje; nenhum caminho fica mudo |
+| Anti-tamper (aceite de party forjado, kick fora da guilda, duelo sem convite, posições inválidas de pacote) | silêncio, com `AddCrackError`/`log.Warn` | responder confirmaria estado interno a um cliente adulterado. Não é fluxo de jogador legítimo — a regra de "recusa fala" vale para regra de jogo, não para pacote inconsistente |
+| Comandos `/gm` negados (sem papel, alvo superior, template inexistente) | silêncio no cliente | ferramenta de staff; os avisos de staff não passam pelo canal de jogador e o log já registra a negativa |
 
 Regra para fechar cada linha: implementar o sistema e emitir pelo canal da §1 — não criar um
 formato novo, e não usar `MSG_MessageBoxOk`.

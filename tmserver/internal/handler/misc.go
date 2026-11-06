@@ -1161,7 +1161,9 @@ var masterGriffDestinations = []masterGriffDestination{
 func (d *Dispatcher) mestreGrifo(w *world.World, s *world.Session, e, npc *world.Entity) {
 	step, ok := quest256StepForLevel(e.Level)
 	if !ok {
+		// Fora da faixa nao ha destino: antes o NPC simplesmente nao respondia.
 		d.log.Debug("mestre grifo: level outside quest range", "conn", s.Conn, "npc", npc.ID, "level", e.Level)
+		d.notify(w, s, NoticeReqNotMet)
 		return
 	}
 	d.teleportQuest256Step(w, s, e, step)
@@ -1184,6 +1186,7 @@ func (d *Dispatcher) masterGriff(w *world.World, s *world.Session, _ protocol.He
 	dest, ok := masterGriffDestinationForWarpID(warpID)
 	if !ok {
 		d.log.Debug("master griff: no destination", "conn", s.Conn, "level", e.Level, "warp_id", warpID, "ty", ty)
+		d.notify(w, s, NoticeCantUseHere)
 		return
 	}
 	d.log.Info("master griff travel started", "conn", s.Conn, "level", e.Level, "warp_id", warpID, "ty", ty, "dest", dest.name, "x", dest.x, "y", dest.y)

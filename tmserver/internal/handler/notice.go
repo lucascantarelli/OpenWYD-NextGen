@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -114,11 +113,11 @@ func (d *Dispatcher) notifyf(w *world.World, s *world.Session, n Notice, args ..
 		d.sendClientMessage(w, s, text)
 		return
 	}
-	d.log.Warn("aviso sem texto: a caixa numerica e invisivel no cliente 7662",
-		"conn", s.Conn, "code", uint32(n))
-	var b [4]byte
-	binary.LittleEndian.PutUint32(b[:], uint32(n))
-	w.Send(s, protocol.MsgMessageBoxOk, b[:])
+	// Nenhum aviso vaza calado: se o mapa estiver sem texto, o jogador recebe um
+	// texto generico de projeto e o log registra o codigo. A caixa numerica de 4
+	// bytes nao e desenhada pelo cliente 7662 e por isso nao e mais enviada.
+	d.log.Error("aviso sem texto: enviando texto generico", "conn", s.Conn, "code", uint32(n))
+	d.sendClientMessage(w, s, genericRefusalText)
 }
 
 // noticeTexts é o registro único aviso → texto de
@@ -207,6 +206,22 @@ const (
 	perzenNeedText   = "Voc\xea precisa trazer o item exigido por este NPC."
 	noCleanseText    = "Nenhum efeito para remover."
 	fameGainedText   = "Voc\xea ganhou 10 pontos de Fama."
+
+	// Guilda: recusas que o legado deixava caladas (o clique no convite, no
+	// cadastro e na criacao nao respondia nada). Os textos 144/147/390/429/535/537
+	// sao da tabela; os demais sao de projeto, curtos e so informativos.
+	guildMasterOnlyText    = "Uso restrito ao Mestre de Guilda."                                      // 144
+	guildNoMedalText       = "O usu\xe1rio n\xe3o possui a medalha de l\xedder de guilda."            // 147
+	sundayText             = "N\xe3o \xe9 possivel utilizar domingo."                                 // 390
+	guildBadNameText       = "Nome incorreto, utilize de 5 a 10 caracteres para o nome da guilda."    // 429
+	guildNeedsKingdomText  = "Voc\xea Ter\xe1 que pertencer a um dos Reinos para poder criar guilda!" // 535
+	guildNeedsCitizenText  = "Voc\xea precisa pertencer a algum reino antes de criar uma Guild."      // 537
+	guildInviteRefusedText = "Este jogador n\xe3o pode ingressar nesta guilda."
+	guildAlreadyText       = "Voc\xea j\xe1 pertence a uma guilda."
+
+	// Ultimo recurso do notifyf quando um aviso novo nao tem texto: o jogador
+	// nunca fica sem resposta, e o log em Error aponta o codigo a mapear.
+	genericRefusalText = "A\xe7\xe3o n\xe3o permitida."
 )
 
 // sendClientMessage mirrors the legacy SendClientMessage (SendFunc.cpp:27-43): a

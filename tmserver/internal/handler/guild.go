@@ -37,19 +37,24 @@ func (d *Dispatcher) inviteGuild(w *world.World, s *world.Session, _ protocol.He
 		return
 	}
 	if e.Guild == 0 || e.GuildLevel == 0 {
+		d.sendClientMessage(w, s, guildNoMedalText) // 147
 		return
 	}
 	if inviteType != 0 && e.GuildLevel != guildLeaderLevel {
+		d.sendClientMessage(w, s, guildMasterOnlyText) // 144
 		return
 	}
 	if d.now().Weekday() == time.Sunday {
+		d.sendClientMessage(w, s, sundayText) // 390
 		return
 	}
 	other, te := w.Session(target), w.Entity(target)
 	if other == nil || other.Mode != world.UserPlay || te == nil {
+		d.notify(w, s, NoticeNotConnected)
 		return
 	}
 	if te.Guild != 0 || te.Clan != e.Clan {
+		d.sendClientMessage(w, s, guildInviteRefusedText)
 		return
 	}
 	cost := int32(guildInviteCost)
@@ -78,13 +83,30 @@ func (d *Dispatcher) createGuild(w *world.World, s *world.Session, args []byte) 
 		return
 	}
 	name := strings.TrimSpace(cstr(args))
-	if !validGuildName(name) || e.Guild != 0 || e.Coin < guildCreateCost || (e.Clan != 7 && e.Clan != 8) || e.Citizen == 0 {
-		if e.Coin < guildCreateCost {
-			d.notifyf(w, s, NoticeNotEnoughCoin, guildCreateCost)
-		}
+	// Cada recusa fala: antes so o gold insuficiente respondia, e o resto caia no
+	// return calado (o jogador clicava em criar guilda e nada acontecia).
+	if !validGuildName(name) {
+		d.sendClientMessage(w, s, guildBadNameText) // 429
+		return
+	}
+	if e.Guild != 0 {
+		d.sendClientMessage(w, s, guildAlreadyText)
+		return
+	}
+	if e.Coin < guildCreateCost {
+		d.notifyf(w, s, NoticeNotEnoughCoin, guildCreateCost)
+		return
+	}
+	if e.Clan != 7 && e.Clan != 8 {
+		d.sendClientMessage(w, s, guildNeedsKingdomText) // 535
+		return
+	}
+	if e.Citizen == 0 {
+		d.sendClientMessage(w, s, guildNeedsCitizenText) // 537
 		return
 	}
 	if d.now().Weekday() == time.Sunday {
+		d.sendClientMessage(w, s, sundayText) // 390
 		return
 	}
 	accountID, slot, charName, clan, citizen, serverIndex := s.AccountID, s.Slot, e.Name, e.Clan, e.Citizen, d.serverIndex

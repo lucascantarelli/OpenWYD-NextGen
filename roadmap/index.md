@@ -351,6 +351,12 @@ Grafo da Fase 6:
   pedir o item exigido; jóia da recuperação sem efeito e selo do guerreiro (+10 Fama) também falam. Os
   testes de aviso ganharam `readNotice`, que aceita o painel de texto e traduz de volta para o código —
   nenhuma asserção foi afrouxada.
+  **Varredura completa (fatia 3):** a caixa numérica deixou de existir — aviso sem texto vira texto
+  genérico com `log.Error`, e o único `MsgMessageBoxOk` do repositório é o `Type` do protocolo. Ficaram
+  visíveis o Mestre Grifo (nível fora da faixa, WarpID desconhecido), as recusas de convite/criação de
+  guilda, a loja pessoal fora de alcance e o prêmio com mochila cheia. As lacunas que dependem de
+  sistema inexistente (grito entre canais, guerra, Batalha Real, NPC sem handler) estão justificadas
+  em `docs/migration/game-messages.md` §4.4.
 
 - **2026-11-06 (DEVOPS-01: nomes e camadas do Docker)** — um nome por coisa: **serviço =
   container = imagem** (`openwyd-nextgen1-tmsrv`, `openwyd-nextgen2-tmsrv`, `openwyd-dbserver`,
