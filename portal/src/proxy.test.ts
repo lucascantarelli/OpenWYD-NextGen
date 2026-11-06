@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { NAV, SHELL_ROUTES } from "./components/nav";
-import { config, middleware } from "./middleware";
+import { config, proxy } from "./proxy";
 import { SESSION_COOKIE, sessionKey } from "./server/session-key";
 
 /**
@@ -72,9 +72,8 @@ async function token(secret: Uint8Array, exp: string | number = "1h"): Promise<s
     .sign(secret);
 }
 
-describe("middleware: visitante sem sessão", () => {
-  it("redireciona para /login com 307 e sem query string", async () => {
-    const res = await middleware(request("/painel?tab=hoje"));
+describe("proxy: visitante sem sessão", () => {
+  it("redireciona para /login com 307 e sem query string", async () => {	const res = await proxy(request("/painel?tab=hoje"));
 
     expect(res.status).toBe(307);
     const location = new URL(res.headers.get("location")!);
@@ -82,17 +81,15 @@ describe("middleware: visitante sem sessão", () => {
     expect(location.search).toBe("");
   });
 
-  it("rota aninhada também é barrada", async () => {
-    const res = await middleware(request("/npcs/7/editar"));
+  it("rota aninhada também é barrada", async () => {	const res = await proxy(request("/npcs/7/editar"));
 
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
   });
 });
 
-describe("middleware: cookie de sessão", () => {
-  it("cookie válido passa sem redirecionar", async () => {
-    const res = await middleware(request("/itens", `${SESSION_COOKIE}=${await token(sessionKey())}`));
+describe("proxy: cookie de sessão", () => {
+  it("cookie válido passa sem redirecionar", async () => {	const res = await proxy(request("/itens", `${SESSION_COOKIE}=${await token(sessionKey())}`));
 
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(res.headers.get("location")).toBeNull();
@@ -101,8 +98,7 @@ describe("middleware: cookie de sessão", () => {
   it("cookie assinado com outra chave é recusado", async () => {
     const forged = await token(
       new TextEncoder().encode("chave-errada-com-48-caracteres-para-o-hs256!!!!!"),
-    );
-    const res = await middleware(request("/itens", `${SESSION_COOKIE}=${forged}`));
+    );	const res = await proxy(request("/itens", `${SESSION_COOKIE}=${forged}`));
 
     expect(res.status).toBe(307);
   });
@@ -114,9 +110,7 @@ describe("middleware: cookie de sessão", () => {
       .setSubject("1")
       .setIssuedAt(past)
       .setExpirationTime(past + 60)
-      .sign(sessionKey());
-
-    const res = await middleware(request("/painel", `${SESSION_COOKIE}=${expired}`));
+      .sign(sessionKey());	const res = await proxy(request("/painel", `${SESSION_COOKIE}=${expired}`));
 
     expect(res.status).toBe(307);
   });
