@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"openwyd-nextgen/internal/domain"
-	"openwyd-nextgen/internal/migrations"
 )
 
 func TestNightmareBalancePersistence(t *testing.T) {
@@ -76,7 +75,10 @@ func TestNightmareBalancePersistence(t *testing.T) {
 	}
 }
 
-func TestNightmareMigrationExistingCharacters(t *testing.T) {
+// Mesmo caso do Kefra: a 0024 foi absorvida pelo baseline, então o teste mede
+// o contrato final — colunas presentes, NOT NULL DEFAULT 0 e estado existente
+// intacto — em vez de reexecutar um `down` que vive só em `_archived/`.
+func TestNightmareColumnsDefaultToZero(t *testing.T) {
 	s, ctx := freshStore(t)
 	accountID, err := s.SaveAccount(ctx, domain.Account{
 		Name: "premigration", PassHash: "$argon2id$test",
@@ -85,20 +87,16 @@ func TestNightmareMigrationExistingCharacters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Reconstruct the preceding schema using the shipped rollback migration.
-	down, err := migrations.FS.ReadFile("0024_nightmare_entries.down.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.pool.Exec(ctx, string(down)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version = '0024_nightmare_entries'"); err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 2; i++ {
-		if err := Migrate(ctx, s.pool); err != nil {
-			t.Fatal(err)
+	for _, col := range []string{"nightmare_entries", "last_nightmare_use"} {
+		var def string
+		var notNull bool
+		if err := s.pool.QueryRow(ctx, `SELECT column_default, is_nullable = 'NO'
+			FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = 'characters' AND column_name = $1`, col).Scan(&def, &notNull); err != nil {
+			t.Fatalf("coluna %s ausente do baseline: %v", col, err)
+		}
+		if def != "0" || !notNull {
+			t.Fatalf("%s default=%q notNull=%v, want 0/true", col, def, notNull)
 		}
 	}
 	ch, err := s.LoadCharacter(ctx, accountID, 0)
@@ -106,6 +104,6 @@ func TestNightmareMigrationExistingCharacters(t *testing.T) {
 		t.Fatal(err)
 	}
 	if ch.NightmareEntries != 0 || ch.LastNightmareUse != 0 || ch.Coin != 777 {
-		t.Fatalf("migration lost existing state: tickets=%d coin=%d", ch.NightmareEntries, ch.Coin)
+		t.Fatalf("migration lost existing state: entries=%d coin=%d", ch.NightmareEntries, ch.Coin)
 	}
 }

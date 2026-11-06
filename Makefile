@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e
 
 build:
 	go build ./...
@@ -97,6 +97,46 @@ vuln:
 
 tidy:
 	go mod tidy
+
+# Stack local: o compose sobe db, dbserver, tmserver, tmserver2, binserver, webserver,
+# portal e logpipe. `up` não reconstrói; use `make binaries`/`make portal-image` ou
+# `docker compose build <serviço>` quando o código mudou.
+up:
+	docker compose up -d
+
+down:
+	docker compose down
+
+ps:
+	docker compose ps
+
+# Logs de todos os serviços (Ctrl+C sai sem derrubar nada).
+logs:
+	docker compose logs -f --tail=100
+
+# psql no banco de dev (superusuário do compose).
+db-psql:
+	docker exec -it openwyd-db-1 psql -U postgres -d postgres
+
+# Verificador do `down` do baseline (DB-02): derruba o schema do banco vivo — só
+# rode contra banco descartável. O caminho de CI é `make test-db` (TestBaselineDown).
+db-down-check:
+	bash scripts/db-down-check.sh
+
+# Testes de integração num Postgres real. O CI usa o job `database`
+# (.github/workflows/db.yml) com o mesmo comando e um banco efêmero.
+#   W2PP_TEST_DSN=postgres://postgres:dev@127.0.0.1:5432/citest make test-db
+test-db:
+	@test -n "$${W2PP_TEST_DSN:-}" || { echo "defina W2PP_TEST_DSN (banco descartável)"; exit 1; }
+	go test -tags=integration ./internal/store/ -count=1
+
+# Login headless contra a stack no ar (não precisa do cliente Windows).
+test-e2e:
+	W2PP_E2E_ADDR=$${W2PP_E2E_ADDR:-127.0.0.1:8281} \
+	W2PP_E2E_ACCOUNT=$${W2PP_E2E_ACCOUNT:-test} \
+	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
+	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
+	go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
 
 run:
 	go run ./tmserver/cmd/tmserver

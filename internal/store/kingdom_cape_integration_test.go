@@ -15,6 +15,11 @@ func TestPurchaseKingdomCapeRevisionIsSingleWinner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// O baseline cria `sapphire_balance`, mas nenhum seed insere a linha única
+	// (issue DB-03). Este teste mede a corrida de revisão, não o seed.
+	if _, err := s.pool.Exec(ctx, `INSERT INTO sapphire_balance (singleton) VALUES (TRUE) ON CONFLICT DO NOTHING`); err != nil {
+		t.Fatalf("seed sapphire_balance: %v", err)
+	}
 	quote, err := s.QuoteKingdomCape(ctx)
 	if err != nil {
 		t.Fatal(err)

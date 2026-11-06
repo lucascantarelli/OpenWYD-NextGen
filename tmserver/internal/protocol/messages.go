@@ -390,8 +390,12 @@ type MsgTradeBody struct {
 	OpponentID uint16
 }
 
-// MsgTradeBodySize is the body length: 15*8 + 15 + 4 + 1 + 2.
-const MsgTradeBodySize = MaxTrade*ItemSize + MaxTrade + 4 + 1 + 2
+// MsgTradeBodySize é o corpo com alinhamento natural MSVC x86: 15*8 (itens) +
+// 15 (posições) + 1 (pad até o int) + 4 (moeda) + 1 (check) + 1 (pad até o
+// short) + 2 (oponente) = 144. O struct do cliente não está num bloco pack(1);
+// ler em offsets empacotados devolvia OpponentID = 0 (o padding antes do
+// short) e toda troca caía em "oponente fora de jogo".
+const MsgTradeBodySize = MaxTrade*ItemSize + MaxTrade + 1 + 4 + 1 + 1 + 2
 
 // ItemSize is the wire STRUCT_ITEM size (8 bytes).
 const ItemSize = 8
@@ -406,10 +410,10 @@ func (m *MsgTradeBody) Decode(b []byte) error {
 	}
 	off := MaxTrade * ItemSize
 	copy(m.InvenPos[:], b[off:off+MaxTrade])
-	off += MaxTrade
+	off += MaxTrade + 1 // padding até o int de 4 bytes
 	m.TradeMoney = int32(le.Uint32(b[off : off+4]))
 	m.MyCheck = b[off+4]
-	m.OpponentID = le.Uint16(b[off+5 : off+7])
+	m.OpponentID = le.Uint16(b[off+6 : off+8]) // +1 de padding antes do short
 	return nil
 }
 
@@ -421,10 +425,10 @@ func (m *MsgTradeBody) Encode() []byte {
 	}
 	off := MaxTrade * ItemSize
 	copy(b[off:off+MaxTrade], m.InvenPos[:])
-	off += MaxTrade
+	off += MaxTrade + 1
 	le.PutUint32(b[off:off+4], uint32(m.TradeMoney))
 	b[off+4] = m.MyCheck
-	le.PutUint16(b[off+5:off+7], m.OpponentID)
+	le.PutUint16(b[off+6:off+8], m.OpponentID)
 	return b
 }
 
@@ -538,12 +542,13 @@ type MsgSendReqPartyBody struct {
 	Target   int16
 }
 
-// MsgSendReqPartyBodySize is the body length. Wire structs are pack(1) (AGENTS.md
-// invariant 2), so there is NO padding between MobName and unk: sizeof is 44 and
-// the body 32. The port used the MSVC natural-alignment offsets (36) and the
-// 7662 client rejected the invite: the target never saw the dialog and nothing
-// was ever accepted (QA 05/11).
-const MsgSendReqPartyBodySize = 32
+// MsgSendReqPartyBodySize é o corpo com alinhamento natural MSVC x86:
+// Class+PartyPos+Level+MaxHp+Hp+PartyID (10) + MobName (16) + 2 de padding +
+// unk (4) + Target (2) + 2 de padding final = 36 (40 com o header). O cliente
+// 7662 envia o alvo em `unk` no offset 28; lendo em 26 (pack(1)) um convite
+// para a conn 2 virava 131072 (2<<16), porque os dois bytes lidos eram o
+// padding — daí a resposta "jogador não conectado".
+const MsgSendReqPartyBodySize = 36
 
 // Decode parses an MSG_SendReqParty body.
 func (m *MsgSendReqPartyBody) Decode(b []byte) error {
@@ -557,8 +562,8 @@ func (m *MsgSendReqPartyBody) Decode(b []byte) error {
 	m.HP = le.Uint16(b[6:8])
 	m.PartyID = int16(le.Uint16(b[8:10]))
 	copy(m.MobName[:], b[10:26])
-	m.Unk = int32(le.Uint32(b[26:30]))
-	m.Target = int16(le.Uint16(b[30:32]))
+	m.Unk = int32(le.Uint32(b[28:32]))
+	m.Target = int16(le.Uint16(b[32:34]))
 	return nil
 }
 
@@ -572,8 +577,8 @@ func (m *MsgSendReqPartyBody) Encode() []byte {
 	le.PutUint16(b[6:8], m.HP)
 	le.PutUint16(b[8:10], uint16(m.PartyID))
 	copy(b[10:26], m.MobName[:])
-	le.PutUint32(b[26:30], uint32(m.Unk))
-	le.PutUint16(b[30:32], uint16(m.Target))
+	le.PutUint32(b[28:32], uint32(m.Unk))
+	le.PutUint16(b[32:34], uint16(m.Target))
 	return b
 }
 

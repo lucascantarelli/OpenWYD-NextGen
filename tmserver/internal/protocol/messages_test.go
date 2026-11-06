@@ -35,8 +35,9 @@ func TestMessageBodySizes(t *testing.T) {
 		{"DeleteCharacter", MsgDeleteCharacterBodySize, 44},
 		{"CharacterLogin", MsgCharacterLoginBodySize, 20},
 		{"Action", MsgActionBodySize, 52},
-		// pack(1): sizeof(MSG_SendReqParty)=44, sizeof(MSG_AcceptParty)=30.
-		{"SendReqParty", MsgSendReqPartyBodySize, 44},
+		// alinhamento natural MSVC: sizeof(MSG_SendReqParty)=40 (36+header) e
+		// sizeof(MSG_AcceptParty)=30 (26+header).
+		{"SendReqParty", MsgSendReqPartyBodySize, 48},
 		{"AcceptParty", MsgAcceptPartyBodySize, 30},
 		{"RemoveParty", MsgRemovePartyBodySize, 16},
 		{"CNFAddParty", MsgCNFAddPartyBodySize, 40},
@@ -153,9 +154,10 @@ func TestPartyBodyLayouts(t *testing.T) {
 		if len(b) != MsgSendReqPartyBodySize {
 			t.Fatalf("SendReqParty body = %d, want %d", len(b), MsgSendReqPartyBodySize)
 		}
-		// pack(1) offsets: unk (body 26) and Target (body 30) follow MobName with
-		// no padding; the 7662 rejected the natural-alignment layout.
-		if b[0] != 3 || le.Uint16(b[8:10]) != 1 || le.Uint32(b[26:30]) != 2 || le.Uint16(b[30:32]) != 7 {
+		// Alinhamento natural MSVC: 2 bytes de padding depois do MobName, então
+		// unk fica no offset 28 e Target no 32. O layout pack(1) (26/30) lia
+		// 131072 no lugar da conn 2 — o convite respondia "não conectado".
+		if b[0] != 3 || le.Uint16(b[8:10]) != 1 || le.Uint32(b[28:32]) != 2 || le.Uint16(b[32:34]) != 7 {
 			t.Fatalf("SendReqParty offsets not encoded as legacy layout: %v", b)
 		}
 		if got := strings.TrimRight(string(b[10:26]), "\x00"); got != "Leader" {

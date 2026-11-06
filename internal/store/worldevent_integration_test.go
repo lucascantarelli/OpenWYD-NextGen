@@ -23,6 +23,13 @@ func TestWorldEventConfigCRUDAndProgress(t *testing.T) {
 		t.Fatalf("seed moderator: %v", err)
 	}
 
+	// Os seeds trazem o config (version 2, desligado) do servidor vivo; o teste
+	// mede o ciclo CRUD/versionamento e começa do zero. A linha de meta fica
+	// (o lock do upsert depende dela), só a versão volta para 0.
+	if _, err := pool.Exec(ctx, `DELETE FROM world_event_audit; DELETE FROM world_event_config; UPDATE world_event_meta SET version = 0`); err != nil {
+		t.Fatalf("limpar estado de evento: %v", err)
+	}
+
 	st := New(pool)
 	v, err := st.WorldEventConfigVersion(ctx)
 	if err != nil || v != 0 {

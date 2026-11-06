@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"openwyd-nextgen/internal/domain"
-	"openwyd-nextgen/internal/migrations"
 )
 
 func TestKefraBalancePersistence(t *testing.T) {
@@ -75,7 +74,11 @@ func TestKefraBalancePersistence(t *testing.T) {
 	}
 }
 
-func TestKefraMigrationExistingCharacters(t *testing.T) {
+// O squash do baseline absorveu a 0022: o replay de 0022_kefra_ticket.down.sql
+// deixou de existir (`_archived/` fica fora do //go:embed *.sql). O que ainda
+// precisa ser verdade é o que a migration garantia: a coluna existe no schema
+// final, é NOT NULL DEFAULT 0 e um personagem gravado sem ela continua legível.
+func TestKefraTicketColumnDefaultsToZero(t *testing.T) {
 	s, ctx := freshStore(t)
 	accountID, err := s.SaveAccount(ctx, domain.Account{
 		Name: "premigration", PassHash: "$argon2id$test",
@@ -84,21 +87,15 @@ func TestKefraMigrationExistingCharacters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Reconstruct the preceding schema using the shipped rollback migration.
-	down, err := migrations.FS.ReadFile("0022_kefra_ticket.down.sql")
-	if err != nil {
-		t.Fatal(err)
+	var def string
+	var notNull bool
+	if err := s.pool.QueryRow(ctx, `SELECT column_default, is_nullable = 'NO'
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = 'characters' AND column_name = 'kefra_ticket'`).Scan(&def, &notNull); err != nil {
+		t.Fatalf("coluna kefra_ticket ausente do baseline: %v", err)
 	}
-	if _, err := s.pool.Exec(ctx, string(down)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version = '0022_kefra_ticket'"); err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 2; i++ {
-		if err := Migrate(ctx, s.pool); err != nil {
-			t.Fatal(err)
-		}
+	if def != "0" || !notNull {
+		t.Fatalf("kefra_ticket default=%q notNull=%v, want 0/true", def, notNull)
 	}
 	ch, err := s.LoadCharacter(ctx, accountID, 0)
 	if err != nil {

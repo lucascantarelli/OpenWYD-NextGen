@@ -28,6 +28,10 @@ Riscos/rollback     — o que pode dar errado e como voltar
 Regra de ouro: **nenhuma issue é "concluída" sem evidência de execução** (log, teste verde, saída de
 comando). "Escrevi o código" não fecha issue.
 
+**Onde cada issue mora:** `issues/` é a fila viva (proposta/em execução); `done/` guarda as
+concluídas com evidência e `test/` as que só dependem de teste humano/in-game. Ao fechar uma issue,
+`git mv` para a pasta certa e ajuste os links — o índice é a fonte da verdade.
+
 ## Estado atual (2026-11-04)
 
 | Item | Estado | Evidência |
@@ -71,9 +75,9 @@ fecha issue rápido (teste real no cliente) e termina na faxina que depende de t
 | 2 | [REVIEW-02](issues/REVIEW-02.md) | Código Go: docstrings/comentários em PT, refatorações, `newApp` | L |
 | 3 | [REVIEW-03](issues/REVIEW-03.md) | Testes: arquitetura, triagem de `t.Skip`, Playwright, fixtures | L |
 | 4 | [REVIEW-04](issues/REVIEW-04.md) | CI/CD: workflows reutilizáveis, banco no pipeline, SBOM, `make ci` | M |
-| 5 | [REVIEW-05](issues/REVIEW-05.md) | Banco: roles, restore testado, naming, índices de auditoria — ✅ DB-01 (roles + restore) e [DB-02](issues/DB-02.md) (down provado; 17 índices de auditoria removidos com `idx_scan`) | M |
-| 6 | [REVIEW-06](issues/REVIEW-06.md) | Documentação: mkdocs, índice de sistemas, ADRs, `doc_legacy` — ✅ concluída | L |
-| 7 | [REVIEW-07](issues/REVIEW-07.md) | Legado C++ e ClientPatch_v7662: classificar e decidir — ✅ concluída (resta spike opcional) | M |
+| 5 | [REVIEW-05](done/REVIEW-05.md) | Banco: roles, restore testado, naming, índices de auditoria — ✅ DB-01 (roles + restore) e [DB-02](done/DB-02.md) (down provado; 17 índices de auditoria removidos com `idx_scan`) | M |
+| 6 | [REVIEW-06](done/REVIEW-06.md) | Documentação: mkdocs, índice de sistemas, ADRs, `doc_legacy` — ✅ concluída | L |
+| 7 | [REVIEW-07](done/REVIEW-07.md) | Legado C++ e ClientPatch_v7662: classificar e decidir — ✅ concluída (resta spike opcional) | M |
 | 8 | [REVIEW-08](issues/REVIEW-08.md) | Portal: público × admin, loja, fóruns, identidade visual | L |
 | 9 | [REVIEW-09](issues/REVIEW-09.md) | Observabilidade: `/metrics`, `trace_id`, alertas, segredos | M |
 | 10 | [REVIEW-10](issues/REVIEW-10.md) | Limpeza final: IA/skills, `openspec`, `scripts/`, DoD | M |
@@ -89,21 +93,23 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 
 | Achado (medido em 05/11/2026) | Número | Issue |
 |---|---|---|
-| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
+| Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](done/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
 | `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
 | Comentário em inglês / citação de issue dentro do código | 396 / 109 — 3 diretórios migrados + gate `scripts/check-comments.sh` (06/11) | [REFACTOR-03](issues/REFACTOR-03.md) |
-| `t.Skip` escondendo teste | ✅ 42 em 17 arquivos, todos com `motivo:` (32 conteúdo, 8 ambiente, 2 feature) | [TEST-01](issues/TEST-01.md) |
+| `t.Skip` escondendo teste | ✅ 42 em 17 arquivos, todos com `motivo:` (32 conteúdo, 8 ambiente, 2 feature) | [TEST-01](done/TEST-01.md) |
 | Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
-| Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](issues/CI-01.md) |
-| Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
-| Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](issues/DB-01.md) ✅ |
+| Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](done/CI-01.md) |
+| Migração em base vazia fora do CI | ✅ 06/11: `.github/workflows/db.yml` com Postgres 17, `TestBaselineDown` (up+down+catálogo) e suíte de integração (58 testes) | [CI-02](done/CI-02.md) |
+| Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
+| `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | 0 rows no banco de dev | [DB-03](issues/DB-03.md) |
+| Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](done/DB-01.md) ✅ |
 | Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
-| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](issues/DOC-01.md) |
-| Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](issues/PORTAL-01.md) |
-| Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](issues/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
-| Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
-| Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](issues/NORMALIZE-01.md) ✅ |
-| Busca compara Unicode cru: termo em NFD não acha o nome em NFC | NFD 0 × NFC 20 no mesmo item | [NORMALIZE-02](issues/NORMALIZE-02.md) ✅ |
+| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde com o tema do portal, 6 ADRs, **12 páginas de sistema** e `/guias` no portal lendo `docs/` (19 páginas, JSON versionado); `doc_legacy/` criado — **DOC-01 fechada 06/11** | [DOC-01](done/DOC-01.md) |
+| Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](done/PORTAL-01.md) |
+| Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](done/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
+| Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](done/LEGACY-01.md) ✅ |
+| Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](done/NORMALIZE-01.md) ✅ |
+| Busca compara Unicode cru: termo em NFD não acha o nome em NFC | NFD 0 × NFC 20 no mesmo item | [NORMALIZE-02](done/NORMALIZE-02.md) ✅ |
 
 Os reviews 01..10 estão executados nesta rodada. O que depende de evidência humana (cliente real) ou
 de e2e continua 🟡 nas issues de origem, agora com issue filha própria para o mecanismo.
@@ -198,8 +204,8 @@ compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi repo
 | 21 | [Camada de admin no BFF: resultado→HTTP e auditoria](issues/issue-21.md) | ✅ | M |
 | 22 | [Catálogo de itens com ícones (leitura)](issues/issue-22.md) | ✅ | M |
 | 23 | [Editor de NPCs e mercadores](issues/issue-23.md) | ✅ (UI 03/11; NPC do portal visível e comprável no jogo 04/11) | L |
-| 24 | [Preços globais de itens](issues/issue-24.md) | 🟡 (UI ✅, rota HTTP ✅ 05/11: 200/422/401 reais; in-game ⏳) | S |
-| 25 | [Editor de stats e equip de mobs](issues/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
+| 24 | [Preços globais de itens](test/issue-24.md) | 🟡 (UI ✅, rota HTTP ✅ 05/11: 200/422/401 reais; in-game ⏳) | S |
+| 25 | [Editor de stats e equip de mobs](test/issue-25.md) | 🟡 (lista, stats com read-through/salvar/reverter, badge/filtro de override e agora o editor de `Equip[]` com picker de item ✅ ao vivo — `SetMobTemplateEquip(slot 5, item 412)` devolve `equip=[[5,412]]`; falta só a evidência in-game) | L |
 | 26 | [Relatórios de drop: item ↔ mob](issues/issue-26.md) | ✅ (duas visões, CSV e cache; validado ao vivo: 1.349 templates, 13.813 slots, consistência item↔mob, player 403) | M |
 | 27 | [Editor do mapa de colisão (AttributeMap)](issues/issue-27.md) | ✅ (info + histograma + transformação + download de 1 MiB com sha conferido; `/mapa` 200 e rota de download 200) | M |
 | 28 | [Eventos globais do mundo](issues/issue-28.md) | ✅ (`/eventos` com estado ativo/esgotado/incompleto, item por catálogo, divisor em "1 em cada N", gate de EXP dobrada e "desligar tudo"; salvar relê o servidor e o tmserver recarregou em ~7 s sem restart) | S |
@@ -208,21 +214,21 @@ compose, o override destrutivo do `Troll` foi removido, o `qa-ferreiro` foi repo
 | 31 | [Faturamento e relatórios de donate](issues/issue-31.md) | ✅ (`/faturamento` só `admin`: janela 7/30/90/personalizada em Brasília, receita em R$ separada dos créditos de donate, pendentes em cartão próprio ("não é receita"), série em barras por dia/semana/mês, pedidos com CSV, top compradores com LTV, extrato da carteira e filtro por conta; 6 KPIs conferidos contra SQL, `moderator` → `/sem-permissao`) | M |
 | 32 | [Contas, papéis e banimento (backend novo)](issues/issue-32.md) | ✅ (04/11: backend, portal e recusa **vista no cliente** — “Conta bloqueada Grade X…” após corrigir o formato do aviso; migração `0042_account_admin` com `account_admin_audit`, `AccountAdminService` (list/keyset, get+auditoria, set role/block, create) e `/contas` com filtros, detalhe e motivo obrigatório; regras no store dentro da transação — sem auto-alteração, última admin ativa protegida, moderador só bloqueia jogador; e2e contra o web-api ✅ e `VerifyCredentials` vê o bloqueio. Falta só a recusa no login do cliente) | L |
 | 33 | [Catálogo de itens editável (overlay de ItemList.csv)](issues/issue-33.md) | ⏳ | L |
-| 34 | [Drops editáveis: taxa por slot e Carry[] do mob](issues/issue-34.md) | 🟡 (taxa por slot e `Carry[]` ✅ ponta a ponta: migrações 0040/0041, `DropAdminService` com os dois editores — **`/drops/editar`** e **`/drops/carry`** —, overlays no boot com log `templates=1`/`applied=1`, `Set/Restore` validados e auditoria; falta só a evidência in-game de frequência) | L |
+| 34 | [Drops editáveis: taxa por slot e Carry[] do mob](test/issue-34.md) | 🟡 (taxa por slot e `Carry[]` ✅ ponta a ponta: migrações 0040/0041, `DropAdminService` com os dois editores — **`/drops/editar`** e **`/drops/carry`** —, overlays no boot com log `templates=1`/`applied=1`, `Set/Restore` validados e auditoria; falta só a evidência in-game de frequência) | L |
 | 35 | [Curva de EXP e rebalanceamento em massa](issues/issue-35.md) | ⏳ | M |
-| 36 | [Rates editáveis e visão das flags](issues/issue-36.md) | 🟡 (overlay + `/config` + read-through + aba de flags ✅ validados ao vivo: 16 flags gravadas no boot e tabela em `/config`; falta só evidência in-game de refino/combine) | M |
+| 36 | [Rates editáveis e visão das flags](test/issue-36.md) | 🟡 (overlay + `/config` + read-through + aba de flags ✅ validados ao vivo: 16 flags gravadas no boot e tabela em `/config`; falta só evidência in-game de refino/combine) | M |
 | 37 | [Spawns e localização de mobs](issues/issue-37.md) | ⏳ | L |
 | 38 | [Operação ao vivo: online, kick, teleport e aviso](issues/issue-38.md) | ⏳ | L |
 | 39 | [QA final do portal: E2E, segurança e fechamento](issues/issue-39.md) | ⏳ | M |
 | 40 | [Logs dos containers na UI (streaming)](issues/issue-40.md) | ✅ (`/logs` em SSE por serviço + "Tudo", agora **funcionando no container**: sidecar `logpipe` lê o socket do Docker read-only e serve `/status`/`/logs`; o portal autentica e repassa. 401 sem sessão, 403 `player`, 404 fora da whitelist, `portal` incluído, pausa/filtro/limpar/baixar) | M |
 | 41 | [Atlas do mundo: zonas, coordenadas e portais](issues/issue-41.md) | ✅ | M |
 | 42 | [Rotas de teleporte editáveis](issues/issue-42.md) | ✅ | L |
-| 43 | [Inventário e status de personagem](issues/issue-43.md) | 🟡 leitura+fila | L |
-| 44 | [Adds e efeitos de item (base, instância, refino, combine)](issues/issue-44.md) | 🟡 (leitura ✅ + overlay ✅ + read-through ✅; refino/combine ⏳) | L |
-| 45 | [Guildas, castelo e Kefra](issues/issue-45.md) | 🟡 (leitura ✅, taxa ✅, dono de cidade/torre ✅, Kefra ✅, escritas de guilda/membro/relação ✅; falta a janela de horários, que é da 36) | L |
-| 46 | [Catálogo de skills](issues/issue-46.md) | 🟡 (nomes ✅) | M |
+| 43 | [Inventário e status de personagem](test/issue-43.md) | 🟡 leitura+fila | L |
+| 44 | [Adds e efeitos de item (base, instância, refino, combine)](test/issue-44.md) | 🟡 (leitura ✅ + overlay ✅ + read-through ✅; refino/combine ⏳) | L |
+| 45 | [Guildas, castelo e Kefra](test/issue-45.md) | 🟡 (leitura ✅, taxa ✅, dono de cidade/torre ✅, Kefra ✅, escritas de guilda/membro/relação ✅; falta a janela de horários, que é da 36) | L |
+| 46 | [Catálogo de skills](test/issue-46.md) | 🟡 (nomes ✅) | M |
 | 47 | [UI sem IDs crus e padrão de UI/UX](issues/issue-47.md) | ✅ (nomes no lugar de IDs, `--space-*`, foco, alvo 32px, contraste medido, retry global; `/config` e `/drops` respondendo 200 com sessão) | M |
-| 48 | [Mapa de navegação: relevo, zoom e leitura de ponto](issues/issue-48.md) | 🟡 (relevo/zoom/leitura ✅) | M |
+| 48 | [Mapa de navegação: relevo, zoom e leitura de ponto](test/issue-48.md) | 🟡 (relevo/zoom/leitura ✅) | M |
 
 ### Fase 7 — Fechamento in-game e consolidação (nov/2026)
 
@@ -238,13 +244,13 @@ evidência humana, depois o risco estrutural, depois produto.
 | 53 | [Feedback dos jogadores](issues/issue-53.md) — bug/sugestão no portal | ⏳ | M |
 | 54 | [Hub de documentação, ADRs e runbooks](issues/issue-54.md) | ⏳ | M |
 | 55 | [Qualidade: CI, banco efêmero e observabilidade](issues/issue-55.md) | ⏳ | L |
-| 56 | [Limpeza do repositório e legado arquivado](issues/issue-56.md) | ✅ (05/11: artefatos, openspec arquivado, skills unificadas) | S |
-| 57 | [NPCs: migrar todos os blocos e dropar `NPCGener.txt`](issues/issue-57.md) | ✅ | L |
-| 58 | [Baseline do banco: uma inicialização completa, sem arquivos de conteúdo](issues/issue-58.md) | ✅ | L |
+| 56 | [Limpeza do repositório e legado arquivado](done/issue-56.md) | ✅ (05/11: artefatos, openspec arquivado, skills unificadas) | S |
+| 57 | [NPCs: migrar todos os blocos e dropar `NPCGener.txt`](done/issue-57.md) | ✅ | L |
+| 58 | [Baseline do banco: uma inicialização completa, sem arquivos de conteúdo](done/issue-58.md) | ✅ | L |
 | 59 | [Configs de conteúdo restantes no banco (guard, level item, mob merc, game settings)](issues/issue-59.md) | ⏳ | M |
 | 60 | [Mapas (`HeightMap`/`AttributeMap`): banco ou asset?](issues/issue-60.md) | ⏳ | M |
-| 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](issues/issue-61.md) | ✅ (05/11: `ItemDropList.txt` 242 KB removido, DropTool em `_legacy`) | S |
-| 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](issues/issue-62.md) — resíduo da fase 5 | ✅ (05/11: catálogo do banco 3220/151/228/1991/20680 drops, zero WARN; falta teste do wiring) | M |
+| 61 | [Remover os artefatos do DropTool (`ItemDropList`/`MobDropList`)](done/issue-61.md) | ✅ (05/11: `ItemDropList.txt` 242 KB removido, DropTool em `_legacy`) | S |
+| 62 | [webserver: catálogos de conteúdo ainda vêm de arquivo](done/issue-62.md) — resíduo da fase 5 | ✅ (05/11: catálogo do banco 3220/151/228/1991/20680 drops, zero WARN; falta teste do wiring) | M |
 
 Skill de execução: `.agents/skills/wyd-web-admin-ui/SKILL.md`. O portal mora em `portal/`, dentro do
 repo, com contexto Docker próprio (`portal/Dockerfile`) para não inflar o contexto dos serviços Go.

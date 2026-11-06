@@ -6,11 +6,15 @@ import (
 	"testing"
 
 	"openwyd-nextgen/internal/domain"
-	"openwyd-nextgen/internal/migrations"
 )
 
 func TestKefraStatePersistence(t *testing.T) {
 	s, ctx := freshStore(t)
+	// O seed do baseline carrega o estado do servidor vivo (revision 1); este
+	// teste mede concorrência otimista e precisa começar do zero.
+	if _, err := s.pool.Exec(ctx, `DELETE FROM kefra_state`); err != nil {
+		t.Fatal(err)
+	}
 	st, err := s.LoadKefraState(ctx)
 	if err != nil || st.Revision != 0 {
 		t.Fatalf("initial load: %+v %v", st, err)
@@ -54,17 +58,8 @@ func TestKefraStatePersistence(t *testing.T) {
 	if err != nil || got != want {
 		t.Fatal("failed write changed state")
 	}
-	for _, name := range []string{"0023_kefra_state.down.sql", "0023_kefra_state.up.sql"} {
-		sql, err := migrations.FS.ReadFile(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := s.pool.Exec(ctx, string(sql)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	got, err = s.LoadKefraState(ctx)
-	if err != nil || got.Revision != 0 {
-		t.Fatal("migration roundtrip failed")
-	}
+	// O squash do baseline absorveu a 0023 (o `down`/`up` dela vive só em
+	// `internal/migrations/_archived/`, fora do //go:embed *.sql). O replay
+	// deixou de existir; o que importa — estado persistido sobreviver ao restart
+	// e escrita velha não regredir a revisão — está verificado acima.
 }

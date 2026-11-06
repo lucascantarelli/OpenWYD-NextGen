@@ -33,48 +33,20 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// resetTestSchema drops every table any migration creates, so a re-run starts
-// from an empty database. It must list them ALL: `DROP TABLE account CASCADE`
-// drops dependent *constraints*, not dependent *tables*, so a table omitted here
-// survives and the next Migrate fails with 42P07 (relation already exists).
+// resetTestSchema deixa o banco exatamente como um Postgres recém-criado:
+// derruba o schema `public` inteiro e o recria. A versão anterior listava as
+// tabelas uma a uma e envelheceu — `account_admin_audit` ficou de fora, sobreviveu
+// ao reset e o Migrate seguinte morreu com 42P07 (relation already exists).
+// Derrubar o schema não tem como envelhecer.
 func resetTestSchema(ctx context.Context, pool *pgxpool.Pool) {
-	_, _ = pool.Exec(ctx, `
-		DROP TABLE IF EXISTS
-			kefra_state,
-			sapphire_balance,
-			world_event_audit,
-			world_event_meta,
-			world_event_config,
-			npc_audit,
-			npc_shop_item,
-			npc_definition,
-			item_price,
-			npc_config_meta,
-			mob_template_equip,
-			mob_template_stat,
-			affect,
-			item,
-			character_pvp_stats,
-			character,
-			castle_quest_state,
-			guild_tower_state,
-			guild_zone,
-			guild_relation,
-			guild_member,
-			guild,
-			donate_topup_order,
-			donate_payer_profile,
-			account_play_code,
-			account,
-			donate_shop_audit,
-			donate_shop_item,
-			daily_reward_audit,
-			daily_reward_claim,
-			daily_reward_item,
-			delivery_queue,
-			schema_migrations
-		CASCADE`)
-	_, _ = pool.Exec(ctx, `DROP TYPE IF EXISTS item_owner_kind`)
+	if _, err := pool.Exec(ctx, `DROP SCHEMA IF EXISTS public CASCADE`); err != nil {
+		panic("resetTestSchema: drop schema public: " + err.Error())
+	}
+	if _, err := pool.Exec(ctx, `CREATE SCHEMA public`); err != nil {
+		panic("resetTestSchema: create schema public: " + err.Error())
+	}
+	// Defaults do Postgres 15+: o dono do banco usa o schema; PUBLIC só lê.
+	_, _ = pool.Exec(ctx, `GRANT USAGE ON SCHEMA public TO PUBLIC`)
 }
 
 func TestMigrateAndSaveAccount(t *testing.T) {
