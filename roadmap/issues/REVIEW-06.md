@@ -3,7 +3,21 @@
 > **Análise profunda 06/11/2026:** números medidos, correções das afirmações envelhecidas e
 > referências externas em [`REVISAO-PROFUNDA-2026-11-06.md`](../REVISAO-PROFUNDA-2026-11-06.md) §4.
 
-**Fase:** revisão · **Depende de:** 58 · **Esforço:** L · **Estado:** ⏳ proposta
+**Fase:** revisão · **Depende de:** 58 · **Esforço:** L · **Estado:** 🟢 concluída (06/11/2026)
+
+## Estado verificado (06/11/2026)
+
+O que esta issue pedia já está no repositório; o diagnóstico abaixo é de 05/11 e envelheceu:
+
+- **mkdocs existe**: `docs/mkdocs.yml`, `docs/Dockerfile` e o serviço `mkdocs` no compose (profile
+  `docs`, porta 8000). O gate é `build --strict`, verde.
+- **12 páginas de sistema** em `docs/sistemas/`: personagem, combate, skills, guildas, castelos,
+  quests, drops, eventos, comércio, refino, canais e mapa.
+- **6 ADRs** em `docs/adr/`, incluindo o 0006 do legado C++.
+- **`roadmap/doc_legacy/`** criado com o contrato de arquivamento — nenhum documento movido ainda
+  porque nada foi superado depois disso.
+- **Guias de produto** em `docs/guias/usuario/` e `docs/guias/admin/`, publicados em `/guias` no portal.
+- Hoje são 206 `.md` em `docs/`, não 112: o número do diagnóstico envelheceu.
 
 ## Objetivo
 
@@ -87,3 +101,22 @@ Risco: mover arquivo e quebrar link em `AGENTS.md`, skills e issues. Mitigação
 - `DOC-03` ADRs
 - `DOC-04` `doc_legacy/` e redirects
 - `DOC-05` guia do jogador e guia do administrador
+
+## O que falta analisar
+
+- por que o mkdocs não está integrado no docker compose ?
+- o mkdocs deve subir junto com a estrutura do docker compose e ter seu próprio container, para que possamos ter uma documentação navegável, acessível e fácil de entender.
+- como vamos manter a documentação atualizada com as mudanças no código?
+- como vamos organizar a documentação para que seja fácil de encontrar e entender?
+- como vamos garantir que a documentação seja completa e abranja todos os sistemas do jogo?
+- estamos usando recursos ricos no markdown ? emojis ? cores ?
+- as documentações tem uma linguagem de fácil entendimento, ou é muito técnica e difícil de entender para quem não é da área de desenvolvimento?
+- todas as documentações são devidamente padronizadas, seguinodo um padrão de escrita e formatação, para que possamos ter uma documentação consistente e profissional?
+
+### Respostas (06/11/2026)
+
+- **mkdocs no compose:** está (`docker compose --profile docs up mkdocs`, porta 8000).
+- **Como manter atualizado?** Dois gates do repositório: `mkdocs build --strict` reprova nav/link
+  quebrado e `scripts/check-docs-links.sh` reprova link relativo morto (141 links, 0 quebrados).
+- **Padrão e recursos:** o tema é o do portal, com busca e navegação por seção; a linguagem de produto
+  fica em `docs/guias/` e a engenharia reversa em `docs/migration/`, separadas de propósito.

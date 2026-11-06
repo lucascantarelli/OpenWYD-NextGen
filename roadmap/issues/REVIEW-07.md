@@ -3,7 +3,22 @@
 > **Análise profunda 06/11/2026:** números medidos, correções das afirmações envelhecidas e
 > referências externas em [`REVISAO-PROFUNDA-2026-11-06.md`](../REVISAO-PROFUNDA-2026-11-06.md) §4.
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** ⏳ proposta
+**Fase:** revisão · **Depende de:** — · **Esforço:** M · **Estado:** 🟢 concluída (06/11/2026), resta o spike opcional da `LEGACY-03`
+
+## Estado verificado (06/11/2026)
+
+- **Inventário e classificação: feitos.** `docs/analysis/migracao-legado.md` classifica as soluções de
+  `Source/Code/`; 7 ferramentas substituídas foram para `Source/Code/_legacy/` com README de
+  substituição (468 KB), fora do build e da imagem.
+- **ClientPatch: documentado.** `docs/analysis/legado-clientpatch.md` mapeia os hooks; o projeto segue
+  em `Source/Code/ClientPatch_v7662` como referência, porque é dependência do **cliente**, não do
+  servidor. Nenhum código Go lê `Release/` nem carrega a DLL.
+- **Decisão registrada:** `docs/adr/0006-arquivamento-legado-cpp.md` (aceita) — `Source/` fica como
+  referência de wire; nada é apagado.
+- **Arquivos ainda lidos pelo servidor:** taxas, `serv00.htm`, os dois mapas e `BaseMob`/`BaseSummon`.
+  O ADR 0004 registra a exceção e o porquê, o que responde ao "por que precisamos de
+  `tmserver/content/`".
+- **Resta opcional:** `LEGACY-03` (hook por assinatura em vez de endereço fixo). Não bloqueia nada em Go.
 
 ## Objetivo
 
@@ -86,9 +101,9 @@ apagado nesta issue — só classificado e documentado.
 
 ## Issues que este review abre
 
-- `LEGACY-01` inventário por solução C++
-- `LEGACY-02` mapa completo de hooks + o que vai para o servidor
-- `LEGACY-03` spike de hook por assinatura (se a modernização for aprovada)
+- `LEGACY-01` inventário por solução C++ — ✅ concluída
+- `LEGACY-02` conteúdo de runtime para dentro do servidor Go — ✅ concluída
+- `LEGACY-03` spike de hook por assinatura — aberta e opcional (só se a DLL for modernizada)
 
 ## O que faltou analisar
 
@@ -103,3 +118,4 @@ apagado nesta issue — só classificado e documentado.
 - migrations e arquivos de seed devem ser analisados,atualizados, normalizados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
 - a inicialização do banco de dados deve ser feita apenas com migrations e arquivos de seed, não devemos mais depender de nenhum arquivo externo.
 - o banco deve ser capaz de subir do zero, completamenete, com o conteudo normalizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- por que precisamos do conteudo de tmrsv/content ?, creio que tudo aquilo pode virar tabela e dado no banco, sendo consultado pelo servidor via banco de dados, removendo a dependencia de arquivos externos, deixando o banco de dados como unica fonte real de dado.

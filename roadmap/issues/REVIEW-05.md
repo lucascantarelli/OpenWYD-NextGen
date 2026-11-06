@@ -3,7 +3,27 @@
 > **Análise profunda 06/11/2026:** números medidos, correções das afirmações envelhecidas e
 > referências externas em [`REVISAO-PROFUNDA-2026-11-06.md`](../REVISAO-PROFUNDA-2026-11-06.md) §4.
 
-**Fase:** revisão · **Depende de:** 58 (concluída) · **Esforço:** M · **Estado:** ⏳ proposta
+**Fase:** revisão · **Depende de:** 58 (concluída) · **Esforço:** M · **Estado:** ⏳ proposta (parte do diagnóstico envelheceu — ver §Estado verificado)
+
+## Estado verificado (06/11/2026)
+
+Reconciliado contra o HEAD, achado por achado:
+
+- **Erros de `relation`/`column` no log do Postgres: encerrados.** Nenhum código referencia
+  `instance_flag` nem `audit_log`; a tabela é `server_instance_flags` e as colunas `version` existem em
+  `sapphire_balance`, `npc_config_meta` e `world_event_meta`. Eram consultas de uma versão anterior,
+  não migration faltando.
+- **Roles/DSN: aberto.** `docker-compose.yaml` ainda conecta todos os serviços como `postgres`
+  (linhas 34 e 58) — é a `DB-01`.
+- **Restore: aberto.** `scripts/db-backup.sh`, `db-baseline.sh` e `db-audit.sql` existem;
+  `db-restore.sh` não.
+- **`character` → `characters`: aberto e sem issue própria.** A tabela continua `character`
+  (`internal/store/character_admin.go`), então renomear ainda quebra código: decidir antes de abrir.
+- **Skills da FM: bug de dado confirmado, não de schema.** `npc_shop_item` vende `item_index = 2444`
+  (`Garnet`) em slot de skill, enquanto o catálogo está certo (`Destino` = 5007). O conserto é no seed,
+  com um verificador catálogo × classe — precisa de issue própria, porque
+  `seed_npc_shop_item.up.sql` é gerado por `seedgen` e não se edita à mão.
+- **`docs/audits/`: removido.** A auditoria vive em `docs/analysis/banco-de-dados.md`.
 
 ## Objetivo
 
@@ -125,3 +145,17 @@ só então no dev. Rollback: o compose volta ao DSN antigo por variável de ambi
 - migrations e arquivos de seed devem ser analisados,atualizados, normalizados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
 - a inicialização do banco de dados deve ser feita apenas com migrations e arquivos de seed, não devemos mais depender de nenhum arquivo externo.
 - o banco deve ser capaz de subir do zero, completamenete, com o conteudo normalizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- todo o migration/seed deve ser atualizado para não depender de nenhum arquivo externo, tudo deve ser persistido no banco de dados, para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- todo o banco deve ter seu conteudo normalizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- após todo o mogration ser ajustado e garantirmos que não irá entrar/conter mais nenhum arquivo externo, não precisaremos mais importar nenhum dados, usando nenhuma ferramente, tivermos os dados completos garantidos em seeds/migrations, devemos remover todas as ferramentas que migravam dados de csv elas ficam obsoletas, remover testes de normalização desnecessarios.
+- garantir o banco de dados com dados limpos,normalizados, sem duplicações, sem lacunas de dados, padronizado, otimizado, refatorado, melhorado, usando todos os recursos que tragam ganhos reais, nosso portgres é o 17, pesquisar melhores abordagens, praticas e otimizações.
+
+### Respostas (06/11/2026)
+
+- **Por que ainda há arquivo?** Só restam exceções do ADR 0004: taxas em `Common/Settings/*.txt`,
+  `serv00.htm`, os dois mapas binários e os templates `BaseMob`/`BaseSummon`. Catálogos de item, skill,
+  NPC e spawn já vêm do banco (issue 58).
+- **O banco sobe do zero?** Sim: `0001_schema` + `0002_normalize_text` + 12 `seed_*`, validados em base
+  vazia por `scripts/db-baseline.sh`.
+- **Quando remover as ferramentas de import?** `tmserver/cmd/importcontent` e `importteleports` só saem
+  depois de fechar as exceções acima; hoje servem para reprocessar árvore externa/backup.
