@@ -71,7 +71,7 @@ fecha issue rápido (teste real no cliente) e termina na faxina que depende de t
 | 2 | [REVIEW-02](issues/REVIEW-02.md) | Código Go: docstrings/comentários em PT, refatorações, `newApp` | L |
 | 3 | [REVIEW-03](issues/REVIEW-03.md) | Testes: arquitetura, triagem de `t.Skip`, Playwright, fixtures | L |
 | 4 | [REVIEW-04](issues/REVIEW-04.md) | CI/CD: workflows reutilizáveis, banco no pipeline, SBOM, `make ci` | M |
-| 5 | [REVIEW-05](issues/REVIEW-05.md) | Banco: roles, restore testado, naming, índices de auditoria — DB-01 fechada (roles + restore); resta down/índices na [DB-02](issues/DB-02.md) | M |
+| 5 | [REVIEW-05](issues/REVIEW-05.md) | Banco: roles, restore testado, naming, índices de auditoria — ✅ DB-01 (roles + restore) e [DB-02](issues/DB-02.md) (down provado; 17 índices de auditoria removidos com `idx_scan`) | M |
 | 6 | [REVIEW-06](issues/REVIEW-06.md) | Documentação: mkdocs, índice de sistemas, ADRs, `doc_legacy` — ✅ concluída | L |
 | 7 | [REVIEW-07](issues/REVIEW-07.md) | Legado C++ e ClientPatch_v7662: classificar e decidir — ✅ concluída (resta spike opcional) | M |
 | 8 | [REVIEW-08](issues/REVIEW-08.md) | Portal: público × admin, loja, fóruns, identidade visual | L |

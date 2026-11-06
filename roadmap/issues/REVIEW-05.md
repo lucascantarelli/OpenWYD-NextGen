@@ -3,7 +3,7 @@
 > **Análise profunda 06/11/2026:** números medidos, correções das afirmações envelhecidas e
 > referências externas em [`REVISAO-PROFUNDA-2026-11-06.md`](../REVISAO-PROFUNDA-2026-11-06.md) §4.
 
-**Fase:** revisão · **Depende de:** 58 (concluída) · **Esforço:** M · **Estado:** ⏳ proposta (parte do diagnóstico envelheceu — ver §Estado verificado)
+**Fase:** revisão · **Depende de:** 58 (concluída) · **Esforço:** M · **Estado:** ✅ concluída (06/11/2026) — DB-01 e DB-02 fechadas
 
 ## Estado verificado (06/11/2026)
 
@@ -139,7 +139,7 @@ só então no dev. Rollback: o compose volta ao DSN antigo por variável de ambi
 ## Issues que este review abre
 
 - `DB-01` roles e DSN por serviço + restore testado — ✅ concluída 06/11
-- `DB-02` teste de `down` no CI + revisão dos índices de auditoria (o que sobrou desta review) — aberta
+- `DB-02` teste de `down` + revisão dos índices de auditoria — ✅ concluída 06/11 (down provado em base descartável; 17 índices removidos, 2 mantidos com `idx_scan`)
 
 ## O que faltou analisar
 

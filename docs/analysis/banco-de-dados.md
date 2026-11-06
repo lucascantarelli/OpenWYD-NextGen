@@ -149,7 +149,7 @@ nunca reutilizar número.
 | **P1** | Retenção de backup + teste de restauração | scripts | ⏳ pendente |
 | **P2** | `character` → `characters` (quebra código, precisa de uma entrega só para isso) | `0003_rename_character_to_characters` | ✅ 06/11 |
 | **P2** | Views de relatório do portal | com as telas | ⏳ |
-| **P2** | Revisar os 19 índices de auditoria sem leitura (manter ou remover com critério) | após portal ler | ⏳ |
+| **P2** | Revisar os 19 índices de auditoria sem leitura (manter ou remover com critério) | `0005_drop_unused_audit_indexes` | ✅ 06/11 (17 removidos; 2 mantidos por query real) |
 
 ## 11. O que a fase 4 aplicou (04/11/2026)
 

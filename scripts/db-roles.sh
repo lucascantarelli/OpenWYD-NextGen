@@ -7,6 +7,11 @@
 # openwyd_migrator, openwyd_app e openwyd_ro, transfere a posse dos objetos e
 # aplica os grants. O compose executa o mesmo SQL num serviço one-shot (`db-roles`)
 # antes de dbserver/webserver subirem.
+#
+# ATENÇÃO: os grants de schema são POR BANCO. As roles são do cluster, mas um
+# banco novo (base efêmera, CI) precisa rodar este script com W2PP_DB_NAME=<banco>
+# antes do primeiro Migrate — senão o migrator recebe 42501 (permission denied
+# for schema public).
 set -euo pipefail
 
 CONTAINER="${W2PP_DB_CONTAINER:-openwyd-db-1}"
