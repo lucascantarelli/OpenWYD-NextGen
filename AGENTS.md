@@ -107,7 +107,7 @@ ausência deles recusa o boot. O `importcontent` continua existindo só para rep
 conteúdo externa (backup).
 
 ```
-Release/Common/            serv00.htm, serverlist.txt,
+Release/Common/            serv00.htm,
                            Settings/{CompRate,SancRate,QuestsRate,CastleQuest,MobMerc}.txt
 Release/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
                            HeightMap.dat (16 MiB, 4096²),

@@ -34,6 +34,17 @@ type Config struct {
 	MaxFailLogin  int   // wrong-password lockout threshold (default 3)
 	ServerIndex   int   // legacy guild id high bits (server_index * 4096); also the channel a citizen belongs to (Citizen = ServerIndex+1)
 
+	// Novice ("green") channel (canais.md §3), fixed by configuration as in
+	// production: NoviceChannel is the 1-based channel number that plays the
+	// novice role (it runs NewbieEventServer and refuses PvP damage). 0 turns the
+	// novice channel off and leaves the event to the portal flag on every channel.
+	NoviceChannel int
+
+	// CrossoverKey signs the channel-change token handed to the client by /srv
+	// (canais.md §8.1.2). It must match the dbServer's value; empty disables the
+	// in-game channel switch.
+	CrossoverKey string
+
 	// RefinePolicy is the dust-refine ceiling table (RefineRate). Zero value
 	// falls back to the legacy 6/9/10/11.
 	RefinePolicy content.RefinePolicy
@@ -198,6 +209,7 @@ type Dispatcher struct {
 	tickCount       int                          // loop-only tick counter (affect sweep phase)
 	affectDur       world.AffectDuration         // cast-affect duration tuning (issue #229)
 	serverIndex     int                          // legacy guild id high bits
+	crossoverKey    string                       // HMAC key for the /srv channel-change token
 	guildZones      [5]world.GuildZone           // loop-owned city/guild-zone cache
 	taxChangedAt    [5]time.Time                 // day each zone's guildtax last changed (one change/day, lote2-chat.md)
 	guildWars       map[uint16]uint16            // directed guild -> current war target
@@ -227,6 +239,13 @@ type Dispatcher struct {
 	worldEventVersion  int64
 	worldEventPolling  bool
 	worldEventPollTick int
+
+	// Novice ("green") channel state (newbie_channel.go). newbieCfg is the raw
+	// NewbieEventServer value from flags/portal; noviceChannel is the configured
+	// 1-based novice channel (0 = none). All loop-only.
+	noviceChannel    int
+	newbieCfg        bool
+	noviceRoleLogged bool
 
 	// playersX/Y are per-tick scratch snapshots of in-play player positions
 	// (mob-AI dormancy gate, mobai.go). Loop-only, reused to avoid allocation.
@@ -329,6 +348,8 @@ func New(cfg Config) *Dispatcher {
 		now:              cfg.Now,
 		affectDur:        cfg.AffectDuration,
 		serverIndex:      cfg.ServerIndex,
+		crossoverKey:     cfg.CrossoverKey,
+		noviceChannel:    cfg.NoviceChannel,
 		guildWars:        make(map[uint16]uint16),
 		guildAllies:      make(map[uint16]uint16),
 		npcSource:        cfg.NpcConfig,

@@ -38,7 +38,7 @@ agora vive em `client-tools/serverlist`.
 ## 3. Ordem de implementação
 
 1. **Gerador de serverlist** — feito (`client-tools/serverlist`): lê
-   `Release/Common/serverlist.txt` (grupo, canal, endereço) e escreve o `.bin` de 7.040 bytes com
+   `client-tools/serverlist/servers.txt` (grupo, canal, endereço) e escreve o `.bin` de 7.040 bytes com
    a mesma ofuscação do `Basedef.cpp`. É a base do "escolher canal" do launcher.
 2. **Manifesto versionado** — `launcher-manifest.json` (schema: `version`, `files[]`), servido
    pelo portal, gerado por um script que varre o `Release/` limpo. O launcher compara hash e só

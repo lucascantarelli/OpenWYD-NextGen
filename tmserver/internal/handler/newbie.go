@@ -38,6 +38,7 @@ import (
 // EXP events and the world's spawn handicap — and runs the off-transition side
 // effect. Loop-only.
 func (d *Dispatcher) setNewbieEvent(w *world.World, on bool) {
+	d.newbieCfg = on
 	was := d.expEvents.NewbieEvent
 	d.expEvents.NewbieEvent = on
 	w.SetNewbieEvent(on)

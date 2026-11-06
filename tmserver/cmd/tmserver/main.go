@@ -124,8 +124,12 @@ func run(logger *slog.Logger) error {
 	// carry it in their high bits (serverIndex*4096). One instance per channel, so
 	// 0 is the default (channel 1) and each extra container gets its own value.
 	serverIndex := flag.Int("server-index", envInt("W2PP_SERVER_INDEX", 0), "zero-based channel index this instance serves; citizenship is stamped as server-index+1")
+	// Crossover key for the in-game channel switch (/srv): both channels and the
+	// dbServer must share it (canais.md §8.1.2). Empty disables the command.
+	crossoverKey := flag.String("crossover-key", os.Getenv("W2PP_CROSSOVER_KEY"), "chave HMAC compartilhada com o dbServer para o token de troca de canal (/srv); vazia desativa a troca in-game")
 	doubleExp := flag.Bool("double-exp", envBool("W2PP_DOUBLE_EXP", false), "DOUBLEMODE: double PvE experience (gameconfig double)")
 	newbieEvent := flag.Bool("newbie-event", envBool("W2PP_NEWBIE_EVENT", false), "NewbieEventServer: +15% exp and newbie under-100 bonus (gameconfig)")
+	noviceChannel := flag.Int("novice-channel", envInt("W2PP_NOVICE_CHANNEL", 0), "número do canal verde (novato), 1-based e fixo como em produção: nele esta instância roda o evento newbie e recusa dano PvP. 0 = nenhum canal verde (o evento segue -newbie-event em todos os canais)")
 	kefraLive := flag.Bool("kefra-live", envBool("W2PP_KEFRA_LIVE", false), "initial Kefra defeated state (true opens city); persisted cycle takes precedence; false halves PvE exp")
 	// Issue #383: a fresh character must reach displayed level 35 in ~15 min on
 	// the training grounds. The measured pace with the plain reward was ~1k exp/min
@@ -547,6 +551,7 @@ func run(logger *slog.Logger) error {
 			{Name: "newbie-event", Value: strconv.FormatBool(*newbieEvent), RestartRequired: true, Hint: "NewbieEventServer: +15% EXP e bônus abaixo do nível 100"},
 			{Name: "kefra-live", Value: strconv.FormatBool(*kefraLive), RestartRequired: true, Hint: "evento do Kefra ativo"},
 			{Name: "training-field-exp", Value: strconv.FormatInt(int64(*trainingFieldExp), 10), RestartRequired: true, Hint: "multiplicador de EXP do Campo de Treino"},
+			{Name: "novice-channel", Value: strconv.Itoa(*noviceChannel), RestartRequired: true, Hint: "canal verde (novato) fixo, 1-based; 0 = nenhum"},
 			{Name: "max-nightmare", Value: strconv.Itoa(*maxNightmare), RestartRequired: true, Hint: "admissões contadas de Nightmare por mapa/ciclo"},
 			{Name: "mob-stat-editing", Value: strconv.FormatBool(*mobStatEditing), RestartRequired: true, Hint: "overlay de stats de mob"},
 			{Name: "mob-carry-editing", Value: strconv.FormatBool(*mobCarryEditing), RestartRequired: true, Hint: "overlay do Carry[] (drop) dos templates"},
@@ -571,6 +576,8 @@ func run(logger *slog.Logger) error {
 		SancRate:         sancRate,
 		RefinePolicy:     refinePolicy,
 		ServerIndex:      *serverIndex,
+		NoviceChannel:    *noviceChannel,
+		CrossoverKey:     *crossoverKey,
 		ExpEvents:        level.ExpEvents{DoubleMode: *doubleExp, NewbieEvent: *newbieEvent, KefraLive: *kefraLive},
 		TrainingFieldExp: int64(*trainingFieldExp),
 		CombineFamilies:  combineFamilies,

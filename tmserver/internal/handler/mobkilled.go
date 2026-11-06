@@ -298,10 +298,11 @@ func (d *Dispatcher) applyMobExp(w *world.World, ks *world.Session, killer *worl
 		killer.Exp = level.MaxExp
 	}
 	if applied := killer.Exp - previousExp; applied > 0 && ks != nil {
-		// _NS_GETEXP goes to the chat log only. SendClientMessage (MessagePanel)
-		// reached the client as well but ALSO painted the floating panel, so the
-		// player saw every gain twice (QA 05/11).
-		d.sendChatText(w, ks, fmt.Sprintf(expGainFormat, applied))
+		// Legacy SendMsgExp (MobKilled.cpp:2606, TNColor::Default): MSG_Exp_Msg_Panel_
+		// (0x5000) paints the gain on the character. It used to go out as
+		// MsgMessageChat, which the client renders as the player speaking the line
+		// (QA 06/11).
+		d.sendMsgExp(w, ks, fmt.Sprintf(expGainFormat, applied), expPanelColor)
 	}
 
 	// A player attack carries the post-kill EXP in its authoritative attack
@@ -333,7 +334,10 @@ func (d *Dispatcher) grantDirectExp(w *world.World, s *world.Session, e *world.E
 	if applied <= 0 || s == nil {
 		return applied
 	}
-	d.sendChatText(w, s, fmt.Sprintf(expGainFormat, applied))
+	// Legacy SendClientMessage (_MSG_UseItem.cpp:2386,2416,2464), i.e. a message
+	// panel with ID 0 — NOT MsgMessageChat, which the client renders as the
+	// character speaking (QA 06/11).
+	d.sendClientMessage(w, s, fmt.Sprintf(expGainFormat, applied))
 	if !d.applyLevelUps(w, s, e) {
 		d.sendEtc(w, s, e)
 	}

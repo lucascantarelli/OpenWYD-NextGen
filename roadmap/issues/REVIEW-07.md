@@ -24,6 +24,13 @@ Fechar a pergunta "isso ainda serve?" com evidência: classificar cada projeto d
   (ex.: checksum não-rejeitante por padrão).
 - Guard anti-execução avulsa: só roda se o host for `WYD.EXE` (`main.cpp:49-55`).
 
+## Analisar tudo
+- Mapear o que pode ser removido, migrado, atualizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- analizar arquivos que podem ser reorganizador, renomeados, atualizados, migrados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- Remover arquivos que não estão sendo usados, duplicados, obsoletos, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- analisar a pasta scripts, deixar apenas o que realmente será usado, remover o que já foi migrado, está sem uso.
+
+
 ## Respostas diretas
 
 | Pergunta | Resposta |

@@ -21,6 +21,16 @@ reutilizáveis, Postgres de serviço, cache efetivo, imagens com SBOM e um `make
 - Build local já quebrou por disco cheio (C: com 6,6 GB livres) e por build paralelo derrubando o
   daemon — o CI não detecta nenhum dos dois.
 
+## Analisar tudo
+
+- Devemos implementar pipelines de CI (Continuous Integration) para automatizar o processo de build e testes, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos usar boas praticas de docker, docker compose, multistage build e outras técnicas de containerização para garantir que o sistema seja facilmente implantado e escalável, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos usar boas praticas de CI e Github Actions para automatizar o processo de build, testes e deploy, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos usar automações makefile, analise nosso atual e proponha ajustes/melhorias, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- as actions do projeto devem seguir boas praticas de reuso, modularização, organização, padronização para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- dentro do CI devemos usar recursos atuais do github actions, como caching, paralelização, matrix builds, etc. para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+
+
 ## Passos
 
 1. **Workflow reutilizável** `_go.yml` (`workflow_call`: setup-go com cache, gofmt/vet/build/test) e

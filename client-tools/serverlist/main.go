@@ -1,5 +1,5 @@
 // Command serverlist gera o serverlist.bin que o cliente lê na tela inicial, a
-// partir de Release/Common/serverlist.txt. Substitui o "serverlist editor.exe"
+// partir de client-tools/serverlist/servers.txt. Substitui o "serverlist editor.exe"
 // (Windows, fechado) por código nosso — issue 52.
 //
 // O formato é o mesmo de BASE_InitializeServerList (Source/Code/Basedef.cpp:6874):
@@ -16,7 +16,7 @@
 //
 // Uso:
 //
-//	go run ./client-tools/serverlist -in Release/Common/serverlist.txt -out serverlist.bin
+//	go run ./client-tools/serverlist -in client-tools/serverlist/servers.txt -out serverlist.bin
 //	go run ./client-tools/serverlist -print serverlist.bin
 package main
 
@@ -148,7 +148,7 @@ func Decode(b []byte) ([][]string, error) {
 }
 
 func main() {
-	in := flag.String("in", "Release/Common/serverlist.txt", "serverlist.txt de entrada")
+	in := flag.String("in", "client-tools/serverlist/servers.txt", "servers.txt de entrada")
 	out := flag.String("out", "serverlist.bin", "arquivo .bin a gerar")
 	print := flag.String("print", "", "imprime o conteúdo de um .bin existente")
 	flag.Parse()

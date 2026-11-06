@@ -24,6 +24,21 @@ pessoa vão ler.
 - Convenções existem espalhadas (`AGENTS.md` §8, `qualidade-e-processo.md` §4) mas não há um
   documento único de Definition of Done.
 
+## Analisar tudo
+- Notei que temo diversos arquivos de IA espalhados pelo projeto, devemos analizar tudo relacionado a IA, e ver se podemos melhorar, otimizar, atualizar, migrar para novas tecnologias e frameworks modernos, ou até mesmo remover futuramente, caso não seja mais necessário.
+- Devemos analizar todas as skills de IA, sugerir melhorias, otimizações, atualizações, migrações para novas tecnologias e frameworks modernos, ou até mesmo remoção futuramente, caso não seja mais necessário, criar novas skills de IA, caso necessário, para melhorar a experiência do usuário e otimizar o desempenho do sistema.
+- Procurar por informações duplicadas, inconsistentes ou desatualizadas relacionadas a IA, e sugerir melhorias, otimizações, atualizações, migrações para novas tecnologias e frameworks modernos, ou até mesmo remoção futuramente, caso não seja mais necessário.
+- vamos analizar completamente todos os arquivos relacionados a IA, vamos mover tudo para uma pasta em rodamap, chamada ia_legacy, para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- recriar todos os arquivos de IA, atualizados, otimizados, migrados para novas tecnologias e frameworks modernos, para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma, pesquise por arquivos relacionados soltos dentro de todos os diretórios do projeto, analise se ainda precisam ser usados, existe um plugin antigo "project-analizer" que analisa o projeto, remova, não vamos precisar mais dele.
+- Mapear o que pode ser removido, migrado, atualizado, otimizado, refatorado, melhorado, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- analizar arquivos que podem ser reorganizador, renomeados, atualizados, migrados, otimizados, refatorados, melhorados, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- Remover arquivos que não estão sendo usados, duplicados, obsoletos, etc. para que possamos ter um código mais limpo, organizado e de fácil manutenção, além de otimizar o desempenho e garantir maior segurança na plataforma.
+- analisar a pasta scripts, deixar apenas o que realmente será usado, remover o que já foi migrado, está sem uso.
+- Todos os artefatos e achados da análise, implementações, correções, limpeza, atualizações, melhorias, otimizações, refatorações, migrações, etc. devem ser documentados e organizados em um roadmap detalhado, incluindo issues detalhadas para cada tarefa a ser realizada, para que possamos ter um controle mais eficiente sobre o andamento do projeto e garantir que todas as funcionalidades sejam implementadas corretamente.
+- atualmente temos a pasta roadmap e roadmap/issues, onde planejamos todas as issues de forma detalhada, mas precisamos melhorar a organização, detalhamento e priorização das issues, para que possamos ter um controle mais eficiente sobre o andamento do projeto e garantir que todas as funcionalidades sejam implementadas corretamente.
+- Todas as issues devem ser detalhadas com códigos, arquivos, testes, documentos, referencias as skills de IA para uso do agente, e demais informações relevantes para a implementação correta da funcionalidade, para que possamos ter um controle mais eficiente sobre o andamento do projeto e garantir que todas as funcionalidades sejam implementadas corretamente.
+- Mapear todos os achados da análise, alinhado com as issues atuais, vamos reorganizar a ordem de execução das issues, existem issues pendentes de testes no cli, vamos dá prioridade a exxas issues que faltam testes reais, para já finalizarmos algumas de forma rápida.
+
 ## Passos
 
 1. **Uma fonte de IA**: manter `.agents/skills` como canônico e gerar `.claude/skills` (symlink ou

@@ -6,11 +6,14 @@ package grpcsrv
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	dbv1 "openwyd-nextgen/api/db/v1"
+	"openwyd-nextgen/internal/crossover"
 	"openwyd-nextgen/internal/domain"
 	"openwyd-nextgen/internal/playcode"
 	"openwyd-nextgen/internal/secret"
@@ -62,7 +65,14 @@ type Store interface {
 type Server struct {
 	dbv1.UnimplementedAccountServiceServer
 	store Store
+	// crossoverKey validates the channel-change token a client carries in the
+	// password field after picking another channel (canais.md §8.1.2). Empty
+	// disables the path, so a bad key can never turn into a login bypass.
+	crossoverKey string
 }
+
+// WithCrossoverKey enables the server-change token path (W2PP_CROSSOVER_KEY).
+func (s *Server) WithCrossoverKey(key string) *Server { s.crossoverKey = key; return s }
 
 const (
 	classMasterArch   = 1
@@ -91,6 +101,20 @@ func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest
 	}
 	if auth.IsBlocked {
 		return &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BLOCKED}, nil
+	}
+	// Channel change (canais.md §8.1.2): the client that came from another channel
+	// sends a signed token in the password field instead of the password. The
+	// signature covers the account name, so a token cannot be replayed by another
+	// account; an invalid or expired one is just a wrong password.
+	if tok := req.GetPassword(); s.crossoverKey != "" && strings.HasPrefix(tok, crossover.Prefix) {
+		if _, ok := crossover.Verify(s.crossoverKey, req.GetAccountName(), tok, time.Now()); !ok {
+			return &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BAD_PASSWORD}, nil
+		}
+		return &dbv1.AccountLoginResponse{
+			Result:    dbv1.LoginResult_LOGIN_RESULT_OK,
+			AccountId: auth.ID,
+			Role:      auth.Role,
+		}, nil
 	}
 	ok, err := secret.VerifySecret(req.GetPassword(), auth.PassHash)
 	if err != nil {

@@ -21,6 +21,23 @@ navegador para o portal.
 O dossiê (`docs/analysis/qualidade-e-processo.md` §3) já define a pirâmide alvo; o que falta é o
 mecanismo: onde cada tipo de teste mora, como roda e o que reprova o PR.
 
+## Analisar tudo
+- creio que usamos o go para desenvolvimento do projeto, correto ? pesquise boas praticas de testes unitários, testes de integração, testes e2e e testes de performance para GO, analisar frameworks que possam facilitar a implementação de testes automatizados, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- analisar boas praticas de arquitetura de testes, como TDD (Test-Driven Development) e BDD (Behavior-Driven Development), para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos implementar Testes unitários, testes de integração, testes de sistema e testes de aceitação para garantir a qualidade do código e a estabilidade do sistema, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos implementar teste e2e (end-to-end) para garantir que todas as funcionalidades do sistema estejam funcionando corretamente, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Devemos usar boas praticas de teste, como TDD (Test-Driven Development) e BDD (Behavior-Driven Development), para garantir a qualidade do código e a estabilidade do sistema, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Faça pesquisas de boas praticas para testes unitários, testes de integração, testes de sistema e testes de aceitação, para que possamos otimizar o desempenho e garantir maior segurança na plataforma para todas as linguagens e frameworks modernos que estamos utilizando no projeto,excluindo o código legado em C++ que queremos portar.
+- Implementar os testes e2e reais em navegador(chrome) para garantir que todas as funcionalidades do sistema estejam funcionando corretamente, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- implementar o playright para testes e2e, executar ações reais nas paginas, testar completamente todas as funcionalidades, garantir que todas as funcionalidades do sistema estejam funcionando corretamente, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- Remover testes obsoletos que ainda mantinham códigos e comportamentos legados, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- analise se os testes estão realmente funcionais, completos, atualizados, otimizados, migrados para novas tecnologias e frameworks modernos, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- analisar se todos os testes estão com cenários reais, usando boas praticas de testes, como TDD (Test-Driven Development) e BDD (Behavior-Driven Development), para garantir a qualidade do código e a estabilidade do sistema, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- analisar se estamos com uma suite de testes inflada, com testes repetidos, desnecessários, obsoletos, duplicados, etc., para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- analise a arquitetura dos testes, organize os arquivos por tipo de teste unidade, integração,e2e, etc., para melhor organização, padronização, reuso, modularização, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- adote uso de mocks, stubs, fakes, spies, etc. para simular comportamentos e dependências externas nos testes, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+- evite espalhar constantes, dados de teste e configurações em todo o código, centralize essas informações em arquivos de configuração ou fixtures, para que possamos otimizar o desempenho e garantir maior segurança na plataforma.
+
 ## Passos
 
 1. **Inventário**: `grep -rn "t.Skip" --include=*_test.go`, classificar cada um em *conteúdo ausente*,

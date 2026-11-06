@@ -214,6 +214,13 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		// skillHit: this entry resolves through the skill pipeline; anything
 		// else (sentinel -2, 0, or an unknown claim) is melee.
 		pvpHit := world.IsPlayer(tid) && tid != s.Conn
+		// Canal verde (novato): sem PvP. O legado bloqueia o ramo inteiro de PvP
+		// quando NewbieEventServer está ligado (_MSG_Attack.cpp:405), e o duelo
+		// incluído — o ponto do canal é ninguém morrer para outro jogador.
+		if pvpHit && combatHit && d.isNoviceChannel() {
+			writeDamage(payload, i, 0)
+			continue
+		}
 		// PvP gate: combat damage (melee or an aggressive skill) requires the
 		// attacker to opt into PK mode (K key, _MSG_PKMode). The legacy server
 		// leaves this to the client; we keep it as an anti-cheat guard, which

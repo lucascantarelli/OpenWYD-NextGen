@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"openwyd-nextgen/internal/crossover"
 	"openwyd-nextgen/tmserver/internal/content"
 	"openwyd-nextgen/tmserver/internal/protocol"
 	"openwyd-nextgen/tmserver/internal/world"
@@ -56,6 +57,14 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	}
 
 	pass := cstr(body.AccountPassword[:])
+	if tok := cstr(body.Zero[:]); strings.HasPrefix(tok, crossover.Prefix) {
+		// Channel change (canais.md §8.1.2): a client that came from another
+		// channel sends the /srv token in Zero[52] instead of the password — the
+		// same field the legacy compares against TempKey. It travels as the
+		// password so the dbServer validates it; no proto field is added.
+		pass = tok
+		d.log.Info("account login: server-change token", "conn", s.Conn, "account", name)
+	}
 	s.AccountName = name
 	s.Mode = world.UserLogin
 	d.log.Info("account login: relaying to dbServer", "conn", s.Conn, "account", name)

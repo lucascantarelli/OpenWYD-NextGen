@@ -21,6 +21,16 @@ decisões caras e separação entre **documentação de produto** (jogador/admin
   guildas, quests, drops, eventos, comandos).
 - `AGENTS.md` §6 já é um bom mapa "preciso de X → leio Y": é a semente do índice do site.
 
+## Alanisar tudo
+- mapear,documentar e organizar toda a documentação do projeto de forma coerente e acessível, incluindo descrições de funcionalidades, implementações, features a serem implementadas, mapeamentos, regras de negócio, etc. para que possamos ter um conhecimento mais profundo sobre o funcionamento do projeto e suas funcionalidades.
+- caso precise pode mudar as pastas das docuemntações, recriar tudo novamente, atualizar as documentações existentes, organizar em indices, melhorar os recursos da documentação com recursos ricos, emojis, cores, imagens, links, etc. para que possamos ter uma documentação mais completa, acessível e fácil de entender.
+- Crie uma documentação completa sobre o projeto, incluindo documentação técnica para desenvolvimento, documentação administrativa para gestão do sistema, documentação de usuário para utilização da plataforma, documentação de todos os sistemas do jogo, incluindo evolução de personagem, guerras, skills, guilds, quests, drops de mobs, eventos,comandos de usuário, comandos administrativos etc. para que possamos ter um conhecimento mais profundo sobre o funcionamento do projeto e suas funcionalidades.
+- Faça uma pesquisa extensa na internet sobre todos os sistemas, itens, como é executado o sistema, prerequisitos, tudo, documente em docs/sistemas/
+quero que vc entenda como tudo funciona, evolução, guerras, eventos, uso dos itens, para que cada coisa serve e documente tudo, para podermos implementar corretamente todos os comportamentos.
+pesquise referencias em sites de servidores privates/oficiais para referencias de eventos, uso de itens, para que cada item serve, bugs, skills, novos sistemas diferentes dos originais/padrões
+- analisar  o que pode ser melhorado após a análise completa, o que deve ser atualizar, reaorganizado,e demais ajustes, proponha melhorias, modernizações, avanços.
+
+
 ## Passos
 
 1. **Esqueleto mkdocs**: `mkdocs.yml` (tema material, busca, navegação por seções), `docs-site/` como

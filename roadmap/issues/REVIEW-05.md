@@ -22,6 +22,44 @@ de verdade.
 - `scripts/db-audit.sql`, `db-backup.sh` e `db-baseline.sh` existem; falta rotina de restore
   verificada.
 
+## Analisar tudo - Possivel bug no cadastro de skills de FM
+Magia branca: oitava skill está cadastrada como garnet, um item
+
+Magia Negra: todas as skills estão erradas, aparecem itens
+Magia especial: primeira, segunda e oitava skill erradas
+
+creio que existam mais coisas que devem cadastradas nesse NPC, use os outros npcs de skill das outras classes como referencia para ajustar o npc da FM
+o que gerou esse problema ?
+fizemos a migração dos arquivos de itens e skills para o banco, isso foi algum problema de cadastro ? 
+existem alguns problemas de itens dentro do banco ? 
+vc consegue montar análises para encontrar determinados tipos de incoerencias que geram esses bugs de cadastro/falta de dados/ referencias erradas ?
+Conseguimos aplicar uma melhoria na modelagem do banco de dados ? aplicar boas praticas ?
+pesquisar:
+ - nomes desnormalizados
+ - despadronizados
+ - dados incoerentes
+ - nomes com padrões incoerentes
+fazer realmente uma organização, normalização nos cadastros do banco, organizar itens repetidos, identificar o que são, qual utilidade, 
+reorganizar cadastros para melhorar os registros, diferencia corretamente o que é cada item/skill, corrigir possiveis problemas,
+incluir descrição em itens, incluir informações no banco para que serve o item, onde ele é usado, montar pequenas descrições, para sabermos onde o item pode ser usado, para que pode ser usado, se está relacionado a algum sistema de evolução tipo arch,celestial, destravar level, e outros sistemas do jogo, para poder saber se o item é uma cópia de outro com função especifica, precisamos saber essas informações para termos uma melhor gestão dos itens, do uso dos itens, das skills, melhor descrição das skills, cadastrar no banco o real funcionamento ca skill, o calculo, para futuras análises, entre outras informações
+propor melhorias, organização, faça pesquisa de itens do wyd, funcções de itens, propor uma melhoria completa nos nossos dados, 
+deixar nosso catalogo completamente limpo, organizado, com dados reais, coerentes devidamente preenchidos, identificados, 
+analisar se podemos fazer algum tipo de remodelagem para melhorar os cadastros,aplicar boas praticas de modelagem de dados para organizar nosso banco
+tudo isso é apenas uma análise e propostas, verificar viabilidade de execução, propor melhorias, resolver problemas de relacionamento,analisar se precisamos criar views/materialized views para ganho de desempaenho, criar melhores relações, ou não e preciso, traria problemas ou complexidade, sem ganhos reais.
+Alguns erros encontrados no log
+db | 2026-11-05 21:01:59.887 UTC [16881] ERROR:  relation "instance_flag" does not exist at character 35
+db | 2026-11-05 21:03:40.116 UTC [17054] ERROR:  column "version" does not exist at character 8
+db | 2026-11-05 21:04:09.883 UTC [17124] ERROR:  column "name" does not exist at character 350
+db | 2026-11-05 21:06:13.895 UTC [17313] ERROR:  relation "audit_log" does not exist at character 54
+db | 2026-11-05 21:06:51.192 UTC [17399] ERROR:  column "version" does not exist at character 12
+Faça uma pesquisa extensa na internet sobre todos os sistemas, itens, como é executado o sistema, prerequisitos, tudo, documente em docs/sistemas/
+quero que vc entenda como tudo funciona, evolução, guerras, eventos, uso dos itens, para que cada coisa serve e documente tudo, para podermos implementar corretamente todos os comportamentos.
+pesquise referencias em sites de servidores privates/oficiais para referencias de eventos, uso de itens, para que cada item serve, bugs, skills, novos sistemas diferentes dos originais/padrões
+crie uma tabela de eventos, predefinidos, baseado em pesquisas de eventos de outros servidores, para criar templates de eventos, com toda a configuração dos eventos, itens usados,recompensas,etc.
+analisar as nossas migrations, o que pode ser melhorado após a análise completa, o que deve ser atualizar, reaorganizado,e demais ajustes.
+proponha melhorias, modernizações, avanções.
+foco principal é implementar todos os comportamentos padrões/oficiais, depois iremos partir para curtomizações.
+
 ## Passos
 
 1. **Roles**: `openwyd_app` (DML no que o boot precisa), `openwyd_ro` (portal de leitura) e

@@ -32,6 +32,9 @@ services:
         SVC: dbserver
     environment:
       W2PP_DB_DSN: postgres://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/postgres
+      # Chave HMAC do token de troca de canal (/srv): a MESMA nos dois canais e
+      # aqui (canais.md §8.1.2). Vazia desativa a troca in-game.
+      W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     command: ["serve", "-addr", ":7514"]
     restart: unless-stopped
     depends_on:
@@ -162,11 +165,23 @@ services:
       W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
       W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
       W2PP_MOB_CARRY_EDITING: "${W2PP_MOB_CARRY_EDITING:-false}"
+      # Canal verde (novato) é FIXO, como em produção: W2PP_NOVICE_CHANNEL é o
+      # número do canal (1-based) que roda o evento newbie e recusa PvP. Cada
+      # instância compara com o seu W2PP_SERVER_INDEX, então o mesmo valor vai
+      # para todos os containers. 0 desliga o canal verde.
+      W2PP_NOVICE_CHANNEL: "${W2PP_NOVICE_CHANNEL:-1}"
+      # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
+      W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
       - ./Release:/Release:ro   # content tree (rates/catalogs/maps), validated at boot
+    # Publicado por endereço, não em 0.0.0.0: dois canais no mesmo host precisam
+    # de portas iguais em IPs diferentes (o serverlist.bin guarda só o host).
+    # 127.0.0.1 fica para o teste local; 192.168.100.3 é o IP do canal 0.
     ports:
-      - "8281:8281"            # TMSrv CPSock client edge (game)
-      - "80:80"                # channel-status HTTP (serv00.htm), real WYD uses :80
+      - "127.0.0.1:8281:8281"          # TMSrv CPSock (jogo), loopback
+      - "127.0.0.1:80:80"              # status serv00.htm, loopback
+      - "192.168.100.3:8281:8281"      # jogo — canal 0
+      - "192.168.100.3:80:80"          # status — canal 0
 
   # Segundo canal (docs/migration/canais.md §7). Mesma imagem, mesmo dbServer,
   # mesmo Release/ somente-leitura e um ServerIndex diferente: é o índice que
@@ -204,11 +219,20 @@ services:
       W2PP_DROP_CONFIG_EDITING: "${W2PP_DROP_CONFIG_EDITING:-false}"
       W2PP_TELEPORT_EDITING: "${W2PP_TELEPORT_EDITING:-false}"
       W2PP_MOB_CARRY_EDITING: "${W2PP_MOB_CARRY_EDITING:-false}"
+      # Canal verde (novato) é FIXO, como em produção: W2PP_NOVICE_CHANNEL é o
+      # número do canal (1-based) que roda o evento newbie e recusa PvP. Cada
+      # instância compara com o seu W2PP_SERVER_INDEX, então o mesmo valor vai
+      # para todos os containers. 0 desliga o canal verde.
+      W2PP_NOVICE_CHANNEL: "${W2PP_NOVICE_CHANNEL:-1}"
+      # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
+      W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
       - ./Release:/Release:ro
+    # Canal 1 no seu próprio IP, na MESMA porta do canal 0: é assim que o cliente
+    # distingue canais (o .bin não carrega porta).
     ports:
-      - "8282:8282"            # canal 1 (ServerIndex 1)
-      - "8080:8080"            # status HTTP do canal 1
+      - "192.168.100.4:8281:8282"      # jogo — canal 1
+      - "192.168.100.4:80:8080"        # status — canal 1
 
 volumes:
   pgdata:

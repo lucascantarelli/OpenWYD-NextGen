@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate ci
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate ci client-serverlist
 
 build:
 	go build ./...
@@ -101,3 +101,13 @@ certs:
 
 certs-clean:
 	rm -rf certs
+
+# Gera o serverlist.bin a partir da entrada canônica (client-tools/serverlist/servers.txt,
+# que é o -in padrão da ferramenta) e instala em client/. O client/ não é versionado,
+# então este alvo é local: o .bin nunca entra no git. Ver docs/migration/canais.md §8.
+# Neste Windows não existe `make`: use `mingw32-make client-serverlist`.
+CLIENT_SERVERLIST ?= client/serverlist.bin
+
+client-serverlist:
+	go run ./client-tools/serverlist -in client-tools/serverlist/servers.txt -out $(CLIENT_SERVERLIST)
+	go run ./client-tools/serverlist -print $(CLIENT_SERVERLIST)

@@ -322,6 +322,10 @@ var (
 // so they are not handled here.
 func (d *Dispatcher) runCommand(w *world.World, s *world.Session, name string, args []byte) bool {
 	cmd := strings.TrimPrefix(name, "/")
+	if cmd == "srv" {
+		d.changeServer(w, s, args)
+		return true
+	}
 	if cmd == "nt" {
 		if e := w.Entity(s.Conn); e != nil {
 			d.sendKefraBalance(w, s, e.NightmareEntries)
@@ -643,6 +647,16 @@ func (d *Dispatcher) magicTrumpet(w *world.World, s *world.Session, args []byte)
 // (notice.go).
 func (d *Dispatcher) sendChatText(w *world.World, s *world.Session, text string) {
 	w.SendTo(s, protocol.Header{Type: protocol.MsgMessageChat, ID: uint16(s.Conn)}, protocol.EncodeMessageChatBody(text))
+}
+
+// expPanelColor is TNColor::Default (Basedef.h:611): 0xFF000000 | 0xCCAAFF.
+const expPanelColor uint32 = 0xFFCCAAFF
+
+// sendMsgExp mirrors the legacy SendMsgExp (Server.cpp:5940-5968): the EXP gain
+// rides MSG_Exp_Msg_Panel_ (0x5000) with Msg[96] + Color32, and the client paints
+// it as the EXP notification instead of the character speaking the line.
+func (d *Dispatcher) sendMsgExp(w *world.World, s *world.Session, text string, color uint32) {
+	w.SendTo(s, protocol.Header{Type: protocol.MsgExpPanel, ID: uint16(s.Conn)}, protocol.EncodeExpPanelBody(text, color))
 }
 
 // sendNPCChatText uses the speaker ID like legacy SendSay, but keeps personal
