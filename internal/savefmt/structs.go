@@ -119,14 +119,13 @@ type Quest struct {
 	MobCount   [3]int16
 }
 
-// MobExtra is STRUCT_MOBEXTRA (552 bytes, align 8) — extra per-character data
-// (citizenship, fame, soul, quest progress, donate; data-formats.md §1.5,
-// Basedef.h:620-733).
+// MobExtra é STRUCT_MOBEXTRA (552 bytes, alinhamento 8) — dados extras por
+// personagem (cidadania, fama, alma, progresso de quest, donate).
 //
-// The leading scalar block is laid out by MSVC x86 natural alignment:
-// ClassMaster@0, Citizen@2, SecLearnedSkill@4, Fame@8, Soul@12 and
-// MortalFace@14. The rest of the 552-byte block remains raw until the quest and
-// donate/NT sub-structures are fully verified.
+// O bloco escalar inicial segue o alinhamento natural do MSVC x86:
+// ClassMaster@0, Citizen@2, SecLearnedSkill@4, Fame@8, Soul@12 e
+// MortalFace@14. O resto do bloco de 552 bytes fica cru até que as subestruturas
+// de quest e donate/NT sejam verificadas por completo.
 type MobExtra struct {
 	Raw [MobExtraSize]byte
 }

@@ -39,7 +39,7 @@ func TestTransportVectors(t *testing.T) {
 	dir := filepath.Join("..", "..", "test", "fixtures", "transport")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		t.Skipf("no transport fixtures dir: %v", err)
+		t.Skipf("motivo: conteúdo ausente — tmserver/test/fixtures/transport/ não existe: %v", err)
 	}
 	ran := 0
 	for _, e := range entries {
@@ -56,7 +56,7 @@ func TestTransportVectors(t *testing.T) {
 				t.Fatalf("unmarshal: %v", err)
 			}
 			if v.WireHex == "" || v.PlainHex == "" {
-				t.Skip("UNVERIFIED: schema-only example; needs a real capture (parity-tests.md §5/§7a)")
+				t.Skip("motivo: conteúdo ausente — exemplo só de schema (sem hex); precisa de captura real para virar vetor")
 			}
 			plain := unhex(t, v.PlainHex)
 			wire := unhex(t, v.WireHex)

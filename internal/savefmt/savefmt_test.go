@@ -217,7 +217,7 @@ func TestRealAntonioSample(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "Release", "DBsrv", "run", "account", "A", "antonio")
 	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Skipf("sample not present: %v", err)
+		t.Skipf("motivo: conteúdo ausente — a amostra legacy Release/DBsrv/run/account/A/antonio não está nesta árvore: %v", err)
 	}
 	v := DetectVersion(len(b))
 	if v != VersionLegacy4294 {
@@ -229,5 +229,5 @@ func TestRealAntonioSample(t *testing.T) {
 	if v.Modelled() {
 		t.Fatal("legacy format should not be modelled")
 	}
-	t.Skip("UNVERIFIED: legacy 4294 layout not modelled — needs reversing from a reference build (data-formats.md §1.2)")
+	t.Skip("motivo: feature — o layout legacy 4294 não está modelado (UNVERIFIED); precisa de engenharia reversa de um build de referência")
 }

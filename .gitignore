@@ -303,3 +303,7 @@ serverlist bin/**/*.bin
 
 # serverlist.bin gerado com IP privado — nunca versionar
 dist/serverlist/
+
+# Saídas de build (mkdocs e logs de teste local)
+/site/
+/tmp/

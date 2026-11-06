@@ -110,7 +110,7 @@ func releaseDir(t *testing.T) string {
 	t.Helper()
 	dir := filepath.Join("..", "..", "..", "Release")
 	if _, err := os.Stat(filepath.Join(dir, "Common", "ItemList.csv")); err != nil {
-		t.Skipf("Release content tree not available: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
 	}
 	return dir
 }
@@ -143,7 +143,7 @@ func TestBinDriftMatchesBaseline(t *testing.T) {
 	dir := releaseDir(t)
 	binPath := filepath.Join(dir, "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("ItemList.bin not available: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 
 	catalog, err := Scan(dir)
@@ -178,7 +178,7 @@ func TestBinDriftMatchesBaseline(t *testing.T) {
 func TestBinMagicRebalanceMatchesClientCatalog(t *testing.T) {
 	binPath := filepath.Join(releaseDir(t), "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("ItemList.bin not available: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 	for _, tc := range []struct {
 		index int
@@ -279,7 +279,7 @@ func TestBinRequirementsMatchCSV(t *testing.T) {
 	dir := releaseDir(t)
 	binPath := filepath.Join(dir, "DBsrv", "run", "ItemList.bin")
 	if _, err := os.Stat(binPath); err != nil {
-		t.Skipf("ItemList.bin not available: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/ItemList.bin não está nesta árvore (o catálogo vive no banco): %v", err)
 	}
 
 	fromBin := binRequirements(t, binPath)

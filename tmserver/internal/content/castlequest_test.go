@@ -5,7 +5,7 @@ import "testing"
 func TestLoadCastleQuestsReal(t *testing.T) {
 	quests, err := LoadCastleQuests(release(t, "Common", "Settings", "CastleQuest.txt"))
 	if err != nil {
-		t.Skipf("CastleQuest.txt unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CastleQuest.txt não foi lido nesta árvore: %v", err)
 	}
 	if len(quests) != 1 {
 		t.Fatalf("quests = %d, want 1", len(quests))

@@ -1,20 +1,20 @@
-// Package droprate holds the base drop divisors per Carry slot — the table the
-// game formulas and the web editor must agree on.
+// Package droprate mantém os divisores base de drop por slot de Carry — a tabela
+// em que as fórmulas do jogo e o editor web precisam concordar.
 //
-// It lives in the module-level internal/ (not tmserver/internal) because both
-// sides need it: tmserver/internal/loot copies this table into its mutable
-// DropRate (which the moderator overlay rewrites at boot) and
-// webserver/internal/dropadmin shows these values as the "base" the editor is
-// overriding. Real values from Basedef.cpp:222 (game-rules.md §2.2).
+// Mora no internal/ do módulo (não em tmserver/internal) porque os dois lados
+// precisam dela: tmserver/internal/loot copia esta tabela para o seu DropRate
+// mutável (reescrito pelo overlay do moderador no boot) e
+// webserver/internal/dropadmin mostra estes valores como a "base" que o editor
+// sobrescreve.
 //
-// The value is a DIVISOR: the bigger it is, the rarer the drop (1 = always).
+// O valor é um DIVISOR: quanto maior, mais raro o drop (1 = sempre).
 package droprate
 
-// MaxRate is the largest accepted divisor; mirrors the CHECK on
-// drop_rate_override.value. A typo above it is rejected instead of clamped.
+// MaxRate é o maior divisor aceito; espelha o CHECK de
+// drop_rate_override.value. Um valor acima dele é recusado, não truncado.
 const MaxRate = 1_000_000
 
-// Rate is g_pDropRate[64]: base odds per Carry slot of the mob, NOT per item.
+// Rate é g_pDropRate[64]: chance base por slot de Carry do mob, NÃO por item.
 var Rate = build()
 
 func build() [64]int {

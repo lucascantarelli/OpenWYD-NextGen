@@ -212,9 +212,9 @@ func sancRows(path string) ([]Row, error) {
 }
 
 func parseSanc(r io.Reader) ([]Row, error) {
-	// The table is fixed: every (anvil, index) cell exists even when the file
-	// omits it, because ReadSancRate never clears g_pSancRate. Emitting the whole
-	// shape is what makes "sem linha = valor compilado" visible in the UI.
+	// A tabela é fixa: toda célula (bigorna, índice) existe mesmo quando o arquivo
+	// a omite, porque ReadSancRate nunca limpa g_pSancRate. Emitir a forma completa
+	// é o que torna "sem linha = valor compilado" visível na UI.
 	const anvils = 3
 	defaults := [anvils][SancRowCount]int64{
 		{100, 100, 100, 100, 100, 100, 100, 0, 0, 0, 0, 0},

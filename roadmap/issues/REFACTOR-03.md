@@ -1,6 +1,6 @@
 # REFACTOR-03 — Comentários e docstrings em português, sem referência a issue/roadmap/legado
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** ⏳ proposta
+**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 em andamento (fatia de 06/11 entregue)
 
 ## Objetivo
 
@@ -60,6 +60,54 @@ git grep -n -E 'issue [0-9]|roadmap/|Source/Code' -- '*.go' | grep -v '\.pb\.go'
 - [ ] 0 citação de `issue N`/`roadmap/`/`docs/`/`Source/` em `.go` escrito à mão.
 - [ ] Todo símbolo exportado de `internal/` e `api/` com docstring no padrão.
 - [ ] Script de verificação rodando no CI.
+
+## Fatia entregue (06/11/2026)
+
+A issue inteira é L (396 comentários em inglês, 109 referências históricas). A fatia escolhida foi a
+que o próprio passo 2 pede primeiro — `internal/*`, o que mais de um binário consome — limitada ao que
+cabe com leitura e teste no mesmo dia.
+
+**Diretórios migrados e agora no gate:** `internal/textenc`, `internal/droprate`, `internal/crossover`.
+
+O que mudou neles:
+
+- comentário em inglês traduzido (incluindo docstring de pacote, que é o que mais engana leitor novo);
+- referência histórica removida do código: `Source/Code/TMSrv/_MSG_MessageWhisper.cpp:75-95`,
+  `docs/migration/canais.md §8.1.2`, `CFileDB.cpp:662-812`, `Basedef.h`, `issue #43`;
+- o porquê continua escrito, sem depender do roadmap para ser entendido.
+
+**Gate:** `scripts/check-comments.sh` (novo) reprova comentário em inglês e referência histórica nos
+diretórios listados. A lista é incremental de propósito: ligar repo-wide hoje deixaria o job vermelho
+para sempre, e gate assim é gate desligado.
+
+```bash
+bash scripts/check-comments.sh                        # 3 diretório(s) limpos
+bash scripts/check-comments.sh internal/ratetables    # FALHA — prova de que o gate não é vazio
+```
+
+A segunda linha é a prova que importa: rodar o gate num diretório ainda sujo **reprova**. A primeira
+versão do script passava nos seis diretórios que eu tinha escolhido enquanto eles ainda tinham
+comentário em inglês — padrão bom demais (só `// The …`) e falso negativo. Ampliei para uma lista de
+palavras que não ocorrem em português e reduzi a fatia ao que ficou de fato limpo.
+
+### Dívida medida que permanece
+
+| Diretório | Comentários a migrar |
+|---|---:|
+| `tmserver/internal/handler` | 194 |
+| `tmserver/internal/world` | 29 |
+| `internal/store` | 28 |
+| `tmserver/internal/content` | 19 |
+| `tmserver/internal/protocol` | 17 |
+| `tmserver/internal/refine` | 10 |
+| `tmserver/internal/level` | 7 |
+| `tmserver/internal/dbclient` | 7 |
+| `internal/savefmt` | 5 |
+| demais | ~25 |
+
+`internal/savefmt` ficou fora da lista do gate mesmo com a tradução parcial já feita: ainda tem
+`Basedef.h`/`data-formats.md` em várias constantes, e listar um diretório meio limpo é pior que não
+listar.
 
 ## Riscos/rollback
 

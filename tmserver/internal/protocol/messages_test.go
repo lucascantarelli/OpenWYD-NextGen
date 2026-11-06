@@ -247,7 +247,7 @@ func TestAuthGameLayout(t *testing.T) {
 	if AuthGameSize != 196 {
 		t.Fatalf("AuthGameSize = %d, want 196", AuthGameSize)
 	}
-	t.Skip("UNVERIFIED: _AUTH_GAME internal layout needs a real TMSrv↔BISrv capture (protocol-spec.md §4.3) — Phase 6")
+	t.Skip("motivo: feature — o layout interno de _AUTH_GAME é UNVERIFIED e precisa de captura TMSrv↔BISrv real (fase 6 do protocolo)")
 }
 
 func TestEncodeSetShortSkill(t *testing.T) {

@@ -52,6 +52,48 @@ curl -s -o /dev/null -w "%{http_code}\n" -b cookies.txt http://127.0.0.1:3000/it
 - [ ] Nenhuma página chamando cliente gRPC admin fora de `adminCall`.
 - [ ] Teste automatizado prova 3 casos: anônimo, `player`, `admin`.
 
+## Resultado (06/11/2026) — guarda de rota provada por teste
+
+**A afirmação "não há `portal/src/middleware.ts`" estava errada**: o arquivo existe desde a entrega
+do portal e valida o JWT HS256 do cookie no edge. O defeito real era outro, e pior:
+
+| Achado | Evidência |
+|---|---|
+| `matcher` cobria **14 de 19** rotas admin: `/precos`, `/atlas`, `/guildas`, `/castelo` ficavam abertas | derivado do disco por `middleware.test.ts` |
+| havia um array `GUARDED` morto (`void GUARDED`) listando as 19 — documentava proteção que o `matcher` não aplicava | `git show 3157207` |
+| `/operacao` estava no `matcher` sem página existir | idem |
+
+Corrigido: `matcher` agora tem as 19 rotas que existem, `/operacao` saiu (a página ainda não existe;
+quando nascer, o teste de cobertura cobra a entrada).
+
+### Testes (rodam no `npm test`)
+
+`portal/src/middleware.test.ts` — 8 casos: sem cookie → 307 para `/login` com query limpa; rota
+aninhada barrada; cookie válido passa (`x-middleware-next`); cookie assinado com outra chave → 307;
+cookie expirado → 307; **cobertura** derivada de `app/(admin)` no disco (toda página no matcher);
+**cobertura** derivada do menu (`SHELL_ROUTES` sem `soon`); nenhum padrão do matcher apontando para
+rota inexistente; rotas públicas fora do matcher; regressão nomeada de `/precos`, `/atlas`,
+`/guildas`, `/castelo`.
+
+`portal/src/app/api/search/accounts/route.test.ts` — 3 casos na fronteira de autorização real (o
+`route.ts` que existe, não um endpoint inventado para o teste): sem sessão → **401**, papel `player` →
+**403**, staff → 200 com `cache-control: private, no-store`.
+
+```
+npx vitest run   →  12 arquivos, 93 testes, todos passando
+npx tsc --noEmit →  exit 0
+```
+
+O teste reprova de fato: ao rodá-lo com o `matcher` de 06/11 ele apontou as 4 rotas abertas e o
+`/operacao` órfão antes de qualquer correção.
+
+### O que continua aberto nesta issue
+
+- Matriz papel × rota × ação em `docs/analysis/portal-papeis.md` (não escrita).
+- Checagem estática no CI de cliente gRPC admin fora de `adminCall`.
+- Default-deny para `api/**` (hoje cada rota checa a si mesma; só `/api/search/accounts` tem teste).
+- Fluxo Playwright por papel — pertence à TEST-03 (Fila B).
+
 ## Riscos/rollback
 
 Risco: middleware bloquear rota legítima e derrubar o painel. Mitigação: lista explícita de exceções

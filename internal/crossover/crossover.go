@@ -1,16 +1,15 @@
-// Package crossover implements the server-change token ("crossover") that lets a
-// client move between channels without retyping the password.
+// Package crossover implementa o token de troca de servidor ("crossover") que
+// deixa o cliente mudar de canal sem redigitar a senha.
 //
-// # O que o legado faz
+// # O fluxo
 //
-// O cliente troca de canal por um comando (Source/Code/TMSrv/_MSG_MessageWhisper.cpp:75-95),
-// e são três saltos (docs/migration/canais.md §8.1.2):
+// São três saltos entre o comando do cliente e o login no outro canal:
 //
 //	tmsrv → db   MSG_DBServerChange { NewServerID, Slot }
 //	db    → tm   MSG_DBCNFServerChange { AccountName, Enc }
 //	             Enc = "*<srv> <Enc[0..7]> <slot>", gravado em TempKey[52]
 //	cliente      reconecta e manda Enc no campo Zero[52] do MSG_AccountLogin
-//	db           TempKey == Zero → login aceito sem senha (CFileDB.cpp:662-812)
+//	db           TempKey == Zero → login aceito sem senha
 //
 // # Por que não copiamos o TempKey
 //
@@ -32,38 +31,38 @@ import (
 )
 
 const (
-	// Prefix marks the login password field as a crossover token instead of a
-	// real password. A password can never start with it: the login normalizes
-	// the name to lowercase and argon2id compares the raw value we sent.
+	// Prefix marca o campo de senha do login como token de crossover em vez de
+	// senha real. Uma senha nunca começa com ele: o login normaliza o nome para
+	// minúsculas e o argon2id compara o valor cru que enviamos.
 	Prefix = "~x1:"
 
-	// EncSize is the legacy Enc/TempKey width (Basedef.h MSG_DBCNFServerChange).
-	// The token must fit the same Zero[52] field the client sends back.
+	// EncSize é a largura legada de Enc/TempKey (MSG_DBCNFServerChange).
+	// O token precisa caber no mesmo campo Zero[52] que o cliente devolve.
 	EncSize = 52
 
-	// TTL is how long a token stays valid after being issued. The client
-	// reconnects in seconds; two minutes covers a slow relink, not a replay.
+	// TTL é por quanto tempo um token vale depois de emitido. O cliente
+	// reconecta em segundos; dois minutos cobrem religação lenta, não replay.
 	TTL = 2 * time.Minute
 
-	// macLen is how many hex characters of the HMAC travel in the token: 64 bits
-	// is short enough for the 52-byte field and long enough that forging one is
-	// not a password bypass.
+	// macLen é quantos caracteres hex do HMAC viajam no token: 64 bits cabem no
+	// campo de 52 bytes e são longos o bastante para que forjar um não seja um
+	// bypass de senha.
 	macLen = 16
 )
 
-// Claims is what a valid token asserts.
+// Claims é o que um token válido afirma.
 type Claims struct {
-	// Target is the 1-based channel the client asked for (ServerIndex+1).
+	// Target é o canal pedido pelo cliente, começando em 1 (ServerIndex+1).
 	Target int
-	// Slot is the character slot that must log in.
+	// Slot é o slot de personagem que deve logar.
 	Slot int
-	// Expires is the Unix second after which the token is refused.
+	// Expires é o segundo Unix a partir do qual o token é recusado.
 	Expires int64
 }
 
-// Build signs a token for account moving to target (1-based channel) with slot.
-// An empty key returns "": an instance without W2PP_CROSSOVER_KEY must never
-// mint a token that a peer could accept.
+// Build assina o token da conta que vai para target (canal começando em 1) no
+// slot. Chave vazia devolve "": uma instância sem W2PP_CROSSOVER_KEY nunca pode
+// emitir um token que o par aceite.
 func Build(key, account string, slot, target int, now time.Time) string {
 	if key == "" {
 		return ""
@@ -72,12 +71,12 @@ func Build(key, account string, slot, target int, now time.Time) string {
 	return fmt.Sprintf("%s%d:%d:%d:%s", Prefix, target, slot, exp, mac(key, account, slot, target, exp))
 }
 
-// Verify checks the token against the account it claims to belong to. It returns
-// false for a malformed token, a bad signature, an expired one, or an account
-// mismatch — never an error the caller has to distinguish.
+// Verify confere o token contra a conta a que ele diz pertencer. Devolve false
+// para token malformado, assinatura errada, expirado ou conta divergente — nunca
+// um erro que o chamador precise distinguir.
 func Verify(key, account, token string, now time.Time) (Claims, bool) {
-	// An empty key is not a key: without this an unconfigured dbServer would
-	// accept a token anyone can forge with the same empty key.
+	// Chave vazia não é chave: sem isso um dbServer não configurado aceitaria um
+	// token que qualquer um forja com a mesma chave vazia.
 	if key == "" {
 		return Claims{}, false
 	}
@@ -107,8 +106,8 @@ func Verify(key, account, token string, now time.Time) (Claims, bool) {
 	return Claims{Target: target, Slot: slot, Expires: exp}, true
 }
 
-// mac is the truncated hex HMAC over every field the token asserts, including the
-// account name, so a token cannot be replayed by another account.
+// mac é o HMAC hex truncado sobre todo campo que o token afirma, incluindo o
+// nome da conta, então outra conta não reaproveita o token.
 func mac(key, account string, slot, target int, exp int64) string {
 	h := hmac.New(sha256.New, []byte(key))
 	fmt.Fprintf(h, "%s\x00%d\x00%d\x00%d", strings.ToLower(account), slot, target, exp)

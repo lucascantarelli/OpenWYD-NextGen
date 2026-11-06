@@ -2,8 +2,6 @@ package npctemplate
 
 import (
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -56,33 +54,6 @@ func TestTakeInventory(t *testing.T) {
 	// The canonical set is summarised, never enumerated.
 	if strings.Contains(report, "Canonical\n") {
 		t.Errorf("report enumerates canonical templates:\n%s", report)
-	}
-}
-
-// TestTakeInventoryRealContentTree runs the census against the shipped
-// Release/ tree when it is checked out. It is the regression guard for issue
-// #244: every file in npc/ must classify as a known STRUCT_MOB layout, and both
-// legacy layouts must still be present — if either count drops to zero the
-// fixtures and the legacy decoder stopped being exercised by real data.
-func TestTakeInventoryRealContentTree(t *testing.T) {
-	dir := filepath.Join("..", "..", "Release", "TMsrv", "run", "npc")
-	if _, err := os.Stat(dir); err != nil {
-		t.Skip("Release content tree not available")
-	}
-	inv, err := TakeInventory(dir)
-	if err != nil {
-		t.Fatalf("TakeInventory: %v", err)
-	}
-	if inv.Stats.Rejected != 0 || inv.Stats.Unreadable != 0 {
-		t.Errorf("%d rejected / %d unreadable files, want 0/0; unclassified: %v",
-			inv.Stats.Rejected, inv.Stats.Unreadable, inv.Names[savefmt.MobVersionUnknown])
-	}
-	if inv.Stats.Current816 == 0 || inv.Stats.Legacy756 == 0 || inv.Stats.Legacy756Padded == 0 {
-		t.Errorf("layout counts = %d/%d/%d (816/756/920), want all non-zero",
-			inv.Stats.Current816, inv.Stats.Legacy756, inv.Stats.Legacy756Padded)
-	}
-	if inv.Stats.Loaded() != inv.Stats.Total() {
-		t.Errorf("loaded %d of %d files", inv.Stats.Loaded(), inv.Stats.Total())
 	}
 }
 

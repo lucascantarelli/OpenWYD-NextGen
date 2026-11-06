@@ -233,6 +233,18 @@ services:
     ports:
       - "192.168.100.4:8281:8282"      # jogo — canal 1
       - "192.168.100.4:80:8080"        # status — canal 1
+  # Site de documentação (DOC-01). `serve` recarrega ao editar; o gate é
+  # `build --strict`, rodado no CI e documentado no cabeçalho do mkdocs.yml.
+  mkdocs:
+    build:
+      context: .
+      dockerfile: mkdocs/Dockerfile
+    command: ["serve", "-a", "0.0.0.0:8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/docs
+    profiles: ["docs"]
 
 volumes:
   pgdata:

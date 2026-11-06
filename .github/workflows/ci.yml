@@ -1,5 +1,12 @@
 name: CI
 
+# Orquestrador: decide o que mudou e delega para os workflows reutilizáveis
+# (`_go.yml`, `_portal.yml`). Nenhum job repete `checkout` + `setup-go` fora do
+# que precisa — antes eram 5 jobs com a mesma preparação.
+#
+# O job `changes` roda **sempre**: um PR só de documentação continua tendo um
+# check que reporta, sem deixar status obrigatório pendente para sempre.
+
 on:
   push:
     branches: [main]
@@ -9,154 +16,52 @@ on:
 permissions:
   contents: read
 
-# One CI run per ref; cancel superseded runs to save minutes.
+# Um run por ref; cancela os supersedidos para economizar minutos.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Build & Test
+  changes:
+    name: Changed paths
     runs-on: ubuntu-24.04
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      portal: ${{ steps.filter.outputs.portal }}
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v6
+      # Filtro de caminho nativo do runner: `paths:` no gatilho do workflow
+      # deixaria o status obrigatório pendente em PR que não tocasse o filtro.
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          go-version-file: go.mod
-          cache: true
+          filters: |
+            go:
+              - '**/*.go'
+              - '**/*.proto'
+              - 'go.mod'
+              - 'go.sum'
+              - 'api/**'
+              - 'internal/migrations/**'
+              - 'Release/**'
+              - 'scripts/**'
+              - 'Makefile'
+              - 'docker-compose*.yaml'
+              - 'Dockerfile'
+              - '.github/workflows/_go.yml'
+            portal:
+              - 'portal/**'
+              - '.github/workflows/_portal.yml'
 
-      # gofmt is authoritative (guidelines); .pb.go is generated and exempt.
-      - name: gofmt
-        run: |
-          unformatted="$(gofmt -l . | grep -v '\.pb\.go$' || true)"
-          if [ -n "$unformatted" ]; then
-            echo "::error::gofmt needed on:"; echo "$unformatted"
-            exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: Build
-        run: go build ./...
-
-      # Race detector + coverage. Integration tests are behind the `integration`
-      # build tag (need Postgres) and are intentionally excluded here.
-      - name: Test
-        run: go test -race -cover ./...
-
-  # BUILD-01: reprova se o path antigo do módulo voltar a algum arquivo versionado
-  # ou se `make proto` alterar os artefatos commitados. É o mesmo comando que o dev
-  # roda (`make gate`); sem protoc no runner, o script usa golang:1.26-alpine.
-  gate:
-    name: Module & proto gate
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: make gate
-        run: make gate
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      # only-new-issues: gate quality on new/changed code without blocking on the
-      # pre-existing lint debt. Run `golangci-lint run` locally for the full set.
-      - uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          only-new-issues: true
-
-  govulncheck:
-    name: Vulnerabilities
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install govulncheck
-        # Pinned: @latest (v1.8.0+) requires a newer Go than go.mod, and
-        # GOTOOLCHAIN=local refuses to switch. Bump together with the Go version.
-        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-
-      - name: Run govulncheck
-        run: govulncheck ./...
+  go:
+    name: Go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    uses: ./.github/workflows/_go.yml
 
   portal:
-    name: Portal (typecheck & test)
-    runs-on: ubuntu-24.04
-    defaults:
-      run:
-        working-directory: portal
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: portal/package-lock.json
-
-      - name: Install
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      # Builds the standalone output used by portal/Dockerfile.
-      - name: Build
-        run: npm run build
-
-      - uses: docker/setup-buildx-action@v4
-
-      # Same context/file as docker compose; no push, just a build smoke test.
-      - name: Docker build
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: portal/Dockerfile
-          push: false
-          tags: w2pp-portal:ci
-          cache-from: type=gha,scope=portal
-          cache-to: type=gha,mode=max,scope=portal
-
-  docker:
-    name: Docker build (${{ matrix.svc }})
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        svc: [tmserver, dbserver, binserver, webserver]
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: docker/setup-buildx-action@v4
-
-      # Build the production image the same way Railway does (parameterized by
-      # SVC); catches Dockerfile/.dockerignore regressions — e.g. the Release/
-      # content tree tmserver bakes in. No push: this is a build smoke test.
-      - name: Build image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          build-args: SVC=${{ matrix.svc }}
-          push: false
-          tags: w2pp-${{ matrix.svc }}:ci
-          cache-from: type=gha,scope=${{ matrix.svc }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.svc }}
+    name: Portal
+    needs: changes
+    if: needs.changes.outputs.portal == 'true'
+    uses: ./.github/workflows/_portal.yml

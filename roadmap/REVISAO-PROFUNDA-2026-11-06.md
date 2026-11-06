@@ -198,6 +198,11 @@ estrutural, depois produto. Issue grande só entra quando a fila barata estiver 
 
 ### Fila A — fechar barato (S, teste local, sem humano)
 
+> **Estado no fim de 06/11:** A1 ✅ (DoD), A2 ✅ (teste de rota, com 4 rotas abertas corrigidas), A3 ✅
+> (42 skips classificados + gate), A4 ✅ (`make ci` + workflows reutilizáveis), A5 🟡 (fatia de 3
+> diretórios + gate; dívida medida na issue), A6 🟡 (site `--strict` verde + 6 ADRs; falta página por
+> sistema e `doc_legacy/`). Detalhe por item nas próprias issues.
+
 | Ordem | Issue | Por quê agora | Aceite |
 |---:|---|---|---|
 | A1 | `CLEAN-05` | DoD única destrava o critério de "pronto" de todas as outras | ✅ `development-guidelines/processo.md` + `AGENTS.md` §8 apontando |

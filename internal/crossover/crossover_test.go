@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// TestBuildVerifyRoundTrip locks the token contract: a token signed for one
-// account/channel verifies only for that account, and the 52-byte budget the
-// client's Zero[52] field imposes is respected.
+// TestBuildVerifyRoundTrip trava o contrato do token: um token assinado para uma
+// conta/canal só verifica para aquela conta, e o orçamento de 52 bytes que o
+// campo Zero[52] do cliente impõe é respeitado.
 func TestBuildVerifyRoundTrip(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	tok := Build("key", "Test", 2, 1, now)
@@ -28,8 +28,8 @@ func TestBuildVerifyRoundTrip(t *testing.T) {
 	}
 }
 
-// TestVerifyRejects covers every way a token must fail: another account, another
-// key, a tampered field, an expired one and garbage.
+// TestVerifyRejects cobre todo jeito de um token falhar: outra conta, outra
+// chave, campo adulterado, token expirado e lixo.
 func TestVerifyRejects(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	good := Build("key", "test", 0, 2, now)
@@ -58,8 +58,8 @@ func TestVerifyRejects(t *testing.T) {
 	}
 }
 
-// TestRealPasswordIsNotAToken makes sure a normal password can never be read as a
-// token, and that an empty key disables the path instead of accepting anything.
+// TestRealPasswordIsNotAToken garante que uma senha normal nunca é lida como
+// token, e que chave vazia desliga o caminho em vez de aceitar qualquer coisa.
 func TestRealPasswordIsNotAToken(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	if _, ok := Verify("key", "test", "test123", now); ok {

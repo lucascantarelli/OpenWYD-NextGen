@@ -794,7 +794,7 @@ func TestSkillDeadTargetRejectsDamage(t *testing.T) {
 
 	corpse := w.Entity(world.MaxUser)
 	if corpse == nil || corpse.Mode == world.MobEmpty {
-		t.Skip("0-HP mob not retained as a present entity; dead-target gate needs a live-then-killed target")
+		t.Skip("motivo: ambiente — o gate de alvo morto precisa de um mob vivo e então morto na mesma sessão; o 0-HP não fica no mundo como entidade presente")
 	}
 	if corpse.HP > 0 {
 		t.Fatalf("corpse HP = %d, want <= 0", corpse.HP)

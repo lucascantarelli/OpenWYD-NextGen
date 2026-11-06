@@ -91,7 +91,7 @@ func TestLoadNPCGenerators(t *testing.T) {
 func TestLoadNPCGeneratorsReal(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "Release", "TMsrv", "run", "NPCGener.txt")
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("NPCGener.txt unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — NPCGener.txt saiu do repositório (spawns vêm de npc_definition no banco); o loader só roda sobre árvore externa: %v", err)
 	}
 	gens, err := LoadNPCGenerators(path)
 	if err != nil {

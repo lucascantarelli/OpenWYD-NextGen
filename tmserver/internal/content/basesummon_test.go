@@ -9,7 +9,7 @@ func TestLoadBaseSummons(t *testing.T) {
 	dir := filepath.Join("..", "..", "..", "Release")
 	templates, missing, err := LoadBaseSummons(dir)
 	if err != nil {
-		t.Skipf("BaseSummon tree unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/TMsrv/run/BaseSummon não está nesta árvore: %v", err)
 	}
 	if len(templates) != 40 {
 		t.Fatalf("templates = %d slots, want 40 (CNPCSummon::Initialize order)", len(templates))

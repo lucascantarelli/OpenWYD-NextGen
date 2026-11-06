@@ -14,7 +14,7 @@ func release(t *testing.T, parts ...string) string {
 	t.Helper()
 	p := filepath.Join(append([]string{"..", "..", "..", "Release"}, parts...)...)
 	if _, err := os.Stat(p); err != nil {
-		t.Skipf("Release content unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada nesta árvore: %v", err)
 	}
 	return p
 }
@@ -23,7 +23,7 @@ func TestCombineVariantRatesFromRelease(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "Release", "Common", "Settings", "CompRate.txt")
 	c, err := LoadCompRate(path)
 	if err != nil {
-		t.Skipf("Release content unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada nesta árvore: %v", err)
 	}
 	if got := c.ChanceBase("Tiny"); got != 15 {
 		t.Errorf("Tiny ChanceBase=%d, want 15", got)
@@ -42,7 +42,7 @@ func TestCombineVariantRatesFromRelease(t *testing.T) {
 func TestLoadCompRate(t *testing.T) {
 	c, err := LoadCompRate(release(t, "Common", "Settings", "CompRate.txt"))
 	if err != nil {
-		t.Skipf("CompRate.txt unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CompRate.txt não foi lido: %v", err)
 	}
 	cases := []struct {
 		family, key string
@@ -73,7 +73,7 @@ func TestLoadCompRate(t *testing.T) {
 func TestLoadSancRate(t *testing.T) {
 	s, err := LoadSancRate(release(t, "Common", "Settings", "SancRate.txt"))
 	if err != nil {
-		t.Skipf("SancRate.txt unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/SancRate.txt não foi lido: %v", err)
 	}
 	cases := []struct {
 		name      string
@@ -198,7 +198,7 @@ func TestSancAnvilRow(t *testing.T) {
 func TestLoadItemList(t *testing.T) {
 	l, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	if e, ok := l.Get(1); !ok || e.Name != "TransKnight" {
 		t.Errorf("Get(1) = %+v, want name TransKnight", e)
@@ -280,7 +280,7 @@ func TestBaseEffectsCritical(t *testing.T) {
 	// what issue #102 was. Guards against the effect disappearing from efName again.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	var withCrit int
 	for _, effs := range full.BaseEffects() {
@@ -335,7 +335,7 @@ func TestBaseEffectsResist(t *testing.T) {
 	// what issue #211 was. Guards against the effects disappearing from efName again.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	var withResist int
 	for _, effs := range full.BaseEffects() {
@@ -386,7 +386,7 @@ func TestBaseEffectsMagic(t *testing.T) {
 	// what issue #223 was. Guards against the effect disappearing from efName again.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	realEffects := full.BaseEffects()
 	for _, tc := range []struct {
@@ -429,7 +429,7 @@ func TestBaseEffectsMagic(t *testing.T) {
 func TestBaseEffectsNoSanc(t *testing.T) {
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	for _, idx := range []int{1740, 1742, 1748, 1755, 1760, 1763} {
 		var got int16
@@ -465,7 +465,7 @@ func TestRanges(t *testing.T) {
 	// The real catalog (when mounted) must agree on the archer model.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	if got := full.Ranges()[242]; got != 4 {
 		t.Errorf("real ItemList Ranges()[242] = %d, want 4 (Ciclope_Arqueiro)", got)
@@ -499,7 +499,7 @@ func TestRequirements(t *testing.T) {
 func TestRequirementsClasseD(t *testing.T) {
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	reqs := full.Requirements()
 	for _, tc := range []struct {
@@ -546,7 +546,7 @@ func TestRequirementsClasseD(t *testing.T) {
 func TestLoadSkillData(t *testing.T) {
 	s, err := LoadSkillData(release(t, "Common", "SkillData.csv"))
 	if err != nil {
-		t.Skipf("SkillData.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — SkillData.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	// Golden rows straight from the CSV (sscanf order, AffectTime already ÷4).
 	tests := []struct {
@@ -655,7 +655,7 @@ func TestSkillKindAndClass(t *testing.T) {
 func TestLoadMaps(t *testing.T) {
 	attr, err := LoadGrid(release(t, "TMsrv", "run", "AttributeMap.dat"), AttributeMapDim)
 	if err != nil {
-		t.Skipf("AttributeMap.dat unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/TMsrv/run/AttributeMap.dat não está nesta árvore: %v", err)
 	}
 	if len(attr.Data) != AttributeMapDim*AttributeMapDim {
 		t.Errorf("attribute map size %d", len(attr.Data))
@@ -663,7 +663,7 @@ func TestLoadMaps(t *testing.T) {
 
 	hm, err := LoadHeightMap(release(t, "TMsrv", "run", "HeightMap.dat"))
 	if err != nil {
-		t.Skipf("HeightMap.dat unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/TMsrv/run/HeightMap.dat não está nesta árvore: %v", err)
 	}
 	if hm.Dim != HeightMapDim || len(hm.Data) != HeightMapDim*HeightMapDim {
 		t.Errorf("height map dim %d size %d", hm.Dim, len(hm.Data))

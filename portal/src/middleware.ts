@@ -50,8 +50,9 @@ export const config = {
     "/diaria/:path*",
     "/faturamento/:path*",
     "/contas/:path*",
+    "/guildas/:path*",
+    "/castelo/:path*",
     "/config/:path*",
-    "/operacao/:path*",
     "/logs/:path*",
   ],
 };

@@ -237,7 +237,7 @@ func envInt(t *testing.T, key string) int {
 	t.Helper()
 	raw := os.Getenv(key)
 	if raw == "" {
-		t.Skipf("%s não definido: o e2e precisa do id de uma conta admin", key)
+		t.Skipf("motivo: ambiente — %s não definido: o e2e precisa do id de uma conta admin", key)
 	}
 	v, err := strconv.Atoi(raw)
 	if err != nil || v <= 0 {

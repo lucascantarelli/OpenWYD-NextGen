@@ -366,7 +366,7 @@ func TestPutMobExpRejects(t *testing.T) {
 			}
 		})
 	}
-	// The canonical layout is 64-bit wide, so the same value is accepted there.
+	// O layout canônico tem 64 bits, então o mesmo valor é aceito ali.
 	if err := PutMobExp(make([]byte, MobSize), math.MaxInt32+1); err != nil {
 		t.Errorf("PutMobExp on the canonical layout: %v", err)
 	}

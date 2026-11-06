@@ -98,8 +98,8 @@ const (
 	ShortSkillSlot = 16
 )
 
-// Top-level field offsets within STRUCT_ACCOUNTFILE (data-formats.md §0.1 §1.2).
-// The full map closes to AccountFileSize=7952; verified in savefmt_test.go.
+// Offsets dos campos de topo dentro de STRUCT_ACCOUNTFILE.
+// O mapa completo fecha em AccountFileSize=7952, conferido em savefmt_test.go.
 const (
 	offInfo       = 0
 	offChar       = 216  // Char[4]      (4 × MobSize = 3264)

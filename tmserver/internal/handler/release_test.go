@@ -17,7 +17,7 @@ func readRelease(t *testing.T, path string) ([]byte, error) {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		t.Skipf("Release content unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
 	}
 	return b, err
 }
@@ -28,7 +28,7 @@ func requireItemList(t *testing.T, path string) (*content.ItemList, error) {
 	t.Helper()
 	l, err := content.LoadItemList(path)
 	if err != nil {
-		t.Skipf("Release content unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
 	}
 	return l, err
 }
@@ -38,7 +38,7 @@ func requireItemList(t *testing.T, path string) (*content.ItemList, error) {
 func releasePath(t *testing.T, path string) string {
 	t.Helper()
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("Release content unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — árvore Release/ não encontrada: %v", err)
 	}
 	return path
 }

@@ -35,11 +35,11 @@ func releaseCombineCatalog(t *testing.T) combine.Catalog {
 	root := filepath.Join("..", "..", "..", "Release")
 	items, err := content.LoadItemList(filepath.Join(root, "Common", "ItemList.csv"))
 	if err != nil {
-		t.Skipf("ItemList.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	comp, err := content.LoadCompRate(filepath.Join(root, "Common", "Settings", "CompRate.txt"))
 	if err != nil {
-		t.Skipf("CompRate.txt unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — Release/Common/Settings/CompRate.txt não foi lido: %v", err)
 	}
 	return NewCombineCatalog(items, comp)
 }

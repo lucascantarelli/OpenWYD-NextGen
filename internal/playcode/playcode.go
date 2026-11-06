@@ -1,16 +1,16 @@
-// Package playcode issues and checks the one-time login codes that let a player
-// who is already signed in on the portal enter the web client without typing
-// the password again (web client ADR 017).
+// Package playcode emite e confere os códigos de login de uso único que deixam
+// um jogador já autenticado no portal entrar no cliente web sem digitar a senha
+// de novo.
 //
-// The code rides in the legacy password field of MSG_AccountLogin (0x020D), so
-// the wire format and the 7662 client stay untouched. That field is 12 bytes
-// and the client copies it with sprintf_s, which needs the terminator, hence
-// the 10-character length.
+// O código viaja no campo de senha legado do MSG_AccountLogin (0x020D), então o
+// formato de wire e o cliente 7662 ficam intactos. Esse campo tem 12 bytes e o
+// cliente o copia com sprintf_s, que exige o terminador — daí o comprimento de
+// 10 caracteres.
 //
-// Codes are stored as SHA-256, not argon2id: argon2id protects low-entropy
-// human passwords against offline guessing, while a code is 50 random bits,
-// single-use and lives two minutes, so a fast hash loses nothing and lets the
-// store look it up directly.
+// Os códigos são guardados em SHA-256, não argon2id: argon2id protege senha
+// humana de baixa entropia contra adivinhação offline, enquanto um código tem 50
+// bits aleatórios, é de uso único e vive dois minutos, então um hash rápido não
+// perde nada e permite busca direta no store.
 package playcode
 
 import (
@@ -80,8 +80,8 @@ func Valid(s string) bool {
 	return true
 }
 
-// Claims is the portal's signed request: "issue a code for account Sub".
-// The account id is the portal session's accountId (a decimal string).
+// Claims é a requisição assinada do portal: "emita um código para a conta Sub".
+// O id da conta é o accountId da sessão do portal (string decimal).
 type Claims struct {
 	Sub string `json:"sub"`
 	Iat int64  `json:"iat"`
@@ -125,8 +125,8 @@ func NewVerifier(secret string) *Verifier {
 	return &Verifier{secret: []byte(secret), now: time.Now, seen: map[string]time.Time{}}
 }
 
-// Verify validates an assertion and consumes its jti, returning the account id.
-// The error text is safe to log; the token itself never is.
+// Verify valida uma asserção, consome o jti e devolve o id da conta.
+// O texto do erro pode ir para o log; o token nunca.
 func (v *Verifier) Verify(token string) (int64, error) {
 	if token == "" || len(token) > maxAssertionBytes {
 		return 0, errors.New("missing or oversized assertion")

@@ -1,0 +1,81 @@
+# Site de documentação.
+#
+# O `nav` abaixo é a semente do mapa do AGENTS.md §6 ("preciso de X → leio Y"),
+# que até 06/11 vivia apenas em Markdown disperso.
+#
+# Build em container, sem instalar nada no host (o host é Windows, sem Python):
+#
+#   docker run --rm -v "$PWD:/docs" squidfunk/mkdocs-material build --strict
+#
+# Escopo atual: `docs_dir: docs`. Material de planejamento (roadmap/), portal
+# (portal/README.md) e skills (.agents/skills/) ficam fora do site por enquanto —
+# link para eles a partir daqui é link morto em `--strict`, e migrar esses links
+# é o que falta para a DOC-01 fechar.
+
+site_name: OpenWYD — documentação
+site_description: Servidor local de WYD2 em Go, portal Next.js e cliente Windows
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  language: pt-BR
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+
+nav:
+  - Início: index.md
+  - Primeiros passos:
+      - Sessão atual: migration/SESSION-PRIMER.md
+      - Índice da migração: migration/README.md
+      - Glossário: migration/glossary.md
+  - Arquitetura:
+      - Visão de conjunto: analysis/README.md
+      - Estado atual: analysis/estado-atual.md
+      - Fluxos ponta a ponta: migration/flows.md
+      - Topologia, portas e configs: migration/config-ops.md
+      - Modelo de domínio: migration/domain-model.md
+  - Protocolo e formatos:
+      - CPSock e structs: migration/protocol-spec.md
+      - Formatos de save: migration/data-formats.md
+      - Canais e serverlist: migration/canais.md
+  - Regras de jogo:
+      - Fórmulas: migration/game-rules.md
+      - Comandos in-game: game.md
+      - Bugs conhecidos: migration/ingame-bugs.md
+  - Handlers:
+      - Contratos: migration/handlers/README.md
+  - Sistemas de jogo:
+      - Índice: sistemas/README.md
+  - Banco de dados:
+      - Auditoria do schema: analysis/banco-de-dados.md
+      - Persistência de conteúdo: analysis/persistencia-conteudo.md
+  - Portal:
+      - NPCs no Next.js: integrations/npc-admin-nextjs.md
+      - Faturamento: integrations/faturamento-nextjs.md
+  - Cliente:
+      - Visão do cliente: client.md
+      - Launcher: analysis/cliente-launcher.md
+      - Plano do launcher: launcher-plan.md
+      - Hooks do patch: migration/client-patch-hooks.md
+  - Operação:
+      - Deploy de 05/11: analysis/deploy-2026-11-05.md
+      - Qualidade e processo: analysis/qualidade-e-processo.md
+      - QA in-game: analysis/qa-ingame.md
+  - ADRs:
+      - Índice: adr/README.md
+      - 0001 Go no servidor: adr/0001-go-no-servidor.md
+      - 0002 Goroutine única do mundo: adr/0002-goroutine-unica-do-mundo.md
+      - 0003 Portal como BFF: adr/0003-portal-bff.md
+      - 0004 Banco como fonte de conteúdo: adr/0004-banco-fonte-de-conteudo.md
+      - 0005 delivery_queue: adr/0005-delivery-queue.md
+      - 0006 Arquivamento do legado C++: adr/0006-arquivamento-legado-cpp.md

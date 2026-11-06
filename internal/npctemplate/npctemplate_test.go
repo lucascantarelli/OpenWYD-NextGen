@@ -3,11 +3,24 @@ package npctemplate
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"openwyd-nextgen/internal/savefmt"
 )
+
+// requireCaseSensitiveFS pula o caso que só existe em sistema de arquivos
+// case-sensitive: o Windows normaliza caixa e ponto final no nome, então
+// "Reiners"/"reiners" e "Chefe_Treina."/"Chefe_Treina" são o MESMO arquivo e a
+// situação que o teste quer construir não pode existir. No Linux (CI) os três
+// casos rodam de verdade.
+func requireCaseSensitiveFS(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("motivo: ambiente — o Windows normaliza caixa e ponto final no nome do arquivo")
+	}
+}
 
 func TestResolveExactName(t *testing.T) {
 	dir := makeNPCDir(t)
@@ -24,6 +37,7 @@ func TestResolveExactName(t *testing.T) {
 }
 
 func TestResolveTrimsLegacyTrailingDot(t *testing.T) {
+	requireCaseSensitiveFS(t)
 	dir := makeNPCDir(t)
 	writeTemplate(t, dir, "Chefe_Treina", Size)
 
@@ -37,6 +51,7 @@ func TestResolveTrimsLegacyTrailingDot(t *testing.T) {
 }
 
 func TestResolveCaseInsensitive(t *testing.T) {
+	requireCaseSensitiveFS(t)
 	dir := makeNPCDir(t)
 	writeTemplate(t, dir, "reiners", Size)
 
@@ -50,6 +65,7 @@ func TestResolveCaseInsensitive(t *testing.T) {
 }
 
 func TestResolveAmbiguousLegacyName(t *testing.T) {
+	requireCaseSensitiveFS(t)
 	dir := makeNPCDir(t)
 	writeTemplate(t, dir, "Reiners", Size)
 	writeTemplate(t, dir, "reiners", Size)

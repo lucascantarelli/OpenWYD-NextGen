@@ -336,8 +336,8 @@ func DecodeMobAny(b []byte) (Mob, MobVersion, error) {
 	case MobVersionCurrent:
 		return decodeMob(b), v, nil
 	case MobVersionLegacy756, MobVersionLegacy756Padded:
-		// The padded form's trailing bytes are uninitialized heap junk, not a
-		// struct tail — decode the record and drop the rest.
+		// O rabo da forma padded é lixo de heap não inicializado, não o fim da
+		// struct: decodifica o registro e descarta o resto.
 		return decodeMobLegacy756(b[:MobSizeLegacy756]), v, nil
 	default:
 		return Mob{}, v, fmt.Errorf("savefmt: DecodeMobAny: length %d is not a known STRUCT_MOB layout (%d, %d or %d)",
@@ -367,15 +367,15 @@ func NormalizeMob(b []byte) ([]byte, MobVersion, error) {
 }
 
 // PutMobExp overwrites the kill-reward Exp of a standalone STRUCT_MOB template
-// in place, in whichever layout b already is, leaving every other byte — and the
-// slice length — untouched. cmd/exptool restamps the balanced curve (issue #43)
-// through it, so the mixed-layout content tree gets one consistent pass without
-// any template changing size on disk.
+// no lugar, no layout que b já tem, sem tocar em nenhum outro byte nem no
+// comprimento do slice. O cmd/exptool regrava a curva balanceada por aqui, então
+// a árvore de conteúdo de layouts mistos recebe uma passada consistente sem
+// nenhum template mudar de tamanho em disco.
 //
-// The legacy layouts keep Exp as a 32-bit field at a different offset
-// (data-formats.md §1.4.1), so a value that does not fit there is an error
-// rather than a silent truncation — level.MobExpForLevel peaks around 5.5M, far
-// inside the range, so this only fires on a caller passing something bogus.
+// Os layouts legados guardam Exp em 32 bits num offset diferente, então um valor
+// que não cabe ali é erro em vez de truncamento silencioso — o pico de
+// level.MobExpForLevel fica em 5,5M, bem dentro da faixa, então isso só dispara
+// com chamador passando valor inválido.
 func PutMobExp(b []byte, exp int64) error {
 	switch v := DetectMobVersion(len(b)); v {
 	case MobVersionCurrent:

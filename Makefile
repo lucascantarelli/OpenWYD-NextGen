@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate ci client-serverlist
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image gate check-skips check-comments ci client-serverlist
 
 build:
 	go build ./...
@@ -33,8 +33,18 @@ item-icons-publish:
 gate:
 	bash scripts/check-build.sh
 
-# O que o CI precisa, na ordem: o gate falha rápido e as três etapas provam o build.
-ci: gate vet build test
+# Higiene de teste: skip sem motivo declarado e comentário fora do padrão nos
+# diretórios já migrados. São baratos e rodam antes do build no CI.
+check-skips:
+	bash scripts/check-skips.sh
+
+check-comments:
+	bash scripts/check-comments.sh
+
+# O que o CI roda, na mesma ordem: os gates baratos falham rápido, depois o build,
+# o teste e o portal. `ci.yml` chama exatamente estes passos (via _go.yml e
+# _portal.yml), então rodar `make ci` local é a mesma coisa que rodar o CI.
+ci: gate check-skips check-comments vet build test portal-test
 
 test:
 	go test -race -cover ./...

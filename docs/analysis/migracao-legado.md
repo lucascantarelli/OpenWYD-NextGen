@@ -66,7 +66,7 @@ código Go e os documentos de engenharia reversa (`docs/migration/`, 58/58 handl
 
 As sete ferramentas que a §1 marca como substituídas saíram de `Source/Code/` e foram para
 `Source/Code/_legacy/` (mesmo destino do `DropTool`, arquivado pela issue 61), com um
-[`README`](../../Source/Code/_legacy/README.md) que aponta o substituto de cada uma:
+`README` em `Source/Code/_legacy/` que aponta o substituto de cada uma:
 
 | De | Para | Por quê |
 |----|------|---------|

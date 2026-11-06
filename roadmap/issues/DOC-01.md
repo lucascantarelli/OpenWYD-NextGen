@@ -1,6 +1,6 @@
 # DOC-01 — Esqueleto mkdocs, índice de sistemas e ADRs
 
-**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** ⏳ proposta
+**Fase:** revisão · **Depende de:** — · **Esforço:** L · **Estado:** 🟡 quase concluída (site e ADRs de 06/11)
 
 ## Objetivo
 
@@ -56,6 +56,48 @@ mkdocs build --strict            # link quebrado falha
 - [ ] Uma página por sistema de jogo, com handler e regra citados.
 - [ ] ≥6 ADRs registradas (incluindo o arquivamento do legado C++).
 - [ ] `doc_legacy/` com README de substituição por doc movido.
+
+## Resultado parcial (06/11/2026)
+
+| Critério | Estado |
+|---|---|
+| `mkdocs build --strict` verde | ✅ |
+| Todo doc do `AGENTS.md` §6 em ≤2 cliques | ✅ (nav do `mkdocs.yml` é o §6 traduzido em seções) |
+| Uma página por sistema de jogo | 🟡 só o índice (`docs/sistemas/README.md`) |
+| ≥6 ADRs | ✅ 6 (0001–0006) |
+| `doc_legacy/` com README de substituição | ❌ não criado |
+
+**Build verificado de verdade**, em container (o host não tem Python):
+
+```bash
+docker run --rm -v "$PWD:/docs" squidfunk/mkdocs-material build --strict
+# INFO - Documentation built in 48.65 seconds   exit 0
+```
+
+A primeira execução **reprovou**, e o motivo era útil: `launcher-plan.md`, `analysis/README.md` e
+`analysis/migracao-legado.md` linkavam para `roadmap/` e `Source/` — destinos fora de `docs_dir`, que
+existem no repositório mas são link morto num site com `docs_dir: docs`. Os três viraram caminho em
+`code`, não link. **Esse é o custo real de adotar o site**: 119 links relativos em `docs/`, 3 deles
+apontando para fora.
+
+### Gate que roda sem mkdocs
+
+`scripts/check-docs-links.sh` mede o mesmo em qualquer host (o Windows não tem Python):
+
+```
+check-docs-links: 119 link(s) relativos, 0 quebrado(s), 3 fora de docs/
+```
+
+### O que falta para fechar
+
+1. **Página por sistema**: combate, skills/afects, guildas, castelos, quests, drops, refino,
+   comércio. O índice liga handler e doc de regra, mas não explica o sistema.
+2. **`roadmap/doc_legacy/`**: mover o doc superado com README de substituição (nada foi apagado).
+3. **Serviço `docs` no compose** (porta 8000) — não criado; hoje o build é um `docker run` documentado
+   no cabeçalho do `mkdocs.yml`.
+
+Nenhum destes é bloqueio técnico: são conteúdo e decisão de mover arquivo, e ficam registrados aqui
+em vez de sumirem num "em andamento".
 
 ## Riscos/rollback
 

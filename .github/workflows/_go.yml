@@ -1,0 +1,119 @@
+name: Go
+
+# Workflow reutilizável: quem chama é `ci.yml`, que decide se esta matriz roda
+# (path filter). Nada aqui duplica setup entre jobs além do necessário.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Module & proto gate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      # Mesmo comando do dev (`make gate`): reprova se o path antigo do módulo
+      # voltar a algum arquivo versionado ou se `make proto` alterar artefatos.
+      - name: make gate
+        run: make gate
+
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # gofmt é autoritativo (guidelines); .pb.go é gerado e isento.
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l . | grep -v '\.pb\.go$' || true)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"; echo "$unformatted"
+            exit 1
+          fi
+
+      # Regras de teste que não compilam nada: skip sem motivo e comentário fora
+      # do padrão nos diretórios já limpos (ver scripts/check-*.sh).
+      - name: test hygiene
+        run: bash scripts/check-skips.sh && bash scripts/check-comments.sh
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      # Race detector + coverage. Testes de integração ficam atrás da tag
+      # `integration` (precisam de Postgres) e não entram aqui.
+      - name: Test
+        run: go test -race -cover ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # only-new-issues: gate de qualidade no código novo, sem bloquear na
+      # dívida antiga. `golangci-lint run` local mostra o conjunto completo.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          only-new-issues: true
+
+  govulncheck:
+    name: Vulnerabilities
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install govulncheck
+        # Pinado: @latest (v1.8.0+) exige Go mais novo que o go.mod e
+        # GOTOOLCHAIN=local recusa trocar. Subir junto com a versão do Go.
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  docker:
+    name: Docker build (${{ matrix.svc }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        svc: [tmserver, dbserver, binserver, webserver]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Constrói a imagem de produção como o Railway faz (parametrizada por SVC);
+      # pega regressão de Dockerfile/.dockerignore — ex.: a árvore Release/ que o
+      # tmserver assa. Sem push: é smoke test de build.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          build-args: SVC=${{ matrix.svc }}
+          push: false
+          tags: w2pp-${{ matrix.svc }}:ci
+          cache-from: type=gha,scope=${{ matrix.svc }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.svc }}

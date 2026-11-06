@@ -21,7 +21,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("W2PP_TEST_DSN")
 	if dsn == "" {
-		t.Skip("W2PP_TEST_DSN not set; skipping DB integration test")
+		t.Skip("motivo: ambiente — W2PP_TEST_DSN não definido; roda no job de banco com Postgres efêmero (CI-02)")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

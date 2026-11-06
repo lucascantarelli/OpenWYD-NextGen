@@ -30,7 +30,7 @@ func releaseSpells(t *testing.T) *content.SkillData {
 	t.Helper()
 	s, err := content.LoadSkillData(filepath.Join("..", "..", "..", "Release", "Common", "SkillData.csv"))
 	if err != nil {
-		t.Skipf("SkillData.csv unavailable: %v", err)
+		t.Skipf("motivo: conteúdo ausente — SkillData.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
 	return s
 }

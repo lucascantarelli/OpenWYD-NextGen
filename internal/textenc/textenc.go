@@ -1,12 +1,12 @@
-// Package textenc converts the legacy text encoding of the original Release/
-// files to UTF-8.
+// Package textenc converte a codificação de texto legada dos arquivos originais
+// de Release/ para UTF-8.
 //
-// The shipped CSVs (ItemList.csv, SkillData.csv, NPCGener.txt, Guard.txt…) are
-// Windows-1252 — the same encoding the win32 server wrote. PostgreSQL rejects
-// invalid UTF-8 sequences outright ("invalid byte sequence for encoding UTF8:
-// 0xe3"), so anything that leaves Go's byte-string world for the database has to
-// be converted first. Go strings hold arbitrary bytes, which is why nothing
-// noticed until the first insert.
+// Os CSVs distribuídos (ItemList.csv, SkillData.csv, NPCGener.txt, Guard.txt…) estão
+// em Windows-1252, a mesma codificação que o servidor win32 escrevia. O PostgreSQL
+// recusa sequência UTF-8 inválida de imediato ("invalid byte sequence for encoding
+// UTF8: 0xe3"), então tudo que sai da string de bytes do Go para o banco precisa ser
+// convertido antes. Strings do Go aceitam qualquer byte, e por isso ninguém notou
+// até o primeiro insert.
 package textenc
 
 import (
@@ -14,10 +14,10 @@ import (
 	"unicode/utf8"
 )
 
-// cp1252 maps 0x80-0x9F. Those bytes are *not* Latin-1 control characters in
-// Windows-1252: they are the printable punctuation the legacy data actually
-// uses (’ “ ” – — •), so a plain byte→rune widening would put control chars in
-// item names.
+// cp1252 mapeia 0x80-0x9F. Esses bytes *não* são caracteres de controle Latin-1 em
+// Windows-1252: são a pontuação imprimível que os dados legados realmente usam
+// (’ “ ” – — •), então um widening byte→rune colocaria caracteres de controle em
+// nome de item.
 var cp1252 = [32]rune{
 	'€', 0x81, '‚', 'ƒ', '„', '…', '†', '‡',
 	'ˆ', '‰', 'Š', '‹', 'Œ', 0x8D, 'Ž', 0x8F,
@@ -25,9 +25,9 @@ var cp1252 = [32]rune{
 	'˜', '™', 'š', '›', 'œ', 0x9D, 'ž', 'Ÿ',
 }
 
-// ToUTF8 returns s as valid UTF-8. A string that already is valid UTF-8 is
-// returned unchanged (so re-importing a file that was fixed by hand does not
-// double-encode it); anything else is decoded as Windows-1252.
+// ToUTF8 devolve s como UTF-8 válido. Uma string que já é UTF-8 válido volta
+// intacta (para reimportar um arquivo corrigido à mão não codificar duas vezes);
+// qualquer outra coisa é decodificada como Windows-1252.
 func ToUTF8(s string) string {
 	if utf8.ValidString(s) {
 		return s
@@ -48,7 +48,7 @@ func ToUTF8(s string) string {
 	return b.String()
 }
 
-// Slice applies ToUTF8 to every element, for a CSV row stored as JSON.
+// Slice aplica ToUTF8 a cada elemento, para uma linha de CSV guardada em JSON.
 func Slice(fields []string) []string {
 	out := make([]string, len(fields))
 	for i, f := range fields {

@@ -91,15 +91,15 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 |---|---|---|
 | Rename do módulo pela metade; `go build` vermelho; imports nus | 382 → 0 | [BUILD-01](issues/BUILD-01.md) ✅ (05/11: build/vet/test verdes e gate de path/proto provado em vermelho e verde) |
 | `cmd/*/main.go` concentra todo o wiring | `webserver` 256 linhas | [REFACTOR-01](issues/REFACTOR-01.md) |
-| Comentário em inglês / citação de issue dentro do código | 396 / 109 referências (medido 06/11) | [REFACTOR-03](issues/REFACTOR-03.md) |
-| `t.Skip` escondendo teste | 42 em 17 arquivos (medido 06/11) | [TEST-01](issues/TEST-01.md) |
+| Comentário em inglês / citação de issue dentro do código | 396 / 109 — 3 diretórios migrados + gate `scripts/check-comments.sh` (06/11) | [REFACTOR-03](issues/REFACTOR-03.md) |
+| `t.Skip` escondendo teste | ✅ 42 em 17 arquivos, todos com `motivo:` (32 conteúdo, 8 ambiente, 2 feature) | [TEST-01](issues/TEST-01.md) |
 | Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
-| Sem `make ci` nem workflow reutilizável | 0 alvo `ci`, 21 alvos | [CI-01](issues/CI-01.md) |
+| Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](issues/CI-01.md) |
 | Migração em base vazia fora do CI | 0 job de banco | [CI-02](issues/CI-02.md) |
 | Postgres acessado só como superusuário; sem restore testado | DSN linhas 34/58 | [DB-01](issues/DB-01.md) |
 | Sem `/metrics` nem `trace_id` | 0 ocorrências | [OBS-01](issues/OBS-01.md) |
-| Sem hub de documentação/ADRs | 423 `.md` no repo (174 em `docs/`), 0 mkdocs, 0 ADR | [DOC-01](issues/DOC-01.md) |
-| Leitura do portal sem middleware default-deny | middleware existe; `/precos` e `/atlas` estavam fora do matcher (corrigido 06/11) — falta teste de 403 | [PORTAL-01](issues/PORTAL-01.md) |
+| Sem hub de documentação/ADRs | ✅ site mkdocs `--strict` verde + 6 ADRs (06/11); falta página por sistema | [DOC-01](issues/DOC-01.md) |
+| Leitura do portal sem middleware default-deny | ✅ 19 rotas cobertas + teste que reprova regressão em `/precos`, `/atlas`, `/guildas`, `/castelo` | [PORTAL-01](issues/PORTAL-01.md) |
 | Definition of Done espalhada em três documentos | ✅ 06/11 | [CLEAN-05](issues/CLEAN-05.md) — fechada em `development-guidelines/processo.md` |
 | Ferramentas C++ substituídas misturadas com referência | 7 movidas, 468 KB | [LEGACY-01](issues/LEGACY-01.md) ✅ |
 | Fim de linha sem `.gitattributes`; índice dependente do checkout | 718 `i/lf w/crlf`, 1 misto | [NORMALIZE-01](issues/NORMALIZE-01.md) ✅ |
@@ -317,6 +317,23 @@ Grafo da Fase 6:
 
 ## Changelog
 
+- **2026-11-06 (Fila A executada: A1–A5 fechadas, A6 quase)** — `CLEAN-05` já estava fechada; esta
+  passagem fechou o resto do que se prova localmente. **PORTAL-01** virou teste: `middleware.test.ts`
+  (8 casos, cobertura do `matcher` derivada de `app/(admin)` no disco e do menu) e
+  `route.test.ts` (401/403/200 na fronteira real de `/api/search/accounts`) — ao rodar pela primeira
+  vez o teste apontou **quatro** rotas abertas (`/precos`, `/atlas`, `/guildas`, `/castelo`), não duas.
+  **TEST-01** fechada: 42 skips, 32 `conteúdo` / 8 `ambiente` / 2 `feature`, zero sem motivo, 1 teste
+  morto removido e 3 vermelhos de FS case-sensitive do Windows convertidos em `motivo: ambiente`;
+  `scripts/check-skips.sh` reprova skip novo sem motivo. **CI-01** fechada: `_go.yml` + `_portal.yml`
+  (`workflow_call`) e `ci.yml` orquestrando com path filter; `make ci` roda exatamente os mesmos
+  passos. **REFACTOR-03** avançou a fatia `internal/{textenc,droprate,crossover}` com
+  `scripts/check-comments.sh` (a primeira versão do script passava em diretório ainda sujo — padrão
+  frouxo — e foi corrigida). **DOC-01** entregou `mkdocs.yml`, `docs/index.md`, `docs/sistemas/`,
+  seis ADRs e `scripts/check-docs-links.sh`; `mkdocs build --strict` verde depois de tirar 3 links
+  que saíam de `docs/`.
+  Verification: `go build ./...` exit 0 · `go vet ./...` exit 0 · `go test ./...` sem falha ·
+  `npx vitest run` 12 arquivos / 93 testes · `tsc --noEmit` exit 0 ·
+  `mkdocs build --strict` exit 0 (container) · `check-skips`/`check-comments`/`check-docs-links` verdes.
 - **2026-11-06 (revisão profunda + fechamento barato)** — duas frentes executadas.
   **(a) Canais e feedback in-game:** [CANAL-01](issues/CANAL-01.md) (dois canais na lista, canal novato
   fixo, regras do `sn.bin`/`serverlist.bin` medidas e documentadas), [CANAL-02](issues/CANAL-02.md)

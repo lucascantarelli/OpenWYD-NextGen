@@ -412,7 +412,7 @@ func TestE2EWorldEventWeatherRejectsInvalid(t *testing.T) {
 func TestE2EWorldEventWeatherLoginSnapshot(t *testing.T) {
 	second := os.Getenv("W2PP_E2E_ACCOUNT2")
 	if second == "" {
-		t.Skip("set W2PP_E2E_ACCOUNT2 (a second seeded account) to run the login-snapshot check")
+		t.Skip("motivo: ambiente — definir W2PP_E2E_ACCOUNT2 (segunda conta semeada) para o teste de snapshot de login")
 	}
 	gm := gmPlayer(t)
 	defer gm.gm("weather auto")
@@ -506,7 +506,7 @@ func (c *liveClient) spawnAndInspect(tmpl int, within time.Duration) (mobView, b
 func TestE2EWorldEventNewbieMobHandicap(t *testing.T) {
 	expect := os.Getenv("W2PP_E2E_NEWBIE_EXPECT")
 	if expect != "full" && expect != "handicap" {
-		t.Skip("set W2PP_E2E_NEWBIE_EXPECT to 'full' or 'handicap' (see scripts/e2e-worldevents.sh)")
+		t.Skip("motivo: ambiente — definir W2PP_E2E_NEWBIE_EXPECT como 'full' ou 'handicap' (ver scripts/e2e-worldevents.sh)")
 	}
 	tmpl := 1
 	if v := os.Getenv("W2PP_E2E_SUMMON_TEMPLATE"); v != "" {
@@ -522,7 +522,7 @@ func TestE2EWorldEventNewbieMobHandicap(t *testing.T) {
 		t.Fatalf("spawned mob has MaxHp %d — template %d is not usable for this check", got.maxHP, tmpl)
 	}
 	if got.level >= 120 {
-		t.Skipf("summon template %d is level %d (>=120): the handicap only applies below 120; set W2PP_E2E_SUMMON_TEMPLATE",
+		t.Skipf("motivo: ambiente — template de invocação %d é nível %d (>=120) e o handicap só vale abaixo disso; definir W2PP_E2E_SUMMON_TEMPLATE",
 			tmpl, got.level)
 	}
 
@@ -555,7 +555,7 @@ func TestE2EWorldEventNewbieMobHandicap(t *testing.T) {
 func TestE2EWorldEventTowerWar(t *testing.T) {
 	addr := os.Getenv("W2PP_E2E_TOWER_ADDR")
 	if addr == "" {
-		t.Skip("set W2PP_E2E_TOWER_ADDR to a tmserver inside the tower window (see scripts/e2e-worldevents.sh)")
+		t.Skip("motivo: ambiente — definir W2PP_E2E_TOWER_ADDR para um tmserver dentro da janela da torre (ver scripts/e2e-worldevents.sh)")
 	}
 	c := dialLive(t, addr, env("W2PP_E2E_ACCOUNT", "test"))
 	t.Cleanup(c.close)

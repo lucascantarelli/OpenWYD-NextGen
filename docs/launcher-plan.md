@@ -1,6 +1,6 @@
 # Launcher próprio — planejamento
 
-> Complementa a [issue 51](../roadmap/issues/issue-51.md) e a análise em
+> Complementa a issue 51 (`roadmap/issues/issue-51.md`) e a análise em
 > [`docs/analysis/cliente-launcher.md`](analysis/cliente-launcher.md). Aqui está **o que
 > fazer primeiro** e por quê.
 

@@ -2,7 +2,7 @@
 
 Análise feita em **2026-11-04** sobre o repositório (código Go, portal, conteúdo, cliente e
 documentação) e sobre o que a comunidade publica a respeito do WYD. É o material de referência para o
-plano de execução em [`roadmap/PLANO-2026-11.md`](../../roadmap/PLANO-2026-11.md).
+plano de execução em `roadmap/PLANO-2026-11.md`.
 
 Regra de leitura: **número sem fonte é opinião**. Cada afirmação sobre o código aponta caminho ou
 comando que a produz; cada afirmação sobre o jogo/cliente que veio da web aponta a URL e, quando a
