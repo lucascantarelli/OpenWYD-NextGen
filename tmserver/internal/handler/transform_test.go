@@ -277,11 +277,19 @@ func startServerAffectTick(t *testing.T, persist world.Persistence) (string, fun
 		cancel()
 		select {
 		case <-done:
-		case <-time.After(2 * time.Second):
+		case <-time.After(wireTimeout):
 			t.Error("server did not stop")
 		}
 	}
 }
+
+// wireTimeout bounds the waits for a frame the world eventually sends. The
+// assertion is about EVENTS, not latency: the whole suite runs packages in
+// parallel, and a loaded box can starve these goroutines for seconds. A tight
+// deadline turned that scheduling delay into a false failure (always at the
+// deadline itself: 3.0-3.2s). The bound is generous on purpose — it exists to
+// fail instead of hanging, not to measure speed.
+const wireTimeout = 15 * time.Second
 
 // TestTransformCastBroadcastsMesh drives the cast flow on the wire: a BM
 // self-casts a transform skill (66 = Urso, AffectType 16/Value 2) and the
@@ -317,7 +325,7 @@ func TestTransformCastBroadcastsMesh(t *testing.T) {
 		cancel()
 		select {
 		case <-done:
-		case <-time.After(2 * time.Second):
+		case <-time.After(wireTimeout):
 			t.Error("server did not stop")
 		}
 	}()
@@ -329,7 +337,7 @@ func TestTransformCastBroadcastsMesh(t *testing.T) {
 
 	skillAttackFrame(t, c, serverTime, 1, 66, damSkill) // self-cast (conn 1)
 
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(wireTimeout)
 	for time.Now().Before(deadline) {
 		ty, payload, ok := readMaybe(t, c)
 		if !ok {
@@ -372,7 +380,7 @@ func TestTransformExpiryRevertsMesh(t *testing.T) {
 	observer := enterWorldAs(t, addr, "tradeb")
 	defer observer.Close()
 
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(wireTimeout)
 	for time.Now().Before(deadline) {
 		ty, payload, ok := readMaybe(t, c)
 		if !ok {
@@ -396,7 +404,7 @@ func TestTransformExpiryRevertsMesh(t *testing.T) {
 
 func assertTransformEquip(t *testing.T, c net.Conn, id, mesh, costume uint16, glow uint8) {
 	t.Helper()
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(wireTimeout)
 	for time.Now().Before(deadline) {
 		h, body, ok := readMaybeHeader(t, c)
 		if !ok || h.Type != protocol.MsgUpdateEquip || h.ID != id {
@@ -426,7 +434,7 @@ func TestTransformCostumePersistedLoginAndNewObserver(t *testing.T) {
 	defer c.Close()
 	assertCreate := func(c net.Conn) {
 		t.Helper()
-		deadline := time.Now().Add(2 * time.Second)
+		deadline := time.Now().Add(wireTimeout)
 		for time.Now().Before(deadline) {
 			h, body, ok := readMaybeHeaderRaw(t, c)
 			if !ok || h.Type != protocol.MsgCreateMob || len(body) < 190 || binary.LittleEndian.Uint16(body[4:6]) != 1 {

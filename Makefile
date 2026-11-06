@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist
 
 build:
 	go build ./...
@@ -43,6 +43,9 @@ item-icons-publish:
 # comando é o mesmo na máquina do dev e no CI.
 gate:
 	bash scripts/check-build.sh
+
+# Nome explícito do mesmo gate (BUILD-01): `make check-build`.
+check-build: gate
 
 # Higiene de teste: skip sem motivo declarado e comentário fora do padrão nos
 # diretórios já migrados. São baratos e rodam antes do build no CI.
