@@ -66,10 +66,11 @@ func liveRead(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	return h, payload
 }
 
-func loginFrame(account, password string) []byte {
+func loginFrame(account, password, token string) []byte {
 	var body protocol.MsgAccountLoginBody
 	copy(body.AccountPassword[:], password)
 	copy(body.AccountName[:], account)
+	copy(body.Zero[:], token)
 	body.ClientVersion = protocol.AppVersion
 	if v := os.Getenv("W2PP_E2E_VERSION"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -91,23 +92,11 @@ func TestE2ESmokeLogin(t *testing.T) {
 	account := env("W2PP_E2E_ACCOUNT", "smoke")
 	password := env("W2PP_E2E_PASSWORD", "smoke123")
 
-	c := liveDial(t, addr)
+	// liveLogin retries while the previous session's save is in flight, the
+	// same retry the client does (MsgAlreadyPlaying/StillPlaying).
+	c := liveLogin(t, addr, account, password, "")
 	defer c.Close()
-	if _, err := c.Write(loginFrame(account, password)); err != nil {
-		t.Fatalf("write login: %v", err)
-	}
-
-	h, payload := liveRead(t, c)
-	if h.Type != protocol.MsgCNFAccountLogin {
-		t.Fatalf("login response Type = %#x, want CNFAccountLogin (%#x); payload=%d bytes",
-			h.Type, protocol.MsgCNFAccountLogin, len(payload))
-	}
-	// The char list lives in the SELCHAR slots (body offset 20+), not a leading
-	// count byte; assert the body is full-sized rather than reading payload[0].
-	if len(payload) < 1900 {
-		t.Fatalf("CNFAccountLogin payload too short: %d bytes", len(payload))
-	}
-	t.Logf("LOGIN OK — CNFAccountLogin, conn=%d, body=%d bytes", h.ID, len(payload))
+	t.Log("LOGIN OK — CNFAccountLogin with full character-selection body")
 }
 
 // TestE2ESmokeBadPassword confirms a wrong password is NOT accepted: the server
@@ -118,7 +107,7 @@ func TestE2ESmokeBadPassword(t *testing.T) {
 
 	c := liveDial(t, addr)
 	defer c.Close()
-	if _, err := c.Write(loginFrame(account, "wrong-pass")); err != nil {
+	if _, err := c.Write(loginFrame(account, "wrong-pass", "")); err != nil {
 		t.Fatalf("write login: %v", err)
 	}
 	h, _ := liveRead(t, c)

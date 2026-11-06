@@ -49,6 +49,12 @@ func (d *Dispatcher) changeServer(w *world.World, s *world.Session, args []byte)
 	body := protocol.EncodeCNFServerChangeBody(s.AccountName, token)
 	// HEADER.ID = own conn, like the legacy forwarding (ProcessDBMessage.cpp:1474).
 	w.SendTo(s, protocol.Header{Type: protocol.MsgCNFServerChange, ID: uint16(s.Conn)}, body)
+	// The legacy closes the connection right after forwarding the frame
+	// (ProcessDBMessage.cpp:1474-1478, CloseUser): the client only reconnects to
+	// the target channel once the current session ends. Without this, /srv looks
+	// like a no-op in the client. Close drains the out queue first (Session.close
+	// → writer), so the token is still delivered.
 	d.log.Info("server change: token issued", "conn", s.Conn, "account", s.AccountName,
 		"slot", s.Slot, "from", d.serverIndex+1, "to", n)
+	w.Close(s)
 }

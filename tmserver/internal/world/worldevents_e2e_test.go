@@ -231,7 +231,7 @@ func (c *liveClient) quiet(d time.Duration) {
 // login performs MSG_AccountLogin and waits for the character-selection reply.
 func (c *liveClient) login(password string) {
 	c.t.Helper()
-	if _, err := c.conn.Write(loginFrame(c.account, password)); err != nil {
+	if _, err := c.conn.Write(loginFrame(c.account, password, "")); err != nil {
 		c.t.Fatalf("write login: %v", err)
 	}
 	f, ok := c.waitFor(protocol.MsgCNFAccountLogin, 10*time.Second)

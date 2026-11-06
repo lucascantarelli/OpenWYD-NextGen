@@ -1,4 +1,4 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e
+.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e test-channel
 
 build:
 	go build ./...
@@ -137,6 +137,17 @@ test-e2e:
 	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
 	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
 	go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
+
+# Troca de canal real: login+seleção no canal 1, /srv 2, token e login no canal 2.
+# O canal 2 é publicado em 192.168.100.4:8281 (-> :8282 no container).
+test-channel:
+	W2PP_E2E_ADDR=$${W2PP_E2E_ADDR:-127.0.0.1:8281} \
+	W2PP_E2E_ADDR2=$${W2PP_E2E_ADDR2:-192.168.100.4:8281} \
+	W2PP_E2E_ACCOUNT=$${W2PP_E2E_ACCOUNT:-test} \
+	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
+	W2PP_E2E_SLOT=$${W2PP_E2E_SLOT:-0} \
+	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
+	go test -tags=e2e -run 'TestE2EChannelChange|TestE2EServerChangeSameChannel' ./tmserver/internal/world/ -v
 
 run:
 	go run ./tmserver/cmd/tmserver

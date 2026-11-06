@@ -93,6 +93,14 @@ func shopLayoutViolations(rows []seedRow) []string {
 			out = append(out, fmt.Sprintf("mistura classes de skill: npc %d", npc))
 			continue
 		}
+		// Os slots 8 e 17 separam as três famílias e são vazios no layout
+		// canônico. Item ali (o Gladio 867 dos NPCs 49/50) não pertence à loja
+		// de skill e passava despercebido pela checagem de família.
+		for _, sep := range []int{8, 17} {
+			if item, ok := slots[sep]; ok {
+				out = append(out, fmt.Sprintf("slot separador ocupado: npc %d slot %d tem %d", npc, sep, item))
+			}
+		}
 		class := 0
 		for c := range byClass {
 			class = c
@@ -135,6 +143,19 @@ func TestSeedSkillShopLayout(t *testing.T) {
 	rows := parseShopSeed(t, "seed_npc_shop_item.up.sql")
 	if got := shopLayoutViolations(rows); len(got) > 0 {
 		t.Fatalf("loja de skill inconsistente com o catálogo:\n%s", strings.Join(got, "\n"))
+	}
+}
+
+// TestShopLayoutCatchesGladioInSeparator trava a limpeza fina: o Gladio (867) no
+// slot 17 dos NPCs 49/50 é item numa loja de skill, não magia.
+func TestShopLayoutCatchesGladioInSeparator(t *testing.T) {
+	bad := []seedRow{
+		{NpcID: 49, Slot: 0, ItemIndex: 5048},
+		{NpcID: 49, Slot: 17, ItemIndex: 867},
+	}
+	got := strings.Join(shopLayoutViolations(bad), "\n")
+	if !strings.Contains(got, "npc 49 slot 17 tem 867") {
+		t.Fatalf("a checagem não apontou o Gladio no separador: %q", got)
 	}
 }
 

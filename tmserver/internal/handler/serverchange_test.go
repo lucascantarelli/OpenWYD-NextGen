@@ -45,6 +45,14 @@ func TestCommandServerChangeIssuesToken(t *testing.T) {
 	if claims.Slot != 0 {
 		t.Errorf("token slot = %d, want 0", claims.Slot)
 	}
+
+	// Legacy parity: the server closes the session after sending the frame
+	// (CloseUser, ProcessDBMessage.cpp:1474-1478), which is what makes the
+	// client reconnect to the target channel. Without the close, /srv is a no-op.
+	_ = a.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, err := a.Read(make([]byte, 1)); err == nil {
+		t.Fatal("session stayed open after /srv token: client never reconnects")
+	}
 }
 
 // TestCommandServerChangeSameChannel keeps the legacy guard: asking for the

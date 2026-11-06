@@ -100,6 +100,8 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Sem e2e de navegador no portal | 0 Playwright | [TEST-03](issues/TEST-03.md) |
 | Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](done/CI-01.md) |
 | Migração em base vazia fora do CI | ✅ 06/11: `.github/workflows/db.yml` com Postgres 17, `TestBaselineDown` (up+down+catálogo) e suíte de integração (58 testes) | [CI-02](done/CI-02.md) |
+| `/srv` e login entre instâncias | ✅ 06/11: token assinado + `CloseUser` legado; e2e canal 1→2 e aviso no mesmo canal; token aceito no canal 2 | [CHANNEL-01](done/CHANNEL-01.md) |
+| Rename `character`→`characters` incompleto no runtime | ✅ 06/11: banco só com `characters`, queries Go no nome novo, stack reconstruída, login e2e sem 42P01 | [DB-05](done/DB-05.md) |
 | Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
 | `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | 0 rows no banco de dev | [DB-03](issues/DB-03.md) |
 | Postgres acessado só como superusuário; sem restore testado | ✅ 06/11: `openwyd_app`/`openwyd_migrator`/`openwyd_ro`, DSN de app sem superusuário e restore com **50 tabelas idênticas** | [DB-01](done/DB-01.md) ✅ |
