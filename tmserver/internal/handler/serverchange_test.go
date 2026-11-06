@@ -35,15 +35,25 @@ func TestCommandServerChangeIssuesToken(t *testing.T) {
 		t.Errorf("account = %q, want \"tester\"", name)
 	}
 	tok := strings.TrimRight(string(payload[16:]), "\x00")
+	// O cliente 7662 lê o canal de destino com "*%d" e devolve o campo
+	// inteiro; fora da gramática decimal do legado (CFileDB.cpp:2009) o handler
+	// de troca dele para no meio e o mundo não é redesenhado.
+	wire, ok := crossover.ParseWire(tok)
+	if !ok {
+		t.Fatalf("Enc %q is outside the legacy grammar \"*<srv> <8 ints> <slot>\"", tok)
+	}
+	if wire.Target != 2 {
+		t.Errorf("Enc channel field = %d, want 2 (the client reconnects to this)", wire.Target)
+	}
+	if wire.Slot != 0 {
+		t.Errorf("Enc slot field = %d, want 0", wire.Slot)
+	}
 	claims, ok := crossover.Verify("test-key", name, tok, time.Unix(0, 0))
 	if !ok {
 		t.Fatalf("token %q does not verify for account %q", tok, name)
 	}
 	if claims.Target != 2 {
 		t.Errorf("token target = %d, want 2", claims.Target)
-	}
-	if claims.Slot != 0 {
-		t.Errorf("token slot = %d, want 0", claims.Slot)
 	}
 
 	// Legacy parity: the server closes the session after sending the frame
@@ -52,6 +62,29 @@ func TestCommandServerChangeIssuesToken(t *testing.T) {
 	_ = a.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if _, err := a.Read(make([]byte, 1)); err == nil {
 		t.Fatal("session stayed open after /srv token: client never reconnects")
+	}
+}
+
+// TestESCMenuTriggerIsTheCommandFrame fixa o gatilho que o menu ESC precisa
+// emitir (CANAL-03). A janela do ESC não manda frame nenhum hoje — o
+// dispatcher loga todo Type recebido, e nesse caminho não sai linha alguma —,
+// então o patch do cliente vai enviar exatamente este frame: o mesmo
+// MSG_MessageWhisper do /srv. O teste prova que esse pedido, sozinho, emite o
+// token e encerra a sessão, sem precisar de outro pacote do servidor.
+func TestESCMenuTriggerIsTheCommandFrame(t *testing.T) {
+	addr, stop, _ := startServerClock(t, chatDB())
+	defer stop()
+	a := enterWorldAs(t, addr, "tester")
+	defer a.Close()
+
+	whisperFrame(t, a, "srv", "2")
+	h, payload, ok := readMaybeHeader(t, a)
+	if !ok || h.Type != protocol.MsgCNFServerChange {
+		t.Fatalf("ESC trigger frame answered %#x ok=%v, want MsgCNFServerChange", h.Type, ok)
+	}
+	tok := strings.TrimRight(string(payload[16:]), "\x00")
+	if w, ok := crossover.ParseWire(tok); !ok || w.Target != 2 {
+		t.Fatalf("ESC trigger produced %q, want a token for channel 2 in the legacy grammar", tok)
 	}
 }
 

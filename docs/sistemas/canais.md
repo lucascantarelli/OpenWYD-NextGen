@@ -15,9 +15,11 @@ O compose sobe `tmserver` e `tmserver2` (novato e regular). O canal novato é fi
 2. O servidor emite um token de uso único, válido por 2 minutos, assinado com a chave de crossover.
 3. O cliente reconecta no outro canal e devolve o token; o login valida sem pedir senha de novo.
 
-O `Enc` do frame começa com `*<canal> ` (formato legado) e só depois traz o token assinado. Esse
-primeiro campo é o que o cliente usa para escolher o servidor de destino; sem ele o servidor
-aceita o token, mas o cliente não reconecta.
+O `Enc` do frame é **a string do legado**: `*<canal>` seguido de nove inteiros decimais
+(`CFileDB.cpp:2009`), porque é o único formato que o parser do cliente aceita. O token assinado
+vai empacotado nesses inteiros (canal, slot, expiração em dois pedaços e o HMAC em quatro), e
+`crossover.ParseWire` recusa qualquer campo fora da gramática — foi assim que o `~x1:` e o
+`*2 ~x1:` das versões anteriores deixaram de circular: o servidor aceitava, o cliente travava.
 
 Peça central: `tmserver/internal/crossover`. Os dois tmServer e o dbServer precisam da **mesma**
 `W2PP_CROSSOVER_KEY`; chave diferente aparece como "senha inválida" na reconexão.
@@ -25,7 +27,12 @@ Peça central: `tmserver/internal/crossover`. Os dois tmServer e o dbServer prec
 ## O que não funciona
 
 O menu de canais do ESC **lista** canais, mas não envia troca ao servidor — só o comando funciona. Não
-é bug de UI: o pacote de troca é o do comando.
+é bug de UI: o dispatcher loga todo frame recebido (inclusive sem rota), e nenhum chega nesse
+caminho. Fazer o ESC trocar de canal exige patch no binário do cliente: `roadmap/issues/CANAL-03.md`.
+
+Consequência prática: quando o jogador escolhe um canal no ESC, o cliente fecha a própria conexão
+e fica sem mundo, sem skill e sem NPC — o servidor não participou de nada. Oriente a usar `/srv <n>`
+até o patch existir.
 
 ## Onde está
 

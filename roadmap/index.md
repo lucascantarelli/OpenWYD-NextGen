@@ -101,7 +101,8 @@ número medido e comando de verificação, e o que já estava resolvido ficou re
 | Sem `make ci` nem workflow reutilizável | ✅ 06/11: `make ci` + `_go.yml`/`_portal.yml` + path filter | [CI-01](done/CI-01.md) |
 | Migração em base vazia fora do CI | ✅ 06/11: `.github/workflows/db.yml` com Postgres 17, `TestBaselineDown` (up+down+catálogo) e suíte de integração (58 testes) | [CI-02](done/CI-02.md) |
 | `/srv` e login entre instâncias | ✅ 06/11: token assinado + `CloseUser` legado; e2e canal 1→2 e aviso no mesmo canal; token aceito no canal 2 | [CHANNEL-01](done/CHANNEL-01.md) |
-| `/srv` no cliente gráfico: `Enc` sem `*<canal>` | ✅ 06/11: `*<canal> ~x1:...` (38 B); e2e 1→2 e 2→1; ESC segue sem pacote (limite do cliente) | [CHANNEL-02](done/CHANNEL-02.md) |
+| `/srv` no cliente gráfico: `Enc` fora da gramática do legado | ✅ 06/11: **dez inteiros decimais** do `sprintf` de `CFileDB.cpp:2009` (44 B), com `ParseWire` a recusar texto livre; e2e 1→2 e 2→1 assertando canal e slot campo a campo | [CHANNEL-02](done/CHANNEL-02.md) |
+| ESC → Servidor não pede troca ao servidor | ❌ aberto: nenhum frame chega (o dispatcher loga todos); exige hook no `ClientPatch.dll`, com build e entrega documentados | [CANAL-03](issues/CANAL-03.md) |
 | Rename `character`→`characters` incompleto no runtime | ✅ 06/11: banco só com `characters`, queries Go no nome novo, stack reconstruída, login e2e sem 42P01 | [DB-05](done/DB-05.md) |
 | Boot completo + e2e de login no CI | depende dos mapas fora do git (17 MiB) | [CI-03](issues/CI-03.md) |
 | `sapphire_balance` sem linha única: quote do manto falha em banco novo e no vivo | ✅ 06/11: migration `0007` + fallback/upsert; quote `1/8/8`, compra concorrente com um vencedor | [DB-03](done/DB-03.md) ✅ |

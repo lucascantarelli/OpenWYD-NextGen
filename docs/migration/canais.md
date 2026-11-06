@@ -454,8 +454,11 @@ Consequências:
 ### 8.1.2 O crossover (troca de canal em jogo)
 
 Nenhum pacote do cliente chegou ao servidor durante a tentativa pela janela do ESC (logs de
-`tmserver`/`tmserver2`, 05/11/2026): essa janela **não pede nada** ao servidor. O caminho que o
-legado usa é um comando, em três saltos:
+`tmserver`/`tmserver2`, 05/11/2026): essa janela **não pede nada** ao servidor. Isso não é
+ausência de log por filtro: o dispatcher registra **todo** frame recebido, inclusive os que não
+têm rota (`dispatch.go`, `recv packet ... routed=false`). Sem frame, não há o que o servidor
+responder — o "NextGen-2" do ESC é caminho só do cliente e precisa de patch no binário (ver
+`roadmap/issues/CANAL-03.md`). O caminho que o legado usa é um comando, em três saltos:
 
 ```
 /srv <n>  (_MSG_MessageWhisper.cpp:75-95)
@@ -470,10 +473,33 @@ legado usa é um comando, em três saltos:
 **Implementação nossa** (`/srv`, sem RPC novo): o token é *assinado* com `W2PP_CROSSOVER_KEY` em vez
  de persistido, então não é preciso coluna nova nem RPC de troca em `api/db/v1/db.proto`.
 
-> **Compatibilidade com o cliente (06/11/2026):** o `Enc` começa com o campo legado
-> `*<canal> `, porque é dele que o cliente extrai o servidor de destino. A primeira versão
-> emitia só `~x1:...`; o servidor aceitava o token, mas o cliente não sabia para onde
-> reconectar e o `/srv` parecia não fazer nada. O corpo assinado vem depois do campo.
+> **A gramática do `Enc` é a do legado, não a nossa (06/11/2026).** O dbServer monta o campo
+> com **um único `sprintf`** (`CFileDB.cpp:2009`):
+>
+> ```
+> sprintf(sm.Enc, "*%d %d %d %d %d %d %d %d %d %d", NewServerID, Enc[0..7], Slot);
+> ```
+>
+> São **dez inteiros decimais** separados por espaço. O cliente lê o primeiro deles com o
+> formato `*%d` — o literal existe dentro do `WYD.exe` — para escolher o canal de destino e
+> devolve o campo inteiro no login seguinte. As duas versões anteriores deste port estavam
+> fora dessa gramática (primeiro só `~x1:...`, depois `*2 ~x1:...`): o servidor aceitava o
+> token, mas o handler de troca do cliente parava no meio do campo e o mundo não era
+> redesenhado — o "travou, perdeu skill/teleporte/NPC" do teste real. Hoje o token assinado
+> é **empacotado** nos dez inteiros (`internal/crossover.Build`), e `ParseWire` recusa
+> qualquer coisa fora do sprintf acima:
+>
+> | campo | conteúdo |
+> |---|---|
+> | `*<n>` | canal de destino (o que o cliente lê) |
+> | `Enc[0]` | canal de destino repetido |
+> | `Enc[1]` | slot do personagem |
+> | `Enc[2..3]` | expiração em dois pedaços de 16 bits |
+> | `Enc[4..7]` | HMAC em quatro pedaços de 16 bits |
+> | último | slot (campo final do legado) |
+>
+> Custo: o token deixou de ser legível (não dá mais para ver canal/expiração no log do
+> frame), e a assinatura segue verificada no dbServer antes de qualquer login.
 
 
 | peça | onde |

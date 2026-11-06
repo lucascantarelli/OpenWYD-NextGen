@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"openwyd-nextgen/internal/crossover"
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
@@ -166,10 +167,19 @@ func TestE2EChannelChange(t *testing.T) {
 	if gotAccount != account {
 		t.Fatalf("frame account = %q, want %q", gotAccount, account)
 	}
-	if !strings.HasPrefix(token, "*2 ") {
-		t.Fatalf("token %q does not start with the legacy channel prefix %q (the graphic client uses it to reconnect)", token, "*2 ")
+	// O campo que o cliente parseia: dez inteiros decimais, o primeiro é o
+	// canal de destino (CFileDB.cpp:2009, formato "*%d" no WYD.exe).
+	encWire, ok := crossover.ParseWire(token)
+	if !ok {
+		t.Fatalf("token %q is outside the client grammar \"*<srv> <8 ints> <slot>\"", token)
 	}
-	t.Logf("channel 1: /srv 2 issued token (%d bytes)", len(token))
+	if encWire.Target != 2 {
+		t.Fatalf("token channel field = %d, want 2", encWire.Target)
+	}
+	if encWire.Slot != slot {
+		t.Fatalf("token slot field = %d, want %d", encWire.Slot, slot)
+	}
+	t.Logf("channel 1: /srv 2 issued token %q (%d bytes)", token, len(token))
 
 	// 3. Legacy parity: the server must close the session so the client
 	// reconnects; without this the command is a no-op in the graphic client.
@@ -236,10 +246,14 @@ func TestE2EChannelChangeBack(t *testing.T) {
 	if token == "" {
 		t.Fatal("/srv 1 from channel 2: no MsgCNFServerChange token")
 	}
-	if !strings.HasPrefix(token, "*1 ") {
-		t.Fatalf("token %q does not start with the legacy channel prefix %q", token, "*1 ")
+	encWire, ok := crossover.ParseWire(token)
+	if !ok {
+		t.Fatalf("token %q is outside the client grammar \"*<srv> <8 ints> <slot>\"", token)
 	}
-	t.Logf("channel 2: /srv 1 issued token (%d bytes)", len(token))
+	if encWire.Target != 1 {
+		t.Fatalf("token channel field = %d, want 1", encWire.Target)
+	}
+	t.Logf("channel 2: /srv 1 issued token %q (%d bytes)", token, len(token))
 
 	c1 := liveLogin(t, addr1, account, "", token)
 	defer c1.Close()
