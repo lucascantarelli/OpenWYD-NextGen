@@ -117,7 +117,8 @@ func (a AccessLevel) String() string {
 // domain-model.md §2.1). It is owned by the loop goroutine; the conn/out/closeCh
 // plumbing is shared with this session's reader and writer goroutines only.
 type Session struct {
-	Conn              int // index into pUser/pMob; also HEADER.ID on the wire
+	Conn              int    // index into pUser/pMob; also HEADER.ID on the wire
+	TraceID           string // correlação ponta a ponta (OBS-02): gerado no aceite, vai no metadata gRPC e no log
 	AccountName       string
 	AccountID         int64
 	AccessLevel       AccessLevel // account.role tier; gates in-game GM commands (issue #122)

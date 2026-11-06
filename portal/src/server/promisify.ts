@@ -4,8 +4,13 @@
  * Além de transformar callback em `Promise`, aplica **deadline** de 10s via
  * `CallOptions`. Sem isso uma RPC pendurada deixa a request do browser aberta
  * até o proxy do Next desistir — e o usuário acha que a UI travou.
+ *
+ * O segundo argumento é o `trace_id` (OBS-02): vai no metadata `x-trace-id`, e
+ * sem ele um id novo é gerado, então nenhuma chamada sai sem correlação.
  */
 import * as grpc from "@grpc/grpc-js";
+
+import { traceMetadata } from "./trace";
 
 export const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -21,7 +26,7 @@ export type Unary<Req, Res> = (
 ) => void;
 
 export function promisify<Req, Res>(fn: Unary<Req, Res>, timeoutMs = DEFAULT_TIMEOUT_MS) {
-  return (req: Req) =>
+  return (req: Req, traceId?: string) =>
     new Promise<Res>((resolve, reject) => {
       let settled = false;
 
@@ -34,7 +39,7 @@ export function promisify<Req, Res>(fn: Unary<Req, Res>, timeoutMs = DEFAULT_TIM
       }, timeoutMs + 1_000);
       timer.unref?.();
 
-      fn(req, new grpc.Metadata(), { deadline: Date.now() + timeoutMs }, (err, res) => {
+      fn(req, traceMetadata(traceId), { deadline: Date.now() + timeoutMs }, (err, res) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);

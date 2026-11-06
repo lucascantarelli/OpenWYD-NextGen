@@ -70,8 +70,8 @@ docker compose logs --since=6m db | grep -c 42P01  -> 0
 - [x] `/metrics` nos 4 serviços, em porta própria, com `up` por processo.
 - [x] Conexões CPSock, tick do mundo, fila de entrega, pool e RPC por método/erro.
 - [x] Nenhum bloqueio novo dentro de `World.Run` (observação só em memória).
-- [ ] Dashboard/alertas e p95 consultável: [OBS-03](../issues/OBS-03.md).
-- [ ] `trace_id` ponta a ponta: [OBS-02](../issues/OBS-02.md).
+- [x] Dashboard/alertas e p95 consultável: [OBS-03](OBS-03.md) ✅ (06/11).
+- [x] `trace_id` ponta a ponta: [OBS-02](OBS-02.md) ✅ (06/11).
 - [ ] `gitleaks` e checklist de segredos: [OBS-04](../issues/OBS-04.md).
 
 ## Riscos/rollback

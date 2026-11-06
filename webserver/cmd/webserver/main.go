@@ -109,7 +109,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("webserver", metricsReg)))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("webserver", metricsReg, logger)))
 	st := store.New(pool)
 	npcAdmin := npcadmin.New(st)
 	npcAdmin.SetLogger(logger)

@@ -66,7 +66,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("binserver", metricsReg)))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("binserver", metricsReg, logger)))
 	binv1.RegisterBillingServiceServer(srv, grpcsrv.New(billing.New(*allowUnknown), nil))
 
 	ln, err := net.Listen("tcp", *addr)

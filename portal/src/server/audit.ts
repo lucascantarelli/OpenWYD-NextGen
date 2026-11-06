@@ -21,6 +21,8 @@ export interface AuditEntry {
   target?: string;
   result: number;
   status: number;
+  /** Correlação ponta a ponta (OBS-02); ausente só em ação sem RPC. */
+  traceId?: string;
 }
 
 export function logAudit(entry: AuditEntry): void {

@@ -186,7 +186,7 @@ func runServe(args []string, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("dbserver", metricsReg)))
+	srv := grpc.NewServer(grpc.Creds(creds), grpc.ChainUnaryInterceptor(metrics.UnaryServerInterceptor("dbserver", metricsReg, logger)))
 	st := store.New(pool)
 	dbv1.RegisterAccountServiceServer(srv, grpcsrv.New(st).WithCrossoverKey(os.Getenv("W2PP_CROSSOVER_KEY")))
 	dbv1.RegisterNpcConfigServiceServer(srv, grpcsrv.NewNpcConfig(st))

@@ -245,7 +245,11 @@ func run(logger *slog.Logger) error {
 	var dbConn *grpc.ClientConn
 	var worldEvents worldcfg.Source
 	if *dbAddr != "" {
-		conn, err := grpc.NewClient(*dbAddr, grpc.WithTransportCredentials(clientCreds))
+		// O interceptor cliente injeta o trace_id do contexto (sessão/login) no
+		// metadata de toda RPC, então o dbServer registra o mesmo id (OBS-02).
+		conn, err := grpc.NewClient(*dbAddr,
+			grpc.WithTransportCredentials(clientCreds),
+			grpc.WithChainUnaryInterceptor(metrics.UnaryClientInterceptor()))
 		if err != nil {
 			return err
 		}
@@ -632,7 +636,9 @@ func run(logger *slog.Logger) error {
 
 	// Billing gate: real binServer adapter when -binserver is set, else allow-all.
 	if *binAddr != "" {
-		conn, err := grpc.NewClient(*binAddr, grpc.WithTransportCredentials(clientCreds))
+		conn, err := grpc.NewClient(*binAddr,
+			grpc.WithTransportCredentials(clientCreds),
+			grpc.WithChainUnaryInterceptor(metrics.UnaryClientInterceptor()))
 		if err != nil {
 			return err
 		}

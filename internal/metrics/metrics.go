@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -352,17 +353,29 @@ func Serve(ctx context.Context, addr string, r *Registry, log *slog.Logger) {
 	}
 }
 
-// UnaryServerInterceptor mede cada RPC por método e código. Não registra o
-// trace_id como label (cardinalidade); ele pertence ao log/contexto.
-func UnaryServerInterceptor(service string, r *Registry) grpc.UnaryServerInterceptor {
+// UnaryServerInterceptor mede cada RPC por método e código e correlaciona a
+// linha de log com o trace_id da chamada (OBS-02). Não registra o trace_id como
+// label (cardinalidade); ele pertence ao log/contexto.
+func UnaryServerInterceptor(service string, r *Registry, log *slog.Logger) grpc.UnaryServerInterceptor {
+	if log == nil {
+		log = slog.Default()
+	}
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
+		ctx, traceID := EnsureTraceID(ctx)
+		// Devolve o id ao chamador: quando o cliente não mandou nenhum, ele
+		// descobre qual foi gerado e correlaciona a própria linha.
+		_ = grpc.SetHeader(ctx, metadata.Pairs(TraceHeader, traceID))
+
 		resp, err := handler(ctx, req)
 		code := status.Code(err).String()
 		r.Inc("grpc_requests_total", "Total de RPCs gRPC por método e código.",
 			Labels{"service": service, "method": info.FullMethod, "code": code})
 		r.Observe("grpc_request_duration_seconds", "Duração dos RPCs gRPC em segundos.",
 			time.Since(start).Seconds(), Labels{"service": service, "method": info.FullMethod})
+		log.Info("grpc request",
+			"svc", service, "trace_id", traceID, "method", info.FullMethod,
+			"code", code, "dur_ms", time.Since(start).Milliseconds())
 		return resp, err
 	}
 }

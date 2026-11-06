@@ -7,7 +7,8 @@
  * 1. exige sessão de staff (`requireStaff`);
  * 2. injeta `moderator_id` **da sessão** — nunca do corpo da request;
  * 3. aplica deadline de 10s na RPC;
- * 4. mapeia `AdminResult` → HTTP e registra auditoria.
+ * 4. mapeia `AdminResult` → HTTP e registra auditoria — com o `trace_id` da
+ *    chamada, o mesmo que o web-api registra (OBS-02).
  *
  * `AdminResult` viaja no corpo, com `result: 1..5`; só falha de transporte é
  * erro gRPC (`docs/integrations/npc-admin-nextjs.md §4.1`).
@@ -17,6 +18,7 @@ import { logAudit } from "./audit";
 import { AdminError } from "./errors";
 import { promisify, type Unary } from "./promisify";
 import { getSession, isStaff, type Session } from "./session";
+import { newTraceId } from "./trace";
 
 export { ADMIN_RESULT, httpStatusFor, messageFor } from "./admin-result";
 
@@ -44,7 +46,7 @@ type AdminResponse = { result: number; message?: string };
  * `player` tentando uma ação admin não deixaria rastro. Aqui a negação entra na
  * trilha com `result=FORBIDDEN`; sem sessão o `accountId` é `0` (anônimo).
  */
-async function guardStaff(audit: AdminCallAudit): Promise<Session> {
+async function guardStaff(audit: AdminCallAudit, traceId: string): Promise<Session> {
   const session = await getSession();
   if (session && isStaff(session.role)) return session;
 
@@ -60,6 +62,7 @@ async function guardStaff(audit: AdminCallAudit): Promise<Session> {
     target: audit.target,
     result: ADMIN_RESULT.FORBIDDEN,
     status,
+    traceId,
   });
   throw new AdminError(status, message);
 }
@@ -69,12 +72,18 @@ export async function adminCall<Req extends object, Res extends AdminResponse>(
   req: WithoutModerator<Req>,
   audit: AdminCallAudit,
 ): Promise<Res> {
-  const session = await guardStaff(audit);
+  // Um id por ação: a negação de permissão também é auditada com ele, então a
+  // tentativa recusada e a RPC (quando acontece) dividem a mesma correlação.
+  const traceId = newTraceId();
+  const session = await guardStaff(audit, traceId);
 
-  const res = await promisify(fn)({
-    ...(req as Record<string, unknown>),
-    moderator_id: session.accountId,
-  } as Req);
+  const res = await promisify(fn)(
+    {
+      ...(req as Record<string, unknown>),
+      moderator_id: session.accountId,
+    } as Req,
+    traceId,
+  );
 
   const status = httpStatusFor(res.result);
   logAudit({
@@ -84,6 +93,7 @@ export async function adminCall<Req extends object, Res extends AdminResponse>(
     target: audit.target,
     result: res.result,
     status,
+    traceId,
   });
 
   if (!isOk(res.result)) throw new AdminError(status, res.message?.trim() || messageFor(res.result));

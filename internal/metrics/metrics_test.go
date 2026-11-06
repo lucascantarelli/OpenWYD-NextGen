@@ -83,7 +83,7 @@ func TestConcurrentAdds(t *testing.T) {
 
 func TestUnaryInterceptorRecordsMethodAndCode(t *testing.T) {
 	r := New("test")
-	interceptor := UnaryServerInterceptor("test", r)
+	interceptor := UnaryServerInterceptor("test", r, testLogger(t))
 	info := &grpc.UnaryServerInfo{FullMethod: "/db.v1.AccountService/AccountLogin"}
 
 	if _, err := interceptor(context.Background(), nil, info, func(context.Context, any) (any, error) {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"openwyd-nextgen/internal/crossover"
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/tmserver/internal/content"
 	"openwyd-nextgen/tmserver/internal/protocol"
 	"openwyd-nextgen/tmserver/internal/world"
@@ -67,11 +68,13 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	}
 	s.AccountName = name
 	s.Mode = world.UserLogin
-	d.log.Info("account login: relaying to dbServer", "conn", s.Conn, "account", name)
+	d.log.Info("account login: relaying to dbServer", "conn", s.Conn, "trace_id", s.TraceID, "account", name)
 
 	p := w.Persistence()
 	w.Go(s, func() func(*world.World, *world.Session) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// O trace_id da sessão viaja no metadata gRPC (OBS-02): a linha do
+		// dbServer sai com o MESMO id da linha "connection accepted" aqui.
+		ctx, cancel := context.WithTimeout(metrics.WithTraceID(context.Background(), s.TraceID), 10*time.Second)
 		defer cancel()
 		out, err := p.AccountLogin(ctx, name, pass)
 		return func(w *world.World, s *world.Session) { d.completeAccountLogin(w, s, out, err) }
@@ -81,7 +84,7 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 // completeAccountLogin applies the dbServer login result back in the loop.
 func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out world.LoginOutcome, err error) {
 	if err != nil {
-		d.log.Error("account login backend error", "conn", s.Conn, "account", s.AccountName, "err", err)
+		d.log.Error("account login backend error", "conn", s.Conn, "trace_id", s.TraceID, "account", s.AccountName, "err", err)
 		s.Mode = world.UserAccept
 		d.notify(w, s, NoticeDBError)
 		w.Close(s)
@@ -95,7 +98,7 @@ func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out 
 		}
 		s.AccountID = out.AccountID
 		s.AccessLevel = world.ParseAccess(out.Role) // GM/moderation privilege (issue #122)
-		d.log.Info("account login: OK", "conn", s.Conn, "account", s.AccountName, "id", out.AccountID, "role", s.AccessLevel, "chars", len(out.Characters))
+		d.log.Info("account login: OK", "conn", s.Conn, "trace_id", s.TraceID, "account", s.AccountName, "id", out.AccountID, "role", s.AccessLevel, "chars", len(out.Characters))
 		// Install the account-shared cargo, loaded in the same backend round-trip.
 		// It lives for the whole account session and is released on disconnect.
 		cargo := out.Cargo

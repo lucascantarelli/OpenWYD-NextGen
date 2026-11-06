@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"openwyd-nextgen/internal/metrics"
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
@@ -44,8 +45,12 @@ func (e connectEvent) apply(w *World) {
 		_ = e.conn.Close()
 		return
 	}
+	// Trace_id do aceite (OBS-02): a conexão inteira — login, chamadas ao
+	// dbServer e todo log do handler — carrega o mesmo id, então uma falha de
+	// login é rastreável de ponta a ponta sem procurar por conta/horário.
 	s := &Session{
 		Conn:    conn,
+		TraceID: metrics.NewTraceID(),
 		IP:      e.ip,
 		Mode:    UserAccept,
 		conn:    e.conn,
@@ -58,7 +63,7 @@ func (e connectEvent) apply(w *World) {
 	w.metricInc("cpsock_connections_total", "Conexões CPSock aceitas desde o boot.")
 	go w.readLoop(s)
 	go w.writeLoop(s)
-	w.log.Info("connection accepted", "conn", conn, "ip", e.ip)
+	w.log.Info("connection accepted", "conn", conn, "ip", e.ip, "trace_id", s.TraceID)
 }
 
 // allocConn finds a free player slot. Conn 0 is reserved (the original requires
