@@ -188,9 +188,10 @@ func TestCommandColorTeleportsRetired(t *testing.T) {
 			defer a.Close()
 
 			whisperFrame(t, a, cmd, "")
-			ty, payload, ok := readMaybe(t, a)
-			if !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, payload) != NoticeNotConnected {
-				t.Fatalf("/%s produced %#x ok=%v; want normal offline-whisper response", cmd, ty, ok)
+			// O aviso agora sai como texto (MSG_MessagePanel, ID 0): a caixa
+			// numérica antiga abria vazia no cliente 7662.
+			if got := readPanel(t, a); got != partyTargetGone {
+				t.Fatalf("/%s produced %q; want the not-connected panel", cmd, got)
 			}
 		})
 	}
@@ -589,8 +590,8 @@ func TestWhisperReply(t *testing.T) {
 	defer b.Close()
 
 	whisperFrame(t, b, "r", "nobody yet")
-	if ty, p, ok := readMaybe(t, b); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeNotConnected {
-		t.Fatalf("got %#x, want not-connected notice for /r without history", ty)
+	if got := readPanel(t, b); got != partyTargetGone {
+		t.Fatalf("got %q, want the not-connected panel for /r without history", got)
 	}
 
 	whisperFrame(t, a, "HeroB", "hi")
@@ -627,8 +628,8 @@ func TestWhisperOffline(t *testing.T) {
 	defer a.Close()
 
 	whisperFrame(t, a, "Ghost", "anyone?")
-	if ty, p, ok := readMaybe(t, a); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeNotConnected {
-		t.Errorf("got %#x/%d, want not-connected notice", ty, noticeCode(t, p))
+	if got := readPanel(t, a); got != partyTargetGone {
+		t.Errorf("got %q, want the not-connected panel", got)
 	}
 }
 
@@ -826,8 +827,8 @@ func TestCommandNickOffline(t *testing.T) {
 	defer a.Close()
 
 	whisperFrame(t, a, "nick", "Ghost")
-	if ty, p, ok := readMaybe(t, a); !ok || ty != protocol.MsgMessageBoxOk || noticeCode(t, p) != NoticeNotConnected {
-		t.Errorf("got %#x/%d, want not-connected notice", ty, noticeCode(t, p))
+	if got := readPanel(t, a); got != partyTargetGone {
+		t.Errorf("got %q, want the not-connected panel", got)
 	}
 }
 
