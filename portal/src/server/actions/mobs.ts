@@ -84,7 +84,7 @@ export async function saveMobEquip(input: {
         issue?.message === "slot duplicado"
           ? "slot duplicado no equip"
           : slot !== undefined
-            ? `slot ${slot}: ${issue?.message}`
+            ? `slot ${String(slot)}: ${issue?.message}`
             : "equip inválido",
     };
   }
