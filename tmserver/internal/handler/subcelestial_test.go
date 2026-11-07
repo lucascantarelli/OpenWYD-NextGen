@@ -7,20 +7,19 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// TestCreateSubCelestial drives the Pedra Ideal (5338, EF_VOLATILE 211) on a
-// Celestial through useItem (issue #410, _MSG_UseItem.cpp:3026-3085): with a
-// Sephirot in Equip[11] and CurrentScore.Level >= 120 the character becomes
-// CELESTIALCS and SaveCelestial[1] gets a level-0 sheet of the Sephirot's class
-// (attributes from the current class, HP/MP from the Sephirot's), the Sephirot
-// and one stone are spent, and the active Celestial sheet is untouched.
-// Otherwise nothing changes.
+// TestCreateSubCelestial exercita a Pedra Ideal (5338, EF_VOLATILE 211) num
+// Celestial via useItem (issue #410, _MSG_UseItem.cpp:3026-3085): com um Sephirot
+// em Equip[11] e CurrentScore.Level >= 120 o personagem vira CELESTIALCS e
+// SaveCelestial[1] recebe uma ficha de nível 0 da classe do Sephirot (atributos
+// vêm da classe atual, HP/MP do Sephirot), o Sephirot e uma pedra são gastos, e a
+// ficha Celestial ativa não é tocada. Fora disso nada muda.
 func TestCreateSubCelestial(t *testing.T) {
 	addr, d, w, _ := startKefraServer(t, perzenDB(0))
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// A sheet left over in the slot: the legacy only assigns some fields, so the
-	// others (SPX/SPY, ScoreBonus, SkillBonus, the bars) must survive.
+	// Uma ficha que sobrou no slot: o legado só atribui alguns campos, então os
+	// outros (SPX/SPY, ScoreBonus, SkillBonus, as barras) precisam sobreviver.
 	leftover := world.CelestialSheet{SPX: 2100, SPY: 2100, ScoreBonus: 7, SkillBonus: 3, SkillBar1: [4]uint8{9}, Special: [4]int16{1, 2, 3, 4}, Exp: 99, Level: 50}
 	parkedCelestial := world.CelestialSheet{Class: 2, Level: 33}
 	tests := []struct {
@@ -73,7 +72,7 @@ func TestCreateSubCelestial(t *testing.T) {
 				hpmp := [4][2]int32{{80, 45}, {60, 65}, {70, 55}, {75, 60}}[cls]
 				want := leftover
 				want.Class, want.Level, want.Exp, want.Soul = cls, 0, 0, 4
-				want.Str, want.Int, want.Dex, want.Con = 8, 4, 7, 6 // TK: the current class, not the Sephirot's
+				want.Str, want.Int, want.Dex, want.Con = 8, 4, 7, 6 // TK: a classe atual, não a do Sephirot
 				want.Special = [4]int16{}
 				want.AC, want.Damage = 230, 0
 				want.HP, want.MaxHP, want.MP, want.MaxMP = hpmp[0], hpmp[0], hpmp[1], hpmp[1]
@@ -108,7 +107,7 @@ func TestCreateSubCelestial(t *testing.T) {
 
 func urnammuTemplate(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/" + name)
+	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/"+name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,9 +125,9 @@ func TestIsUrnammuNPC(t *testing.T) {
 	}
 }
 
-// TestUrnammu drives MSG_Quest on the Urnammu (issue #410, _MSG_Quest.cpp:1248-1311):
-// the three refusals change nothing, and a CELESTIALCS with a Sephirot and 2000
-// Fame pays the Fame and the Sephirot to rebuild the parked Sub sheet.
+// TestUrnammu exercita o MSG_Quest no Urnammu (issue #410, _MSG_Quest.cpp:1248-1311):
+// as três recusas não mudam nada, e um CELESTIALCS com um Sephirot e 2000
+// de Fama paga a Fama e o Sephirot para reconstruir a ficha Sub guardada.
 func TestUrnammu(t *testing.T) {
 	addr, d, w, _ := startKefraServer(t, perzenDB(0))
 	c := enterWorld(t, addr)
@@ -204,8 +203,8 @@ func TestUrnammu(t *testing.T) {
 	}
 }
 
-// TestScoreBonusParkedTier pins that CELESTIALCS counts SubCelestialLevel and
-// SCELESTIAL counts CelestialLevel (Basedef.cpp:1084-1101, :1149-1166), while a
+// TestScoreBonusParkedTier fixa que CELESTIALCS conta SubCelestialLevel e
+// SCELESTIAL conta CelestialLevel (Basedef.cpp:1084-1101, :1149-1166), enquanto um
 // plain CELESTIAL ignores both (issue #410).
 func TestScoreBonusParkedTier(t *testing.T) {
 	tests := []struct {
@@ -228,11 +227,11 @@ func TestScoreBonusParkedTier(t *testing.T) {
 	}
 }
 
-// TestPedraMisteriosaSwapsSheets drives the Pedra Misteriosa (4148) through
+// TestPedraMisteriosaSwapsSheets exercita a Pedra Misteriosa (4148) via
 // useItem (issue #410, _MSG_UseItem.cpp:3186-3289): inside a village a
-// CELESTIALCS parks the Celestial in SaveCelestial[0] and plays the Sub, and a
-// second stone swaps back. Outside a village, or below the Sub tiers, nothing
-// changes and the stone stays.
+// CELESTIALCS guarda o Celestial em SaveCelestial[0] e joga com o Sub, e uma
+// segunda pedra troca de volta. Fora de vila, ou abaixo dos tiers Sub, nada
+// muda e a pedra fica.
 func TestPedraMisteriosaSwapsSheets(t *testing.T) {
 	addr, d, w, _ := startKefraServer(t, perzenDB(0))
 	c := enterWorld(t, addr)
@@ -310,7 +309,7 @@ func TestPedraMisteriosaSwapsSheets(t *testing.T) {
 			if w.SentOfType(s, protocol.MsgSetShortSkill) == shortSkills {
 				t.Error("no MSG_SetShortSkill sent")
 			}
-			// BASE_GetHpMp with the HT class and Con/Int, but the stale level 180.
+			// BASE_GetHpMp com a classe HT e Con/Int, mas o nível 180 antigo.
 			if e.BaseMaxHP != 75+(180+399)*2 || e.BaseMaxMP != 60+(180+399)*1 {
 				t.Errorf("BaseMaxHP/MP = %d/%d, want %d/%d", e.BaseMaxHP, e.BaseMaxMP, 75+579*2, 60+579)
 			}

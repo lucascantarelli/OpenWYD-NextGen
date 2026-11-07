@@ -10,8 +10,9 @@ import (
 	"openwyd-nextgen/webserver/internal/worldstateadmin"
 )
 
-// WorldStateAdmin is the world-state surface the server depends on (satisfied by
-// *worldstateadmin.Service). Kept as an interface so the server is unit-testable.
+// WorldStateAdmin é a superfície de estado do mundo de que o servidor depende
+// (satisfeita por *worldstateadmin.Service). Fica como interface para o servidor
+// ser testável em unidade.
 type WorldStateAdmin interface {
 	Get(ctx context.Context, moderatorID int64) (worldstateadmin.Result, worldstateadmin.Snapshot, error)
 	SetCityTax(ctx context.Context, moderatorID int64, zone, tax int) (worldstateadmin.Result, error)
@@ -23,19 +24,19 @@ type WorldStateAdmin interface {
 	SetTowerOwner(ctx context.Context, moderatorID int64, guildID int32, reason string) (worldstateadmin.Result, string, error)
 }
 
-// WorldStateAdminServer implements webv1.WorldStateAdminServiceServer.
+// WorldStateAdminServer implementa webv1.WorldStateAdminServiceServer.
 type WorldStateAdminServer struct {
 	webv1.UnimplementedWorldStateAdminServiceServer
 	admin WorldStateAdmin
 }
 
-// NewWorldStateAdmin builds the WorldStateAdminService over the given logic.
+// NewWorldStateAdmin monta o WorldStateAdminService sobre a lógica recebida.
 func NewWorldStateAdmin(a WorldStateAdmin) *WorldStateAdminServer {
 	return &WorldStateAdminServer{admin: a}
 }
 
-// GetWorldState returns guilds, relations, kingdom zones, tower, castle and Kefra
-// in one snapshot.
+// GetWorldState devolve guilds, relações, zonas do reino, torre, castelo e Kefra
+// num único snapshot.
 func (s *WorldStateAdminServer) GetWorldState(ctx context.Context, req *webv1.GetWorldStateRequest) (*webv1.GetWorldStateResponse, error) {
 	res, snap, err := s.admin.Get(ctx, req.GetModeratorId())
 	if err != nil {
@@ -52,7 +53,7 @@ func (s *WorldStateAdminServer) GetWorldState(ctx context.Context, req *webv1.Ge
 			})
 		}
 		guilds = append(guilds, &webv1.AdminGuild{
-			Id: int32(g.ID), Name: g.Name, Clan: int32(g.Clan), Fame: g.Fame,
+			Id: g.ID, Name: g.Name, Clan: int32(g.Clan), Fame: g.Fame,
 			Citizen: int32(g.Citizen), MasterName: g.MasterName,
 			Members: members, CityZones: g.CityZones, TowerOwner: g.TowerOwner,
 		})
@@ -96,7 +97,7 @@ func (s *WorldStateAdminServer) GetWorldState(ctx context.Context, req *webv1.Ge
 	}, nil
 }
 
-// SetCityTax rewrites one kingdom zone with the new tax.
+// SetCityTax reescreve uma zona do reino com o novo imposto.
 func (s *WorldStateAdminServer) SetCityTax(ctx context.Context, req *webv1.SetCityTaxRequest) (*webv1.SetWorldStateResponse, error) {
 	res, err := s.admin.SetCityTax(ctx, req.GetModeratorId(), int(req.GetZone()), int(req.GetCityTax()))
 	if err != nil {
@@ -114,7 +115,7 @@ func (s *WorldStateAdminServer) SetCityTax(ctx context.Context, req *webv1.SetCi
 	return out, nil
 }
 
-// SetKefraDefeated flips the Kefra flag that gates the Desert portal.
+// SetKefraDefeated inverte a flag do Kefra que libera o portal do Deserto.
 func (s *WorldStateAdminServer) SetKefraDefeated(ctx context.Context, req *webv1.SetKefraDefeatedRequest) (*webv1.SetWorldStateResponse, error) {
 	res, err := s.admin.SetKefraDefeated(ctx, req.GetModeratorId(), req.GetDefeated())
 	if err != nil {

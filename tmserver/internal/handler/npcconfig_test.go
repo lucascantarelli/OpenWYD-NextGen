@@ -14,9 +14,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// merchantTemplate builds a minimal 816-byte STRUCT_MOB with CurrentScore.Merchant
-// set (the shop flag the tmServer honours, offset 104) and non-zero HP so
-// SpawnMobAt keeps it alive.
+// merchantTemplate monta um STRUCT_MOB mínimo de 816 bytes com
+// CurrentScore.Merchant marcado (a flag de loja que o tmServer respeita, offset
+// 104) e HP diferente de zero para o SpawnMobAt mantê-lo vivo.
 func merchantTemplate(name string) []byte {
 	tmpl := make([]byte, 816)
 	copy(tmpl[0:16], name)
@@ -26,7 +26,7 @@ func merchantTemplate(name string) []byte {
 	return tmpl
 }
 
-// staticSource is a fixed npccfg.Source for driving applyNPCConfig directly.
+// staticSource é um npccfg.Source fixo para acionar applyNPCConfig direto.
 type staticSource struct{ snap npccfg.Snapshot }
 
 func (s staticSource) Version(context.Context) (int64, error)            { return s.snap.Version, nil }
@@ -39,9 +39,9 @@ func newNPCDispatcher(base map[int]int32) (*Dispatcher, *world.World) {
 	return d, w
 }
 
-// TestApplyNPCConfigSpawnsMerchant checks a boot apply materializes an enabled
-// merchant definition: the entity exists at its position, is a merchant, carries
-// the moderator shop stock, and the global price override lands.
+// TestApplyNPCConfigSpawnsMerchant confere que aplicar no boot materializa uma
+// definição de mercador habilitada: a entidade existe na posição, é mercador,
+// carrega o estoque definido pelo moderador e o preço global sobreposto aplica.
 func TestApplyNPCConfigSpawnsMerchant(t *testing.T) {
 	d, w := newNPCDispatcher(map[int]int32{1100: 999})
 	snap := npccfg.Snapshot{
@@ -49,8 +49,8 @@ func TestApplyNPCConfigSpawnsMerchant(t *testing.T) {
 		Defs: []npccfg.Definition{{
 			Slug: "shop-1", Template: merchantTemplate("Keeper"), DisplayName: "Ferreiro", Enabled: true,
 			X: 8, Y: 8, Merchant: 1,
-			// Slots 0/2 are tab 1 (identity); slot 9 is tab 2 → Carry[27]; slot 18
-			// is tab 3 → Carry[54]. Proves the ShopSlot mapping is applied.
+			// Slots 0/2 são da aba 1 (identidade); slot 9 é da aba 2 → Carry[27]; slot
+			// 18 é da aba 3 → Carry[54]. Prova que o mapeamento de ShopSlot aplica.
 			Shop: []npccfg.ShopItem{
 				{Slot: 0, Index: 1100, Quantity: 120}, {Slot: 2, Index: 1101},
 				{Slot: 9, Index: 1102}, {Slot: 18, Index: 1103},
@@ -84,7 +84,7 @@ func TestApplyNPCConfigSpawnsMerchant(t *testing.T) {
 	if e.Carry[0].Effects[0].Effect != 61 || e.Carry[0].Effects[0].Value != 120 {
 		t.Errorf("stack effect = %+v, want EF_AMOUNT 120", e.Carry[0].Effects[0])
 	}
-	// Tabs 2/3 map through ShopSlot: slot 9 → Carry[27], slot 18 → Carry[54].
+	// Abas 2/3 passam por ShopSlot: slot 9 → Carry[27], slot 18 → Carry[54].
 	if e.Carry[27].Index != 1102 {
 		t.Errorf("tab-2 slot 9 landed at Carry[27]=%d, want 1102", e.Carry[27].Index)
 	}
@@ -135,8 +135,8 @@ func TestApplyNPCConfigDisplayNameFallbackAndSharedTemplate(t *testing.T) {
 	}
 }
 
-// TestApplyNPCConfigReconcile checks a second snapshot that disables the NPC and
-// clears the price override despawns the entity and restores the base price.
+// TestApplyNPCConfigReconcile confere que um segundo snapshot que desabilita o NPC e
+// limpa a sobreposição de preço despawna a entidade e restaura o preço base.
 func TestApplyNPCConfigReconcile(t *testing.T) {
 	d, w := newNPCDispatcher(map[int]int32{1100: 999})
 	tmpl := merchantTemplate("Keeper")
@@ -172,10 +172,10 @@ func TestApplyNPCConfigReconcile(t *testing.T) {
 	}
 }
 
-// TestApplyNPCConfigKeepsUnchangedNPCs: a reload that edits ONE definition must
-// leave every other live entity exactly as it was. The wipe-and-rebuild version
-// despawned and respawned the whole set on every apply, which is what duplicated
-// every merchant on a live client (in-game report, Armia, 2026-11-04).
+// TestApplyNPCConfigKeepsUnchangedNPCs: um reload que edita UMA definição tem de
+// deixar toda outra entidade viva exatamente como estava. A versão que apagava e
+// recriava tudo a cada apply é o que duplicava
+// cada mercador no cliente vivo (report in-game, Armia, 04/11/2026).
 func TestApplyNPCConfigKeepsUnchangedNPCs(t *testing.T) {
 	d, w := newNPCDispatcher(nil)
 	tmpl := merchantTemplate("Keeper")
@@ -206,8 +206,8 @@ func TestApplyNPCConfigKeepsUnchangedNPCs(t *testing.T) {
 	}
 }
 
-// TestApplyNPCConfigSkipsInvalid checks definitions with no template or no
-// position are skipped rather than spawned.
+// TestApplyNPCConfigSkipsInvalid confere que definições sem template ou sem
+// posição são ignoradas em vez de spawnadas.
 func TestApplyNPCConfigSkipsInvalid(t *testing.T) {
 	d, w := newNPCDispatcher(nil)
 	d.applyNPCConfig(w, npccfg.Snapshot{
@@ -223,22 +223,22 @@ func TestApplyNPCConfigSkipsInvalid(t *testing.T) {
 	_ = w
 }
 
-// --- boot load retry ---
+// --- nova tentativa de carga no boot ---
 //
-// Production incident 2026-08-13: tmServer and dbServer deploy together, and the
-// dbServer reconciles the content catalog BEFORE it listens, so the tmServer
-// routinely wins the race. Boot must wait it out instead of exiting and burning
-// the platform's restart budget — while still failing fast on corrupt data.
+// Incidente de produção de 13/08/2026: tmServer e dbServer sobem juntos, e o
+// dbServer reconcilia o catálogo de conteúdo ANTES de escutar, então o tmServer
+// perde a corrida com frequência. O boot tem de esperar em vez de sair e queimar
+// o orçamento de restart da plataforma — e ainda assim falhar rápido com dado corrompido.
 
-// bootStep is one scripted answer from fakeBootSource.
+// bootStep é uma resposta roteirizada do fakeBootSource.
 type bootStep struct {
 	snap npccfg.Snapshot
 	err  error
 }
 
-// fakeBootSource replays scripted Snapshot answers, one per call, repeating the
-// last step once the script runs out. Unlike staticSource it counts calls, which
-// is how the tests tell a retry from a fail-fast.
+// fakeBootSource reproduz respostas roteirizadas de Snapshot, uma por chamada,
+// repetindo o último passo quando o roteiro acaba. Diferente do staticSource ele
+// conta chamadas, que é como os testes distinguem nova tentativa de falha rápida.
 type fakeBootSource struct {
 	steps []bootStep
 	calls int
@@ -248,7 +248,7 @@ func (f *fakeBootSource) Version(context.Context) (int64, error) { return 0, nil
 
 func (f *fakeBootSource) Snapshot(ctx context.Context) (npccfg.Snapshot, error) {
 	f.calls++
-	// The real dbclient fails this way on a cancelled/expired boot context.
+	// O dbclient real falha assim com contexto de boot cancelado/expirado.
 	if err := ctx.Err(); err != nil {
 		return npccfg.Snapshot{}, err
 	}
@@ -256,8 +256,8 @@ func (f *fakeBootSource) Snapshot(ctx context.Context) (npccfg.Snapshot, error) 
 	return step.snap, step.err
 }
 
-// shrinkBootRetry collapses the retry budget so the tests finish in
-// milliseconds. Package vars, restored on cleanup; no t.Parallel here.
+// shrinkBootRetry encolhe o orçamento de tentativas para os testes terminarem em
+// milissegundos. Variáveis de pacote, restauradas no cleanup; sem t.Parallel aqui.
 func shrinkBootRetry(t *testing.T) {
 	t.Helper()
 	budget, lo, hi := npcBootRetryBudget, npcBootRetryInitial, npcBootRetryMax
@@ -267,7 +267,7 @@ func shrinkBootRetry(t *testing.T) {
 	})
 }
 
-// bootSnapshot covers the first n content generator slots.
+// bootSnapshot cobre os n primeiros slots de gerador de conteúdo.
 func bootSnapshot(version int64, n int) npccfg.Snapshot {
 	snap := npccfg.Snapshot{Version: version}
 	for i := 0; i < n; i++ {
@@ -285,14 +285,14 @@ func TestFetchNPCConfigRetries(t *testing.T) {
 	unavailable := errors.New("connection refused")
 
 	tests := []struct {
-		name string
+		name  string
 		steps []bootStep
-		// wantCalls is exact; 0 means "only require that it retried".
+		// wantCalls é exato; 0 significa "só exigir que tenha tentado de novo".
 		wantCalls int
 		wantErr   bool
 	}{
 		{
-			// The nine transport failures of the production crash-loop.
+			// As nove falhas de transporte do crash-loop de produção.
 			name: "transport failure clears once dbServer listens",
 			steps: []bootStep{
 				{err: unavailable},
@@ -302,8 +302,8 @@ func TestFetchNPCConfigRetries(t *testing.T) {
 			wantCalls: 3,
 		},
 		{
-			// The other production signature: dbServer answered mid-seed, so the
-			// catalogue came back empty rather than refusing the connection.
+			// A outra assinatura de produção: o dbServer respondeu no meio do seed, então o
+			// catálogo voltou vazio em vez de recusar a conexão.
 			name: "empty catalogue clears once the seed commits",
 			steps: []bootStep{
 				{snap: npccfg.Snapshot{Version: 7}},
@@ -317,8 +317,8 @@ func TestFetchNPCConfigRetries(t *testing.T) {
 			wantCalls: 1,
 		},
 		{
-			// Duplicate generator index is corrupt data — waiting cannot fix it,
-			// so boot must not spend the budget before reporting it.
+			// Índice de gerador duplicado é dado corrompido — esperar não corrige,
+			// então o boot não pode gastar o orçamento antes de reportar.
 			name: "duplicate generator index fails without retrying",
 			steps: []bootStep{{snap: npccfg.Snapshot{Defs: []npccfg.Definition{
 				{Slug: "a", Origin: "content", GeneratorIndex: 0},
@@ -328,8 +328,8 @@ func TestFetchNPCConfigRetries(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			// Fail-closed is preserved: a dbServer that never comes back still
-			// stops the boot rather than starting on an empty catalogue.
+			// O fail-closed é preservado: um dbServer que nunca volta ainda
+			// para o boot em vez de subir com catálogo vazio.
 			name:    "permanent failure still fails closed",
 			steps:   []bootStep{{err: unavailable}},
 			wantErr: true,
@@ -363,9 +363,9 @@ func TestFetchNPCConfigRetries(t *testing.T) {
 	}
 }
 
-// TestFetchNPCConfigHonoursContext proves SIGTERM during boot aborts the wait
-// instead of holding the process for the whole retry budget. The budget is left
-// at full size on purpose: cancellation, not the budget, must end the wait.
+// TestFetchNPCConfigHonoursContext prova que SIGTERM durante o boot aborta a espera
+// em vez de segurar o processo pelo orçamento inteiro. O orçamento fica
+// no tamanho cheio de propósito: o cancelamento, não o orçamento, deve encerrar a espera.
 func TestFetchNPCConfigHonoursContext(t *testing.T) {
 	src := &fakeBootSource{steps: []bootStep{{err: errors.New("connection refused")}}}
 	d := New(Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil)), NpcConfig: src})
@@ -383,9 +383,9 @@ func TestFetchNPCConfigHonoursContext(t *testing.T) {
 	}
 }
 
-// TestApplyNPCConfigBootRequiresRegisteredSlot: slots are registered from the same
-// snapshot the boot applies, so a content definition without a slot means the two
-// went out of sync — boot must fail instead of starting a world with holes.
+// TestApplyNPCConfigBootRequiresRegisteredSlot: os slots vêm do mesmo snapshot
+// que o boot aplica, então uma definição de conteúdo sem slot significa que os
+// dois saíram de sincronia — o boot tem de falhar em vez de subir um mundo com buracos.
 func TestApplyNPCConfigBootRequiresRegisteredSlot(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log, NpcConfig: staticSource{}})

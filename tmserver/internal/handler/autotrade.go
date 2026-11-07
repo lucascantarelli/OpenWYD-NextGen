@@ -5,40 +5,42 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Personal shop / autotrade (issue #115, TMSrv/_MSG_SendAutoTrade.cpp,
-// _MSG_ReqBuy.cpp, _MSG_ReqTradeList.cpp, SendFunc.cpp:SendAutoTrade). A player
-// opens an AFK stall that sells items out of the account Cargo (warehouse) by
-// CargoPos; the offered item stays referenced in the Cargo and only moves on a
-// completed buy, so closing the shop never returns anything. All state lives on the
-// Session (session-only, never persisted) and every handler runs inside the loop
-// goroutine, so the buy transaction is atomic without locks. Closing the shop is
-// RemoveTrade (handler.removeTrade), NOT _MSG_Deprivate (which is a guild op).
+// Loja pessoal / autotrade (issue #115, TMSrv/_MSG_SendAutoTrade.cpp,
+// _MSG_ReqBuy.cpp, _MSG_ReqTradeList.cpp, SendFunc.cpp:SendAutoTrade). O jogador
+// abre uma banca AFK que vende itens do Cargo (armazém) da conta por CargoPos; o
+// item ofertado continua referenciado no Cargo e só sai numa compra concluída,
+// então fechar a loja nunca devolve nada. Todo o estado vive na Session (só de
+// sessão, nunca persistido) e cada handler roda dentro da goroutine do loop, o
+// que torna a transação de compra atômica sem locks. Fechar a loja é
+// RemoveTrade (handler.removeTrade), NÃO _MSG_Deprivate (que é operação de guild).
 
-// autoTradePriceMax is the per-item price ceiling (_MSG_SendAutoTrade.cpp:76).
+// autoTradePriceMax é o teto de preço por item (_MSG_SendAutoTrade.cpp:76).
 const autoTradePriceMax = 1_999_999_999
 
-// autoTradeViewRange is VIEWGRIDX/VIEWGRIDY (33): a browser/buyer must be within
-// this box of the shop owner (_MSG_ReqBuy.cpp:62, _MSG_ReqTradeList.cpp:40).
+// autoTradeViewRange é VIEWGRIDX/VIEWGRIDY (33): quem navega ou compra precisa
+// estar dentro desta caixa em relação ao dono da loja (_MSG_ReqBuy.cpp:62,
+// _MSG_ReqTradeList.cpp:40).
 const autoTradeViewRange = world.NoViewRange
 
-// autoTradeTaxThreshold is the price below which no city tax is charged
-// (_MSG_ReqBuy.cpp:138): imposto = (Price/100)*Tax only when Price >= 100000.
+// autoTradeTaxThreshold é o preço abaixo do qual não há imposto de cidade
+// (_MSG_ReqBuy.cpp:138): imposto = (Price/100)*Tax só quando Price >= 100000.
 const autoTradeTaxThreshold = 100000
 
-// autoTradeBlacklist is the set of sIndex the original refuses to put on sale
-// (_MSG_SendAutoTrade.cpp:85): quest/bound/event items that must never be traded.
+// autoTradeBlacklist é o conjunto de sIndex que o original recusa pôr à venda
+// (_MSG_SendAutoTrade.cpp:85): itens de quest/vinculados/evento, que nunca podem
+// ser negociados.
 var autoTradeBlacklist = map[int16]bool{
 	508: true, 3993: true, 747: true, 509: true, 522: true,
 	526: true, 527: true, 528: true, 529: true, 530: true, 531: true, 446: true,
 }
 
-// inAutoTradeForbiddenRect reports whether (x,y) is inside the hardcoded no-shop
-// rectangle inside a village (_MSG_SendAutoTrade.cpp:57).
+// inAutoTradeForbiddenRect diz se (x,y) está dentro do retângulo fixo onde não se
+// abre loja dentro da vila (_MSG_SendAutoTrade.cpp:57).
 func inAutoTradeForbiddenRect(x, y int16) bool {
 	return x >= 2123 && x <= 2148 && y >= 2139 && y <= 2157
 }
 
-// autoTradeInRange reports whether b is within the autotrade view box of a.
+// autoTradeInRange diz se b está dentro da caixa de visão de autotrade de a.
 func autoTradeInRange(a, b *world.Entity) bool {
 	dx := int(a.X) - int(b.X)
 	dy := int(a.Y) - int(b.Y)
@@ -51,10 +53,10 @@ func autoTradeInRange(a, b *world.Entity) bool {
 	return dx <= autoTradeViewRange && dy <= autoTradeViewRange
 }
 
-// sendAutoTrade handles _MSG_SendAutoTrade (0x0397): open a personal shop. Items
-// are validated against the seller's account Cargo (memcmp anti item-swap) and the
-// sIndex blacklist; the shop is village-only. On success it stores the shop, sets
-// TradeMode, sends the owner its own list, and multicasts the stall pose.
+// sendAutoTrade trata _MSG_SendAutoTrade (0x0397): abre uma loja pessoal. Os itens
+// são validados contra o Cargo da conta do vendedor (memcmp anti troca de item) e
+// contra a blacklist de sIndex; a loja só abre em vila. No sucesso guarda a loja,
+// marca TradeMode, envia ao dono a própria lista e multicasta a pose da banca.
 func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -62,7 +64,7 @@ func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.
 		d.removeTrade(w, s)
 		return
 	}
-	// Can't open a shop mid-trade or while one is already open.
+	// Não dá para abrir loja no meio de uma troca nem com uma já aberta.
 	if s.Trade.Active || s.TradeMode != 0 {
 		d.notify(w, s, NoticeCantAutoTrade)
 		return
@@ -79,27 +81,27 @@ func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.
 	}
 	cargo := w.Cargo(s.AccountID)
 	if cargo == nil {
-		// No warehouse loaded — nothing to sell from. Fala em vez de sumir: uma
+		// Sem armazém carregado — não há de onde vender. Fala em vez de sumir: uma
 		// loja que não abre sem explicar é o defeito que o QA reporta como
 		// "clicou e não aconteceu nada".
 		d.sendClientMessage(w, s, tradeWrongPacket)
 		return
 	}
 
-	// Validate every slot, building the shop; nothing commits until the whole
-	// message passes (validate-all-then-apply, like the legacy loop + memcpy).
+	// Valida cada slot montando a loja; nada é aplicado antes de a mensagem
+	// inteira passar (valida-tudo-depois-aplica, como o loop + memcpy legado).
 	shop := &world.AutoTradeState{Title: body.Title, Tax: world.CityTax(village)}
 	for i := 0; i < protocol.MaxAutoTradeWire; i++ {
 		ws := body.Slots[i]
 		shop.Slots[i].CargoPos = -1
 		if ws.Item.Index == 0 {
 			if ws.Coin != 0 {
-				return // coin without an item (_MSG_SendAutoTrade.cpp:79)
+				return // moeda sem item (_MSG_SendAutoTrade.cpp:79)
 			}
 			continue
 		}
 		if ws.Coin <= 0 || ws.Coin > autoTradePriceMax {
-			return // price 0 or over the ceiling is refused
+			return // preço 0 ou acima do teto é recusado
 		}
 		if autoTradeBlacklist[ws.Item.Index] {
 			return
@@ -108,12 +110,18 @@ func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.
 		if pos < 0 || pos >= world.MaxCargo {
 			return
 		}
-		// memcmp the offer against the real Cargo item (anti item-swap). Also blocks
-		// double-listing the same Cargo slot: a later slot that reuses pos would still
-		// match the (unchanged) Cargo item, but the buy path clears both on sale, so a
-		// duplicate reference just goes empty on the first purchase.
-		// TODO(#115): also reject EF_NOTRADE items — the effect id is not in our
-		// partial ItemEffect.h/catalog yet, so the blacklist is the only gate for now.
+		// EF_NOTRADE (127) nunca entra em loja: o efeito pode estar no item do cargo
+		// ou no catálogo (itemEffects), então a pergunta é feita pelo mesmo
+		// `itemAbility` que o trade usa. Sem isto, um item de quest/único virava
+		// mercadoria e o comprador recebia algo que o servidor recusa equipar.
+		if d.itemAbility(cargo.Items[pos], efNoTrade) != 0 {
+			return
+		}
+		// memcmp da oferta contra o item real do Cargo (anti troca de item). Também
+		// bloqueia listar o mesmo slot duas vezes: um slot posterior que reusasse pos
+		// ainda casaria com o item (inalterado) do Cargo, mas o caminho de compra
+		// limpa os dois na venda, então a referência duplicada esvazia na primeira
+		// compra.
 		if !sameItem(ws.Item, cargo.Items[pos]) {
 			d.removeTrade(w, s)
 			return
@@ -125,12 +133,12 @@ func (d *Dispatcher) sendAutoTrade(w *world.World, s *world.Session, _ protocol.
 
 	s.AutoTrade = shop
 	s.TradeMode = 1
-	d.sendShopList(w, s, s.Conn) // SendAutoTrade(conn, conn): echo the owner its list
+	d.sendShopList(w, s, s.Conn) // SendAutoTrade(conn, conn): devolve ao dono a própria lista
 	d.sendShopPose(w, s, e)
 	d.log.Info("autotrade opened", "conn", s.Conn, "title", shop.Title, "tax", shop.Tax)
 }
 
-// reqTradeList handles _MSG_ReqTradeList (0x039A): browse another player's shop.
+// reqTradeList trata _MSG_ReqTradeList (0x039A): navega na loja de outro jogador.
 func (d *Dispatcher) reqTradeList(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP == 0 || s.Mode != world.UserPlay {
@@ -154,11 +162,12 @@ func (d *Dispatcher) reqTradeList(w *world.World, s *world.Session, _ protocol.H
 	d.sendShopList(w, s, int(autoID))
 }
 
-// reqBuy handles _MSG_ReqBuy (0x0398): buy one item from a shop. The whole
-// transaction runs in a single loop pass (validate-all-then-apply): the item moves
-// from the seller's Cargo to the buyer's Carry, gold moves from the buyer's coin to
-// the seller's Cargo coin (minus city tax), and the shop/Cargo slots clear. Because
-// the loop serializes events, a second buyer of the same slot finds it empty.
+// reqBuy trata _MSG_ReqBuy (0x0398): compra um item de uma loja. A transação
+// inteira roda numa única passada do loop (valida-tudo-depois-aplica): o item vai
+// do Cargo do vendedor para o Carry do comprador, o ouro vai da moeda do
+// comprador para a moeda do Cargo do vendedor (menos o imposto da cidade) e os
+// slots da loja/Cargo são limpos. Como o loop serializa eventos, um segundo
+// comprador do mesmo slot o encontra vazio.
 func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP == 0 || s.Mode != world.UserPlay {
@@ -167,7 +176,7 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 		return
 	}
 	if s.TradeMode != 0 || s.Trade.Active {
-		return // a seller/trader can't buy
+		return // quem vende ou troca não pode comprar
 	}
 	var m protocol.MsgReqBuyBody
 	if err := m.Decode(payload); err != nil {
@@ -194,10 +203,11 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 	slot := &seller.AutoTrade.Slots[pos]
 	cpos := slot.CargoPos
 	if cpos < 0 || cpos >= world.MaxCargo || slot.Item.Empty() {
-		return // already sold / empty slot
+		return // já vendido / slot vazio
 	}
-	// Anti-tamper: the offer (tax + price + item) must match exactly, AND the stored
-	// offer must still match the live Cargo item (two memcmp, _MSG_ReqBuy.cpp:72-88).
+	// Anti-adulteração: a oferta (imposto + preço + item) precisa casar exatamente
+	// E a oferta guardada precisa ainda casar com o item vivo do Cargo (dois memcmp,
+	// _MSG_ReqBuy.cpp:72-88).
 	sellerCargo := w.Cargo(seller.AccountID)
 	if sellerCargo == nil {
 		return
@@ -226,7 +236,8 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 		return
 	}
 
-	// Apply atomically. Tax only bites at/above the threshold (_MSG_ReqBuy.cpp:138).
+	// Aplica de forma atômica. O imposto só incide a partir do limiar
+	// (_MSG_ReqBuy.cpp:138).
 	e.Carry[dst] = cargoItem
 	e.Coin -= m.Price
 	var imposto int32
@@ -235,10 +246,11 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 	}
 	sellerCargo.Coin += m.Price - imposto
 	sellerCargo.Items[cpos] = world.Item{}
-	*slot = world.AutoTradeSlot{CargoPos: -1} // clear the CORRECT slot (not the legacy memset bug)
+	*slot = world.AutoTradeSlot{CargoPos: -1} // limpa o slot CERTO (não repete o bug de memset do legado)
 
-	// S→C: buyer gets the item + updated coin; seller gets the cleared cargo slot +
-	// cargo coin; the shop's viewers get _MSG_ItemSold to drop it from the listing.
+	// S→C: o comprador recebe o item + a moeda atualizada; o vendedor recebe o slot
+	// do cargo limpo + a moeda do cargo; quem está vendo a loja recebe
+	// _MSG_ItemSold para tirar o item da listagem.
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, dst, itemToSel(cargoItem)))
 	d.sendEtc(w, s, e)
 	w.Send(seller, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCargo, cpos, protocol.SelItem{}))
@@ -248,9 +260,9 @@ func (d *Dispatcher) reqBuy(w *world.World, s *world.Session, _ protocol.Header,
 	d.log.Info("autotrade buy", "buyer", s.Conn, "seller", targetID, "item", cargoItem.Index, "price", m.Price, "tax", imposto)
 }
 
-// sendShopList sends the shop owned by sellerConn to s (SendFunc.cpp:SendAutoTrade).
-// It reuses the MSG_SendAutoTrade struct S→C with the Size=528 wire quirk, ID set to
-// the scene id and Index to the seller's conn.
+// sendShopList envia para s a loja de sellerConn (SendFunc.cpp:SendAutoTrade).
+// Reaproveita a struct S→C de MSG_SendAutoTrade com a esquisitice de Size=528 no
+// wire, ID igual ao id de cena e Index igual à conexão do vendedor.
 func (d *Dispatcher) sendShopList(w *world.World, s *world.Session, sellerConn int) {
 	seller := w.Session(sellerConn)
 	if seller == nil || seller.AutoTrade == nil {
@@ -271,9 +283,9 @@ func (d *Dispatcher) sendShopList(w *world.World, s *world.Session, sellerConn i
 	w.SendTo(s, protocol.Header{Type: protocol.MsgSendAutoTrade, ID: protocol.IDScene}, body.EncodeList())
 }
 
-// sendShopPose shows the seller in the stall pose to itself and everyone in view
-// (_MSG_SendAutoTrade.cpp:112-120). The pose is the MSG_CreateMobTrade Type, not a
-// CreateType value; Score.Con is zeroed for parity.
+// sendShopPose mostra o vendedor na pose da banca para si e para quem está na
+// visão (_MSG_SendAutoTrade.cpp:112-120). A pose é o Type MSG_CreateMobTrade, não
+// um valor de CreateType; Score.Con é zerado por paridade.
 func (d *Dispatcher) sendShopPose(w *world.World, s *world.Session, e *world.Entity) {
 	data := d.createMobFrom(e, 0)
 	data.Con = 0 // _MSG_SendAutoTrade.cpp:118
@@ -283,11 +295,12 @@ func (d *Dispatcher) sendShopPose(w *world.World, s *world.Session, e *world.Ent
 	w.BroadcastInView(s.Conn, protocol.MsgCreateMobTrade, body)
 }
 
-// closeAutoTrade shuts an open personal shop: it clears the state, closes the shop
-// UI on the owner (_MSG_QuitTrade signal), and re-emits a NORMAL MSG_CreateMob so
-// the stall pose reverts for the owner and everyone in view (RemoveTrade,
-// Server.cpp:8138-8145). No-op when no shop is open. Called from removeTrade (and
-// thus from every RemoveTrade trigger: quit-trade, walking, buying, item ops, …).
+// closeAutoTrade fecha uma loja pessoal aberta: limpa o estado, fecha a UI da loja
+// no dono (sinal _MSG_QuitTrade) e reemite um MSG_CreateMob NORMAL, para a pose da
+// banca voltar ao normal no dono e em quem está na visão (RemoveTrade,
+// Server.cpp:8138-8145). Não faz nada quando não há loja aberta. Chamada por
+// removeTrade (e portanto por todo gatilho de RemoveTrade: sair da troca, andar,
+// comprar, operações de item, …).
 func (d *Dispatcher) closeAutoTrade(w *world.World, s *world.Session) {
 	if s.AutoTrade == nil && s.TradeMode == 0 {
 		return
@@ -304,8 +317,8 @@ func (d *Dispatcher) closeAutoTrade(w *world.World, s *world.Session) {
 	w.BroadcastInView(s.Conn, protocol.MsgCreateMob, body)
 }
 
-// firstFreeTradeSlot returns the first empty Carry slot in the currently unlocked
-// tradeable region, or -1 if it is full.
+// firstFreeTradeSlot devolve o primeiro slot vazio do Carry na região
+// negociável atualmente liberada, ou -1 se estiver cheia.
 func firstFreeTradeSlot(e *world.Entity) int {
 	for i := 0; i < activeCarryLimit(e); i++ {
 		if e.Carry[i].Empty() {
@@ -315,7 +328,7 @@ func firstFreeTradeSlot(e *world.Entity) int {
 	return -1
 }
 
-// wireFromItem converts a world item to the wire STRUCT_ITEM (WireItem) form.
+// wireFromItem converte um item do mundo para a forma STRUCT_ITEM do wire (WireItem).
 func wireFromItem(it world.Item) protocol.WireItem {
 	wi := protocol.WireItem{Index: it.Index}
 	for i := 0; i < 3; i++ {
@@ -324,8 +337,9 @@ func wireFromItem(it world.Item) protocol.WireItem {
 	return wi
 }
 
-// itemsEqual reports whether two world items are byte-identical (index + effects) —
-// the memcmp used to confirm the shop offer still matches the live Cargo slot.
+// itemsEqual diz se dois itens do mundo são idênticos byte a byte (índice +
+// efeitos) — o memcmp que confirma que a oferta da loja ainda casa com o slot vivo
+// do Cargo.
 func itemsEqual(a, b world.Item) bool {
 	if a.Index != b.Index {
 		return false

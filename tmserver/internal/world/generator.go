@@ -1,46 +1,46 @@
 package world
 
-// Per-generator mob (re)generation: the runtime port of GenerateMob
-// (Server.cpp:3442-3810) and the CurrentNumMob accounting of DeleteMob
-// (Server.cpp:7809-7843). Each NPCGener.txt block becomes a Generator; the AI
-// tick fires GenerateMob on the block's MinuteGenerate cadence and death
-// decrements its population, so farmed areas repopulate in groups the way the
-// original world does. All of this is loop-only state.
+// (Re)geração de mob por gerador: a porta de runtime do GenerateMob
+// (Server.cpp:3442-3810) e a contabilidade de CurrentNumMob do DeleteMob
+// (Server.cpp:7809-7843). Cada bloco do NPCGener.txt vira um Generator; o tick
+// da IA dispara o GenerateMob na cadência MinuteGenerate do bloco e a morte
+// decrementa a população, então áreas farmadas repovoam em grupos como no mundo
+// original. Tudo isto é estado só do loop.
 
-// Generator is the runtime state of one NPCGener.txt block (NPCGENLIST,
-// CNPCGene.h:29-51): the spawn recipe plus the live population counter.
+// Generator é o estado de runtime de um bloco do NPCGener.txt (NPCGENLIST,
+// CNPCGene.h:29-51): a receita de spawn mais o contador de população viva.
 type Generator struct {
-	MinuteGenerate int  // respawn period in minutes; <=0 = the timer never regenerates
-	MinGroup       int  // follower count rolled as MinGroup + rand()%(MaxGroup-MinGroup+1)
+	MinuteGenerate int // período de respawn em minutos; <=0 = o timer nunca regenera
+	MinGroup       int // quantidade de seguidores sorteada como MinGroup + rand()%(MaxGroup-MinGroup+1)
 	MaxGroup       int
-	MaxNumMob      int // population cap (leader and followers both count toward it)
+	MaxNumMob      int // teto de população (líder e seguidores contam para ele)
 	RouteType      uint8
 	Formation      int
 	SegX, SegY     [5]int16
 	SegRange       [5]int16
 	SegWait        [5]int16
-	LeaderTmpl     []byte // raw 816-byte STRUCT_MOB; nil = generator unusable
-	FollowerTmpl   []byte // nil = leader-only groups ("Follower: 0")
-	CurrentNumMob  int    // live mobs from this block (SpawnMobAt ++ / DespawnMob --)
-	// TrainingField marks a block whose start point lies on an AttributeMap
-	// 0x80 cell — the training grounds the legacy gates by level
-	// (_MSG_Action.cpp:201-215). Its kills earn the field EXP multiplier
-	// (issue #383).
+	LeaderTmpl     []byte // STRUCT_MOB cru de 816 bytes; nil = gerador inutilizável
+	FollowerTmpl   []byte // nil = grupos só com líder ("Follower: 0")
+	CurrentNumMob  int    // mobs vivos deste bloco (SpawnMobAt ++ / DespawnMob --)
+	// TrainingField marca um bloco cujo ponto de partida cai numa célula 0x80 do
+	// AttributeMap — o campo de treino que o legado limita por nível
+	// (_MSG_Action.cpp:201-215). Seus abates ganham o multiplicador de EXP do
+	// campo (issue #383).
 	TrainingField bool
 	FightAction   [4]string
 	DieAction     [4]string
 }
 
-// generateWorldCap stops the generator timer from filling every entity slot:
-// the head-room above it keeps the plain respawn queue (MinuteGenerate<=0
-// blocks) from being starved by drop-on-full. Deliberate divergence — the
-// original's only cap is MAX_MOB itself.
+// generateWorldCap impede o timer dos geradores de encher todos os slots de
+// entidade: a folga acima dele evita que a fila simples de respawn (blocos com
+// MinuteGenerate<=0) passe fome por causa do drop-on-full. Divergência
+// deliberada — no original o único teto é o próprio MAX_MOB.
 const generateWorldCap = 20000
 
-// formationOffsets is g_pFormation[5][12][2] (Basedef.cpp:193), interpreted as
-// [formation][follower slot][x/y]. The Server.cpp use site indexes the array in
-// a decompiled-looking order, but NPCGener contains Formation=4 blocks, so the
-// table's first dimension is the only shape that can represent the content.
+// formationOffsets é g_pFormation[5][12][2] (Basedef.cpp:193), interpretado como
+// [formação][slot do seguidor][x/y]. O uso no Server.cpp indexa o array numa
+// ordem de decompilado, mas o NPCGener tem blocos com Formation=4, então a
+// primeira dimensão da tabela é a única forma que representa o conteúdo.
 var formationOffsets = [5][MaxParty]struct{ x, y int16 }{
 	{{1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {2, 0}, {-2, 0}, {0, 2}, {0, -2}},
 	{{1, 0}, {-1, 0}, {2, 0}, {-2, 0}, {3, 0}, {-3, 0}, {4, 0}, {-4, 0}, {5, 0}, {-5, 0}, {0, 6}, {0, -6}},
@@ -49,16 +49,16 @@ var formationOffsets = [5][MaxParty]struct{ x, y int16 }{
 	{{2, 0}, {0, 2}, {1, 1}, {0, 1}, {1, 0}, {-1, 3}, {3, -1}, {-1, 2}, {2, -1}, {-1, 1}, {1, -1}, {1, 2}},
 }
 
-// RegisterGenerators installs the generator table (index = NPCGener block =
-// Entity.GenIndex). Wiring-time only, before Run.
+// RegisterGenerators instala a tabela de geradores (índice = bloco NPCGener =
+// Entity.GenIndex). Só na montagem, antes do Run.
 func (w *World) RegisterGenerators(gens []*Generator) { w.generators = gens }
 
-// GeneratorCount returns the number of registered generator slots (some may be
-// nil — blocks whose templates failed to load).
+// GeneratorCount devolve quantos slots de gerador estão registrados (alguns
+// podem ser nil — blocos cujos templates falharam ao carregar).
 func (w *World) GeneratorCount() int { return len(w.generators) }
 
-// GeneratorAt returns the generator at idx, or nil. Loop-only (the caller may
-// read live CurrentNumMob).
+// GeneratorAt devolve o gerador em idx, ou nil. Só no loop (o chamador pode ler
+// o CurrentNumMob vivo).
 func (w *World) GeneratorAt(idx int) *Generator {
 	if idx < 0 || idx >= len(w.generators) {
 		return nil
@@ -66,16 +66,16 @@ func (w *World) GeneratorAt(idx int) *Generator {
 	return w.generators[idx]
 }
 
-// EventOwnedGenerator reports whether the block belongs to an event system (water
-// room, Kefra, Nightmare, rune quest). Those systems own the block's lifecycle,
-// so the moderator overlay must not materialize it: it would spawn a second boss,
-// tower or room group on top of the one the event code creates.
+// EventOwnedGenerator diz se o bloco pertence a um sistema de evento (sala
+// d'água, Kefra, Nightmare, quest de runa). Esses sistemas são donos do ciclo de
+// vida do bloco, então o overlay do moderador não pode materializá-lo: criaria um
+// segundo chefe, torre ou grupo de sala em cima do que o código de evento cria.
 func EventOwnedGenerator(idx int) bool {
 	return IsWaterGenerator(idx) || IsKefraGenerator(idx) || NightmareGenerator(idx) >= 0 || IsRuneQuestGenerator(idx)
 }
 
-// ClearGenerator removes every live entity and queued respawn owned by one
-// generator slot before a DB snapshot replaces its recipe. Loop-only.
+// ClearGenerator remove toda entidade viva e respawn enfileirado de um slot de
+// gerador antes de um snapshot do banco substituir a receita. Só no loop.
 func (w *World) ClearGenerator(idx int) {
 	if idx < 0 || idx >= len(w.generators) {
 		return
@@ -97,11 +97,11 @@ func (w *World) ClearGenerator(idx int) {
 	}
 }
 
-// RemoveGeneratorMob ports a non-death DeleteMob (Server.cpp:7809-7843): any
-// non-zero type releases the mob's generator slot, while DespawnMob only does
-// so for deaths (type 1, which also feeds the respawn queue). Without the
-// release, a block whose mobs leave by type 3 stays at its cap and the minute
-// timer never refills it. Loop-only.
+// RemoveGeneratorMob porta um DeleteMob que não é morte (Server.cpp:7809-7843):
+// qualquer tipo diferente de zero libera o slot de gerador do mob, enquanto o
+// DespawnMob só faz isso em morte (tipo 1, que também alimenta a fila de
+// respawn). Sem essa liberação, um bloco cujos mobs saem por tipo 3 fica no teto
+// e o timer de minuto nunca o reabastece. Só no loop.
 func (w *World) RemoveGeneratorMob(id int, removeType int32) {
 	e := w.Entity(id)
 	if e == nil || IsPlayer(id) {
@@ -114,9 +114,9 @@ func (w *World) RemoveGeneratorMob(id int, removeType int32) {
 	}
 }
 
-// SpawnGeneratorLeader spawns exactly one generator leader at its first
-// waypoint without consuming RNG. Scripted world events use this instead of
-// GenerateMob so they cannot perturb the combat/drop parity stream.
+// SpawnGeneratorLeader spawna exatamente um líder de gerador no primeiro ponto
+// de rota sem consumir RNG. Eventos roteirizados do mundo usam isto em vez do
+// GenerateMob para não perturbarem o fluxo de paridade de combate/drop.
 func (w *World) SpawnGeneratorLeader(idx int) int {
 	g := w.GeneratorAt(idx)
 	if g == nil || g.LeaderTmpl == nil {
@@ -143,21 +143,24 @@ func (w *World) SpawnGeneratorLeader(idx int) int {
 	return w.SpawnMobAt(sp)
 }
 
-// GenerateMob spawns one group (leader + rolled followers) from generator idx —
-// the port of GenerateMob (Server.cpp:3442-3810). Returns the spawned ids (the
-// leader first) so the caller can reveal them to in-view players. Loop-only.
+// GenerateMob spawna um grupo (líder + seguidores sorteados) do gerador idx — a
+// porta do GenerateMob (Server.cpp:3442-3810). Devolve os ids criados (o líder
+// primeiro) para o chamador revelá-los aos jogadores na visão. Só no loop.
 //
-// Rand-call order is parity-relevant (the original burns the same global
-// rand()): (1) the group-size roll happens BEFORE the population check
-// (Server.cpp:3489-3491); (2) two rolls per set waypoint with a range, X then Y
-// (Server.cpp:3536-3546, offset biased toward −Range as in the original);
-// (3) one roll per spawned mob whose template Clan is 1 (`rand()%10==1` demotes
-// it to clan 2, Server.cpp:3624 — short-circuit: no roll for other clans).
+// A ordem das chamadas de rand() importa para a paridade (o original consome o
+// mesmo rand() global): (1) o sorteio do tamanho do grupo acontece ANTES da
+// checagem de população (Server.cpp:3489-3491); (2) dois sorteios por ponto de
+// rota com faixa, X e depois Y (Server.cpp:3536-3546, deslocamento enviesado
+// para −Range como no original); (3) um sorteio por mob criado cujo template tem
+// Clan 1 (`rand()%10==1` rebaixa para clan 2, Server.cpp:3624 — curto-circuito:
+// sem sorteio para outros clãs).
 //
-// Kept quirk: the follower clamp ignores the leader, so a MaxNumMob=1 block
-// still spawns leader+1 follower and sits at CurrentNumMob=2 until both die.
-// Not ported: the MinuteGenerate>=500 relocation hack, the Coliseum-rectangle
-// disable and event hooks (BrState/GTORRE) — event systems, out of scope.
+// Esquisitice mantida: o limite de seguidores ignora o líder, então um bloco com
+// MaxNumMob=1 ainda spawna líder+1 seguidor e fica em CurrentNumMob=2 até os dois
+// morrerem.
+// Não portado: o hack de relocação com MinuteGenerate>=500, o desligamento no
+// retângulo do Coliseu e os hooks de evento (BrState/GTORRE) — são sistemas de
+// evento, fora do escopo.
 func (w *World) GenerateMob(idx int) []int {
 	g := w.GeneratorAt(idx)
 	if g == nil || g.LeaderTmpl == nil {
@@ -165,14 +168,14 @@ func (w *World) GenerateMob(idx int) []int {
 	}
 	qmob := g.MaxGroup - g.MinGroup + 1
 	if qmob <= 0 {
-		qmob = 1 // "err,zero divide" guard (Server.cpp:3486)
+		qmob = 1 // guarda de "err,zero divide" (Server.cpp:3486)
 	}
 	n := g.MinGroup + w.rng.Intn(qmob)
 	maxNumMob := g.MaxNumMob
 	if maxNumMob < 0 {
-		// NPCGener uses -1 on at least Mestre_Grifo. The old bootstrap policy
-		// populates static merchant blocks up front, so keep one live instance
-		// instead of treating the negative cap as already saturated.
+		// O NPCGener usa -1 pelo menos no Mestre_Grifo. A política antiga de
+		// bootstrap populava blocos de mercador estático de cara, então mantém uma
+		// instância viva em vez de tratar o teto negativo como já saturado.
 		maxNumMob = 1
 	}
 	if g.CurrentNumMob >= maxNumMob {
@@ -198,7 +201,7 @@ func (w *World) GenerateMob(idx int) []int {
 		}
 	}
 	baseX, baseY := sp.SegX[0], sp.SegY[0]
-	if baseX == 0 { // no Start waypoint: anchor on any set one
+	if baseX == 0 { // sem ponto Start: ancora em qualquer um definido
 		for i := range sp.SegX {
 			if sp.SegX[i] != 0 {
 				baseX, baseY = sp.SegX[i], sp.SegY[i]
@@ -207,7 +210,7 @@ func (w *World) GenerateMob(idx int) []int {
 		}
 	}
 	if baseX == 0 {
-		return nil // generator without a position
+		return nil // gerador sem posição
 	}
 
 	x, y, ok := w.emptyCellNear(baseX, baseY)
@@ -242,7 +245,7 @@ func (w *World) GenerateMob(idx int) []int {
 			break
 		}
 		fe := w.entities[fid]
-		fe.Leader = leaderID // group link: followers never self-aggro (CMob.cpp:158)
+		fe.Leader = leaderID // vínculo de grupo: seguidor nunca agride sozinho (CMob.cpp:158)
 		le.PartyList[i] = fid
 		if fe.Clan == 1 && w.rng.Intn(10) == 1 {
 			fe.Clan = 2
@@ -285,12 +288,12 @@ func followerSpawn(leader MobSpawn, g *Generator, slot int) MobSpawn {
 	return sp
 }
 
-// emptyCellNear finds a mob-free grid cell at or around (x,y), scanning the
-// expanding boxes GetEmptyMobGrid uses (GetFunc.cpp:2027, rings 1..3). The
-// original also rejects height-127 cells; the walkability grid lives on the
-// handler side, so that check is skipped here — spawn anchors come from the
-// curated NPCGener data (UNVERIFIED that no generator anchors on blocked
-// ground).
+// emptyCellNear acha uma célula de grade livre de mob em (x,y) ou em volta,
+// varrendo as caixas expansivas que o GetEmptyMobGrid usa (GetFunc.cpp:2027,
+// anéis 1..3). O original também recusa células com altura 127; a grade de
+// caminhabilidade vive no lado do handler, então essa checagem é pulada aqui —
+// as âncoras de spawn vêm do NPCGener curado (UNVERIFIED que nenhum gerador
+// ancora em terreno bloqueado).
 func (w *World) emptyCellNear(x, y int16) (int16, int16, bool) {
 	if _, ok := w.grid.MobAt(int(x), int(y)); !ok && w.grid.inBounds(int(x), int(y)) {
 		return x, y, true

@@ -11,17 +11,17 @@ import (
 
 func npcTemplate(t *testing.T, name string) []byte {
 	t.Helper()
-	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/" + name)
+	b, err := readRelease(t, "../../../tmserver/content/TMsrv/run/npc/"+name)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return b
 }
 
-// TestNewbieTrainerRouting pins the issue #395 routing on the shipped
-// templates: the Treinadores by their MOB.Merchant byte, the Chefe_de_Treino
-// by Merchant 100 + EF_GRADE0 16, and nothing else (the plain trainers and the
-// Coveiro keep their routes).
+// TestNewbieTrainerRouting fixa o roteamento da issue #395 nos templates
+// entregues: os Treinadores pelo byte MOB.Merchant, o Chefe_de_Treino por
+// Merchant 100 + EF_GRADE0 16, e nada além disso (os treinadores simples e o
+// Coveiro mantêm as rotas).
 func TestNewbieTrainerRouting(t *testing.T) {
 	tests := []struct {
 		tmpl     string
@@ -54,8 +54,8 @@ func TestNewbieTrainerRouting(t *testing.T) {
 }
 
 const (
-	testNewbieWeapon     int16 = 41 // nPos 64 weapon in the test catalog
-	testNewbieHighWeapon int16 = 42 // ReqLvl 40: step 2 leaves it alone
+	testNewbieWeapon     int16 = 41 // arma com nPos 64 no catálogo de teste
+	testNewbieHighWeapon int16 = 42 // ReqLvl 40: o passo 2 não mexe nela
 	testNewbieHelm       int16 = 43 // nPos 2
 )
 
@@ -97,7 +97,7 @@ func TestNewbieQuest(t *testing.T) {
 		{name: "step 1 at FREEEXP", npc: 1, level: 35, flag: 0, key: 451, wantFlag: 0, wantChats: 1},
 		{name: "step 1 arch", npc: 1, level: 9, class: classMasterArch, flag: 0, key: 451, wantFlag: 0, wantChats: 1},
 		{name: "step 1 done twice", npc: 1, level: 9, flag: 1, key: 451, wantFlag: 1, wantChats: 1},
-		// NOV-12: the Coveiro's ticket must not send a newbie to its arena.
+		// NOV-12: o bilhete do Coveiro não pode mandar um novato para a arena dele.
 		{name: "Treinador1 is not the Coveiro", npc: 1, level: 39, flag: 0, key: itemVelaDoCoveiro, wantFlag: 0, wantChats: 1,
 			check: func(t *testing.T, e *world.Entity) {
 				if e.Carry[0].Index != itemVelaDoCoveiro || e.X != 5 || e.Y != 5 {
@@ -173,7 +173,7 @@ func TestNewbieQuest(t *testing.T) {
 }
 
 // TestItemBonusQuestRolls pins SetItemBonus(item, level, 1, 0) on a weapon
-// (nPos 64, lvdif 2) for two rand() sequences, derived by hand from
+// (nPos 64, lvdif 2) para duas sequências de rand(), derivadas à mão de
 // Server.cpp:1777-2717.
 func TestItemBonusQuestRolls(t *testing.T) {
 	tests := []struct {
@@ -199,7 +199,7 @@ func TestItemBonusQuestRolls(t *testing.T) {
 			}
 		})
 	}
-	// A shield (nPos 128) skips the roll entirely and draws no rand().
+	// Um escudo (nPos 128) pula a rolagem inteira e não consome rand().
 	shield := world.Item{Index: 1}
 	refine.ItemBonus(&shield, 50, true, 0, refine.BonusItem{Pos: 128}, func() int { t.Fatal("rand() drawn for a shield"); return 0 })
 	if shield.Effects != ([3]world.Effect{}) {

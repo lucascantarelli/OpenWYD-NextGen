@@ -2,26 +2,26 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
 
-// Ownership writes (issue 45, closing slice). "Dono do castelo" in this server is
-// two columns, not a table of its own:
+// Escritas de posse (issue 45, fatia de fechamento). "Dono do castelo" neste
+// servidor são duas colunas, não uma tabela própria:
 //
-//   - guild_zone.charge_guild — the guild in charge of a kingdom zone (the world
-//     reads it for city ownership and the siege state);
-//   - guild_tower_state.owner_guild — the GTorre owner, a single row.
+//   - guild_zone.charge_guild — a guild responsável por uma zona do reino (o
+//     mundo lê essa coluna para dono de cidade e estado de cerco);
+//   - guild_tower_state.owner_guild — o dono da GTorre, uma linha só.
 //
-// Both are written here with the same transactional audit as the guild writes.
-// The city tax is deliberately NOT part of SetZoneOwner: a siege result that also
-// moved the shop tax would be a silent economy change.
+// As duas são gravadas aqui com a mesma auditoria transacional das escritas de
+// guild. O imposto da cidade de propósito NÃO faz parte de SetZoneOwner: um
+// resultado de cerco que também mexesse no imposto da loja seria uma mudança
+// silenciosa de economia.
 
-// SetZoneOwner sets (or clears, guildID 0) the guild in charge of one kingdom
-// zone. applied=false when the zone row does not exist.
+// SetZoneOwner define (ou limpa, com guildID 0) a guild responsável por uma zona
+// do reino. applied=falso quando a linha da zona não existe.
 func (s *Store) SetZoneOwner(ctx context.Context, zone, guildID int32, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -59,7 +59,7 @@ func (s *Store) SetZoneOwner(ctx context.Context, zone, guildID int32, moderator
 	return applied, err
 }
 
-// SetTowerOwner sets (or clears, guildID 0) the single GTorre owner row.
+// SetTowerOwner define (ou limpa, com guildID 0) a única linha de dono da GTorre.
 func (s *Store) SetTowerOwner(ctx context.Context, guildID int32, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -95,14 +95,4 @@ func (s *Store) SetTowerOwner(ctx context.Context, guildID int32, moderatorID in
 			map[string]any{"previous_guild": previous}, before, after, reason)
 	})
 	return applied, err
-}
-
-// guildOwnerTargetJSON is kept for symmetry with the other audit helpers when the
-// target is a plain map; it guarantees we never insert invalid JSONB.
-func guildOwnerTargetJSON(target map[string]any) (string, error) {
-	raw, err := json.Marshal(target)
-	if err != nil {
-		return "", err
-	}
-	return string(raw), nil
 }

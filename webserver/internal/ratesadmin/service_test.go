@@ -29,11 +29,11 @@ func (f *fakeStore) AccountRole(context.Context, int64) (string, error) {
 func (f *fakeStore) ListContentRateOverrides(context.Context) ([]store.ContentRateOverride, error) {
 	return f.overrides, nil
 }
-func (f *fakeStore) UpsertContentRateOverride(_ context.Context, o store.ContentRateOverride, moderatorID int64, reason string) error {
+func (f *fakeStore) UpsertContentRateOverride(_ context.Context, o store.ContentRateOverride, _ int64, _ string) error {
 	f.upserts = append(f.upserts, o)
 	return nil
 }
-func (f *fakeStore) DeleteContentRateOverride(_ context.Context, file, family, name string, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) DeleteContentRateOverride(_ context.Context, file, family, name string, _ int64, _ string) (bool, error) {
 	f.deletes = append(f.deletes, file+"/"+family+"/"+name)
 	return f.applied, nil
 }
@@ -105,7 +105,7 @@ func TestUpsertValidatesCellAndRange(t *testing.T) {
 	}
 }
 
-// CompRate is the reason the key is textual: two keys of one family must be two
+// CompRate é o motivo de a chave ser textual: duas chaves de uma família têm de ser duas
 // independent cells.
 func TestCompositorKeysAreIndependentCells(t *testing.T) {
 	f := &fakeStore{role: "admin"}

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -107,7 +108,7 @@ func newTraceRig(t *testing.T) *traceRig {
 
 	cc, err := grpc.NewClient("passthrough:///bufnet",
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) { return lis.DialContext(ctx) }),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(UnaryClientInterceptor()))
 	if err != nil {
 		t.Fatalf("grpc.NewClient: %v", err)
@@ -119,7 +120,7 @@ func newTraceRig(t *testing.T) *traceRig {
 
 // call executa o RPC e devolve o trace_id que o servidor registrou no header,
 // que é o id que ele usou no log.
-func (r *traceRig) call(t *testing.T, ctx context.Context) string {
+func (r *traceRig) call(ctx context.Context, t *testing.T) string {
 	t.Helper()
 	var md metadata.MD
 	if err := r.client.Invoke(ctx, echoFullMethod, &emptypb.Empty{}, &emptypb.Empty{}, grpc.Header(&md)); err != nil {
@@ -136,7 +137,7 @@ func TestServerInterceptorUsesIncomingTraceID(t *testing.T) {
 	rig := newTraceRig(t)
 	const want = "0123456789abcdef0123456789abcdef"
 
-	got := rig.call(t, WithTraceID(context.Background(), want))
+	got := rig.call(WithTraceID(context.Background(), want), t)
 	if got != want {
 		t.Fatalf("trace_id no header = %q, quer %q", got, want)
 	}
@@ -150,7 +151,7 @@ func TestServerInterceptorUsesIncomingTraceID(t *testing.T) {
 func TestServerInterceptorGeneratesWhenMissing(t *testing.T) {
 	rig := newTraceRig(t)
 
-	got := rig.call(t, context.Background())
+	got := rig.call(context.Background(), t)
 	if !ValidTraceID(got) {
 		t.Fatalf("trace_id gerado = %q, inválido", got)
 	}
@@ -164,7 +165,7 @@ func TestServerInterceptorRejectsForgedTraceID(t *testing.T) {
 
 	// Metadata de entrada inválida (texto livre) não vira id nem chega ao log.
 	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(TraceHeader, "not-a-trace-id"))
-	got := rig.call(t, ctx)
+	got := rig.call(ctx, t)
 	if got == "not-a-trace-id" || !ValidTraceID(got) {
 		t.Fatalf("servidor aceitou id forjado: %q", got)
 	}
@@ -217,7 +218,7 @@ func TestClientInterceptorGeneratesForOutgoingCall(t *testing.T) {
 
 	// Sem id no contexto o cliente ainda manda um, então o servidor registra
 	// uma linha correlacionável em vez de uma órfã.
-	got := rig.call(t, context.Background())
+	got := rig.call(context.Background(), t)
 	if !ValidTraceID(got) {
 		t.Fatalf("id gerado pelo cliente = %q", got)
 	}
@@ -226,7 +227,7 @@ func TestClientInterceptorGeneratesForOutgoingCall(t *testing.T) {
 func TestTraceIDIsNeverAMetricLabel(t *testing.T) {
 	rig := newTraceRig(t)
 	const id = "fedcba9876543210fedcba9876543210"
-	rig.call(t, WithTraceID(context.Background(), id))
+	rig.call(WithTraceID(context.Background(), id), t)
 
 	var b strings.Builder
 	if err := rig.reg.Write(&b); err != nil {
