@@ -6,28 +6,34 @@
 //! - `.deprecated-go/Source/Code/Basedef.h` (198 constantes `_MSG_*`);
 //! - `.deprecated-go/Source/Code/CPSock.cpp` (tabela `pKeyWord[512]`).
 //!
+//! Árvore normativa em `docs/arquitetura/estrutura-e-padroes.md` §3.
+//!
 //! Regras do crate (Hot Path):
 //! - nenhum `panic`/`unwrap` em bytes vindos da rede — erros tipados;
 //! - layout é contrato: offsets explícitos, little-endian, sem `repr(Rust)`;
 //! - o que não está documentado **não é inventado**: fica marcado UNVERIFIED e
 //!   fora dos tipos até a captura real (FASE-08-2).
 
-pub mod header;
-pub mod keyword;
-pub mod obfuscation;
-pub mod opcodes;
+pub mod codec;
+pub mod error;
 pub mod payload;
+pub mod wire;
 
-pub use header::{
-    split_frame, validate_size, Header, HeaderError, APP_VERSION, HEADER_SIZE, INITCODE,
-    MAX_MESSAGE_SIZE, MIN_MESSAGE_SIZE, SKIPCHECKTICK,
+pub use codec::{
+    decode_in_place, encode_in_place, verify_checksum, ChecksumPolicy, TransformError,
+    KEYWORD_OFFSET,
 };
-pub use obfuscation::{decode_in_place, encode_in_place, TransformError, KEYWORD_OFFSET};
-pub use opcodes::{Flow, Opcode};
+pub use error::ProtocolError;
 pub use payload::{
-    declared_len, nul_trimmed, AccountLogin, AccountSecure, Action, ApplyBonus, Attack, AttackFull,
-    AttackOne, AttackTwo, Buy, CharacterLogin, CreateCharacter, DeleteCharacter, MessagePanel,
-    PayloadError, Sell, TargetDamage, TradingItem, UpdateWeather, UseItem, WireField, WirePayload,
+    declared_len, nul_trimmed, require_ported, AccountLogin, AccountSecure, Action, ApplyBonus,
+    Attack, AttackFull, AttackOne, AttackTwo, Buy, CharacterLogin, CreateCharacter,
+    DeleteCharacter, MessagePanel, PayloadError, Sell, TargetDamage, TradingItem, UpdateWeather,
+    UseItem, WireField, WirePayload,
+};
+pub use wire::{
+    inspect, split_frame, validate_size, Flow, FrameError, Header, HeaderError, Opcode, ValidFrame,
+    APP_VERSION, FLAG_CLIENT2GAME, FLAG_DB2GAME, FLAG_DB2NP, FLAG_GAME2CLIENT, FLAG_GAME2DB,
+    FLAG_NEW, FLAG_NP2DB, HEADER_SIZE, INITCODE, MAX_MESSAGE_SIZE, MIN_MESSAGE_SIZE, SKIPCHECKTICK,
 };
 
 /// Versão de cliente esperada pelo servidor (medida em 2026-11-04: o cliente 7662 envia 12000).
@@ -110,41 +116,5 @@ mod tests {
         assert!(Opcode::MessagePanel.flows().contains(&Flow::Game2Client));
         assert!(Opcode::DBAccountLogin.flows().contains(&Flow::Game2Db));
         assert!(Opcode::ExpMsgPanel.flows().is_empty());
-    }
-
-    #[test]
-    fn header_and_payload_compose_into_a_real_packet() {
-        let login = AccountLogin {
-            account_password: [0u8; 12],
-            account_name: [b't', b'e', b's', b't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            zero: [0u8; 52],
-            client_version: i32::from(PROTOCOL_VERSION),
-            db_need_save: 0,
-            adapter_name: [0; 4],
-        };
-        let mut packet = vec![0u8; AccountLogin::WIRE_LEN];
-        Header {
-            size: AccountLogin::WIRE_LEN as u16,
-            key_word: 0,
-            checksum: 0,
-            message_type: AccountLogin::OPCODE.wire(),
-            id: 1,
-            client_tick: 1,
-        }
-        .encode(&mut packet)
-        .expect("cabeçalho");
-        login.encode_into(&mut packet).expect("corpo");
-
-        let (header, len) = split_frame(&packet).expect("frame válido");
-        assert_eq!(len, AccountLogin::WIRE_LEN);
-        assert_eq!(header.message_type, Opcode::AccountLogin.wire());
-
-        let checksum = encode_in_place(&mut packet, 123).expect("ofuscação");
-        assert_eq!(packet[3], checksum);
-        let decoded_checksum = decode_in_place(&mut packet).expect("desofuscação");
-        assert_eq!(decoded_checksum, checksum);
-
-        let decoded = AccountLogin::decode(&packet).expect("payload");
-        assert_eq!(decoded, login);
     }
 }

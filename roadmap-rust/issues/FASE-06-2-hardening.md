@@ -50,17 +50,35 @@ limite, legítimo intacto).
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- `src/limits/rate.rs`: `TokenBucket` (rajada+recarga, tempo injetado) +
+  `ConnectionGate` (3/IP, 1000 total, handshake 5 s, `sweep` de expirados) +
+  `Deny` tipado; tudo puro, sem I/O/lock/alloc no consumo.
+- `tests/flood.rs` (6 testes): flood 10 000 → 100 passam/9 900 negados,
+  legítimo 50/50; handshake por IP preserva vizinho; legítimo passa no
+  pipeline estrito; todo corte truncado recusado; opcode 0xFFFF + não-portado
+  recusados; fuzz de 5000 buffers sem panic (906 excedentes, 4094 recusas).
+- Sanitização = pipeline 08-2 reaproveitado (`accepts_len`→`split_frame`→
+  `decode`→`Strict`→`inspect`→`require_ported`→`decode`); nada reimplementado.
+- Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
+  (`wyd-net`: 4 lib + 6 flood); zero `unsafe`; `Cargo.toml` intocado.
+- Pendência honesta: teto por conta além do por IP (NAT) fica para o `web-api`/
+  sessão (exige identidade autenticada, fora deste crate).
+
 ## Critérios de aceite
 
-- [ ] Limites documentados e testados; flood básico contido.
-- [ ] Nenhum panic com input truncado/hostil (fuzz mínimo anexado).
+- [x] Limites documentados e testados; flood básico contido.
+- [x] Nenhum panic com input truncado/hostil (fuzz mínimo anexado).
 
 ## Riscos / rollback
 

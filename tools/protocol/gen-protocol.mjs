@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Gera `crates/wyd-protocol/src/opcodes.rs` e `crates/wyd-protocol/src/keyword.rs`
-// a partir das fontes C++ arquivadas (fonte canônica):
+// Gera `crates/wyd-protocol/src/wire/generated/opcode_table.rs`,
+// `crates/wyd-protocol/src/codec/generated/keyword_table.rs` e o catálogo em
+// `docs/arquitetura/protocolo.md` (entre marcadores GERADO), a partir das
+// fontes C++ arquivadas (fonte canônica):
 //   - .deprecated-go/Source/Code/Basedef.h  (198 constantes `_MSG_*` + FLAG_*)
 //   - .deprecated-go/Source/Code/CPSock.cpp (tabela `pKeyWord[512]`)
 //
@@ -14,7 +16,9 @@ import path from 'node:path';
 const root = process.cwd();
 const BASEDEF = path.join(root, '.deprecated-go/Source/Code/Basedef.h');
 const CPSOCK = path.join(root, '.deprecated-go/Source/Code/CPSock.cpp');
-const OUT_DIR = path.join(root, 'crates/wyd-protocol/src');
+const OUT_OPCODES = path.join(root, 'crates/wyd-protocol/src/wire/generated/opcode_table.rs');
+const OUT_KEYWORD = path.join(root, 'crates/wyd-protocol/src/codec/generated/keyword_table.rs');
+const OUT_DOC = path.join(root, 'docs/arquitetura/protocolo.md');
 
 const FLAGS = [
   ['Game2Client', 'FLAG_GAME2CLIENT', 0x0100],
@@ -197,9 +201,48 @@ ${rustArray(values)}
 `;
 }
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
+const FLOW_ARROW = {
+  Game2Client: 'J→C',
+  Client2Game: 'C→J',
+  Db2Game: 'D→J',
+  Game2Db: 'J→D',
+  Db2Np: 'D→N',
+  Np2Db: 'N→D',
+  New: 'novo',
+};
+
+function emitCatalog(opcodes) {
+  const rows = opcodes.entries.map((e) => {
+    const dirs = e.flows.map((f) => FLOW_ARROW[f]).join(', ') || '—';
+    return `| \`${e.constName}\` | 0x${e.value.toString(16).padStart(4, '0').toUpperCase()} | ${dirs} |`;
+  });
+  return `<!-- GERADO:catalogo-opcodes (tools/protocol/gen-protocol.mjs de Basedef.h) -->
+| Constante | Fio | Direção |
+|---|---|---|
+${rows.join('\n')}
+<!-- /GERADO:catalogo-opcodes -->`;
+}
+
+function spliceCatalog(doc, catalog) {
+  const start = '<!-- GERADO:catalogo-opcodes';
+  const end = '<!-- /GERADO:catalogo-opcodes -->';
+  const i = doc.indexOf(start);
+  const j = doc.indexOf(end);
+  if (i < 0 || j < 0) throw new Error('protocolo.md sem marcadores GERADO do catálogo');
+  return doc.slice(0, i) + catalog + doc.slice(j + end.length);
+}
+
+fs.mkdirSync(path.dirname(OUT_OPCODES), { recursive: true });
+fs.mkdirSync(path.dirname(OUT_KEYWORD), { recursive: true });
 const opcodes = parseOpcodes();
-fs.writeFileSync(path.join(OUT_DIR, 'opcodes.rs'), emitOpcodes(opcodes));
-fs.writeFileSync(path.join(OUT_DIR, 'keyword.rs'), emitKeyword());
-console.log(`opcodes.rs: ${opcodes.entries.length} opcodes (${opcodes.unique.length} valores únicos, ${opcodes.duplicates.length} repetidos)`);
-console.log('keyword.rs: 512 bytes');
+fs.writeFileSync(OUT_OPCODES, emitOpcodes(opcodes));
+fs.writeFileSync(OUT_KEYWORD, emitKeyword());
+console.log(`opcode_table.rs: ${opcodes.entries.length} opcodes (${opcodes.unique.length} valores únicos, ${opcodes.duplicates.length} repetidos)`);
+console.log('keyword_table.rs: 512 bytes');
+if (fs.existsSync(OUT_DOC)) {
+  const doc = fs.readFileSync(OUT_DOC, 'utf8');
+  fs.writeFileSync(OUT_DOC, spliceCatalog(doc, emitCatalog(opcodes)));
+  console.log('protocolo.md: catálogo atualizado');
+} else {
+  console.log('protocolo.md ainda não existe: catálogo não aplicado');
+}

@@ -52,17 +52,20 @@ Saída esperada: `test result: ok` incluindo 401 sem sessão e auditoria registr
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07, backend do contrato: `wyd-admin` com auth/auditoria/grants + `tests/unauthorized.rs` verde; fiação do portal aguarda transporte).
+
 ## Critérios de aceite
 
-- [ ] Contrato mínimo implementado; portal opera sem Go.
-- [ ] Auditoria com autor e timestamp em toda ação.
+- [x] Contrato mínimo implementado no backend (`wyd-admin`).
+- [ ] Portal opera sem Go (fiação aguarda transporte async — portal intocado de propósito).
+- [x] Auditoria com autor e timestamp em toda ação.
 
 ## Riscos / rollback
 

@@ -1,11 +1,8 @@
-//! Ofuscação e checksum do CPSock (`CPSock.cpp:428-453` decode, `:556-584` encode).
+//! Transformação `pKeyWord` (semente/trans) e ofuscação do CPSock.
 //!
-//! A "criptografia" do CPSock é reversível e a chave é pública: é ofuscação, não
-//! cifragem. O resultado precisa ser **idêntico** ao legado, byte a byte.
-//!
-//! Regras que não podem mudar:
+//! Regras que não podem mudar (`CPSock.cpp:428-453` decode, `:556-584` encode):
 //! - `Size`, `KeyWord` e `CheckSum` (offsets 0..4) ficam em claro.
-//! - A transformação começa em `KEYWORD_OFFSET` (4) e vai até o `Size` declarado.
+//! - A transformação começa em [`KEYWORD_OFFSET`] (4) e vai até o `Size` declarado.
 //! - Semente: `KEY_TABLE[key_word * 2]`; transformação: `KEY_TABLE[rst * 2 + 1]`.
 //! - Aritmética em 8 bits com wrap (equivale ao `unsigned char` do C).
 //! - `CheckSum = soma(cifrado) - soma(claro)`, ambos com wrap.
@@ -14,8 +11,8 @@
 
 use core::fmt;
 
-use crate::header::{Header, HEADER_SIZE};
-use crate::keyword::KEY_TABLE;
+use super::generated::keyword_table::KEY_TABLE;
+use crate::wire::header::{Header, HEADER_SIZE};
 
 /// Offset onde começa o payload ofuscado (o `HEADER` fica em claro).
 pub const KEYWORD_OFFSET: usize = 4;
@@ -25,10 +22,12 @@ pub const KEYWORD_OFFSET: usize = 4;
 pub enum TransformError {
     /// Buffer menor que o `HEADER`.
     BufferTooShort { needed: usize, got: usize },
-    /// `Size` declarado inválido (ver [`crate::header::validate_size`]).
+    /// `Size` declarado inválido.
     InvalidSize { size: u16 },
     /// Buffer não tem exatamente o `Size` declarado.
     LengthMismatch { declared: usize, got: usize },
+    /// Checksum estrito divergiu (política [`Strict`](super::checksum::ChecksumPolicy)).
+    ChecksumMismatch { computed: u8, declared: u8 },
 }
 
 impl fmt::Display for TransformError {
@@ -41,11 +40,22 @@ impl fmt::Display for TransformError {
             Self::LengthMismatch { declared, got } => {
                 write!(f, "frame com {got} bytes, Size declarado {declared}")
             }
+            Self::ChecksumMismatch { computed, declared } => {
+                write!(
+                    f,
+                    "checksum divergiu: calculado {computed}, declarado {declared}"
+                )
+            }
         }
     }
 }
 
 impl std::error::Error for TransformError {}
+
+/// Byte de transformação para a posição corrente da semente.
+fn trans_at(pos: usize) -> u8 {
+    KEY_TABLE[(pos % 256) * 2 + 1]
+}
 
 /// Confere se `packet` corresponde exatamente ao `Size` do seu cabeçalho.
 fn frame_len(packet: &[u8]) -> Result<usize, TransformError> {
@@ -59,8 +69,7 @@ fn frame_len(packet: &[u8]) -> Result<usize, TransformError> {
         needed: HEADER_SIZE,
         got: packet.len(),
     })?;
-    let declared = header
-        .frame_len()
+    let declared = crate::wire::frame::validate_size(header.size)
         .map_err(|_| TransformError::InvalidSize { size: header.size })?;
     if declared != packet.len() {
         return Err(TransformError::LengthMismatch {
@@ -71,16 +80,10 @@ fn frame_len(packet: &[u8]) -> Result<usize, TransformError> {
     Ok(declared)
 }
 
-/// Byte de transformação para a posição corrente da semente.
-fn trans_at(pos: usize) -> u8 {
-    KEY_TABLE[(pos % 256) * 2 + 1]
-}
-
 /// Desofusca o frame no lugar e devolve o checksum calculado.
 ///
-/// O chamador compara o retorno com `Header::checksum` e decide a política: o
-/// legado **tolerava** mismatch (`CPSock.cpp:457-466`); a decisão da stack nova
-/// fica registrada em `docs/arquitetura/protocolo.md`.
+/// O chamador compara o retorno com `Header::checksum` e decide a política (ver
+/// [`super::checksum`]): o legado **tolerava** mismatch (`CPSock.cpp:457-466`).
 pub fn decode_in_place(packet: &mut [u8]) -> Result<u8, TransformError> {
     let size = frame_len(packet)?;
     if packet.len() < HEADER_SIZE {
@@ -151,7 +154,7 @@ pub fn encode_in_place(packet: &mut [u8], key_word: u8) -> Result<u8, TransformE
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::header::{Header, HEADER_SIZE};
+    use crate::wire::header::{Header, HEADER_SIZE};
 
     fn packet(body: &[u8], key_word: u8) -> Vec<u8> {
         let size = (HEADER_SIZE + body.len()) as u16;

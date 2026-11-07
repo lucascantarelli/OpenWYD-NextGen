@@ -19,7 +19,7 @@ mesmo espaço de memória, sem GC — com portal de administração em **Next.js
 │   ├── wyd-db/            # persistência async (Postgres sqlx)
 │   ├── wyd-admin/         # control plane Cold Path (gRPC/REST p/ o portal)
 │   ├── wyd-sim/           # laboratório matemático (balanceamento)
-│   └── wyd-launcher/      # launcher/patcher (hash, patch, bootstrap)
+│   └── wyd-launcher/      # launcher/patcher para o cliente (hash, patch, bootstrap,update,install, anticheat)
 ├── portal/                # 📊 UI Next.js (BFF; nunca escreve estado vivo)
 ├── docs/                  # 📚 documentação (arquitetura, ADRs, boas práticas, testes, CI/CD)
 │   ├── manual-usuario/    # documentação de usuário final (portal, launcher,manuais do jogo)

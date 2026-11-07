@@ -59,6 +59,8 @@ registro auditável.
 
 - [ ] Toda ação de moderação auditada e confirmada; economia com fonte auditada.
 
+> Nota (2026-11-07): aguarda transporte do gateway (07-1 backend pronto); auditoria nasce pronta no backend (`auth.denied`, recibos de grant).
+
 ## Riscos / rollback
 
 - Risco: ação irreversível sem confirmação → mitigação: confirmação obrigatória

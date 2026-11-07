@@ -49,16 +49,18 @@ Saída esperada: gates verdes; documento do modelo presente e revisado.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07, entregue dentro da FASE-04: `docs/arquitetura/modelo-banco.md` com ER, decisões e tabela legado→novo — arquivo legado vazio, registrado).
+
 ## Critérios de aceite
 
-- [ ] ER com FKs/CHECKs/índices documentado; tabela legado→novo publicada.
+- [x] ER com FKs/CHECKs/índices documentado; tabela legado→novo publicada.
 
 ## Riscos / rollback
 

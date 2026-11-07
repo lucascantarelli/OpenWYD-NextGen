@@ -63,18 +63,41 @@ ação admin sem sessão retorna 401 (teste dedicado).
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue (núcleo Rust: contrato + auditoria + grants)
+- [x] Testar issue (núcleo Rust)
+- [x] Revisar issue
+- [ ] Documentar issue (portal + E2E pendentes de transporte)
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
 - [ ] Portal opera contra `wyd-admin` sem falar com Go.
-- [ ] Auditoria registra toda ação admin com autor e timestamp.
+- [x] Auditoria registra toda ação admin com autor e timestamp.
 - [ ] E2E (auth, admin, loja) verde; evidência anexada.
+
+**Status:** 🚧 (2026-11-07) — núcleo Rust entregue e verde; portal+E2E aguardam
+transporte async (ver ADR-0006) e runtime do portal.
+
+## Resultados (núcleo Rust)
+
+- `src/error.rs` (`AdminError`→HTTP 401/403/404/422/409, espelha `AdminResult`;
+  `From<DbError>` sem vazar detalhe; infra vira mensagem genérica).
+- `src/auth/` (`Session`→`StaffSession`: player é 403; `moderator_id` só da
+  sessão; `may_target`/`may_change_role` — moderador só mira jogador).
+- `src/audit/log.rs` (`AuditEntry` quem/o quê/quando; `AuditSink` porta +
+  `VecSink`; negada autenticada vira `auth.denied`, 401 sem autor não audita).
+- `src/api/` (`find/create_account`, `request_grant`; `Option<Session>` para o
+  401 ser testável) + `src/service/grant_service.rs` (idempotência por chave:
+  replay devolve o recibo original sem re-enfileirar).
+- `tests/unauthorized.rs`: 401 sem tocar repo/auditoria; 403 + trilha;
+  fluxo staff ponta a ponta (`find`→`grant`→`replay`, 3 auditorias do autor).
+- Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
+  (`wyd-admin`: 11 lib + 4 integração); zero `unsafe`; portal/ intocado de
+  propósito (apontá-lo para backend sem transporte quebraria o portal Go vivo).
+- Pendências honestas: troca de papel/bloqueio (repo `pg` + coluna, 04-3),
+  dedup durável da chave (UNIQUE no `pg`), transporte HTTP/gRPC, telas 07-2/07-3
+  e E2E 07-4.
 
 ## Riscos / rollback
 

@@ -61,6 +61,13 @@ Saída esperada: `test result: ok`; bench de iteração publicado como baseline.
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+> Nota (2026-11-07): a base de dados (componentes + `ComponentStore` SoA) foi
+> entregue na FASE-03; restam `src/systems/`, a ADR do ECS e o bench baseline
+> (exigem decisão com rede/vendor e carga real — fora do escopo desta entrega).
+>
+> Decisão registrada: ADR-0004 (`docs/arquitetura/adr/0004-ecs-manual-diferido.md`) —
+> SoA manual até o bench mandar o contrário; `hecs`/`bevy_ecs`/`bumpalo` diferidos.
+
 ## Critérios de aceite
 
 - [ ] 4 tipos de entidade como componentes contíguos; ADR da escolha do ECS.

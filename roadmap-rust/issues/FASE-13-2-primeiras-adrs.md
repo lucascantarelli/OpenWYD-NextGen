@@ -47,16 +47,33 @@ Saída esperada: gates verdes;ADRs numeradas sem lacuna e com status explícito.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- ADR-0001 já estava **aceita** (13-1) — nenhuma alteração necessária.
+- Criadas (próximos números livres, 0002/0003 ocupadas):
+  - ADR-0004 (`0004-ecs-manual-diferido.md`): SoA manual até o bench mandar o
+    contrário; `hecs`/`bevy_ecs`/`bumpalo` diferidos → governa 03-2.
+  - ADR-0005 (`0005-serializacao-manual-diferida.md`): LE explícito + `repr(C)`
+    com goldens; `zerocopy`/`nom`/`rkyv` diferidos → governa 08-2.
+  - ADR-0006 (`0006-async-diferido.md`): std até rede/vendor; `tokio`/`sqlx`/
+    `refinery`/`tracing`/`prometheus` diferidos juntos → governa 04-2, 04-3,
+    05-1, 06-1 e transporte da 07.
+- Issues consumidoras vinculadas: 03-2, 08-2, 04-2, 04-3, 05-1, 06-1, 07.
+- Prova: `make check` verde + conformance (7 arquivos 0000–0006 sem lacuna,
+  todos com Estado/Data/Governa/Rastreabilidade explícitos — saída abaixo).
+
 ## Critérios de aceite
 
-- [ ] 4 ADRs com status; issues consumidoras vinculadas.
+- [x] 4 ADRs com status; issues consumidoras vinculadas.
 
 ## Riscos / rollback
 

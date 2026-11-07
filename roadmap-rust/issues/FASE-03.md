@@ -67,19 +67,46 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Tick 20–50 Hz determinístico; teste de determinismo verde.
-- [ ] Zero `unsafe` fora de interop comprovada; `clippy -D warnings` limpo.
-- [ ] Nenhum I/O bloqueante, lock global ou alocação no caminho quente.
-- [ ] Evidência (saída de `cargo test -p wyd-core`) anexada.
+- [x] Tick 20–50 Hz determinístico; teste de determinismo verde.
+- [x] Zero `unsafe` fora de interop comprovada; `clippy -D warnings` limpo.
+- [x] Nenhum I/O bloqueante, lock global ou alocação no caminho quente.
+- [x] Evidência (saída de `cargo test -p wyd-core`) anexada.
+
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- `error.rs` (`CoreError`: `BadTickHz`, `InvalidStats`, `OutOfBounds`,
+  `InvalidGrid`, `TimeWentBackwards` — falha explícita, sem default silencioso).
+- `ecs/components.rs`: `Position`/`Stats` (com `validate()`)/`Item`/`Inventory`
+  (arrays fixos 16+64)/`EntityKind` (4 espécies)/`Entity` (índice+geração) +
+  `ComponentStore` SoA com spawn validado e reuso de slot por geração.
+- `tick/scheduler.rs`: `SchedulerConfig::validated` (20–50 Hz),
+  acumulador com resto + clamp anti-espiral (`MAX_STEPS_PER_ADVANCE`),
+  ordem canônica documentada (Movement → Combat → Visibility).
+- `spatial/grid.rs`: célula fixa configurável, `insert`/`remove`/`relocate`,
+  `for_each_in_radius` sem alloc, fora-dos-limites como `Err`.
+- `ports/clock.rs`: trait `Clock` + `SystemClock` + `ManualClock` + `elapsed_ms`
+  (volta no tempo é erro, não `elapsed` negativo).
+- `tests/determinism.rs` (3 testes): mesmo seed → mesmo hash FNV; fatiamento
+  7 ms × 286 = 50 ms × 40 (40 ticks); guerra com 5000 entidades — 8,6 ms de
+  inserts, consulta raio-256 em 79 µs (máquina do dev, debug).
+- Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
+  (`wyd-core`: 12 lib + 3 integração); zero `unsafe`; `Cargo.toml` intocado
+  (sem `hecs`/`bevy_ecs`/`bumpalo`: exigem rede/vendor + ADR — SoA manual;
+  revisitar em FASE-13-2).
+- Escopo consciente: sistemas de jogo (`systems/`), validador de dados
+  estáticos (03-4, depende FASE-04) e pontos de autoridade (03-5) ficam nas
+  sub-issues; árvore §10 restante inalterada.
 
 ## Riscos / rollback
 

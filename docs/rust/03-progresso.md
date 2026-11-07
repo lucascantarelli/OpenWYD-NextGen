@@ -37,9 +37,9 @@
 
 | Issue | Status | Evidência / observação |
 |---|---|---|
-| FASE-03-1 tick | ⬜ | Base: `crates/wyd-core/src/lib.rs` (`TICK_HZ=20`). |
-| FASE-03-2 ECS | ⬜ | Depende de ADR de ECS (FASE-13-2) + 03-1. |
-| FASE-03-3 spatial grid | ⬜ | Depende de 03-1. |
+| FASE-03-1 tick | ✅ | `tick/scheduler.rs` (acumulador + clamp) + `ports/clock.rs`; fatiamento 7×286 = 50×40. |
+| FASE-03-2 ECS | 🚧 | Dados prontos (`components.rs` + `ComponentStore` SoA); restam `systems/`, ADR e bench. |
+| FASE-03-3 spatial grid | ✅ | `spatial/grid.rs`; guerra 5000: 8,6 ms inserts, 79 µs consulta (debug). |
 | FASE-03-4 dados estáticos | ⬜ | Depende de FASE-04 (fonte de dados). |
 | FASE-03-5 autoridade do servidor | ⬜ | Depende de 03-2, 03-3, 03-4. |
 
@@ -47,9 +47,9 @@
 
 | Issue | Status | Evidência / observação |
 |---|---|---|
-| FASE-04-1 modelagem | ⬜ | Referência: `.deprecated-go/docs/analysis/banco-de-dados.md`. |
-| FASE-04-2 migrations | ⬜ | Depende de 04-1 + ADR de ferramenta. |
-| FASE-04-3 persistência async | ⬜ | Depende de 04-2 + ADR de runtime async. |
+| FASE-04-1 modelagem | ✅ | `docs/arquitetura/modelo-banco.md` (ER, 8 tabelas, 6 decisões; arquivo legado vazio — registrado). |
+| FASE-04-2 migrations | ✅ | 6 migrations reversíveis + `seeds/dev.sql`; prova ao vivo zero→última→revert→última em PG17 descartável. |
+| FASE-04-3 persistência async | 🚧 | Base pronta (traits, `PoolConfig`, `DeliveryQueue`); resta impl `pg` + pool (rede + ADR). |
 
 ## Fases 5–15
 
@@ -58,13 +58,13 @@
 | FASE-05-1 pipeline CI | ⬜ | Base: `.github/workflows/rust.yml` + `Makefile` (`check`, `ci`, `audit`, `bench`). |
 | FASE-05-2 release/docker | ⬜ | Base: `docker/Dockerfile.rust`. |
 | FASE-06-1 telemetria | ⬜ | Depende de FASE-03. |
-| FASE-06-2 hardening | ⬜ | Depende de FASE-08. |
-| FASE-07-1 gateway | ⬜ | Depende de 04-3. |
+| FASE-06-2 hardening | ✅ | `limits/rate.rs` (balde + porte de handshake) + `tests/flood.rs`; flood 100/10000, fuzz 5000 sem panic; legit preservado. |
+| FASE-07-1 gateway | ✅ | Backend do contrato (`AdminError`→HTTP, staff/auditoria/grants idempotentes); 11 lib + 4 integração; fiação do portal aguarda transporte. |
 | FASE-07-2 painel usuário | ⬜ | Depende de 07-1. |
 | FASE-07-3 painel admin | ⬜ | Depende de 07-1. |
 | FASE-07-4 E2E Playwright | ⬜ | Depende de 07-2, 07-3. |
-| FASE-08-1 tabela do protocolo | 🚧 | Protótipo **congelado** em `crates/wyd-protocol/src/*.rs` (fora da árvore do ADR-0002); reorganização + tabela publicada é o trabalho restante. Fonte: `.deprecated-go/docs/migration/` + `Basedef.h`/`CPSock.cpp`. |
-| FASE-08-2 parsers | ⬜ | Depende de 08-1 + ADR de serialização. |
+| FASE-08-1 tabela do protocolo | ✅ | Reorganizado na árvore §3 (`wire/`, `codec/`, `payload/`, `error.rs`, `tests/`); `protocolo.md` publicado (HEADER, ofuscação, 198 opcodes gerados, 16 payloads, UNVERIFIED); gate verde (32 lib + 4 integração). |
+| FASE-08-2 parsers | ✅ | `repr(C)` + offsets provados; `inspect` (tamanho → opcode) + `require_ported` (gate UNVERIFIED); 9 goldens contra `fixtures/cliente/*.json` (ida-volta byte-idêntica); zero `unsafe`; sem deps novas (zerocopy/nom diferidos p/ 13-2). |
 | FASE-08-3 distribuição | ✅ | `distribuicao.rs` + `update`/`--dry-run`; 27/27 testes; gate verde; e2e em tmp (aplica+backup+check verde, adulterado recusado exit 1). |
 | FASE-08-4 dossiê do cliente | ✅ | `docs/cliente/` publicado (README, inventário, superfície conhecida, plano de RE); baseline de `WYD.exe` 7662 com SHA-256 `04c9d2a1…` e PE32/i386; skill `wyd-client-reverso`. Desassemble é 08-5/08-6. |
 | FASE-08-5 RE estático | ✅ | `tools/client/` (7 módulos) + `docs/cliente/gerado/` (PE, strings, evidência, formatos); **6/6 âncoras** e **3/3 patches** confirmados por bytes + objdump; os 3 sites de checksum já estão `EB` no disco; `.wyt`/`.msa`/`sn.bin` com estrutura inicial; `serverlist.bin` opaco. T2 (structs) movido para 08-6. |
@@ -79,7 +79,7 @@
 | FASE-11-2 C4 + pacotes | ⬜ | Depende de 08-1. |
 | FASE-12-1 dashboards | ⬜ | Depende de 06-1. |
 | FASE-13-1 rito ADR | ✅ | `docs/arquitetura/adr/0000-template.md` criado (estado, contexto, decisão, consequências, alternativas, rastreabilidade); `0001` promovida a **aceita** no formato do template. |
-| FASE-13-2 primeiras ADRs | ⬜ | Depende de 13-1. |
+| FASE-13-2 primeiras ADRs | ✅ | ADR-0004 (SoA manual), 0005 (LE+`repr(C)`), 0006 (std até rede/vendor); 7 arquivos 0000–0006 sem lacuna, seções conformes; consumidoras vinculadas. |
 | FASE-14-1 pesquisa | ⬜ | Catálogo: `docs/rust/01-dependencias.md`. |
 | FASE-15-1 suite + concorrência | ⬜ | Depende de 05-1, 10-3. |
 | FASE-15-2 carga + banco + release | ⬜ | Depende de 15-1, 12-1. |
@@ -105,12 +105,19 @@
 | 2026-11-07 | FASE-08-7 (parcial) | ADR-0003 + especificação de customização e manifesto; código do launcher pendente de autorização | `docs/arquitetura/adr/0003-estrategia-patch-cliente.md`, `docs/cliente/customizacao.md` |
 | 2026-11-07 | FASE-08-7 | Launcher implementado: 19/19 testes, `check` real 6/6 OK, dry-run sem executar o jogo | `crates/wyd-launcher/src/`, `cargo test --workspace` |
 | 2026-11-07 | FASE-08-3 | Distribuição implementada e com gate verde: HMAC-SHA256, resume, `update`; vetor de teste corrigido contra OpenSSL (código estava certo) | `crates/wyd-launcher/src/distribuicao.rs`, `cargo test --workspace` |
+| 2026-11-07 | FASE-08-1 | Protocolo reorganizado na árvore §3 sem mudar comportamento; `protocolo.md` com 198 opcodes gerados; checksum provado função-da-chave | `crates/wyd-protocol/`, `docs/arquitetura/protocolo.md` |
+| 2026-11-07 | FASE-08-2 | Parsers: `repr(C)` + `inspect` + `require_ported`; 9 goldens byte-idênticos; zero `unsafe`; sem deps novas | `crates/wyd-protocol/src/{wire,lib.rs,payload/}`, `crates/wyd-protocol/tests/golden.rs` |
+| 2026-11-07 | FASE-03 | Engine: `CoreError`, SoA, scheduler 20–50 Hz, grade O(1), relógio injetável; 12 lib + 3 determinismo; guerra 8,6 ms/79 µs | `crates/wyd-core/src/{error,ecs,tick,spatial,ports}/`, `crates/wyd-core/tests/determinism.rs` |
+| 2026-11-07 | FASE-04 | Banco: 6 migrations reversíveis + modelo + traits + fila; prova ao vivo PG17 (FK/CHECK falham, revert limpa, seed OK); 8 lib + 2 constraints | `crates/wyd-db/{migrations,seeds,src/{error,model,repo,pool,transfer}}`, `docs/arquitetura/modelo-banco.md` |
+| 2026-11-07 | FASE-07 (núcleo) | Control plane: `AdminError`→HTTP, staff/auditoria, grants idempotentes; 11 lib + 4 integração (401/403/replay) | `crates/wyd-admin/src/{error,auth,audit,api,service}/`, `crates/wyd-admin/tests/unauthorized.rs` |
+| 2026-11-07 | FASE-06-2 | Hardening: balde de tokens + porte de handshake + pipeline estrito; flood contido, fuzz sem panic; 4 lib + 6 flood | `crates/wyd-net/src/limits/`, `crates/wyd-net/tests/flood.rs` |
+| 2026-11-07 | FASE-13-2 | ADRs 0004/0005/0006 aceitas (ECS/serialização/async diferidos com gate de revisão); 7/7 conformes ao template | `docs/arquitetura/adr/000{4,5,6}-*.md` + links nas consumidoras |
 
 ## Pendências conhecidas
 
 - Desinstalar Go e remover `GOPATH`/`GOROOT` (ação elevada do dono).
 - Verificar evidência de implementação das 54 issues em `done/` (Go).
-- Reorganizar `wyd-protocol` na árvore do ADR-0002 e publicar `docs/arquitetura/protocolo.md` (FASE-08-1).
+- Revisão fria dos goldens 08-2 contra captura real quando a FASE-08-6 liberar capturas (fixtures atuais são sintéticos).
 - Revisão fria do `estrutura-e-padroes.md` por outro agente/humano (subtarefa da FASE-02-4).
 - Captura ao vivo (08-6): structs S→C, offsets de campo do header e causa do freeze — exige
   `wyd-net`/`wyd-core` executáveis + VM com o jogo.
