@@ -23,7 +23,7 @@ func MobExpForLevel(lvl int32) int64 {
 	delta := float64(NextLevelExp(lvl) - NextLevelExp(lvl-1))
 	a := 0.6 * 450 / (float64(30+lvl) * mortalDivisor(lvl))
 	if a > 1 {
-		a = 1 // the eMob cap (SoloExpReward) binds below ~level 240
+		a = 1 // o teto eMob (SoloExpReward) limita abaixo de ~nível 240
 	}
 	e := delta / (killsPerLevel(lvl) * 0.425 * a)
 	if e < 1 {

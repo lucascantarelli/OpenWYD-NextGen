@@ -3,7 +3,7 @@ package protocol
 import "fmt"
 
 // Codecs de wire da loja pessoal / autotrade (issue #115), byte a byte contra o
-// compiler-verified capture (captura-wyd-autotrade.md, MSVC x86 natural align).
+// captura verificada pelo compilador (captura-wyd-autotrade.md, alinhamento natural MSVC x86).
 //
 //   MSG_SendAutoTrade (0x0397, 196B, C↔S): o conteúdo da loja — Title + 12
 //     slots (STRUCT_ITEM + slot de Cargo de origem + preço) + imposto da cidade. Enviado C→S para abrir

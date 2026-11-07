@@ -16,7 +16,7 @@ import (
 )
 
 // TestDailyRewardCRUD percorre o caminho de escrita do catálogo de moderação: criar,
-// update, toggle enabled, list, get, delete.
+// atualizar, alternar o enabled, listar, obter e apagar.
 func TestDailyRewardCRUD(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)

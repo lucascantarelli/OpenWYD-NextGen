@@ -112,7 +112,7 @@ const (
 )
 
 // EncodeCNFAccountLoginBody monta o corpo de MSG_CNFAccountLogin (0x010A):
-// SELCHAR + account Cargo[128] + Coin + AccountName (Basedef.h MSG_DBCNFAccountLogin,
+// SELCHAR + Cargo[128] da conta + Coin + AccountName (Basedef.h MSG_DBCNFAccountLogin,
 // repassado ao cliente como está). O cliente cacheia este cargo para a UI do cofre;
 // omiti-lo deixa o armazém vazio mesmo quando o servidor tem itens. Envie com
 // HEADER.ID = IDSelChar (30002).

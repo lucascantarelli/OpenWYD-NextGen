@@ -82,7 +82,7 @@ func TestStampRoundTrip(t *testing.T) {
 		t.Error("stamp touched bytes outside the Exp field")
 	}
 
-	// Non-monster files stay byte-identical.
+	// Arquivos que não são monstro ficam idênticos byte a byte.
 	if !bytes.Equal(read(t, dir, "Vendedor"), merchant) {
 		t.Error("merchant template was modified")
 	}
@@ -113,7 +113,7 @@ func legacyTemplate(name string, lvl uint16, exp int32, merchant byte, size int)
 }
 
 // TestStampCoversLegacyTemplates é a correção do resíduo que a issue #244 deixou
-// para trás: os layouts legados eram pulados, então 222 monstros distribuídos mantinham
+// para trás: os layouts legados eram pulados, então 222 criaturas distribuídas mantinham
 // seu Exp autorado enquanto o log de boot do tmServer seguia dizendo aos operadores
 // para rodar esta ferramenta. Eles são restampados no lugar agora — 4 bytes no
 // offset 28 — e o arquivo mantém seu tamanho, que era o motivo original de pulá-los.

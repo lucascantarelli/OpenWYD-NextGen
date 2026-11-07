@@ -21,7 +21,7 @@ import (
 type NPCGenerator struct {
 	Leader         string
 	Follower       string
-	MinuteGenerate int // respawn period in minutes; <=0 = never regenerate
+	MinuteGenerate int // período de respawn em minutos; <=0 = nunca regenera
 	MinGroup       int
 	MaxGroup       int
 	MaxNumMob      int
@@ -75,7 +75,7 @@ func LoadNPCGenerators(path string) ([]NPCGenerator, error) {
 		case "Leader":
 			cur.Leader = val
 		case "Follower":
-			if val != "0" { // "0" = no follower template (ParseString rejects it)
+			if val != "0" { // "0" = nenhum template de seguidor (ParseString o recusa)
 				cur.Follower = val
 			}
 		case "MinuteGenerate":
@@ -163,7 +163,7 @@ func atoi(s string) int {
 
 func setAction(dst *[4]string, val string) {
 	if len(val) >= 79 {
-		return // CNPCGene::SetAct rejects action strings that would overflow [80].
+		return // CNPCGene::SetAct recusa strings de ação que estourariam [80].
 	}
 	for i := range dst {
 		if dst[i] == "" {

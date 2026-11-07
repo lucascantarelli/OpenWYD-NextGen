@@ -1,6 +1,6 @@
 // Package npccfg carrega a configuração de NPC editada por moderador para o
 // tmServer (npc-editing-plan.md). É um pacote de tipos folha: o dbclient
-// implementa Source (buscando por gRPC + resolvendo templates), e o handler
+// implementa Source (buscando por gRPC + fazendo a resolução de templates), e o handler
 // aplica um Snapshot dentro do laço de dono único. O mundo nunca escreve isto
 // de volta — o fluxo é de mão única (web → Postgres → dbServer → tmServer).
 package npccfg
@@ -35,7 +35,7 @@ type Definition struct {
 	MinuteGenerate, MinGroup, MaxGroup, MaxNumMob, Formation int
 	SegX, SegY, SegRange, SegWait                            [5]int16
 	FightAction, DieAction                                   [4]string
-	Shop                                                     []ShopItem // nil = use the template's own Carry[] as the shop
+	Shop                                                     []ShopItem // nil = usa o próprio Carry[] do template como loja
 }
 
 // Snapshot é a configuração completa numa dada versão: o conjunto de definições

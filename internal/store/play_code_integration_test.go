@@ -29,11 +29,11 @@ func TestPlayCodeIssueAndConsume(t *testing.T) {
 	if err != nil || issued.Name != "alice" || issued.Blocked {
 		t.Fatalf("IssuePlayCode = %+v, %v", issued, err)
 	}
-	// Another account cannot use it.
+	// Outra conta não consegue usá-lo.
 	if ok, err := s.ConsumePlayCode(ctx, bob, []byte("code-1")); err != nil || ok {
 		t.Fatalf("ConsumePlayCode(bob) = %v, %v; want false", ok, err)
 	}
-	// The owner can, exactly once.
+	// O dono consegue, exatamente uma vez.
 	if ok, err := s.ConsumePlayCode(ctx, alice, []byte("code-1")); err != nil || !ok {
 		t.Fatalf("first ConsumePlayCode = %v, %v; want true", ok, err)
 	}
@@ -67,7 +67,7 @@ func TestPlayCodeCapAndBlocked(t *testing.T) {
 		if _, err := s.IssuePlayCode(ctx, id, []byte(c), soon); err != nil {
 			t.Fatalf("IssuePlayCode(%s): %v", c, err)
 		}
-		time.Sleep(2 * time.Millisecond) // distinct created_at for the ordering
+		time.Sleep(2 * time.Millisecond) // created_at distintos para a ordenação
 	}
 	// Só os maxActivePlayCodes mais novos sobrevivem: o primeiro se foi.
 	if ok, _ := s.ConsumePlayCode(ctx, id, []byte("c1")); ok {

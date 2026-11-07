@@ -18,9 +18,9 @@ func TestApplyItemEffectOverrides(t *testing.T) {
 	}
 	rows := []ItemEffectOverride{
 		{ItemIndex: 1188, Effect: 3, Value: 60},  // replaces EF_AC
-		{ItemIndex: 1188, Effect: 42, Value: 10}, // EF_CRITICAL, not in the row: appended
-		{ItemIndex: 1188, Effect: 1, Value: 3},   // EF_RANGE: not a score code, refused
-		{ItemIndex: 900, Effect: 4, Value: 250},  // item absent from the catalog
+		{ItemIndex: 1188, Effect: 42, Value: 10}, // EF_CRITICAL, fora da linha: acrescentado
+		{ItemIndex: 1188, Effect: 1, Value: 3},   // EF_RANGE: não é código de score, recusado
+		{ItemIndex: 900, Effect: 4, Value: 250},  // item ausente do catálogo
 	}
 
 	out, stats := ApplyItemEffectOverrides(base, rows)

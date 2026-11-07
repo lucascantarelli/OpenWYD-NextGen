@@ -32,25 +32,25 @@ type fakeStore struct {
 	saveErr    error
 	savedChar  domain.Character
 
-	cargoCoin  map[int64]int32         // accountID -> stored gold
-	cargoItems map[int64][]domain.Item // accountID -> stored items
-	savedCargo struct {                // last SaveCargo args, for assertions
+	cargoCoin  map[int64]int32         // accountID -> ouro guardado
+	cargoItems map[int64][]domain.Item // accountID -> itens guardados
+	savedCargo struct {                // últimos args de SaveCargo, para asserções
 		accountID int64
 		coin      int32
 		items     []domain.Item
 	}
 
-	pendingDeliveries      map[int64][]domain.Delivery // accountID -> mailbox rows
-	ackedDelivered         []int64                     // last SaveCargoWithDeliveries delivered ids
-	ackedLost              []int64                     // last SaveCargoWithDeliveries lost ids
+	pendingDeliveries      map[int64][]domain.Delivery // accountID -> linhas da caixa de entrada
+	ackedDelivered         []int64                     // ids entregues do último SaveCargoWithDeliveries
+	ackedLost              []int64                     // ids perdidos do último SaveCargoWithDeliveries
 	saveCargoDeliveriesErr error                       // força SaveCargoWithDeliveries a devolver isto
 
-	pinHashes map[int64]string // accountID -> stored argon2id PIN hash ("" = unset)
+	pinHashes map[int64]string // accountID -> hash argon2id do PIN guardado ("" = não definido)
 
-	duelResults []duelResult // RecordDuelResult calls, for assertions
+	duelResults []duelResult // chamadas de RecordDuelResult, para asserções
 	duelErr     error        // força RecordDuelResult a devolver isto
 
-	playCodes   map[int64]map[string]bool // accountID -> live code hashes (one-time)
+	playCodes   map[int64]map[string]bool // accountID -> hashes de código vivo (de uso único)
 	playCodeErr error                     // força ConsumePlayCode a devolver isto
 }
 

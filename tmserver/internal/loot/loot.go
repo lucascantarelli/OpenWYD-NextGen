@@ -92,7 +92,7 @@ func EffectiveDropRate(slot, killerBonus, mobLevel int) int {
 // (o padrão de chance-como-divisor, como o gate de ouro).
 //
 // UNVERIFIED: a comparação final exata está truncada no fonte
-// (MobKilled.cpp após :2800); este é o padrão convencional e deve ser
+// (MobKilled.cpp após :2800); este é o padrão usual e deve ser
 // confirmado por captura.
 func Drops(r Rand, rate int) bool {
 	if rate <= 0 {

@@ -134,7 +134,7 @@ func (s *Store) SetDailyRewardItemEnabled(ctx context.Context, id int64, enabled
 	})
 }
 
-// DeleteDailyRewardItem removes an offer. Returns ErrNotFound if absent.
+// DeleteDailyRewardItem remove uma oferta. Devolve ErrNotFound se ela não existir.
 func (s *Store) DeleteDailyRewardItem(ctx context.Context, id int64, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, _ := fetchDailyRewardItemJSON(ctx, tx, id)

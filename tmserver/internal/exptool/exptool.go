@@ -24,12 +24,12 @@ type Entry struct {
 	NewExp int64
 }
 
-// Result summarises a Stamp run.
+// Result resume uma execução do Stamp.
 type Result struct {
 	Stamped []Entry
-	Skipped int // directories, NPCs/merchants and level-0 templates
+	Skipped int // diretórios, NPCs/mercadores e templates de nível 0
 	// StampedVariant conta quantos dos Stamped estavam em um dos layouts
-	// 756/920-byte layouts (data-formats.md §1.4.1). Those store Exp as a 32-bit
+	// 756/920 bytes (data-formats.md §1.4.1). Eles guardam Exp como um
 	// campo em offset diferente, então savefmt.PutMobExp roteia a escrita; o
 	// registro é corrigido no lugar e o arquivo mantém seu tamanho.
 	StampedVariant int
@@ -41,7 +41,7 @@ type Result struct {
 // todo monstro real (Merchant==0, Level>=1) com level.MobExpForLevel,
 // deixando todo outro byte intocado. Templates de NPC/mercador e de nível 0 são
 // pulados. Os três layouts de template são restampados — a árvore de conteúdo mista
-// continuaria com 222 monstros no Exp distribuído enquanto o log de boot
+// continuaria com 222 criaturas no Exp distribuído enquanto o log de boot
 // dizia aos operadores para rodar esta ferramenta (issue #244).
 // Com dryRun o relatório é produzido mas nada é escrito.
 func Stamp(dir string, dryRun bool) (Result, error) {

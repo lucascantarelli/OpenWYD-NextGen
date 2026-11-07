@@ -115,7 +115,7 @@ func TestChecksumMismatchDetected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wire[3]++ // corrupt the stored checksum
+	wire[3]++ // corrompe o checksum gravado
 	_, _, mismatch, err := Decode(wire)
 	if err != nil {
 		t.Fatal(err)

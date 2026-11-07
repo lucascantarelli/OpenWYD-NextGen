@@ -6,7 +6,7 @@ package protocol
 // EncodeSendItemBody com ItemPlaceCargo. Só o eco dedicado de ouro do cargo vive aqui.
 
 // updateCargoCoinSize é o tamanho no wire de _MSG_UpdateCargoCoin (0x0339),
-// 57 bytes total (protocol-spec.md §opcodes).
+// 57 bytes no total (protocol-spec.md §opcodes).
 const updateCargoCoinSize = 57
 
 // EncodeUpdateCargoCoin monta _MSG_UpdateCargoCoin (0x0339): o ouro do cargo
@@ -18,6 +18,6 @@ const updateCargoCoinSize = 57
 // cliente (SendFunc.cpp:SendCargoCoin legado). O opcode e o tamanho total estão confirmados.
 func EncodeUpdateCargoCoin(coin int32) []byte {
 	b := make([]byte, updateCargoCoinSize-HeaderSize) // 45
-	le.PutUint32(b[0:4], uint32(coin))                // Coin @body0 (UNVERIFIED offset)
+	le.PutUint32(b[0:4], uint32(coin))                // Coin @body0 (offset UNVERIFIED)
 	return b
 }

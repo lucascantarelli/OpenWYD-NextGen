@@ -54,13 +54,13 @@ const (
 // rederivar o número de forma independente pega. Perder os bits de flag gera um
 // tipo que o cliente descarta em silêncio, sem sintoma no servidor: a issue #101
 // enviou _MSG_UpdateEquip como 107 em vez de 875, então a malha do corpo do
-// transform BM nunca renderizou enquanto _MSG_UpdateScore (tipado corretamente)
-// transform's stats.
+// transform BM nunca renderizou enquanto o _MSG_UpdateScore (tipado corretamente)
+// transformava os stats.
 func TestMessageTypeValues(t *testing.T) {
 	tests := []struct {
-		legacy string // the ported constant and its Basedef.h line
+		legacy string // a constante portada e sua linha no Basedef.h
 		got    Type
-		want   int // base | flags, as spelled in the legacy header
+		want   int // base | flags, como escrito no cabeçalho legado
 	}{
 		{"_MSG_AccountLogin (Basedef.h:1543)", MsgAccountLogin, 13 | flagClient2Game},
 		{"_MSG_CharacterLogin (Basedef.h:1673)", MsgCharacterLogin, 19 | flagClient2Game},

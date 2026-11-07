@@ -13,7 +13,7 @@ import (
 // Persistência de Carry[] (issue 34, fatia 3). O slot é a chave de raridade de drop
 // e a tabela é autorotativa por template: SetMobCarry substitui todo slot do
 // template, DeleteMobCarry o devolve ao arquivo. O tmServer lê isto
-// snapshot once at boot; nothing here touches live game state.
+// com um snapshot uma vez no boot; nada aqui toca estado de jogo vivo.
 
 // ListMobCarryOverrides devolve a sobreposição de carry de todo template, ordenada
 // por template_name e slot — o snapshot que o dbServer serve ao tmServer.

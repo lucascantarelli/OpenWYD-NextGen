@@ -13,16 +13,16 @@ const (
 // MobBasics é o subconjunto de um STRUCT_MOB cru necessário para gerar uma entidade do mundo.
 type MobBasics struct {
 	Name               string
-	Clan               uint8 // STRUCT_MOB.Clan @16 — drives the g_pClanTable hostility check
+	Clan               uint8 // STRUCT_MOB.Clan @16 — alimenta a checagem de hostilidade da g_pClanTable
 	Class              uint8
-	Merchant           uint8 // CurrentScore.Merchant — NPC type (shop/bank/…); 0 = monster
-	AttackRun          uint8 // CurrentScore.AttackRun — speed byte, echoed into CreateMob so clients animate the mob's walks
+	Merchant           uint8 // CurrentScore.Merchant — tipo de NPC (loja/banco/…); 0 = monstro
+	AttackRun          uint8 // CurrentScore.AttackRun — byte de velocidade, repetido no CreateMob para o cliente animar os passos do mob
 	Level, Ac, Damage  int32
 	MaxHp, Hp          int32
 	Str, Int, Dex, Con int16
-	Coin               int32    // STRUCT_MOB.Coin @28; for a monster this is its gold-drop base (GoldDrop)
-	Exp                int64    // STRUCT_MOB.Exp @32; for a monster this is its kill reward
-	Resist             [4]uint8 // STRUCT_MOB.Resist @806 — elemental skill resists
+	Coin               int32    // STRUCT_MOB.Coin @28; num monstro é a base do ouro dropado (GoldDrop)
+	Exp                int64    // STRUCT_MOB.Exp @32; num monstro é a recompensa por abatê-lo
+	Resist             [4]uint8 // STRUCT_MOB.Resist @806 — resistências elementais de skill
 }
 
 // ParseMobBasics lê os campos relevantes ao spawn de um STRUCT_MOB cru de 816 bytes
@@ -34,17 +34,17 @@ type MobBasics struct {
 // slice mais curto é violação de contrato e entra em panic aqui, de propósito: a
 // alternativa é um MobBasics zerado virar em silêncio um mob fantasma sem nome e com
 // 0 de HP em SpawnMobAt (world/api.go), e MobEquip indexaria o mesmo
-// blob unguarded a few lines later anyway.
+// mesmo blob sem guarda poucas linhas depois de qualquer forma.
 func ParseMobBasics(mob816 []byte) MobBasics {
-	const cs = 92 // CurrentScore offset within STRUCT_MOB
+	const cs = 92 // offset do CurrentScore dentro do STRUCT_MOB
 	return MobBasics{
 		Name:      cstr16(mob816[0:16]),
-		Clan:      mob816[16], // Clan @16 (same offset writeStructMob writes)
+		Clan:      mob816[16], // Clan @16 (mesmo offset que writeStructMob escreve)
 		Class:     mob816[20],
 		Coin:      int32(le.Uint32(mob816[28:])), // STRUCT_MOB.Coin @28 (int)
 		Exp:       int64(le.Uint64(mob816[32:])), // STRUCT_MOB.Exp @32 (long long)
 		Merchant:  mob816[cs+12],                 // CurrentScore.Merchant
-		AttackRun: mob816[cs+13],                 // CurrentScore.AttackRun (speed)
+		AttackRun: mob816[cs+13],                 // CurrentScore.AttackRun (velocidade)
 		Level:     int32(le.Uint32(mob816[cs+0:])),
 		Ac:        int32(le.Uint32(mob816[cs+4:])),
 		Damage:    int32(le.Uint32(mob816[cs+8:])),
@@ -54,7 +54,7 @@ func ParseMobBasics(mob816 []byte) MobBasics {
 		Int:       int16(le.Uint16(mob816[cs+34:])),
 		Dex:       int16(le.Uint16(mob816[cs+36:])),
 		Con:       int16(le.Uint16(mob816[cs+38:])),
-		Resist:    [4]uint8(mob816[806:810]), // STRUCT_MOB.Resist @806 (skill mitigation)
+		Resist:    [4]uint8(mob816[806:810]), // STRUCT_MOB.Resist @806 (mitigação de skill)
 	}
 }
 
@@ -84,8 +84,8 @@ type MobSnapshot struct {
 	Ac, Damage           int32
 	MaxHp, MaxMp, Hp, Mp int32
 	Str, Int, Dex, Con   int16
-	Special              [4]int16 // STRUCT_SCORE.Special @40 (skill-tree mastery)
-	AttackRun            uint8    // STRUCT_SCORE.AttackRun @13 — the client reads its own speed from here and stamps it into _MSG_Action.Speed
+	Special              [4]int16 // STRUCT_SCORE.Special @40 (maestria de árvore de skill)
+	AttackRun            uint8    // STRUCT_SCORE.AttackRun @13 — o cliente lê a própria velocidade daqui e a grava em _MSG_Action.Speed
 	Direction            uint8
 	Equip                [16]SelItem
 	Carry                [64]SelItem
@@ -99,7 +99,7 @@ type MobSnapshot struct {
 	GuildLevel           uint8
 	RegenHP, RegenMP     uint16
 	Resist               [4]uint8
-	PKPoint              uint8 // MobName[12] chaos byte: 75 = neutral/white nick, 0 = red (players only)
+	PKPoint              uint8 // byte de caos do MobName[12]: 75 = nick neutro/branco, 0 = vermelho (só jogadores)
 }
 
 // writeMobScore escreve um STRUCT_SCORE de 48 bytes a partir de um MobSnapshot.

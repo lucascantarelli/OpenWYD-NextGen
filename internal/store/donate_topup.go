@@ -19,7 +19,7 @@ import (
 // tornam o crédito idempotente: um webhook de gateway reenviado credita exatamente
 // uma vez. Creditar account.donate_balance é um UPDATE parcial, então nenhum save
 // do tmServer o sobrescreve (igual a CreditDonateBalance, donate.go).
-// Top-up order status values, matching webv1.TopupStatus.
+// Valores de status do pedido de recarga, iguais a webv1.TopupStatus.
 const (
 	TopupStatusPending int16 = 1
 	TopupStatusPaid    int16 = 2
@@ -137,7 +137,7 @@ func (s *Store) ConfirmTopupOrder(ctx context.Context, externalRef string) (Topu
 			return nil
 		}
 
-		// PENDING: credit + mark PAID together (partial UPDATE, safe vs tmServer saves).
+		// PENDING: credita + marca PAID juntos (UPDATE parcial, seguro contra os saves do tmServer).
 		if err := tx.QueryRow(ctx,
 			`UPDATE account SET donate_balance = donate_balance + $2 WHERE id = $1 RETURNING donate_balance`,
 			accountID, credits).Scan(&balance); err != nil {

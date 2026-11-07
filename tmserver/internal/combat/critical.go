@@ -44,7 +44,7 @@ func initHitRate() [hitRateSize]int {
 	return table
 }
 
-// DoubleCritical ports BASE_GetDoubleCritical. It mutates both progress counters
+// DoubleCritical porta a BASE_GetDoubleCritical. Ela muta os dois contadores de progresso
 // exatamente como a rotina legada e devolve o bitfield autoritativo:
 // bit 0 = total critical, bit 1 = partial critical.
 func DoubleCritical(r Rand, attackRun uint8, critical int, serverProgress, clientProgress *uint16) (uint8, bool) {

@@ -13,9 +13,9 @@ type ItemEffectOverride struct {
 // EffectOverrideStats conta o que a sobreposição de boot realmente fez, para o
 // log do servidor mostrar isso em vez de uma contagem crua de linhas.
 type EffectOverrideStats struct {
-	Replaced int // the item already declared this effect: value swapped
-	Added    int // the item did not declare it: pair appended
-	Ignored  int // code the score model cannot represent: left out on purpose
+	Replaced int // o item já declarava este efeito: valor trocado
+	Added    int // o item não o declarava: par acrescentado
+	Ignored  int // código que o modelo de score não representa: omitido de propósito
 }
 
 // scoreEffectCodes é o conjunto de códigos que BaseEffects consegue emitir (os

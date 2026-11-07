@@ -15,8 +15,8 @@ const maxActivePlayCodes = 5
 
 // PlayCodeIssue é o resultado de IssuePlayCode.
 type PlayCodeIssue struct {
-	Name    string // canonical account name, the login field the code pairs with
-	Blocked bool   // true: no code was stored
+	Name    string // nome canônico da conta, o campo de login com que o código se pareia
+	Blocked bool   // true: nenhum código foi gravado
 }
 
 // IssuePlayCode guarda o hash de um código de login de uso único para uma conta

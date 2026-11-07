@@ -11,7 +11,7 @@ import (
 //
 // Mensagens de rede são pack(1) (sem padding) — diferente das structs de save da Fase 2
 // (alinhamento natural). Todo campo é lido/escrito por offset explícito,
-// little-endian (general-rule 4). Variable-length bodies (Attack Dam[13], Trade)
+// little-endian (regra geral 4). Corpos de tamanho variável (Attack Dam[13], Trade)
 // e o _AUTH_GAME de billing (196 B, UNVERIFIED) fica adiado — ver o fim
 // deste arquivo.
 
@@ -19,7 +19,7 @@ import (
 var le = binary.LittleEndian
 
 // MsgAccountLoginBody é o corpo de MSG_AccountLogin (C→S, Type 0x020D),
-// protocol-spec.md §3.5 / Basedef.h:1545-1561, pack(1). Total packet 116 bytes.
+// protocol-spec.md §3.5 / Basedef.h:1545-1561, pack(1). Pacote total de 116 bytes.
 //
 // AccountPassword é texto plano no wire — uma dívida de segurança resolvida com hash no
 // import (Fase 2/7). ClientVersion precisa ser igual a AppVersion (7640); essa checagem fica no
@@ -157,7 +157,7 @@ func (m *MsgCharacterLoginBody) Encode() []byte {
 }
 
 // MsgActionBody — MSG_Action (movement, C↔S, 0x036C/0x0366/0x0368),
-// Basedef.h:2070-2082. Total packet 52 bytes. Effect: 0=walking, 1=teleporting.
+// Basedef.h:2070-2082. Pacote total de 52 bytes. Effect: 0=andando, 1=teleportando.
 type MsgActionBody struct {
 	PosX    int16
 	PosY    int16
@@ -735,7 +735,7 @@ func EncodeUpdateWeather(weather int32) []byte {
 }
 
 // EncodeStandardParm3 monta um corpo de sinal de três int32, usado por SendWarInfo
-// (Guild, castle clan, ally/war target).
+// (guilda, clã de castelo, alvo de aliança/guerra).
 func EncodeStandardParm3(parm1, parm2, parm3 int32) []byte {
 	b := make([]byte, 12)
 	le.PutUint32(b[0:4], uint32(parm1))
@@ -793,7 +793,7 @@ func (m *MsgCombineItemBody) Encode() []byte {
 const MaxTarget = 13
 
 // Layout de Dam[] do Attack no corpo: cada STRUCT_DAM é {int32 TargetID; int32
-// Damage} at MsgAttackDamOffset + i*MsgAttackDamStride (protocol-spec.md §3.5).
+// Damage} em MsgAttackDamOffset + i*MsgAttackDamStride (protocol-spec.md §3.5).
 const (
 	MsgAttackDamOffset = 48 // doc offset 60 − HeaderSize 12
 	MsgAttackDamStride = 8

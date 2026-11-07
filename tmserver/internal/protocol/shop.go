@@ -1,10 +1,10 @@
 package protocol
 
-// NPC shop packets (byte-exact, compiler-verified).
+// Pacotes de loja de NPC (byte a byte, verificados pelo compilador).
 //
 //   MSG_REQShopList (0x027B, 16B, C→S): Target@12 = MobID do NPC — abre a loja dele.
 //   MSG_ShopList    (0x017C, 236B, S→C): a lista de 27 itens vem do
-//     own Carry[] (SendFunc.cpp: List[i] = NPC.Carry[(i%9)+(i/9)*27]).
+//     próprio Carry[] (SendFunc.cpp: List[i] = NPC.Carry[(i%9)+(i/9)*27]).
 
 const (
 	maxShopList    = 27

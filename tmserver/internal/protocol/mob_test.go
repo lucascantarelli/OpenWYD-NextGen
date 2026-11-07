@@ -43,13 +43,13 @@ func TestParseMobBasics(t *testing.T) {
 func TestCNFCharacterLoginRawLayout(t *testing.T) {
 	tmpl := makeMob("Template", 2, 0, 1, 100)
 	var equip [16]SelItem
-	equip[1] = SelItem{Index: 1100} // an equipped weapon
+	equip[1] = SelItem{Index: 1100} // uma arma equipada
 	var carry [64]SelItem
 	carry[3] = SelItem{Index: 831} // a bought item
 	var sk [16]uint8
 	sk[0] = 42 // hotbar echo (ShortSkill @body1034)
 	skill := SkillState{
-		LearnedSkill: 0x0000_00FF, // first 8 skills learned
+		LearnedSkill: 0x0000_00FF, // as primeiras 8 skills aprendidas
 		ScoreBonus:   11, SpecialBonus: 22, SkillBonus: 33,
 		Special:     [4]int16{5, 6, 7, 8},
 		BaseSpecial: [4]int16{1, 2, 3, 4},
@@ -77,7 +77,7 @@ func TestCNFCharacterLoginRawLayout(t *testing.T) {
 		t.Errorf("coin not set at mob offsets 24/28")
 	}
 	// Experiência persistida → STRUCT_MOB.Exp @32 (corpo 4+32), então a barra de exp
-	// saved total at login.
+	// total salvo no login.
 	if got := le.Uint64(b[4+32:]); got != 123456789 {
 		t.Errorf("exp @mob32 = %d, want 123456789", got)
 	}
@@ -208,7 +208,7 @@ func TestCNFAccountLoginCargo(t *testing.T) {
 
 func TestOverlayLoginScores(t *testing.T) {
 	body := make([]byte, cnfCharacterLoginSize-HeaderSize)
-	body[4+92+12], body[4+92+14] = 0x11, 0x22 // Merchant/Direction from the template
+	body[4+92+12], body[4+92+14] = 0x11, 0x22 // Merchant/Direction vindos do template
 	base := ScoreData{Level: 50, MaxHp: 1200, Hp: 900, Str: 31, Special: [4]int16{1, 2, 3, 4}}
 	cur := ScoreData{Level: 50, Ac: 40, Damage: 60, AttackRun: 0x23, MaxHp: 1500, MaxMp: 500, Hp: 900, Mp: 300,
 		Str: 41, Int: 42, Dex: 43, Con: 44, Special: [4]int16{5, 6, 7, 8}}

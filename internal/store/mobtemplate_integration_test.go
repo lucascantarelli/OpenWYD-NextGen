@@ -68,7 +68,7 @@ func TestMobTemplateStatCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	got.Equip = nil // not set yet
+	got.Equip = nil // ainda não definido
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("get = %+v, want %+v", got, want)
 	}

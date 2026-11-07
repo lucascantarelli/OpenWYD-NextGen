@@ -88,7 +88,7 @@ func TestLiveQueries(t *testing.T) {
 			ch.PKPoint, ch.Guilty, ch.CurKill, ch.TotKill)
 	}
 
-	// SaveCharacter (partial: level/exp/coin/hp/mp + replace carry) — mirrors a
+	// SaveCharacter (parcial: level/exp/coin/hp/mp + substitui o carry) — espelha um
 	// level-up, que sobe level + max_hp/max_mp.
 	ch.Level = 41
 	ch.Exp = 12345
@@ -108,7 +108,7 @@ func TestLiveQueries(t *testing.T) {
 	ch.CelCircle = 1
 	ch.MortalLevel = 399
 	ch.CelestialArchLevel = 5
-	// A PvP kill landed mid-session: karma state changed (issue #210).
+	// Um kill PvP caiu no meio da sessão: o estado de karma mudou (issue #210).
 	ch.PKPoint = 68
 	ch.Guilty = 0
 	ch.CurKill = 6
@@ -173,7 +173,7 @@ func TestLiveQueries(t *testing.T) {
 
 	// CreateCharacter + DeleteCharacter. PKPoint fica no valor zero do Go —
 	// insertCharacter precisa assumir o padrão neutro (75), não persistir 0/caos
-	// (issue #210: CreateCharacter/CreateArchCharacter's explicit column list
+	// (issue #210: a lista explícita de colunas de CreateCharacter/CreateArchCharacter
 	// que de outro modo sobreporia o DEFAULT 75 da própria coluna do banco).
 	if _, err := s.CreateCharacter(ctx, accID, domain.Character{Slot: 1, Name: "Mage", Class: 3}); err != nil {
 		t.Fatalf("CreateCharacter: %v", err)

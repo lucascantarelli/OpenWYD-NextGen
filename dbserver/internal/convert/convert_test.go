@@ -91,7 +91,7 @@ func TestAccountConversion(t *testing.T) {
 }
 
 func TestAccountEmptyNameRejected(t *testing.T) {
-	var af savefmt.AccountFile // all zero → empty name
+	var af savefmt.AccountFile // tudo zero → nome vazio
 	if _, err := Account(af); err == nil {
 		t.Errorf("expected error for empty account name")
 	}

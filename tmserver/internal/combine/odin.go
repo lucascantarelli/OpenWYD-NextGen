@@ -13,8 +13,8 @@ import (
 // é o retorno PADRÃO da função (nenhum padrão numerado casou) — NÃO é
 // "inválido": o Exec sempre tenta "Composição de Sets" para ele.
 const (
-	OdinNoMatch          = 0 // "Composição de Sets" — the default fallback
-	OdinItemCelestial    = 1 // Exec's own comment for this branch is "Composição de armas"
+	OdinNoMatch          = 0 // "Composição de Sets" — o padrão de fallback
+	OdinItemCelestial    = 1 // o comentário do próprio Exec para este ramo é "Composição de armas"
 	OdinPlus12           = 2
 	OdinPistaDeRunas     = 3
 	OdinDestraveLv40     = 4
@@ -35,7 +35,7 @@ const (
 const maxItemListOdin = 30000
 
 // MatchOdin é o porte de GetMatchCombineOdin. items precisa ter exatamente 8
-// elementos (protocol.MaxCombine / MAX_COMBINE, Basedef.h:173); slice curto
+// elementos (protocol.MaxCombine / MAX_COMBINE, Basedef.h:173); um slice curto
 // nunca casa. Devolve o id da receita 0..11 — 0 significa "nenhum padrão
 // numerado casou", que quem chama ainda encaminha para "Composição de Sets",
 // NÃO para uma resposta inválida/sem efeito.

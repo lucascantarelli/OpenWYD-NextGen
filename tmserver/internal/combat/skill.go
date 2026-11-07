@@ -21,7 +21,7 @@ type SkillCaster struct {
 	Level   int
 	Str     int
 	Int     int
-	Damage  int // CurrentScore.Damage — skill 79 (Tempestade) reads it
+	Damage  int // CurrentScore.Damage — a skill 79 (Tempestade) lê daqui
 	Magic   int
 	Special int
 }
@@ -75,7 +75,7 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 			dam = 15*level + base
 		case c.Class == 0 && skind == 1: // TK tree 2
 			dam = 3*weaponDamage + 3*c.Str + level + special + base
-		case c.Class == 0: // TK other trees
+		case c.Class == 0: // outras árvores do TK
 			dam = special + base + weaponDamage + level + c.Int/4 + c.Int/40
 		case c.Class == 1, c.Class == 2: // Foema / BeastMaster
 			dam = c.Int/30 + c.Int/3 + level + base + 2*special
@@ -109,7 +109,7 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 		dam = c.Magic
 	}
 
-	if skillnum == 79 { // Tempestade: 180% of current damage, overrides all
+	if skillnum == 79 { // Tempestade: 180% do dano atual, sobrepõe tudo
 		dam = c.Damage * 180 / 100
 	}
 	return dam
@@ -117,8 +117,8 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 
 // SkillResistScale aplica o resist elemental do alvo após a mitigação
 // (_MSG_Attack.cpp:569): dam = (150-resist)*dam/100. O InstanceType 1 lê
-// Resist[0]; types 2-5 read Resist[InstanceType-2]. A mob's resist counts
-// half. Other InstanceTypes pass through unchanged.
+// Resist[0]; os tipos 2-5 leem Resist[InstanceType-2]. O resist de um mob conta
+// pela metade. Os demais InstanceTypes passam sem alteração.
 func SkillResistScale(dam, instanceType int, resist [4]int16, targetIsPlayer bool) int {
 	var r int
 	switch {

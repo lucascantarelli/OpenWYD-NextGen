@@ -20,7 +20,7 @@ const (
 )
 
 // Bake grava o AttributeMap no grid de altura, exatamente como o original faz
-// once at boot (Server.cpp:7954 → BASE_ApplyAttribute, Basedef.cpp:2624-2647):
+// uma vez no boot (Server.cpp:7954 → BASE_ApplyAttribute, Basedef.cpp:2624-2647):
 // cada byte de atributo cobre um bloco 4×4 de células de altura ((x>>2)&0x3FF), e
 // att&2 marca o bloco como intransponível (altura ← 127). Muta h.Data; chame
 // uma vez antes de ligar o grid na IA.
@@ -57,7 +57,7 @@ func Next(h *content.Grid, x, y, tx, ty, distance int) (nx, ny int, moved bool) 
 
 	for i := 0; i < distance && i < MaxRoute-1; i++ {
 		if x < 1 || y < 1 || x > dim-2 || y > dim-2 {
-			break // border margin (Basedef.cpp:6205): neighbours must exist
+			break // margem da borda (Basedef.cpp:6205): os vizinhos precisam existir
 		}
 		cul := ht(x, y)
 		pass := func(dx, dy int) bool {

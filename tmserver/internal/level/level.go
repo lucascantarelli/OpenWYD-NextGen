@@ -96,7 +96,7 @@ func NextLevelExpTier(curLevel int32, classMaster uint8) int64 {
 
 // ForExpTier mapeia experiência total de volta para um nível na curva da tier.
 // A receita de refino purificado do Ehre subtrai experiência e então faz esta
-// inverse lookup exactly like CMob's legacy g_pNextLevel_2 scan.
+// busca inversa exatamente como a varredura g_pNextLevel_2 do CMob legado.
 func ForExpTier(exp int64, classMaster uint8) int32 {
 	levelCap := MaxLevelForTier(classMaster)
 	var result int32

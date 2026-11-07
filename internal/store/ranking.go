@@ -53,7 +53,7 @@ func (s *Store) countExpRanking(ctx context.Context) (int, error) {
 	return total, nil
 }
 
-// fallbackTotal covers a `count(*) OVER()` window function's blind spot: it
+// fallbackTotal cobre o ponto cego de uma window function `count(*) OVER()`: ela
 // só aparece em linhas devolvidas, então uma página além da última linha (resultado
 // vazio, offset não zero) informaria total=0. Só nesse caso, rode um
 // COUNT(*) simples em vez disso.

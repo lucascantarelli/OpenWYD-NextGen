@@ -69,19 +69,19 @@ func TestResolveHit(t *testing.T) {
 		{
 			name: "melee hit vs mob",
 			in:   HitInput{AttackerDamage: 200, TargetAC: 40, Master: 10},
-			seq:  []int{3, 500}, // damage roll, parry roll
+			seq:  []int{3, 500}, // roll de dano, roll de aparo
 			want: 192,
 		},
 		{
 			name: "partial crit vs player",
 			in:   HitInput{AttackerDamage: 100, TargetAC: 10, TargetIsPlayer: true, DoubleCritical: 2},
-			seq:  []int{1, 0, 500}, // crit roll, damage roll, parry roll
+			seq:  []int{1, 0, 500}, // roll de crítico, roll de dano, roll de aparo
 			want: 123,
 		},
 		{
 			name: "parry block -3",
 			in:   HitInput{AttackerDamage: 100, ParryRate: 600},
-			seq:  []int{0, 100}, // damage roll, parry roll (rd=101 < 600)
+			seq:  []int{0, 100}, // roll de dano, roll de aparo (rd=101 < 600)
 			want: -3,
 		},
 		{
@@ -93,7 +93,7 @@ func TestResolveHit(t *testing.T) {
 		{
 			name: "reflect vs player",
 			in:   HitInput{AttackerDamage: 100, TargetIsPlayer: true, ReflectDamage: 10, ReflectPvP: 20},
-			seq:  []int{0, 500}, // damage roll, parry roll
+			seq:  []int{0, 500}, // roll de dano, roll de aparo
 			want: 89,
 		},
 	}

@@ -39,7 +39,7 @@ func TestTopupCreateConfirmHappyPath(t *testing.T) {
 		t.Fatalf("CreateTopupOrder = (%d, %v)", id, err)
 	}
 
-	// Pending: GetTopupOrder reports status 1, credits, balance 0.
+	// Pendente: GetTopupOrder reporta status 1, os créditos e saldo 0.
 	st, cr, bal, err := s.GetTopupOrder(ctx, "ref-happy", accID)
 	if err != nil || st != TopupStatusPending || cr != 30 || bal != 0 {
 		t.Fatalf("get pending = (%d,%d,%d,%v)", st, cr, bal, err)
@@ -196,7 +196,7 @@ func TestTopupPayerProfileUpsert(t *testing.T) {
 	}
 }
 
-// TestTopupGetOrderOwnership: a different account cannot read an order.
+// TestTopupGetOrderOwnership: outra conta não consegue ler um pedido.
 func TestTopupGetOrderOwnership(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)

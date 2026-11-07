@@ -75,8 +75,8 @@ func (s *Store) UpsertWorldEventConfig(ctx context.Context, cfg domain.WorldEven
 }
 
 // UpdateWorldEventProgress persiste o contador de evento do tmServer sem subir a
-// moderator config version. expectedVersion prevents a stale tmServer snapshot
-// de sobrescrever uma edição mais nova do portal; applied é falso quando a versão mudou.
+// versão de config do moderador. expectedVersion impede que um snapshot velho do tmServer
+// sobrescreva uma edição mais nova do portal; applied é falso quando a versão mudou.
 func (s *Store) UpdateWorldEventProgress(ctx context.Context, expectedVersion int64, currentIndex int32) (applied bool, err error) {
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
 		ct, err := tx.Exec(ctx, `

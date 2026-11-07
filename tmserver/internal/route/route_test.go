@@ -66,7 +66,7 @@ func TestNextDeviatesAroundWall(t *testing.T) {
 }
 
 // TestNextHeightStep: um vizinho é passável sse |Δheight| < MH (exclusivo em
-// both sides, Basedef.cpp:6232) — a 7 step passes, an 8 step blocks.
+// nos dois lados, Basedef.cpp:6232) — um passo 7 passa, um 8 bloqueia.
 func TestNextHeightStep(t *testing.T) {
 	pass := flat(16, 7, [2]int{6, 5})
 	if _, _, moved := Next(pass, 5, 5, 6, 5, 1); !moved {
@@ -96,7 +96,7 @@ func TestNextAdjacentQuirk(t *testing.T) {
 }
 
 // TestBake: cada byte de atributo cobre um bloco de altura 4×4; att&2 → Blocked
-// (BASE_ApplyAttribute, Basedef.cpp:2624-2647). Other bits leave heights alone.
+// (BASE_ApplyAttribute, Basedef.cpp:2624-2647). Os outros bits deixam as alturas intocadas.
 func TestBake(t *testing.T) {
 	h := &content.Grid{Dim: 8, Data: make([]byte, 64)}
 	attr := &content.Grid{Dim: 2, Data: []byte{

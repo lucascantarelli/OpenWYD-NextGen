@@ -5,9 +5,9 @@ import "openwyd-nextgen/tmserver/internal/world"
 // Linhas de bigorna da tabela SancRate. "OriLacto" é o nome legado do
 // índice, derivado do EF_VOLATILE do pó como Vol-4 (_MSG_UseItem.cpp:849).
 const (
-	Ori   = 0 // Poeira de Oriharucon (412), EF_VOLATILE 4 — caps the item at +6
-	Lac   = 1 // Poeira de Lactolerium (413), EF_VOLATILE 5 — caps the item at +9
-	Amago = 2 // forced by Lactolerium_100 (4141); always a flat 100%
+	Ori   = 0 // Poeira de Oriharucon (412), EF_VOLATILE 4 — limita o item em +6
+	Lac   = 1 // Poeira de Lactolerium (413), EF_VOLATILE 5 — limita o item em +9
+	Amago = 2 // forçado por Lactolerium_100 (4141); sempre 100% fixo
 )
 
 // RateTable fornece as linhas de SancRate indexadas por bigorna (Ori/Lac/Amago) e por

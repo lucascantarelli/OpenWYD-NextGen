@@ -13,9 +13,9 @@ import (
 
 // Administração de contas (issue 32): listar/obter mais as três escritas auditadas.
 //
-// As REGRAS DE NEGÓCIO vivem aqui, dentro da transação, não só no
-// layer: a second caller (a script, a future RPC) cannot bypass "admin can't
-// "um admin se rebaixa" nem "o último admin ativo é protegido". Cada escrita trava
+// As REGRAS DE NEGÓCIO vivem aqui, dentro da transação, não só na
+// camada de cima: um segundo chamador (um script, um RPC futuro) não consegue
+// burlar "um admin não se rebaixa" nem "o último admin ativo é protegido". Cada escrita trava
 // a linha alvo (e, quando um admin está saindo, o conjunto de admins) e grava
 // account_admin_audit na mesma transação.
 var (
@@ -195,8 +195,8 @@ func (s *Store) SetAccountRole(ctx context.Context, targetID, actorID int64, rol
 }
 
 // SetAccountBlocked bloqueia ou desbloqueia uma conta. Um moderador só pode mirar
-// players; nobody blocks themselves; blocking an admin requires another active
-// admin restante. Auditado na mesma transação.
+// contas player; ninguém bloqueia a si mesmo; bloquear um admin exige outro admin
+// ativo restante. Auditado na mesma transação.
 func (s *Store) SetAccountBlocked(ctx context.Context, targetID, actorID int64, blocked bool, reason string) (domain.AccountRow, error) {
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		actorRole, err := actorRoleForUpdate(ctx, tx, actorID)

@@ -33,7 +33,7 @@ func TestNextLevelExp(t *testing.T) {
 	if got := NextLevelExp(1); got != 1124 {
 		t.Errorf("NextLevelExp(1) = %d, want 1124", got)
 	}
-	if got := NextLevelExp(MaxLevel); got != MaxExp { // at cap → no further level
+	if got := NextLevelExp(MaxLevel); got != MaxExp { // no teto → nenhum nível adiante
 		t.Errorf("NextLevelExp(MaxLevel) = %d, want MaxExp", got)
 	}
 }
@@ -78,7 +78,7 @@ func TestScoreBonusCelestial(t *testing.T) {
 		lvl                     int32
 		str, intel, dex, con    int16
 		cristal, reset, archLvl uint8
-		other                   int32 // the parked tier's level (CELESTIALCS/SCELESTIAL)
+		other                   int32 // o nível da tier estacionada (CELESTIALCS/SCELESTIAL)
 		want                    int32
 	}{
 		{"fresh celestial", 0, 8, 4, 7, 6, 0, 0, 0, 0, 1001},

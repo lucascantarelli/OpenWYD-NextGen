@@ -13,7 +13,7 @@ type Type uint16
 const MessageLength = 96
 
 // MessagePanelLength é a string C de largura fixa de MSG_MessagePanel.String
-// (Basedef.h:1528). Unlike chat messages, client notices reserve 128 bytes.
+// (Basedef.h:1528). Diferente das mensagens de chat, os avisos ao cliente reservam 128 bytes.
 const MessagePanelLength = 128
 
 // EncodeMessagePanelBody devolve o payload fixo de MSG_MessagePanel.String.
@@ -24,7 +24,7 @@ func EncodeMessagePanelBody(text string) []byte {
 	return body
 }
 
-// Direction flag bits (protocol-spec.md §2, Basedef.h:1212-1221).
+// Bits de flag de direção (protocol-spec.md §2, Basedef.h:1212-1221).
 const (
 	FlagGame2Client Type = 0x0100 // TMSrv → client
 	FlagClient2Game Type = 0x0200 // client → TMSrv
@@ -32,7 +32,7 @@ const (
 	FlagGame2DB     Type = 0x0800 // TMSrv → DBSrv
 	FlagDB2NP       Type = 0x1000 // DBSrv → NPServer
 	FlagNP2DB       Type = 0x2000 // NPServer → DBSrv
-	FlagNew         Type = 0x4000 // "new" message family (ranking grind/exp)
+	FlagNew         Type = 0x4000 // família "new" de mensagens (ranking grind/exp)
 
 	// flagMask cobre todos os bits de direção; os bits baixos restantes são a base.
 	flagMask Type = 0xFF00
@@ -79,27 +79,27 @@ const (
 	MsgAccountSecure       Type = 0x0FDE // 4062 PIN token
 	MsgMessageChat         Type = 0x0333 // 819
 	MsgMessageWhisper      Type = 0x0334 // 820
-	MsgAction              Type = 0x036C // 876  movement (also 0x0366/0x0368)
+	MsgAction              Type = 0x036C // 876  movimento (também 0x0366/0x0368)
 	MsgAction2             Type = 0x0366 // 870
 	MsgAction3             Type = 0x0368 // 872
 	MsgMotion              Type = 0x036A // 874
-	MsgNoViewMob           Type = 0x0369 // 873  re-sync one entity's visibility
-	MsgChangeCity          Type = 0x0291 // 657  set spawn city
-	MsgReqTeleport         Type = 0x0290 // 656  paid teleport
-	MsgAttack              Type = 0x0367 // 871  (also AttackOne 0x039D / AttackTwo 0x039E)
+	MsgNoViewMob           Type = 0x0369 // 873  ressincroniza a visibilidade de uma entidade
+	MsgChangeCity          Type = 0x0291 // 657  define a cidade de spawn
+	MsgReqTeleport         Type = 0x0290 // 656  teleporte pago
+	MsgAttack              Type = 0x0367 // 871  (também AttackOne 0x039D / AttackTwo 0x039E)
 	MsgAttackOne           Type = 0x039D // 925
 	MsgAttackTwo           Type = 0x039E // 926
 	MsgDropItem            Type = 0x0272 // 626
 	MsgGetItem             Type = 0x0270 // 624
 	MsgUseItem             Type = 0x0373 // 883
-	MsgDeleteItem          Type = 0x02E4 // 228  destroy a carry item (_MSG_DeleteItem)
-	MsgSplitItem           Type = 0x02E5 // 229  split a stack (_MSG_SplitItem)
-	MsgUpdateItem          Type = 0x0374 // 116  C↔S gate/door open (_MSG_UpdateItem)
-	MsgSendAffect          Type = 0x03B9 // 953  buff/debuff snapshot (STRUCT_AFFECT[32])
+	MsgDeleteItem          Type = 0x02E4 // 228  destrói um item do carry (_MSG_DeleteItem)
+	MsgSplitItem           Type = 0x02E5 // 229  divide uma pilha (_MSG_SplitItem)
+	MsgUpdateItem          Type = 0x0374 // 116  C↔S abre portão/porta (_MSG_UpdateItem)
+	MsgSendAffect          Type = 0x03B9 // 953  snapshot de buff/debuff (STRUCT_AFFECT[32])
 	MsgTradingItem         Type = 0x0376 // 886
 	MsgTrade               Type = 0x0383 // 899
 	MsgQuitTrade           Type = 0x0384 // 900
-	MsgCNFCheck            Type = 0x0386 // 902  S→C trade: own check accepted (MSG_STANDARD)
+	MsgCNFCheck            Type = 0x0386 // 902  S→C troca: verificação da própria parte aceita (MSG_STANDARD)
 	MsgCombineItem         Type = 0x03A6 // 934  refino base (Anct)
 	MsgCombineItemEhre     Type = 0x02D3 // 723
 	MsgCombineItemTiny     Type = 0x03C0 // 960
@@ -110,34 +110,34 @@ const (
 	MsgCombineItemLindy    Type = 0x02C3 // 707
 	MsgCombineItemAlquimia Type = 0x02E1 // 737
 	MsgCombineItemExtracao Type = 0x02D4 // 724  (MSG_STANDARDPARM2)
-	MsgApplyBonus          Type = 0x0277 // 631  distribute attribute points
-	MsgSetShortSkill       Type = 0x0378 // 888  set the skill hotbar (Skill1[4]+Skill2[16])
-	MsgQuest               Type = 0x028B // 651  quest NPC (MSG_STANDARDPARM2)
+	MsgApplyBonus          Type = 0x0277 // 631  distribui pontos de atributo
+	MsgSetShortSkill       Type = 0x0378 // 888  define a hotbar de skills (Skill1[4]+Skill2[16])
+	MsgQuest               Type = 0x028B // 651  NPC de quest (MSG_STANDARDPARM2)
 	MsgMasterGriff         Type = 0x0AD9 // 2777 Mestre Grifo warp request (MSG_MasterGriff)
-	MsgReqRanking          Type = 0x039F // 927  duel / PvP ranking (MSG_STANDARDPARM2)
-	MsgCapsuleInfo         Type = 0x02CD // 717  capsule/cash info (relay to DB)
-	MsgPutoutSeal          Type = 0x03CC // 972  seal
+	MsgReqRanking          Type = 0x039F // 927  duelo / ranking PvP (MSG_STANDARDPARM2)
+	MsgCapsuleInfo         Type = 0x02CD // 717  info de cápsula/cash (repassada ao DB)
+	MsgPutoutSeal          Type = 0x03CC // 972  selo
 	MsgRestart             Type = 0x0289 // 649
-	MsgRemoveParty         Type = 0x037E // 894  leave/kick (MSG_STANDARDPARM)
-	MsgSendReqParty        Type = 0x037F // 895  invite to party
-	MsgAcceptParty         Type = 0x03AB // 939  accept invite
-	MsgInviteGuild         Type = 0x03D5 // 981  invite to guild (MSG_STANDARDPARM2)
-	MsgGuildAlly           Type = 0x0E12 // 3602 guild alliance
-	MsgWar                 Type = 0x0E0E // 3598 declare guild war (MSG_STANDARDPARM2)
-	MsgChallange           Type = 0x028E // 654  zone challenge / tax (MSG_STANDARDPARM)
-	MsgChallangeConfirm    Type = 0x028F // 655  confirm challenge (MSG_STANDARDPARM2)
-	MsgPing                Type = 0x03A0 // 928  keepalive — no-op on receive (§2)
+	MsgRemoveParty         Type = 0x037E // 894  sair/expulsar (MSG_STANDARDPARM)
+	MsgSendReqParty        Type = 0x037F // 895  convida para a party
+	MsgAcceptParty         Type = 0x03AB // 939  aceita o convite
+	MsgInviteGuild         Type = 0x03D5 // 981  convida para a guilda (MSG_STANDARDPARM2)
+	MsgGuildAlly           Type = 0x0E12 // 3602 aliança de guilda
+	MsgWar                 Type = 0x0E0E // 3598 declara guerra de guilda (MSG_STANDARDPARM2)
+	MsgChallange           Type = 0x028E // 654  desafio de zona / taxa (MSG_STANDARDPARM)
+	MsgChallangeConfirm    Type = 0x028F // 655  confirma o desafio (MSG_STANDARDPARM2)
+	MsgPing                Type = 0x03A0 // 928  keepalive — sem efeito ao receber (§2)
 
 	// Loja pessoal / autotrade (issue #115, Basedef.h:2165-2325). SendAutoTrade é
 	// bidirecional: C→S abre a loja, S→C (SendAutoTrade) a lista de volta.
-	MsgSendAutoTrade Type = 0x0397 // 919  C↔S open shop / list a shop (MSG_SendAutoTrade)
-	MsgReqBuy        Type = 0x0398 // 920  C→S buy an item from a shop (MSG_ReqBuy)
-	MsgReqTradeList  Type = 0x039A // 922  C→S browse a shop (MSG_STANDARDPARM, Parm=sellerID)
+	MsgSendAutoTrade Type = 0x0397 // 919  C↔S abre loja / lista uma loja (MSG_SendAutoTrade)
+	MsgReqBuy        Type = 0x0398 // 920  C→S compra um item de uma loja (MSG_ReqBuy)
+	MsgReqTradeList  Type = 0x039A // 922  C→S navega por uma loja (MSG_STANDARDPARM, Parm=sellerID)
 	// MsgDeprivate (0x028C, 140|FLAG_CLIENT2GAME) NÃO é autotrade — apesar do
 	// título da issue, é uma op de GUILD (destitui um sub-líder, Server.cpp:8694
 	// DoDeprivate). Uma loja pessoal é fechada por RemoveTrade (handler.removeTrade),
 	// não por esta mensagem, então ela fica de propósito sem rota aqui.
-	MsgDeprivate Type = 0x028C // 652  C→S guild destitute (out of scope for #115)
+	MsgDeprivate Type = 0x028C // 652  C→S destituição de guilda (fora do escopo da #115)
 )
 
 // MsgDeleteCharacterFail é _MSG_DeleteCharacterFail (Basedef.h:1732): o
@@ -152,43 +152,43 @@ const (
 	MsgCNFAccountLogin    Type = 0x010A // 266  → character selection
 	MsgCNFNewCharacter    Type = 0x0110 // 272
 	MsgCNFDeleteCharacter Type = 0x0112 // 274
-	MsgCNFCharacterLogin  Type = 0x0114 // 276  enter world (char snapshot)
+	MsgCNFCharacterLogin  Type = 0x0114 // 276  entra no mundo (snapshot do personagem)
 	MsgCNFCharacterLogout Type = 0x0116 // 278
 	MsgCharacterLoginFail Type = 0x0119 // 281
 	MsgNewCharacterFail   Type = 0x011A // 282
 	MsgAlreadyPlaying     Type = 0x011C // 284
-	MsgStillPlaying       Type = 0x011D // 285  previous session of the account closed; try again
-	MsgCreateMob          Type = 0x0364 // 868  spawn in view
-	MsgRemoveMob          Type = 0x0165 // 357  despawn
-	MsgPKInfo             Type = 0x0166 // 358  S→C PK/war state of a player (MSG_STANDARDPARM, Basedef.h:1954)
-	MsgPKMode             Type = 0x0399 // 921  C→S PlayerKiller toggle (K key; MSG_STANDARDPARM, Basedef.h:2164)
-	MsgSendItem           Type = 0x0182 // 386  update one slot
-	MsgUpdateCarry        Type = 0x0185 // 389  S→C full Carry[64] + Coin snapshot
-	MsgAccountSecureFail  Type = 0x0FDF // 4063 S→C PIN rejected (_MSG_AccountSecureFail)
-	MsgCNFAddParty        Type = 0x037D // 893  S→C party-list slot sync (MSG_CNFAddParty)
-	MsgUpdateEquip        Type = 0x036B // 875  S→C refresh visible equipment (_MSG_UpdateEquip, Basedef.h:2094)
-	MsgREQShopList        Type = 0x027B // 635  C→S open NPC shop (Target=NPC)
-	MsgShopList           Type = 0x017C // 380  S→C shop list (NPC Carry)
-	MsgBuy                Type = 0x0379 // 889  C↔S buy from NPC
-	MsgSell               Type = 0x037A // 890  C↔S sell to NPC
-	MsgCloseShop          Type = 0x0196 // 406  S→C close the shop window (signal, ID=ESCENE_FIELD; Basedef.h:2193)
-	MsgDeposit            Type = 0x0388 // 904  C↔S deposit gold into cargo (MSG_STANDARDPARM)
-	MsgWithdraw           Type = 0x0387 // 903  C↔S withdraw gold from cargo (MSG_STANDARDPARM)
-	MsgUpdateCargoCoin    Type = 0x0339 // 825  S→C account cargo gold (_MSG_UpdateCargoCoin)
-	MsgUpdateEtc          Type = 0x0337 // 823  S→C update gold/exp/etc (Coin@40)
+	MsgStillPlaying       Type = 0x011D // 285  a sessão anterior da conta foi fechada; tente de novo
+	MsgCreateMob          Type = 0x0364 // 868  spawna no campo de visão
+	MsgRemoveMob          Type = 0x0165 // 357  despawna
+	MsgPKInfo             Type = 0x0166 // 358  S→C estado PK/guerra de um jogador (MSG_STANDARDPARM, Basedef.h:1954)
+	MsgPKMode             Type = 0x0399 // 921  C→S alterna o PlayerKiller (tecla K; MSG_STANDARDPARM, Basedef.h:2164)
+	MsgSendItem           Type = 0x0182 // 386  atualiza um slot
+	MsgUpdateCarry        Type = 0x0185 // 389  S→C snapshot completo de Carry[64] + Coin
+	MsgAccountSecureFail  Type = 0x0FDF // 4063 S→C PIN recusado (_MSG_AccountSecureFail)
+	MsgCNFAddParty        Type = 0x037D // 893  S→C sincroniza o slot da lista de party (MSG_CNFAddParty)
+	MsgUpdateEquip        Type = 0x036B // 875  S→C atualiza o equipamento visível (_MSG_UpdateEquip, Basedef.h:2094)
+	MsgREQShopList        Type = 0x027B // 635  C→S abre a loja do NPC (Target=NPC)
+	MsgShopList           Type = 0x017C // 380  S→C lista da loja (Carry do NPC)
+	MsgBuy                Type = 0x0379 // 889  C↔S compra do NPC
+	MsgSell               Type = 0x037A // 890  C↔S vende ao NPC
+	MsgCloseShop          Type = 0x0196 // 406  S→C fecha a janela da loja (sinal, ID=ESCENE_FIELD; Basedef.h:2193)
+	MsgDeposit            Type = 0x0388 // 904  C↔S deposita ouro no cargo (MSG_STANDARDPARM)
+	MsgWithdraw           Type = 0x0387 // 903  C↔S saca ouro do cargo (MSG_STANDARDPARM)
+	MsgUpdateCargoCoin    Type = 0x0339 // 825  S→C ouro do cargo da conta (_MSG_UpdateCargoCoin)
+	MsgUpdateEtc          Type = 0x0337 // 823  S→C atualiza ouro/exp/etc (Coin@40)
 	MsgCNFGetItem         Type = 0x0171 // 369
 	MsgCNFDropItem        Type = 0x0175 // 373
-	MsgDecayItem          Type = 0x016F // 367  ground item gone
-	MsgCombineComplete    Type = 0x03A7 // 935  combine result (parm 0/1/2)
-	MsgSendWarInfo        Type = 0x03A8 // 936  S→C guild war/ally status
-	MsgUpdateScore        Type = 0x0336 // 822  attributes/score update
-	MsgSetHpDam           Type = 0x018A // 394  S→C HP + floated heal/damage (affect ticks)
+	MsgDecayItem          Type = 0x016F // 367  item do chão sumiu
+	MsgCombineComplete    Type = 0x03A7 // 935  resultado do combine (parm 0/1/2)
+	MsgSendWarInfo        Type = 0x03A8 // 936  S→C estado de guerra/aliança da guilda
+	MsgUpdateScore        Type = 0x0336 // 822  atualização de atributos/score
+	MsgSetHpDam           Type = 0x018A // 394  S→C HP + cura/dano flutuantes (ticks de affect)
 	MsgSetHpMp            Type = 0x0181 // 385
-	MsgSendArchEffect     Type = 0x03B4 // 948  S↔C arch-created effect (MSG_STANDARDPARM)
-	MsgStartTime          Type = 0x03A1 // 929  S→C countdown signal (MSG_STANDARDPARM, Basedef.h:2526)
-	MsgEnvEffect          Type = 0x03A2 // 930  S→C area effect box (MSG_EnvEffect, Basedef.h:2529)
-	MsgMobLeft            Type = 0x03B0 // 944  S→C remaining-mob counter (MSG_STANDARDPARM, Basedef.h:2570)
-	MsgUpdateWeather      Type = 0x018B // 395  S→C global weather change (MSG_UpdateWeather, Basedef.h:2167)
+	MsgSendArchEffect     Type = 0x03B4 // 948  S↔C efeito criado por arch (MSG_STANDARDPARM)
+	MsgStartTime          Type = 0x03A1 // 929  S→C sinal de contagem regressiva (MSG_STANDARDPARM, Basedef.h:2526)
+	MsgEnvEffect          Type = 0x03A2 // 930  S→C caixa de efeito de área (MSG_EnvEffect, Basedef.h:2529)
+	MsgMobLeft            Type = 0x03B0 // 944  S→C contador de mobs restantes (MSG_STANDARDPARM, Basedef.h:2570)
+	MsgUpdateWeather      Type = 0x018B // 395  S→C mudança global de clima (MSG_UpdateWeather, Basedef.h:2167)
 
 	// MsgMagicTrumpet é _MSG_MagicTrumpet (Basedef.h:1738, protocol-spec.md:685):
 	// 29 | DB2Game | Game2DB | Game2Client. O grito Trombeta Mágica — uma
@@ -196,11 +196,11 @@ const (
 	// O ClientPatch o pinta de verde ao chegar (ClientPatch_v7662/Functions.cpp:51
 	// escreve TNColor::Speak 0xFF00CD00 em 0x4A016A), que é por que o grito não
 	// reusa o MsgMessageChat.
-	MsgMagicTrumpet Type = 0x0D1D // 3357 S→C global shout (MSG_MagicTrumpet)
+	MsgMagicTrumpet Type = 0x0D1D // 3357 S→C grito global (MSG_MagicTrumpet)
 
 	// Loja pessoal / autotrade S→C (issue #115). CreateMobTrade é a pose da loja:
 	// a pose é dirigida por este Type (0x0363), NÃO por um valor de CreateType.
-	MsgCreateMobTrade Type = 0x0363 // 867  S→C spawn a shop-owner in view (MSG_CreateMobTrade)
-	MsgItemSold       Type = 0x039B // 923  S→C an item left a shop (MSG_STANDARDPARM2, Parm1=seller Parm2=pos)
-	MsgExpPanel       Type = 0x5000 // S→C MSG_Exp_Msg_Panel_ (custom EXP notification panel)
+	MsgCreateMobTrade Type = 0x0363 // 867  S→C spawna um dono de loja no campo de visão (MSG_CreateMobTrade)
+	MsgItemSold       Type = 0x039B // 923  S→C um item saiu de uma loja (MSG_STANDARDPARM2, Parm1=seller Parm2=pos)
+	MsgExpPanel       Type = 0x5000 // S→C MSG_Exp_Msg_Panel_ (painel custom de notificação de EXP)
 )
