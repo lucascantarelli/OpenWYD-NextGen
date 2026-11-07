@@ -14,45 +14,45 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Moderator-edited NPC overlay (npc-editing-plan.md). The web writes cold config
-// to Postgres; the tmServer reads it (via dbServer) and MATERIALIZES the live
-// entities inside the single-owner loop — the web never touches live state.
+// Overlay de NPC editado pelo moderador (npc-editing-plan.md). A web escreve config fria
+// no Postgres; o tmServer a lê (via dbServer) e MATERIALIZA as entidades
+// vivas dentro do loop de dono único — a web nunca toca estado vivo.
 //
-// The database is the single source of spawn blocks (issue 57): the tmServer no
-// longer parses NPCGener.txt. At boot it registers one generator slot per content
-// definition and materializes the entities from the same snapshot, so the file and
-// the table can no longer disagree. Event-owned blocks (water rooms, Kefra,
-// Nightmare, rune quest) are registered but never materialized here — their event
-// code spawns them.
+// O banco é a fonte única dos blocos de spawn (issue 57): o tmServer não
+// analisa mais o NPCGener.txt. No boot ele registra um slot de gerador por definição de
+// conteúdo e materializa as entidades do mesmo snapshot, então o arquivo e
+// a tabela não podem mais discordar. Blocos de propriedade de evento (salas de água, Kefra,
+// Nightmare, quest de runas) são registrados mas nunca materializados aqui — o código de evento
+// deles os gera.
 
 const (
-	// npcPollPeriod is how many mob-AI ticks (1s each) between config version
-	// polls. Moderator edits are rare, so ~15s keeps the DB load negligible while
-	// still feeling live.
+	// npcPollPeriod é quantos ticks de IA de criaturas (1s cada) entre polls de versão
+	// de config. Edições de moderador são raras, então ~15s mantém a carga no banco desprezível
+	// e ainda parece ao vivo.
 	npcPollPeriod = 15
-	// npcFetchTimeout bounds the off-loop version/snapshot gRPC calls.
+	// npcFetchTimeout limita as chamadas gRPC de versão/snapshot fora do loop.
 	npcFetchTimeout = 5 * time.Second
 )
 
-// Boot retry budget. Vars, not consts, so tests can shrink them.
+// Orçamento de retry do boot. Vars, não consts, para testes poderem encolhê-los.
 var (
-	// npcBootRetryBudget bounds how long boot waits for the dbServer to become
-	// reachable and finish reconciling the content catalog. Both services are
-	// deployed together and the dbServer seeds the catalog BEFORE it listens, so
-	// the tmServer legitimately wins the race; without this wait the deploy
-	// crash-loops (production incident, 2026-08-13).
+	// npcBootRetryBudget limita quanto tempo o boot espera o dbServer ficar
+	// alcançável e terminar de reconciliar o catálogo de conteúdo. Os dois serviços são
+	// implantados juntos e o dbServer semeia o catálogo ANTES de escutar, então
+	// o tmServer legitimamente ganha a corrida; sem essa espera o deploy
+	// entra em crash-loop (incidente de produção, 2026-08-13).
 	npcBootRetryBudget = 90 * time.Second
-	// npcBootRetryInitial and npcBootRetryMax bracket the exponential backoff.
+	// npcBootRetryInitial e npcBootRetryMax delimitam o backoff (que dobra a cada tentativa).
 	npcBootRetryInitial = 1 * time.Second
 	npcBootRetryMax     = 5 * time.Second
 )
 
-// FetchNPCConfig loads the spawn catalogue before the loop starts. Transient
-// failures are retried until npcBootRetryBudget expires — the dbServer may still be
-// unreachable, or still mid-seed and answering with an empty catalogue (it seeds
-// the whole catalogue BEFORE it listens: production incident, 2026-08-13). Corrupt
-// data (duplicate generator index) never heals on its own, so it fails immediately
-// instead of burning the budget.
+// FetchNPCConfig carrega o catálogo de spawn antes de o loop começar. Falhas
+// transitórias são repetidas até o npcBootRetryBudget expirar — o dbServer pode ainda estar
+// inalcançável, ou ainda semeando e a responder com catálogo vazio (ele semeia
+// o catálogo inteiro ANTES de escutar: incidente de produção, 2026-08-13). Dados
+// corrompidos (índice de gerador duplicado) nunca se curam sozinhos, então isto falha na hora
+// em vez de queimar o orçamento.
 func (d *Dispatcher) FetchNPCConfig(ctx context.Context) (npccfg.Snapshot, error) {
 	if d.npcSource == nil {
 		return npccfg.Snapshot{}, nil
@@ -82,8 +82,8 @@ func (d *Dispatcher) FetchNPCConfig(ctx context.Context) (npccfg.Snapshot, error
 	}
 }
 
-// fetchNPCConfigAttempt runs one boot-load attempt. retriable reports whether the
-// failure is the kind that clears once the dbServer finishes coming up.
+// fetchNPCConfigAttempt roda uma tentativa de carga de boot. retriable informa se a
+// falha é do tipo que se resolve quando o dbServer termina de subir.
 func (d *Dispatcher) fetchNPCConfigAttempt(ctx context.Context) (snap npccfg.Snapshot, retriable bool, err error) {
 	fetchCtx, cancel := context.WithTimeout(ctx, npcFetchTimeout)
 	defer cancel()
@@ -102,17 +102,17 @@ func (d *Dispatcher) fetchNPCConfigAttempt(ctx context.Context) (snap npccfg.Sna
 		seen[def.GeneratorIndex] = struct{}{}
 	}
 	if len(seen) == 0 {
-		// An empty catalogue means we read it before the seed committed — not that
-		// this shard is supposed to have no monsters.
+		// Um catálogo vazio significa que o lemos antes do seed commitar — não que
+		// este shard deva ficar sem criaturas.
 		return npccfg.Snapshot{}, true, errors.New("npc config catalogue is empty")
 	}
 	return snap, false, nil
 }
 
-// ApplyNPCConfigBoot materializes the fetched snapshot before the loop starts (no
-// reveal — no players are connected yet). Generator slots were registered from this
-// same snapshot, so a definition without a slot is a wiring bug: fail closed rather
-// than booting a world with holes.
+// ApplyNPCConfigBoot materializa o snapshot carregado antes de o loop começar (sem
+// reveal — não há jogadores conectados ainda). Os slots de gerador foram registrados a partir deste
+// mesmo snapshot, então uma definição sem slot é bug de ligação: falhar fechado em vez de
+// subir um mundo com buracos.
 func (d *Dispatcher) ApplyNPCConfigBoot(w *world.World, snap npccfg.Snapshot) error {
 	for _, def := range snap.Defs {
 		if !def.Enabled || def.Origin != "content" || def.GeneratorIndex < 0 {
@@ -127,9 +127,9 @@ func (d *Dispatcher) ApplyNPCConfigBoot(w *world.World, snap npccfg.Snapshot) er
 	return nil
 }
 
-// pollNPCConfig checks the config version off the loop each npcPollPeriod ticks
-// and, when it changed, reloads the snapshot and applies it inside the loop. Only
-// one poll is in flight at a time (npcPolling). Called from the mob-AI Tick.
+// pollNPCConfig checa a versão de config fora do loop a cada npcPollPeriod ticks
+// e, quando mudou, recarrega o snapshot e aplica dentro do loop. Só
+// um poll está em andamento por vez (npcPolling). Chamado do Tick de IA de criaturas.
 func (d *Dispatcher) pollNPCConfig(w *world.World) {
 	if d.npcSource == nil || d.npcPolling {
 		return
@@ -138,7 +138,7 @@ func (d *Dispatcher) pollNPCConfig(w *world.World) {
 	if d.npcPollTick%npcPollPeriod != 0 {
 		return
 	}
-	known := d.npcVersion // captured in-loop; the off-loop goroutine never reads loop state
+	known := d.npcVersion // capturado dentro do loop; a goroutine de fora nunca lê estado do loop
 	d.npcPolling = true
 	w.GoDetached(func() func(*world.World) {
 		ctx, cancel := context.WithTimeout(context.Background(), npcFetchTimeout)
@@ -162,21 +162,21 @@ func (d *Dispatcher) pollNPCConfig(w *world.World) {
 	})
 }
 
-// applyNPCConfig reconciles the live world with a config snapshot, inside the
-// loop. It reconciles by DIFF: a definition whose materialized key is unchanged
-// keeps its live entity, so a moderator edit only touches the NPC that changed.
+// applyNPCConfig reconcilia o mundo vivo com um snapshot de config, dentro do
+// loop. Reconcilia por DIFF: uma definição cuja chave materializada não mudou
+// mantém sua entidade viva, então uma edição de moderador só toca o NPC que mudou.
 //
-// The first implementation wiped and rebuilt the whole managed set on every
-// apply. That is semantically simpler but wrong for a live shard: the client of
-// a player standing in town then holds the OLD entity next to the NEW one, so
-// editing a single NPC made every merchant duplicate on screen (in-game report,
-// Armia, 2026-11-04 — three config bumps while the player was online). Reveal still
-// announces the few spawns a real diff produces (true on hot-reload, false at
-// boot), and the global item-price overlay is refreshed on every apply.
+// A primeira implementação apagava e reconstruía todo o conjunto gerenciado em cada
+// apply. É semanticamente mais simples mas errado para um shard vivo: o cliente de
+// um jogador parado na cidade então segura a entidade VELHA ao lado da NOVA, então
+// editar um único NPC duplicava todo mercador na tela (relato in-game,
+// Armia, 2026-11-04 — três bumps de config com o jogador online). O reveal ainda
+// anuncia os poucos spawns que um diff real produz (true no hot-reload, false no
+// boot), e o overlay global de preço de item é atualizado em todo apply.
 func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal bool) {
 	d.rebuildItemPrices(snap.PriceOverrides)
 
-	// A disabled content definition must stop spawning from its NPCGener block.
+	// Uma definição de conteúdo desativada precisa parar de gerar a partir do seu bloco NPCGener.
 	for _, def := range snap.Defs {
 		if def.Enabled || def.Origin != "content" || def.GeneratorIndex < 0 || world.EventOwnedGenerator(def.GeneratorIndex) {
 			continue
@@ -196,13 +196,13 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 		key := npcDefKey(def)
 		if m, ok := d.managedNPCs[def.Slug]; ok {
 			if m.key == key && w.Entity(m.id) != nil {
-				continue // unchanged: leave the entity and its recipe alone
+				continue // sem mudança: deixar a entidade e sua receita em paz
 			}
 			d.teardownNPC(w, def.Slug, m)
 		}
 		if def.Origin == "content" && def.GeneratorIndex >= 0 {
 			if world.EventOwnedGenerator(def.GeneratorIndex) {
-				continue // the event system spawns this block; the overlay must not
+				continue // o sistema de eventos gera este bloco; o overlay não pode
 			}
 			g := w.GeneratorAt(def.GeneratorIndex)
 			if g == nil {
@@ -226,7 +226,7 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 			g.LeaderTmpl = npcTemplateWithDisplayName(def.Template, def.DisplayName)
 			g.FollowerTmpl = def.FollowerTemplate
 			if world.IsWaterGenerator(def.GeneratorIndex) {
-				continue // water rooms own these blocks; don't spawn them through NPC hot reload
+				continue // salas de água são donas destes blocos; não as gerar pelo hot reload de NPC
 			}
 			ids := w.GenerateMob(def.GeneratorIndex)
 			if len(ids) == 0 {
@@ -246,9 +246,9 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 			continue
 		}
 		if def.Template == nil {
-			// Template failed to resolve (missing/corrupt file) — logged in the
-			// dbclient source too, but warn here so the skip is visible alongside
-			// the other skip branches (bad position, no free slot).
+			// Template falhou em resolver (arquivo ausente/corrompido) — logado também na
+			// fonte do dbclient, mas avisado aqui para o pulo ficar visível junto
+			// dos outros ramos de pulo (posição inválida, sem slot livre).
 			d.log.Warn("npc definition has no template - skipped", "slug", def.Slug)
 			continue
 		}
@@ -262,7 +262,7 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 			X:         def.X,
 			Y:         def.Y,
 			RouteType: def.RouteType,
-			GenIndex:  -1, // not owned by an NPCGener block (no CurrentNumMob accounting)
+			GenIndex:  -1, // não pertence a um bloco NPCGener (sem contabilidade de CurrentNumMob)
 		})
 		if id < 0 {
 			d.log.Warn("npc spawn failed (no free slot)", "slug", def.Slug)
@@ -278,36 +278,36 @@ func (d *Dispatcher) applyNPCConfig(w *world.World, snap npccfg.Snapshot, reveal
 	}
 	for slug, m := range d.managedNPCs {
 		if _, ok := live[slug]; !ok {
-			d.teardownNPC(w, slug, m) // definition deleted from the config
+			d.teardownNPC(w, slug, m) // definição apagada da config
 		}
 	}
 	d.npcVersion = snap.Version
 }
 
-// managedNPC is one materialized definition: its live leader entity, the key that
-// summarizes what was applied, and the NPCGener block it owns (-1 for a definition
-// spawned on its own position). The key is what turns a reload into a diff.
+// managedNPC é uma definição materializada: sua entidade líder viva, a chave que
+// resume o que foi aplicado, e o bloco NPCGener que ela possui (-1 para uma definição
+// gerada na própria posição). A chave é o que transforma um reload em diff.
 type managedNPC struct {
 	id  int
 	key string
 	gen int
 }
 
-// teardownNPC removes one managed definition. A content block is cleared whole
-// (leader, followers and any queued respawn); a standalone NPC is despawned.
+// teardownNPC remove uma definição gerenciada. Um bloco de conteúdo é limpo inteiro
+// (líder, seguidores e qualquer respawn na fila); um NPC autônomo é despawnado.
 func (d *Dispatcher) teardownNPC(w *world.World, slug string, m managedNPC) {
 	if m.gen >= 0 {
 		w.ClearGenerator(m.gen)
 	} else {
-		w.DespawnMob(m.id, 0) // removeType 0 = out-of-view removal, never queues a respawn
+		w.DespawnMob(m.id, 0) // removeType 0 = remoção fora de visão, nunca enfileira respawn
 	}
 	delete(d.managedNPCs, slug)
 }
 
-// npcDefKey summarizes everything a definition applies to the live world, so an
-// apply can tell “nothing changed” from “respawn this one”. The template bytes
-// are part of it: a re-stamped STRUCT_MOB must re-materialize even when only a
-// stat moved.
+// npcDefKey resume tudo a que uma definição se aplica no mundo vivo, para um
+// apply conseguir distinguir "nada mudou" de "respawnar este". Os bytes do template
+// fazem parte: um STRUCT_MOB recarimbado precisa rematerializar mesmo quando só um
+// stat mudou.
 func npcDefKey(def npccfg.Definition) string {
 	h := fnv.New64a()
 	fmt.Fprintf(h, "%s|%d|%s|%d,%d|%d|%d|%d,%d,%d,%d,%d|",
@@ -327,9 +327,9 @@ func npcDefKey(def npccfg.Definition) string {
 	return strconv.FormatUint(h.Sum64(), 16)
 }
 
-// npcTemplateWithDisplayName overlays the moderator display name onto a copy of
-// the raw STRUCT_MOB. Templates are shared by the dbclient cache, so mutating the
-// input would leak one NPC's translated name into every NPC using that template.
+// npcTemplateWithDisplayName sobrepõe o nome de exibição do moderador numa cópia do
+// STRUCT_MOB cru. Templates são compartilhados pelo cache do dbclient, então mutar a
+// entrada vazaria o nome traduzido de um NPC para todo NPC que usa aquele template.
 func npcTemplateWithDisplayName(template []byte, displayName string) []byte {
 	if strings.TrimSpace(displayName) == "" {
 		return template
@@ -342,12 +342,12 @@ func npcTemplateWithDisplayName(template []byte, displayName string) []byte {
 	return out
 }
 
-// applyShop overwrites a merchant entity's shop stock (its Carry[]) with the
-// moderator-defined slots. Slot is the MSG_ShopList index (0..26); it is mapped
-// to the real Carry index via protocol.ShopSlot (3 tabs of 9: Carry[0..8],
-// [27..35], [54..62]) — the same mapping reqShopList reads back, so an item in
-// tab 2/3 (slot >= 9) actually reaches the client. The shop is authoritative:
-// slots not listed are cleared, so emptying the shop in the web sells nothing.
+// applyShop sobrescreve o estoque de loja de uma entidade mercador (seu Carry[]) com os
+// slots definidos pelo moderador. Slot é o índice de MSG_ShopList (0..26); ele é mapeado
+// para o índice real de Carry via protocol.ShopSlot (3 abas de 9: Carry[0..8],
+// [27..35], [54..62]) — o mesmo mapeamento que reqShopList lê de volta, então um item na
+// aba 2/3 (slot >= 9) de fato chega ao cliente. A loja é autoritativa:
+// slots não listados são limpos, então esvaziar a loja na web não vende nada.
 func applyShop(e *world.Entity, shop []npccfg.ShopItem) {
 	if e == nil {
 		return
@@ -386,13 +386,13 @@ func shopEffects(it npccfg.ShopItem) [3]world.Effect {
 	return eff
 }
 
-// maxShopSlots is the number of MSG_ShopList slots (3 tabs of 9); a shop item's
-// Slot is a display index in [0, maxShopSlots).
+// maxShopSlots é o número de slots de MSG_ShopList (3 abas de 9); o Slot de um item de
+// loja é um índice de exibição em [0, maxShopSlots).
 const maxShopSlots = 27
 
-// rebuildItemPrices resets the effective price map to the content catalog, then
-// applies the moderator's global overrides on top. Loop-only, so handlers reading
-// d.itemPrices never race it.
+// rebuildItemPrices reseta o mapa de preço efetivo para o catálogo de conteúdo, depois
+// aplica os overrides globais do moderador por cima. Só do loop, então handlers que leem
+// d.itemPrices nunca correm contra ele.
 func (d *Dispatcher) rebuildItemPrices(overrides map[int]int32) {
 	if len(overrides) == 0 && d.baseItemPrices == nil {
 		return
@@ -406,7 +406,7 @@ func (d *Dispatcher) rebuildItemPrices(overrides map[int]int32) {
 	}
 }
 
-// cloneInt32Map returns a shallow copy of m (nil for a nil input).
+// cloneInt32Map devolve uma cópia rasa de m (nil para entrada nil).
 func cloneInt32Map(m map[int]int32) map[int]int32 {
 	if m == nil {
 		return nil

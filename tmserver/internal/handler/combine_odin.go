@@ -7,11 +7,11 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// odinRate is g_pOdinRate[12] (Basedef.cpp:95-99), indexed by recipe id.
+// odinRate é g_pOdinRate[12] (Basedef.cpp:95-99), indexado pelo id da receita.
 var odinRate = [12]int{100, 35, 100, 40, 100, 100, 100, 100, 100, 100, 100, 100}
 
-// Odin recipe result item indices (_MSG_CombineItemOdin.cpp). The Capa
-// Celestial recipe targets the same cape slot as reinoCapeSlot (chat.go).
+// índices do item resultante das receitas Odin (_MSG_CombineItemOdin.cpp). A receita
+// Capa Celestial mira o mesmo slot de capa que reinoCapeSlot (chat.go).
 const (
 	odinPistaDeRunasResult     = 5134
 	odinPedraDaFuriaResult     = 3020
@@ -19,27 +19,27 @@ const (
 	odinSementeDeCristalResult = 4032
 )
 
-// combineItemOdin handles _MSG_CombineItemOdin (0x02D2): the 11-recipe Odin
-// family (Composição de Sets / de armas, the "+12+" +11→+15 refine tier,
-// Pista de runas, Destrave Lv40, Pedra da fúria, the 4 Secreta stones,
-// Semente de cristal, Capa celestial). This is a dedicated handler, not part
-// of the generic CombineFamily engine (combine.go): unlike Anct/Ehre/…, these
-// recipes don't share a "rate in, one result at slot 0" shape — results land
-// at varying slots, one recipe mutates equipped gear directly (Equip[15]),
-// and one sets a quest flag with no item at all.
+// combineItemOdin trata _MSG_CombineItemOdin (0x02D2): a família Odin de 11
+// receitas (Composição de Sets / de armas, o nível "+12+" de refino +11→+15,
+// Pista de runas, Destrave Lv40, Pedra da fúria, as 4 pedras Secreta,
+// Semente de cristal, Capa celestial). Este é um handler dedicado, não parte
+// do motor genérico CombineFamily (combine.go): ao contrário de Anct/Ehre/…, estas
+// receitas não compartilham o formato "taxa entra, um resultado no slot 0" — os resultados entram
+// em slots variados, uma receita muda equipamento equipado direto (Equip[15]),
+// e uma define uma flag de quest sem item nenhum.
 //
-// combine.MatchOdin returning combine.OdinNoMatch (0) is NOT "invalid" the
-// way a 0 rate is for every other combine family: GetMatchCombineOdin's
-// default return IS "Composição de Sets", a real (near-always-succeeding)
-// recipe keyed off Item[0]'s catalog Extra field — Exec always attempts it.
-// There is no "no recipe matched" rejection anywhere in the legacy handler.
+// combine.MatchOdin devolver combine.OdinNoMatch (0) NÃO é "inválido" do
+// jeito que uma taxa 0 é para toda outra família de combine: o retorno padrão de
+// GetMatchCombineOdin É "Composição de Sets", uma receita real (quase sempre bem-sucedida)
+// ligada ao campo Extra do catálogo de Item[0] — o Exec sempre a tenta.
+// Não há recusa de "nenhuma receita casou" em lugar nenhum do handler legado.
 //
-// Two deliberate deviations from Source (issue #138 plan): the wall-clock
-// srand() reseeds sprinkled through _MSG_CombineItemOdin.cpp are dropped —
-// roll straight off w.Rand(), like every other combine/refine path; and the
-// "+12+" recipe's failure branch, byte-identical to its success branch in the
-// live (uncommented) code, is ported as it actually runs: it always succeeds
-// once the pre-checks below pass.
+// Duas divergências deliberadas da origem (plano da issue #138): os reseeds de
+// srand() por relógio espalhados pelo _MSG_CombineItemOdin.cpp são descartados —
+// sorteia direto do w.Rand(), como todo outro caminho de combine/refino; e o
+// ramo de falha da receita "+12+", byte a byte idêntico ao seu ramo de sucesso no
+// código vivo (não comentado), é portado como ele de fato roda: sempre tem sucesso
+// assim que as pré-checagens abaixo passam.
 func (d *Dispatcher) combineItemOdin(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -48,9 +48,9 @@ func (d *Dispatcher) combineItemOdin(w *world.World, s *world.Session, _ protoco
 	d.combineOdin(w, s, e, payload)
 }
 
-// combineOdin is combineItemOdin's body, split out (like useItem/useClasseItem)
-// so tests can drive it with an explicit entity instead of needing one
-// registered in the world's connection table.
+// combineOdin é o corpo de combineItemOdin, separado (como useItem/useClasseItem)
+// para testes poderem conduzi-lo com uma entidade explícita em vez de precisar de uma
+// registrada na tabela de conexões do mundo.
 func (d *Dispatcher) combineOdin(w *world.World, s *world.Session, e *world.Entity, payload []byte) {
 	var body protocol.MsgCombineItemBody
 	if err := body.Decode(payload); err != nil {
@@ -64,19 +64,19 @@ func (d *Dispatcher) combineOdin(w *world.World, s *world.Session, e *world.Enti
 
 	id := combine.MatchOdin(d.odinCatalog, items[:])
 
-	// Recipe-specific pre-gates (_MSG_CombineItemOdin.cpp:48-90): fail here
-	// WITHOUT consuming anything, unlike every other outcome below. The two
-	// locals below carry a value each gate already had to compute on to its
-	// matching branch further down, instead of recomputing it there.
+	// Pré-gates específicos de receita (_MSG_CombineItemOdin.cpp:48-90): falham aqui
+	// SEM consumir nada, ao contrário de todo outro desfecho abaixo. As duas
+	// locais abaixo carregam um valor que cada gate já teve de obter até seu
+	// ramo correspondente mais adiante, em vez de recalculá-lo lá.
 	//
-	// Deviation from Source, not in the plan's three flagged ones but same
-	// spirit: id 0 (Composição de Sets, the catch-all "nothing else matched"
-	// default) is the one recipe whose pattern places no constraint on
-	// Item[1] at all. Source still blindly writes to Carry[m->InvenPos[1]]
-	// even when Item[1] was empty and its InvenPos never validated against
-	// anything the player actually offered — an arbitrary-slot-overwrite
-	// hazard this fork's single-owner/no-dup invariant (CLAUDE.md) can't
-	// allow. Require slot 1 to have been a real, validated input.
+	// Divergência da origem, não entre as três sinalizadas no plano mas no mesmo
+	// espírito: o id 0 (Composição de Sets, o padrão pega-tudo de "nada mais casou")
+	// é a única receita cujo padrão não impõe restrição nenhuma a
+	// Item[1]. A origem ainda escreve cegamente em Carry[m->InvenPos[1]]
+	// mesmo quando Item[1] estava vazio e seu InvenPos nunca foi validado contra
+	// nada que o jogador realmente ofereceu — um risco de sobrescrever slot arbitrário
+	// que o invariante de dono único/sem duplicação deste fork (CLAUDE.md) não pode
+	// permitir. Exigimos que o slot 1 tenha sido uma entrada real e validada.
 	if (id == combine.OdinNoMatch || id == combine.OdinItemCelestial) && items[1].Empty() {
 		sendCombineComplete(w, s, combineInvalid)
 		return
@@ -102,10 +102,10 @@ func (d *Dispatcher) combineOdin(w *world.World, s *world.Session, e *world.Enti
 		}
 	}
 
-	// Consume every active input slot unconditionally — the ingredients are
-	// spent whether or not the recipe below ultimately produces anything
-	// (_MSG_CombineItemOdin.cpp:93-100), the same "spent either way" rule the
-	// dust refine and Anct combine already follow.
+	// Consome todo slot de entrada ativo incondicionalmente — os insumos são
+	// gastos quer a receita abaixo acabe produzindo algo ou não
+	// (_MSG_CombineItemOdin.cpp:93-100), a mesma regra de "gasto de todo jeito" que o
+	// refino por pó e o combine Anct já seguem.
 	for _, i := range active {
 		e.Carry[slots[i]] = world.Item{}
 		sendCarrySlot(w, s, e, slots[i])
@@ -133,10 +133,10 @@ func (d *Dispatcher) combineOdin(w *world.World, s *world.Session, e *world.Enti
 	}
 }
 
-// odinSecretaUneven is the "+12+" recipe's four-elemental-stone cross-check
-// (_MSG_CombineItemOdin.cpp:50-71): among the 8 slots, the four Secreta
-// stones (água/terra/sol/vento, 5334-5337) must be either all absent or all
-// present — one, two, or three present alone is rejected.
+// odinSecretaUneven é a checagem cruzada das quatro pedras elementais da receita "+12+"
+// (_MSG_CombineItemOdin.cpp:50-71): entre os 8 slots, as quatro pedras Secreta
+// (água/terra/sol/vento, 5334-5337) precisam estar todas ausentes ou todas
+// presentes — uma, duas ou três presentes sozinhas é recusado.
 func odinSecretaUneven(items []world.Item) bool {
 	var agua, terra, sol, vento bool
 	for _, it := range items {
@@ -156,11 +156,11 @@ func odinSecretaUneven(items []world.Item) bool {
 	return some && !all
 }
 
-// odinComposicao is id 0 ("Composição de Sets") and id 1 ("Composição de
-// armas") — the two share an identical shape in Source, differing only in
-// their success rate. On success, item[1] is relabeled to catalyst's Extra
-// and its sanc reset to 0; on failure item[1] is restored unchanged. Either
-// way item[0] (the catalyst/selado) stays consumed.
+// odinComposicao é o id 0 ("Composição de Sets") e o id 1 ("Composição de
+// armas") — os dois compartilham uma forma idêntica na origem, diferindo só na
+// taxa de sucesso. No sucesso, item[1] é renomeado para o Extra do catalisador
+// e seu sanc volta a 0; na falha item[1] é restaurado sem mudança. De um
+// jeito ou de outro item[0] (o catalisador/selado) continua consumido.
 func (d *Dispatcher) odinComposicao(w *world.World, s *world.Session, e *world.Entity, catalyst, base world.Item, baseSlot int, id, roll int) {
 	rate := odinRate[id] + w.Rand().Intn(5)
 	if roll > rate {
@@ -179,13 +179,13 @@ func (d *Dispatcher) odinComposicao(w *world.World, s *world.Session, e *world.E
 	sendCombineComplete(w, s, combineSuccess)
 }
 
-// odinPlus12 is id 2, the "+11→+15" refine tier. Per the issue #138 plan
-// (the live failure branch is a byte-identical copy of the success branch,
-// with the real rate-gated failure entirely commented out in Source), this
-// always succeeds once the caller's pre-gate has passed: the accumulated
-// rate is still computed and logged (useful for future economy tuning) but
-// does not gate the outcome. level is items[2]'s current refine level, already
-// computed by the caller's pre-gate.
+// odinPlus12 é o id 2, o nível de refino "+11→+15". Conforme o plano da issue #138
+// (o ramo de falha vivo é uma cópia byte a byte do ramo de sucesso,
+// com a falha real condicionada à taxa toda comentada na origem), este
+// sempre tem sucesso depois que o pré-gate de quem chama passou: a taxa acumulada
+// ainda é calculada e logada (útil para ajuste de economia futuro) mas
+// não condiciona o desfecho. level é o nível de refino atual de items[2], já
+// calculado pelo pré-gate de quem chama.
 func (d *Dispatcher) odinPlus12(w *world.World, s *world.Session, e *world.Entity, items []world.Item, targetSlot, level int) {
 	rate, protect := combine.Plus12Rate(odinRate[combine.OdinPlus12], items)
 	newLevel, ok := combine.Plus12NewLevel(level)
@@ -200,12 +200,12 @@ func (d *Dispatcher) odinPlus12(w *world.World, s *world.Session, e *world.Entit
 	d.log.Info("odin +12+ refine", "conn", s.Conn, "from", level, "to", newLevel, "rate", rate, "protect", protect)
 }
 
-// odinFreshResult covers the recipes whose result is a bare item stamped
-// straight into an already-cleared slot (Pista de runas, Pedra da fúria, the
-// 4 Secreta stones, Semente de cristal): Source assigns only .sIndex onto the
-// slot the consume loop already zeroed, so — unlike odinComposicao/odinPlus12
-// — no prior effects/amount survive. On failure the slot is left empty; none
-// of these recipes restores anything (_MSG_CombineItemOdin.cpp:517-650).
+// odinFreshResult cobre as receitas cujo resultado é um item puro carimbado
+// direto num slot já zerado (Pista de runas, Pedra da fúria, as
+// 4 pedras Secreta, Semente de cristal): a origem atribui só .sIndex no
+// slot que o laço de consumo já zerou, então — ao contrário de odinComposicao/odinPlus12
+// — nenhum efeito/quantidade anterior sobrevive. Na falha o slot fica vazio; nenhuma
+// destas receitas restaura nada (_MSG_CombineItemOdin.cpp:517-650).
 func (d *Dispatcher) odinFreshResult(w *world.World, s *world.Session, e *world.Entity, slot int, result int16, roll, id int) {
 	if roll > odinRate[id] {
 		sendCombineComplete(w, s, combineFailed)
@@ -216,23 +216,23 @@ func (d *Dispatcher) odinFreshResult(w *world.World, s *world.Session, e *world.
 	sendCombineComplete(w, s, combineSuccess)
 }
 
-// odinDestraveLv40 is id 4: no item is produced, only the Celestial level-40
-// gate flips. Reuses destravarCelestial (chat.go), the same flag /destravar40
-// already sets — the caller's pre-gate already confirmed Level==39,
-// CelLv40==0 and ClassMaster==Celestial.
+// odinDestraveLv40 é o id 4: nenhum item é produzido, só o gate de nível 40
+// Celestial vira. Reusa destravarCelestial (chat.go), a mesma flag que /destravar40
+// já define — o pré-gate de quem chama já confirmou Level==39,
+// CelLv40==0 e ClassMaster==Celestial.
 func (d *Dispatcher) odinDestraveLv40(w *world.World, s *world.Session, e *world.Entity, roll int) {
 	if roll > odinRate[combine.OdinDestraveLv40] {
 		sendCombineComplete(w, s, combineFailed)
 		return
 	}
-	d.destravarCelestialFor(w, s, e, false) // sends its own MsgCombineComplete + persists
+	d.destravarCelestialFor(w, s, e, false) // envia seu próprio MsgCombineComplete + persiste
 }
 
-// odinCapaCelestial is id 11: no combine input slot is touched here (they
-// were already consumed above) — the equipped cape (Equip[15]) gets its sanc
-// bumped by one, bootstrapping a fresh EF_SANC pair first if it has none yet.
-// The caller's pre-gate already confirmed the class/cape-sanc requirements and
-// computed level, the cape's current refine level.
+// odinCapaCelestial é o id 11: nenhum slot de entrada de combine é tocado aqui (eles
+// já foram consumidos acima) — a capa equipada (Equip[15]) tem seu sanc
+// aumentado em um, inicializando antes um par EF_SANC novo se ela ainda não tiver nenhum.
+// O pré-gate de quem chama já confirmou os requisitos de classe/sanc da capa e
+// calculou level, o nível de refino atual da capa.
 func (d *Dispatcher) odinCapaCelestial(w *world.World, s *world.Session, e *world.Entity, roll, level int) {
 	if roll > odinRate[combine.OdinCapaCelestial] {
 		sendCombineComplete(w, s, combineFailed)

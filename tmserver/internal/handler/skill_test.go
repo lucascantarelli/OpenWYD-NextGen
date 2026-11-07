@@ -16,8 +16,8 @@ import (
 
 var lend = binary.LittleEndian
 
-// testSpells is a tiny TK catalog: tree-1 skills 0-7 (7 = the exclusive 8th),
-// one elemental attack skill (2), and one Foema skill (24) for the class gate.
+// testSpells é um catálogo TK mínimo: skills da árvore 1, de 0 a 7 (7 = a 8ª exclusiva),
+// uma skill de ataque elemental (2), e uma skill de Foema (24) para o gate de classe.
 func testSpells() *content.SkillData {
 	spells := []content.Spell{
 		{Index: 0, SkillPoint: 3, ManaSpent: 15, Name: "S0"},
@@ -36,8 +36,8 @@ func testSpells() *content.SkillData {
 	return content.NewSkillData(spells)
 }
 
-// skillAttackFrame sends an attack claiming the per-target skill sentinel (-1)
-// or melee (-2), as the real client does.
+// skillAttackFrame envia um ataque alegando o sentinela de skill por alvo (-1)
+// ou corpo a corpo (-2), como o cliente real faz.
 func skillAttackFrame(t *testing.T, c net.Conn, tick uint32, targetID, skill int, claim int32) {
 	t.Helper()
 	body := protocol.MsgAttackBody{
@@ -63,17 +63,17 @@ func skillCombatDB(learned int32) *fakeDB {
 	return db
 }
 
-// TestSkillCastSpendsMana: a learned elemental skill (index 2, tree 1) damages
-// the target and the echoed body carries the post-spend MP (500−10).
+// TestSkillCastSpendsMana: uma skill elemental aprendida (índice 2, árvore 1) causa dano
+// ao alvo e o corpo ecoado carrega o MP pós-gasto (500−10).
 func TestSkillCastSpendsMana(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(1<<2))
 	defer stop()
 	attacker := enterWorld(t, addr) // conn 1
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2, in view
+	target := enterWorld(t, addr) // conn 2, em view
 	defer target.Close()
 
-	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP requires PK mode
+	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP exige PK mode
 	skillAttackFrame(t, attacker, serverTime, 2, 2, -1)
 	ty, payload, ok := readMaybe(t, target)
 	if !ok || ty != protocol.MsgAttack {
@@ -94,8 +94,8 @@ func TestSkillCastSpendsMana(t *testing.T) {
 	}
 }
 
-// TestSkillCastUnlearnedDropped: casting a skill the character never learned
-// drops the attack entirely (crack error path, no broadcast).
+// TestSkillCastUnlearnedDropped: conjurar uma skill que o personagem nunca aprendeu
+// descarta o ataque por completo (caminho de erro de crack, sem transmissão).
 func TestSkillCastUnlearnedDropped(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(0))
 	defer stop()
@@ -110,10 +110,10 @@ func TestSkillCastUnlearnedDropped(t *testing.T) {
 	}
 }
 
-// TestSkillCastPassiveDropped: a passive skill (spell 9, Passive=1) is never
-// castable even when learned — validateCast drops it before any broadcast
-// (_MSG_Attack.cpp Passive reject). Learned bit is set to prove the rejection
-// is the passive gate, not the learned-mask gate.
+// TestSkillCastPassiveDropped: uma skill passiva (spell 9, Passive=1) nunca é
+// conjurável mesmo aprendida — validateCast a descarta antes de qualquer transmissão
+// (rejeição Passive do _MSG_Attack.cpp). O bit de aprendida é ligado para provar que a rejeição
+// é o gate de passiva, não o gate da máscara de aprendidas.
 func TestSkillCastPassiveDropped(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(1<<9))
 	defer stop()
@@ -128,8 +128,8 @@ func TestSkillCastPassiveDropped(t *testing.T) {
 	}
 }
 
-// TestSkillCastNoManaDropped: MP below the cost cancels the cast (the client
-// gets MSG_SetHpMp with the authoritative bars, the target sees nothing).
+// TestSkillCastNoManaDropped: MP abaixo do custo cancela a conjuração (o cliente
+// recebe MSG_SetHpMp com as barras autoritativas, o alvo não vê nada).
 func TestSkillCastNoManaDropped(t *testing.T) {
 	db := newDB()
 	db.loadResult = world.CharacterState{
@@ -153,13 +153,13 @@ func TestSkillCastNoManaDropped(t *testing.T) {
 	}
 }
 
-// TestBuffCastAppliesAffect: casting a friendly AC buff (spell 3, AffectType 11)
-// on oneself installs the affect and pushes the icon via UpdateScore.Affect[]
-// plus the full SendAffect snapshot.
+// TestBuffCastAppliesAffect: conjurar um buff de AC amigável (spell 3, AffectType 11)
+// em si instala o affect e empurra o ícone via UpdateScore.Affect[]
+// mais o snapshot completo de SendAffect.
 func TestBuffCastAppliesAffect(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(1<<3))
 	defer stop()
-	c := enterWorld(t, addr) // conn 1, buffs itself
+	c := enterWorld(t, addr) // conn 1, buffa a si mesmo
 	defer c.Close()
 
 	skillAttackFrame(t, c, serverTime, 1, 3, -1)
@@ -191,12 +191,12 @@ func TestBuffCastAppliesAffect(t *testing.T) {
 	}
 }
 
-// TestSkillBuffDoesNotLeakAcrossCharacters is the issue #54 regression: a buff
-// applied through a REAL skill cast (not injected DB state, unlike
-// TestAffectsDoNotLeakAcrossCharacters in character_relogin_test.go) must not
-// bleed from the character that cast it into a different class's character
-// selected next on the same connection — mirroring the report's screenshot, a
-// fresh level-2 BeastMaster showing buffs it never cast.
+// TestSkillBuffDoesNotLeakAcrossCharacters é a regressão da issue #54: um buff
+// aplicado por uma conjuração REAL de skill (não estado injetado no banco, diferente de
+// TestAffectsDoNotLeakAcrossCharacters em character_relogin_test.go) não pode
+// vazar do personagem que o conjurou para um personagem de outra classe
+// selecionado depois na mesma conexão — espelhando o print do relato, um
+// BeastMaster novo de nível 2 mostrando buffs que nunca conjurou.
 func TestSkillBuffDoesNotLeakAcrossCharacters(t *testing.T) {
 	db := &slotDB{
 		fakeDB: &fakeDB{accounts: map[string]*fakeAccount{
@@ -222,9 +222,9 @@ func TestSkillBuffDoesNotLeakAcrossCharacters(t *testing.T) {
 	c := loginAndSelect(t, addr)
 	defer c.Close()
 
-	// Select the Knight (slot 0, conn 1) and cast the self AC buff for real
-	// (spell 3, AffectType 11) — this is combat.go's SetAffect path, the same
-	// one every skill's affect flows through.
+	// Seleciona o Knight (slot 0, conn 1) e conjura o buff de AC em si de verdade
+	// (spell 3, AffectType 11) — este é o caminho SetAffect do combat.go, o mesmo
+	// por onde o affect de toda skill passa.
 	var login0 protocol.MsgCharacterLoginBody
 	login0.Slot = 0
 	send(t, c, protocol.MsgCharacterLogin, login0.Encode())
@@ -247,7 +247,7 @@ func TestSkillBuffDoesNotLeakAcrossCharacters(t *testing.T) {
 		t.Fatal("no SendAffect snapshot after the buff cast, want the buff applied before switching characters")
 	}
 
-	// Log out: the Knight's own save must legitimately carry the cast buff.
+	// Logout: o save do próprio Knight deve legitimamente carregar o buff conjurado.
 	send(t, c, protocol.MsgCharacterLogout, nil)
 	for {
 		ty, _ := read(t, c)
@@ -263,9 +263,9 @@ func TestSkillBuffDoesNotLeakAcrossCharacters(t *testing.T) {
 		t.Fatalf("Knight save affects = %+v, want the cast AC buff (Type 11)", knightSave.Affects)
 	}
 
-	// Select the Beast (slot 1, a different class) on the SAME connection: the
-	// cast buff must not leak in, either live (UpdateScore icon) or on its own
-	// next save.
+	// Seleciona o Beast (slot 1, outra classe) na MESMA conexão: o
+	// buff conjurado não pode vazar, nem ao vivo (ícone no UpdateScore) nem no seu
+	// próximo save.
 	var login1 protocol.MsgCharacterLoginBody
 	login1.Slot = 1
 	send(t, c, protocol.MsgCharacterLogin, login1.Encode())
@@ -294,8 +294,8 @@ func TestSkillBuffDoesNotLeakAcrossCharacters(t *testing.T) {
 	}
 }
 
-// TestMeleeWithNegativeSkillIndex: the real client's melee (SkillIndex=-1,
-// Dam=-2) resolves through the melee formula and never touches mana.
+// TestMeleeWithNegativeSkillIndex: o corpo a corpo do cliente real (SkillIndex=-1,
+// Dam=-2) resolve pela fórmula de corpo a corpo e nunca toca no mana.
 func TestMeleeWithNegativeSkillIndex(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(0))
 	defer stop()
@@ -304,7 +304,7 @@ func TestMeleeWithNegativeSkillIndex(t *testing.T) {
 	target := enterWorld(t, addr)
 	defer target.Close()
 
-	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP requires PK mode
+	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP exige PK mode
 	skillAttackFrame(t, attacker, serverTime, 2, -1, -2)
 	ty, payload, ok := readMaybe(t, target)
 	if !ok || ty != protocol.MsgAttack {
@@ -364,9 +364,9 @@ func TestDeriveSkillBonus(t *testing.T) {
 		{"fresh level 10", 10, 0, 0, 30},
 		{"level 10 one skill", 10, 1 << 0, 0, 27},
 		{"level 250 gets +1 past 199", 250, 0, 0, 250*3 + 51},
-		{"overdrawn clamps to 0", 1, 0xFF, 0, 0}, // 3 points vs 24 spent
+		{"overdrawn clamps to 0", 1, 0xFF, 0, 0}, // 3 pontos contra 24 gastos
 		{"sephira bits cost nothing", 10, 1 << 25, 0, 30},
-		// Basedef.cpp:865-868: PilulaOrc adds 9 before the spent points (#404).
+		// Basedef.cpp:865-868: a PilulaOrc soma 9 antes dos pontos gastos (#404).
 		{"pilula orc adds 9", 49, 0, 1, 49*3 + 9},
 		{"pilula orc with one skill", 10, 1 << 0, 1, 36},
 		{"pilula orc past 199", 250, 0, 1, 250*3 + 51 + 9},
@@ -430,7 +430,7 @@ func TestValidateCastSharedSkillsUseModulo24LearnedMask(t *testing.T) {
 	}
 }
 
-// learnBody builds the ApplyBonus BonusType=2 frame targeting an NPC id.
+// learnBody monta o frame ApplyBonus BonusType=2 mirando num id de NPC.
 func learnBody(detail int) []byte {
 	b := protocol.MsgApplyBonusBody{
 		BonusType: protocol.BonusSkill,
@@ -444,14 +444,14 @@ func TestLearnSkill(t *testing.T) {
 	db := newDB()
 	db.loadResult = world.CharacterState{
 		Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000,
-		Level: 10, // SkillBonus derives to 30
+		Level: 10, // SkillBonus deriva para 30
 	}
 	addr, stop := startServerSkills(t, db)
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// Learn skill 0 (cost 3): expect UpdateScore then UpdateEtc carrying the bit.
+	// Aprende a skill 0 (custo 3): espera UpdateScore e depois UpdateEtc carregando o bit.
 	send(t, c, protocol.MsgApplyBonus, learnBody(5000))
 	if ty, _, ok := readMaybe(t, c); !ok || ty != protocol.MsgUpdateScore {
 		t.Fatalf("got %#x ok=%v, want UpdateScore", ty, ok)
@@ -467,19 +467,19 @@ func TestLearnSkill(t *testing.T) {
 		t.Errorf("UpdateEtc.SkillBonus = %d, want 27", sb)
 	}
 
-	// Learning it again refuses (already learned).
+	// Aprender de novo recusa (já aprendida).
 	send(t, c, protocol.MsgApplyBonus, learnBody(5000))
 	if got := readNotice(t, c); got != NoticeAlreadyLearned {
 		t.Errorf("got %d, want already-learned notice", got)
 	}
 
-	// Another class's skill (Foema index 24 → detail 5024) refuses.
+	// Skill de outra classe (Foema índice 24 → detail 5024) recusa.
 	send(t, c, protocol.MsgApplyBonus, learnBody(5024))
 	if got := readNotice(t, c); got != NoticeOtherClassSkill {
 		t.Errorf("got %d, want other-class notice", got)
 	}
 
-	// The 8th skill (detail 5007) needs the 7 previous ones first.
+	// A 8ª skill (detail 5007) exige as 7 anteriores antes.
 	send(t, c, protocol.MsgApplyBonus, learnBody(5007))
 	if got := readNotice(t, c); got != NoticeLearnPrereq {
 		t.Errorf("got %d, want prereq notice", got)
@@ -535,10 +535,10 @@ func TestApplySpecialBonus(t *testing.T) {
 
 	body := protocol.MsgApplyBonusBody{BonusType: protocol.BonusSpecial, Detail: 1}
 	send(t, c, protocol.MsgApplyBonus, body.Encode())
-	// Legacy replies SendScore then SendEtc (_MSG_ApplyBonus.cpp:109-110).
+	// O legado responde SendScore e depois SendEtc (_MSG_ApplyBonus.cpp:109-110).
 	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgUpdateScore {
 		t.Fatalf("got %#x ok=%v, want UpdateScore", ty, ok)
-	} else if sp := lend.Uint16(p[40+2:]); sp != 1 { // Special[1] @ score offset 40+2
+	} else if sp := lend.Uint16(p[40+2:]); sp != 1 { // Special[1] @ offset 40+2 do score
 		t.Errorf("UpdateScore.Special[1] = %d, want 1", sp)
 	}
 	if ty, p, ok := readMaybe(t, c); !ok || ty != protocol.MsgUpdateEtc {
@@ -561,8 +561,8 @@ func TestSetShortSkill(t *testing.T) {
 	payload[4] = 9   // ShortSkill[0]
 	payload[19] = 13 // ShortSkill[15]
 	send(t, c, protocol.MsgSetShortSkill, payload)
-	// No response — issue a bonus request to force a round-trip, then verify via
-	// the save snapshot on disconnect (state is loop-internal).
+	// Sem resposta — dispara uma requisição de bônus para forçar uma ida e volta, e verifica via
+	// o snapshot de save na desconexão (o estado é interno ao loop).
 	if ty, _, ok := readMaybe(t, c); ok {
 		t.Fatalf("SetShortSkill must not reply, got %#x", ty)
 	}

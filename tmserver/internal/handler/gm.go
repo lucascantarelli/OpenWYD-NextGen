@@ -11,24 +11,24 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// gmCommandTimeout bounds the off-loop dbServer round-trip for ban/unban.
+// gmCommandTimeout limita a ida e volta ao dbServer fora do loop para ban/unban.
 const gmCommandTimeout = 10 * time.Second
 
-// runGMCommand is the in-game GM/moderation command bus (issue #122). It is the
-// modern replacement for the legacy imple.cpp ProcessImple: the client sends
-// "/gm <sub> <args>" as a whisper to target "gm", so args is the whisper's String
-// (the rest of the typed line). Authority is the session's AccessLevel — derived
-// from the account.role at login — NOT the fragile legacy "character Level >= 1000".
+// runGMCommand é o bus de comandos de GM/moderação in-game (issue #122). É o
+// substituto moderno do ProcessImple legado do imple.cpp: o cliente envia
+// "/gm <sub> <args>" como sussurro para o alvo "gm", então args é a String do sussurro
+// (o resto da linha digitada). A autoridade é o AccessLevel da sessão — derivado
+// do account.role no login — NÃO o frágil "character Level >= 1000" legado.
 //
-// Every command is authorized against the moderator tier and audit-logged (slog)
-// before dispatch, mirroring the legacy Log("adm ...") that preceded every
-// admin action. A denied command is silent (as in the original).
+// Todo comando é autorizado contra o tier de moderador e auditado (slog)
+// antes do dispatch, espelhando o Log("adm ...") legado que precedia toda
+// ação admin. Um comando negado é silencioso (como no original).
 func (d *Dispatcher) runGMCommand(w *world.World, s *world.Session, args []byte) {
 	if s.Mode != world.UserPlay {
 		return
 	}
 	if s.AccessLevel < world.AccessModerator {
-		// Silent denial + audit of the attempt (a non-GM probing the bus).
+		// Negação silenciosa + auditoria da tentativa (um não-GM sondando o bus).
 		d.log.Warn("gm command denied: not a moderator",
 			"conn", s.Conn, "account", s.AccountName, "role", s.AccessLevel)
 		return
@@ -40,7 +40,7 @@ func (d *Dispatcher) runGMCommand(w *world.World, s *world.Session, args []byte)
 	sub := strings.ToLower(firstToken(line))
 	rest := strings.TrimSpace(strings.TrimPrefix(line, firstToken(line)))
 
-	// Audit BEFORE dispatch: account, target/args and the authority that ran it.
+	// Audita ANTES do dispatch: conta, alvo/args e a autoridade que o executou.
 	d.log.Info("gm command",
 		"account", s.AccountName, "id", s.AccountID, "role", s.AccessLevel,
 		"cmd", sub, "args", rest)
@@ -77,9 +77,9 @@ func (d *Dispatcher) runGMCommand(w *world.World, s *world.Session, args []byte)
 	}
 }
 
-// gmKick disconnects an online player by character name. Mirrors the legacy guard
-// (imple.cpp:1824): a moderator cannot kick another moderator/admin of equal or
-// higher tier.
+// gmKick desconecta um jogador online pelo nome do personagem. Espelha a guarda legada
+// (imple.cpp:1824): um moderador não pode expulsar outro moderador/admin de tier
+// igual ou superior.
 func (d *Dispatcher) gmKick(w *world.World, s *world.Session, rest string) {
 	name := firstToken(rest)
 	if name == "" {
@@ -96,15 +96,15 @@ func (d *Dispatcher) gmKick(w *world.World, s *world.Session, rest string) {
 		return
 	}
 	d.log.Info("gm kick", "account", s.AccountName, "target", name, "targetConn", target.Conn)
-	w.Close(target) // full teardown + character save (removeSession)
+	w.Close(target) // teardown completo + save do personagem (removeSession)
 }
 
-// gmNotice broadcasts a server-wide announcement to every in-play player.
+// gmNotice transmite um anúncio para o servidor inteiro a todo jogador em jogo.
 //
-// UNVERIFIED: the dedicated golden announce wire (the big centred notice) is not
-// captured (notice.go §UNVERIFIED). As a first pass this ships as a normal chat
-// line prefixed "[GM]" delivered to all players; the special notice format is
-// pinned once a capture exists.
+// UNVERIFIED: o wire dourado dedicado do anúncio (o aviso grande centralizado) não está
+// capturado (notice.go §UNVERIFIED). Como primeira versão sai como uma linha de chat
+// prefixada com "[GM]", entregue a todos os jogadores; o formato especial do aviso é
+// fixado quando existir uma captura.
 func (d *Dispatcher) gmNotice(w *world.World, s *world.Session, text string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -112,15 +112,15 @@ func (d *Dispatcher) gmNotice(w *world.World, s *world.Session, text string) {
 	}
 	msg := "[GM] " + text
 	payload := protocol.EncodeMessageChatBody(msg)
-	// HEADER.ID = the GM's conn: the client renders it as a chat line (the announce
-	// source). No distance filter — ForEachPlaying(-1) reaches every session.
+	// HEADER.ID = a conn do GM: o cliente renderiza como uma linha de chat (a origem
+	// do anúncio). Sem filtro de distância — ForEachPlaying(-1) alcança toda sessão.
 	w.ForEachPlaying(-1, func(vs *world.Session, _ *world.Entity) {
 		w.SendTo(vs, protocol.Header{Type: protocol.MsgMessageChat, ID: uint16(s.Conn)}, payload)
 	})
 	d.log.Info("gm notice", "account", s.AccountName, "text", text)
 }
 
-// gmGoto teleports the caller to a named online player.
+// gmGoto teletransporta quem chamou para um jogador online de nome dado.
 func (d *Dispatcher) gmGoto(w *world.World, s *world.Session, rest string) {
 	name := firstToken(rest)
 	if name == "" {
@@ -134,7 +134,7 @@ func (d *Dispatcher) gmGoto(w *world.World, s *world.Session, rest string) {
 	d.doTeleport(w, s, te.X, te.Y)
 }
 
-// gmSummon pulls a named online player to the caller's position.
+// gmSummon puxa um jogador online de nome dado para a posição de quem chamou.
 func (d *Dispatcher) gmSummon(w *world.World, s *world.Session, rest string) {
 	name := firstToken(rest)
 	if name == "" {
@@ -149,12 +149,12 @@ func (d *Dispatcher) gmSummon(w *world.World, s *world.Session, rest string) {
 	if ce == nil {
 		return
 	}
-	d.doTeleport(w, target, ce.X, ce.Y) // move the TARGET session to the caller
+	d.doTeleport(w, target, ce.X, ce.Y) // move a sessão do ALVO para quem chamou
 }
 
-// gmSpawn spawns one test creature at the caller's position from the BM summon
-// roster (the only ID-indexed mob-template catalog held in memory; SummonMobs).
-// The id is the roster index — e.g. Sleipnir/Svaldfire slots.
+// gmSpawn gera uma criatura de teste na posição de quem chamou a partir da lista de
+// invocação do BM (o único catálogo de template de mob indexado por ID mantido em memória; SummonMobs).
+// O id é o índice da lista — por exemplo, os slots de Sleipnir/Svaldfire.
 func (d *Dispatcher) gmSpawn(w *world.World, s *world.Session, rest string) {
 	id, err := strconv.Atoi(firstToken(rest))
 	if err != nil || id < 0 || id >= len(d.summonMobs) || d.summonMobs[id] == nil {
@@ -174,10 +174,10 @@ func (d *Dispatcher) gmSpawn(w *world.World, s *world.Session, rest string) {
 	d.log.Info("gm spawn", "account", s.AccountName, "template", id, "mobConn", newID)
 }
 
-// gmItem grants a test item into the caller's inventory: "/gm item <index> [qty]".
-// The optional quantity writes EF_AMOUNT (clamped to [1, maxStackAmount]) so stack
-// paths — split, merge, catalyst consumption — are reachable without configuring an
-// NPC shop pack in the web portal.
+// gmItem concede um item de teste ao inventário de quem chamou: "/gm item <index> [qty]".
+// A quantidade opcional grava EF_AMOUNT (limitada a [1, maxStackAmount]) para os caminhos
+// de pilha — dividir, juntar, consumir catalisador — serem alcançáveis sem configurar um
+// pacote de loja de NPC no portal web.
 func (d *Dispatcher) gmItem(w *world.World, s *world.Session, rest string) {
 	fields := strings.Fields(rest)
 	if len(fields) == 0 {
@@ -218,10 +218,10 @@ func (d *Dispatcher) gmItem(w *world.World, s *world.Session, rest string) {
 	d.log.Info("gm item", "account", s.AccountName, "item", id, "amount", qty, "slot", slot)
 }
 
-// gmSetLevel raises the caller to the given level for testing. It reuses the
-// level-up path (applyLevelUps), so it only levels UP — setting a level at or below
-// the current one is a no-op (documented; a downlevel would need to unwind the
-// derived score and is out of scope).
+// gmSetLevel sobe quem chamou ao nível dado para teste. Ele reusa o
+// caminho de subida de nível (applyLevelUps), então só sobe — definir um nível igual ou abaixo
+// do atual é no-op (documentado; um rebaixamento precisaria desenrolar o
+// score derivado e está fora do escopo).
 func (d *Dispatcher) gmSetLevel(w *world.World, s *world.Session, rest string) {
 	n, err := strconv.Atoi(firstToken(rest))
 	if err != nil {
@@ -244,7 +244,7 @@ func (d *Dispatcher) gmSetLevel(w *world.World, s *world.Session, rest string) {
 	d.log.Info("gm setlevel", "account", s.AccountName, "target", n, "level", e.Level)
 }
 
-// gmSetGold sets the caller's carried gold for testing.
+// gmSetGold define o ouro carregado de quem chamou para teste.
 func (d *Dispatcher) gmSetGold(w *world.World, s *world.Session, rest string) {
 	n, err := strconv.Atoi(firstToken(rest))
 	if err != nil || n < 0 {
@@ -255,22 +255,22 @@ func (d *Dispatcher) gmSetGold(w *world.World, s *world.Session, rest string) {
 		return
 	}
 	e.Coin = int32(n)
-	d.sendEtc(w, s, e) // UpdateEtc carries Coin
+	d.sendEtc(w, s, e) // UpdateEtc carrega Coin
 	d.log.Info("gm setgold", "account", s.AccountName, "gold", n)
 }
 
-// gmBan bans (blocked=true) or unbans (blocked=false) an account. The argument is
-// a character name when the player is online (the ban lands on that character's
-// account and the player is kicked), otherwise it is taken as the account name.
-// The blocked flag is persisted via dbServer off the loop; login already rejects
-// blocked accounts (LOGIN_RESULT_BLOCKED), so a ban denies re-login immediately.
+// gmBan bane (blocked=true) ou desbane (blocked=false) uma conta. O argumento é
+// um nome de personagem quando o jogador está online (o ban cai na conta daquele
+// personagem e o jogador é expulso), senão é tomado como nome de conta.
+// A flag blocked é persistida via dbServer fora do loop; o login já recusa
+// contas bloqueadas (LOGIN_RESULT_BLOCKED), então um ban nega o relogin na hora.
 func (d *Dispatcher) gmBan(w *world.World, s *world.Session, rest string, blocked bool) {
 	name := firstToken(rest)
 	if name == "" {
 		return
 	}
-	// Resolve the account: prefer an online player's account (canonical lowercase,
-	// set at login); fall back to treating the argument as an account name.
+	// Resolve a conta: prefere a conta de um jogador online (minúsculas canônicas,
+	// definidas no login); cai para tratar o argumento como nome de conta.
 	accountName := strings.ToLower(name)
 	if ts, _ := w.SessionByName(name); ts != nil {
 		accountName = ts.AccountName
@@ -290,8 +290,8 @@ func (d *Dispatcher) gmBan(w *world.World, s *world.Session, rest string, blocke
 				d.log.Error("gm "+action+" failed", "account", s.AccountName, "target", accountName, "err", err)
 				return
 			}
-			// On a successful ban, kick the player if still online (re-resolve — the
-			// session may have changed while the RPC was in flight).
+			// Num ban bem-sucedido, expulsa o jogador se ainda estiver online (re-resolve — a
+			// sessão pode ter mudado enquanto o RPC estava em voo).
 			if blocked {
 				if ts, _ := w.SessionByName(name); ts != nil {
 					w.Close(ts)
@@ -301,9 +301,9 @@ func (d *Dispatcher) gmBan(w *world.World, s *world.Session, rest string, blocke
 	})
 }
 
-// gmSetGuildName registers a display name for a guild id (issue #131): there
-// is no in-game guild-creation flow yet, so this is the only way to populate
-// the name /nick shows, mirroring the legacy GM-only guild-fame tool
+// gmSetGuildName registra um nome de exibição para um id de guilda (issue #131): não
+// existe fluxo in-game de criação de guilda ainda, então esta é a única forma de preencher
+// o nome que /nick mostra, espelhando a ferramenta legada de fama de guilda só para GM
 // (Source/Comandos GM.txt).
 func (d *Dispatcher) gmSetGuildName(w *world.World, s *world.Session, rest string) {
 	id, err := strconv.Atoi(firstToken(rest))
@@ -318,8 +318,8 @@ func (d *Dispatcher) gmSetGuildName(w *world.World, s *world.Session, rest strin
 	d.log.Info("gm guildname", "account", s.AccountName, "guild", id, "name", name)
 }
 
-// gmSetGuildFame sets a guild's fame score (issue #131), mirroring the legacy
-// GM-only "+guildfame set" tool (Source/Comandos GM.txt).
+// gmSetGuildFame define a fama de uma guilda (issue #131), espelhando a
+// ferramenta "+guildfame set" legada só para GM (Source/Comandos GM.txt).
 func (d *Dispatcher) gmSetGuildFame(w *world.World, s *world.Session, rest string) {
 	fields := strings.Fields(rest)
 	if len(fields) != 2 {

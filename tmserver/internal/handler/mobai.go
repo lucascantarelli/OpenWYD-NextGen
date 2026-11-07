@@ -32,7 +32,7 @@ const (
 
 // Tick é o gancho de IA de criaturas por tick do mundo (registrado via World.SetTickHandler).
 // Roda dentro da goroutine do loop, então muta entidades direto. Cada
-// criatura viva adquire um jogador ou criatura hostil próximo como alvo, depois persegue e
+// criatura viva pega um jogador ou criatura hostil próximo como alvo, depois persegue e
 // o ataca corpo a corpo. NPCs de não-combate (lojas/quest givers/serviços da cidade) e criaturas mortas são
 // pulados.
 //

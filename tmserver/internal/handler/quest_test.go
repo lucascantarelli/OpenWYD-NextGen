@@ -14,24 +14,24 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// perzenTemplate builds a raw STRUCT_MOB for a Perzen quest NPC: Merchant 100 with
-// EF_GRADE0 grade on Equip[0], and an input→reward pair in Carry[0]/Carry[1].
+// perzenTemplate monta um STRUCT_MOB cru para um NPC de quest Perzen: Merchant 100 com
+// grade EF_GRADE0 em Equip[0], e um par entrada→recompensa em Carry[0]/Carry[1].
 func perzenTemplate(grade uint8, input, reward int16) []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], "Perzen")
 	const cs = 92
-	b[cs+12] = 100                                         // Merchant = quest NPC
-	binary.LittleEndian.PutUint32(b[cs+24:], 100)          // Hp (alive)
+	b[cs+12] = 100                                         // Merchant = NPC de quest
+	binary.LittleEndian.PutUint32(b[cs+24:], 100)          // Hp (vivo)
 	binary.LittleEndian.PutUint16(b[40:], 5)               // SPX
 	binary.LittleEndian.PutUint16(b[42:], 5)               // SPY
 	binary.LittleEndian.PutUint16(b[140:], 11)             // Equip[0].index
 	b[140+2], b[140+3] = 100, grade                        // Equip[0].eff0 = (EF_GRADE0, grade)
-	binary.LittleEndian.PutUint16(b[268:], uint16(input))  // Carry[0] = required item
-	binary.LittleEndian.PutUint16(b[276:], uint16(reward)) // Carry[1] = reward mount
+	binary.LittleEndian.PutUint16(b[268:], uint16(input))  // Carry[0] = item exigido
+	binary.LittleEndian.PutUint16(b[276:], uint16(reward)) // Carry[1] = montaria de recompensa
 	return b
 }
 
-// startServerPerzen is the clock harness with a Perzen NPC spawned at (5,5).
+// startServerPerzen é o harness de relógio com um NPC Perzen gerado em (5,5).
 func startServerPerzen(t *testing.T, persist world.Persistence, grade uint8, input, reward int16) (string, func(), int) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -58,7 +58,7 @@ func startServerPerzen(t *testing.T, persist world.Persistence, grade uint8, inp
 	}, npcID
 }
 
-// perzenDB gives the tester character the input item in carry slot 0.
+// perzenDB dá ao personagem tester o item de entrada no slot 0 do carry.
 func perzenDB(input int16) *fakeDB {
 	db := newDB()
 	st := world.CharacterState{Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000}
@@ -76,8 +76,8 @@ func kingTemplate() []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], "Rei_Harabard")
 	const cs = 92
-	b[cs+12] = 111                                // CurrentScore.Merchant for King templates
-	binary.LittleEndian.PutUint32(b[cs+24:], 100) // Hp (alive)
+	b[cs+12] = 111                                // CurrentScore.Merchant para templates de King
+	binary.LittleEndian.PutUint32(b[cs+24:], 100) // Hp (vivo)
 	binary.LittleEndian.PutUint16(b[40:], 5)      // SPX
 	binary.LittleEndian.PutUint16(b[42:], 5)      // SPY
 	binary.LittleEndian.PutUint16(b[140:], 11)    // Equip[0].index
@@ -131,15 +131,15 @@ func startServerKing(t *testing.T, db *fakeDB) (string, func(), int) {
 	}, npcID
 }
 
-// questNPCTemplate builds a raw STRUCT_MOB for a generic _MSG_Quest NPC:
-// Merchant (+ EF_GRADE0 grade on Equip[0] when merchant==100) and Clan.
+// questNPCTemplate monta um STRUCT_MOB cru para um NPC genérico de _MSG_Quest:
+// Merchant (+ grade EF_GRADE0 em Equip[0] quando merchant==100) e o Clan.
 func questNPCTemplate(name string, merchant, grade, clan uint8) []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], name)
 	const cs = 92
 	b[cs+12] = merchant
 	b[cs+8] = clan
-	binary.LittleEndian.PutUint32(b[cs+24:], 100) // Hp (alive)
+	binary.LittleEndian.PutUint32(b[cs+24:], 100) // Hp (vivo)
 	binary.LittleEndian.PutUint16(b[40:], 5)      // SPX
 	binary.LittleEndian.PutUint16(b[42:], 5)      // SPY
 	if merchant == 100 {
@@ -149,7 +149,7 @@ func questNPCTemplate(name string, merchant, grade, clan uint8) []byte {
 	return b
 }
 
-// startServerQuestNPC is the clock harness with one quest NPC spawned at (5,5).
+// startServerQuestNPC é o harness de relógio com um NPC de quest gerado em (5,5).
 func startServerQuestNPC(t *testing.T, db world.Persistence, tmpl []byte) (string, func(), int) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -176,8 +176,8 @@ func startServerQuestNPC(t *testing.T, db world.Persistence, tmpl []byte) (strin
 	}, npcID
 }
 
-// baseMortalState is a level/class starting point for the new quest-NPC tests;
-// callers override Level/Carry/Equip as needed.
+// baseMortalState é um ponto de partida de nível/classe para os novos testes de NPC de quest;
+// quem chama sobrescreve Level/Carry/Equip conforme precisa.
 func baseMortalState(level int) world.CharacterState {
 	return world.CharacterState{
 		Slot: 0, Name: "Hero", Level: level, X: 5, Y: 5,
@@ -532,7 +532,7 @@ func TestCapaverdeTrade(t *testing.T) {
 func TestCapaverdeTradeMissingTicketNoop(t *testing.T) {
 	tmpl := questNPCTemplate("Chefe_Treina.", 8, 0, 0)
 	db := newDB()
-	db.loadResult = baseMortalState(120) // no item in Equip[13]
+	db.loadResult = baseMortalState(120) // nenhum item em Equip[13]
 	addr, stop, npcID := startServerQuestNPC(t, db, tmpl)
 	defer stop()
 	c := enterWorld(t, addr)
@@ -593,11 +593,11 @@ func TestMolarGargulaWrongLevelNoop(t *testing.T) {
 	}
 }
 
-// TestAmuMisticoCompletesForPartyLeader: a Mortal party leader confirming the
-// quest sets the TerraMistica gate; a second attempt then rejects as already
-// done (there is no client-visible success signal to assert on directly — the
-// legacy case only SendClientMessages a text confirmation, UNVERIFIED wire
-// format — so completion is observed through the gate flipping).
+// TestAmuMisticoCompletesForPartyLeader: um líder de party Mortal confirmando a
+// quest define o gate de TerraMistica; uma segunda tentativa então recusa como já
+// feita (não há sinal de sucesso visível ao cliente para afirmar diretamente — o
+// caso legado só manda SendClientMessages de confirmação em texto, wire UNVERIFIED
+// — então a conclusão é observada pela flag do gate virando).
 func TestAmuMisticoCompletesForPartyLeader(t *testing.T) {
 	tmpl := questNPCTemplate("Cap.Mercenario", 10, 0, 0)
 	db := newDB()
@@ -645,17 +645,17 @@ func TestAmuMisticoSoloNoop(t *testing.T) {
 	}
 }
 
-// TestBlackOracleMergesSoulItems: the source items sit in high carry slots
-// (10-12) so the reward — which lands in the first EMPTY slot after the
-// sources are cleared, same as legacy PutItem — unambiguously lands in slot 0
-// rather than reusing a just-cleared source slot.
+// TestBlackOracleMergesSoulItems: os itens de origem ficam em slots altos do carry
+// (10-12) para a recompensa — que cai no primeiro slot VAZIO depois que as
+// origens são limpas, como o PutItem legado — cair sem ambiguidade no slot 0
+// em vez de reusar um slot de origem recém-limpo.
 func TestBlackOracleMergesSoulItems(t *testing.T) {
 	tmpl := questNPCTemplate("Oraculo_Negro", 78, 0, 0)
 	db := newDB()
 	st := baseMortalState(300)
 	st.Carry[10] = world.Item{Index: 1740}
 	st.Carry[11] = world.Item{Index: 1741}
-	st.Carry[12] = world.Item{Index: 4131} // 10 sapphire units in one stack
+	st.Carry[12] = world.Item{Index: 4131} // 10 unidades de safira numa pilha
 	db.loadResult = st
 	addr, stop, npcID := startServerQuestNPC(t, db, tmpl)
 	defer stop()
@@ -664,7 +664,7 @@ func TestBlackOracleMergesSoulItems(t *testing.T) {
 
 	questFrame(t, c, npcID)
 	got := map[uint16]uint16{}
-	for i := 0; i < 4; i++ { // slot10, slot11, sapphire slot12, reward slot0
+	for i := 0; i < 4; i++ { // slot10, slot11, safira slot12, recompensa slot0
 		item := expect(t, c, protocol.MsgSendItem)
 		got[le16(item[2:4])] = le16(item[4:6])
 	}
@@ -686,7 +686,7 @@ func TestBlackOracleMissingSoulNoop(t *testing.T) {
 	tmpl := questNPCTemplate("Oraculo_Negro", 78, 0, 0)
 	db := newDB()
 	st := baseMortalState(300)
-	st.Carry[0] = world.Item{Index: 1740} // soul2 missing
+	st.Carry[0] = world.Item{Index: 1740} // soul2 ausente
 	st.Carry[1] = world.Item{Index: 4131}
 	db.loadResult = st
 	addr, stop, npcID := startServerQuestNPC(t, db, tmpl)
@@ -700,10 +700,10 @@ func TestBlackOracleMissingSoulNoop(t *testing.T) {
 	}
 }
 
-// TestCompSephiCraftsSephirotForClass: each Mestre de Skills crafts the
-// Sephirot 1759+Class (_MSG_Quest.cpp:2157). The real templates carry Class
-// 1..4 at STRUCT_MOB offset 20 (tmserver/content/TMsrv/run/npc), so they yield
-// 1760..1763, the range kingArch reads back as class Equip[11]-1760 (#390).
+// TestCompSephiCraftsSephirotForClass: cada Mestre de Skills forja o
+// Sephirot 1759+Class (_MSG_Quest.cpp:2157). Os templates reais carregam Class
+// 1..4 no offset 20 do STRUCT_MOB (tmserver/content/TMsrv/run/npc), então rendem
+// 1760..1763, a faixa que kingArch lê de volta como classe Equip[11]-1760 (#390).
 func TestCompSephiCraftsSephirotForClass(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -732,9 +732,9 @@ func TestCompSephiCraftsSephirotForClass(t *testing.T) {
 			defer c.Close()
 
 			send(t, c, protocol.MsgQuest, protocol.EncodeStandardParm2(int32(npcID), 1))
-			expect(t, c, protocol.MsgUpdateEtc) // coin deducted
+			expect(t, c, protocol.MsgUpdateEtc) // coin descontado
 			got := map[uint16]uint16{}
-			for i := 0; i < 9; i++ { // 8 consumed Pedras + 1 reward
+			for i := 0; i < 9; i++ { // 8 Pedras consumidas + 1 recompensa
 				item := expect(t, c, protocol.MsgSendItem)
 				got[le16(item[2:4])] = le16(item[4:6])
 			}
@@ -754,7 +754,7 @@ func TestCompSephiNotEnoughCoinNoop(t *testing.T) {
 	tmpl := questNPCTemplate("Composicao_Sephi", 19, 0, 0)
 	db := newDB()
 	st := baseMortalState(300)
-	st.Coin = 1_000 // short
+	st.Coin = 1_000 // curto
 	for j := 0; j < 8; j++ {
 		st.Carry[j] = world.Item{Index: int16(1744 + j)}
 	}
@@ -790,17 +790,17 @@ func TestCompSephiConfirmZeroIsAskOnly(t *testing.T) {
 	}
 }
 
-// TestKingArchRejectsClanMismatch: the King's faction gate rejects a Mortal
-// whose effective Clan doesn't match the King's, even with the right gear and
-// level (_MSG_Quest.cpp:696-741).
+// TestKingArchRejectsClanMismatch: o gate de facção do King recusa um Mortal
+// cujo Clan efetivo não casa com o do King, mesmo com o equipamento e o
+// nível certos (_MSG_Quest.cpp:696-741).
 func TestKingArchRejectsClanMismatch(t *testing.T) {
-	tmpl := questNPCTemplate("Rei_Harabard", 111, 0, 7) // King is Clan 7
+	tmpl := questNPCTemplate("Rei_Harabard", 111, 0, 7) // King é Clã 7
 	db := newDB()
 	st := baseMortalState(299)
 	st.Equip[0] = world.Item{Index: 21}
 	st.Equip[10] = world.Item{Index: 1742}
 	st.Equip[11] = world.Item{Index: 1762}
-	st.Clan = 8 // player is Clan 8 — mismatch
+	st.Clan = 8 // jogador é Clã 8 — não casa
 	db.loadResult = st
 	addr, stop, npcID := startServerQuestNPC(t, db, tmpl)
 	defer stop()
@@ -813,14 +813,14 @@ func TestKingArchRejectsClanMismatch(t *testing.T) {
 	}
 }
 
-// TestKingArchRejectsMissingPedraIdeal: without item 1742 equipped in slot 10,
-// the Sephirot alone is not enough (_MSG_Quest.cpp:769).
+// TestKingArchRejectsMissingPedraIdeal: sem o item 1742 equipado no slot 10,
+// o Sephirot sozinho não basta (_MSG_Quest.cpp:769).
 func TestKingArchRejectsMissingPedraIdeal(t *testing.T) {
 	tmpl := questNPCTemplate("Rei_Harabard", 111, 0, 0)
 	db := newDB()
 	st := baseMortalState(299)
 	st.Equip[0] = world.Item{Index: 21}
-	st.Equip[11] = world.Item{Index: 1762} // Sephirot present, Pedra da Imortalidade missing
+	st.Equip[11] = world.Item{Index: 1762} // Sephirot presente, Pedra da Imortalidade ausente
 	db.loadResult = st
 	addr, stop, npcID := startServerQuestNPC(t, db, tmpl)
 	defer stop()
@@ -841,7 +841,7 @@ func mestreGrifoTemplate(t *testing.T) []byte {
 	copy(b[0:16], "Mestre_Grifo")
 	const cs = 92
 	b[cs+12] = 23                               // Merchant = Mestre Grifo
-	binary.LittleEndian.PutUint32(b[cs+24:], 1) // Hp (alive)
+	binary.LittleEndian.PutUint32(b[cs+24:], 1) // Hp (vivo)
 	return b
 }
 
@@ -879,7 +879,7 @@ func startServerMestreGrifo(t *testing.T, st world.CharacterState, tick bool) (s
 func expectAction(t *testing.T, c net.Conn) protocol.MsgActionBody {
 	t.Helper()
 	ty, payload := read(t, c)
-	for ty == protocol.MsgStartTime { // a Quest 256 arena's per-second countdown (#389)
+	for ty == protocol.MsgStartTime { // a contagem por segundo da arena da Quest 256 (#389)
 		ty, payload = read(t, c)
 	}
 	if ty != protocol.MsgAction {
@@ -903,8 +903,8 @@ func withMasterGriffTravelDelay(t *testing.T, delay time.Duration) {
 	t.Cleanup(func() { masterGriffTravelDelay = old })
 }
 
-// TestPerzenExchange: handing the required item to a Perzen NPC swaps it for the
-// reward mount in the same inventory slot.
+// TestPerzenExchange: entregar o item exigido a um NPC Perzen o troca pela
+// montaria de recompensa no mesmo slot do inventário.
 func TestPerzenExchange(t *testing.T) {
 	const input, reward = 4130, 3987 // Esfera da Sorte A → Thoroughbred(30d)
 	addr, stop, npcID := startServerPerzen(t, perzenDB(input), 9, input, reward)
@@ -913,7 +913,7 @@ func TestPerzenExchange(t *testing.T) {
 	defer c.Close()
 
 	questFrame(t, c, npcID)
-	send := expect(t, c, protocol.MsgSendItem) // carry slot 0 refreshed with the reward
+	send := expect(t, c, protocol.MsgSendItem) // slot 0 do carry atualizado com a recompensa
 	if slot := le16(send[2:4]); slot != 0 {
 		t.Errorf("refreshed slot = %d, want 0", slot)
 	}
@@ -922,10 +922,10 @@ func TestPerzenExchange(t *testing.T) {
 	}
 }
 
-// TestPerzenMissingItem: without the required item, the exchange is a no-op.
+// TestPerzenMissingItem: sem o item exigido, a troca é no-op.
 func TestPerzenMissingItem(t *testing.T) {
 	const input, reward = 4130, 3987
-	addr, stop, npcID := startServerPerzen(t, perzenDB(999), 9, input, reward) // wrong item in carry
+	addr, stop, npcID := startServerPerzen(t, perzenDB(999), 9, input, reward) // item errado no carry
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
@@ -1307,10 +1307,10 @@ func TestQuest256TicketInvalidLevelDoesNotConsume(t *testing.T) {
 	}
 }
 
-// TestQuest256TicketSecondUseOnEmptySlotIsNoop: with the ticket consumed
-// synchronously (no more pending-delay window), a second right-click lands on
-// an already-empty slot. useItem's top-of-function Empty() guard makes that a
-// clean no-op — no second consume, no second teleport.
+// TestQuest256TicketSecondUseOnEmptySlotIsNoop: com o ticket consumido
+// de forma síncrona (sem mais janela de atraso pendente), um segundo clique direito cai
+// num slot já vazio. A guarda Empty() no topo do useItem torna isso um
+// no-op limpo — sem segundo consumo, sem segundo teleporte.
 func TestQuest256TicketSecondUseOnEmptySlotIsNoop(t *testing.T) {
 	st := world.CharacterState{
 		Slot: 0, Name: "Hero", Level: 50, X: 2113, Y: 2079,
@@ -1414,9 +1414,9 @@ func TestGuardaRejectsInvalidRequirements(t *testing.T) {
 	}
 }
 
-// The Kaizen and Hidra steps share the "Patrulha" NPC name in the content tree;
-// only EF_GRADE0 (2 vs 3) and the ticket tell them apart, so both load the real
-// template to prove the pair resolves to different steps.
+// Os passos Kaizen e Hidra compartilham o nome de NPC "Patrulha" na árvore de conteúdo;
+// só o EF_GRADE0 (2 contra 3) e o ticket os distinguem, então os dois carregam o
+// template real para provar que o par resolve em passos diferentes.
 func TestPatrulhaKaizenStartsQuest256WithRealTemplate(t *testing.T) {
 	tmpl, err := readRelease(t, filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "npc", "Patrulha_"))
 	if err != nil {

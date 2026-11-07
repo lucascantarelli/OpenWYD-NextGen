@@ -6,25 +6,25 @@ import (
 
 const maxLegacyDamage int32 = 1_000_000_000
 
-// applyAffectScore recomputes the affect contributions to the live score (the
-// "Buff Loop" of BASE_GetCurrentScore — Source/Buff Loop.txt). The results are
-// CACHED on the entity (Aff* fields + Rsv) and applied at READ time by the
-// effective getters, never baked into the flat CurrentScore — that keeps the
-// persisted score buff-free so the login base derivation (base = loaded −
-// equip) cannot double-count a buff.
+// applyAffectScore recalcula as contribuições de affect no score vivo (o
+// "Buff Loop" de BASE_GetCurrentScore — Source/Buff Loop.txt). Os resultados são
+// CACHEADOS na entidade (campos Aff* + Rsv) e aplicados em TEMPO DE LEITURA pelos
+// getters efetivos, nunca embutidos no CurrentScore cru — isso mantém o
+// score persistido livre de buff para a derivação da base no login (base = carregado −
+// equip) não contar um buff duas vezes.
 //
-// Implemented types: 1 (slow/attack-speed/INT debuff), 2 (haste/run-speed),
-// 3 (resist debuff), 4 (scroll), 5/6 (DEX percent), 7 (frozen blade
-// attack-speed/INT debuff), 8 (Jóias PvP — resist/cast/lifesteal/%HP/%AC/
-// %Damage/%Magic/MP↔HP, one per Level bit), 9/10 (damage buff/debuff),
+// Tipos implementados: 1 (lentidão/velocidade de ataque/debuff de INT), 2 (haste/velocidade de corrida),
+// 3 (debuff de resistência), 4 (pergaminho), 5/6 (DEX percentual), 7 (lâmina congelada
+// velocidade de ataque/debuff de INT), 8 (Jóias PvP — resistência/conjuração/lifesteal/%HP/%AC/
+// %Damage/%Magic/MP↔HP, um por bit de Level), 9/10 (buff/debuff de dano),
 // 11/12/21/31 (AC), 13
-// (Assalto: +15% damage, DAMAGEMULTI, −10% MaxHP), 14/24 (CON/HP —
-// Possuído and Samaritano), 15 (Special, cap 400 at read), 16 (BM transform → transform.go),
-// 19/26/28/36 (Rsv flags), 25 (fire/ice/thunder resists), 27 (weapon-gated Frost),
-// 29 (Soul attribute multiplier), 30/37 (ForceMobDamage/ForceDamage), 38/42
-// (HP↔MP swap), 39 (Baú de XP → AffExpBonus). Deferred (need systems we don't
-// model yet): 17/20/22 (periodic — handled by the tick engine), 34/35
-// (Divine/Vigor — already read-time via affectMul).
+// (Assalto: +15% dano, DAMAGEMULTI, −10% MaxHP), 14/24 (CON/HP —
+// Possuído e Samaritano), 15 (Special, teto 400 na leitura), 16 (transformação BM → transform.go),
+// 19/26/28/36 (flags de Rsv), 25 (resistências a fogo/gelo/trovão), 27 (Frost condicionado à arma),
+// 29 (multiplicador de atributo Soul), 30/37 (ForceMobDamage/ForceDamage), 38/42
+// (troca HP↔MP), 39 (Baú de XP → AffExpBonus). Adiados (precisam de sistemas que ainda não
+// modelamos): 17/20/22 (periódicos — tratados pelo motor de tick), 34/35
+// (Divino/Vigor — já em tempo de leitura via affectMul).
 func applyAffectScore(e *world.Entity) {
 	applyAffectScoreWithItemAbility(e, nil)
 }
@@ -53,16 +53,16 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 		value := int32(af.Value)
 		level := int32(af.Level)
 		switch af.Type {
-		case 1: // Toque Sagrado/Lentidão: Run -= Value; robe users also lose INT.
+		case 1: // Toque Sagrado/Lentidão: Run -= Value; usuários de robe também perdem INT.
 			e.AffRunSpeed -= value
 			e.AffAttackSpeed -= 30
 			if e.Equip[0].Index > 50 {
 				e.AffInt -= 40
 			}
-		case 2: // Velocidade: Run += Value and RSV_HASTE.
+		case 2: // Velocidade: Run += Value e RSV_HASTE.
 			e.AffRunSpeed += value
 			e.Rsv |= world.RsvHaste
-		case 3: // holy debuff: all four resists drop (halved without a robe)
+		case 3: // debuff sagrado: as quatro resistências caem (pela metade sem robe)
 			tval := value
 			if e.Equip[0].Index < 50 {
 				tval /= 2
@@ -72,37 +72,37 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 			for k := range e.AffResist {
 				e.AffResist[k] -= int16(tval)
 			}
-		case 4: // combat scroll: +30 damage (its ×4 multi and +5 magic deferred)
+		case 4: // pergaminho de combate: +30 de dano (o multi ×4 e o +5 de magia adiados)
 			e.AffDamage += 30
 			e.AffMagic += 5
 		case 5: // Fanatismo/Incapacitador: Dex *= (100-Value)%.
 			base := int32(e.Dex + e.AffDex)
 			e.AffDex += clampInt16(base*(100-value)/100 - base)
-		case 6: // Proteção Divina/Absoluta row: Dex *= (100+Value)%.
+		case 6: // Linha Proteção Divina/Absoluta: Dex *= (100+Value)%.
 			base := int32(e.Dex + e.AffDex)
 			e.AffDex += clampInt16(base*(100+value)/100 - base)
-		case 7: // Lâmina Congelada: Att -= Level/10+10; robe users lose INT.
+		case 7: // Lâmina Congelada: Att -= Level/10+10; usuários de robe perdem INT.
 			e.AffAttackSpeed -= level/10 + 10
 			if e.Equip[0].Index > 50 {
 				e.AffInt -= int16(level/10 + 20)
 			}
-		case 8: // Jóias PvP (Vol 242): each bit of Level is one jewel's bonus,
-			// ported from BASE_GetCurrentScore (Basedef.cpp:4478-4548). Bits 0 and
-			// 6 have no score effect (bit 0 is unread in the original; bit 6's
-			// Accuracy += 50 lands in CMob.Accuracy, a field the legacy combat
-			// never reads — parity is the buff icon only). The percent bonuses use
-			// the legacy's quantized (x/100)*pct form and read the flat base, so
-			// stacked jewels add instead of compounding — a few points off when two
-			// percent jewels are up together, within buff tolerance.
-			if level&(1<<1) != 0 { // Resistência: +25 to all four resists
+		case 8: // Jóias PvP (Vol 242): cada bit de Level é o bônus de uma joia,
+			// portado de BASE_GetCurrentScore (Basedef.cpp:4478-4548). Bits 0 e
+			// 6 não têm efeito de score (bit 0 não é lido no original; o
+			// Accuracy += 50 do bit 6 cai em CMob.Accuracy, campo que o combate legado
+			// nunca lê — a paridade é só o ícone do buff). Os bônus percentuais usam
+			// a forma quantizada legada (x/100)*pct e leem a base crua, então
+			// joias empilhadas somam em vez de compor — alguns pontos a menos quando duas
+			// joias percentuais estão ativas juntas, dentro da tolerância de buff.
+			if level&(1<<1) != 0 { // Resistência: +25 nas quatro resistências
 				for k := range e.AffResist {
 					e.AffResist[k] += 25
 				}
 			}
-			if level&(1<<2) != 0 { // Revelação: cast-while-hit
+			if level&(1<<2) != 0 { // Revelação: conjurar enquanto é atingido
 				e.Rsv |= world.RsvCast
 			}
-			if level&(1<<3) != 0 { // Absorção: on-hit lifesteal (consumed in combat)
+			if level&(1<<3) != 0 { // Absorção: lifesteal no acerto (consumido no combate)
 				e.AffHpAbs += 20
 			}
 			if level&(1<<4) != 0 { // Proteção: +10% MaxHp, +10% AC
@@ -114,26 +114,26 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 				e.AffDamage += (e.Damage / 100) * 10
 				e.AffMagic += (int32(e.Magic) / 100) * 20
 			}
-			if level&(1<<7) != 0 { // Magia: half the max MP pool becomes max HP
+			if level&(1<<7) != 0 { // Magia: metade do pool máximo de MP vira HP máximo
 				mana := (e.MaxMP + 1) / 2
 				e.AffMaxHP += mana
 				e.AffMaxMP -= mana
 			}
-		case 9: // damage buff; a Foema with bit 19 learned triples it
+		case 9: // buff de dano; um Foema com o bit 19 aprendido o triplica
 			add := (level*5/20 + value) * 3 / 2
 			if e.Class == 1 && e.LearnedSkill&0x80000 != 0 {
 				add *= 3
 			}
 			e.AffDamage += add
 			e.AffMagic += 5
-		case 10: // damage debuff
+		case 10: // debuff de dano
 			e.AffDamage -= level/5 + value
-		case 11: // AC buff
+		case 11: // buff de AC
 			e.AffAC += level/3 + value
-		case 12: // AC percent debuff: AC *= (100-Value)%.
+		case 12: // debuff percentual de AC: AC *= (100-Value)%.
 			base := e.AC + e.AffAC
 			e.AffAC += base*(100-value)/100 - base
-		case 13: // Assalto: +15% damage, +DAMAGEMULTI, −10% MaxHP.
+		case 13: // Assalto: +15% dano, +DAMAGEMULTI, −10% MaxHP.
 			dmg := e.Damage + e.AffDamage
 			boosted := dmg + (dmg/100)*15
 			if boosted >= maxLegacyDamage {
@@ -141,56 +141,56 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 			}
 			e.AffDamage += boosted - dmg
 			e.AffDamageMultiPct += level/10 + value
-			e.AffMaxHP += e.MaxHP*9/10 - e.MaxHP // legacy MaxHp*9/10; M - M/10 is 1 above it (#394)
-		case 14: // Possuído (skill 3): +CON and twice that in MaxHP
+			e.AffMaxHP += e.MaxHP*9/10 - e.MaxHP // MaxHp*9/10 do legado; M - M/10 é 1 acima disso (#394)
+		case 14: // Possuído (skill 3): +CON e o dobro disso em MaxHP
 			applyConHpBuff(e, level, value)
-		case 15: // all four Special trees (+cap 400 applied at read)
+		case 15: // as quatro árvores Special (+teto 400 aplicado na leitura)
 			v := int16(level/10 + value)
 			for k := range e.AffSpecial {
 				e.AffSpecial[k] += v
 			}
-		case affectTransform: // BM beast transform (mesh handled by equipVisual)
+		case affectTransform: // transformação em fera do BM (malha tratada por equipVisual)
 			applyTransformScore(e, af)
 		case 19:
 			e.Rsv |= world.RsvBlock
-		case 21: // curse/Meditação: −AC and +DAMAGEMULTI.
+		case 21: // maldição/Meditação: −AC e +DAMAGEMULTI.
 			e.AffAC -= level/3 + 10
 			e.AffDamageMultiPct += level/10 + value
-		case affectSamaritano: // Samaritano: +CON and +2×value MaxHP
-			// DELIBERATE DIVERGENCE FROM THE LEGACY (issue #267). Basedef.cpp:4225
-			// ("else if(Type == 24) // Samaritano") and Buff Loop.txt:295 both make
-			// this an AC buff, `Ac += Ac/4 + Value`, and SkillData.csv:14 gives the
-			// skill Value 0 — so the legacy effect is a flat +25% AC. In game the
-			// skill is expected to raise HP and Constitution instead, which is the
-			// affect-14 shape, so we apply that shape here with Samaritano's own
-			// Value (0) and mastery. Same spirit as the case-25 element remap of
-			// issue #233 and the duration policy of issues #92/#236.
+		case affectSamaritano: // Samaritano: +CON e +2×valor de MaxHP
+			// DIVERGÊNCIA DELIBERADA DO LEGADO (issue #267). Basedef.cpp:4225
+			// ("else if(Type == 24) // Samaritano") e Buff Loop.txt:295 ambos fazem
+			// disto um buff de AC, `Ac += Ac/4 + Value`, e SkillData.csv:14 dá à
+			// skill Value 0 — então o efeito legado é um +25% de AC fixo. No jogo a
+			// skill deve subir HP e Constituição, que é a forma do
+			// affect-14, então aplicamos essa forma aqui com o Value próprio do Samaritano
+			// (0) e maestria. Mesmo espírito do remapeamento de elemento do case 25 da
+			// issue #233 e da política de duração das issues #92/#236.
 			//
-			// The IsPlayer guard is load-bearing, not defensive: on a MOB this same
-			// affect id is the summon lifespan counter parked in Affect[0]
-			// (summon.go:25). The legacy disambiguates the two by index
-			// (Server.cpp:5843, `Type == 24 && idx >= MAX_USER`), and without the
-			// guard a summon that ever reaches refreshScore would pick up a player
-			// buff off its own death timer.
+			// A guarda IsPlayer é estrutural, não defensiva: num MOB este mesmo
+			// id de affect é o contador de vida da invocação guardado em Affect[0]
+			// (summon.go:25). O legado desambigua os dois por índice
+			// (Server.cpp:5843, `Type == 24 && idx >= MAX_USER`), e sem a
+			// guarda uma invocação que algum dia chegue ao refreshScore pegaria um buff de jogador
+			// do próprio timer de morte.
 			if world.IsPlayer(e.ID) {
 				applyConHpBuff(e, level, value)
 			}
-		case 25: // Proteção Elemental: the three elements, never holy.
+		case 25: // Proteção Elemental: os três elementos, nunca sagrado.
 			add := int16((value + level/4) / 10)
 			if level >= 255 {
 				add += 20
 			}
-			// DELIBERATE DIVERGENCE FROM THE LEGACY (issue #233). Basedef.cpp:4239
-			// adds to locals named Fogo/Trovao/Gelo, but those locals are misnamed
-			// (Basedef.cpp:3919 binds Sagrado←Resist[0], Trovao←[1], Fogo←[2],
-			// Gelo←[3]), so the indices it actually touches are 1/2/3 — leaving the
-			// real fire resist (Resist[0]) untouched and buffing holy instead. The
-			// true element order comes from the content: Orb_de_Fogo carries
-			// EF_RESIST1 and Orb_Sagrada EF_RESIST3 (ItemList.csv:1013,1019), and
-			// EF_RESIST1..4 map to Resist[0..3] (CMob.cpp:640-643) — so [0]=fire,
-			// [1]=ice, [2]=holy, [3]=thunder. We buff the three real elements and
-			// skip holy, which is not elemental. Same spirit as the ÷8 affectTime
-			// divergence of issue #92 (content/skilldata.go).
+			// DIVERGÊNCIA DELIBERADA DO LEGADO (issue #233). Basedef.cpp:4239
+			// soma em locais chamados Fogo/Trovao/Gelo, mas esses locais estão mal nomeados
+			// (Basedef.cpp:3919 liga Sagrado←Resist[0], Trovao←[1], Fogo←[2],
+			// Gelo←[3]), então os índices que de fato toca são 1/2/3 — deixando a
+			// resistência real a fogo (Resist[0]) intocada e buffando o sagrado. A
+			// ordem real dos elementos vem do conteúdo: Orb_de_Fogo carrega
+			// EF_RESIST1 e Orb_Sagrada EF_RESIST3 (ItemList.csv:1013,1019), e
+			// EF_RESIST1..4 mapeiam para Resist[0..3] (CMob.cpp:640-643) — então [0]=fogo,
+			// [1]=gelo, [2]=sagrado, [3]=trovão. Buffamos os três elementos reais e
+			// pulamos o sagrado, que não é elemental. Mesmo espírito da divergência do ÷8 affectTime
+			// da issue #92 (content/skilldata.go).
 			for _, k := range [3]int{0, 1, 3} {
 				e.AffResist[k] += add
 			}
@@ -214,13 +214,13 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 			}
 		case 37:
 			e.AffForceDamage += int32(e.Special[2])
-		case 38: // Troca de Espíritos: half max MP becomes max HP
+		case 38: // Troca de Espíritos: metade do MP máximo vira HP máximo
 			mana := e.MaxMP / 2
 			e.AffMaxHP += mana
 			e.AffMaxMP -= mana
 		case world.AffectExpChest:
 			e.AffExpBonus += 100
-		case 42: // soul link: shift a fifth of the mana pool into HP
+		case 42: // vínculo de alma: move um quinto do pool de mana para HP
 			mana := e.MaxMP/5 + (e.Level+level)/2
 			e.AffMaxHP += mana
 			e.AffMaxMP -= mana
@@ -228,16 +228,16 @@ func applyAffectScoreWithItemAbility(e *world.Entity, itemAbility func(world.Ite
 	}
 }
 
-// applyConHpBuff is the CON/MaxHP buff shape shared by affect 14 (Possuído,
-// Basedef.cpp:4053 / Buff Loop.txt:127) and affect 24 (Samaritano, by the issue
-// #267 divergence). MaxHP is added EXPLICITLY because refreshScore converts only
-// equipment CON to HP before the buff loop (Basedef.cpp:3152). Affect-granted
-// CON must supply its own HP delta without entering that conversion again.
+// applyConHpBuff é a forma de buff CON/MaxHP compartilhada pelo affect 14 (Possuído,
+// Basedef.cpp:4053 / Buff Loop.txt:127) e pelo affect 24 (Samaritano, pela divergência
+// da issue #267). MaxHP é somado EXPLICITAMENTE porque o refreshScore converte só
+// CON de equipamento em HP antes do buff loop (Basedef.cpp:3152). CON concedida por
+// affect precisa fornecer seu próprio delta de HP sem entrar de novo naquela conversão.
 //
-// Not ported from Basedef.cpp:4056: `if (ClassMaster != MORTAL && != ARCH) value
-// *= 3`, along with that file's *22 / *125% multipliers — those are private-server
-// tuning (their own comments read "(106k)" and "(5004)") absent from Buff Loop.txt,
-// which is the variant this port follows. See docs/migration/skills/audit-affects.md.
+// Não portado de Basedef.cpp:4056: `if (ClassMaster != MORTAL && != ARCH) value
+// *= 3`, junto com os multiplicadores *22 / *125% daquele arquivo — são tuning
+// de servidor privado (os próprios comentários deles dizem "(106k)" e "(5004)") ausentes do Buff Loop.txt,
+// que é a variante que este port segue. Veja docs/migration/skills/audit-affects.md.
 func applyConHpBuff(e *world.Entity, level, value int32) {
 	v := level*3/4 + value
 	e.AffMaxHP += 2 * v
@@ -333,8 +333,8 @@ func clampInt16(v int32) int16 {
 	return int16(v)
 }
 
-// effectiveAC is the mitigation the defender actually presents: the flat
-// CurrentScore.Ac plus the affect contributions.
+// effectiveAC é a mitigação que o defensor de fato apresenta: o
+// CurrentScore.Ac cru mais as contribuições de affect.
 func effectiveAC(e *world.Entity) int32 { return e.AC + e.AffAC }
 
 func effectiveStr(e *world.Entity) int16 { return e.Str + e.AffStr }
@@ -343,16 +343,16 @@ func effectiveInt(e *world.Entity) int16 { return e.Int + e.AffInt }
 
 func effectiveDex(e *world.Entity) int16 { return e.Dex + e.AffDex }
 
-// effectiveMagic is the caster power the client/skill damage see: the flat Magic
-// plus the +20% Jóia do Poder buff (affect 8 bit 5, cached in AffMagic).
+// effectiveMagic é o poder de conjuração que o cliente/dano de skill veem: o Magic cru
+// mais o buff de +20% da Jóia do Poder (affect 8 bit 5, cacheado em AffMagic).
 func effectiveMagic(e *world.Entity) int32 { return int32(e.Magic) + e.AffMagic }
 
-// effectiveResist is the live resistance of element i (0 fire, 1 ice, 2 holy,
-// 3 thunder). The legacy clamps each resist to 0..100 at the END of
-// BASE_GetCurrentScore, after the Buff Loop has moved them (Basedef.cpp:4737-4767)
-// — clampResist alone only bounds the equipment share, so a buff stacked on top of
-// capped gear would otherwise escape the ceiling (and overflow the int8 the wire
-// carries) while a resist debuff would drive mitigation below the legacy floor.
+// effectiveResist é a resistência viva do elemento i (0 fogo, 1 gelo, 2 sagrado,
+// 3 trovão). O legado limita cada resistência a 0..100 no FIM do
+// BASE_GetCurrentScore, depois que o Buff Loop as moveu (Basedef.cpp:4737-4767)
+// — clampResist sozinho só limita a parte do equipamento, então um buff somado sobre
+// equipamento no teto escaparia do limite (e estouraria o int8 que o pacote
+// carrega) enquanto um debuff de resistência levaria a mitigação abaixo do piso legado.
 func effectiveResist(e *world.Entity, i int) int16 {
 	return min(max(e.Resist[i]+e.AffResist[i], 0), resistCap)
 }
@@ -368,10 +368,10 @@ func effectiveCritical(e *world.Entity) uint8 {
 	return uint8(v)
 }
 
-// skillCriticalBonus is the class-skill crit bonus. The legacy grants the SAME formula to
-// two classes from two different skill bits — TK "Confiança" (Basedef.cpp:3252, bonus at
-// :3366-3371) and Huntress "Visão do Caçador" (:3856, bonus at :3858-3863) — so the gate
-// is the only thing that differs between them.
+// skillCriticalBonus é o bônus de crítico de skill de classe. O legado dá a MESMA fórmula a
+// duas classes de dois bits de skill diferentes — TK "Confiança" (Basedef.cpp:3252, bônus em
+// :3366-3371) e Huntress "Visão do Caçador" (:3856, bônus em :3858-3863) — então o gate
+// é a única coisa que difere entre elas.
 func skillCriticalBonus(e *world.Entity) int16 {
 	tk := e.Class == 0 && e.LearnedSkill&(1<<7) != 0
 	ht := e.Class == 3 && e.LearnedSkill&(1<<18) != 0
@@ -385,8 +385,8 @@ func skillCriticalBonus(e *world.Entity) int16 {
 	return int16(add)
 }
 
-// effectiveSpecial is the live mastery of one tree: allocated + gear (flat
-// e.Special) + affects, capped at 400 like the buff loop does.
+// effectiveSpecial é a maestria viva de uma árvore: alocada + equipamento (o
+// e.Special cru) + affects, limitada a 400 como o buff loop faz.
 func effectiveSpecial(e *world.Entity, kind int) int {
 	v := int(e.Special[kind]) + int(e.AffSpecial[kind])
 	if v > 400 {

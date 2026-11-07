@@ -10,8 +10,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// tradeDB gives two accounts distinct single-item inventories so a swap is
-// observable: tester(id 7) holds item 1100, tradeb(id 11) holds item 2200.
+// tradeDB dá às duas contas inventários distintos de um item só, para uma troca ser
+// observável: tester(id 7) carrega o item 1100, tradeb(id 11) carrega o item 2200.
 func tradeDB() *fakeDB {
 	db := newDB()
 	mk := func(idx int16) world.CharacterState {
@@ -38,8 +38,8 @@ func enterWorldAs(t *testing.T, addr, account string) net.Conn {
 	return c
 }
 
-// tradeBody builds an MSG_Trade body offering item (from carry slot) and money to
-// opponent; a zero item leaves every entry empty (InvenPos 0xFF, the legacy -1).
+// tradeBody monta um corpo MSG_Trade ofertando item (do slot de carry) e dinheiro ao
+// oponente; um item zero deixa toda entrada vazia (InvenPos 0xFF, o -1 do legado).
 func tradeBody(opponent int, item world.Item, slot int, money int32, check bool) protocol.MsgTradeBody {
 	var body protocol.MsgTradeBody
 	for i := range body.InvenPos {
@@ -62,8 +62,8 @@ func sendTrade(t *testing.T, c net.Conn, body protocol.MsgTradeBody) {
 	send(t, c, protocol.MsgTrade, body.Encode())
 }
 
-// readForwarded reads the next frame on c and requires it to be a forwarded
-// MSG_Trade in the classic layout.
+// readForwarded lê o próximo frame em c e exige que seja um MSG_Trade
+// repassado no layout clássico.
 func readForwarded(t *testing.T, c net.Conn) protocol.MsgTradeBody {
 	t.Helper()
 	ty, p, ok := readMaybe(t, c)
@@ -96,9 +96,9 @@ func expectSilence(t *testing.T, c net.Conn) {
 	}
 }
 
-// openTrade makes a and b exchange their initial offers: a (conn 1) offers
-// aItem/aMoney, b (conn 2) answers with bItem/bMoney; each offer reaches the
-// other side only.
+// openTrade faz a e b trocarem suas ofertas iniciais: a (conn 1) oferece
+// aItem/aMoney, b (conn 2) responde com bItem/bMoney; cada oferta chega só
+// ao outro lado.
 func openTrade(t *testing.T, a, b net.Conn, aItem, bItem world.Item, aMoney, bMoney int32) {
 	t.Helper()
 	sendTrade(t, a, tradeBody(2, aItem, 0, aMoney, false))
@@ -139,9 +139,9 @@ func TestTradeSlotsAccessibleRequiresUnlockedCarry(t *testing.T) {
 	}
 }
 
-// TestTradeForwardsOffer: the first offer opens the opponent's window — it is
-// forwarded in the classic layout with OpponentID = sender and the server's copy
-// of the item; the sender gets nothing back.
+// TestTradeForwardsOffer: a primeira oferta abre a janela do oponente — ela é
+// repassada no layout clássico com OpponentID = sender e a cópia do servidor
+// do item; o remetente não recebe nada de volta.
 func TestTradeForwardsOffer(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -163,9 +163,9 @@ func TestTradeForwardsOffer(t *testing.T) {
 	expectSilence(t, a)
 }
 
-// TestTradeAtomicSwap: offers exchanged, A checks (CNFCheck to A, checked offer
-// to B), B checks → both carries re-sent with the swapped items and gold, both
-// characters saved, and the trade closed on both sides.
+// TestTradeAtomicSwap: ofertas trocadas, A confere (CNFCheck para A, oferta conferida
+// para B), B confere → os dois carries reenviados com os itens trocados e o ouro, os dois
+// personagens salvos, e a troca fechada dos dois lados.
 func TestTradeAtomicSwap(t *testing.T) {
 	db := tradeDB()
 	addr, stop, _ := startServerClock(t, db)
@@ -211,8 +211,8 @@ func TestTradeAtomicSwap(t *testing.T) {
 	}
 }
 
-// TestTradeChangeResetsCheck: after A checks, B changing its offer re-forwards
-// it unchecked and clears A's check, so B's check alone cannot complete the swap.
+// TestTradeChangeResetsCheck: depois que A confere, B mudar sua oferta a repassa
+// sem conferência e limpa a conferência de A, então a conferência de B sozinha não completa a troca.
 func TestTradeChangeResetsCheck(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -232,7 +232,7 @@ func TestTradeChangeResetsCheck(t *testing.T) {
 	}
 
 	sendTrade(t, b, tradeBody(1, world.Item{Index: 2200}, 0, 0, true))
-	expectType(t, b, protocol.MsgCNFCheck) // A's check was reset: no swap yet
+	expectType(t, b, protocol.MsgCNFCheck) // a conferência de A foi resetada: sem troca ainda
 	if got := readForwarded(t, a); got.MyCheck != 1 {
 		t.Fatalf("B's checked offer to A: check %d", got.MyCheck)
 	}
@@ -240,11 +240,11 @@ func TestTradeChangeResetsCheck(t *testing.T) {
 	expectSilence(t, b)
 }
 
-// TestTradeRejectsTamperedOffers: the server rebuilds every offer from the carry
-// slot (the client's item bytes are only a hint, like the legacy memcpy at
-// _MSG_Trade.cpp:199), so forged bytes cannot smuggle another item; a check on
-// data the opponent never saw, removing an offered item and a gold offer above
-// the purse all cancel.
+// TestTradeRejectsTamperedOffers: o servidor reconstrói toda oferta a partir do slot
+// de carry (os bytes de item do cliente são só uma dica, como o memcpy legado em
+// _MSG_Trade.cpp:199), então bytes forjados não podem contrabandear outro item; uma conferência sobre
+// dados que o oponente nunca viu, remover um item ofertado e uma oferta de ouro acima
+// da bolsa cancelam tudo.
 func TestTradeRejectsTamperedOffers(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -253,9 +253,9 @@ func TestTradeRejectsTamperedOffers(t *testing.T) {
 	b := enterWorldAs(t, addr, "tradeb")
 	defer b.Close()
 
-	// Forged item bytes: the opponent receives what the slot holds (1100), never
-	// the 2200 the client claimed. Requiring an exact match instead refused every
-	// real trade with "Erro na transação".
+	// Bytes de item forjados: o oponente recebe o que o slot tem (1100), nunca
+	// o 2200 que o cliente alegou. Exigir casamento exato, em vez disso, recusava toda
+	// troca real com "Erro na transação".
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 2200}, 0, 0, false))
 	if got := readForwarded(t, b); got.Item[0].Index != 1100 {
 		t.Fatalf("forwarded item = %d, want the carry item 1100", got.Item[0].Index)
@@ -264,29 +264,29 @@ func TestTradeRejectsTamperedOffers(t *testing.T) {
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectSilence(t, b)
 
-	// Checking a different amount than the forwarded offer cancels both.
+	// Conferir um valor diferente da oferta repassada cancela os dois.
 	openTrade(t, a, b, world.Item{Index: 1100}, world.Item{}, 0, 0)
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 1100}, 0, 5, true))
 	expectType(t, a, protocol.MsgMessagePanel)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectType(t, b, protocol.MsgQuitTrade)
 
-	// Removing an already-offered item cancels both.
+	// Remover um item já ofertado cancela os dois.
 	openTrade(t, a, b, world.Item{Index: 1100}, world.Item{}, 0, 0)
 	sendTrade(t, a, tradeBody(2, world.Item{}, 0, 0, false))
 	expectType(t, a, protocol.MsgMessagePanel)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectType(t, b, protocol.MsgQuitTrade)
 
-	// A gold offer above the purse is refused.
+	// Uma oferta de ouro acima da bolsa é recusada.
 	sendTrade(t, a, tradeBody(2, world.Item{}, 0, 5000, false))
 	expectType(t, a, protocol.MsgMessagePanel) // _NN_Not_Enough_Money
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectSilence(t, b)
 }
 
-// TestTradeNoRoomRollsBack: B's accessible carry is full, so A's item cannot
-// land; the swap rolls back, B is told why, and both windows close.
+// TestTradeNoRoomRollsBack: o carry acessível de B está cheio, então o item de A não
+// cabe; a troca faz rollback, B recebe o motivo, e as duas janelas fecham.
 func TestTradeNoRoomRollsBack(t *testing.T) {
 	db := tradeDB()
 	full := db.loads[11]
@@ -315,7 +315,7 @@ func TestTradeNoRoomRollsBack(t *testing.T) {
 	expectSilence(t, a)
 	expectSilence(t, b)
 
-	// A still holds its item: offering it again is accepted and forwarded.
+	// A ainda tem seu item: ofertá-lo de novo é aceito e repassado.
 	sendTrade(t, a, tradeBody(2, world.Item{Index: 1100}, 0, 0, false))
 	readForwarded(t, b)
 }
@@ -330,14 +330,14 @@ func TestTradeCancel(t *testing.T) {
 
 	openTrade(t, a, b, world.Item{}, world.Item{}, 0, 0)
 
-	// A cancels → both get QuitTrade.
+	// A cancela → os dois recebem QuitTrade.
 	send(t, a, protocol.MsgQuitTrade, nil)
 	expectType(t, a, protocol.MsgQuitTrade)
 	expectType(t, b, protocol.MsgQuitTrade)
 }
 
-// TestTradeDisconnectCancels: the opponent's window closes when the other side
-// disconnects mid-trade.
+// TestTradeDisconnectCancels: a janela do oponente fecha quando o outro lado
+// desconecta no meio da troca.
 func TestTradeDisconnectCancels(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -350,8 +350,8 @@ func TestTradeDisconnectCancels(t *testing.T) {
 	_, _ = readUntil(t, a, protocol.MsgQuitTrade)
 }
 
-// TestTradeDupCancelsOnDrop: dropping an item mid-trade cancels the trade on both
-// sides (the anti-dup rule, Fase 8 §2.7).
+// TestTradeDupCancelsOnDrop: dropar um item no meio da troca cancela a troca dos dois
+// lados (a regra anti-dup, Fase 8 §2.7).
 func TestTradeDupCancelsOnDrop(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -362,7 +362,7 @@ func TestTradeDupCancelsOnDrop(t *testing.T) {
 
 	openTrade(t, a, b, world.Item{}, world.Item{}, 0, 0)
 
-	// A drops an item while trading → trade cancelled for both.
+	// A dropa um item enquanto negocia → troca cancelada para os dois.
 	dropFrame(t, a, 0, 5, 5)
 	if ty, _, ok := readMaybe(t, a); !ok || ty != protocol.MsgQuitTrade {
 		t.Errorf("A got %#x ok=%v, want QuitTrade (dup cancel)", ty, ok)

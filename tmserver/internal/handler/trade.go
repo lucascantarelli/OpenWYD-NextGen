@@ -5,33 +5,33 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// maxTradeSlot is the absolute upper bound for normal player carry slots. The
-// per-character active limit may be lower when Bolsa do Andarilho is inactive.
+// maxTradeSlot é o limite superior absoluto para slots normais de carry do jogador. O
+// limite ativo por personagem pode ser menor quando a Bolsa do Andarilho está inativa.
 const maxTradeSlot = maxUnlockedCarry
 
-// tradeEmptyPos marks an unused offer entry (the legacy char InvenPos = -1).
+// tradeEmptyPos marca uma entrada de oferta não usada (o char InvenPos = -1 do legado).
 const tradeEmptyPos = 0xFF
 
-// maxTradeCoin is the legacy 2G ceiling on a trade amount and on either side's
-// resulting gold (_MSG_Trade.cpp: TradeMoney > 2000000000, _NN_Cant_get_more_than_2G).
+// maxTradeCoin é o teto legado de 2G sobre um valor de troca e sobre o ouro
+// resultante de cada lado (_MSG_Trade.cpp: TradeMoney > 2000000000, _NN_Cant_get_more_than_2G).
 const maxTradeCoin = 2_000_000_000
 
-// trade handles _MSG_Trade (0x0383), porting the legacy flow in
+// trade trata _MSG_Trade (0x0383), portando o fluxo legado de
 // TMSrv/_MSG_Trade.cpp:
 //
-//   - every accepted offer is forwarded to the opponent with ID = opponent and
-//     OpponentID = sender, which is what opens/updates the opponent's window;
-//   - an offer change resets MyCheck on both sides; an already-offered item or a
-//     non-zero amount cannot change (append-only, anti item-swap);
-//   - the first MyCheck answers the sender with _MSG_CNFCheck and forwards the
-//     checked offer; the second performs the atomic swap, re-sends both carries
-//     (_MSG_UpdateCarry carries Coin too), persists both and closes the trade.
+//   - toda oferta aceita é repassada ao oponente com ID = opponent e
+//     OpponentID = sender, que é o que abre/atualiza a janela do oponente;
+//   - uma mudança de oferta reseta MyCheck dos dois lados; um item já ofertado ou um
+//     valor não zero não pode mudar (só anexa, anti troca de item);
+//   - o primeiro MyCheck responde ao remetente com _MSG_CNFCheck e repassa a
+//     oferta conferida; o segundo faz a troca atômica, reenvia os dois carries
+//     (_MSG_UpdateCarry leva Coin também), persiste os dois e fecha a troca.
 //
-// Any validation failure cancels the trade (_MSG_QuitTrade to both linked sides).
-// Divergences from the legacy: the PK-mode/whisper-block gates and the guild-item
-// rules are not ported (the server did not have them before either), and a
-// failed swap (space/gold) cancels the trade instead of leaving both windows
-// checked.
+// Qualquer falha de validação cancela a troca (_MSG_QuitTrade para os dois lados ligados).
+// Divergências em relação ao legado: os gates de PK-mode/bloqueio de sussurro e as
+// regras de item de guilda não foram portadas (o servidor também não as tinha antes), e uma
+// troca que falha (espaço/ouro) cancela a troca em vez de deixar as duas janelas
+// conferidas.
 func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP == 0 || s.Mode != world.UserPlay {
@@ -68,7 +68,7 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	linked := other.Trade.Active && other.Trade.OpponentID == s.Conn
 	if linked && !tradeOfferHeld(oe, &other.Trade) {
 		d.log.Warn("trade: opponent offer changed", "conn", s.Conn, "opponent", opp)
-		d.tradeRefuse(w, s, tradeWrongPacket) // the opponent's offered item moved or changed
+		d.tradeRefuse(w, s, tradeWrongPacket) // o item ofertado do oponente saiu do lugar ou mudou
 		return
 	}
 
@@ -90,12 +90,12 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	}
 
 	if other.Trade.Active && !linked {
-		d.tradeRefuse(w, s, tradeAlreadyOn) // the opponent is trading with someone else
+		d.tradeRefuse(w, s, tradeAlreadyOn) // o oponente está negociando com outra pessoa
 		return
 	}
 
 	if body.MyCheck == 1 {
-		// Checking is only valid on the exact offer the opponent already saw.
+		// Conferir só é válido sobre a oferta exata que o oponente já viu.
 		if !linked || !s.Trade.Active || s.Trade.Items != offer.Items || s.Trade.InvenPos != offer.InvenPos || s.Trade.Money != offer.Money {
 			d.tradeRefuse(w, s, tradeWrongPacket)
 			return
@@ -115,18 +115,18 @@ func (d *Dispatcher) trade(w *world.World, s *world.Session, _ protocol.Header, 
 	s.Trade = offer
 	other.Trade.Confirmed = false
 	d.forwardTrade(w, s, other)
-} // tradeRefuse is rejectTrade plus the player-facing reason. Every refusal used to
-// be silent, so a refused trade only closed the window and read as "trade does
-// not work" (QA 05/11).
+} // tradeRefuse é rejectTrade mais o motivo mostrado ao jogador. Toda recusa costumava
+// ser silenciosa, então uma troca recusada só fechava a janela e soava como "a troca não
+// funciona" (QA 05/11).
 func (d *Dispatcher) tradeRefuse(w *world.World, s *world.Session, text string) {
 	d.sendClientMessage(w, s, text)
 	d.rejectTrade(w, s)
 }
 
-// rejectTrade cancels s's trade after a refused _MSG_Trade. Unlike removeTrade it
-// also answers a sender that had no trade recorded yet, so a refused first offer
-// still closes the window the client opened locally (the legacy RemoveTrade
-// always signals _MSG_QuitTrade to conn).
+// rejectTrade cancela a troca de s depois de um _MSG_Trade recusado. Diferente de removeTrade, ele
+// também responde a um remetente que ainda não tinha troca registrada, então uma primeira oferta recusada
+// ainda fecha a janela que o cliente abriu localmente (o RemoveTrade legado
+// sempre sinaliza _MSG_QuitTrade para conn).
 func (d *Dispatcher) rejectTrade(w *world.World, s *world.Session) {
 	silent := !s.Trade.Active && s.AutoTrade == nil && s.TradeMode == 0
 	d.removeTrade(w, s)
@@ -135,10 +135,10 @@ func (d *Dispatcher) rejectTrade(w *world.World, s *world.Session) {
 	}
 }
 
-// tradeOffer normalises and validates the offer in body against e's carry. An
-// entry is used when its InvenPos is a slot and its item is set; the item must
-// match the carry item exactly (the legacy memcmp) and not be EF_NOTRADE, and no
-// slot may repeat.
+// tradeOffer normaliza e valida a oferta em body contra o carry de e. Uma
+// entrada é usada quando seu InvenPos é um slot e seu item está definido; o item precisa
+// casar exatamente com o item do carry (o memcmp legado) e não ser EF_NOTRADE, e nenhum
+// slot pode repetir.
 func (d *Dispatcher) tradeOffer(e *world.Entity, body *protocol.MsgTradeBody) (world.TradeState, bool) {
 	t := world.TradeState{Money: body.TradeMoney}
 	var used [world.MaxCarry]bool
@@ -151,12 +151,12 @@ func (d *Dispatcher) tradeOffer(e *world.Entity, body *protocol.MsgTradeBody) (w
 		if pos >= maxTradeSlot || !carrySlotAccessible(e, pos) || used[pos] || e.Carry[pos].Empty() {
 			return world.TradeState{}, false
 		}
-		// Server-authoritative offer: the slot is the truth, the item bytes the
-		// client sent are only a hint. The legacy rebuilds the same way
-		// (memcpy from MOB.Carry, _MSG_Trade.cpp:199) and refuses only on a bad
-		// slot. Requiring an exact match of the sent STRUCT_ITEM refused every
-		// real trade with "Erro na transação" (QA 05/11), because the client's
-		// effect bytes for the same item differ from the stored ones.
+		// Oferta server-authoritative: o slot é a verdade, os bytes do item que o
+		// cliente enviou são só uma dica. O legado reconstrói do mesmo jeito
+		// (memcpy de MOB.Carry, _MSG_Trade.cpp:199) e recusa só por um
+		// slot ruim. Exigir casamento exato do STRUCT_ITEM enviado recusava toda
+		// troca real com "Erro na transação" (QA 05/11), porque os bytes de
+		// efeito do cliente para o mesmo item diferem dos armazenados.
 		if !sameItem(body.Item[i], e.Carry[pos]) {
 			d.log.Debug("trade: client item bytes differ from carry, using carry",
 				"conn", e.ID, "slot", pos, "client", body.Item[i].Index, "carry", e.Carry[pos].Index)
@@ -172,8 +172,8 @@ func (d *Dispatcher) tradeOffer(e *world.Entity, body *protocol.MsgTradeBody) (w
 	return t, true
 }
 
-// tradeOfferHeld reports whether every item of a recorded offer is still in the
-// carry slot it was offered from (anti item-swap during confirmation).
+// tradeOfferHeld informa se todo item de uma oferta registrada ainda está no
+// slot de carry de onde foi ofertado (anti troca de item durante a confirmação).
 func tradeOfferHeld(e *world.Entity, t *world.TradeState) bool {
 	for i := range t.Items {
 		if t.Items[i].Index == 0 {
@@ -187,8 +187,8 @@ func tradeOfferHeld(e *world.Entity, t *world.TradeState) bool {
 	return true
 }
 
-// forwardTrade sends from's recorded offer to its opponent in the classic
-// MSG_Trade layout, with OpponentID = from (legacy: m->ID = OpponentID;
+// forwardTrade envia a oferta registrada de from ao seu oponente no layout
+// clássico de MSG_Trade, com OpponentID = from (legado: m->ID = OpponentID;
 // m->OpponentID = conn; AddMessage).
 func (d *Dispatcher) forwardTrade(w *world.World, from, to *world.Session) {
 	var body protocol.MsgTradeBody
@@ -204,13 +204,13 @@ func (d *Dispatcher) forwardTrade(w *world.World, from, to *world.Session) {
 	w.Send(to, protocol.MsgTrade, body.Encode())
 }
 
-// executeSwap transfers both confirmed offers atomically (validate-all-then-
-// apply-all, legacy BASE_CanTrade): each side's offered slots are emptied, the
-// incoming items fill the first free accessible slots, and gold moves both ways.
-// Any shortfall rolls back and cancels the trade. On success both carries are
-// re-sent (_MSG_UpdateCarry, with Coin), both characters are persisted, and the
-// trade is closed on both sides (_MSG_QuitTrade), as SendCarry + SaveUser +
-// RemoveTrade in the legacy.
+// executeSwap move as duas ofertas confirmadas de forma atômica (valida-tudo-e-
+// aplica-tudo, BASE_CanTrade legado): os slots ofertados de cada lado são esvaziados, os
+// itens que chegam preenchem os primeiros slots livres acessíveis, e o ouro anda nos dois sentidos.
+// Qualquer falta faz rollback e cancela a troca. No sucesso os dois carries são
+// reenviados (_MSG_UpdateCarry, com Coin), os dois personagens são persistidos, e a
+// troca é fechada dos dois lados (_MSG_QuitTrade), como SendCarry + SaveUser +
+// RemoveTrade no legado.
 func (d *Dispatcher) executeSwap(w *world.World, a, b *world.Session) {
 	ea, eb := w.Entity(a.Conn), w.Entity(b.Conn)
 	if ea == nil || eb == nil || !tradeOfferHeld(ea, &a.Trade) || !tradeOfferHeld(eb, &b.Trade) {
@@ -232,7 +232,7 @@ func (d *Dispatcher) executeSwap(w *world.World, a, b *world.Session) {
 	bItems := takeItems(eb, b.Trade.Slots)
 	if freeCarry(eb) < len(aItems) || freeCarry(ea) < len(bItems) {
 		noRoomA, noRoomB := freeCarry(ea) < len(bItems), freeCarry(eb) < len(aItems)
-		putBack(ea, a.Trade.Slots, aItems) // not enough room → rollback
+		putBack(ea, a.Trade.Slots, aItems) // espaço insuficiente → rollback
 		putBack(eb, b.Trade.Slots, bItems)
 		if noRoomA {
 			d.notify(w, a, NoticeNoEmptySlot)
@@ -265,7 +265,7 @@ func (d *Dispatcher) executeSwap(w *world.World, a, b *world.Session) {
 	d.removeTrade(w, a)
 }
 
-// quitTrade handles _MSG_QuitTrade (0x0384): cancel the trade.
+// quitTrade trata _MSG_QuitTrade (0x0384): cancela a troca.
 func (d *Dispatcher) quitTrade(w *world.World, s *world.Session, _ protocol.Header, _ []byte) {
 	if e := w.Entity(s.Conn); e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
 		w.AddCrackError(s, 10, 17)
@@ -273,11 +273,11 @@ func (d *Dispatcher) quitTrade(w *world.World, s *world.Session, _ protocol.Head
 	d.removeTrade(w, s)
 }
 
-// removeTrade cancels any active trade on s and its opponent, notifying both.
-// It is also the anti-dup hook called when a player drops/uses/attacks mid-trade.
+// removeTrade cancela qualquer troca ativa em s e no seu oponente, avisando os dois.
+// É também o gancho anti-dup chamado quando um jogador dropa/usa/ataca no meio de uma troca.
 func (d *Dispatcher) removeTrade(w *world.World, s *world.Session) {
-	// RemoveTrade in the original also closes an open personal shop (Server.cpp:8124);
-	// this is what makes walking/buying/item-ops/quit-trade tear the stall down.
+	// O RemoveTrade do original também fecha uma loja pessoal aberta (Server.cpp:8124);
+	// é isso que faz andar/comprar/operações de item/sair da troca derrubarem a banca.
 	d.closeAutoTrade(w, s)
 	if !s.Trade.Active {
 		return
@@ -291,8 +291,8 @@ func (d *Dispatcher) removeTrade(w *world.World, s *world.Session) {
 	}
 }
 
-// sameItem reports whether a wire item equals the inventory item (the memcmp
-// used to detect an item swapped in during confirmation).
+// sameItem informa se um item do wire é igual ao item do inventário (o memcmp
+// usado para detectar um item trocado durante a confirmação).
 func sameItem(wi protocol.WireItem, it world.Item) bool {
 	if wi.Index != it.Index {
 		return false
@@ -318,8 +318,8 @@ func tradeSlotsAccessible(e *world.Entity, slots []int) bool {
 	return true
 }
 
-// takeItems removes the items at the given carry slots, returning them aligned to
-// slots (so putBack can restore them on rollback).
+// takeItems remove os itens dos slots de carry dados, devolvendo-os alinhados aos
+// slots (para o putBack restaurá-los no rollback).
 func takeItems(e *world.Entity, slots []int) []world.Item {
 	out := make([]world.Item, len(slots))
 	for i, sl := range slots {

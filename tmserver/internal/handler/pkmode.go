@@ -5,58 +5,58 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// pkResetGuilty is the Guilty value set on landing (or receiving) a chaotic PvP
-// hit (_MSG_Attack.cpp "PK - War - Miss": SetGuilty(conn,8) / SetGuilty(idx,8)).
+// pkResetGuilty é o valor de Guilty aplicado ao acertar (ou receber) um golpe
+// PvP caótico (_MSG_Attack.cpp "PK - War - Miss": SetGuilty(conn,8) / SetGuilty(idx,8)).
 const pkResetGuilty uint8 = 8
 
-// guiltyDecayPeriod staggers the per-player Guilty decay the same way
-// affectTickPeriod staggers affects (affect_tick.go): the legacy RegenMob runs
-// once per connection every ~8 real seconds (Server.cpp RegenMob,
-// ProcessSecMinTimer.cpp's Sec16-staggered per-connection cadence), and
-// unconditionally decrements Guilty by 1 there. A distinct constant from
-// affectTickPeriod on purpose — the two port unrelated legacy fields that only
-// coincidentally share a period.
+// guiltyDecayPeriod escalona o decaimento de Guilty por jogador do mesmo jeito que
+// affectTickPeriod escalona affects (affect_tick.go): o RegenMob legado roda
+// uma vez por conexão a cada ~8 segundos reais (Server.cpp RegenMob,
+// a cadência por conexão escalonada pelo Sec16 de ProcessSecMinTimer.cpp), e
+// decrementa Guilty em 1 ali, incondicionalmente. Uma constante distinta de
+// affectTickPeriod de propósito — os dois portam campos legados sem relação que só
+// por coincidência compartilham um período.
 const guiltyDecayPeriod = 8
 
-// pkPointRecoverPeriod is the PKPoint natural-recovery cadence: legacy gates it
-// behind a counter that increments once per RegenMob call and fires every 450
-// of those (Server.cpp: `if (!(Unk_2736 % 450))`), i.e. 450×8s = 3600s = 1h.
-// Global (not per-connection staggered) — an hour-scale gate needs no
-// load-spreading, unlike the ~8s Guilty decay.
+// pkPointRecoverPeriod é a cadência de recuperação natural de PKPoint: o legado a põe
+// atrás de um contador que incrementa uma vez por chamada de RegenMob e dispara a cada 450
+// delas (Server.cpp: `if (!(Unk_2736 % 450))`), ou seja, 450×8s = 3600s = 1h.
+// Global (não escalonada por conexão) — um gate de escala de hora não precisa de
+// distribuição de carga, ao contrário do decaimento de Guilty de ~8s.
 const pkPointRecoverPeriod = 3600
 
-// PK nickname coloring: the client reads MobName[12] (PKPoint) from a player's
-// MSG_CreateMob to color the nick — 75 is NEUTRAL (white), 0 is red/blinking
-// (chaos/guilty), <75 is chaos (GetFunc.cpp:1082-1101). This is the real driver,
-// NOT _MSG_PKInfo (which only carries the "attackable/war" state).
+// Coloração do nick de PK: o cliente lê MobName[12] (PKPoint) do
+// MSG_CreateMob de um jogador para colorir o nick — 75 é NEUTRO (branco), 0 é vermelho/piscando
+// (caos/culpado), <75 é caos (GetFunc.cpp:1082-1101). Este é o driver real,
+// NÃO o _MSG_PKInfo (que só carrega o estado "atacável/guerra").
 const (
-	pkPointNeutral uint8 = 75 // white nick
-	pkPointChaos   uint8 = 0  // red blinking nick
+	pkPointNeutral uint8 = 75 // nick branco
+	pkPointChaos   uint8 = 0  // nick vermelho piscando
 )
 
-// pkPointPerLevel is the Chaos Point paid back per level gained (issue #279).
+// pkPointPerLevel é o Ponto de Caos pago de volta por nível ganho (issue #279).
 //
-// DELIBERATE DIVERGENCE FROM THE LEGACY — do not "fix" this back to parity
-// without reading the issue. The original never tied PKPoint to leveling: its
-// only natural recovery is the hourly RegenMob gate (Server.cpp:4872-4881,
-// ported below as pkPointRecoverPeriod), which is why issue #210 was closed
-// without this. Issue #279 reopened it as a design decision for this server:
-// leveling must also pay chaos back, so a character grinding out of chaos sees
-// the nick go white. Same +1 step and same 75 ceiling as the hourly gate, and it
-// stacks with it rather than replacing it.
+// DIVERGÊNCIA DELIBERADA DO LEGADO — não "conserte" isto de volta à paridade
+// sem ler a issue. O original nunca amarrou PKPoint a subir de nível: sua
+// única recuperação natural é o gate horário do RegenMob (Server.cpp:4872-4881,
+// portado abaixo como pkPointRecoverPeriod), e é por isso que a issue #210 foi fechada
+// sem isto. A issue #279 a reabriu como decisão de design para este servidor:
+// subir de nível também precisa devolver caos, para um personagem saindo do caos ver
+// o nick ficar branco. Mesmo passo de +1 e mesmo teto de 75 do gate horário, e ele
+// se soma a ele em vez de substituí-lo.
 const pkPointPerLevel = 1
 
-// pkGuilty reports whether e is currently in the chaotic (red-blinking-nick)
-// state: its Guilty decay counter (GetFunc.cpp KILL_MARK slot) hasn't reached 0.
+// pkGuilty informa se e está atualmente no estado caótico (nick vermelho piscando):
+// seu contador de decaimento de Guilty (slot KILL_MARK de GetFunc.cpp) não chegou a 0.
 func pkGuilty(e *world.Entity) bool {
 	return e.Guilty > 0
 }
 
-// pkPoint is the MobName[12] byte for e's current state (GetFunc.cpp
-// GetCreateMob:1094-1099): the real PKPoint counter unless Guilty > 0, in which
-// case 0 (chaos/red) regardless of PKPoint. Packed into every player
-// MSG_CreateMob and the CNFCharacterLogin blob so the nick renders the right
-// color.
+// pkPoint é o byte MobName[12] para o estado atual de e (GetFunc.cpp
+// GetCreateMob:1094-1099): o contador real de PKPoint, a menos que Guilty > 0, caso em que
+// é 0 (caos/vermelho) independente do PKPoint. Empacotado em todo
+// MSG_CreateMob de jogador e no blob de CNFCharacterLogin para o nick renderizar a cor
+// certa.
 func pkPoint(e *world.Entity) uint8 {
 	if pkGuilty(e) {
 		return pkPointChaos
@@ -64,9 +64,9 @@ func pkPoint(e *world.Entity) uint8 {
 	return e.PKPoint
 }
 
-// pkInfoParm is the S→C PKInfo Parm for e: 1 = PK/attackable state, 0 = clean.
-// This drives the "can be attacked / at war" flag, NOT the nick color (that's
-// MobName[12]); we still send it for parity with the original login/view flow.
+// pkInfoParm é o Parm de PKInfo S→C para e: 1 = estado PK/atacável, 0 = limpo.
+// Isto comanda a flag "pode ser atacado / em guerra", NÃO a cor do nick (essa é
+// MobName[12]); ainda o enviamos por paridade com o fluxo de login/view original.
 func pkInfoParm(e *world.Entity) int32 {
 	if pkGuilty(e) || e.PKMode {
 		return 1
@@ -74,11 +74,11 @@ func pkInfoParm(e *world.Entity) int32 {
 	return 0
 }
 
-// broadcastPKState re-sends e's current PK state to itself and everyone in view
-// whenever it changes (a PvP hit lands, or Guilty decays to 0): a fresh
-// MSG_CreateMob (whose MobName[12..15] recolors the nick and refreshes the
-// kill-streak bytes — Server.cpp:4933-4941 does exactly this when Guilty hits
-// 0) plus the MSG_PKInfo attackable flag.
+// broadcastPKState reenvia o estado PK atual de e para si mesmo e todos à vista
+// sempre que ele muda (um golpe PvP entra, ou Guilty cai a 0): um
+// MSG_CreateMob novo (cujo MobName[12..15] recolore o nick e atualiza os
+// bytes de sequência de mortes — Server.cpp:4933-4941 faz exatamente isso quando Guilty chega
+// a 0) mais a flag atacável do MSG_PKInfo.
 func (d *Dispatcher) broadcastPKState(w *world.World, s *world.Session, e *world.Entity) {
 	mob := protocol.EncodeCreateMobBody(d.createMobFrom(e, 0))
 	info := protocol.EncodeStandardParm(pkInfoParm(e))
@@ -86,15 +86,15 @@ func (d *Dispatcher) broadcastPKState(w *world.World, s *world.Session, e *world
 		w.SendTo(vs, protocol.Header{Type: protocol.MsgCreateMob, ID: protocol.IDScene}, mob)
 		w.SendTo(vs, protocol.Header{Type: protocol.MsgPKInfo, ID: uint16(s.Conn)}, info)
 	}
-	send(s) // the player's own client (recolors the own nick)
+	send(s) // o cliente do próprio jogador (recolore o próprio nick)
 	w.ForEachInView(s.Conn, func(vs *world.Session, _ *world.Entity) { send(vs) })
 }
 
-// markGuilty sets e's Guilty counter to pkResetGuilty (landing/receiving a
-// chaotic PvP hit outside a duel) and, if it wasn't already guilty, re-broadcasts
-// the PK state so the nick turns red. s may be nil (e.g. the victim disconnected
-// mid-fight) — broadcastPKState needs a session only to address the "own client"
-// send, so a nil session just skips that self-send via the guard below.
+// markGuilty põe o contador Guilty de e em pkResetGuilty (acertar/receber um
+// golpe PvP caótico fora de um duelo) e, se ainda não estava culpado, retransmite
+// o estado PK para o nick ficar vermelho. s pode ser nil (por exemplo, a vítima se desconectou
+// no meio da luta) — broadcastPKState precisa de sessão só para endereçar o envio ao "cliente
+// próprio", então uma sessão nil apenas pula esse envio próprio pela guarda abaixo.
 func (d *Dispatcher) markGuilty(w *world.World, s *world.Session, e *world.Entity) {
 	wasGuilty := pkGuilty(e)
 	e.Guilty = pkResetGuilty
@@ -103,23 +103,23 @@ func (d *Dispatcher) markGuilty(w *world.World, s *world.Session, e *world.Entit
 	}
 }
 
-// grantLevelUpPKPoint pays levels × pkPointPerLevel back toward the neutral 75
-// after a level-up (issue #279). It never pushes past 75: the 76..150 range only
-// comes from the quest/item paths (_MSG_Quest.cpp:2569-2579, _MSG_UseItem.cpp:3867)
-// and leveling must not top those up — same ceiling the hourly recovery uses.
+// grantLevelUpPKPoint devolve levels × pkPointPerLevel rumo ao neutro 75
+// depois de um nível ganho (issue #279). Nunca empurra além de 75: a faixa 76..150 só
+// vem dos caminhos de quest/item (_MSG_Quest.cpp:2569-2579, _MSG_UseItem.cpp:3867)
+// e subir de nível não pode completá-los — mesmo teto que a recuperação horária usa.
 //
-// The gain is reported once, not per level, so a multi-level jump (Poeira de
-// Fada, GM /setlevel) produces a single chat line, and the PK state is
-// re-broadcast so the nick recolors without a relog. While Guilty > 0 the visible
-// pkPoint(e) is pinned at 0, so the CreateMob would carry the same byte as before
-// — skip the broadcast then and let the Guilty decay in sweepGuilty do it.
-// s may be nil (the GM/offline applyLevelUps callers).
+// O ganho é reportado uma vez, não por nível, então um salto de vários níveis (Poeira de
+// Fada, GM /setlevel) produz uma única linha de chat, e o estado PK é
+// retransmitido para o nick recolorir sem relog. Enquanto Guilty > 0 o
+// pkPoint(e) visível fica fixado em 0, então o CreateMob carregaria o mesmo byte de antes
+// — pule a transmissão nesse caso e deixe o decaimento de Guilty no sweepGuilty fazê-lo.
+// s pode ser nil (os chamadores GM/offline applyLevelUps).
 func (d *Dispatcher) grantLevelUpPKPoint(w *world.World, s *world.Session, e *world.Entity, levels int32) {
 	if levels <= 0 || e.PKPoint >= pkPointNeutral {
 		return
 	}
-	// int arithmetic first: levels can be in the hundreds (/setlevel), which would
-	// overflow the uint8 counter.
+	// aritmética de int primeiro: levels pode estar na casa das centenas (/setlevel), o que
+	// estouraria o contador uint8.
 	gain := int(levels) * pkPointPerLevel
 	if room := int(pkPointNeutral - e.PKPoint); gain > room {
 		gain = room
@@ -134,11 +134,11 @@ func (d *Dispatcher) grantLevelUpPKPoint(w *world.World, s *world.Session, e *wo
 	}
 }
 
-// pkMode handles _MSG_PKMode (0x0399): the client's K-key Player-Killer consent
-// toggle (Exec_MSG_PKMode, _MSG_PKMode.cpp). Toggling only flips the consent gate
-// checked by attack() — it cancels any active trade (same anti-dup guard as
-// legacy's OpponentID check) and echoes the current PKInfo state. Pressing K does
-// NOT by itself blink the nickname (that needs a landed PvP hit → guilty).
+// pkMode trata _MSG_PKMode (0x0399): o toggle de consentimento Player-Killer da tecla K
+// do cliente (Exec_MSG_PKMode, _MSG_PKMode.cpp). Alternar só vira o gate de consentimento
+// verificado pelo attack() — cancela qualquer troca ativa (mesma guarda anti-dup do
+// OpponentID legado) e ecoa o estado atual de PKInfo. Apertar K NÃO
+// pisca o nick sozinho (isso precisa de um golpe PvP aplicado → culpado).
 func (d *Dispatcher) pkMode(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	if s.Mode != world.UserPlay {
 		return
@@ -150,7 +150,7 @@ func (d *Dispatcher) pkMode(w *world.World, s *world.Session, _ protocol.Header,
 	parm, _ := protocol.StandardParm(payload)
 	e.PKMode = parm != 0
 
-	// A mutual trade gets _NN_Cant_trade_pkmode on both sides before it closes
+	// Uma troca mútua recebe _NN_Cant_trade_pkmode nos dois lados antes de fechar
 	// (_MSG_PKMode.cpp:27-35, issue #422).
 	if s.Trade.Active {
 		if other := w.Session(s.Trade.OpponentID); other != nil && other.Mode == world.UserPlay && other.Trade.OpponentID == s.Conn {
@@ -159,8 +159,8 @@ func (d *Dispatcher) pkMode(w *world.World, s *world.Session, _ protocol.Header,
 		}
 	}
 	d.removeTrade(w, s)
-	// Only the attackable flag (PKInfo) changes on a K toggle — the nick color
-	// (MobName[12]) is unaffected, so no CreateMob re-broadcast is needed.
+	// Só a flag atacável (PKInfo) muda num toggle de K — a cor do nick
+	// (MobName[12]) não é afetada, então nenhuma retransmissão de CreateMob é necessária.
 	info := protocol.EncodeStandardParm(pkInfoParm(e))
 	w.SendTo(s, protocol.Header{Type: protocol.MsgPKInfo, ID: uint16(s.Conn)}, info)
 	w.ForEachInView(s.Conn, func(vs *world.Session, _ *world.Entity) {
@@ -168,12 +168,12 @@ func (d *Dispatcher) pkMode(w *world.World, s *world.Session, _ protocol.Header,
 	})
 }
 
-// sweepGuilty is the RegenMob port for Guilty decay + PKPoint recovery
-// (Server.cpp RegenMob): Guilty ticks down by 1 on each player's ~8s stagger
-// phase (only for currently-connected players — RegenMob never runs for an
-// offline connection, so decay correctly pauses across logout with no extra
-// bookkeeping), and PKPoint recovers +1 toward neutral (75) on a global hourly
-// gate. Unchanged call site (mobai.go Tick()).
+// sweepGuilty é o port do RegenMob para decaimento de Guilty + recuperação de PKPoint
+// (Server.cpp RegenMob): Guilty decrementa 1 na fase escalonada de ~8s de cada
+// jogador (só para jogadores conectados no momento — RegenMob nunca roda para uma
+// conexão offline, então o decaimento pausa corretamente durante o logout sem
+// contabilidade extra), e PKPoint recupera +1 rumo ao neutro (75) num gate horário
+// global. Local de chamada inalterado (mobai.go Tick()).
 func (d *Dispatcher) sweepGuilty(w *world.World) {
 	phase := d.tickCount % guiltyDecayPeriod
 	pkTick := d.tickCount%pkPointRecoverPeriod == 0
@@ -187,10 +187,10 @@ func (d *Dispatcher) sweepGuilty(w *world.World) {
 		if pkTick && e.PKPoint < pkPointNeutral {
 			e.PKPoint++
 			d.sendChatText(w, s, notifyPKPointDelta(e.PKPoint, 1))
-			// The recovered point changes MobName[12], so the nick has to be
-			// repainted here too — otherwise it keeps the stale color until the
-			// next CreateMob (a relog, or leaving and re-entering someone's view).
-			// Pinned at 0 while Guilty > 0, so nothing to repaint in that case.
+			// O ponto recuperado muda MobName[12], então o nick tem de ser
+			// repintado aqui também — senão mantém a cor velha até o
+			// próximo CreateMob (um relog, ou sair e reentrar na visão de alguém).
+			// Fixado em 0 enquanto Guilty > 0, então nada a repintar nesse caso.
 			if !pkGuilty(e) {
 				d.broadcastPKState(w, s, e)
 			}

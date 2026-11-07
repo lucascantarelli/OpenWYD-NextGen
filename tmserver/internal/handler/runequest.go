@@ -7,20 +7,20 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Pista de Runas (rune track): the Uxmal registration (_MSG_Quest.cpp:1313-1395)
-// and the entry/exit minute timers (ProcessSecMinTimer.cpp:1082-1429). The room
-// play (kills, bosses, prizes, portals, counter, traps) is in runequest_kills.go.
+// Pista de Runas (rune track): o registro no Uxmal (_MSG_Quest.cpp:1313-1395)
+// e os timers de minuto de entrada/saída (ProcessSecMinTimer.cpp:1082-1429). O
+// jogo da sala (mortes, bosses, prêmios, portais, contador, armadilhas) está em runequest_kills.go.
 
-// itemPistaDaRunas is the rune track ticket (ItemList.csv:6223 "Pista_da_Runas").
-// Its sanc selects the room.
+// itemPistaDaRunas é o ticket da pista de runas (ItemList.csv:6223 "Pista_da_Runas").
+// Seu sanc seleciona a sala.
 const itemPistaDaRunas = 5134
 
-// uxmalMerchant is Uxmal's top-level MOB.Merchant (template byte 17), the value
-// _MSG_Quest.cpp:91 routes on. CurrentScore.Merchant is 104, shared with the
-// trainers, so it cannot identify Uxmal.
+// uxmalMerchant é o MOB.Merchant de topo do Uxmal (byte 17 do template), o valor
+// que _MSG_Quest.cpp:91 usa para rotear. CurrentScore.Merchant é 104, compartilhado com os
+// treinadores, então não identifica o Uxmal.
 const uxmalMerchant = 72
 
-// Rune track texts (tmserver/content/TMsrv/run/Language.txt).
+// Textos da pista de runas (tmserver/content/TMsrv/run/Language.txt).
 const (
 	msgRuneQuestBusy     = "Quest em progresso."                // _NN_Night_Already
 	msgRuneQuestLeader   = "Uso restrito ao l\xedder do grupo." // _NN_Party_Leader_Only
@@ -29,9 +29,9 @@ const (
 	msgRuneQuestRegister = "Entrada registrada."                // _NN_TicketUsed
 )
 
-// Rune track geometry: the lobby tile around Uxmal that both the leader and
-// the members must stand on at entry, and the exit landing point. The original
-// rolls rand()%1 between y 1701 and 1686, which always picks 1701.
+// Geometria da pista de runas: o tile de lobby em volta do Uxmal em que tanto o líder quanto
+// os membros precisam ficar na entrada, e o ponto de pouso da saída. O original
+// sorteia rand()%1 entre y 1701 e 1686, que sempre escolhe 1701.
 const (
 	runeQuestLobbyTileX = 25
 	runeQuestLobbyTileY = 13
@@ -39,26 +39,26 @@ const (
 	runeQuestExitY      = 1701
 )
 
-// runeQuestRound is the event period; entry is at its start, exit 15 minutes in,
-// and Uxmal accepts registrations only in the last 4 minutes.
+// runeQuestRound é o período do evento; a entrada é no começo, a saída 15 minutos depois,
+// e o Uxmal só aceita registros nos últimos 4 minutos.
 const (
 	runeQuestRound     = 20 * time.Minute
 	runeQuestExitAfter = 15 * time.Minute
-	runeQuestOpenFrom  = 16 // minute within the round
+	runeQuestOpenFrom  = 16 // minuto dentro da rodada
 )
 
 func isUxmalNPC(npc *world.Entity) bool {
 	return npc != nil && len(npc.Template) > 17 && npc.Template[17] == uxmalMerchant
 }
 
-// runeQuestPeriod returns the start of the local 20-minute round containing now.
+// runeQuestPeriod devolve o início da rodada local de 20 minutos que contém now.
 func runeQuestPeriod(now time.Time) time.Time {
 	now = now.In(time.Local)
 	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute()/20*20, 0, 0, time.Local)
 }
 
-// uxmal registers the clicking leader into the room picked by the ticket's sanc
-// (_MSG_Quest.cpp:1313-1395). Checks run in the original order.
+// uxmal registra o líder que clicou na sala escolhida pelo sanc do ticket
+// (_MSG_Quest.cpp:1313-1395). As checagens rodam na ordem original.
 func (d *Dispatcher) uxmal(w *world.World, s *world.Session, e *world.Entity) {
 	d.tickRuneQuest(w)
 	if d.now().In(time.Local).Minute()%20 < runeQuestOpenFrom {
@@ -115,9 +115,9 @@ func (d *Dispatcher) uxmal(w *world.World, s *world.Session, e *world.Entity) {
 	d.sendClientMessage(w, s, msgRuneQuestRegister)
 }
 
-// tickRuneQuest fires the entry at the start of each 20-minute round and the
-// exit 15 minutes in, once per round. The original fires on the exact second;
-// the per-round flags keep a late tick from missing or repeating either step.
+// tickRuneQuest dispara a entrada no início de cada rodada de 20 minutos e a
+// saída 15 minutos depois, uma vez por rodada. O original dispara no segundo exato;
+// as flags por rodada impedem um tick atrasado de perder ou repetir qualquer passo.
 func (d *Dispatcher) tickRuneQuest(w *world.World) {
 	now := d.now()
 	period := runeQuestPeriod(now)
@@ -125,19 +125,19 @@ func (d *Dispatcher) tickRuneQuest(w *world.World) {
 	st := w.RuneQuestState()
 	switch {
 	case !st.Initialized:
-		// A restart cannot know who was admitted to a running round, so it
-		// only joins the timeline; the exit still runs if it is still ahead.
+		// Um restart não pode saber quem foi admitido numa rodada em andamento, então ele
+		// só entra na linha do tempo; a saída ainda roda se ela ainda estiver à frente.
 		st = world.RuneQuestState{Initialized: true, PeriodUnix: period.Unix(), Entered: true, Exited: elapsed >= runeQuestExitAfter}
 	case period.Unix() < st.PeriodUnix:
-		// A backward wall-clock correction must not replay a finished round.
+		// Uma correção de relógio para trás não pode reexecutar uma rodada concluída.
 		return
 	case period.Unix() != st.PeriodUnix:
 		st.PeriodUnix, st.Entered, st.Exited = period.Unix(), false, false
 	}
 	if !st.Entered {
 		st.Entered = true
-		// A stall past the exit time skips the entry instead of sending
-		// players in only to pull them straight back out.
+		// Uma parada além do horário de saída pula a entrada em vez de mandar
+		// jogadores para dentro só para puxá-los de volta na hora.
 		if elapsed < runeQuestExitAfter {
 			d.runeQuestEnter(w, &st)
 		}
@@ -149,8 +149,8 @@ func (d *Dispatcher) tickRuneQuest(w *world.World) {
 	w.SetRuneQuestState(st)
 }
 
-// runeQuestEnter teleports every still-valid registered group into its room
-// and spawns the room's event mobs (ProcessSecMinTimer.cpp:1082-1148).
+// runeQuestEnter teletransporta todo grupo registrado ainda válido para sua sala
+// e gera os mobs de evento da sala (ProcessSecMinTimer.cpp:1082-1148).
 func (d *Dispatcher) runeQuestEnter(w *world.World, st *world.RuneQuestState) {
 	for t := range st.Rooms[4].Party {
 		st.Rooms[4].Party[t].MobCount = 1
@@ -188,7 +188,7 @@ func (d *Dispatcher) runeQuestEnter(w *world.World, st *world.RuneQuestState) {
 	d.log.Info("rune quest entry")
 }
 
-// runeQuestSpawn spawns one admitted group's mobs, in the original's order.
+// runeQuestSpawn gera os mobs de um grupo admitido, na ordem do original.
 func (d *Dispatcher) runeQuestSpawn(w *world.World, p *world.RuneQuestParty, sala, t int) {
 	spawn := func(first, last int) {
 		for idx := first; idx <= last; idx++ {
@@ -203,10 +203,10 @@ func (d *Dispatcher) runeQuestSpawn(w *world.World, p *world.RuneQuestParty, sal
 		case 1:
 			spawn(runeQuestLich1, runeQuestLich1)
 		}
-	case 1: // Torre: the three towers, then the room mobs
+	case 1: // Torre: as três torres, depois os mobs da sala
 		spawn(runeQuestTower1, runeQuestTower1+2)
 		spawn(runeQuestTowerMobFirst, runeQuestTowerMobLast)
-	case 2: // Amon boss
+	case 2: // boss Amon
 		spawn(runeQuestAmonBoss, runeQuestAmonBoss)
 	case 4: // Labirinto
 		p.MobCount = 8 + w.Rand().Intn(8)
@@ -216,13 +216,13 @@ func (d *Dispatcher) runeQuestSpawn(w *world.World, p *world.RuneQuestParty, sal
 	}
 }
 
-// runeQuestExit empties the rooms, revives and returns every player inside,
-// pays the Torre/Sulrang winners and frees all registrations
+// runeQuestExit esvazia as salas, revive e devolve todo jogador que está dentro,
+// paga os vencedores de Torre/Sulrang e libera todos os registros
 // (ProcessSecMinTimer.cpp:1150-1429).
 func (d *Dispatcher) runeQuestExit(w *world.World, st *world.RuneQuestState) {
 	world.ForEachRuneQuestGenerator(w.ClearGenerator)
-	// The original deletes every mob in the box, including the permanent
-	// MinuteGenerate population, which the minute timer then refills.
+	// O original apaga todo mob da caixa, incluindo a população permanente
+	// de MinuteGenerate, que o timer de minuto então repõe.
 	w.ForEachMob(func(id int, e *world.Entity) {
 		if world.RuneQuestArea(e.X, e.Y) {
 			w.DespawnMob(id, 0)

@@ -14,8 +14,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// startServerView is startServerClock with a caller-sized grid, for view-window
-// tests that need players farther apart than the default 16-cell world.
+// startServerView é startServerClock com uma grade do tamanho do chamador, para testes de
+// janela de view que precisam de jogadores mais distantes que o mundo padrão de 16 células.
 func startServerView(t *testing.T, persist world.Persistence, gridDim int) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -40,7 +40,7 @@ func startServerView(t *testing.T, persist world.Persistence, gridDim int) (stri
 	}
 }
 
-// actionFrameXY sends a movement frame with explicit start and destination.
+// actionFrameXY envia um frame de movimento com origem e destino explícitos.
 func actionFrameXY(t *testing.T, c net.Conn, ty protocol.Type, tick uint32, fromX, fromY, toX, toY int16) {
 	t.Helper()
 	body := protocol.MsgActionBody{PosX: fromX, PosY: fromY, Speed: 30, TargetX: toX, TargetY: toY}
@@ -54,7 +54,7 @@ func actionFrameXY(t *testing.T, c net.Conn, ty protocol.Type, tick uint32, from
 	}
 }
 
-// drainRaw empties a connection's pending frames (login visibility noise).
+// drainRaw esvazia os frames pendentes de uma conexão (ruído de visibilidade do login).
 func drainRaw(t *testing.T, c net.Conn) {
 	t.Helper()
 	for {
@@ -64,7 +64,7 @@ func drainRaw(t *testing.T, c net.Conn) {
 	}
 }
 
-// createMobFields pulls (PosX, PosY, MobID) from a MSG_CreateMob body.
+// createMobFields extrai (PosX, PosY, MobID) de um corpo MSG_CreateMob.
 func createMobFields(t *testing.T, payload []byte) (x, y int16, mobID int) {
 	t.Helper()
 	if len(payload) != 220 {
@@ -76,23 +76,23 @@ func createMobFields(t *testing.T, payload []byte) (x, y int16, mobID int) {
 	return x, y, mobID
 }
 
-// TestActionDestinationAndType: the mover's entity must land on the DESTINATION
-// (legacy pMob.TargetX/Y semantics) and the forwarded frame must keep its
-// original Type (Action2 stays 0x0366 on the wire).
+// TestActionDestinationAndType: a entidade de quem se move precisa cair no DESTINO
+// (semântica pMob.TargetX/Y legada) e o frame repassado precisa manter seu
+// Type original (Action2 continua 0x0366 no wire).
 func TestActionDestinationAndType(t *testing.T) {
 	addr, stop, _ := startServerClock(t, movementDB())
 	defer stop()
 
-	mover := enterWorld(t, addr) // conn 1, at (5,5)
+	mover := enterWorld(t, addr) // conn 1, em (5,5)
 	defer mover.Close()
-	watcher := enterWorldAs(t, addr, "tradeb") // conn 2, at (5,5)
+	watcher := enterWorldAs(t, addr, "tradeb") // conn 2, em (5,5)
 	defer watcher.Close()
 	drainRaw(t, mover)
 	drainRaw(t, watcher)
 
 	actionFrameXY(t, mover, protocol.MsgAction2, serverTime, 5, 5, 8, 8)
 
-	// The watcher sees the stop frame with its original type.
+	// O observador vê o frame de parada com seu type original.
 	ty, payload, ok := readMaybeRaw(t, watcher)
 	if !ok || ty != protocol.MsgAction2 {
 		t.Fatalf("watcher got %#x ok=%v, want forwarded MsgAction2", ty, ok)
@@ -105,8 +105,8 @@ func TestActionDestinationAndType(t *testing.T) {
 		t.Errorf("forwarded body target = (%d,%d), want (8,8)", got.TargetX, got.TargetY)
 	}
 
-	// The server-side position is the destination: a NoViewMob re-sync for the
-	// mover must come back as a full CreateMob at (8,8).
+	// A posição no servidor é o destino: um re-sync NoViewMob para quem
+	// se move precisa voltar como CreateMob completo em (8,8).
 	send(t, watcher, protocol.MsgNoViewMob, protocol.EncodeStandardParm(1))
 	ty, payload, ok = readMaybeRaw(t, watcher)
 	if !ok || ty != protocol.MsgCreateMob {
@@ -116,7 +116,7 @@ func TestActionDestinationAndType(t *testing.T) {
 	if x != 8 || y != 8 || mobID != 1 {
 		t.Errorf("re-synced mover = id %d at (%d,%d), want id 1 at (8,8)", mobID, x, y)
 	}
-	// Players also get their PK state after the snapshot.
+	// Jogadores também recebem seu estado de PK depois do snapshot.
 	ty, payload, ok = readMaybeRaw(t, watcher)
 	if !ok || ty != protocol.MsgPKInfo {
 		t.Fatalf("frame after CreateMob = %#x ok=%v, want PKInfo", ty, ok)
@@ -126,8 +126,8 @@ func TestActionDestinationAndType(t *testing.T) {
 	}
 }
 
-// viewDeltaDB places tester (conn 1) at (5,5) and tradeb (conn 2) at (5,45) —
-// out of each other's 16-cell view window at login.
+// viewDeltaDB põe tester (conn 1) em (5,5) e tradeb (conn 2) em (5,45) —
+// fora da janela de view de 16 células um do outro no login.
 func viewDeltaDB() *fakeDB {
 	db := newDB()
 	mk := func(name string, x, y int16) world.CharacterState {
@@ -137,25 +137,25 @@ func viewDeltaDB() *fakeDB {
 	return db
 }
 
-// TestMoveViewDelta is the GridMulticast reconciliation end-to-end: walking into
-// view sends CreateMob+PKInfo (both directions) before the movement frame;
-// walking out sends RemoveMob (both directions); walking back in re-creates —
-// which proves the seen-set is cleared on removal.
+// TestMoveViewDelta é a reconciliação do GridMulticast ponta a ponta: andar para
+// dentro da view envia CreateMob+PKInfo (nos dois sentidos) antes do frame de movimento;
+// andar para fora envia RemoveMob (nos dois sentidos); voltar para dentro recria —
+// o que prova que o conjunto de vistos é limpo na remoção.
 func TestMoveViewDelta(t *testing.T) {
 	addr, stop := startServerView(t, viewDeltaDB(), 64)
 	defer stop()
 
-	a := enterWorld(t, addr) // conn 1 at (5,5)
+	a := enterWorld(t, addr) // conn 1 em (5,5)
 	defer a.Close()
-	b := enterWorldAs(t, addr, "tradeb") // conn 2 at (5,45)
+	b := enterWorldAs(t, addr, "tradeb") // conn 2 em (5,45)
 	defer b.Close()
 	drainRaw(t, a)
 	drainRaw(t, b)
 
-	// B walks to (5,21): Chebyshev distance to A becomes 16 — enters view.
+	// B anda até (5,21): a distância de Chebyshev até A vira 16 — entra em view.
 	actionFrameXY(t, b, protocol.MsgAction, serverTime, 5, 45, 5, 21)
 
-	// A: CreateMob(B) first, then PKInfo, then the movement frame.
+	// A: CreateMob(B) primeiro, depois PKInfo, depois o frame de movimento.
 	ty, payload, ok := readMaybeRaw(t, a)
 	if !ok || ty != protocol.MsgCreateMob {
 		t.Fatalf("A frame 1 = %#x ok=%v, want CreateMob", ty, ok)
@@ -163,10 +163,10 @@ func TestMoveViewDelta(t *testing.T) {
 	if x, y, id := createMobFields(t, payload); id != 2 || x != 5 || y != 21 {
 		t.Errorf("A sees B = id %d at (%d,%d), want id 2 at (5,21)", id, x, y)
 	}
-	// The snapshot must carry the player's speed byte (Score.AttackRun @body137):
-	// a 0 here makes the remote client animate the avatar at crawl speed and
-	// rubber-band to catch up (the "anda devagar + teleporta" bug). Test chars
-	// from viewDeltaDB have no mount (starterEquip never grants slot 14).
+	// O snapshot precisa carregar o byte de velocidade do jogador (Score.AttackRun @body137):
+	// um 0 aqui faz o cliente remoto animar o avatar em velocidade de rastejo e
+	// dar borrachada para alcançar (o bug do "anda devagar + teleporta"). Os personagens
+	// de teste do viewDeltaDB não têm montaria (starterEquip nunca concede o slot 14).
 	if payload[124+13] != baseAttackRun {
 		t.Errorf("A sees B with AttackRun %d, want %d (base player speed)", payload[124+13], baseAttackRun)
 	}
@@ -177,7 +177,7 @@ func TestMoveViewDelta(t *testing.T) {
 		t.Fatalf("A frame 3 = %#x ok=%v, want the forwarded Action", ty, ok)
 	}
 
-	// B (the mover) symmetrically learns about A.
+	// B (quem se move) fica sabendo de A simetricamente.
 	ty, payload, ok = readMaybeRaw(t, b)
 	if !ok || ty != protocol.MsgCreateMob {
 		t.Fatalf("B frame 1 = %#x ok=%v, want CreateMob", ty, ok)
@@ -189,8 +189,8 @@ func TestMoveViewDelta(t *testing.T) {
 		t.Fatalf("B frame 2 = %#x ok=%v, want PKInfo", ty, ok)
 	}
 
-	// B walks back out to (5,40): A gets the frame (old window) then RemoveMob;
-	// B gets RemoveMob(A).
+	// B anda de volta para fora, até (5,40): A recebe o frame (janela antiga) e depois RemoveMob;
+	// B recebe RemoveMob(A).
 	actionFrameXY(t, b, protocol.MsgAction, serverTime, 5, 21, 5, 40)
 	if ty, _, ok = readMaybeRaw(t, a); !ok || ty != protocol.MsgAction {
 		t.Fatalf("A frame = %#x ok=%v, want Action before RemoveMob", ty, ok)
@@ -206,7 +206,7 @@ func TestMoveViewDelta(t *testing.T) {
 		t.Fatalf("B frame = %#x id=%d ok=%v, want RemoveMob for conn 1", h.Type, h.ID, ok)
 	}
 
-	// B returns to (5,21): a fresh CreateMob must arrive (seen-set was cleared).
+	// B volta a (5,21): um CreateMob novo precisa chegar (o conjunto de vistos foi limpo).
 	actionFrameXY(t, b, protocol.MsgAction, serverTime, 5, 40, 5, 21)
 	if ty, _, ok = readMaybeRaw(t, a); !ok || ty != protocol.MsgCreateMob {
 		t.Fatalf("A frame = %#x ok=%v, want a fresh CreateMob after re-entry", ty, ok)
@@ -221,9 +221,9 @@ func TestCreateMobCarriesAffectIconsOnReveal(t *testing.T) {
 	addr, stop := startServerView(t, db, 64)
 	defer stop()
 
-	a := enterWorld(t, addr) // conn 1 at (5,5)
+	a := enterWorld(t, addr) // conn 1 em (5,5)
 	defer a.Close()
-	b := enterWorldAs(t, addr, "tradeb") // conn 2 at (5,45), already carrying affect 31
+	b := enterWorldAs(t, addr, "tradeb") // conn 2 em (5,45), já carregando affect 31
 	defer b.Close()
 	drainRaw(t, a)
 	drainRaw(t, b)
@@ -246,15 +246,15 @@ func TestPlayersCrossingViewOnMovement(t *testing.T) {
 	addr, stop := startServerView(t, viewDeltaDB(), 64)
 	defer stop()
 
-	a := enterWorld(t, addr) // conn 1 at (5,5)
+	a := enterWorld(t, addr) // conn 1 em (5,5)
 	defer a.Close()
-	b := enterWorldAs(t, addr, "tradeb") // conn 2 at (5,45)
+	b := enterWorldAs(t, addr, "tradeb") // conn 2 em (5,45)
 	defer b.Close()
 	drainRaw(t, a)
 	drainRaw(t, b)
 
-	// A walks to the edge of B's view. Both clients must learn the other player
-	// before any movement frame is animated.
+	// A anda até a borda da view de B. Os dois clientes precisam conhecer o outro jogador
+	// antes de qualquer frame de movimento ser animado.
 	actionFrameXY(t, a, protocol.MsgAction, serverTime, 5, 5, 5, 29)
 
 	ty, payload, ok := readMaybeRaw(t, b)
@@ -282,8 +282,8 @@ func TestPlayersCrossingViewOnMovement(t *testing.T) {
 		t.Fatalf("A frame 2 = %#x ok=%v, want PKInfo(B)", ty, ok)
 	}
 
-	// B then moves through the already-established view. A should get only the
-	// movement frame, not a duplicate CreateMob.
+	// B então se move pela view já estabelecida. A deve receber só o
+	// frame de movimento, não um CreateMob duplicado.
 	actionFrameXY(t, b, protocol.MsgAction, serverTime+1000, 5, 45, 5, 21)
 	if ty, _, ok = readMaybeRaw(t, a); !ok || ty != protocol.MsgAction {
 		t.Fatalf("A crossing frame = %#x ok=%v, want B movement only", ty, ok)
@@ -293,8 +293,8 @@ func TestPlayersCrossingViewOnMovement(t *testing.T) {
 	}
 }
 
-// readMaybeHeaderRaw is readMaybeRaw with the full header, for RemoveMob asserts
-// (HEADER.ID is the removed entity).
+// readMaybeHeaderRaw é readMaybeRaw com o header completo, para asserções de RemoveMob
+// (HEADER.ID é a entidade removida).
 func readMaybeHeaderRaw(t *testing.T, c net.Conn) (protocol.Header, []byte, bool) {
 	t.Helper()
 	_ = c.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
@@ -314,11 +314,11 @@ func readMaybeHeaderRaw(t *testing.T, c net.Conn) (protocol.Header, []byte, bool
 	return h, payload, true
 }
 
-// passiveMob is the AI-test template with a clan friendly to players, so it
-// never engages and sits still — a pure visibility target.
+// passiveMob é o template de teste de IA com um clã amigável aos jogadores, então ele
+// nunca engaja e fica parado — um alvo puro de visibilidade.
 func passiveMob() []byte {
 	b := aggressiveMob()
-	b[16] = 2 // clan 2: friendly to player clan 0 in g_pClanTable
+	b[16] = 2 // clã 2: amigável ao clã de jogador 0 em g_pClanTable
 	return b
 }
 
@@ -389,13 +389,13 @@ func TestTeleportReconcilesMobViewLikeGridMulticast(t *testing.T) {
 	}
 }
 
-// TestNoViewMobRanges: a mob beyond the 16-cell multicast window but inside the
-// 33-cell GetInView range must come back as a full CreateMob; beyond 33 the
-// reply is RemoveMob.
+// TestNoViewMobRanges: um mob fora da janela de multicast de 16 células mas dentro do
+// alcance GetInView de 33 células precisa voltar como CreateMob completo; além de 33 a
+// resposta é RemoveMob.
 func TestNoViewMobRanges(t *testing.T) {
-	// In NoViewRange (distance 25).
+	// Dentro do NoViewRange (distância 25).
 	addr, stop := startServerMobAIWith(t, movementDB(), 64, passiveMob(), 5, 30)
-	c := enterWorld(t, addr) // conn 1 at (5,5)
+	c := enterWorld(t, addr) // conn 1 em (5,5)
 	drainRaw(t, c)
 	send(t, c, protocol.MsgNoViewMob, protocol.EncodeStandardParm(int32(world.MaxUser)))
 	ty, payload, ok := readMaybeRaw(t, c)
@@ -405,14 +405,14 @@ func TestNoViewMobRanges(t *testing.T) {
 	if x, y, id := createMobFields(t, payload); id != world.MaxUser || x != 5 || y != 30 {
 		t.Errorf("re-synced mob = id %d at (%d,%d), want id %d at (5,30)", id, x, y, world.MaxUser)
 	}
-	// No PKInfo for mobs.
+	// Nenhum PKInfo para mobs.
 	if ty, _, ok := readMaybeRaw(t, c); ok && ty == protocol.MsgPKInfo {
 		t.Error("mob re-sync must not send PKInfo")
 	}
 	c.Close()
 	stop()
 
-	// Beyond NoViewRange (distance 40).
+	// Além do NoViewRange (distância 40).
 	addr, stop = startServerMobAIWith(t, movementDB(), 64, passiveMob(), 5, 45)
 	defer stop()
 	c = enterWorld(t, addr)
@@ -428,8 +428,8 @@ func TestNoViewMobRanges(t *testing.T) {
 	}
 }
 
-// TestMoveCancelsTrade: an in-progress trade is dropped for both parties when
-// either one moves (_MSG_Action.cpp:41-50), and the move itself is discarded.
+// TestMoveCancelsTrade: uma troca em andamento é derrubada para as duas partes quando
+// qualquer uma delas se move (_MSG_Action.cpp:41-50), e o próprio movimento é descartado.
 func TestMoveCancelsTrade(t *testing.T) {
 	addr, stop, _ := startServerClock(t, tradeDB())
 	defer stop()
@@ -447,7 +447,7 @@ func TestMoveCancelsTrade(t *testing.T) {
 	if ty, _, ok := readMaybe(t, b); !ok || ty != protocol.MsgQuitTrade {
 		t.Errorf("B got %#x ok=%v, want QuitTrade", ty, ok)
 	}
-	// The movement was swallowed — no Action reaches B.
+	// O movimento foi engolido — nenhum Action alcança B.
 	if ty, _, ok := readMaybe(t, b); ok {
 		t.Errorf("B got %#x, want no forwarded Action after trade cancel", ty)
 	}

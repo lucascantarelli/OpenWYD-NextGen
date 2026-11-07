@@ -12,10 +12,10 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// accountLogin handles _MSG_AccountLogin (0x020D), handlers/_MSG_AccountLogin.md.
-// It validates the client version, session mode and brute-force gate, then
-// relays the credentials to the dbServer asynchronously (the original forwards
-// _MSG_DBAccountLogin and waits in USER_LOGIN).
+// accountLogin trata _MSG_AccountLogin (0x020D), handlers/_MSG_AccountLogin.md.
+// Ele valida a versão do cliente, o modo de sessão e o gate de força bruta, então
+// repassa as credenciais ao dbServer de forma assíncrona (o original encaminha
+// _MSG_DBAccountLogin e espera em USER_LOGIN).
 func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	if len(payload) < protocol.MsgAccountLoginBodySize {
 		d.log.Warn("account login: short packet", "conn", s.Conn)
@@ -28,9 +28,9 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 		return
 	}
 
-	// Server-authoritative version check (anti-cheat: blocks forged/old clients).
-	// This 7662 "Cavaleiros de Kersef" build sends ClientVersion=12000 (set via
-	// -client-version); mismatches get the rerun notice and are dropped.
+	// Checagem de versão server-authoritative (anti-cheat: bloqueia clientes forjados/antigos).
+	// Este build 7662 "Cavaleiros de Kersef" envia ClientVersion=12000 (definido via
+	// -client-version); divergências recebem o aviso de reexecutar e são descartadas.
 	if body.ClientVersion != d.cfg.ClientVersion {
 		d.log.Warn("account login: version mismatch",
 			"conn", s.Conn, "got", body.ClientVersion, "want", d.cfg.ClientVersion)
@@ -39,9 +39,9 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 		return
 	}
 	if s.Mode != world.UserAccept {
-		// No Language.txt text confirmed for this one (legacy
-		// _MSG_AccountLogin.cpp:56-63 logs CrackLog and answers the client); keep
-		// the placeholder until a capture pins it.
+		// Nenhum texto do Language.txt confirmado para este (o
+		// _MSG_AccountLogin.cpp:56-63 legado registra CrackLog e responde ao cliente); mantenha
+		// o placeholder até uma captura fixá-lo.
 		d.notify(w, s, NoticeLoginNow)
 		return
 	}
@@ -59,10 +59,10 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 
 	pass := cstr(body.AccountPassword[:])
 	if tok := cstr(body.Zero[:]); crossover.IsToken(tok) {
-		// Channel change (canais.md §8.1.2): a client that came from another
-		// channel sends the /srv token in Zero[52] instead of the password — the
-		// same field the legacy compares against TempKey. It travels as the
-		// password so the dbServer validates it; no proto field is added.
+		// Troca de canal (canais.md §8.1.2): um cliente que veio de outro
+		// canal envia o token /srv em Zero[52] em vez da senha — o
+		// mesmo campo que o legado compara contra TempKey. Ele viaja como a
+		// senha para o dbServer validá-lo; nenhum campo do proto é adicionado.
 		pass = tok
 		d.log.Info("account login: server-change token", "conn", s.Conn, "account", name)
 	}
@@ -81,7 +81,7 @@ func (d *Dispatcher) accountLogin(w *world.World, s *world.Session, _ protocol.H
 	})
 }
 
-// completeAccountLogin applies the dbServer login result back in the loop.
+// completeAccountLogin aplica o resultado de login do dbServer de volta no loop.
 func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out world.LoginOutcome, err error) {
 	if err != nil {
 		d.log.Error("account login backend error", "conn", s.Conn, "trace_id", s.TraceID, "account", s.AccountName, "err", err)
@@ -97,16 +97,16 @@ func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out 
 			return
 		}
 		s.AccountID = out.AccountID
-		s.AccessLevel = world.ParseAccess(out.Role) // GM/moderation privilege (issue #122)
+		s.AccessLevel = world.ParseAccess(out.Role) // privilégio de GM/moderação (issue #122)
 		d.log.Info("account login: OK", "conn", s.Conn, "trace_id", s.TraceID, "account", s.AccountName, "id", out.AccountID, "role", s.AccessLevel, "chars", len(out.Characters))
-		// Install the account-shared cargo, loaded in the same backend round-trip.
-		// It lives for the whole account session and is released on disconnect.
+		// Instala o cargo compartilhado da conta, carregado na mesma ida e volta ao backend.
+		// Ele vive por toda a sessão da conta e é liberado na desconexão.
 		cargo := out.Cargo
 		w.SetCargo(out.AccountID, &cargo)
-		// Drain any pending donate web-shop grants (fetched in the same login
-		// round-trip) into the freshly-loaded cargo (issue #34); items land in the
-		// next free slot, or are lost when full. Encode AFTER the drain so the
-		// client vault cache includes freshly delivered items.
+		// Drena quaisquer grants pendentes da loja web de doações (buscados na mesma
+		// ida e volta do login) para o cargo recém-carregado (issue #34); os itens caem no
+		// próximo slot livre, ou se perdem quando cheio. Codifique DEPOIS da drenagem para o
+		// cache do vault do cliente incluir itens recém-entregues.
 		w.ApplyDeliveries(s, out.PendingDeliveries)
 		s.Mode = world.UserSelChar
 		coin, cargoItems := d.cargoWire(w.Cargo(out.AccountID))
@@ -115,7 +115,7 @@ func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out 
 	case world.LoginBadPassword:
 		d.fails[s.AccountName]++
 		d.log.Warn("account login: bad password", "conn", s.Conn, "account", s.AccountName, "fails", d.fails[s.AccountName])
-		s.Mode = world.UserAccept // allow retry
+		s.Mode = world.UserAccept // permite tentar de novo
 		d.sendClientMessage(w, s, wrongPasswordText)
 	case world.LoginNoAccount:
 		s.Mode = world.UserAccept
@@ -124,30 +124,30 @@ func (d *Dispatcher) completeAccountLogin(w *world.World, s *world.Session, out 
 		d.sendClientMessage(w, s, blockedAccountText)
 		w.Close(s)
 	case world.LoginAlreadyPlaying:
-		s.Mode = world.UserAccept // allow retry, as the duplicate-login refusal below
+		s.Mode = world.UserAccept // permite tentar de novo, como a recusa de login duplicado abaixo
 		w.Send(s, protocol.MsgAlreadyPlaying, nil)
 	}
 }
 
-// accountFromOthers is Language.txt _NN_Your_Account_From_Others (134), in the
-// table's Windows-1252 bytes like the rest of the legacy string table.
+// accountFromOthers é o Language.txt _NN_Your_Account_From_Others (134), nos
+// bytes Windows-1252 da tabela, como o resto da tabela de strings legada.
 const accountFromOthers = "Conta desconectada por conex\xe3o simult\xe2nea."
 
-// refuseDuplicateLogin applies the legacy rule for a second login of an
-// account that is already in the game (DBSrv CFileDB.cpp:1001-1017,
+// refuseDuplicateLogin aplica a regra legada para um segundo login de uma
+// conta que já está no jogo (DBSrv CFileDB.cpp:1001-1017,
 // TMSrv ProcessDBMessage.cpp _MSG_DBSavingQuit):
-//   - the session already in character selection or play is told
-//     _NN_Your_Account_From_Others and closed, which saves it;
-//   - the new login is refused with _MSG_StillPlaying (0x011D) and may try
-//     again; the 7662 client shows "Conexão anterior finalizada. Tente
+//   - a sessão que já está na seleção de personagem ou em jogo recebe
+//     _NN_Your_Account_From_Others e é fechada, o que a salva;
+//   - o login novo é recusado com _MSG_StillPlaying (0x011D) e pode tentar
+//     de novo; o cliente 7662 mostra "Conexão anterior finalizada. Tente
 //     novamente." (TMSelectServerScene.cpp:1571);
-//   - while that save is in flight a new try gets _MSG_AlreadyPlaying (0x011C),
-//     so it never loads the character/cargo rows before they are written.
+//   - enquanto esse save está em voo uma nova tentativa recebe _MSG_AlreadyPlaying (0x011C),
+//     então ele nunca carrega as linhas de personagem/cargo antes de serem escritas.
 //
-// The legacy closes the refused socket; here it returns to UserAccept so the
-// client can retry on the same connection. The check is per tmServer: the
-// dbServer does not track online accounts, so a second tmServer instance would
-// not see this session. Loop-only.
+// O legado fecha o socket recusado; aqui ele volta para UserAccept para o
+// cliente poder tentar de novo na mesma conexão. A checagem é por tmServer: o
+// dbServer não rastreia contas online, então uma segunda instância de tmServer não
+// veria esta sessão. Só no loop.
 func (d *Dispatcher) refuseDuplicateLogin(w *world.World, s *world.Session, accountID int64) bool {
 	refusal := protocol.Type(0)
 	switch old := w.SessionByAccount(accountID, s); {
@@ -181,13 +181,13 @@ func (d *Dispatcher) cargoWire(st *world.CargoState) (int32, [128]protocol.SelIt
 	return st.Coin, items
 }
 
-// selCharsFrom maps the dbServer character summaries to protocol.SelChar rows for
-// the byte-exact STRUCT_SELCHAR (MSG_CNFAccountLogin / MSG_CNFNewCharacter). The
-// summary carries the real score (gold, HP/MP, attributes) so the selection
-// screen previews each slot's actual character, not placeholders. Level goes as
-// stored, like the in-world snapshot: both screens show Level+1
-// (TMSelectCharScene.cpp:1018, TMFieldScene.cpp:4230), so a new character —
-// level 0, as the legacy BaseMob templates — reads "Nv 1" in both.
+// selCharsFrom mapeia os resumos de personagem do dbServer para linhas protocol.SelChar da
+// STRUCT_SELCHAR exata em bytes (MSG_CNFAccountLogin / MSG_CNFNewCharacter). O
+// resumo carrega o score real (ouro, HP/MP, atributos) para a tela de
+// seleção pré-visualizar o personagem real de cada slot, não placeholders. O nível vai como
+// armazenado, como o snapshot no mundo: as duas telas mostram Nível+1
+// (TMSelectCharScene.cpp:1018, TMFieldScene.cpp:4230), então um personagem novo —
+// nível 0, como os templates BaseMob legados — lê "Nv 1" nas duas.
 func (d *Dispatcher) selCharsFrom(chars []world.CharSummary) []protocol.SelChar {
 	out := make([]protocol.SelChar, 0, len(chars))
 	for _, c := range chars {
@@ -201,8 +201,8 @@ func (d *Dispatcher) selCharsFrom(chars []world.CharSummary) []protocol.SelChar 
 			MaxHp: c.MaxHp, Hp: c.Hp, MaxMp: c.MaxMp, Mp: c.Mp,
 			Str: c.Str, Int: c.Int, Dex: c.Dex, Con: c.Con,
 		}
-		// Preview the saved gear. Empty equipment falls back to the class BaseMob so
-		// fresh characters still render with the right class model on the select screen.
+		// Pré-visualiza o equipamento salvo. Equipamento vazio cai para o BaseMob da classe para
+		// personagens novos ainda renderizarem com o modelo de classe certo na tela de seleção.
 		if !equipEmpty(c.Equip) {
 			for i := range c.Equip {
 				sc.Equip[i] = itemToSel(c.Equip[i])

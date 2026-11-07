@@ -18,16 +18,16 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// --- in-memory fake dbServer ---
+// --- dbServer falso em memória ---
 
 type fakeAccount struct {
 	id             int64
 	pass           string
-	role           string // account.role ('player'/'moderator'/'admin'); GM authz
+	role           string // account.role ('player'/'moderator'/'admin'); autorização de GM
 	blocked        bool
 	alreadyPlaying bool
 	chars          []world.CharSummary
-	cargo          world.CargoState // account-shared warehouse loaded on login
+	cargo          world.CargoState // armazém compartilhado da conta carregado no login
 }
 
 type fakeDB struct {
@@ -44,26 +44,26 @@ type fakeDB struct {
 		class, face, mortalSlot, mortalLevel int
 	}
 	deleted    int
-	denyDelete bool // DeleteCharacter answers ok=false (wrong password)
+	denyDelete bool // DeleteCharacter responde ok=false (senha errada)
 	loadResult world.CharacterState
-	loads      map[int64]world.CharacterState // per-account override (accountID → state)
+	loads      map[int64]world.CharacterState // override por conta (accountID → estado)
 	loadErr    error
 
-	pending map[int64][]world.Delivery // accountID -> mailbox rows (donate drain)
+	pending map[int64][]world.Delivery // accountID -> linhas de mailbox (dreno de doação)
 
-	pinVerify    world.PinResult // VerifyPin result (default PinOK)
-	pinVerifyErr error           // forces VerifyPin to error
-	pinSetOK     bool            // SetPin ok flag
-	pinSets      []string        // captured SetPin plaintext (test-only; prod never stores plaintext)
+	pinVerify    world.PinResult // resultado de VerifyPin (padrão PinOK)
+	pinVerifyErr error           // força VerifyPin a dar erro
+	pinSetOK     bool            // flag ok de SetPin
+	pinSets      []string        // texto plano capturado de SetPin (só teste; produção nunca guarda texto plano)
 
 	mu           sync.Mutex
-	savedChars   []world.CharacterSave // captured SaveOnShutdown calls
-	saveErr      error                 // one-shot injected character-save failure
-	savedCargos  []world.CargoSave     // captured SaveCargo calls
-	cargoGate    chan struct{}         // when set, SaveCargo waits for it to close
-	drainSaves   []drainSave           // captured SaveCargoWithDeliveries calls
-	blockedNames map[string]bool       // captured SetAccountBlocked calls (GM ban/unban)
-	duelResults  []duelResult          // captured RecordDuelResult calls (issue #118)
+	savedChars   []world.CharacterSave // chamadas capturadas de SaveOnShutdown
+	saveErr      error                 // falha de save de personagem injetada uma vez
+	savedCargos  []world.CargoSave     // chamadas capturadas de SaveCargo
+	cargoGate    chan struct{}         // quando definido, SaveCargo espera ele fechar
+	drainSaves   []drainSave           // chamadas capturadas de SaveCargoWithDeliveries
+	blockedNames map[string]bool       // chamadas capturadas de SetAccountBlocked (ban/unban de GM)
+	duelResults  []duelResult          // chamadas capturadas de RecordDuelResult (issue #118)
 
 	createdGuilds []world.GuildRecord
 	guildCosts    []int32
@@ -71,10 +71,10 @@ type fakeDB struct {
 	promoteCosts  []int32
 	transfers     int
 
-	guildRelations []world.GuildRelation // ListGuildRelations result
+	guildRelations []world.GuildRelation // resultado de ListGuildRelations
 }
 
-// duelResult captures one RecordDuelResult call for assertions.
+// duelResult captura uma chamada de RecordDuelResult para asserções.
 type duelResult struct{ winner, loser string }
 
 func (f *fakeDB) VerifyPin(_ context.Context, _ int64, _ string) (world.PinResult, error) {
@@ -94,7 +94,7 @@ func (f *fakeDB) setPinCount() int {
 	return len(f.pinSets)
 }
 
-// drainSave captures one SaveCargoWithDeliveries call for assertions.
+// drainSave captura uma chamada de SaveCargoWithDeliveries para asserções.
 type drainSave struct {
 	save      world.CargoSave
 	delivered []int64
@@ -115,7 +115,7 @@ func (f *fakeDB) SaveOnShutdown(_ context.Context, save world.CharacterSave) err
 
 func (f *fakeDB) SaveCargo(_ context.Context, save world.CargoSave) error {
 	if f.cargoGate != nil {
-		<-f.cargoGate // a save still in flight (duplicate-login tests)
+		<-f.cargoGate // um save ainda em andamento (testes de login duplicado)
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -127,8 +127,8 @@ func (f *fakeDB) ListPendingDeliveries(_ context.Context, accountID int64) ([]wo
 	return f.pending[accountID], nil
 }
 
-// SetAccountBlocked records the GM ban/unban write (overrides the NopPersistence
-// error so the ban callback proceeds to the online-kick).
+// SetAccountBlocked registra a escrita de ban/unban de GM (sobrepõe o
+// erro do NopPersistence para o callback de ban seguir para o kick online).
 func (f *fakeDB) SetAccountBlocked(_ context.Context, name string, blocked bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -200,8 +200,8 @@ func (f *fakeDB) SaveCastleQuestState(context.Context, world.CastleQuestState) e
 	return nil
 }
 
-// blockedState reports the last recorded block state for an account name, waiting
-// briefly for the async ban RPC round-trip to land.
+// blockedState informa o último estado de bloqueio registrado para um nome de conta, esperando
+// brevemente a ida e volta assíncrona do RPC de ban chegar.
 func (f *fakeDB) blockedState(t *testing.T, name string) (bool, bool) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
@@ -224,8 +224,8 @@ func (f *fakeDB) SaveCargoWithDeliveries(_ context.Context, save world.CargoSave
 	return nil
 }
 
-// RecordDuelResult records the duel win/loss write (overrides the
-// NopPersistence error so sweepDuelArena's off-loop call proceeds).
+// RecordDuelResult registra a escrita de vitória/derrota do duelo (sobrepõe o
+// erro do NopPersistence para a chamada fora do loop do sweepDuelArena prosseguir).
 func (f *fakeDB) RecordDuelResult(_ context.Context, winnerName, loserName string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -233,8 +233,8 @@ func (f *fakeDB) RecordDuelResult(_ context.Context, winnerName, loserName strin
 	return nil
 }
 
-// lastDuelResult returns the most recent RecordDuelResult capture, waiting
-// briefly for the async result round-trip to land.
+// lastDuelResult devolve a captura mais recente de RecordDuelResult, esperando
+// brevemente a ida e volta assíncrona do resultado chegar.
 func (f *fakeDB) lastDuelResult(t *testing.T) (duelResult, bool) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
@@ -252,8 +252,8 @@ func (f *fakeDB) lastDuelResult(t *testing.T) (duelResult, bool) {
 	return duelResult{}, false
 }
 
-// lastDrainSave returns the most recent SaveCargoWithDeliveries capture, waiting
-// briefly for the async drain's off-loop save round-trip to land.
+// lastDrainSave devolve a captura mais recente de SaveCargoWithDeliveries, esperando
+// brevemente a ida e volta do save fora do loop do dreno chegar.
 func (f *fakeDB) lastDrainSave(t *testing.T) (drainSave, bool) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
@@ -271,7 +271,7 @@ func (f *fakeDB) lastDrainSave(t *testing.T) (drainSave, bool) {
 	return drainSave{}, false
 }
 
-// lastSavedCargo returns the most recent SaveCargo snapshot (and how many landed).
+// lastSavedCargo devolve o snapshot mais recente de SaveCargo (e quantos entraram).
 func (f *fakeDB) lastSavedCargo() (world.CargoSave, int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -281,7 +281,7 @@ func (f *fakeDB) lastSavedCargo() (world.CargoSave, int) {
 	return f.savedCargos[len(f.savedCargos)-1], len(f.savedCargos)
 }
 
-// lastSavedChar returns the most recent SaveOnShutdown snapshot.
+// lastSavedChar devolve o snapshot mais recente de SaveOnShutdown.
 func (f *fakeDB) lastSavedChar() (world.CharacterSave, int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -376,9 +376,9 @@ func (f *fakeDB) DeleteCharacter(_ context.Context, accountID int64, slot int, _
 	return true, nil
 }
 
-// ListCharacters mirrors the account's remaining chars (minus deletions), so
-// tests can assert the post-delete SELCHAR response reflects the real list
-// instead of an empty/stale one.
+// ListCharacters espelha os personagens restantes da conta (menos as deleções), para
+// testes poderem afirmar que a resposta SELCHAR pós-delete reflete a lista real
+// em vez de uma vazia/obsoleta.
 func (f *fakeDB) ListCharacters(_ context.Context, accountID int64) ([]world.CharSummary, error) {
 	for _, a := range f.accounts {
 		if a.id == testBaseAccountID(accountID) {
@@ -395,11 +395,11 @@ func (f *fakeDB) LoadCharacter(_ context.Context, accountID int64, _ int) (world
 	return f.loadResult, f.loadErr
 }
 
-// Test aliases. Many tests put two players in the world with enterWorld, which
-// used the same account twice; a second login of an account in play is now the
-// duplicate-login refusal (refuseDuplicateLogin). enterWorld therefore logs the
-// extra players in as "tester#N": a distinct account id for the server that
-// loads the same character as the base account, as those tests always assumed.
+// Aliases de teste. Muitos testes põem dois jogadores no mundo com enterWorld, o que
+// usava a mesma conta duas vezes; um segundo login de uma conta em jogo agora é a
+// recusa de login duplicado (refuseDuplicateLogin). O enterWorld portanto loga os
+// jogadores extras como "tester#N": um id de conta distinto para o servidor que
+// carrega o mesmo personagem da conta base, como aqueles testes sempre assumiram.
 const testAliasStride = 1_000_000
 
 func splitTestAlias(name string) (string, int64) {
@@ -423,8 +423,8 @@ func testAccountName(n int) string {
 	return fmt.Sprintf("tester#%d", n)
 }
 
-// testAccounts tracks, per test server address, which "tester" aliases have an
-// open connection, so a relogin after Close reuses the base account.
+// testAccounts rastreia, por endereço de servidor de teste, quais aliases "tester" têm
+// uma conexão aberta, para um relogin depois do Close reutilizar a conta base.
 var testAccounts = struct {
 	sync.Mutex
 	used map[string]map[int]bool
@@ -452,7 +452,7 @@ func releaseTestAccount(addr string, n int) {
 	delete(testAccounts.used[addr], n)
 }
 
-// testAccountConn releases its test account when the test closes it.
+// testAccountConn libera sua conta de teste quando o teste a fecha.
 type testAccountConn struct {
 	net.Conn
 	once    sync.Once
@@ -464,9 +464,9 @@ func (c *testAccountConn) Close() error {
 	return c.Conn.Close()
 }
 
-// loginRetry logs in as a client would after a disconnect: while the previous
-// session of the account is being closed or saved the server answers
-// _MSG_StillPlaying/_MSG_AlreadyPlaying, and the player tries again.
+// loginRetry loga como um cliente faria depois de uma desconexão: enquanto a sessão
+// anterior da conta está sendo fechada ou salva o servidor responde
+// _MSG_StillPlaying/_MSG_AlreadyPlaying, e o jogador tenta de novo.
 func loginRetry(t *testing.T, c net.Conn, name string) protocol.Type {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
@@ -486,13 +486,13 @@ func startServer(t *testing.T, persist world.Persistence) (string, func()) {
 	return startServerBilling(t, persist, nil)
 }
 
-// denyBilling refuses every account (binServer "expired/blocked" path).
+// denyBilling recusa toda conta (caminho "expirado/bloqueado" do binServer).
 type denyBilling struct{}
 
 func (denyBilling) Check(context.Context, string) (bool, error) { return false, nil }
 
-// startServerBilling is startServer with an injected billing gate (nil keeps the
-// AllowAllBilling default).
+// startServerBilling é startServer com um gate de billing injetado (nil mantém o
+// padrão AllowAllBilling).
 func startServerBilling(t *testing.T, persist world.Persistence, b world.Billing) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -580,7 +580,7 @@ func read(t *testing.T, c net.Conn) (protocol.Type, []byte) {
 		if err != nil {
 			t.Fatalf("decode: %v", err)
 		}
-		// Entity-visibility packets are background noise for gameplay assertions.
+		// Pacotes de visibilidade de entidade são ruído de fundo para asserções de jogabilidade.
 		if h.Type == protocol.MsgCreateMob || h.Type == protocol.MsgRemoveMob || h.Type == protocol.MsgPKInfo {
 			continue
 		}
@@ -625,7 +625,7 @@ func noticeFromText(text string) (Notice, bool) {
 	return 0, false
 }
 
-// --- tests ---
+// --- testes ---
 
 func newDB() *fakeDB {
 	return &fakeDB{accounts: map[string]*fakeAccount{
@@ -650,23 +650,23 @@ func TestLoginOK(t *testing.T) {
 	if ty != protocol.MsgCNFAccountLogin {
 		t.Fatalf("response = %#x, want CNFAccountLogin", ty)
 	}
-	// Byte-exact STRUCT_SELCHAR: body is 1996 bytes; slot-0 name at body[36:52]
-	// (sel@20 + Name[][]@16), slot-0 Score.Level at body[100:104] (sel@20 + Score@80).
+	// STRUCT_SELCHAR byte a byte: o corpo tem 1996 bytes; nome do slot 0 em body[36:52]
+	// (sel@20 + Name[][]@16), Score.Level do slot 0 em body[100:104] (sel@20 + Score@80).
 	if len(payload) != 1996 {
 		t.Fatalf("CNFAccountLogin body = %d bytes, want 1996", len(payload))
 	}
 	if got := cstr(payload[36:52]); got != "Hero" {
 		t.Errorf("slot-0 name = %q, want Hero", got)
 	}
-	// The stored level, as in the in-world snapshot; the client shows Level+1.
+	// O nível guardado, como no snapshot em jogo; o cliente mostra Level+1.
 	if lvl := binary.LittleEndian.Uint32(payload[100:104]); lvl != 50 {
 		t.Errorf("slot-0 wire level = %d, want the stored 50", lvl)
 	}
-	// slot-0 gold is the real value, not a placeholder: Coin[0] at sel@20 + 792.
+	// o ouro do slot 0 é o valor real, não um placeholder: Coin[0] em sel@20 + 792.
 	if coin := binary.LittleEndian.Uint32(payload[812:816]); coin != 987654 {
 		t.Errorf("slot-0 coin = %d, want 987654", coin)
 	}
-	// slot-0 MaxHp is the real value: Score[0].MaxHp at sel@20 + 80 + 16 = 116.
+	// MaxHp do slot 0 é o valor real: Score[0].MaxHp em sel@20 + 80 + 16 = 116.
 	if hp := binary.LittleEndian.Uint32(payload[116:120]); hp != 1500 {
 		t.Errorf("slot-0 max_hp = %d, want 1500", hp)
 	}
@@ -689,7 +689,7 @@ func TestLoginSelectionUsesPersistedEquip(t *testing.T) {
 	if ty != protocol.MsgCNFAccountLogin {
 		t.Fatalf("response = %#x, want CNFAccountLogin", ty)
 	}
-	const equip1Off = 20 + 272 + 8 // sel@20 + Equip[0][1] @272 + one STRUCT_ITEM
+	const equip1Off = 20 + 272 + 8 // sel@20 + Equip[0][1] @272 + um STRUCT_ITEM
 	if got := binary.LittleEndian.Uint16(payload[equip1Off : equip1Off+2]); got != 4321 {
 		t.Fatalf("slot-0 equip[1] = %d, want persisted item 4321", got)
 	}
@@ -741,8 +741,8 @@ func TestLoginSendsCargo(t *testing.T) {
 	}
 }
 
-// TestSelCharLevelAsStored: the selection preview carries the stored level, the
-// same value the in-world snapshot sends; the client adds 1 on both screens.
+// TestSelCharLevelAsStored: a prévia de seleção carrega o nível guardado, o
+// mesmo valor que o snapshot em jogo envia; o cliente soma 1 nas duas telas.
 func TestSelCharLevelAsStored(t *testing.T) {
 	d := &Dispatcher{}
 	for _, level := range []int{0, 1, 50} {
@@ -760,13 +760,13 @@ func TestLoginBadVersionClosed(t *testing.T) {
 	defer c.Close()
 
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", 1234))
-	// The refusal is the Language.txt text in a MessagePanel (ID 0), not a
-	// MSG_MessageBoxOk: the client renders an empty box for a numeric code.
+	// A recusa é o texto do Language.txt num MessagePanel (ID 0), não um
+	// MSG_MessageBoxOk: o cliente renderiza uma caixa vazia para um código numérico.
 	ty, payload := read(t, c)
 	if ty != protocol.MsgMessagePanel || cstr(payload) != versionMismatchText {
 		t.Errorf("got %#x/%q, want the version-mismatch panel", ty, cstr(payload))
 	}
-	// Connection must be closed after a version mismatch.
+	// A conexão precisa ser fechada após um mismatch de versão.
 	if err := c.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -781,7 +781,7 @@ func TestLoginBadPasswordThenLockout(t *testing.T) {
 	c := dial(t, addr)
 	defer c.Close()
 
-	// Three wrong passwords are accepted (mode resets each time)...
+	// Três senhas erradas são aceitas (o modo reseta a cada vez)...
 	for i := 0; i < 3; i++ {
 		send(t, c, protocol.MsgAccountLogin, loginBody("tester", "wrong", protocol.AppVersion))
 		ty, payload := read(t, c)
@@ -789,7 +789,7 @@ func TestLoginBadPasswordThenLockout(t *testing.T) {
 			t.Fatalf("attempt %d: got %#x/%q, want the wrong-password panel", i, ty, cstr(payload))
 		}
 	}
-	// ...the fourth is locked out before hitting the backend.
+	// ...a quarta é bloqueada antes de chegar ao backend.
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
 	ty, payload := read(t, c)
 	if ty != protocol.MsgMessagePanel || cstr(payload) != threeWrongPassText {
@@ -823,14 +823,14 @@ func TestWrongModeRejectsSecondLogin(t *testing.T) {
 	defer c.Close()
 
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
-	read(t, c) // CNFAccountLogin → now in SELCHAR
+	read(t, c) // CNFAccountLogin → agora em SELCHAR
 	send(t, c, protocol.MsgAccountLogin, loginBody("tester", "secret", protocol.AppVersion))
 	if got := readPanel(t, c); got != noticeText(NoticeLoginNow) {
 		t.Errorf("second login: got %q, quer %q", got, noticeText(NoticeLoginNow))
 	}
 }
 
-// loginAndSelect logs in successfully and returns the connection in SELCHAR.
+// loginAndSelect loga com sucesso e devolve a conexão em SELCHAR.
 func loginAndSelect(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	c := dial(t, addr)
@@ -868,7 +868,7 @@ func TestCreateCharacterInvalidName(t *testing.T) {
 	defer c.Close()
 
 	var body protocol.MsgCreateCharacterBody
-	copy(body.MobName[:], "bad name!") // space + '!' are invalid
+	copy(body.MobName[:], "bad name!") // espaço + '!' são inválidos
 	send(t, c, protocol.MsgCreateCharacter, body.Encode())
 	if ty, _ := read(t, c); ty != protocol.MsgNewCharacterFail {
 		t.Errorf("got %#x, want NewCharacterFail", ty)
@@ -897,10 +897,10 @@ func TestDeleteCharacter(t *testing.T) {
 	if db.deleted != 1 {
 		t.Errorf("backend DeleteCharacter called %d times, want 1", db.deleted)
 	}
-	// MSG_CNFDeleteCharacter (Basedef.h:1646-1652) carries a full STRUCT_SELCHAR,
-	// byte-identical to MSG_CNFNewCharacter's body (sel@4, 840 bytes). Sending an
-	// empty payload here leaves the client's pre-delete slot array stale, which is
-	// the "other characters disappear / bugged entries" bug (issue #20).
+	// MSG_CNFDeleteCharacter (Basedef.h:1646-1652) carrega um STRUCT_SELCHAR completo,
+	// byte a byte idêntico ao corpo de MSG_CNFNewCharacter (sel@4, 840 bytes). Enviar
+	// payload vazio aqui deixa o array de slots pré-delete do cliente obsoleto, que é
+	// o bug de "outros personagens somem / entradas bugadas" (issue #20).
 	if len(payload) != 844 {
 		t.Fatalf("CNFDeleteCharacter body = %d bytes, want 844 (refreshed SELCHAR)", len(payload))
 	}
@@ -928,7 +928,7 @@ func TestDeleteCharacterWrongPassword(t *testing.T) {
 	if ty, _ := read(t, c); ty != protocol.MsgDeleteCharacterFail {
 		t.Fatalf("got %#x, want DeleteCharacterFail (0x011B)", ty)
 	}
-	// Back in USER_SELCHAR: a second attempt reaches the backend again.
+	// De volta a USER_SELCHAR: uma segunda tentativa chega ao backend de novo.
 	send(t, c, protocol.MsgDeleteCharacter, body.Encode())
 	if ty, _ := read(t, c); ty != protocol.MsgDeleteCharacterFail {
 		t.Fatalf("second attempt: got %#x, want DeleteCharacterFail", ty)
@@ -954,18 +954,18 @@ func TestCharacterLoginAndLogout(t *testing.T) {
 	}
 	drainLoginScore(t, c)
 
-	// Now in play → logout returns to selection.
+	// Agora em jogo → logout volta para a seleção.
 	send(t, c, protocol.MsgCharacterLogout, nil)
 	if ty, _ := read(t, c); ty != protocol.MsgCNFCharacterLogout {
 		t.Errorf("got %#x, want CNFCharacterLogout", ty)
 	}
 }
 
-// TestCharacterLoginColorsOwnNickWhite is the login-time regression guard for
-// issue #59: a freshly logged-in character must (a) get its OWN CreateMob (the
-// legacy self-CreateMob that colors the own nick) and (b) that CreateMob's
-// MobName[12] (PKPoint) must be 75 = neutral/white — NOT 0, which renders the
-// nick red/blinking. Both the login blob and the self-CreateMob carry PKPoint 75.
+// TestCharacterLoginColorsOwnNickWhite é a guarda de regressão do login para a
+// issue #59: um personagem recém-logado precisa (a) receber seu PRÓPRIO CreateMob (o
+// self-CreateMob legado que colore o próprio nick) e (b) que o
+// MobName[12] (PKPoint) desse CreateMob seja 75 = neutro/branco — NÃO 0, que renderiza o
+// nick vermelho/piscando. Tanto o blob de login quanto o self-CreateMob carregam PKPoint 75.
 func TestCharacterLoginColorsOwnNickWhite(t *testing.T) {
 	db := newDB()
 	db.loadResult = world.CharacterState{Slot: 0, Name: "Hero", X: 2100, Y: 2100, HP: 1200, MaxHP: 1200}
@@ -977,7 +977,7 @@ func TestCharacterLoginColorsOwnNickWhite(t *testing.T) {
 	var body protocol.MsgCharacterLoginBody
 	body.Slot = 0
 	send(t, c, protocol.MsgCharacterLogin, body.Encode())
-	// The login blob's own MobName[12] must be 75 (white). mob @ body4, MobName[0].
+	// O MobName[12] do próprio blob de login precisa ser 75 (branco). mob @ body4, MobName[0].
 	ty, payload, ok := readMaybeRaw(t, c)
 	if !ok || ty != protocol.MsgCNFCharacterLogin {
 		t.Fatalf("got %#x ok=%v, want CNFCharacterLogin", ty, ok)
@@ -985,8 +985,8 @@ func TestCharacterLoginColorsOwnNickWhite(t *testing.T) {
 	if payload[4+12] != 75 {
 		t.Errorf("login blob MobName[12] = %d, want 75 (neutral/white nick)", payload[4+12])
 	}
-	// The self-CreateMob (id = own conn) must also carry MobName[12] = 75. Scan the
-	// post-login frames for a CreateMob whose MobID is the player's conn.
+	// O self-CreateMob (id = próprio conn) também precisa carregar MobName[12] = 75. Varrer os
+	// frames pós-login por um CreateMob cujo MobID é o conn do jogador.
 	found := false
 	for i := 0; i < 20 && !found; i++ {
 		ty, payload, ok = readMaybeRaw(t, c)
@@ -997,7 +997,7 @@ func TestCharacterLoginColorsOwnNickWhite(t *testing.T) {
 			continue
 		}
 		_, _, mobID := createMobFields(t, payload)
-		if mobID == 1 { // first (only) player conn
+		if mobID == 1 { // primeiro (único) conn de jogador
 			found = true
 			if payload[6+12] != 75 { // MobName @ body6, [12] = PKPoint
 				t.Errorf("self-CreateMob MobName[12] = %d, want 75 (white)", payload[6+12])
@@ -1078,21 +1078,21 @@ func TestCharacterLoginTemplateCNFSeparatesLoginPosFromSavePoint(t *testing.T) {
 	}
 }
 
-// The login snapshot carries the character's own scores, not the template's
-// (ProcessDBMessage.cpp:812-821): CurrentScore matches the UpdateScore the server
-// pushes right after, and BaseScore is the persisted state.
+// O snapshot de login carrega os scores do próprio personagem, não os do template
+// (ProcessDBMessage.cpp:812-821): CurrentScore casa com o UpdateScore que o servidor
+// empurra logo depois, e BaseScore é o estado persistido.
 func TestCharacterLoginTemplateCNFCarriesOwnScores(t *testing.T) {
 	db := newDB()
 	db.loadResult = world.CharacterState{Slot: 0, Name: "Hero", Class: 1, Level: 50, LastCity: 0,
 		HP: 900, MaxHP: 1200, MP: 300, MaxMP: 400, Str: 31, Int: 32, Dex: 33, Con: 34, AC: 21, Damage: 22}
 	tmpl := make([]byte, content.BaseMobSize)
 	copy(tmpl[0:16], "Template")
-	for _, at := range []int{44, 92} { // template scores: level 7, HP 105
+	for _, at := range []int{44, 92} { // scores do template: nível 7, HP 105
 		binary.LittleEndian.PutUint32(tmpl[at:], 7)
 		binary.LittleEndian.PutUint32(tmpl[at+16:], 105)
 		binary.LittleEndian.PutUint32(tmpl[at+24:], 105)
 	}
-	tmpl[92+12] = 0x5A // Merchant @CurrentScore+12 stays the template's
+	tmpl[92+12] = 0x5A // Merchant @CurrentScore+12 continua o do template
 	addr, stop := startServerBaseMobs(t, db, map[int][]byte{1: tmpl})
 	defer stop()
 	c := loginAndSelect(t, addr)
@@ -1195,7 +1195,7 @@ func TestCharacterLoginBadSlot(t *testing.T) {
 	defer c.Close()
 
 	var body protocol.MsgCharacterLoginBody
-	body.Slot = 9 // out of [0,4)
+	body.Slot = 9 // fora de [0,4)
 	send(t, c, protocol.MsgCharacterLogin, body.Encode())
 	if got := readPanel(t, c); got != noticeText(NoticeSelectCharacter) {
 		t.Errorf("got %q, quer %q", got, noticeText(NoticeSelectCharacter))

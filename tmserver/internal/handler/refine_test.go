@@ -14,17 +14,17 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// The refine dust items, as ItemList.csv defines them.
+// Os itens de pó de refino, como o ItemList.csv os define.
 const (
 	itemPoeiraOri = 412
 	itemPoeiraLac = 413
-	itemArmor     = 555 // a plain refinable armor
-	// itemSephirotTransKnight is a quest/trophy stone (issue #133): equippable,
-	// no EF_VOLATILE, now tagged EF_NOSANC in ItemList.csv.
+	itemArmor     = 555 // uma armadura refinável comum
+	// itemSephirotTransKnight é uma pedra de quest/troféu (issue #133): equipável,
+	// sem EF_VOLATILE, agora marcada EF_NOSANC no ItemList.csv.
 	itemSephirotTransKnight = 1760
 )
 
-// rateTable is an injectable SancRate. Index it at level+1, like the real one.
+// rateTable é um SancRate injetável. Indexe em level+1, como o real.
 type rateTable [3][12]int
 
 func (r rateTable) Rate(anvil, idx int) int {
@@ -34,7 +34,7 @@ func (r rateTable) Rate(anvil, idx int) int {
 	return r[anvil][idx]
 }
 
-// alwaysRate is a table where every Ori/Lac lookup returns rate.
+// alwaysRate é uma tabela em que toda consulta Ori/Lac devolve rate.
 func alwaysRate(rate int) rateTable {
 	var t rateTable
 	for a := range t {
@@ -45,10 +45,10 @@ func alwaysRate(rate int) rateTable {
 	return t
 }
 
-// refineFixture wires a dispatcher whose catalog mirrors production: the two
-// dusts classified by EF_VOLATILE, and a refinable armor. Mirroring the real
-// Config matters — a handler harness with the catalog switched off silently
-// makes every EF_ gate read 0 (see the B12 lesson).
+// refineFixture monta um dispatcher cujo catálogo espelha a produção: os dois
+// pós classificados por EF_VOLATILE, e uma armadura refinável. Espelhar o
+// Config real importa — um harness de handler com o catálogo desligado faz silenciosamente
+// todo gate EF_ ler 0 (ver a lição B12).
 type refineFixture struct {
 	d *Dispatcher
 	w *world.World
@@ -76,7 +76,7 @@ func newRefineFixture(t *testing.T, tbl refine.RateTable, effects map[int][]cont
 	}
 }
 
-// refine drags the dust in carry slot 0 onto the item in carry slot 1.
+// refine arrasta o pó do slot 0 do carry para o item no slot 1 do carry.
 func (f *refineFixture) refine(dust int16) {
 	f.e.Carry[0] = world.Item{Index: dust}
 	body := protocol.MsgUseItemBody{
@@ -101,7 +101,7 @@ func TestRefineSuccessRaisesLevel(t *testing.T) {
 	if !f.e.Carry[0].Empty() {
 		t.Errorf("dust not consumed: %+v", f.e.Carry[0])
 	}
-	// The level must land in a real EF_SANC pair the rest of the server can read.
+	// O nível precisa cair num par EF_SANC real que o resto do servidor consegue ler.
 	if f.target().Effects[0] != (world.Effect{Effect: efSanc, Value: 1}) {
 		t.Errorf("Effects[0] = %+v, want {EF_SANC 1}", f.target().Effects[0])
 	}
@@ -113,8 +113,8 @@ func TestRefineSuccessRaisesLevel(t *testing.T) {
 	}
 }
 
-// A failed dust refine never destroys or downgrades the item — that only happens
-// on the sealed/celestial/earring branches, which are out of scope.
+// Um refino por pó que falha nunca destrói nem rebaixa o item — isso só acontece
+// nos ramos selado/celestial/brinco, que estão fora do escopo.
 func TestRefineFailKeepsItemAndAccruesPity(t *testing.T) {
 	f := newRefineFixture(t, alwaysRate(0), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
@@ -131,8 +131,8 @@ func TestRefineFailKeepsItemAndAccruesPity(t *testing.T) {
 	if !f.e.Carry[0].Empty() {
 		t.Error("dust must be consumed on failure too")
 	}
-	// rand()#2 % 4 = 3 (the seed-1 stream), and 3 > 2, so this particular failure
-	// does NOT accrue pity — the roll is 3-in-4.
+	// rand()#2 % 4 = 3 (o stream da semente 1), e 3 > 2, então esta falha específica
+	// NÃO acumula pena — o sorteio é de 3 em 4.
 	if got := refine.Pity(f.target()); got != 0 {
 		t.Errorf("pity = %d, want 0 (rand()#2%%4 = 3 misses the <=2 window)", got)
 	}
@@ -144,8 +144,8 @@ func TestRefineFailKeepsItemAndAccruesPity(t *testing.T) {
 	}
 }
 
-// Pity accrues over repeated failures and is what eventually carries a refine
-// through (g_pSuccessRate).
+// A pena acumula ao longo de falhas repetidas e é o que acaba levando um refino
+// adiante (g_pSuccessRate).
 func TestRefinePityAccrues(t *testing.T) {
 	f := newRefineFixture(t, alwaysRate(0), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
@@ -206,9 +206,9 @@ func TestRefineGates(t *testing.T) {
 			want:    NoticeCantRefineMore,
 		},
 		{
-			// issue #133: Sephirot(TransKnight) is a quest/trophy stone with no
-			// EF_VOLATILE, so nothing gated it before ItemList.csv started tagging
-			// it EF_NOSANC.
+			// issue #133: Sephirot(TransKnight) é uma pedra de quest/troféu sem
+			// EF_VOLATILE, então nada a barrava antes de o ItemList.csv começar a marcá-la
+			// como EF_NOSANC.
 			name:    "Sephirot(TransKnight) never refines (issue #133)",
 			dust:    itemPoeiraLac,
 			target:  world.Item{Index: itemSephirotTransKnight},
@@ -248,20 +248,20 @@ func TestRefineGates(t *testing.T) {
 	}
 }
 
-// Ori tops out at +6 even when the roll wins.
+// Ori para em +6 mesmo quando o sorteio ganha.
 func TestRefineOriCapsAtSix(t *testing.T) {
 	f := newRefineFixture(t, alwaysRate(100), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
 	for i := 0; i < 10; i++ {
 		f.refine(itemPoeiraOri)
 	}
-	// 6/9 are the legacy ceilings, now the defaults of content.RefinePolicy.
+	// 6/9 são os tetos legados, agora os padrões de content.RefinePolicy.
 	if got := refine.Level(f.target()); got != 6 {
 		t.Errorf("level = %d, want 6 (Ori's cap)", got)
 	}
 }
 
-// Lac tops out at +9.
+// Lac para em +9.
 func TestRefineLacCapsAtNine(t *testing.T) {
 	f := newRefineFixture(t, alwaysRate(100), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
@@ -273,8 +273,8 @@ func TestRefineLacCapsAtNine(t *testing.T) {
 	}
 }
 
-// Lactolerium_100 forces the Âmago row, which is a flat 100% regardless of the
-// table — here the table would otherwise always fail.
+// Lactolerium_100 força a linha Âmago, que é 100% fixo independentemente da
+// tabela — aqui a tabela falharia sempre de outro modo.
 func TestRefineLacto100AlwaysSucceeds(t *testing.T) {
 	f := newRefineFixture(t, alwaysRate(0), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
@@ -286,8 +286,8 @@ func TestRefineLacto100AlwaysSucceeds(t *testing.T) {
 	}
 }
 
-// A tintura never refines: any dust converts it straight into its matching
-// Feijão Mágico (issue #130), bypassing EF_SANC entirely.
+// Uma tintura nunca refina: qualquer pó a converte direto no seu
+// Feijão Mágico correspondente (issue #130), ignorando EF_SANC por completo.
 func TestRefineTinturaBecomesFeijaoMagico(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -300,8 +300,8 @@ func TestRefineTinturaBecomesFeijaoMagico(t *testing.T) {
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			// alwaysRate(0): every ordinary refine roll would fail — proves the
-			// transform is deterministic and never touches the success-rate roll.
+			// alwaysRate(0): todo sorteio de refino comum falharia — prova que a
+			// transformação é determinística e nunca toca o sorteio de taxa de sucesso.
 			f := newRefineFixture(t, alwaysRate(0), nil)
 			f.e.Carry[1] = world.Item{Index: tt.tintura}
 
@@ -321,16 +321,16 @@ func TestRefineTinturaBecomesFeijaoMagico(t *testing.T) {
 	}
 }
 
-// TestRefineRNGGolden pins the rand() call order against the MSVC stream from the
-// CRT default seed 1, which is where every world starts:
+// TestRefineRNGGolden fixa a ordem das chamadas de rand() contra o stream MSVC da
+// semente padrão 1 do CRT, que é onde todo mundo começa:
 //
-//	Rand() #1..#5 = 41, 18467, 6334, 26500, 19169   → %100 = 41, 67, 34, 0, 69
+// Rand() #1..#5 = 41, 18467, 6334, 26500, 19169   → %100 = 41, 67, 34, 0, 69
 //
-// The dust path spends exactly ONE rand() when it succeeds and TWO when it fails
-// (the roll, then the 3-in-4 pity roll). Any extra or reordered draw shifts every
-// later result, so this test is what actually locks the parity.
+// O caminho do pó gasta exatamente UM rand() quando acerta e DOIS quando falha
+// (o sorteio, depois o sorteio de pena de 3 em 4). Qualquer sorteio extra ou reordenado desloca todo
+// resultado posterior, então este teste é o que de fato trava a paridade.
 func TestRefineRNGGolden(t *testing.T) {
-	// Rate 50: rolls of 41 and 34 win; 67 and 69 lose.
+	// Taxa 50: sorteios 41 e 34 ganham; 67 e 69 perdem.
 	f := newRefineFixture(t, alwaysRate(50), nil)
 	f.e.Carry[1] = world.Item{Index: itemArmor}
 
@@ -340,13 +340,13 @@ func TestRefineRNGGolden(t *testing.T) {
 		wantPity  int
 		note      string
 	}{
-		// #1 roll 41 <= 50 → success. One draw spent.
+		// #1 sorteio 41 <= 50 → sucesso. Um sorteio gasto.
 		{41, 1, 0, "roll 41 wins"},
-		// #2 roll 67 > 50 → fail. #3 = 6334%4 = 2 <= 2 → pity++.
+		// #2 sorteio 67 > 50 → falha. #3 = 6334%4 = 2 <= 2 → pena++.
 		{67, 1, 1, "roll 67 loses, pity roll 2 hits the <=2 window"},
-		// #4 roll 26500%100 = 0 <= 50 → success. Pity resets.
+		// #4 sorteio 26500%100 = 0 <= 50 → sucesso. A pena reseta.
 		{0, 2, 0, "roll 0 wins and clears the pity"},
-		// #5 roll 19169%100 = 69 > 50 → fail. #6 = 15724%4 = 0 <= 2 → pity++.
+		// #5 sorteio 19169%100 = 69 > 50 → falha. #6 = 15724%4 = 0 <= 2 → pena++.
 		{69, 2, 1, "roll 69 loses, pity roll 0 hits the window"},
 	}
 	for i, st := range steps {
@@ -360,16 +360,16 @@ func TestRefineRNGGolden(t *testing.T) {
 	}
 }
 
-// TestRefineOverTheWire drives the real client path end to end: a _MSG_UseItem
-// frame carrying a dust in SourPos and the target in DestPos must reach
-// refineItem through useItem's EF_VOLATILE switch, and the refined item must come
-// back in a _MSG_SendItem.
+// TestRefineOverTheWire conduz o caminho real do cliente ponta a ponta: um frame
+// _MSG_UseItem carregando um pó em SourPos e o alvo em DestPos precisa chegar ao
+// refineItem pelo switch de EF_VOLATILE do useItem, e o item refinado precisa voltar
+// num _MSG_SendItem.
 //
-// This is the actual issue #103 regression. The unit tests above call refineItem
-// directly and would all still pass with the switch arm removed — which is
-// exactly the bug that shipped: refine fell through to `default:` and no-oped.
-// It also checks the packet, not just server state: the right level in memory
-// still renders wrong if the S→C frame carries the wrong bytes.
+// Esta é a regressão real da issue #103. Os testes unitários acima chamam refineItem
+// direto e todos passariam ainda com o braço do switch removido — que é
+// exatamente o bug que foi entregue: o refino caía no `default:` e não fazia nada.
+// Ele também confere o pacote, não só o estado do servidor: o nível certo em memória
+// ainda renderiza errado se o frame S→C carregar os bytes errados.
 func TestRefineOverTheWire(t *testing.T) {
 	db := newDB()
 	st := world.CharacterState{Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000}
@@ -387,7 +387,7 @@ func TestRefineOverTheWire(t *testing.T) {
 	}
 	send(t, c, protocol.MsgUseItem, body.Encode())
 
-	// Read until the item push (the score/notice frames come first).
+	// Ler até o push do item (os frames de score/aviso vêm primeiro).
 	for i := 0; ; i++ {
 		if i > 8 {
 			t.Fatal("no _MSG_SendItem after a refine — the dust fell through useItem's switch")
@@ -403,12 +403,12 @@ func TestRefineOverTheWire(t *testing.T) {
 		slot := int(binary.LittleEndian.Uint16(payload[2:]))
 		index := binary.LittleEndian.Uint16(payload[4:])
 		if place != world.ItemPlaceCarry || slot != 1 {
-			continue // not the target slot
+			continue // não o slot alvo
 		}
 		if index != itemArmor {
 			t.Fatalf("SendItem index = %d, want %d", index, itemArmor)
 		}
-		// The effect pairs ride at body+6: the EF_SANC pair must carry the new level.
+		// Os pares de efeito vão em body+6: o par EF_SANC precisa carregar o novo nível.
 		eff0 := world.Effect{Effect: payload[6], Value: payload[7]}
 		if eff0 != (world.Effect{Effect: efSanc, Value: 1}) {
 			t.Fatalf("SendItem Effects[0] = %+v, want {EF_SANC 1} — the client renders THIS, not the server's copy", eff0)
@@ -428,9 +428,9 @@ func TestRefineFailureMotionMatchesLegacyFaceRule(t *testing.T) {
 	}
 }
 
-// TestRefineFeedbackOverTheWire guards the issue #317 regression: the 7662
-// client needs a real MessagePanel body and Motion frame, not the placeholder
-// MessageBoxOk notice code previously emitted by the handler.
+// TestRefineFeedbackOverTheWire protege a regressão da issue #317: o cliente 7662
+// precisa de um corpo de MessagePanel e um frame de Motion de verdade, não do
+// código de aviso MessageBoxOk provisório que o handler emitia antes.
 func TestRefineFeedbackOverTheWire(t *testing.T) {
 	db := newDB()
 	st := world.CharacterState{Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000}
@@ -477,7 +477,7 @@ func TestRefineFeedbackOverTheWire(t *testing.T) {
 	}
 }
 
-// startRefineServer is startServerClock with a catalog that classifies the dusts.
+// startRefineServer é startServerClock com um catálogo que classifica os pós.
 func startRefineServer(t *testing.T, persist world.Persistence) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -504,12 +504,12 @@ func startRefineServer(t *testing.T, persist world.Persistence) (string, func())
 	}
 }
 
-// An egg hatches into its mount on the first successful refine: the hatch gate
-// reads the INSTANCE EF_INCUBATE, which a fresh egg does not carry.
+// Um ovo choca na sua montaria no primeiro refino bem-sucedido: o gate de choca
+// lê o EF_INCUBATE da INSTANCE, que um ovo novo não carrega.
 func TestRefineEggHatches(t *testing.T) {
 	const egg = 2304
 	f := newRefineFixture(t, alwaysRate(100), map[int][]content.BaseEffect{
-		egg: {{Eff: efIncubate, Val: 2}}, // the catalog threshold is deliberately not read
+		egg: {{Eff: efIncubate, Val: 2}}, // o limiar do catálogo deliberadamente não é lido
 	})
 	f.e.Carry[1] = world.Item{Index: egg}
 
@@ -518,7 +518,7 @@ func TestRefineEggHatches(t *testing.T) {
 	if got := f.target().Index; got != egg+eggHatchAdd {
 		t.Fatalf("index = %d, want %d (hatched mount)", got, egg+eggHatchAdd)
 	}
-	// The hatched mount reinterprets its slots as mount data: [0].sValue = HP.
+	// A montaria chocada reinterpreta seus slots como dados de montaria: [0].sValue = HP.
 	if got := uint16(f.target().Effects[0].Effect) | uint16(f.target().Effects[0].Value)<<8; got != hatchMountHP {
 		t.Errorf("mount HP = %d, want %d", got, hatchMountHP)
 	}
@@ -530,8 +530,8 @@ func TestRefineEggHatches(t *testing.T) {
 	}
 }
 
-// A failed egg refine stamps the incubation cooldown, and the regen tick counts
-// it down only while the egg is equipped.
+// Um refino de ovo que falha carimba o cooldown de incubação, e o tick de regen
+// o conta para baixo só enquanto o ovo está equipado.
 func TestEggIncubationCooldown(t *testing.T) {
 	const egg = 2304
 	f := newRefineFixture(t, alwaysRate(0), nil)
@@ -539,13 +539,13 @@ func TestEggIncubationCooldown(t *testing.T) {
 
 	f.refine(itemPoeiraLac)
 
-	// rand()#3 % 4 = 2 → a cooldown of 2.
+	// rand()#3 % 4 = 2 → um cooldown de 2.
 	delay := itemInstanceAbility(f.target(), efIncuDelay)
 	if delay != 2 {
 		t.Fatalf("incubation delay = %d, want 2", delay)
 	}
 
-	// While the cooldown stands, another refine is refused.
+	// Enquanto o cooldown vale, outro refino é recusado.
 	f.refine(itemPoeiraLac)
 	if got := itemInstanceAbility(f.target(), efIncuDelay); got != delay {
 		t.Errorf("a gated refine changed the cooldown: %d → %d", delay, got)
@@ -554,7 +554,7 @@ func TestEggIncubationCooldown(t *testing.T) {
 		t.Error("a gated refine consumed the dust")
 	}
 
-	// The tick only counts an EQUIPPED egg down.
+	// O tick só conta um ovo EQUIPADO.
 	f.d.tickIncubation(f.w, f.s, f.e)
 	if got := itemInstanceAbility(f.target(), efIncuDelay); got != delay {
 		t.Errorf("the cooldown ticked while the egg was in the inventory: %d", got)

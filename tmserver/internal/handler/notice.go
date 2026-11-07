@@ -8,11 +8,11 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Notice identifies a client-facing notification (the legacy _NN_*/_DN_* codes).
+// Notice identifica uma notificação voltada ao cliente (os códigos legados _NN_*/_DN_*).
 type Notice uint32
 
-// Notification codes used by batch 1 (handlers/*.md). The numeric values are
-// local identifiers, NOT the original notification numbers.
+// Códigos de notificação usados pelo lote 1 (handlers/*.md). Os valores numéricos são
+// identificadores locais, NÃO os números de notificação originais.
 const (
 	NoticeVersionMismatch     Notice = iota // _NN_Version_Not_Match_Rerun
 	NoticeLoginNow                          // "Login now, wait a moment."
@@ -22,70 +22,70 @@ const (
 	NoticeBlocked                           // _MSG_DBAccountLoginFail_Block
 	NoticeSelectCharacter                   // _NN_SelectCharacter
 	NoticeDeletingWait                      // "Deleting Character. wait a moment."
-	NoticeDBError                           // DB call failed
+	NoticeDBError                           // Chamada ao banco falhou
 	NoticeCantDropHere                      // _NN_Cant_Drop_Here
 	NoticeCantAutoTrade                     // _NN_CantWhenAutoTrade
-	NoticeNotConnected                      // whisper target offline
-	NoticeDenyWhisper                       // whisper target blocked whispers
-	NoticeBillingDenied                     // binServer denied entry (expired/blocked)
-	NoticeCargoFull                         // deposit/withdraw would exceed the 2G ceiling
-	NoticeReqNotMet                         // equip requirement (level/attributes) not met
-	NoticeCantEatMore                       // _NN_CantEatMore (a buff of this kind is already active)
+	NoticeNotConnected                      // alvo do sussurro offline
+	NoticeDenyWhisper                       // alvo do sussurro bloqueou sussurros
+	NoticeBillingDenied                     // binServer recusou a entrada (expirada/bloqueada)
+	NoticeCargoFull                         // depósito/saque passaria do teto de 2G
+	NoticeReqNotMet                         // requisito de equipar (nível/atributos) não cumprido
+	NoticeCantEatMore                       // _NN_CantEatMore (um buff deste tipo já está ativo)
 	NoticeOtherClassSkill                   // _NN_Cant_Learn_Other_Class_Skill
 	NoticeNotEnoughSkillPoint               // _NN_Not_Enough_Skill_Point
-	NoticeOnlyOneEighthSkill                // _NN_Only_OneSkillLearn (8th skill is exclusive)
-	NoticeLearnPrereq                       // _NN_Befor_LearnSkill (learn the tree's 7 first)
+	NoticeOnlyOneEighthSkill                // _NN_Only_OneSkillLearn (a 8ª skill é exclusiva)
+	NoticeLearnPrereq                       // _NN_Befor_LearnSkill (aprenda as 7 da árvore primeiro)
 	NoticeAlreadyLearned                    // _NN_Already_Learned_It
-	NoticeNotEnoughCoin                     // _DN_D_Cost (8th skill costs 50M gold)
-	NoticeMaxPoint                          // _NN_Maximum_Point_Now / _200_Now (mastery cap)
+	NoticeNotEnoughCoin                     // _DN_D_Cost (a 8ª skill custa 50M de ouro)
+	NoticeMaxPoint                          // _NN_Maximum_Point_Now / _200_Now (teto de maestria)
 
-	// Dust refine (_MSG_UseItem.cpp dust path; Language.h ids in the comments).
-	NoticeOnlyToEquips   // _NN_Only_To_Equips (74): a dust only refines equipment
-	NoticeCantRefineMore // _NN_Cant_Refine_More (75): at the cap, or EF_NOSANC
+	// Refino com poeira (caminho de poeira de _MSG_UseItem.cpp; ids do Language.h nos comentários).
+	NoticeOnlyToEquips   // _NN_Only_To_Equips (74): uma poeira só refina equipamento
+	NoticeCantRefineMore // _NN_Cant_Refine_More (75): no teto, ou EF_NOSANC
 	NoticeFailToRefine   // _NN_Fail_To_Refine (76)
 	NoticeRefineSuccess  // _NN_Refine_Success (176)
-	NoticeIncubated      // _NN_INCUBATED (253): the egg hatched into its mount
-	NoticeIncuWaitMore   // _NN_Incu_Wait_More (261): the egg's incubation timer
-	NoticeMountLevel     // _NN_Mount_Level (263): a cria gained one mount level
+	NoticeIncubated      // _NN_INCUBATED (253): o ovo chocou na montaria
+	NoticeIncuWaitMore   // _NN_Incu_Wait_More (261): o timer de incubação do ovo
+	NoticeMountLevel     // _NN_Mount_Level (263): uma cria ganhou um nível de montaria
 
 	NoticeNoEmptySlot // _NN_NoEmptySlot
-	NoticeMaxBag      // _NN_MAX_BAG: both Bolsa do Andarilho slots are already active
+	NoticeMaxBag      // _NN_MAX_BAG: os dois slots da Bolsa do Andarilho já estão ativos
 
-	NoticeNoKey // _NN_No_Key: a locked gate needs a key the player doesn't hold
+	NoticeNoKey // _NN_No_Key: um portão trancado precisa de uma chave que o jogador não tem
 
-	// Duel codes (issue #118). Obsolete since issue #424: the duel now sends the
-	// legacy Language.txt texts (battleInProgress, duelWinBy, duelDraw) and has no
-	// city restriction, so nothing sends these. Kept so the iota codes below them
-	// — which the client and the handler tests match on — do not shift.
+	// Códigos de duelo (issue #118). Obsoletos desde a issue #424: o duelo agora envia os
+	// textos legados do Language.txt (battleInProgress, duelWinBy, duelDraw) e não tem
+	// restrição de cidade, então nada envia estes. Mantidos para os códigos iota abaixo deles
+	// — que o cliente e os testes de handler casam — não deslocarem.
 	NoticeDuelBattleInProgress
 	NoticeDuelWin
 	NoticeDuelLose
 	NoticeDuelDraw
 	NoticeDuelInCity
 
-	// NoticeCantUseHere (_NN_Cant_Use_That_Here) is sent for consumables whose
-	// real _MSG_UseItem.cpp behavior depends on data absent from this repo, and
-	// for Gema Estelar / Portal Scroll zone gates (issues #135 and #140).
+	// NoticeCantUseHere (_NN_Cant_Use_That_Here) é enviado para consumíveis cujo
+	// comportamento real em _MSG_UseItem.cpp depende de dados ausentes deste repositório, e
+	// para os gates de zona da Gema Estelar / Portal Scroll (issues #135 e #140).
 	NoticeCantUseHere
 
 	// Gema Estelar / Portal Scroll (_MSG_UseItem.cpp Vol 12/13, issue #140).
-	NoticeSetWarp // _NN_Set_Warp (186): warp save-point recorded
+	NoticeSetWarp // _NN_Set_Warp (186): ponto de save do warp registrado
 
-	// NoticeReinoCapeRequired was the /reino cape gate (issue #127). Obsolete since
-	// issue #208: /reino now routes every cape to a destination instead of refusing
-	// kingdom capes, so nothing sends this code. Kept so the iota codes below it —
-	// which the client and the handler tests match on — do not shift.
+	// NoticeReinoCapeRequired era o gate de capa de /reino (issue #127). Obsoleto desde
+	// a issue #208: /reino agora roteia toda capa para um destino em vez de recusar
+	// capas de reino, então nada envia este código. Mantido para os códigos iota abaixo dele —
+	// que o cliente e os testes de handler casam — não deslocarem.
 	NoticeReinoCapeRequired
 
-	// Personal shop / autotrade (issue #115, _MSG_SendAutoTrade.cpp / _MSG_ReqBuy.cpp).
-	NoticeOnlyVillage    // _NN_OnlyVillage: a shop can only open inside a village
-	NoticeNotEnoughMoney // _NN_Not_Enough_Money: buyer can't afford the item
-	NoticeCantGetMore2G  // _NN_Cant_get_more_than_2G: seller would exceed the 2G cap
-	NoticeNoSpaceToTrade // _NN_You_Have_No_Space_To_Trade: buyer inventory full
-	NoticeItemSold       // _NN_ItemSold: an item left the seller's shop
+	// Loja pessoal / trade automático (issue #115, _MSG_SendAutoTrade.cpp / _MSG_ReqBuy.cpp).
+	NoticeOnlyVillage    // _NN_OnlyVillage: uma loja só abre dentro de uma vila
+	NoticeNotEnoughMoney // _NN_Not_Enough_Money: o comprador não tem dinheiro para o item
+	NoticeCantGetMore2G  // _NN_Cant_get_more_than_2G: o vendedor passaria do teto de 2G
+	NoticeNoSpaceToTrade // _NN_You_Have_No_Space_To_Trade: inventário do comprador cheio
+	NoticeItemSold       // _NN_ItemSold: um item saiu da loja do vendedor
 
-	// NoticeAlreadyDone (_NN_Youve_Done_It_Already) — a one-shot quest hand-in
-	// (e.g. CAPAVERDE_TRADE) was already completed.
+	// NoticeAlreadyDone (_NN_Youve_Done_It_Already) — uma entrega de quest de uso único
+	// (ex.: CAPAVERDE_TRADE) já foi concluída.
 	NoticeAlreadyDone
 )
 
@@ -224,16 +224,16 @@ const (
 	genericRefusalText = "A\xe7\xe3o n\xe3o permitida."
 )
 
-// sendClientMessage mirrors the legacy SendClientMessage (SendFunc.cpp:27-43): a
-// MSG_MessagePanel with HEADER.ID 0. The 7662 client only handles a message
-// panel whose ID is 0 (TMScene.cpp:1371); w.Send stamps the session's own conn,
-// which the client drops.
+// sendClientMessage espelha o SendClientMessage legado (SendFunc.cpp:27-43): um
+// MSG_MessagePanel com HEADER.ID 0. O cliente 7662 só trata um painel de mensagem
+// cujo ID é 0 (TMScene.cpp:1371); w.Send carimba o conn da própria sessão,
+// que o cliente descarta.
 func (d *Dispatcher) sendClientMessage(w *world.World, s *world.Session, text string) {
 	w.SendTo(s, protocol.Header{Type: protocol.MsgMessagePanel}, protocol.EncodeMessagePanelBody(text))
 }
 
-// Legacy refusal panels (tmserver/content/TMsrv/run/Language.txt), in the table's
-// Windows-1252 bytes like the rest of the legacy string table.
+// Painéis de recusa legados (tmserver/content/TMsrv/run/Language.txt), nos
+// bytes Windows-1252 da tabela como o resto da tabela de strings legada.
 const (
 	cantDepositThatMuch  = "Esta quantia n\xe3o pode ser armazenada."      // _NN_Cant_Deposit_That_Much (44)
 	cantWithdrawThatMuch = "Esta quantia n\xe3o pode ser retirada."        // _NN_Cant_Withdraw_That_Much (45)
@@ -250,13 +250,13 @@ const (
 
 	newbieZone = "Somente n\xedvel 35 ou inferior pode entrar no campo de treinamento." // _NN_Newbie_zone (46)
 
-	// Login refusals, verbatim from tmserver/content/TMsrv/run/Language.txt (Windows-1252
-	// bytes, like the table). The legacy server sends these through
-	// SendClientMessage — a MSG_MessagePanel with HEADER.ID 0 — and then closes:
-	// TMSrv/ProcessDBMessage.cpp:518-570 (_Account/_Block/_Pass) and
-	// _MSG_AccountLogin.cpp:44-90 (version/mode/lockout). Sending MSG_MessageBoxOk
-	// with a bare numeric code (what notify does) makes the 7662 client open an
-	// empty box, so the player sees no error at all.
+	// Recusas de login, literalmente de tmserver/content/TMsrv/run/Language.txt (bytes
+	// Windows-1252, como a tabela). O servidor legado envia estas por
+	// SendClientMessage — um MSG_MessagePanel com HEADER.ID 0 — e depois fecha:
+	// TMSrv/ProcessDBMessage.cpp:518-570 (_Account/_Block/_Pass) e
+	// _MSG_AccountLogin.cpp:44-90 (versão/modo/bloqueio). Enviar MSG_MessageBoxOk
+	// com um código numérico puro (o que o notify faz) faz o cliente 7662 abrir uma
+	// caixa vazia, então o jogador não vê erro nenhum.
 	versionMismatchText = "Vers\xe3o do jogo incompat\xedvel com os servidores. Atualize o jogo pelo launcher." // _NN_Version_Not_Match_Rerun (36)
 	threeWrongPassText  = "3 tentativas de senha incorreta ocasiona bloqueio de acesso durante 5 min."          // _NN_3_Tims_Wrong_Pass (37)
 	noAccountText       = "Conta inexistente."                                                                  // _NN_No_Account_With_That_Name (131)
@@ -264,8 +264,8 @@ const (
 	wrongPasswordText   = "Senha incorreta."                                                                    // _NN_Wrong_Password (133)
 )
 
-// PvP and duel texts (Language.txt, Windows-1252), sent through
-// sendClientMessage like the legacy SendClientMessage/SendNoticeArea calls.
+// Textos de PvP e duelo (Language.txt, Windows-1252), enviados por
+// sendClientMessage como as chamadas legadas SendClientMessage/SendNoticeArea.
 const (
 	inArenaNoExpLoss = "Na arena n\xe3o h\xe1 perda de EXP."                       // _NN_In_Arena_No_Exp_Loss (143)
 	denyWhisper      = "N\xe3o \xe9 poss\xedvel sussurrar para este jogador."      // _NN_Deny_Whisper (165)
@@ -278,13 +278,13 @@ const (
 	cantTradePKMode  = "A troca n\xe3o fica dispon\xedvel com o modo PK ativado."  // _NN_Cant_trade_pkmode (331)
 )
 
-// Gameplay texts the legacy sends through SendClientMessage (MSG_MessagePanel,
-// HEADER.ID 0), verbatim from tmserver/content/TMsrv/run/Language.txt in the table's
-// Windows-1252 bytes. The number in parentheses is the Language.h id.
+// Textos de jogabilidade que o legado envia por SendClientMessage (MSG_MessagePanel,
+// HEADER.ID 0), literalmente de tmserver/content/TMsrv/run/Language.txt nos
+// bytes Windows-1252 da tabela. O número entre parênteses é o id do Language.h.
 //
-// They exist because the port used to answer these flows with nothing at all
-// (the handlers returned silently), so the player saw a click do nothing: party
-// and trade were reported as "not working" on 05/11 precisely because of that.
+// Eles existem porque o port costumava responder estes fluxos com nada de todo
+// (os handlers retornavam em silêncio), então o jogador via um clique não fazer nada: grupo
+// e troca foram reportados como "não funcionando" em 05/11 exatamente por isso.
 const (
 	levelUpText      = " + + + + SUBIU DE N\xcdVEL + + + + "                                              // _NN_Level_Up (53)
 	expGainFormat    = "*** EXP + %d ***"                                                                 // _NS_GETEXP (473)
@@ -300,7 +300,7 @@ const (
 	tradeNoSpace     = "N\xe3o h\xe1 espa\xe7o no invent\xe1rio para realizar transa\xe7\xf5es."          // _NN_You_Have_No_Space_To_Trade (86)
 )
 
-// cstr trims a fixed-size NUL/space-padded C char array to a Go string.
+// cstr corta um array C de char de tamanho fixo preenchido com NUL/espaço para uma string Go.
 func cstr(b []byte) string {
 	if i := indexByte(b, 0); i >= 0 {
 		b = b[:i]

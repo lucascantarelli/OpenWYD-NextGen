@@ -9,69 +9,69 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Legacy arena geometry (Server.cpp:720-745): the two spawn points, the
-// bounding box ProcessRanking polls for liveness and the closing-wall damage,
-// and the post-duel exit point (ClearAreaTeleport's sweep target,
-// Server.cpp:8988). DoTeleport takes no map argument and neither do our
-// Session/Entity types — this is a single global map space, so there is no map
-// ambiguity to resolve for these coordinates.
+// Geometria da arena legada (Server.cpp:720-745): os dois pontos de spawn, a
+// caixa delimitadora que o ProcessRanking consulta para vivacidade e o dano da parede que fecha,
+// e o ponto de saída pós-duelo (alvo da varredura do ClearAreaTeleport,
+// Server.cpp:8988). O DoTeleport não recebe argumento de mapa e nossos tipos
+// Session/Entity também não — este é um espaço de mapa único global, então não há
+// ambiguidade de mapa a resolver para estas coordenadas.
 const (
-	duelSpawn1X, duelSpawn1Y int16 = 147, 4044 // requester (legacy Ranking1X/Y)
-	duelSpawn2X, duelSpawn2Y int16 = 189, 4044 // accepter (legacy Ranking2X/Y)
-	duelBoxX1, duelBoxY1     int16 = 142, 4007 // legacy kRanking1X/Y
-	duelBoxX2, duelBoxY2     int16 = 195, 4082 // legacy kRanking2X/Y
+	duelSpawn1X, duelSpawn1Y int16 = 147, 4044 // requisitante (legado Ranking1X/Y)
+	duelSpawn2X, duelSpawn2Y int16 = 189, 4044 // aceitante (legado Ranking2X/Y)
+	duelBoxX1, duelBoxY1     int16 = 142, 4007 // legado kRanking1X/Y
+	duelBoxX2, duelBoxY2     int16 = 195, 4082 // legado kRanking2X/Y
 	duelExitX, duelExitY     int16 = 2572, 1752
 )
 
-// duelWatchBox is the spectator area beside the exit point (legacy cRanking1X/Y..
-// cRanking2X/Y, Server.cpp:737-740): ProcessRanking announces the result there
-// as well as inside the arena.
+// duelWatchBox é a área de espectadores ao lado do ponto de saída (legado cRanking1X/Y..
+// cRanking2X/Y, Server.cpp:737-740): o ProcessRanking anuncia o resultado ali
+// assim como dentro da arena.
 var duelWatchBox = duelBox{2564, 1688, 2579, 1714}
 
-// duelInviteTimeout is how long a pending duel invite lives before it auto-
-// clears. The legacy _MSG_ReqRanking.cpp has no explicit decline opcode, so a
-// timeout is how "recusado" is modeled (same placeholder class as
-// pkGuiltyDuration). UNVERIFIED exact figure. A var (not const) so tests can
-// shrink it instead of sleeping through the real production duration.
+// duelInviteTimeout é quanto tempo um convite de duelo pendente vive antes de se
+// limpar sozinho. O _MSG_ReqRanking.cpp legado não tem opcode explícito de recusa, então um
+// timeout é como "recusado" é modelado (mesma classe de placeholder que
+// pkGuiltyDuration). Valor exato UNVERIFIED. Uma var (não const) para testes poderem
+// encolhê-lo em vez de dormir a duração real de produção.
 var duelInviteTimeout = 30 * time.Second
 
-// duelTicks is the arena countdown (legacy DoRanking duelTime / RankingTime =
-// 121). ProcessRanking decrements it once per call, and it is called on
-// SecCounter%4 of the 500ms timer (ProcessSecMinTimer.cpp:1573) — every 2s, so a
-// duel lasts about 242s and the client clock gets StartTime 2*121-2 = 240. A var
-// (not const, mirrors duelInviteTimeout) so tests can shrink it instead of
-// waiting out the real countdown.
+// duelTicks é a contagem regressiva da arena (legado DoRanking duelTime / RankingTime =
+// 121). O ProcessRanking a decrementa uma vez por chamada, e ele é chamado em
+// SecCounter%4 do timer de 500ms (ProcessSecMinTimer.cpp:1573) — a cada 2s, então um
+// duelo dura cerca de 242s e o relógio do cliente recebe StartTime 2*121-2 = 240. Uma var
+// (não const, como duelInviteTimeout) para testes poderem encolhê-la em vez de
+// esperar a contagem real.
 var duelTicks = 121
 
-// duelStepTicks is how many 1s world ticks make one ProcessRanking call.
+// duelStepTicks é quantos ticks de mundo de 1s fazem uma chamada de ProcessRanking.
 const duelStepTicks = 2
 
-// duelCheckEvery is the liveness-scan stride: ProcessRanking only counts the
-// combatants when RankingTime%5 == 0, so a kill or an exit ends the duel on the
-// next multiple of 5 steps (up to 10s later), not at once.
+// duelCheckEvery é o passo da varredura de vivacidade: o ProcessRanking só conta os
+// combatentes quando RankingTime%5 == 0, então uma morte ou saída encerra o duelo no
+// próximo múltiplo de 5 passos (até 10s depois), não na hora.
 const duelCheckEvery = 5
 
-// duelArena is the server-wide active duel (legacy RankingProgress/Ranking1/
-// Ranking2/RankingTime, Server.cpp — process-wide globals, not per-pair: only
-// one duel occupies the arena at a time, matching there being exactly one
-// arena). MVP scope: 1v1 only; guild battles (DuelParm 1/2/3) are deferred.
+// duelArena é o duelo ativo do servidor inteiro (legado RankingProgress/Ranking1/
+// Ranking2/RankingTime, Server.cpp — globais de processo, não por par: só
+// um duelo ocupa a arena por vez, casando com existir exatamente uma
+// arena). Escopo de MVP: só 1v1; batalhas de guilda (DuelParm 1/2/3) estão adiadas.
 type duelArena struct {
 	active    bool
-	player1   int // requester conn (DoRanking's "enemy" arg, Server.cpp:9006-9007)
-	player2   int // accepter conn (DoRanking's "conn" arg)
+	player1   int // conn do requisitante (arg "enemy" do DoRanking, Server.cpp:9006-9007)
+	player2   int // conn do aceitante (arg "conn" do DoRanking)
 	ticksLeft int
-	// subTicks counts 1s world ticks toward the next ProcessRanking step.
+	// subTicks conta ticks de mundo de 1s até o próximo passo de ProcessRanking.
 	subTicks int
-	// name1/name2 are snapshotted at startDuel, not re-read from the entity at
-	// conclusion time: a disconnect (removeSession) removes the entity from the
-	// registry before the arena sweep notices, which would otherwise silently
-	// drop RecordDuelResult for exactly the "opponent quit mid-duel" case.
+	// name1/name2 são fotografados em startDuel, não relidos da entidade no
+	// momento da conclusão: uma desconexão (removeSession) remove a entidade do
+	// registro antes de a varredura da arena notar, o que de outro modo descartaria
+	// silenciosamente o RecordDuelResult exatamente no caso "oponente saiu no meio do duelo".
 	name1, name2 string
 }
 
-// dueling reports whether a and b are the two live participants of the active
-// duel. Used by combat.go to bypass the PKMode gate and skip the chaotic
-// PK-nick stamp for hits landed between them.
+// dueling informa se a e b são os dois lados vivos do duelo
+// ativo. Usado por combat.go para furar o gate de PKMode e pular o carimbo
+// caótico de nick PK para golpes trocados entre eles.
 func (d *Dispatcher) dueling(a, b int) bool {
 	if !d.duel.active {
 		return false
@@ -79,11 +79,11 @@ func (d *Dispatcher) dueling(a, b int) bool {
 	return (d.duel.player1 == a && d.duel.player2 == b) || (d.duel.player1 == b && d.duel.player2 == a)
 }
 
-// reqRanking handles _MSG_ReqRanking (0x039F): duel request/accept
-// (Exec_MSG_ReqRanking, Source/Code/TMSrv/_MSG_ReqRanking.cpp, full file). Parm1
-// is the target conn (request) or the original requester's conn (accept); Parm2
-// (DuelParm) is 0 for a 1v1 request, 4 for an accept. DuelParm 1/2/3 (5v5/10v10/
-// 100v100 guild battles via SummonGuild) are deferred — rejected here.
+// reqRanking trata _MSG_ReqRanking (0x039F): pedido/aceite de duelo
+// (Exec_MSG_ReqRanking, Source/Code/TMSrv/_MSG_ReqRanking.cpp, arquivo inteiro). Parm1
+// é o conn alvo (pedido) ou o conn do requisitante original (aceite); Parm2
+// (DuelParm) é 0 para um pedido 1v1, 4 para um aceite. DuelParm 1/2/3 (5v5/10v10/
+// 100v100 batalhas de guilda via SummonGuild) estão adiados — recusados aqui.
 func (d *Dispatcher) reqRanking(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	if s.Mode != world.UserPlay {
 		return
@@ -97,8 +97,8 @@ func (d *Dispatcher) reqRanking(w *world.World, s *world.Session, _ protocol.Hea
 		return
 	}
 	target := int(parm1)
-	// The whisper block is checked before the request/accept split, so it
-	// covers both (_MSG_ReqRanking.cpp:31-35).
+	// O bloco de sussurro é checado antes da divisão pedido/aceite, então ele
+	// cobre os dois (_MSG_ReqRanking.cpp:31-35).
 	if other := w.Session(target); other != nil && other.Whisper {
 		d.sendClientMessage(w, s, denyWhisper)
 		return
@@ -111,29 +111,29 @@ func (d *Dispatcher) reqRanking(w *world.World, s *world.Session, _ protocol.Hea
 	d.reqRankingAccept(w, s, target)
 }
 
-// reqRankingRequest ports the DuelParm != 4 branch: register the pending
-// invite and forward it to the target.
+// reqRankingRequest porta o ramo DuelParm != 4: registrar o convite
+// pendente e repassá-lo ao alvo.
 func (d *Dispatcher) reqRankingRequest(w *world.World, s *world.Session, target int, duelParm int32) {
 	if duelParm != 0 {
-		return // 5v5/10v10/100v100 guild battles: deferred, not supported yet
+		return // batalhas de guilda 5v5/10v10/100v100: adiadas, ainda não suportadas
 	}
 	other := w.Session(target)
 	te := w.Entity(target)
 	if other == nil || other.Mode != world.UserPlay || te == nil || te.HP <= 0 {
 		return
 	}
-	// No position check: the legacy request works anywhere, cities included
+	// Sem checagem de posição: o pedido legado funciona em qualquer lugar, cidades incluídas
 	// (issue #424).
 	s.DuelTarget = target
 	s.DuelTargetExpiry = time.Now().Add(duelInviteTimeout).Unix()
-	// Forward the invite: Parm1 = the requester's own conn (so the target's
-	// accept can echo it back as tDuel, matching m->Parm1 = conn in the
-	// original), Parm2 = the request type.
+	// Repassar o convite: Parm1 = o conn do próprio requisitante (para o aceite do alvo
+	// poder ecoá-lo de volta como tDuel, casando com m->Parm1 = conn no
+	// original), Parm2 = o tipo de pedido.
 	w.SendTo(other, protocol.Header{Type: protocol.MsgReqRanking, ID: uint16(target)}, protocol.EncodeStandardParm2(int32(s.Conn), duelParm))
 }
 
-// reqRankingAccept ports the DuelParm == 4 branch: validate reciprocity
-// (pUser[tDuel].RankingTarget == conn) and start the duel.
+// reqRankingAccept porta o ramo DuelParm == 4: validar reciprocidade
+// (pUser[tDuel].RankingTarget == conn) e iniciar o duelo.
 func (d *Dispatcher) reqRankingAccept(w *world.World, s *world.Session, requester int) {
 	reqSess := w.Session(requester)
 	reqEnt := w.Entity(requester)
@@ -153,9 +153,9 @@ func (d *Dispatcher) reqRankingAccept(w *world.World, s *world.Session, requeste
 	d.startDuel(w, requester, s.Conn)
 }
 
-// startDuel ports DoRanking's 1v1 branch (Server.cpp:8997-9019): teleport both
-// combatants to their arena spawn, announce the battle, start the countdown,
-// and occupy the arena.
+// startDuel porta o ramo 1v1 do DoRanking (Server.cpp:8997-9019): teleportar os dois
+// combatentes para o spawn da arena, anunciar a batalha, iniciar a contagem regressiva,
+// e ocupar a arena.
 func (d *Dispatcher) startDuel(w *world.World, requester, accepter int) {
 	d.duel = duelArena{active: true, player1: requester, player2: accepter, ticksLeft: duelTicks}
 	if re := w.Entity(requester); re != nil {
@@ -172,7 +172,7 @@ func (d *Dispatcher) startDuel(w *world.World, requester, accepter int) {
 		d.doTeleport(w, as, duelSpawn2X, duelSpawn2Y)
 	}
 
-	// DoRanking's conn is the accepter, so the accepter is named first.
+	// o conn do DoRanking é o aceitante, então o aceitante é nomeado primeiro.
 	started := fmt.Sprintf(battleStarted, d.duel.name2, d.duel.name1)
 	parm := protocol.EncodeStandardParm(int32(duelStepTicks*duelTicks - 2))
 	for _, conn := range [2]int{accepter, requester} {
@@ -183,9 +183,9 @@ func (d *Dispatcher) startDuel(w *world.World, requester, accepter int) {
 	}
 }
 
-// sweepDuelInvites expires pending duel invites once their wall-clock deadline
-// passes (mirrors sweepGuilty's shape, pkmode.go:97-105) — the "recusado/
-// timeout" cleanup the issue's acceptance criteria calls for.
+// sweepDuelInvites expira convites de duelo pendentes quando seu prazo de relógio
+// de parede passa (espelha a forma de sweepGuilty, pkmode.go:97-105) — a limpeza
+// de "recusado/timeout" que os critérios de aceite da issue pedem.
 func (d *Dispatcher) sweepDuelInvites(w *world.World) {
 	now := time.Now().Unix()
 	w.ForEachPlayer(func(s *world.Session, _ *world.Entity) {
@@ -195,11 +195,11 @@ func (d *Dispatcher) sweepDuelInvites(w *world.World) {
 	})
 }
 
-// sweepDuelArena resolves the active duel: countdown, liveness/bounds checks,
-// and (for the closing-wall visual) the shrinking-box self-damage. Ports
-// ProcessRanking (Server.cpp:8786-8989) as a tick-driven poll rather than a
-// per-hit special case, matching the legacy design: one step every
-// duelStepTicks world ticks, a liveness scan every duelCheckEvery steps.
+// sweepDuelArena resolve o duelo ativo: contagem regressiva, checagens de vivacidade/limites,
+// e (para o visual da parede que fecha) o autodano da caixa que encolhe. Porta o
+// ProcessRanking (Server.cpp:8786-8989) como um poll dirigido por tick em vez de um
+// caso especial por golpe, casando com o desenho legado: um passo a cada
+// duelStepTicks ticks de mundo, uma varredura de vivacidade a cada duelCheckEvery passos.
 func (d *Dispatcher) sweepDuelArena(w *world.World) {
 	if !d.duel.active {
 		return
@@ -217,7 +217,7 @@ func (d *Dispatcher) sweepDuelArena(w *world.World) {
 	}
 	d.applyDuelWall(w, d.duel.ticksLeft)
 	if d.duel.ticksLeft > 0 {
-		return // still fighting
+		return // ainda lutando
 	}
 
 	alive1 := d.duelantAlive(w, d.duel.player1)
@@ -228,14 +228,14 @@ func (d *Dispatcher) sweepDuelArena(w *world.World) {
 	case alive2 && !alive1:
 		d.concludeDuelWin(w, d.duel.player2, d.duel.player1)
 	default:
-		d.concludeDuelDraw(w) // timeout, or both gone at once
+		d.concludeDuelDraw(w) // timeout, ou os dois fora ao mesmo tempo
 	}
 }
 
-// duelantAlive reports whether conn is still a live, in-bounds duel
-// participant: connected, HP > 0, and inside the arena box. A disconnect
-// (removeSession already nils the registry) or stepping out of bounds ends
-// their side, mirroring ProcessRanking's per-tick liveness scan.
+// duelantAlive informa se conn ainda é um lado vivo do duelo e
+// dentro dos limites: conectado, HP > 0, e dentro da caixa da arena. Uma desconexão
+// (removeSession já zera o registro) ou sair dos limites encerra
+// o lado dele, espelhando a varredura de vivacidade por tick do ProcessRanking.
 func (d *Dispatcher) duelantAlive(w *world.World, conn int) bool {
 	s := w.Session(conn)
 	e := w.Entity(conn)
@@ -245,8 +245,8 @@ func (d *Dispatcher) duelantAlive(w *world.World, conn int) bool {
 	return e.X >= duelBoxX1 && e.X <= duelBoxX2 && e.Y >= duelBoxY1 && e.Y <= duelBoxY2
 }
 
-// duelantName looks up conn's name from the (still-active) arena snapshot —
-// not from the live entity, which may already be gone (a disconnected loser).
+// duelantName busca o nome de conn no snapshot da arena (ainda ativo) —
+// não na entidade viva, que já pode ter sumido (um perdedor desconectado).
 func (d *Dispatcher) duelantName(conn int) string {
 	switch conn {
 	case d.duel.player1:
@@ -258,8 +258,8 @@ func (d *Dispatcher) duelantName(conn int) string {
 	}
 }
 
-// concludeDuelWin ends the active duel with winner beating loser: announces
-// the result, clears the arena, records the result, and frees the arena.
+// concludeDuelWin encerra o duelo ativo com o vencedor batendo o perdedor: anuncia
+// o resultado, limpa a arena, registra o resultado, e libera a arena.
 func (d *Dispatcher) concludeDuelWin(w *world.World, winner, loser int) {
 	winnerName, loserName := d.duelantName(winner), d.duelantName(loser)
 	d.duel = duelArena{}
@@ -271,10 +271,10 @@ func (d *Dispatcher) concludeDuelWin(w *world.World, winner, loser int) {
 	}
 }
 
-// concludeDuelDraw ends the active duel with no winner (timeout, or both
-// sides eliminated at once): announces the draw and clears the arena, exactly
-// like a win (the legacy ClearAreaTeleport runs either way). Draws aren't
-// persisted — RecordDuelResult only tracks wins/losses.
+// concludeDuelDraw encerra o duelo ativo sem vencedor (timeout, ou os dois
+// lados eliminados ao mesmo tempo): anuncia o empate e limpa a arena, exatamente
+// como uma vitória (o ClearAreaTeleport legado roda de qualquer modo). Empates não são
+// persistidos — o RecordDuelResult só rastreia vitórias/derrotas.
 func (d *Dispatcher) concludeDuelDraw(w *world.World) {
 	name1, name2 := d.duel.name1, d.duel.name2
 	d.duel = duelArena{}
@@ -283,9 +283,9 @@ func (d *Dispatcher) concludeDuelDraw(w *world.World) {
 	d.duelClearArea(w)
 }
 
-// duelNoticeArea ports ProcessRanking's two SendNoticeArea calls
-// (SendFunc.cpp:247): the result goes to everyone in the spectator box and in
-// the arena — the duelists, while still inside, and any watcher.
+// duelNoticeArea porta as duas chamadas SendNoticeArea do ProcessRanking
+// (SendFunc.cpp:247): o resultado vai a todos na caixa de espectadores e na
+// arena — os duelistas, enquanto ainda dentro, e qualquer observador.
 func (d *Dispatcher) duelNoticeArea(w *world.World, text string) {
 	arena := duelBox{duelBoxX1, duelBoxY1, duelBoxX2, duelBoxY2}
 	w.ForEachPlaying(-1, func(s *world.Session, e *world.Entity) {
@@ -295,10 +295,10 @@ func (d *Dispatcher) duelNoticeArea(w *world.World, text string) {
 	})
 }
 
-// duelClearArea ports ClearAreaTeleport(kRanking..., 2572, 1752) (Server.cpp:
-// 6388): everyone still inside the arena goes to the exit point, and whoever
-// died there comes back with HP 1. A duelist who already left the box is not
-// moved, as in the legacy.
+// duelClearArea porta o ClearAreaTeleport(kRanking..., 2572, 1752) (Server.cpp:
+// 6388): todos ainda dentro da arena vão ao ponto de saída, e quem
+// morreu ali volta com HP 1. Um duelista que já saiu da caixa não é
+// movido, como no legado.
 func (d *Dispatcher) duelClearArea(w *world.World) {
 	arena := duelBox{duelBoxX1, duelBoxY1, duelBoxX2, duelBoxY2}
 	w.ForEachPlaying(-1, func(s *world.Session, e *world.Entity) {
@@ -315,19 +315,19 @@ func (d *Dispatcher) duelClearArea(w *world.World) {
 	})
 }
 
-// duelWallEffect is the legacy EnvEffect id used for every closing-wall visual
-// call in ProcessRanking (Server.cpp: `SendEnvEffect(..., 32, 0)`, repeated for
-// every stage/quadrant). EffectParm is always 0.
+// duelWallEffect é o id de EnvEffect legado usado para todo visual da parede que fecha
+// no ProcessRanking (Server.cpp: `SendEnvEffect(..., 32, 0)`, repetido para
+// cada estágio/quadrante). EffectParm é sempre 0.
 const duelWallEffect = 32
 
-// duelStage buckets ticksLeft into ProcessRanking's three closing-wall stages
-// (Server.cpp:8834-8869): 0 = no wall yet, 1/2/3 = progressively narrower.
-// Shared by duelWallDamageStages and duelWallEffectStages so the thresholds
-// only exist once.
+// duelStage agrupa ticksLeft nos três estágios da parede que fecha do ProcessRanking
+// (Server.cpp:8834-8869): 0 = sem parede ainda, 1/2/3 = progressivamente mais estreita.
+// Compartilhado por duelWallDamageStages e duelWallEffectStages para os limiares
+// existirem uma vez só.
 func duelStage(ticksLeft int) int {
 	switch {
 	case ticksLeft >= 180:
-		return 0 // legacy: no wall before RankingTime reaches 179 (duelTicks=121 never hits this)
+		return 0 // legado: sem parede antes de RankingTime chegar a 179 (duelTicks=121 nunca chega lá)
 	case ticksLeft >= 120:
 		return 1
 	case ticksLeft >= 60:
@@ -337,12 +337,12 @@ func duelStage(ticksLeft int) int {
 	}
 }
 
-// duelWallDamageStages and duelWallEffectStages are direct 1:1 ports of
-// ProcessRanking's three closing-wall stages (Server.cpp:8834-8869), indexed
-// by duelStage. The damage boxes are the "wall" strips themselves (anyone
-// standing there takes duelWallDamage); the effect boxes are the same
-// geometry split into the visual quadrants the client renders. All box
-// coordinates are relative to the arena bounds (duelBoxX1/Y1/X2/Y2).
+// duelWallDamageStages e duelWallEffectStages são ports 1:1 diretos dos
+// três estágios da parede que fecha do ProcessRanking (Server.cpp:8834-8869), indexados
+// por duelStage. As caixas de dano são as próprias faixas da "parede" (quem
+// está ali leva duelWallDamage); as caixas de efeito são a mesma
+// geometria dividida nos quadrantes visuais que o cliente renderiza. Todas as coordenadas de caixa
+// são relativas aos limites da arena (duelBoxX1/Y1/X2/Y2).
 var duelWallDamageStages = [4][]duelBox{
 	0: nil,
 	1: {{duelBoxX1, duelBoxY1, duelBoxX2, 4019}, {duelBoxX1, 4070, duelBoxX2, duelBoxY2}},
@@ -372,11 +372,11 @@ var duelWallEffectStages = [4][]duelBox{
 	},
 }
 
-// applyDuelWall ports SendDamage/SendEnvEffect for the current closing-wall
-// stage: anyone (of the two duelists — this server doesn't model bystanders
-// wandering into the arena) caught in a wall strip is floored down by 2000 HP
-// (or to 1), and the shrinking box outline is broadcast to in-view watchers.
-// Like the legacy, it runs once per ProcessRanking step (every duelStepTicks).
+// applyDuelWall porta SendDamage/SendEnvEffect para o estágio atual da parede que
+// fecha: qualquer um (dos dois duelistas — este servidor não modela espectadores
+// entrando na arena) pego numa faixa da parede tem o HP baixado em 2000
+// (ou para 1), e o contorno da caixa que encolhe é transmitido aos observadores em visão.
+// Como o legado, roda uma vez por passo de ProcessRanking (a cada duelStepTicks).
 func (d *Dispatcher) applyDuelWall(w *world.World, ticksLeft int) {
 	stage := duelStage(ticksLeft)
 	for _, box := range duelWallDamageStages[stage] {
@@ -402,9 +402,9 @@ func (d *Dispatcher) applyDuelWall(w *world.World, ticksLeft int) {
 	}
 }
 
-// duelWallDamage floors e's HP down by 2000, or to 1 if already below (the
-// port of SendDamage's punishing effect, Server.cpp:5970-6009), going through
-// damageReqHp so the regen tick doesn't immediately heal it back (issue #99).
+// duelWallDamage baixa o HP de e em 2000, ou para 1 se já estiver abaixo (o
+// port do efeito punitivo do SendDamage, Server.cpp:5970-6009), passando por
+// damageReqHp para o tick de regen não curar de volta na hora (issue #99).
 func duelWallDamage(s *world.Session, e *world.Entity) {
 	dmg := int32(2000)
 	if e.HP < dmg {
@@ -417,9 +417,9 @@ func duelWallDamage(s *world.Session, e *world.Entity) {
 	damageReqHp(s, e, dmg)
 }
 
-// recordDuelResult persists the win/loss off the loop (World.GoDetached — not
-// bound to either session, since one side may already be gone by the time this
-// runs), mirroring the async dbServer-call pattern used elsewhere (e.g.
+// recordDuelResult persiste a vitória/derrota fora do loop (World.GoDetached — não
+// preso a nenhuma sessão, já que um lado pode já ter sumido quando isto
+// roda), espelhando o padrão assíncrono de chamada ao dbServer usado em outros lugares (ex.:
 // createCharacter, character.go:51-75).
 func (d *Dispatcher) recordDuelResult(w *world.World, winnerName, loserName string) {
 	p := w.Persistence()

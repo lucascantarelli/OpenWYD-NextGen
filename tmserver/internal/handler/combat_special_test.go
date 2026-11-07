@@ -186,7 +186,7 @@ func TestEtherealFlameBurnsPlayerMP(t *testing.T) {
 	db.loadResult = world.CharacterState{
 		Slot: 0, Name: "Beast", Class: 2, X: 5, Y: 5,
 		HP: 1000, MaxHP: 1000, MP: 500, MaxMP: 500, Level: 50, Int: 100,
-		LearnedSkill: 1 << 1, // skill 49 learned (49%24)
+		LearnedSkill: 1 << 1, // skill 49 aprendida (49%24)
 	}
 	spells := content.NewSkillData([]content.Spell{
 		{Index: 49, ManaSpent: 35, InstanceType: 12, MaxTarget: 1, Name: "Chamas Etereas"},
@@ -408,9 +408,9 @@ func TestExterminarConsumesRemainingMPIntoDamage(t *testing.T) {
 	}
 }
 
-// TestJulgamentoDivinoAddsPreHitHPToEveryTarget is the issue #392 regression:
-// every target gets the caster's HP from before the swing (the legacy `hp`),
-// while the caster's HP still drops to HP/6+1 once per target.
+// TestJulgamentoDivinoAddsPreHitHPToEveryTarget é a regressão da issue #392:
+// cada alvo recebe o HP do conjurador de antes do golpe (o `hp` legado),
+// enquanto o HP do conjurador ainda cai para HP/6+1 uma vez por alvo.
 func TestJulgamentoDivinoAddsPreHitHPToEveryTarget(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
@@ -431,9 +431,9 @@ func TestJulgamentoDivinoAddsPreHitHPToEveryTarget(t *testing.T) {
 	}
 }
 
-// TestFoemaTeleportPullsToCaster is the issue #393 regression: the Teleporte
-// (skill 42) pulls the target next to the Foema's server-side position, never
-// to a packet coordinate, and refuses dead, too strong or no-summon-zone casts.
+// TestFoemaTeleportPullsToCaster é a regressão da issue #393: o Teleporte
+// (skill 42) puxa o alvo para perto da posição do Foema no servidor, nunca
+// para uma coordenada do pacote, e recusa conjurações mortas, fortes demais ou fora de zona de invocação.
 func TestFoemaTeleportPullsToCaster(t *testing.T) {
 	addr, d, w, _ := startKefraServer(t, perzenDB(0))
 	a := enterWorld(t, addr)
@@ -596,10 +596,10 @@ func TestCreateVineRejectsOccupiedTarget(t *testing.T) {
 	}
 }
 
-// startServerSkillsTargetMob is startServerSkillsMob with a caller-supplied mob
-// template at (6,5), next to the player spawn (5,5) — for exercising the
-// per-target gates of attack() (merchant immunity, dead-target rejection). It
-// returns the world so the test can inspect the spawned entity's state.
+// startServerSkillsTargetMob é startServerSkillsMob com um template de criatura fornecido
+// pelo chamador em (6,5), ao lado do spawn do jogador (5,5) — para exercitar os
+// gates por alvo do attack() (imunidade de mercador, recusa de alvo morto). Ele
+// devolve o mundo para o teste poder inspecionar o estado da entidade gerada.
 func startServerSkillsTargetMob(t *testing.T, persist world.Persistence, tmpl []byte) (string, func(), *world.World) {
 	t.Helper()
 	return startServerSkillsTargetMobAt(t, persist, tmpl, 16, 6, 5)
@@ -628,7 +628,7 @@ func startServerSkillsTargetMobAt(t *testing.T, persist world.Persistence, tmpl 
 	}, w
 }
 
-// targetMob builds an 816-byte STRUCT_MOB with the given Merchant flag and HP.
+// targetMob monta um STRUCT_MOB de 816 bytes com a flag Merchant e o HP dados.
 func targetMob(name string, merchant byte, hp uint32) []byte {
 	return targetMobWithClan(name, 0, merchant, hp)
 }
@@ -637,7 +637,7 @@ func targetMobWithClan(name string, clan, merchant byte, hp uint32) []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], name)
 	b[16] = clan
-	const cs = 92 // CurrentScore offset
+	const cs = 92 // offset de CurrentScore
 	b[cs+12] = merchant
 	binary.LittleEndian.PutUint32(b[cs+16:], 5000) // MaxHp
 	binary.LittleEndian.PutUint32(b[cs+24:], hp)   // Hp
@@ -666,8 +666,8 @@ func attackEchoBody(t *testing.T, c net.Conn, tick uint32, targetID, skillnum in
 	return got
 }
 
-// castEchoDamage casts skillnum (claim -1) at targetID and returns the resolved
-// Dam[0].Damage from the attacker's own authoritative MsgAttack echo.
+// castEchoDamage conjura skillnum (alegado -1) no targetID e devolve o Dam[0].Damage
+// resolvido a partir do eco MsgAttack autoritativo do próprio atacante.
 func castEchoDamage(t *testing.T, c net.Conn, targetID, skillnum int) int32 {
 	t.Helper()
 	return attackEchoDamage(t, c, serverTime, targetID, skillnum, -1)
@@ -727,12 +727,12 @@ func TestKingdomCombatStillAllowsOpponentsAndNonKingdomRules(t *testing.T) {
 	}
 }
 
-// TestSkillMerchantTakesNoDamage: an untouchable NPC (Merchant != 0) is immune
-// to a damage skill — the per-target gate zeroes the hit (_MSG_Attack.cpp:333).
+// TestSkillMerchantTakesNoDamage: um NPC intocável (Merchant != 0) é imune
+// a uma skill de dano — o gate por alvo zera o acerto (_MSG_Attack.cpp:333).
 func TestSkillMerchantTakesNoDamage(t *testing.T) {
 	addr, stop, w := startServerSkillsTargetMob(t, skillCombatDB(1<<2), targetMob("Loja", 1, 5000))
 	defer stop()
-	c := enterWorld(t, addr) // learned elemental skill 2
+	c := enterWorld(t, addr) // skill elemental 2 aprendida
 	defer c.Close()
 
 	if dmg := castEchoDamage(t, c, world.MaxUser, 2); dmg != 0 {
@@ -781,11 +781,11 @@ func TestHostileCityMobStillTakesDamage(t *testing.T) {
 	}
 }
 
-// TestSkillDeadTargetRejectsDamage: a present-but-dead entity (HP<=0) is skipped
-// by a damage skill — only the resurrection skills (31/99) may target it
-// (_MSG_Attack.cpp:333). Here the target is a mob spawned already at 0 HP; the
-// test asserts the entity is present (so it is the dead-target gate, not the
-// empty-slot gate, doing the work).
+// TestSkillDeadTargetRejectsDamage: uma entidade presente mas morta (HP<=0) é pulada
+// por uma skill de dano — só as skills de ressurreição (31/99) podem mirá-la
+// (_MSG_Attack.cpp:333). Aqui o alvo é uma criatura gerada já com 0 HP; o
+// teste afirma que a entidade está presente (então é o gate de alvo morto, não o
+// gate de slot vazio, fazendo o trabalho).
 func TestSkillDeadTargetRejectsDamage(t *testing.T) {
 	addr, stop, w := startServerSkillsTargetMob(t, skillCombatDB(1<<2), targetMob("Cadaver", 0, 0))
 	defer stop()
@@ -804,26 +804,26 @@ func TestSkillDeadTargetRejectsDamage(t *testing.T) {
 	}
 }
 
-// TestSkillNonexistentTargetZeroesDamage: a Dam entry naming an empty slot
-// resolves to 0 without dropping the whole attack (the loop's target==nil
-// guard, _MSG_Attack.cpp per-entry skip).
+// TestSkillNonexistentTargetZeroesDamage: uma entrada de Dam nomeando um slot vazio
+// resolve para 0 sem descartar o ataque inteiro (a guarda target==nil do laço,
+// pulo por entrada de _MSG_Attack.cpp).
 func TestSkillNonexistentTargetZeroesDamage(t *testing.T) {
 	addr, stop := startServerSkills(t, skillCombatDB(1<<2))
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// Slot 500 is a valid player-range id with nobody logged in → w.Entity is nil.
+	// Slot 500 é um id válido da faixa de jogadores sem ninguém logado → w.Entity é nil.
 	if dmg := castEchoDamage(t, c, 500, 2); dmg != 0 {
 		t.Errorf("nonexistent target resolved %d damage, want 0", dmg)
 	}
 }
 
-// TestApplyCastAffectAggressiveSkipsAllies covers the aggressive-affect landing
-// gate (_MSG_Attack.cpp:1172-1240, combat.go applyCastAffect): a hostile cast
-// never lands on a same-party/guild ally, bounces off RSV_BLOCK, and clan 6 is
-// immune to player casts — but a genuine enemy takes it. AffectResist is 0 so
-// the resist roll is skipped and each case is deterministic.
+// TestApplyCastAffectAggressiveSkipsAllies cobre o gate de entrada de affect
+// agressivo (_MSG_Attack.cpp:1172-1240, combat.go applyCastAffect): uma conjuração hostil
+// nunca entra num aliado do mesmo grupo/guilda, quica em RSV_BLOCK, e o clã 6 é
+// imune a conjurações de jogadores — mas um inimigo de verdade a recebe. AffectResist é 0 para
+// o sorteio de resistência ser pulado e cada caso ser determinístico.
 func TestApplyCastAffectAggressiveSkipsAllies(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
@@ -844,7 +844,7 @@ func TestApplyCastAffectAggressiveSkipsAllies(t *testing.T) {
 	cases := []struct {
 		name string
 		mut  func(caster, target *world.Entity)
-		want bool // affect expected to land
+		want bool // affect esperado entrar
 	}{
 		{"same leader is skipped", func(c, tgt *world.Entity) { c.Leader = 9; tgt.Leader = 9 }, false},
 		{"same guild is skipped", func(c, tgt *world.Entity) { c.Guild = 7; tgt.Guild = 7 }, false},
@@ -863,20 +863,20 @@ func TestApplyCastAffectAggressiveSkipsAllies(t *testing.T) {
 	}
 }
 
-// TestEscudoDouradoAffectDuration pins the LEGACY duration of Escudo Dourado
-// (skill 85 → affect 31) — Config{} leaves AffectDuration at its zero value:
-// SetAffect stores (AffectTime+1)*(100+Special)/100 ticks and the sweep burns
-// one tick every affectTickPeriod seconds of real time. With AffectTime 7 (raw
-// 30 under the legacy ÷4 issue #236 restored) that is 64 s unbuffed and 5m20 at
-// the Special cap — twice the 32 s…2m40 the uniform ÷8 produced.
+// TestEscudoDouradoAffectDuration fixa a duração LEGADA do Escudo Dourado
+// (skill 85 → affect 31) — Config{} deixa AffectDuration no valor zero:
+// SetAffect guarda (AffectTime+1)*(100+Special)/100 ticks e a varredura queima
+// um tick a cada affectTickPeriod segundos de tempo real. Com AffectTime 7 (cru
+// 30 sob o ÷4 legado restaurado pela issue #236) isso é 64 s sem buff e 5m20 no
+// teto de Special — o dobro dos 32 s…2m40 que o ÷8 uniforme produzia.
 //
-// The production policy reproduces this same curve, because the row fits under
-// the cap and is exempt from the scale; TestCastBuffDurationCurve is where that
-// is asserted with the tmServer defaults wired in.
+// A política de produção reproduz essa mesma curva, porque a linha cabe abaixo
+// do teto e está isenta da escala; TestCastBuffDurationCurve é onde isso
+// é afirmado com os padrões do tmServer ligados.
 func TestEscudoDouradoAffectDuration(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
-	// Skill 85 as the Release CSV yields it through the content loader.
+	// Skill 85 como o CSV de Release a entrega pelo loader de conteúdo.
 	shield := content.Spell{Index: 85, ManaSpent: 120, Delay: 5, AffectType: 31,
 		AffectValue: 150, AffectTime: 7, MaxTarget: 1}
 
@@ -908,15 +908,15 @@ func TestEscudoDouradoAffectDuration(t *testing.T) {
 	}
 }
 
-// samaritanoSpell is skill 13 exactly as the Release CSV yields it through the
-// content loader (SkillData.csv:14: affect 24, Value 0, AffectTime 600 ÷4 = 150).
+// samaritanoSpell é a skill 13 exatamente como o CSV de Release a entrega pelo
+// loader de conteúdo (SkillData.csv:14: affect 24, Value 0, AffectTime 600 ÷4 = 150).
 var samaritanoSpell = content.Spell{Index: 13, SkillPoint: 72, ManaSpent: 25, Delay: 1,
 	Range: 5, AffectType: affectSamaritano, AffectValue: 0, AffectTime: 150, MaxTarget: 1}
 
-// TestSamaritanoCastRaisesConAndMaxHP walks the whole issue-#267 path: the cast
-// installs affect 24, refreshScore caches the CON/MaxHP contribution, and the
-// score packet the client renders carries both. Con and MaxHp are precisely the
-// two fields the issue's screenshots point at.
+// TestSamaritanoCastRaisesConAndMaxHP percorre todo o caminho da issue-#267: a conjuração
+// instala o affect 24, o refreshScore cacheia a contribuição de CON/MaxHP, e o
+// pacote de score que o cliente renderiza carrega os dois. Con e MaxHp são exatamente os
+// dois campos que as capturas de tela da issue apontam.
 func TestSamaritanoCastRaisesConAndMaxHP(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
@@ -936,15 +936,15 @@ func TestSamaritanoCastRaisesConAndMaxHP(t *testing.T) {
 	}
 }
 
-// The legacy drops Samaritano at the TOP of every attack (_MSG_Attack.cpp:274)
-// while the affect it is casting only lands further down, in applyCastAffect —
-// so casting the buff must never cancel it. Guards that ordering.
+// O legado derruba Samaritano no TOPO de todo ataque (_MSG_Attack.cpp:274)
+// enquanto o affect que ele está conjurando só entra mais abaixo, em applyCastAffect —
+// então conjurar o buff nunca pode cancelá-lo. Guarda essa ordem.
 func TestSamaritanoSurvivesItsOwnCast(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
 	e := &world.Entity{ID: 1, BaseMaxHP: 4000, MaxHP: 4000}
 
-	d.removeSamaritano(w, e) // what attack() does before resolving the cast
+	d.removeSamaritano(w, e) // o que o attack() faz antes de resolver a conjuração
 	d.applyCastAffect(w, e, e, e.ID, castInfo{isSkill: true, special: 200, spell: samaritanoSpell})
 
 	if !e.HasAffect(affectSamaritano) {
@@ -952,15 +952,15 @@ func TestSamaritanoSurvivesItsOwnCast(t *testing.T) {
 	}
 }
 
-// TestRemoveSamaritanoOnAttack is the DoRemoveSamaritano port (Server.cpp:9129):
-// swinging drops the buff, and the score goes back to its unbuffed values —
-// including the HP clamp the shrinking MaxHP forces.
+// TestRemoveSamaritanoOnAttack é o port do DoRemoveSamaritano (Server.cpp:9129):
+// atacar derruba o buff, e o score volta aos valores sem buff —
+// incluindo o limite de HP que o MaxHP encolhido força.
 func TestRemoveSamaritanoOnAttack(t *testing.T) {
 	d := New(Config{})
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
 	e := &world.Entity{ID: 1, BaseCon: 212, BaseMaxHP: 4031, MaxHP: 4031, Con: 212}
 	d.applyCastAffect(w, e, e, e.ID, castInfo{isSkill: true, special: 200, spell: samaritanoSpell})
-	e.HP = 4331 // topped up while buffed
+	e.HP = 4331 // completado enquanto com buff
 
 	d.removeSamaritano(w, e)
 
@@ -1073,12 +1073,12 @@ func TestConsumeIllusionRejectsUnlearned(t *testing.T) {
 	}
 }
 
-// TestSkillResistMitigationClampedAtCeiling proves resolveSkillHit feeds the
-// CLAMPED resist to SkillResistScale. Stacking Proteção Elemental on gear that
-// already sits at the cap must not mitigate further: the legacy clamps inside
-// BASE_GetCurrentScore, so its combat path never sees a resist above 100
-// (Basedef.cpp:4737-4767). Both runs use a fresh world, and rng.New() is
-// deterministic (state=1), so the underlying damage roll is identical.
+// TestSkillResistMitigationClampedAtCeiling prova que resolveSkillHit alimenta o
+// resist LIMITADO para SkillResistScale. Empilhar Proteção Elemental sobre equipamento que
+// já está no teto não pode mitigar além: o legado limita dentro do
+// BASE_GetCurrentScore, então seu caminho de combate nunca vê resistência acima de 100
+// (Basedef.cpp:4737-4767). As duas execuções usam um mundo novo, e rng.New() é
+// determinístico (state=1), então o sorteio de dano por baixo é idêntico.
 func TestSkillResistMitigationClampedAtCeiling(t *testing.T) {
 	damageWith := func(aff int16) int {
 		d := New(Config{})
@@ -1102,25 +1102,25 @@ func TestSkillResistMitigationClampedAtCeiling(t *testing.T) {
 	}
 }
 
-// prodAffectDuration mirrors the tmServer defaults (cmd/tmserver/main.go):
-// 15% of the legacy duration, floored at 60s for friendly affects, capped at
-// 10 min. Kept here so the end-to-end curve is asserted against the SHIPPED
-// numbers, not against whatever a test happens to configure.
+// prodAffectDuration espelha os padrões do tmServer (cmd/tmserver/main.go):
+// 15% da duração legada, com piso de 60s para affects amigáveis, teto de
+// 10 min. Mantido aqui para a curva ponta a ponta ser afirmada contra os números
+// ENTREGUES, não contra o que o teste configure por acaso.
 var prodAffectDuration = world.AffectDuration{
 	ScalePct: 15,
 	MinTicks: AffectTicksFromSeconds(60),
 	MaxTicks: AffectTicksFromMinutes(10),
 }
 
-// TestCastBuffDurationCurve is the regression the three previous attempts at
-// issue #229 were missing: an explicit, end-to-end statement of how long a cast
-// buff is allowed to last, in the minutes the player reads off the buff bar.
+// TestCastBuffDurationCurve é a regressão que as três tentativas anteriores da
+// issue #229 não tinham: uma declaração explícita, ponta a ponta, de quanto tempo um
+// buff de conjuração pode durar, nos minutos que o jogador lê na barra de buff.
 //
-// Skill 43 (Escudo Mágico) carries raw AffectTime 600 → 150 after the legacy ÷4,
-// like every other long buff in SkillData.csv. Skills 85 (Escudo Dourado, the
-// affect-31 row, raw 30 → 7) and 90 (Toxina da Serpente, raw 25 → 6) stand for
-// the short tail — the rows the issue #92 ÷8 truncated and the first cut at this
-// policy then scaled into the floor, both reported as issue #236.
+// A skill 43 (Escudo Mágico) carrega AffectTime cru 600 → 150 após o ÷4 legado,
+// como todo outro buff longo do SkillData.csv. As skills 85 (Escudo Dourado, a
+// linha do affect-31, cru 30 → 7) e 90 (Toxina da Serpente, cru 25 → 6) representam
+// a cauda curta — as linhas que o ÷8 da issue #92 truncava e que o primeiro corte desta
+// política então escalava para o piso, ambos reportados como issue #236.
 func TestCastBuffDurationCurve(t *testing.T) {
 	spells := content.NewSkillData([]content.Spell{
 		{Index: 43, AffectType: 11, AffectValue: 5, AffectTime: 150, MaxTarget: 1},
@@ -1133,19 +1133,19 @@ func TestCastBuffDurationCurve(t *testing.T) {
 		special  int
 		wantSecs int
 	}{
-		// Before this fix the same character sat at 10 min → 51 min; the #229
-		// screenshot (Foema Nv 400) measured 33 min at special ≈ 226.
+		// Antes desta correção o mesmo personagem ficava em 10 min → 51 min; a
+		// captura da #229 (Foema Nv 400) media 33 min com special ≈ 226.
 		{"long buff, no mastery", 43, 0, 176},    // 2m56
 		{"long buff, special 100", 43, 100, 360}, // 6m00
 		{"long buff, special 226", 43, 226, 584}, // 9m44
-		{"long buff, special 255", 43, 255, 600}, // capped at 10m
-		{"long buff, special 400", 43, 400, 600}, // capped at 10m
-		// The short tail already fits the target band, so it keeps the legacy
-		// mastery curve; only the very bottom of it meets the 60s floor.
-		{"short buff, no mastery", 85, 0, 64},     // 1m04, floored
+		{"long buff, special 255", 43, 255, 600}, // com teto de 10m
+		{"long buff, special 400", 43, 400, 600}, // com teto de 10m
+		// A cauda curta já cabe na faixa alvo, então mantém a curva de
+		// maestria legada; só o fundo dela encontra o piso de 60s.
+		{"short buff, no mastery", 85, 0, 64},     // 1m04, no piso
 		{"short buff, special 100", 85, 100, 128}, // 2m08
 		{"short buff, special 400", 85, 400, 320}, // 5m20
-		{"shorter buff, no mastery", 90, 0, 64},   // 56s legacy, floored to 1m04
+		{"shorter buff, no mastery", 90, 0, 64},   // 56s legado, no piso para 1m04
 		{"shorter buff, special 400", 90, 400, 280},
 	}
 	for _, tt := range tests {
@@ -1169,11 +1169,11 @@ func TestCastBuffDurationCurve(t *testing.T) {
 	}
 }
 
-// TestCastBuffDurationLeavesItemAffects asserts the scope line the issue #229
-// screenshot made visible: the same buff bar showed 7d/29d cash jewels and a 1h
-// item buff next to the skill buffs. Those are installed straight into
-// Entity.Affect with their own intentional durations and must never be caught by
-// the cast tuning.
+// TestCastBuffDurationLeavesItemAffects afirma a linha de escopo que a captura
+// da issue #229 deixou visível: a mesma barra de buff mostrava joias de cash de 7d/29d e um
+// buff de item de 1h ao lado dos buffs de skill. Eles são instalados direto em
+// Entity.Affect com durações intencionais próprias e nunca podem ser pegos pelo
+// ajuste de conjuração.
 func TestCastBuffDurationLeavesItemAffects(t *testing.T) {
 	spells := content.NewSkillData([]content.Spell{
 		{Index: 43, AffectType: 11, AffectValue: 5, AffectTime: 150, MaxTarget: 1},
@@ -1182,8 +1182,8 @@ func TestCastBuffDurationLeavesItemAffects(t *testing.T) {
 	w := world.New(world.Config{GridDim: 16}, slog.Default(), nil, nil)
 	caster := &world.Entity{ID: 1}
 	target := &world.Entity{ID: 2}
-	target.Affect[0] = world.Affect{Type: 8, Level: 1 << 1, Time: affect1D * 7} // 7-day cash jewel
-	target.Affect[1] = world.Affect{Type: 35, Time: affect1H}                   // 1h Vigor
+	target.Affect[0] = world.Affect{Type: 8, Level: 1 << 1, Time: affect1D * 7} // joia de cash de 7 dias
+	target.Affect[1] = world.Affect{Type: 35, Time: affect1H}                   // Vigor de 1h
 	sp, _ := spells.Get(43)
 
 	d.applyCastAffect(w, caster, target, target.ID,
@@ -1195,7 +1195,7 @@ func TestCastBuffDurationLeavesItemAffects(t *testing.T) {
 	if got := target.Affect[1].Time; got != affect1H {
 		t.Errorf("Vigor Time = %d, want %d (untouched)", got, affect1H)
 	}
-	// The cast landed in the next free slot and IS tuned.
+	// A conjuração entrou no próximo slot livre e ESTÁ ajustada.
 	if got := target.Affect[2].Time; got != uint32(AffectTicksFromMinutes(10)) {
 		t.Errorf("cast affect Time = %d ticks, want the 10min cap", got)
 	}

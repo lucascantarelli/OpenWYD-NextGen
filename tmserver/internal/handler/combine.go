@@ -7,48 +7,48 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Combine result codes for _MSG_CombineComplete.Parm (game-rules.md §3.1).
+// Códigos de resultado de combine para _MSG_CombineComplete.Parm (game-rules.md §3.1).
 const (
-	combineInvalid = 0 // recipe did not match (inputs NOT consumed)
+	combineInvalid = 0 // a receita não casou (entradas NÃO consumidas)
 	combineSuccess = 1
 	combineFailed  = 2
 )
 
-// Magic constants of the base Anct combine (game-rules.md §3.1/§7).
+// Constantes mágicas do combine Anct base (game-rules.md §3.1/§7).
 const (
 	jewelBase  = 2441 // joia = Item[1].sIndex - 2441 (0..3)
 	resultSanc = 7    // BASE_SetItemSanc(result, 7, 0)
 )
 
-// CombineFamily parametrizes one combine system (Anct/Ehre/Tiny/…). The ~9
-// variants differ ONLY in Rate (GetMatchCombine<X>) and Apply (the result), so
-// one engine handles them all (consolidation, guidelines §19.3).
+// CombineFamily parametriza um sistema de combine (Anct/Ehre/Tiny/…). As ~9
+// variantes diferem SÓ em Rate (GetMatchCombine<X>) e Apply (o resultado), então
+// uma engine cuida de todas (consolidação, guidelines §19.3).
 type CombineFamily struct {
 	Name  string
-	Rate  func(items []world.Item) int        // recipe rate 0..100; 0 = no match
-	Apply func(items []world.Item) world.Item // result item on success
+	Rate  func(items []world.Item) int        // taxa da receita 0..100; 0 = sem casamento
+	Apply func(items []world.Item) world.Item // item de resultado no sucesso
 }
 
-// combineItemTypes are the Item[]-based combine variants sharing the engine.
-// MsgCombineItemOdin is NOT here — its recipes don't fit the generic
-// CombineFamily{Rate,Apply} shape, so it gets its own dedicated handler
-// (combine_odin.go) instead.
+// combineItemTypes são as variantes de combine baseadas em Item[] que compartilham a engine.
+// MsgCombineItemOdin NÃO está aqui — suas receitas não cabem na forma genérica
+// CombineFamily{Rate,Apply}, então ele ganha um handler dedicado
+// (combine_odin.go) em vez disso.
 var combineItemTypes = []protocol.Type{protocol.MsgCombineItem}
 
-// defaultCombineFamily is the UNVERIFIED placeholder used until the recipe/rate
-// tables (Common/Settings/CompRate.txt) and ItemList are loaded (Phase 5): every
-// recipe is "no match" (Rate 0), so combines report invalid rather than guess.
+// defaultCombineFamily é o placeholder UNVERIFIED usado até as tabelas de
+// receita/taxa (Common/Settings/CompRate.txt) e o ItemList serem carregados (Fase 5): toda
+// receita fica "sem casamento" (Rate 0), então os combines reportam inválido em vez de adivinhar.
 func defaultCombineFamily(name string) CombineFamily {
 	return CombineFamily{Name: name, Rate: func([]world.Item) int { return 0 }, Apply: anctApply}
 }
 
-// anctApply is the base Anct result fallback when no content catalog is mounted.
+// anctApply é o fallback do resultado Anct base quando nenhum catálogo de conteúdo está montado.
 //
-// Like combine.AnctResult, the sanc only lands if the base item already carries a
-// sanc pair — BASE_SetItemSanc allocates nothing and returns FALSE otherwise
-// (Basedef.cpp:2312). This resolves the old "which slot does sanc live in?"
-// UNVERIFIED: it is whichever slot already holds EF_SANC or a [116,125] effect,
-// scanning 0→1→2, never a fixed Effects[2].
+// Como combine.AnctResult, o sanc só entra se o item base já carregar um
+// par de sanc — BASE_SetItemSanc não aloca nada e devolve FALSE caso contrário
+// (Basedef.cpp:2312). Isto resolve a antiga UNVERIFIED "em que slot o sanc
+// mora?": é o slot que já contém EF_SANC ou um efeito [116,125],
+// varrendo 0→1→2, nunca um Effects[2] fixo.
 func anctApply(items []world.Item) world.Item {
 	result := items[0]
 	if len(items) >= 2 {
@@ -60,14 +60,14 @@ func anctApply(items []world.Item) world.Item {
 	return result
 }
 
-// resolveComboInputs validates a combine packet's claimed inputs against the
-// live accessible carry slots (bounds + sameItem anti-cheat) — the skeleton every
-// Item[]-based combine variant shares, generic and Odin alike. It returns the
-// items and their carry slots still indexed by ORIGINAL combine-message
-// position (zero Item/slot where the client left that position empty), plus
-// the list of active positions in ascending order. ok is false once the
-// caller has already sent a response (RemoveTrade or _NN_Wrong_Combination)
-// and must return immediately without consuming anything.
+// resolveComboInputs valida as entradas alegadas por um pacote de combine contra os
+// slots de carry acessíveis vivos (limites + sameItem anti-cheat) — o esqueleto que toda
+// variante de combine baseada em Item[] compartilha, genérica e Odin iguais. Ele devolve os
+// itens e seus slots de carry ainda indexados pela posição ORIGINAL da
+// mensagem de combine (Item/slot zero onde o cliente deixou aquela posição vazia), mais
+// a lista de posições ativas em ordem crescente. ok é falso quando o
+// quem chamou já enviou uma resposta (RemoveTrade ou _NN_Wrong_Combination)
+// e precisa retornar na hora sem consumir nada.
 func (d *Dispatcher) resolveComboInputs(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgCombineItemBody) (items [protocol.MaxCombine]world.Item, slots [protocol.MaxCombine]int, active []int, ok bool) {
 	active = make([]int, 0, protocol.MaxCombine)
 	for i := 0; i < protocol.MaxCombine; i++ {
@@ -76,11 +76,11 @@ func (d *Dispatcher) resolveComboInputs(w *world.World, s *world.Session, e *wor
 		}
 		pos := int(body.InvenPos[i])
 		if !carrySlotAccessible(e, pos) {
-			d.removeTrade(w, s) // out of range → RemoveTrade (anti-cheat)
+			d.removeTrade(w, s) // fora da faixa → RemoveTrade (anti-cheat)
 			return items, slots, active, false
 		}
 		if !sameItem(body.Item[i], e.Carry[pos]) {
-			sendCombineComplete(w, s, combineInvalid) // changed/removed
+			sendCombineComplete(w, s, combineInvalid) // mudou/removeu
 			return items, slots, active, false
 		}
 		items[i] = e.Carry[pos]
@@ -90,10 +90,10 @@ func (d *Dispatcher) resolveComboInputs(w *world.World, s *world.Session, e *wor
 	return items, slots, active, true
 }
 
-// combineItem is the shared engine handler for the Item[]-based variants. It
-// follows the original ORDER exactly: validate recipe FIRST (invalid ⇒ inputs
-// kept), then consume inputs, then roll — so a failed roll still consumes the
-// inputs (the intended WYD behaviour, game-rules.md §3.1).
+// combineItem é o handler da engine compartilhado pelas variantes baseadas em Item[]. Ele
+// segue exatamente a ORDEM original: valida a receita PRIMEIRO (inválida ⇒ entradas
+// mantidas), depois consome as entradas, depois sorteia — então um sorteio que falha ainda consome as
+// entradas (o comportamento WYD pretendido, game-rules.md §3.1).
 func (d *Dispatcher) combineItem(w *world.World, s *world.Session, h protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -119,12 +119,12 @@ func (d *Dispatcher) combineItem(w *world.World, s *world.Session, h protocol.He
 		rate = fam.Rate(items)
 	}
 	if rate == 0 {
-		// _NN_Wrong_Combination — inputs are NOT consumed.
+		// _NN_Wrong_Combination — as entradas NÃO são consumidas.
 		sendCombineComplete(w, s, combineInvalid)
 		return
 	}
 
-	// Consume the inputs BEFORE the roll (lost on failure, by design).
+	// Consome as entradas ANTES do sorteio (perdidas na falha, por projeto).
 	for _, pos := range active {
 		sl := slotByPos[pos]
 		e.Carry[sl] = world.Item{}
@@ -142,9 +142,9 @@ func (d *Dispatcher) combineItem(w *world.World, s *world.Session, h protocol.He
 	sendCarrySlot(w, s, e, ipos)
 }
 
-// combineExtracao handles _MSG_CombineItemExtracao (0x02D4): Huntress extraction
-// uses MSG_STANDARDPARM2.Parm2 as the carry slot and consumes one Pedra do Sábio
-// catalyst — one unit, not the whole stack: the NPC shop sells it in packs.
+// combineExtracao trata _MSG_CombineItemExtracao (0x02D4): a extração da Huntress
+// usa MSG_STANDARDPARM2.Parm2 como slot de carry e consome uma Pedra do Sábio
+// como catalisador — uma unidade, não a pilha inteira: a loja do NPC vende em pacotes.
 func (d *Dispatcher) combineExtracao(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -231,21 +231,21 @@ func extractionResultIndex(pos int) int16 {
 	}
 }
 
-// sendCombineComplete answers a combine with _MSG_CombineComplete (0x03A7).
+// sendCombineComplete responde a um combine com _MSG_CombineComplete (0x03A7).
 //
-// The body is MSG_STANDARDPARM — a 4-byte int Parm (Basedef.h:1254-1258), not a
-// short: a 2-byte body left the client reading Parm's high half out of the next
-// frame. HEADER.ID is ESCENE_FIELD, as SendClientSignalParm sets it
-// (SendFunc.cpp:300-310), not the sender's conn.
+// O corpo é MSG_STANDARDPARM — um int Parm de 4 bytes (Basedef.h:1254-1258), não um
+// short: um corpo de 2 bytes deixava o cliente lendo a metade alta de Parm do próximo
+// frame. HEADER.ID é ESCENE_FIELD, como SendClientSignalParm define
+// (SendFunc.cpp:300-310), não a conn do remetente.
 func sendCombineComplete(w *world.World, s *world.Session, parm int32) {
 	w.SendTo(s, protocol.Header{Type: protocol.MsgCombineComplete, ID: protocol.IDScene}, protocol.EncodeStandardParm(parm))
 }
 
-// sendCarrySlot pushes one carry slot's current contents to the client.
+// sendCarrySlot empurra o conteúdo atual de um slot de carry para o cliente.
 //
 // MSG_SendItem is {short invType; short Slot; STRUCT_ITEM item} (Basedef.h:2037-2046)
-// — a 12-byte body. The combine paths used to send a bare slot index instead, so the
-// client parsed invType from the slot number and the item from whatever followed.
+// — um corpo de 12 bytes. Os caminhos de combine enviavam um índice de slot cru, então o
+// cliente lê invType do número do slot e o item do que viesse em seguida.
 func sendCarrySlot(w *world.World, s *world.Session, e *world.Entity, slot int) {
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, slot, itemToSel(e.Carry[slot])))
 }

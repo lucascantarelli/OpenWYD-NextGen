@@ -2055,10 +2055,10 @@ func (d *Dispatcher) refineFactor(it world.Item) int {
 // itemAbilityRefined é BASE_GetItemAbility (Basedef.cpp:1687-1867): a soma de
 // catálogo+instância de um efeito, depois o multiplicador de refino para todo efeito não isento. O legado
 // multiplica a SOMA, não cada entrada, e a divisão trunca — então os chamadores precisam pedir
-// um efeito inteiro de uma vez em vez de escalar entradas individuais.
+// um efeito inteiro de uma vez em vez de escalar entrada por entrada.
 //
 // EF_RUNSPEED carrega um limite pós-multiplicador próprio (Basedef.cpp:1860-1867): botas
-// nunca contribuem mais que 2 no nibble de movimento, e um par +9 ganha um ponto extra.
+// nunca somam mais que 2 no nibble de movimento, e um par +9 ganha um ponto extra.
 func (d *Dispatcher) itemAbilityRefined(it world.Item, eff uint8) int32 {
 	v := int32(d.itemAbility(it, eff))
 	if v == 0 || !refineScaled(eff) {
@@ -2207,7 +2207,7 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 				b.damage += val
 			}
 		case efDamageAdd:
-			if dmgJewel { // só joias (nUnique 41-50) contribuem EF_DAMAGEADD
+			if dmgJewel { // só joias (nUnique 41-50) somam EF_DAMAGEADD
 				b.damage += val
 			}
 		case efMagic:
@@ -2215,7 +2215,7 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 				b.magicRaw += val
 			}
 		case efMagicAdd:
-			if dmgJewel { // só joias (nUnique 41-50) contribuem EF_MAGICADD
+			if dmgJewel { // só joias (nUnique 41-50) somam EF_MAGICADD
 				b.magicRaw += val
 			}
 		case efHp:
