@@ -6,10 +6,10 @@ bin/
 !api/bin/**
 *.log
 *.rar
-# tmserver/content carries the game content tmServer loads at boot (rates,
-# BaseMob/BaseSummon templates, serv00.htm, maps), so it stays in the build
-# context. _legacy is the archived Win32 runtime (DLLs, launchers, dumps) and
-# never enters the image.
+# tmserver/content carrega o conteúdo que o tmServer lê no boot (taxas,
+# templates BaseMob/BaseSummon, serv00.htm, mapas), então fica no contexto de
+# build. _legacy é o runtime Win32 arquivado (DLLs, launchers, dumps) e nunca
+# entra na imagem.
 tmserver/content/_legacy
 Source
 serverlist bin

@@ -80,7 +80,7 @@ export const NAV: readonly NavGroup[] = [
   },
 ] as const;
 
-/** Rotas do shell que exigem sessão (usado pelo middleware e pela sidebar). */
+/** Rotas do shell que exigem sessão (usado pelo proxy e pela sidebar). */
 export const SHELL_ROUTES: readonly string[] = NAV.flatMap((g) =>
   g.items.map((i) => i.href),
 );

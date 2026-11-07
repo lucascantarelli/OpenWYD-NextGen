@@ -77,18 +77,19 @@ func newApp(ctx context.Context, cfg serveConfig, logger *slog.Logger) (*app, er
 	// O catálogo de spawn vem do banco e SÓ dele (issue 57/58): NPCGener.txt saiu
 	// do conteúdo na fase 5. O antigo reconcile a cada boot era justamente o que
 	// fazia o banco divergir do seed (npc_shop_item 6.711 × 3.538).
-	// Fail closed on the real requirement: SOME source must have produced the
-	// catalogue. Booting with zero spawns looks like a healthy server that never
-	// spawns a monster, which is far harder to diagnose than a refused start.
-	if n, cerr := st.ContentNPCDefinitionCount(ctx); cerr != nil {
+	// Falha fechada no requisito real: ALGUMA fonte precisa ter produzido o
+	// catálogo. Subir com zero spawns parece um servidor saudável que nunca
+	// invoca monstro, o que é bem mais difícil de diagnosticar que uma recusa.
+	n, cerr := st.ContentNPCDefinitionCount(ctx)
+	if cerr != nil {
 		pool.Close()
 		return nil, fmt.Errorf("count NPC catalogue: %w", cerr)
-	} else if n == 0 {
+	}
+	if n == 0 {
 		pool.Close()
 		return nil, fmt.Errorf("no NPC catalogue in the database: seed it (tmserver/cmd/seedgen) — the world would boot with no monsters")
-	} else {
-		logger.Info("npc catalogue ready", "content_definitions", n)
 	}
+	logger.Info("npc catalogue ready", "content_definitions", n)
 
 	metricsReg := metrics.New("dbserver")
 	go metrics.Serve(ctx, cfg.metricsAddr, metricsReg, logger)
@@ -176,7 +177,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  dbserver seed-account -name <login> -pass <password> [-dsn <postgres-url>]")
 }
 
-// envOr returns the environment value for key, or def when unset.
+// envOr devolve o valor de ambiente de key, ou def quando não definida.
 func envOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

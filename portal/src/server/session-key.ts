@@ -1,4 +1,4 @@
-/** Chave HS256 do cookie de sessão, compartilhada por session.ts e o middleware. */
+/** Chave HS256 do cookie de sessão, compartilhada por session.ts e o proxy. */
 
 const MIN_LENGTH = 32;
 

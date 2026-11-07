@@ -18,8 +18,8 @@ const (
 	MaxDurationSeconds = 24 * 3600
 )
 
-// BotSpec é um bot declarado no cenário.
-type BotSpec struct {
+// Spec é um bot declarado no cenário.
+type Spec struct {
 	// Account é a conta de teste; precisa existir no banco.
 	Account string `json:"account"`
 	// Password é a senha da conta.
@@ -56,7 +56,7 @@ type Scenario struct {
 	// Address é o endereço do tmServer; precisa ser local ou estar liberado.
 	Address string `json:"address"`
 	// Bots é a população.
-	Bots []BotSpec `json:"bots"`
+	Bots []Spec `json:"bots"`
 	// Success e Failure são avaliados sobre o relatório final.
 	Success []Condition `json:"success,omitempty"`
 	Failure []Condition `json:"failure,omitempty"`

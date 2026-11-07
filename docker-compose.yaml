@@ -142,8 +142,8 @@ services:
       W2PP_DB_DSN: postgres://openwyd_app:${OPENWYD_APP_PASSWORD:-dev-app}@openwyd-postgres:5432/postgres
       W2PP_DB_MIGRATE_DSN: postgres://openwyd_migrator:${OPENWYD_MIGRATOR_PASSWORD:-dev-migrator}@openwyd-postgres:5432/postgres
       W2PP_CONTENT: /content
-      # One-time web client login codes (IssuePlayCode); empty keeps them off.
-      # Same value as the portal's PLAY_CODE_SECRET, at least 32 characters.
+      # Códigos de login de uso único do cliente web (IssuePlayCode); vazio os
+      # mantém desligados. Mesmo valor do PLAY_CODE_SECRET do portal, >= 32 chars.
       W2PP_PLAY_CODE_SECRET: ${W2PP_PLAY_CODE_SECRET:-}
     command: ["-addr", ":7600", "-content", "/content"]
     volumes:
@@ -253,10 +253,10 @@ services:
         condition: service_healthy
       openwyd-binserver:
         condition: service_healthy
-    # Switches for the moderator overlays (README/test recipes assume they can be
-    # exported). Every one defaults to "false" = read strictly from the content tree, so this
-    # passthrough changes nothing unless you export it. The NPC spawn catalogue is
-    # NOT an overlay: npc_definition is the single source of spawn blocks (issue 57).
+    # Chaves dos overlays do moderador (receitas de README/teste supõem que dá
+    # para exportá-las). Todas começam em "false" = lê estritamente da árvore de
+    # conteúdo, então este repasse não muda nada sem export. O catálogo de spawn de
+    # NPC NÃO é overlay: npc_definition é a única fonte dos blocos de spawn.
     #   W2PP_RATES_EDITING=true docker compose up -d openwyd-nextgen1-tmsrv
     environment:
       W2PP_MOB_STAT_EDITING: "${W2PP_MOB_STAT_EDITING:-false}"
@@ -273,7 +273,7 @@ services:
       # Token de troca de canal (/srv): a mesma chave no dbServer e no outro canal.
       W2PP_CROSSOVER_KEY: "${W2PP_CROSSOVER_KEY:-openwyd-dev-crossover}"
     volumes:
-      - ./tmserver/content:/content:ro   # content tree (rates/catalogs/maps), validated at boot
+      - ./tmserver/content:/content:ro   # conteúdo (taxas/mapas), validado no boot
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       interval: 10s
@@ -440,9 +440,10 @@ volumes:
   promdata:
   grafanadata:
 
-# Pin an explicit subnet so the stack comes up even when Docker's auto address
-# pool is exhausted (leaked IPAM state after many network create/remove cycles).
-# A daemon restart clears the leak; this keeps local dev unblocked meanwhile.
+# Fixa uma sub-rede explícita para a stack subir mesmo com o pool automático do
+# Docker esgotado (estado de IPAM vazado após muitos ciclos de create/remove de
+# rede). Reiniciar o daemon limpa o vazamento; isto mantém o dev local andando
+# enquanto isso.
 networks:
   default:
     name: openwyd_default

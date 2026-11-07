@@ -241,3 +241,35 @@ idempotência e prova de drift em [`test/issue-59.md`](test/issue-59.md).
 - A varredura de `TODO`/`FIXME` cobre `*.go`, `*.ts`, `*.tsx`, `*.sql` e `*.sh`; markdown não foi
   varrido por marcadores.
 - Contagem de issues muda a cada criação; os números do §2 valem para o commit desta auditoria.
+
+## 13. Onda 3 — gate de lint fechado (06/11/2026)
+
+O `make lint` era o único alvo sem prova: `golangci-lint` não existia no host. Instalado
+(`go install …/golangci-lint/v2@latest`, v2.15.0), a primeira execução deu **55 achados** e o gate
+ficou vermelho. Todos foram corrigidos, não silenciados:
+
+| Achado | Quantos | Correção |
+|---|---:|---|
+| `misspell` acusando português correto | 37 | 24 palavras entraram em `ignore-rules` do `.golangci.yml`; nenhuma regra do linter foi desligada |
+| `gofmt` (CRLF no worktree) | 3 | `gofmt -w` nos arquivos pendentes; `.gitattributes` já fixa `eol=lf`, então o conteúdo do commit não muda |
+| `revive` | 9 | `print`→`printPath`, `max`→`maxVal`, `BotSpec`→`Spec` (stutter), `else` após `return` removido, `ctx` como 1º parâmetro, parâmetros não usados viraram `_` |
+| `unused` | 4 | `guildOwnerTargetJSON` (função morta), `expPanelDefaultColor`, e dois campos de fake em testes |
+| `staticcheck` | 1 | `grpc.WithInsecure` → `credentials/insecure` |
+| `unconvert` | 1 | conversão `int32` desnecessária removida |
+
+Resultado da onda: `golangci-lint run ./...` → **`0 issues.`** (RC 0). A varredura de
+`TODO`/`FIXME`/`HACK`/`XXX` fechou em **0** achados: o único TODO restante
+(`handler/autotrade.go`, EF_NOTRADE) virou código — a loja agora recusa item com o efeito 127,
+com teste `TestAutoTradeOpenRejectsNoTrade` provando a recusa.
+
+| Comando | Resultado | RC |
+|---|---|---:|
+| `golangci-lint run ./...` | 0 issues | 0 |
+| `go build ./...` | ok | 0 |
+| `go vet ./...` | ok | 0 |
+| `cd portal && npx tsc --noEmit` | sem erro | 0 |
+| `cd portal && npx vitest run` | 16 arquivos, 118 testes | 0 |
+| `cd portal && npm run build` | sem aviso/deprecação (0 linhas `warn`/`deprecat`) | 0 |
+| `bash scripts/check-comments.sh` | 15 diretórios limpos | 0 |
+| `bash scripts/check-skips.sh` | 47 skips, todos com motivo | 0 |
+| `bash scripts/check-docs-links.sh` | 141 links, 0 quebrados | 0 |
