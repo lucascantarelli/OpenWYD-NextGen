@@ -29,7 +29,7 @@ considera pronta uma issue só porque saiu de `issues/`. Regra vigente: `pre-rel
 
 - Criados: `roadmap-rust/issues/FASE-01.md` (este), atualizações em `roadmap-rust/index.md`.
 - Alterados: `roadmap-rust/index.md`.
-- Proibido tocar: `.deprecated-go/` (leitura apenas), `client/`, `portal/` sem motivo,
+- Proibido tocar: `.deprecated-go/` (leitura apenas), `client/`, `wyd-portal/` sem motivo,
   qualquer `Cargo.toml`/`src/` (fase de auditoria não gera código).
 
 ## Testes / verificação

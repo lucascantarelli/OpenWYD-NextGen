@@ -1,6 +1,6 @@
 ---
 name: wyd-database
-description: Audita, migra e opera o PostgreSQL do OpenWYD — esquema, migrations (incluindo o baseline/squash), seeds de referência determinísticos, índices, constraints, comentários, backup e restauração. Use ao criar/alterar tabela, escrever migration, investigar consulta lenta, revisar normalização/indexação/segurança do banco, ou ao rodar o squash de migrations.
+description: Audita, migra e opera o PostgreSQL do WYD — esquema, migrations (incluindo o baseline/squash), seeds de referência determinísticos, índices, constraints, comentários, backup e restauração. Use ao criar/alterar tabela, escrever migration, investigar consulta lenta, revisar normalização/indexação/segurança do banco, ou ao rodar o squash de migrations.
 ---
 
 # Banco de dados (PostgreSQL)
@@ -33,13 +33,13 @@ migration, importador, seed e diagnóstico.
 
 ```bash
 # auditoria somente-leitura (tamanho, PK, FK sem índice, índice morto, comentários, tipos)
-docker exec -i openwyd-postgres psql -U postgres -d postgres -f - < scripts/db-audit.sql
+docker exec -i wyd-postgres psql -U postgres -d postgres -f - < scripts/db-audit.sql
 
 # backup completo + esquema em texto (destino fora do repo por padrão)
 ./scripts/db-backup.sh
 
 # consulta pontual
-docker exec openwyd-postgres psql -U postgres -d postgres -c "select count(*) from npc_definition"
+docker exec wyd-postgres psql -U postgres -d postgres -c "select count(*) from npc_definition"
 
 # migrations: aplicadas no boot de dbserver/webserver/importadores (idempotente)
 # importar catálogos de conteúdo (idempotente; -check compara banco × arquivos)
@@ -48,8 +48,8 @@ docker compose run --rm --entrypoint importcontent dbserver -content /content
 seedgen -dsn "postgres://postgres:<senha>@db:5432/postgres" -out internal/migrations
 
 # restaurar um dump num banco NOVO (nunca por cima do que está rodando)
-docker exec openwyd-postgres psql -U postgres -q -c "CREATE DATABASE restore"
-docker exec -i openwyd-postgres pg_restore -U postgres -d restore --no-owner < dump
+docker exec wyd-postgres psql -U postgres -q -c "CREATE DATABASE restore"
+docker exec -i wyd-postgres pg_restore -U postgres -d restore --no-owner < dump
 ```
 
 `make` não existe no PATH desta máquina: use

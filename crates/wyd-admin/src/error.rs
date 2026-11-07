@@ -1,6 +1,6 @@
 //! Erros do control plane — cada variante vira um status HTTP no BFF.
 //!
-//! Espelha o `AdminResult` do portal (`portal/src/server/admin-result.ts`):
+//! Espelha o `AdminResult` do portal (`wyd-portal/src/server/admin-result.ts`):
 //! OK=1→200, FORBIDDEN=2→403, INVALID=3→422, NOT_FOUND=4→404, CONTENT_OWNED=5→409.
 //! Falha de transporte/infra é 500 com mensagem genérica (sem stack/paths).
 

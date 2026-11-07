@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-obs
-description: Opera observabilidade e segurança do OpenWYD em Rust (tracing, Prometheus/Grafana, hardening de handshake, rate limiting). Use ao instrumentar tick/filas/entidades, criar dashboards e alertas ou endurecer o transporte contra DoS e pacotes malformados.
+description: Opera observabilidade e segurança do WYD em Rust (tracing, Prometheus/Grafana, hardening de handshake, rate limiting). Use ao instrumentar tick/filas/entidades, criar dashboards e alertas ou endurecer o transporte contra DoS e pacotes malformados.
 ---
 
 # Observabilidade e segurança Rust (wyd-rust-obs)

@@ -1,4 +1,4 @@
-//! Launcher/patcher do OpenWYD: manifesto de integridade, patch atômico e
+//! Launcher/patcher do WYD: manifesto de integridade, patch atômico e
 //! bootstrap do jogo.
 //!
 //! Estratégia em `docs/arquitetura/adr/0003-estrategia-patch-cliente.md`;

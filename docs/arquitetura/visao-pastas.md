@@ -58,7 +58,7 @@
 |---|---|
 | `fixtures/cliente/` | 5 goldens sintéticos validados (`captura.mjs`) |
 | `client/` | **~344 MB, fora do git**: `WYD.exe` 7662 + DLLs + XTrap + 5.361 `.msa` + 350 `.wyt` + catálogos — dossiê em `docs/cliente/` |
-| `portal/` | UI Next.js (BFF; nunca escreve estado vivo) |
+| `wyd-portal/` | UI Next.js (BFF; nunca escreve estado vivo) |
 | `roadmap-rust/` | `index.md` + `issues/` (fases 00–15, incl. 02-4/02-5 e 08-4…08-7) |
 | `docker/`, `.github/`, `.vscode/` | container, CI, editor |
 | `.agents/skills/` | skills vigentes (`wyd-rust-*`, `wyd-client-reverso`, boas práticas) |
@@ -80,7 +80,7 @@
 | `tools/protocol/` | geração de tabelas | gerador versionado com fonte canônica | — (determinístico, `cargo fmt` após gerar) | `gen-*.mjs` + `README` de reprodução | geradores | estado, credencial |
 | `docs/*` | conhecimento | um assunto por arquivo, nome do domínio | — | `substantivo-do-dominio.md`, minúsculas | narrativa, tabelas, evidência | binário, segredo, código |
 | `fixtures/cliente/` | goldens de pacote | JSON com esquema fixo + validador | — | `<fase>-<opcode>-<n>.json` | bytes sintéticos/higienizados | dado real de conta, `.pcap` |
-| `portal/` | BFF e telas | BFF puro sobre `wyd-admin` | DIP (fala com contrato, não com banco) | rotas por tela | UI, chamadas admin auditadas | gRPC direto, segredo no browser |
+| `wyd-portal/` | BFF e telas | BFF puro sobre `wyd-admin` | DIP (fala com contrato, não com banco) | rotas por tela | UI, chamadas admin auditadas | gRPC direto, segredo no browser |
 | `client/` | artefato fechado | **nenhum padrão de código**: é dado | — | (não versionado) | binários/assets locais | qualquer arquivo versionado novo |
 | `roadmap-rust/issues/` | uma entrega = uma issue | template Fase/Depende/Bloqueia/Esforço + DoD | — | `FASE-NN-slug.md` | plano e aceite | implementação |
 

@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-sim
-description: Opera o laboratório matemático do OpenWYD em Rust (crates/wyd-sim): simulações determinísticas de combate, builds, velocidade/crítico, detecção de overflow e comparação de fórmulas. Use ao validar balanceamento, reproduzir anomalias de DPS/hits ou comparar versões de fórmulas antes de tocar a engine.
+description: Opera o laboratório matemático do WYD em Rust (crates/wyd-sim): simulações determinísticas de combate, builds, velocidade/crítico, detecção de overflow e comparação de fórmulas. Use ao validar balanceamento, reproduzir anomalias de DPS/hits ou comparar versões de fórmulas antes de tocar a engine.
 ---
 
 # Laboratório matemático Rust (wyd-sim)

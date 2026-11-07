@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-net
-description: Desenvolve o transporte async do OpenWYD em Rust (crates/wyd-net + wyd-protocol): tokio/io_uring, buffers zero-copy, parsers com validação estrita de limites, rate limiting e hardening de handshake. Use ao mexer em rede, protocolo CPSock, opcodes ou serialização binária.
+description: Desenvolve o transporte async do WYD em Rust (crates/wyd-net + wyd-protocol): tokio/io_uring, buffers zero-copy, parsers com validação estrita de limites, rate limiting e hardening de handshake. Use ao mexer em rede, protocolo CPSock, opcodes ou serialização binária.
 ---
 
 # Transporte Rust (wyd-net)

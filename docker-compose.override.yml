@@ -1,0 +1,23 @@
+# Override de DEV — carregado automaticamente com `docker compose up`.
+# Publica portas no host, monta código-fonte (hot reload do portal) e logs.
+# NUNCA copiar este arquivo para produção: use docker-compose.prod.yml.
+
+services:
+  db:
+    # Publicado SÓ em loopback (como no arquivado): este Postgres é de dev e
+    # a senha é a do compose. Ferramentas do host (VS Code/DBeaver) usam ele.
+    ports:
+      - "127.0.0.1:${PGPORT:-5432}:5432"
+
+  portal:
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"   # UI de administração
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Auditoria em arquivo fora do container (ver AUDIT_LOG_DIR).
+      - portal-audit:/var/log/wyd-portal
+
+volumes:
+  portal-audit:
+    name: wyd-portal-audit

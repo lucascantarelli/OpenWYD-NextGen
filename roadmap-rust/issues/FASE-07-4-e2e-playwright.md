@@ -23,7 +23,7 @@ rastreável sem duplicidade (regra permanente).
 ## Arquivos
 
 - Criados: specs E2E no portal, fixtures.
-- Alterados: `portal/**` (somente suporte aos testes).
+- Alterados: `wyd-portal/**` (somente suporte aos testes).
 - Proibido tocar: dados de produção, segredos reais nas fixtures.
 
 ## Testes / verificação
@@ -43,7 +43,7 @@ retry de compra não duplica entrega.
 
 ## Documentação de referencia
 
-- portal/README.md - fluxos e BFF.
+- wyd-portal/README.md - fluxos e BFF.
 - pre-release-rust.md (FASE 7 §7.2).
 
 ## Subtasks
@@ -65,4 +65,4 @@ retry de compra não duplica entrega.
 
 - Risco: E2E flaky mascarando regressão → mitigação: retries limitados +
   evidência de estabilidade (3 execuções verdes).
-- Rollback: `git checkout -- portal/`.
+- Rollback: `git checkout -- wyd-portal/`.

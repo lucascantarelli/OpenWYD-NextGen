@@ -10,7 +10,7 @@ auditoria de ações administrativas.
 
 ## Contexto / evidência
 
-O portal fala hoje com o `webserver` Go via gRPC (`portal/README.md`,
+O portal fala hoje com o `webserver` Go via gRPC (`wyd-portal/README.md`,
 `.deprecated-go/webserver/`); com o Go arquivado, o BFF precisa de um backend
 Rust. Regra permanente: portal é BFF puro — lê e envia intenções, nunca escreve
 estado de personagem vivo (`AGENTS.md`). Destino: `crates/wyd-admin` expõe
@@ -18,7 +18,7 @@ gRPC/REST de controle (`ADMIN_SCOPE` já existe em `crates/wyd-admin/src/lib.rs`
 
 ## Passos
 
-1. Mapear as RPCs que o portal consome hoje (`portal/src/server/admin.ts`,
+1. Mapear as RPCs que o portal consome hoje (`wyd-portal/src/server/admin.ts`,
    `toResponse`, sessão/papéis) e listar o contrato mínimo do `wyd-admin`.
 2. Implementar os endpoints de controle em `crates/wyd-admin/src/` com auth
    (sessão de staff, `moderator_id` da sessão — nunca do corpo).
@@ -32,7 +32,7 @@ gRPC/REST de controle (`ADMIN_SCOPE` já existe em `crates/wyd-admin/src/lib.rs`
 - Criados (árvore normativa em `estrutura-e-padroes.md` §13): `src/error.rs`,
   `src/api/*.rs`, `src/auth/*.rs`, `src/audit/log.rs`,
   `src/service/grant_service.rs`, `tests/unauthorized.rs`, specs E2E no portal.
-- Alterados: `crates/wyd-admin/Cargo.toml` (deps via ADR), `portal/src/**`
+- Alterados: `crates/wyd-admin/Cargo.toml` (deps via ADR), `wyd-portal/src/**`
   (somente adaptação ao novo backend, sem mudar regras de negócio).
 - Proibido tocar: estado de personagem vivo, `.deprecated-go/`, segredos,
   `moderator_id` vindo do corpo da request.
@@ -56,7 +56,7 @@ ação admin sem sessão retorna 401 (teste dedicado).
 
 ## Documentação de referencia
 
-- portal/README.md - BFF, telas, overlays, sessão.
+- wyd-portal/README.md - BFF, telas, overlays, sessão.
 - pre-release-rust.md (FASE 7) - gateway Next.js e E2E.
 - .deprecated-go/webserver/ - web-api Go como referência de contrato.
 - .deprecated-go/docs/migration/game-messages.md - catálogo de avisos (Language.txt).
@@ -93,7 +93,7 @@ transporte async (ver ADR-0006) e runtime do portal.
 - `tests/unauthorized.rs`: 401 sem tocar repo/auditoria; 403 + trilha;
   fluxo staff ponta a ponta (`find`→`grant`→`replay`, 3 auditorias do autor).
 - Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
-  (`wyd-admin`: 11 lib + 4 integração); zero `unsafe`; portal/ intocado de
+  (`wyd-admin`: 11 lib + 4 integração); zero `unsafe`; wyd-portal/ intocado de
   propósito (apontá-lo para backend sem transporte quebraria o portal Go vivo).
 - Pendências honestas: troca de papel/bloqueio (repo `pg` + coluna, 04-3),
   dedup durável da chave (UNIQUE no `pg`), transporte HTTP/gRPC, telas 07-2/07-3

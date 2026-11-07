@@ -10,33 +10,41 @@ reproduzível e smoke do binário.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 5 §5.2: `cargo build --release` com LTO, containers
-distroless/Alpine multi-stage. Base: `docker/Dockerfile.rust`, `[profile.release]`
+distroless/Alpine multi-stage. Base: `docker/Dockerfile.launcher` +
+`docker/Dockerfile.portal` (mapa em `docs/rust/05-stack-docker.md`), `[profile.release]`
 a configurar no workspace.
+
+> Nota (2026-11-07): `docker/Dockerfile.rust` (esqueleto único) foi substituído
+> por Dockerfiles por serviço (`docker/Dockerfile.launcher`,
+> `docker/Dockerfile.portal`)
+> + compose base/override/prod. Ajustar os passos abaixo para os novos caminhos.
 
 ## Passos
 
 1. Configurar perfil release com LTO no `Cargo.toml` do workspace.
-2. Ajustar `docker/Dockerfile.rust` (build + runtime mínima, `wyd-launcher`
+2. Ajustar `docker/Dockerfile.launcher` (build + runtime mínima, `wyd-launcher`
    como entrypoint).
 3. Validar: `cargo build --release --workspace` + `docker build -f
-   docker/Dockerfile.rust .` + smoke do binário.
+   docker/Dockerfile.launcher .` + `docker build -f docker/Dockerfile.portal .`
+   + smoke dos binários.
 4. Documentar proveniência (versão, commit, toolchain no artefato).
 
 ## Arquivos
 
 - Criados: nenhum novo (configuração).
-- Alterados: `Cargo.toml` (perfil release), `docker/Dockerfile.rust`.
+- Alterados: `Cargo.toml` (perfil release), `docker/Dockerfile.launcher` (+ futuros `Dockerfile.<svc>`).
 - Proibido tocar: segredos na imagem, código das crates.
 
 ## Testes / verificação
 
 ```bash
 cargo build --release --workspace 2>&1 | tail -n 3
-docker build -f docker/Dockerfile.rust -t openwyd-rust:check .
+docker build -f docker/Dockerfile.launcher -t wyd/launcher:check .
+docker run --rm wyd/launcher:check --help
 ```
 
-Saída esperada: release compila sem warnings; imagem builda
-(`Successfully tagged openwyd-rust:check`).
+Saída esperada: release compila sem warnings; imagem builda e o binário
+roda (`wyd-launcher --help` com exit 0).
 
 ## Skills Relacionadas do freebuff
 
@@ -46,7 +54,7 @@ Saída esperada: release compila sem warnings; imagem builda
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 5 §5.2).
-- docker/Dockerfile.rust - Dockerfile vigente.
+- docker/Dockerfile.launcher - Dockerfile vigente do launcher.
 
 ## Subtasks
 
@@ -66,4 +74,4 @@ Saída esperada: release compila sem warnings; imagem builda
 
 - Risco: LTO estourar tempo/memória do CI → mitigação: medir e, se preciso,
   segmentar (`lto = "thin"` documentado em ADR).
-- Rollback: `git checkout -- Cargo.toml docker/Dockerfile.rust`.
+- Rollback: `git checkout -- Cargo.toml docker/Dockerfile.launcher`.

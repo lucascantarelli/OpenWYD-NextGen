@@ -1,6 +1,6 @@
 ---
 name: wyd-web-admin-ui
-description: Constrói e mantém o portal web de administração do WYD2 (Next.js como BFF puro sobre o web-api gRPC do OpenWYD), incluindo login de moderador, editores de NPC/mob/item/drop/rates, relatórios e operação ao vivo. Use ao criar telas, Route Handlers, clientes gRPC, sessão httpOnly, overlays de conteúdo no Postgres ou ao revisar o portal antes de commitar.
+description: Constrói e mantém o portal web de administração do WYD2 (Next.js como BFF puro sobre o web-api gRPC do WYD), incluindo login de moderador, editores de NPC/mob/item/drop/rates, relatórios e operação ao vivo. Use ao criar telas, Route Handlers, clientes gRPC, sessão httpOnly, overlays de conteúdo no Postgres ou ao revisar o portal antes de commitar.
 ---
 
 # Portal web de administração (BFF Next.js ↔ web-api gRPC)
@@ -45,7 +45,7 @@ Browser ──HTTPS──> portal (Next.js :3000)  ──gRPC──> webserver (
 ## 3. Onde mora o código
 
 ```
-portal/                                  ← raiz do workspace, IRMÃO de  (não dentro!)
+wyd-portal/                                  ← raiz do workspace, IRMÃO de  (não dentro!)
 ├── src/app/                             rotas (App Router)
 │   ├── (public)/login/page.tsx          login
 │   ├── (admin)/layout.tsx               shell + guarda de papel
@@ -61,7 +61,7 @@ portal/                                  ← raiz do workspace, IRMÃO de  (não
 └── src/lib/                             tipos do domínio, formatação, validação (zod)
 ```
 
-`portal/` fica **fora** de `` de propósito: o build Docker de cada serviço Go faz
+`wyd-portal/` fica **fora** de `` de propósito: o build Docker de cada serviço Go faz
 `COPY . .` com contexto ``, e um `node_modules` ali dentro explodiria o contexto.
 
 ## 4. Contratos disponíveis (estado real hoje)
@@ -90,7 +90,7 @@ import path from "node:path";
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 
-const PROTO = path.join(process.cwd(), "..", "OpenWYD", "api", "web", "v1", "web.proto");
+const PROTO = path.join(process.cwd(), "..", "WYD", "api", "web", "v1", "web.proto");
 const def = protoLoader.loadSync(PROTO, {
   keepCase: true, longs: Number, enums: Number, defaults: true, oneofs: true,
 });
@@ -168,8 +168,8 @@ sem flag desligável.
 ## 8. Ciclo de verificação (o mínimo antes de dizer "pronto")
 
 ```bash
-# portal
-cd portal && npx tsc --noEmit && npm run lint && npm run build
+# wyd-portal
+cd wyd-portal && npx tsc --noEmit && npm run lint && npm run build
 
 # BFF vivo contra a stack
 curl -s localhost:3000/api/health          # {"ok":true,"items":3220,...}
@@ -179,7 +179,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "D:/dolorestec/wyd2/OpenWYD:/src" -w /src 
   golang:1.26-alpine sh -c "go build ./... && go test ./webserver/internal/... ./tmserver/internal/..."
 ```
 
-Após mexer em overlay: `docker compose up -d openwyd-nextgen1-tmsrv` e conferir no log `content loaded`,
+Após mexer em overlay: `docker compose up -d wyd-tmsrv-1` e conferir no log `content loaded`,
 `NPCs spawned`, ausência de `unbalanced Exp`.
 
 ## 9. Armadilhas conhecidas
@@ -203,11 +203,11 @@ Após mexer em overlay: `docker compose up -d openwyd-nextgen1-tmsrv` e conferir
 | Retângulo digitado em célula quando o contrato é mundo | o servidor divide por 4 de novo e a área atingida fica 16× menor (ou no lugar errado) | digite sempre em 0..4095, mostre `describeRect` (mundo → célula) ao lado do input e valide com o mesmo limite do backend |
 | Editor que só desenha linhas preenchidas e envia o array completo | posição vazia pode ser lida como "manter" e o drop antigo volta sem ninguém pedir | no carry o vazio é decisão explícita: envie só as ocupadas e deixe o servidor substituir a tabela do template inteira; nunca complete com os valores lidos |
 | Borda de input quase invisível | `--border`/`--border-strong` são divisores (1,45:1 / 1,87:1) e não passam em WCAG 1.4.11 quando delimitam um campo | use `--border-control: #707b8d` (4,42:1 no bg, 3,77:1 no surface2) para input/select/chip/botão; meça com script de luminância, não a olho |
-| Precisa validar RPC/tela sem abrir navegador | o painel de preview nem sempre anexa e o curl não fala gRPC | script CJS de 20 linhas em `portal/` com `@grpc/proto-loader` + `@grpc/grpc-js` no `127.0.0.1:7600` (`moderator_id:1`), e para a página `curl -c/-b /tmp/cj.txt` após `POST /api/auth/login` com `{"name":"test","pass":"test123"}`; apague o script no fim |
+| Precisa validar RPC/tela sem abrir navegador | o painel de preview nem sempre anexa e o curl não fala gRPC | script CJS de 20 linhas em `wyd-portal/` com `@grpc/proto-loader` + `@grpc/grpc-js` no `127.0.0.1:7600` (`moderator_id:1`), e para a página `curl -c/-b /tmp/cj.txt` após `POST /api/auth/login` com `{"name":"test","pass":"test123"}`; apague o script no fim |
 | Tela de erro sem saída para o operador | leitura falhou e só a mensagem aparece | use `components/RetryButton.tsx` (`router.refresh()` em `useTransition`), que também atualiza caches de boot do BFF |
 | Botão de tab/cabeçalho de tabela sem anel de foco | `all: unset` na classe cancela o `outline` da regra global de `:focus-visible` | redeclare `X:focus-visible { outline: 2px solid var(--accent) }`; o mesmo vale para qualquer classe que use `all: unset` |
 | Build de Go falhando com `Espaço insuficiente no disco` no link | o `$WORK` do Go fica no `%TEMP%` (drive `C:`), que nesta máquina encheu | `TMPDIR=D:/tmp-go GOTMPDIR=D:/tmp-go go build ./...`; se o Docker também cair com `Docker Desktop is unable to start`, é o mesmo disco — libere `C:` |
-| Provar o read-through reiniciando o `tmserver` ao vivo | o restart dispara save-on-shutdown e atrapalha teste humano | suba um container one-off da mesma imagem na rede do compose, em portas próprias: `docker run -d --name probe --network openwyd_default -v "<repo>/Release:/Release:ro" openwyd-nextgen1-tmsrv -addr :8282 -dbserver openwyd-dbserver:7514 -content /content -status-addr :8088 -item-effect-editing`, leia o log e `docker rm -f probe` |
+| Provar o read-through reiniciando o `tmserver` ao vivo | o restart dispara save-on-shutdown e atrapalha teste humano | suba um container one-off da mesma imagem na rede do compose, em portas próprias: `docker run -d --name probe --network wyd_default -v "<repo>/Release:/Release:ro" wyd-tmsrv-1 -addr :8282 -dbserver wyd-dbserver:7514 -content /content -status-addr :8088 -item-effect-editing`, leia o log e `docker rm -f probe` |
 | Serviço gRPC novo respondendo `Unimplemented: unknown service` | o container `dbserver` roda a imagem antiga, não o código que você acabou de escrever | `docker compose build dbserver && docker compose up -d dbserver` antes de testar; idem para `webserver`/`tmserver` |
 | Escrever estado que o `tmserver` guarda em memória (Kefra, dono do castelo, guildas) e prometer efeito imediato | o mundo carrega isso no boot; o save do processo em execução pode até sobrescrever a linha | gravar no banco e dizer na tela que vale **no próximo restart**; para o Kefra suba a `revision` no mesmo `UPDATE` (o guard de `SaveKefraState` recusa revisão menor), e só implemente escrita ao vivo quando houver RPC no tmserver (issue 38) |
 | Bucket/porta 7600 exposta | qualquer host fala gRPC | em produção só na rede interna + mTLS |

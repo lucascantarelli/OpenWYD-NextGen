@@ -1,4 +1,4 @@
-//! Fila de entrega em memória: grants do portal/admin → dreno do servidor.
+//! Fila de entrega em memória: grants do wyd-portal/admin → dreno do servidor.
 //!
 //! Backpressure por canal limitado (`sync_channel`): fila cheia recusa com
 //! `PoolSaturated` em vez de crescer sem limite. Dreno não-bloqueante

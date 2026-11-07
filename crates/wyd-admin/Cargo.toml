@@ -2,7 +2,7 @@
 name = "wyd-admin"
 version = "0.1.0"
 edition = "2021"
-description = "Control plane Cold Path do OpenWYD (contrato admin para o portal)"
+description = "Control plane Cold Path do WYD (contrato admin para o portal)"
 
 [lib]
 name = "wyd_admin"

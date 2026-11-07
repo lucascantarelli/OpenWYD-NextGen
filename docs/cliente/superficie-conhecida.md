@@ -77,7 +77,7 @@ Estrutura inicial documentada em `docs/cliente/formatos.md`:
 
 ## 6. Divergências conhecidas com forks
 
-`openwyd-client-feasibility.md` comparou este build com o cliente OSS `alanpetry/OpenWyd` (v769):
+`wyd-client-feasibility.md` comparou este build com o cliente OSS `alanpetry/Wyd` (v769):
 `MAX_EQUIP` 16 vs 18, `MAX_CARGO` 128 vs 120, `STRUCT_SCORE.Level` int vs short,
 `STRUCT_SELCHAR` 840 vs 904 B, `MSG_CNFAccountLogin` 2008 vs ~1920 B. Transporte é idêntico;
 **struct é o dialeto do build** e não se mistura. O servidor fala 7662 — nunca outro fork.

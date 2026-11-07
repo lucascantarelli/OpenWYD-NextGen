@@ -10,7 +10,7 @@ que o portal consome, com auth de staff e auditoria.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 7 §7.1. Portal hoje fala com `webserver` Go via
-`portal/src/server/admin.ts` (ver `.deprecated-go/webserver/`). Regra: BFF puro,
+`wyd-portal/src/server/admin.ts` (ver `.deprecated-go/webserver/`). Regra: BFF puro,
 `moderator_id` da sessão, nunca do corpo (`AGENTS.md`). Base: `ADMIN_SCOPE` em
 `crates/wyd-admin/src/lib.rs`.
 
@@ -25,7 +25,7 @@ que o portal consome, com auth de staff e auditoria.
 ## Arquivos
 
 - Criados: handlers + testes em `crates/wyd-admin/src/`.
-- Alterados: `crates/wyd-admin/Cargo.toml` (deps via ADR), `portal/src/**`
+- Alterados: `crates/wyd-admin/Cargo.toml` (deps via ADR), `wyd-portal/src/**`
   (somente adaptação ao novo backend).
 - Proibido tocar: estado de personagem vivo, segredos, `moderator_id` do corpo.
 
@@ -46,7 +46,7 @@ Saída esperada: `test result: ok` incluindo 401 sem sessão e auditoria registr
 
 ## Documentação de referencia
 
-- portal/README.md - BFF e sessão.
+- wyd-portal/README.md - BFF e sessão.
 - pre-release-rust.md (FASE 7 §7.1).
 - .deprecated-go/webserver/ - web-api Go como referência de contrato.
 

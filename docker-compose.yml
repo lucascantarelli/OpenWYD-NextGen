@@ -1,0 +1,81 @@
+# WYD — stack base (SEM portas publicadas, SEM volumes de dev).
+# Padrão: `docker compose up` lê este arquivo + `docker-compose.override.yml`
+# (dev, automático). Produção: `docker compose -f docker-compose.yml
+# -f docker-compose.prod.yml up -d` (o override de dev NÃO é carregado).
+# Imagens locais:  wyd/<servico>:${TAG:-dev}   Containers: wyd-<servico>
+# Serviços = binários Rust que existem (serviço = container = imagem).
+# Mapa completo (crates → deployáveis, observabilidade, pendências por issue)
+# em `docs/rust/05-stack-docker.md`. Só entra no compose o serviço cujo
+# binário existe; o resto está mapeado e bloqueado pela issue dona.
+
+# Rede/volume fixos `wyd_*` (mesmo padrão do arquivado `openwyd_*`).
+name: ${COMPOSE_PROJECT_NAME:-wyd}
+
+services:
+  db:
+    # Serviço de dados: imagem oficial, sem Dockerfile próprio (padrão da
+    # indústria). Schema via `crates/wyd-db/migrations/` (FASE-04); sem
+    # one-shot de roles no stack novo — o Postgres sobe com o superusuário
+    # de dev. NÃO usar assim em produção.
+    image: postgres:17-alpine
+    container_name: wyd-db
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wyd}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-wyd}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wyd}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wyd
+
+  portal:
+    # Serviço web: Dockerfile próprio (multi-stage, non-root, standalone).
+    # O portal NUNCA fala SQL (invariante 7 do AGENTS.md): BFF puro sobre o
+    # web-api gRPC. Por isso NÃO há depends_on no db — a dependência real é o
+    # gateway Rust (`webserver:7600`, FASE-07), que ainda não existe como
+    # binário. Sem backend, a UI sobe e /api/health responde 502
+    # ("web-api indisponível") — sinal honesto, não bug do compose.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.portal
+    image: wyd/portal:${TAG:-dev}
+    container_name: wyd-portal
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no .env}
+      # DNS interno do compose (NUNCA 127.0.0.1: dentro do container o
+      # loopback é ele mesmo). `gateway` é o nome reservado para o gateway
+      # Rust (FASE-07-1); hoje sem backend, /api/health responde 502.
+      WEB_API_ADDR: ${WEB_API_ADDR:-gateway:7600}
+      AUDIT_LOG_DIR: ${AUDIT_LOG_DIR:-/var/log/wyd-portal}
+    networks:
+      - wyd
+
+  # NOTA: sem serviço `launcher` aqui de propósito. O launcher é ferramenta
+  # de distribuição do lado do cliente (GUI Tauri, ADR-0007), não daemon da
+  # stack. A imagem `docker/Dockerfile.launcher` existe como artefato de
+  # release/smoke (FASE-05-2): `docker build -f docker/Dockerfile.launcher .`
+  # + `docker run --rm ...` — fora do compose.
+
+networks:
+  wyd:
+    name: wyd
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: wyd-pgdata

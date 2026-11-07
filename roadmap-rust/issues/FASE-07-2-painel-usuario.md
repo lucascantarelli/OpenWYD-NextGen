@@ -22,7 +22,7 @@ rankings em tempo real e visualização de personagens.
 ## Arquivos
 
 - Criados: telas/componentes no portal, testes.
-- Alterados: `portal/src/**` (somente o necessário), `crates/wyd-admin/src/`
+- Alterados: `wyd-portal/src/**` (somente o necessário), `crates/wyd-admin/src/`
   (endpoint faltante, se surgir — com teste).
 - Proibido tocar: estado de personagem vivo, segredos no browser.
 
@@ -43,7 +43,7 @@ Saída esperada: `test result: ok`; `portal-test` verde (log anexado).
 
 ## Documentação de referencia
 
-- portal/README.md - telas e overlays.
+- wyd-portal/README.md - telas e overlays.
 - pre-release-rust.md (FASE 7 §7.2).
 - roadmap-rust/issues/FASE-07-1-gateway.md - contrato consumido.
 
@@ -67,4 +67,4 @@ Saída esperada: `test result: ok`; `portal-test` verde (log anexado).
 
 - Risco: vazar dado pessoal em cache/SSR → mitigação: revisão de
   cache-headers por tela.
-- Rollback: `git checkout -- portal/ crates/wyd-admin/`.
+- Rollback: `git checkout -- wyd-portal/ crates/wyd-admin/`.

@@ -2,7 +2,7 @@
 name = "wyd-net"
 version = "0.1.0"
 edition = "2021"
-description = "Transporte async do OpenWYD (tokio/io_uring, zero-copy)"
+description = "Transporte async do WYD (tokio/io_uring, zero-copy)"
 
 [lib]
 name = "wyd_net"

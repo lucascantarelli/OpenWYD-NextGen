@@ -1,6 +1,6 @@
 ---
 name: rust-code-quality
-description: Garante qualidade de código Rust no workspace OpenWYD (ownership/borrow, erros tipados, sem unwrap/panic no caminho quente, clippy/rustfmt limpos, testes por crate). Use ao escrever ou revisar qualquer código em crates/, antes de considerar uma tarefa pronta.
+description: Garante qualidade de código Rust no workspace WYD (ownership/borrow, erros tipados, sem unwrap/panic no caminho quente, clippy/rustfmt limpos, testes por crate). Use ao escrever ou revisar qualquer código em crates/, antes de considerar uma tarefa pronta.
 ---
 
 # Qualidade de código Rust

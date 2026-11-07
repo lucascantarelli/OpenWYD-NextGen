@@ -1,4 +1,4 @@
-//! Contratos de wire do OpenWYD (CPSock): cabeçalho, opcodes, payloads tipados e
+//! Contratos de wire do WYD (CPSock): cabeçalho, opcodes, payloads tipados e
 //! a ofuscação do legado.
 //!
 //! Tudo aqui é derivado de fonte canônica verificável:

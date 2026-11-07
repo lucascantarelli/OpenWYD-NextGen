@@ -15,7 +15,7 @@ Regras desta fase de transição:
   arquivo de volta ao build sem ADR.
 - **Trabalho Rust novo vive em:** `crates/wyd-{protocol,core,net,db,admin,sim,launcher}/`,
   `Cargo.toml` (workspace), `rust-toolchain.toml`, `docs/rust/`, `roadmap-rust/`,
-  `portal/` (Cold Path, mantido fora do arquivo).
+  `wyd-portal/` (Cold Path, mantido fora do arquivo).
 - **Skills Rust vigentes** (use estas, não as Go, para código Rust): `wyd-rust-core`
   (engine/Hot Path), `wyd-rust-net` (transporte/protocolo), `wyd-rust-db`
   (persistência), `wyd-rust-sim` (laboratório matemático), `wyd-rust-obs`
@@ -50,7 +50,7 @@ cliente Windows usado para conectar — tudo num único repositório.
 | `tmserver/` | Servidor do jogo (CPSock, dono do estado do mundo) | Go 1.26 |
 | `dbserver/` `binserver/` `webserver/` | Persistência, billing e web-api por gRPC | Go 1.26, gRPC |
 | `internal/` | Store, migrations, domínio, argon2id — compartilhados | Go, pgx v5 |
-| `portal/` | UI de administração: BFF puro sobre o web-api, sem tocar estado vivo | Next.js 15, TypeScript |
+| `wyd-portal/` | UI de administração: BFF puro sobre o web-api, sem tocar estado vivo | Next.js 15, TypeScript |
 | `client/` | Cliente Windows 7662 (PE32/i386) — usuário do `wyd-launcher`; dossiê em `docs/cliente/`, **ignorado no git** | Binários fechados |
 | `roadmap/` | Planejamento: o que está feito, pendente e em que ordem | Markdown |
 | `tmserver/content/` | Conteúdo do servidor: taxas, mapas, BaseMob/BaseSummon (LEGACY-02) | Dados |
@@ -76,12 +76,12 @@ test -f tmserver/content/TMsrv/run/HeightMap.dat || echo "MAPAS AUSENTES: make c
 
 # 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + canais)
 #    Compose em camadas: `docker-compose.yaml` (base, sem portas) + `docker-compose.override.yaml`
-#    (dev, carregado automático). Serviço = container = imagem, ex.: openwyd-nextgen1-tmsrv.
+#    (dev, carregado automático). Serviço = container = imagem, ex.: wyd-tmsrv-1.
 #    A ordem de subida é declarada por healthcheck (DEVOPS-01, docs/migration/config-ops.md §0.0).
 make run-local          # = ./scripts/run-local.sh  (conta test / test123)
 
 # 2. Ver o servidor de jogo e o portal respondendo
-docker compose logs -f openwyd-nextgen1-tmsrv        # "tmserver listening" + "NPCs spawned"
+docker compose logs -f wyd-tmsrv-1        # "tmserver listening" + "NPCs spawned"
 curl -s http://127.0.0.1/ | head       # status HTTP :80 (serv00.htm) que o cliente sonda
 #    portal: http://localhost:3000     (login com conta de papel moderator/admin)
 
@@ -127,7 +127,7 @@ Detalhes, diagnóstico e alternativas: skills `wyd-server-ops`, `wyd-client-conn
 
 ### Regras do portal
 
-- **Toda ação admin passa por `adminCall`** (`portal/src/server/admin.ts`): sessão de staff,
+- **Toda ação admin passa por `adminCall`** (`wyd-portal/src/server/admin.ts`): sessão de staff,
   `moderator_id` vindo da sessão (nunca do corpo), deadline, mapeamento `AdminResult` → HTTP e
   auditoria. Page/action não chama o cliente gRPC admin direto.
 - O browser nunca fala gRPC nem vê certificado, DSN ou stack: `toResponse` devolve só `{ error }`
@@ -197,7 +197,7 @@ Prefixe `MSYS_NO_PATHCONV=1` e passe o projeto em caminho Windows. No Docker Des
 `--network host`: use a rede do compose e o nome do serviço.
 
 ```bash
-MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
+MSYS_NO_PATHCONV=1 docker run --rm --network wyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=wyd-tmsrv-1:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
 ```
 
 Não reinicie serviços no meio de um teste do usuário: o restart dispara save-on-shutdown e
@@ -220,7 +220,7 @@ humano terminar, e só então mexa.
 | Estado real do que funciona | `docs/migration/SESSION-PRIMER.md` |
 | Comandos in-game e de GM | `docs/game.md` |
 | Histórico de bugs in-game | `docs/migration/ingame-bugs.md` |
-| Portal: BFF, telas, overlays, sessão | `portal/README.md` + `.agents/skills/wyd-web-admin-ui` |
+| Portal: BFF, telas, overlays, sessão | `wyd-portal/README.md` + `.agents/skills/wyd-web-admin-ui` |
 | Banco: auditoria, tipos, índices, squash | `docs/analysis/banco-de-dados.md` + skill `wyd-database` |
 | Plano de execução deste projeto | `roadmap/index.md` + `roadmap/PLANO-2026-11.md` |
 | Análise de conjunto (estado, legado, cliente, banco, processo) | `docs/analysis/` |
@@ -278,7 +278,7 @@ make certs          # certs mTLS de dev (gitignored)
 make run            # tmserver sozinho, persistência no-op
 make run-local      # stack completa (db, dbServer, binServer, webServer, portal, tmServer) + conta test/test123
 
-make portal-install # npm ci em portal/
+make portal-install # npm ci em wyd-portal/
 make portal-dev     # portal em http://127.0.0.1:3000 (hot reload)
 make portal-test    # tsc --noEmit + vitest
 make portal-build   # next build (standalone)
