@@ -1,0 +1,12 @@
+[package]
+name = "wyd-core"
+version = "0.1.0"
+edition = "2021"
+description = "Engine Hot Path do OpenWYD (tick deterministico, ECS, spatial grid)"
+
+[lib]
+name = "wyd_core"
+path = "src/lib.rs"
+
+[dependencies]
+wyd-protocol = { path = "../wyd-protocol" }

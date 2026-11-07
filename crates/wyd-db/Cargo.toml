@@ -1,0 +1,9 @@
+[package]
+name = "wyd-db"
+version = "0.1.0"
+edition = "2021"
+description = "Persistencia async do OpenWYD (Postgres sqlx, migrations)"
+
+[lib]
+name = "wyd_db"
+path = "src/lib.rs"

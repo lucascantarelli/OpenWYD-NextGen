@@ -1,0 +1,13 @@
+[package]
+name = "wyd-launcher"
+version = "0.1.0"
+edition = "2021"
+description = "Launcher/patcher moderno do OpenWYD (hash, patch, bootstrap)"
+
+[[bin]]
+name = "wyd-launcher"
+path = "src/main.rs"
+
+[lib]
+name = "wyd_launcher"
+path = "src/lib.rs"
