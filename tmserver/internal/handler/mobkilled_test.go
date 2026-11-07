@@ -17,8 +17,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/worldcfg"
 )
 
-// TestAddClamp guards the per-level HP/MP accumulation against int32 overflow and
-// the engine cap (the level-up loop can add to an already-large MaxHp).
+// TestAddClamp protege o acúmulo de HP/MP por nível contra overflow de int32 e
+// o teto da engine (o loop de subida de nível pode somar num MaxHp já grande).
 func TestAddClamp(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -39,8 +39,8 @@ func TestAddClamp(t *testing.T) {
 	}
 }
 
-// expMobTemplate builds an 816-byte STRUCT_MOB monster template (Merchant=0)
-// with the given level, kill reward and clan.
+// expMobTemplate monta um template de monstro STRUCT_MOB de 816 bytes (Merchant=0)
+// com o nível, a recompensa de morte e o clã dados.
 func expMobTemplate(lvl int32, exp int64, clan uint8) []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], "Cobaia")
@@ -64,8 +64,8 @@ func mobTemplateWithDrop(slot int, item world.Item) []byte {
 	return b
 }
 
-// mobKilledWorld builds a non-serving world plus a detached mortal killer (no
-// session — grantExp's packet sends are skipped, the state math is the same).
+// mobKilledWorld monta um mundo sem serving mais um matador mortal destacado (sem
+// sessão — os envios de pacote do grantExp são pulados, a matemática de estado é a mesma).
 func mobKilledWorld(t *testing.T) (*Dispatcher, *world.World, *world.Entity) {
 	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -75,17 +75,17 @@ func mobKilledWorld(t *testing.T) (*Dispatcher, *world.World, *world.Entity) {
 		ID: 0, Mode: world.MobUser, Name: "Heroi",
 		Level: 1, ClassMaster: classMasterMortal,
 		BaseMaxHP: 80, BaseMaxMP: 45, HP: 40, MaxHP: 80, MP: 20, MaxMP: 45,
-		// TK class-base attributes, no allocated points and no gear, so the live
-		// CurrentScore (Str/…) equals the equipment-free BaseScore (BaseStr/…).
+		// Atributos base da classe TK, nenhum ponto alocado e sem equipamento, então o
+		// CurrentScore vivo (Str/…) é igual ao BaseScore sem equipamento (BaseStr/…).
 		Str: 8, Int: 4, Dex: 7, Con: 6,
 		BaseStr: 8, BaseInt: 4, BaseDex: 7, BaseCon: 6,
 	}
 	return d, w, killer
 }
 
-// TestMobKilledGrantsExp is the issue #43 end-to-end: a default (mortal)
-// level-1 character killing a same-level mob must gain the general-field
-// branch reward — not the near-zero celestial routing, not dozens of levels.
+// TestMobKilledGrantsExp é a issue #43 ponta a ponta: um personagem (mortal)
+// de nível 1 padrão matando um mob de mesmo nível precisa ganhar a recompensa
+// do ramo de campo geral — não o roteamento celestial quase zero, nem dezenas de níveis.
 func TestMobKilledGrantsExp(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
 	mobID := w.SpawnMob(expMobTemplate(1, 1000, 0), 6, 5)
@@ -103,10 +103,10 @@ func TestMobKilledGrantsExp(t *testing.T) {
 	}
 }
 
-// TestMobKilledLevelUp crosses one threshold and checks the level-up grants.
+// TestMobKilledLevelUp cruza um limiar e confere as concessões de subida de nível.
 func TestMobKilledLevelUp(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
-	killer.Exp = 1100 // nextLevel[2]=1124: the next kill must cross exactly one level
+	killer.Exp = 1100 // nextLevel[2]=1124: a próxima morte precisa cruzar exatamente um nível
 	mobID := w.SpawnMob(expMobTemplate(1, 1000, 0), 6, 5)
 
 	d.mobKilled(w, killer, w.Entity(mobID))
@@ -119,8 +119,8 @@ func TestMobKilledLevelUp(t *testing.T) {
 	if killer.SkillBonus != 3 || killer.SpecialBonus != 2 {
 		t.Errorf("SkillBonus/SpecialBonus = %d/%d, want 3/2", killer.SkillBonus, killer.SpecialBonus)
 	}
-	// A TK at the class base with nothing allocated gets level*5 free attribute
-	// points (B10): 2 levels → 10. Zero here is the "no points on level-up" bug.
+	// Um TK na base da classe sem nada alocado recebe nível*5 pontos de atributo
+	// livres (B10): 2 níveis → 10. Zero aqui é o bug do "sem pontos ao subir de nível".
 	if killer.ScoreBonus != 10 {
 		t.Errorf("ScoreBonus = %d, want 10 (level 2 × 5, nothing spent)", killer.ScoreBonus)
 	}
@@ -132,18 +132,18 @@ func TestMobKilledLevelUp(t *testing.T) {
 	}
 }
 
-// TestMobKilledLevelUpPointsIgnoreEquipAttributes is the regression guard for the
-// "no attribute points on level-up while wearing gear" bug: BASE_GetBonusScorePoint
-// must read the equipment-free BaseScore. Here the live CurrentScore attributes are
-// inflated far above the class base by equipment (Str 8→108), while the allocated
-// BaseScore is untouched. The free-point grant must stay level*5 (nothing allocated);
-// the pre-fix code fed the inflated e.Str in, counted 100 points as "spent", and
-// handed the player ZERO.
+// TestMobKilledLevelUpPointsIgnoreEquipAttributes é a guarda de regressão do
+// bug do "nenhum ponto de atributo ao subir de nível usando equipamento": BASE_GetBonusScorePoint
+// precisa ler o BaseScore sem equipamento. Aqui os atributos vivos do CurrentScore estão
+// inflados muito acima da base da classe pelo equipamento (Str 8→108), enquanto o
+// BaseScore alocado está intacto. A concessão de pontos livres precisa ficar nível*5 (nada alocado);
+// o código pré-correção alimentava o e.Str inflado, contava 100 pontos como "gastos", e
+// entregava ZERO ao jogador.
 func TestMobKilledLevelUpPointsIgnoreEquipAttributes(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
-	// +100 Str from equipment: CurrentScore diverges from the allocated BaseScore.
+	// +100 Str do equipamento: o CurrentScore diverge do BaseScore alocado.
 	killer.Str = killer.BaseStr + 100
-	killer.Exp = 1100 // crosses exactly one level (nextLevel[2]=1124)
+	killer.Exp = 1100 // cruza exatamente um nível (nextLevel[2]=1124)
 	mobID := w.SpawnMob(expMobTemplate(1, 1000, 0), 6, 5)
 
 	d.mobKilled(w, killer, w.Entity(mobID))
@@ -155,14 +155,14 @@ func TestMobKilledLevelUpPointsIgnoreEquipAttributes(t *testing.T) {
 	}
 }
 
-// TestMobKilledLevelUpPointsAfterAllocation: points already spent into the
-// BaseScore reduce the grant (the idempotent BASE_GetBonusScorePoint identity),
-// while equipment on top of them still does not. Level 2 grants 10; 4 allocated
-// into Str leaves 6 free even with gear inflating the live Str further.
+// TestMobKilledLevelUpPointsAfterAllocation: pontos já gastos no
+// BaseScore reduzem a concessão (a identidade idempotente do BASE_GetBonusScorePoint),
+// enquanto equipamento por cima deles continua não reduzindo. Nível 2 concede 10; 4 alocados
+// em Str deixam 6 livres mesmo com equipamento inflando ainda mais o Str vivo.
 func TestMobKilledLevelUpPointsAfterAllocation(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
-	killer.BaseStr = 8 + 4           // 4 points allocated above the TK base
-	killer.Str = killer.BaseStr + 30 // plus equipment on top
+	killer.BaseStr = 8 + 4           // 4 pontos alocados acima da base do TK
+	killer.Str = killer.BaseStr + 30 // mais equipamento por cima
 	killer.Exp = 1100
 	mobID := w.SpawnMob(expMobTemplate(1, 1000, 0), 6, 5)
 
@@ -172,8 +172,8 @@ func TestMobKilledLevelUpPointsAfterAllocation(t *testing.T) {
 	}
 }
 
-// TestMobKilledClan4NoExp: clan-4 mobs sit outside the whole EXP distribution
-// (MobKilled.cpp:402) but still drop gold/items.
+// TestMobKilledClan4NoExp: mobs de clã 4 ficam fora de toda a distribuição de EXP
+// (MobKilled.cpp:402) mas ainda dropam ouro/itens.
 func TestMobKilledClan4NoExp(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
 	mobID := w.SpawnMob(expMobTemplate(1, 1000, 4), 6, 5)
@@ -184,13 +184,13 @@ func TestMobKilledClan4NoExp(t *testing.T) {
 	}
 }
 
-// TestMobKilledDropsTemplateGold: a mob spawned from a template with Coin can
-// pay out gold (GoldDrop, MobKilled.cpp), always within the legacy formula's
-// range; a template without Coin never does.
+// TestMobKilledDropsTemplateGold: um mob gerado de um template com Coin pode
+// pagar ouro (GoldDrop, MobKilled.cpp), sempre dentro da faixa da fórmula
+// legada; um template sem Coin nunca paga.
 func TestMobKilledDropsTemplateGold(t *testing.T) {
 	d, w, killer := mobKilledWorld(t)
 	gremlin := expMobTemplate(4, 0, 0)
-	binary.LittleEndian.PutUint32(gremlin[28:], 50) // the shipped Gremlin's Coin
+	binary.LittleEndian.PutUint32(gremlin[28:], 50) // o Coin do Gremlin de fábrica
 	paid := 0
 	for i := 0; i < 60; i++ {
 		before := killer.Coin
@@ -223,7 +223,7 @@ func TestMobKilledDeliversCommonDropToCarry(t *testing.T) {
 		{Effect: 2, Value: 20},
 		{Effect: 3, Value: 5},
 	}}
-	mobID := w.SpawnMob(mobTemplateWithDrop(11, want), 6, 5) // slot 11 always drops
+	mobID := w.SpawnMob(mobTemplateWithDrop(11, want), 6, 5) // slot 11 sempre dropa
 
 	d.mobKilled(w, killer, w.Entity(mobID))
 
@@ -382,7 +382,7 @@ func TestApplyBabyMountKillGrowth(t *testing.T) {
 func TestApplyBabyMountKillLevelUp(t *testing.T) {
 	mount := babyMountItem(2330, 80)
 	mount.Effects[1].Effect = 5
-	mount.Effects[2].Value = 29 // threshold for 2330 at level 5 is 30.
+	mount.Effects[2].Value = 29 // limiar para 2330 no nível 5 é 30.
 
 	changed, leveled := applyBabyMountKill(&mount, 6)
 	if !changed || !leveled {
@@ -399,7 +399,7 @@ func TestApplyBabyMountKillLevelUp(t *testing.T) {
 func TestApplyBabyMountKillDefaultThreshold(t *testing.T) {
 	mount := babyMountItem(2336, 80)
 	mount.Effects[1].Effect = 5
-	mount.Effects[2].Value = 104 // default threshold is XP+100 = 105.
+	mount.Effects[2].Value = 104 // limiar padrão é XP+100 = 105.
 
 	changed, leveled := applyBabyMountKill(&mount, 6)
 	if !changed || !leveled {
@@ -469,8 +469,8 @@ func TestBabyMountKillEligible(t *testing.T) {
 	}
 }
 
-// startServerExpMob is a serving harness with one killable (1 HP) exp-bearing
-// monster next to the player spawn.
+// startServerExpMob é um harness de serving com um monstro de EXP matável (1 HP)
+// ao lado do spawn do jogador.
 func startServerExpMob(t *testing.T, persist world.Persistence, mob []byte, configure ...func(*Dispatcher, *world.World)) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -482,7 +482,7 @@ func startServerExpMob(t *testing.T, persist world.Persistence, mob []byte, conf
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 16, Now: clock.Load}, log, persist, d.Handle)
-	w.SpawnMob(mob, 6, 5) // adjacent to the player spawn (5,5)
+	w.SpawnMob(mob, 6, 5) // adjacente ao spawn do jogador (5,5)
 	for _, fn := range configure {
 		fn(d, w)
 	}
@@ -499,21 +499,21 @@ func startServerExpMob(t *testing.T, persist world.Persistence, mob []byte, conf
 	}
 }
 
-// TestKillGrantsExpOverWire is the full issue #43 regression through the wire:
-// a freshly loaded character (the DB contract carries no ClassMaster) kills a
-// same-level mob and the MSG_Attack echo must carry the MORTAL-path reward. If
-// character load ever stops defaulting ClassMaster to mortal, the celestial
-// divisors turn this exact gain into 0.
+// TestKillGrantsExpOverWire é a regressão completa da issue #43 pelo wire:
+// um personagem recém-carregado (o contrato do banco não carrega ClassMaster) mata um
+// mob de mesmo nível e o eco de MSG_Attack precisa carregar a recompensa do caminho MORTAL. Se
+// o carregamento de personagem deixar de assumir ClassMaster mortal por padrão, os
+// divisores celestiais transformam exatamente este ganho em 0.
 func TestKillGrantsExpOverWire(t *testing.T) {
-	mob := expMobTemplate(10, 1000, 0)            // same level as skillCombatDB's char
-	binary.LittleEndian.PutUint32(mob[92+16:], 1) // 1 HP: first melee kills
+	mob := expMobTemplate(10, 1000, 0)            // mesmo nível do char de skillCombatDB
+	binary.LittleEndian.PutUint32(mob[92+16:], 1) // 1 HP: o primeiro corpo a corpo mata
 	binary.LittleEndian.PutUint32(mob[92+24:], 1)
 	addr, stop := startServerExpMob(t, skillCombatDB(0), mob)
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	skillAttackFrame(t, c, serverTime, world.MaxUser, -1, -2) // plain melee
+	skillAttackFrame(t, c, serverTime, world.MaxUser, -1, -2) // corpo a corpo simples
 
 	for i := 0; i < 10; i++ {
 		ty, payload, ok := readMaybe(t, c)
@@ -521,7 +521,7 @@ func TestKillGrantsExpOverWire(t *testing.T) {
 			t.Fatal("no MsgAttack echo after the killing blow")
 		}
 		if ty != protocol.MsgAttack {
-			continue // skip the despawn/etc noise
+			continue // pula o ruído de despawn etc
 		}
 		var got protocol.MsgAttackBody
 		if err := got.Decode(payload); err != nil {
@@ -581,7 +581,7 @@ func TestKillCommonMobDropSendsCarrySlot(t *testing.T) {
 		{Effect: 2, Value: 20},
 		{Effect: 3, Value: 5},
 	}}
-	mob := mobTemplateWithDrop(11, want) // slot 11 is the legacy guaranteed slot
+	mob := mobTemplateWithDrop(11, want) // slot 11 é o slot garantido do legado
 	binary.LittleEndian.PutUint32(mob[92+16:], 1)
 	binary.LittleEndian.PutUint32(mob[92+24:], 1)
 	addr, stop := startServerExpMob(t, skillCombatDB(0), mob)
@@ -613,9 +613,9 @@ func TestKillCommonMobDropSendsCarrySlot(t *testing.T) {
 	t.Fatal("never received MsgSendItem for common mob drop")
 }
 
-// TestGrantExpTrainingField covers issue #383: kills from a training-grounds
-// generator pay the event-free reward times the field multiplier, but only to
-// mortals the field still admits and only while the multiplier is on.
+// TestGrantExpTrainingField cobre a issue #383: mortes de um gerador
+// do campo de treino pagam a recompensa sem evento vezes o multiplicador do campo, mas só para
+// mortais que o campo ainda admite e só enquanto o multiplicador está ligado.
 func TestGrantExpTrainingField(t *testing.T) {
 	const mobExp, mult = 1000, 6
 	field := level.TrainingFieldExpReward(mobExp, 10, 10, classMasterMortal, 0, mult)

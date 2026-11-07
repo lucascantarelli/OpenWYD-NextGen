@@ -5,14 +5,14 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// partyDif is the max level difference allowed in a party (PARTY_DIF).
+// partyDif é a diferença máxima de nível permitida numa party (PARTY_DIF).
 //
-// UNVERIFIED: the value and the ClassMaster/MAX_CLEVEL tier adjustments
-// (lote2-party-guilda-guerra.md) are not documented; placeholder + simplified.
+// UNVERIFIED: o valor e os ajustes de tier por ClassMaster/MAX_CLEVEL
+// (lote2-party-guilda-guerra.md) não estão documentados; placeholder + simplificado.
 const partyDif = 100
 
-// partyLevelOK applies the (simplified) party level rule shared by invite and
-// accept: same tier, very high level, or within partyDif (UNVERIFIED tiers).
+// partyLevelOK aplica a regra (simplificada) de nível de party compartilhada por convite e
+// aceite: mesmo tier, nível muito alto, ou dentro de partyDif (tiers UNVERIFIED).
 func partyLevelOK(a, b *world.Entity) bool {
 	if a.Level >= 1000 || b.Level >= 1000 || a.ClassMaster == b.ClassMaster {
 		return true
@@ -24,7 +24,7 @@ func partyLevelOK(a, b *world.Entity) bool {
 	return diff < partyDif
 }
 
-// sendReqParty handles _MSG_SendReqParty (0x037F): invite a player to a party.
+// sendReqParty trata _MSG_SendReqParty (0x037F): convida um jogador para uma party.
 func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -32,17 +32,17 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 	}
 	var body protocol.MsgSendReqPartyBody
 	if err := body.Decode(payload); err != nil {
-		// A silent return here is what made "invite does nothing" impossible to
-		// diagnose: the packet arrived, was routable and produced no reaction.
+		// Um retorno silencioso aqui é o que tornava "o convite não faz nada" impossível de
+		// diagnosticar: o pacote chegava, era roteável e não produzia reação.
 		d.log.Warn("party invite: bad packet", "conn", s.Conn, "len", len(payload), "err", err)
 		return
 	}
-	if int(body.PartyID) != s.Conn { // PartyID must be the inviter
+	if int(body.PartyID) != s.Conn { // PartyID precisa ser o convidador
 		d.log.Warn("party invite: PartyID is not the inviter", "conn", s.Conn,
 			"party_id", body.PartyID, "target", body.Unk, "len", len(payload))
 		return
 	}
-	if e.Leader != 0 { // already a member elsewhere
+	if e.Leader != 0 { // já é membro em outro lugar
 		d.sendClientMessage(w, s, partyAlreadyIn)
 		return
 	}
@@ -53,15 +53,15 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 	other := w.Session(target)
 	te := w.Entity(target)
 	if target <= 0 || target >= world.MaxUser || other == nil || other.Mode != world.UserPlay || te == nil {
-		// The legacy answers _NN_Not_Connected here; staying silent left the player
-		// with a click that did nothing (QA 05/11).
+		// O legado responde _NN_Not_Connected aqui; ficar em silêncio deixava o jogador
+		// com um clique que não fazia nada (QA 05/11).
 		d.log.Warn("party invite: target not in play", "conn", s.Conn, "target", target)
 		d.sendClientMessage(w, s, partyTargetGone)
 		return
 	}
-	// The legacy distinguishes the two party conflicts by owner: the target is
-	// already someone's member (_NN_Other_Partys_Member) versus already a leader
-	// (_NN_Have_Own_Party_Already). isInParty folds both, so tell which one.
+	// O legado distingue os dois conflitos de party pelo dono: o alvo é
+	// já membro de alguém (_NN_Other_Partys_Member) contra já ser líder
+	// (_NN_Have_Own_Party_Already). isInParty junta os dois, então diga qual é.
 	if te.Leader != 0 {
 		d.sendClientMessage(w, s, partyOtherMember)
 		return
@@ -74,13 +74,13 @@ func (d *Dispatcher) sendReqParty(w *world.World, s *world.Session, _ protocol.H
 		d.sendClientMessage(w, s, partyLevelTooFar)
 		return
 	}
-	te.LastReqParty = s.Conn // anti-forge gate for AcceptParty
+	te.LastReqParty = s.Conn // gate anti-forja do AcceptParty
 	out := d.reqPartyBody(e, s.Conn)
 	w.SendTo(other, protocol.Header{Type: protocol.MsgSendReqParty, ID: protocol.IDScene}, out.Encode())
 }
 
-// acceptParty handles _MSG_AcceptParty (0x03AB): join the inviter's party. The
-// LastReqParty gate blocks forged accepts (PARTYHACK).
+// acceptParty trata _MSG_AcceptParty (0x03AB): entra na party do convidador. O
+// gate LastReqParty bloqueia aceites forjados (PARTYHACK).
 func (d *Dispatcher) acceptParty(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || s.Mode != world.UserPlay {
@@ -95,7 +95,7 @@ func (d *Dispatcher) acceptParty(w *world.World, s *world.Session, _ protocol.He
 	if leaderConn <= 0 || leaderConn >= world.MaxUser {
 		return
 	}
-	if e.LastReqParty != leaderConn { // forged accept without a matching invite
+	if e.LastReqParty != leaderConn { // aceite forjado sem um convite correspondente
 		d.log.Warn("PARTYHACK: accept without invite", "conn", s.Conn, "leader", leaderConn)
 		w.AddCrackError(s, 1, 0)
 		return
@@ -120,9 +120,9 @@ func (d *Dispatcher) acceptParty(w *world.World, s *world.Session, _ protocol.He
 	d.syncAcceptedParty(w, leaderConn, s.Conn, slot+1)
 }
 
-// removeParty handles _MSG_RemoveParty (0x037E): members leave, leaders can
-// kick a member, and a leader leaving promotes the next member when possible.
-// Parm is the target; out of range or self means "me".
+// removeParty trata _MSG_RemoveParty (0x037E): membros saem, líderes podem
+// expulsar um membro, e um líder saindo promove o próximo membro quando possível.
+// Parm é o alvo; fora da faixa ou ele mesmo significa "eu".
 func (d *Dispatcher) removeParty(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil {
@@ -146,29 +146,29 @@ func (d *Dispatcher) removeParty(w *world.World, s *world.Session, _ protocol.He
 	d.kickPartyMember(w, s.Conn, target)
 }
 
-// SessionEnd unlinks a leaving connection from its party. It ports the
-// RemoveParty(conn) the legacy runs on logout and on socket teardown
-// (_MSG_CharacterLogout.cpp:23, CloseUser → Server.cpp:7654), which the port
-// was missing: the leaver stayed a ghost in the leader's PartyList, so that
-// leader read as "already partied" forever (isInParty) and a reused conn slot
-// inherited the rows. Registered with world.SetSessionEndHandler and also called
-// from characterLogout. Idempotent — the second run finds an empty party.
+// SessionEnd desliga uma conexão que sai da sua party. Ele porta o
+// RemoveParty(conn) que o legado roda no logout e no teardown do socket
+// (_MSG_CharacterLogout.cpp:23, CloseUser → Server.cpp:7654), que o port
+// estava faltando: quem saía ficava um fantasma no PartyList do líder, então aquele
+// líder lia como "já em party" para sempre (isInParty) e um slot de conn reutilizado
+// herdava as linhas. Registrado com world.SetSessionEndHandler e também chamado
+// de characterLogout. Idempotente — a segunda execução encontra uma party vazia.
 func (d *Dispatcher) SessionEnd(w *world.World, s *world.Session) {
-	// A P2P trade dies with either side (CloseUser → RemoveTrade in the legacy):
-	// the opponent gets _MSG_QuitTrade instead of a window bound to a ghost.
+	// Uma troca P2P morre com qualquer dos lados (CloseUser → RemoveTrade no legado):
+	// o oponente recebe _MSG_QuitTrade em vez de uma janela ligada a um fantasma.
 	if s.Trade.Active {
 		d.removeTrade(w, s)
 	}
 	e := w.Entity(s.Conn)
 	if e == nil || !isInParty(e) {
-		return // nothing to unlink; don't push a party packet at a partyless client
+		return // nada a desligar; não empurrar pacote de party a um cliente sem party
 	}
 	if e.Leader != 0 {
 		d.leaveParty(w, s.Conn)
 		return
 	}
-	// Leaders (and solo pet holders) dissolve; leaderLeaveParty promotes the next
-	// member and resyncs, like the synthetic AcceptParty at Server.cpp:8246-8260.
+	// Líderes (e donos de pet sozinhos) dissolvem; leaderLeaveParty promove o próximo
+	// membro e ressincroniza, como o AcceptParty sintético em Server.cpp:8246-8260.
 	d.leaderLeaveParty(w, s.Conn)
 }
 
@@ -213,9 +213,9 @@ func (d *Dispatcher) leaveParty(w *world.World, conn int) {
 		return
 	}
 	leaderConn := e.Leader
-	// A member's summons occupy slots in the LEADER's PartyList (summon.go:205),
-	// so cutting the bond without reaping them leaves them alive and untracked —
-	// the next evocation then counts zero pets and spawns a whole new set (#234).
+	// As invocações de um membro ocupam slots no PartyList do LÍDER (summon.go:205),
+	// então cortar o vínculo sem colhê-las as deixa vivas e rastreadas por ninguém —
+	// a próxima evocação então conta zero pets e gera um conjunto todo novo (#234).
 	d.despawnSummonsOf(w, leaderConn, conn)
 	d.despawnSummonsOf(w, conn, 0)
 	e.Leader = 0
@@ -239,7 +239,7 @@ func (d *Dispatcher) kickPartyMember(w *world.World, leaderConn, conn int) {
 	if e == nil || le == nil || e.Leader != leaderConn {
 		return
 	}
-	d.despawnSummonsOf(w, leaderConn, conn) // same reaping as leaveParty (#234)
+	d.despawnSummonsOf(w, leaderConn, conn) // mesma colheita do leaveParty (#234)
 	d.despawnSummonsOf(w, conn, 0)
 	e.Leader = 0
 	e.PartyList = [world.MaxParty]int{}
@@ -258,12 +258,12 @@ func (d *Dispatcher) leaderLeaveParty(w *world.World, leaderConn int) {
 	if le == nil {
 		return
 	}
-	// Every summon in the list goes, whoever evoked it. The legacy only deletes
-	// the leaver's own and merely zeroes Summoner on the rest (Server.cpp:8237-8243),
-	// relying on its global Type-24 sweep to reap them; here the lifespan ticks
-	// inside summonTick, which is gated on Summoner != 0 (mobai.go:61), so copying
-	// that would leak permanent ownerless mobs. This branch is also the solo-BM
-	// path — a pet holder has Leader == 0, so RemoveParty lands here (#234).
+	// Toda invocação da lista vai, quem quer que a tenha evocado. O legado só apaga
+	// as do próprio saído e apenas zera Summoner nas outras (Server.cpp:8237-8243),
+	// confiando na sua varredura global de Type-24 para colhê-las; aqui o tempo de vida tiquetaqueia
+	// dentro do summonTick, que é barrado por Summoner != 0 (mobai.go:61), então copiar
+	// isso vazaria mobs permanentes sem dono. Este ramo é também o caminho do BM
+	// sozinho — um dono de pet tem Leader == 0, então o RemoveParty cai aqui (#234).
 	d.despawnSummonsOf(w, leaderConn, 0)
 	members := partyMembers(le)
 	le.PartyList = [world.MaxParty]int{}
@@ -310,7 +310,7 @@ func (d *Dispatcher) sendRemoveParty(w *world.World, conn, connExit int) {
 	}
 }
 
-// addMember puts conn in the leader's first free party slot (idempotent).
+// addMember põe conn no primeiro slot livre de party do líder (idempotente).
 func addMember(leader *world.Entity, conn int) (int, bool) {
 	for i := range leader.PartyList {
 		if leader.PartyList[i] == conn {

@@ -14,10 +14,10 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// duelDB gives tester(7)/tradeb(11) distinct-named characters at the same
-// starting position. Hero has enough Damage to one-shot HeroB's low HP in a
-// single melee hit, so the win-by-elimination test doesn't depend on RNG
-// variance across many attacks.
+// duelDB dá a tester(7)/tradeb(11) personagens com nomes distintos na mesma
+// posição inicial. Hero tem Dano suficiente para matar HeroB de HP baixo num
+// único golpe corpo a corpo, então o teste de vitória por eliminação não depende da variância
+// do RNG ao longo de muitos ataques.
 func duelDB() *fakeDB {
 	db := newDB()
 	db.loads = map[int64]world.CharacterState{
@@ -27,10 +27,10 @@ func duelDB() *fakeDB {
 	return db
 }
 
-// startServerDuel is startServerClock with a full-size grid (the arena spawn
-// coordinates, e.g. Y=4044, are far outside the 16x16 grid the movement tests
-// use) and a fast tick handler, so the invite-timeout/arena sweeps resolve in
-// milliseconds instead of real wall-clock seconds/ticks.
+// startServerDuel é startServerClock com uma grade de tamanho cheio (as coordenadas de spawn
+// da arena, por exemplo Y=4044, ficam bem fora da grade 16x16 que os testes de movimento
+// usam) e um handler de tick rápido, para as varreduras de timeout de convite/arena resolverem em
+// milissegundos em vez de segundos/ticks reais de relógio.
 func startServerDuel(t *testing.T, persist world.Persistence) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -61,9 +61,9 @@ func reqRankingFrame(t *testing.T, c net.Conn, target int, duelParm int32) {
 	send(t, c, protocol.MsgReqRanking, protocol.EncodeStandardParm2(int32(target), duelParm))
 }
 
-// drainDuelStart consumes the arena-entry frames (RemoveMob/CreateMob filtered
-// by readMaybe; the MSG_Action teleport jump and the StartTime countdown
-// aren't), so gameplay assertions after startDuel see only their own frames.
+// drainDuelStart consome os frames de entrada na arena (RemoveMob/CreateMob filtrados
+// por readMaybe; o salto de teleporte do MSG_Action e a contagem de StartTime
+// não são), então asserções de jogabilidade depois de startDuel veem só os próprios frames.
 func drainDuelStart(t *testing.T, c net.Conn) {
 	t.Helper()
 	for i := 0; i < 10; i++ {
@@ -76,12 +76,12 @@ func drainDuelStart(t *testing.T, c net.Conn) {
 func TestDuelRequestAndAccept(t *testing.T) {
 	addr, stop := startServerDuel(t, duelDB())
 	defer stop()
-	a := enterWorldAs(t, addr, "tester") // conn 1 (requester)
+	a := enterWorldAs(t, addr, "tester") // conn 1 (solicitante)
 	defer a.Close()
-	b := enterWorldAs(t, addr, "tradeb") // conn 2 (target)
+	b := enterWorldAs(t, addr, "tradeb") // conn 2 (alvo)
 	defer b.Close()
 
-	reqRankingFrame(t, a, 2, 0) // A invites B to a 1v1
+	reqRankingFrame(t, a, 2, 0) // A convida B para um 1v1
 	ty, payload, ok := readMaybe(t, b)
 	if !ok || ty != protocol.MsgReqRanking {
 		t.Fatalf("B got %#x ok=%v, want the forwarded invite", ty, ok)
@@ -91,7 +91,7 @@ func TestDuelRequestAndAccept(t *testing.T) {
 		t.Fatalf("invite payload = (%d,%d) ok=%v, want (1,0)", parm1, parm2, decOK)
 	}
 
-	reqRankingFrame(t, b, 1, 4) // B accepts (Parm1 echoes the requester's conn)
+	reqRankingFrame(t, b, 1, 4) // B aceita (Parm1 ecoa o conn do solicitante)
 
 	for name, c := range map[string]net.Conn{"requester": a, "accepter": b} {
 		sawAction, sawStart := false, false
@@ -113,8 +113,8 @@ func TestDuelRequestAndAccept(t *testing.T) {
 	}
 }
 
-// TestDuelAcceptWithoutInvite: the DuelTarget reciprocity gate blocks a forged
-// accept (mirrors the party LastReqParty PARTYHACK check).
+// TestDuelAcceptWithoutInvite: o gate de reciprocidade DuelTarget bloqueia um aceite
+// forjado (espelha a checagem PARTYHACK do LastReqParty).
 func TestDuelAcceptWithoutInvite(t *testing.T) {
 	addr, stop := startServerDuel(t, duelDB())
 	defer stop()
@@ -123,7 +123,7 @@ func TestDuelAcceptWithoutInvite(t *testing.T) {
 	b := enterWorldAs(t, addr, "tradeb")
 	defer b.Close()
 
-	reqRankingFrame(t, b, 1, 4) // B "accepts" a duel A never requested
+	reqRankingFrame(t, b, 1, 4) // B "aceita" um duelo que A nunca pediu
 	if ty, _, ok := readMaybe(t, a); ok {
 		t.Errorf("A received %#x for a forged accept; want none", ty)
 	}
@@ -132,10 +132,10 @@ func TestDuelAcceptWithoutInvite(t *testing.T) {
 	}
 }
 
-// TestDuelInviteTimeout: an unanswered invite auto-clears (the issue's
-// "recusado/timeout limpa o estado" acceptance criterion) — a late accept
-// after the deadline is silently ignored, and neither char is stuck (the
-// requester could freely send a fresh invite afterward).
+// TestDuelInviteTimeout: um convite sem resposta é limpado automaticamente (o critério
+// de aceite da issue "recusado/timeout limpa o estado") — um aceite tardio
+// depois do prazo é ignorado em silêncio, e nenhum dos personagens fica travado (o
+// solicitante podia mandar um convite novo tranquilamente depois).
 func TestDuelInviteTimeout(t *testing.T) {
 	orig := duelInviteTimeout
 	duelInviteTimeout = 100 * time.Millisecond
@@ -153,9 +153,9 @@ func TestDuelInviteTimeout(t *testing.T) {
 		t.Fatalf("B got %#x ok=%v, want the invite", ty, ok)
 	}
 
-	time.Sleep(300 * time.Millisecond) // past the shortened timeout, plus tick margin
+	time.Sleep(300 * time.Millisecond) // passado o timeout encurtado, mais a margem de tick
 
-	reqRankingFrame(t, b, 1, 4) // late accept: the invite already expired
+	reqRankingFrame(t, b, 1, 4) // aceite tardio: o convite já expirou
 	if ty, _, ok := readMaybe(t, a); ok {
 		t.Errorf("A got %#x after a timed-out invite; want nothing (no duel started)", ty)
 	}
@@ -164,9 +164,9 @@ func TestDuelInviteTimeout(t *testing.T) {
 	}
 }
 
-// startedDuel spins up a server with db, connects "tester" (Hero, conn 1) and
-// "tradeb" (HeroB, conn 2), and drives them through invite/accept so both are
-// in the arena with their entry frames drained. Callers own closing a/b/stop.
+// startedDuel sobe um servidor com db, conecta "tester" (Hero, conn 1) e
+// "tradeb" (HeroB, conn 2), e os conduz por convite/aceite para ambos
+// estarem na arena com os frames de entrada drenados. Quem chama cuida de fechar a/b/stop.
 func startedDuel(t *testing.T, db *fakeDB) (a, b net.Conn, stop func()) {
 	t.Helper()
 	addr, stop := startServerDuel(t, db)
@@ -174,17 +174,17 @@ func startedDuel(t *testing.T, db *fakeDB) (a, b net.Conn, stop func()) {
 	b = enterWorldAs(t, addr, "tradeb")
 
 	reqRankingFrame(t, a, 2, 0)
-	readMaybe(t, b) // drain the forwarded invite
+	readMaybe(t, b) // drenar o convite repassado
 	reqRankingFrame(t, b, 1, 4)
 	drainDuelStart(t, a)
 	drainDuelStart(t, b)
 	return a, b, stop
 }
 
-// TestDuelWinByElimination covers the issue's core acceptance criterion: A
-// challenges B, B accepts, they fight, the result is registered. It also
-// verifies the two combat-gate changes this feature makes: a duel hit lands
-// without PKMode toggled on, and it does NOT start the chaotic PK-nick timer.
+// TestDuelWinByElimination cobre o critério de aceite central da issue: A
+// desafia B, B aceita, eles lutam, o resultado é registrado. Também
+// verifica as duas mudanças de gate de combate que esta feature faz: um golpe de duelo entra
+// sem PKMode ligado, e NÃO inicia o temporizador de nick PK caótico.
 func TestDuelWinByElimination(t *testing.T) {
 	db := duelDB()
 	a, b, stop := startedDuel(t, db)
@@ -192,8 +192,8 @@ func TestDuelWinByElimination(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	// A melees B with no PKMode toggle: the duel bypass (combat.go) must let it
-	// land anyway.
+	// A acerta B corpo a corpo sem ligar PKMode: o bypass de duelo (combat.go) precisa deixá-lo
+	// entrar mesmo assim.
 	attackFrame(t, a, serverTime, 2, 0)
 	ty, payload, ok := readMaybe(t, a)
 	if !ok || ty != protocol.MsgAttack {
@@ -207,12 +207,12 @@ func TestDuelWinByElimination(t *testing.T) {
 		t.Fatalf("Dam = %+v, want a landed hit (PKMode-less duel damage must not be gated)", body.Dam)
 	}
 
-	// The kill itself tells HeroB there is no EXP loss (ZoneUnk, issue #427)
-	// before the arena sweep announces the result.
+	// A morte em si avisa HeroB de que não há perda de EXP (ZoneUnk, issue #427)
+	// antes de a varredura da arena anunciar o resultado.
 	wantPanelWithin(t, b, inArenaNoExpLoss, 5*time.Second)
 
-	// The next liveness scan detects HeroB's HP<=0 and concludes the duel: both
-	// sides get the legacy _SS_S_WinBy_S text with the two names.
+	// A próxima varredura de vivacidade detecta HP<=0 de HeroB e conclui o duelo: os dois
+	// lados recebem o texto legado _SS_S_WinBy_S com os dois nomes.
 	result := fmt.Sprintf(duelWinBy, "Hero", "HeroB")
 	wantPanelWithin(t, a, result, 5*time.Second)
 	wantPanelWithin(t, b, result, 5*time.Second)
@@ -226,15 +226,15 @@ func TestDuelWinByElimination(t *testing.T) {
 	}
 }
 
-// TestDuelDisconnectEndsAsWin: a disconnect mid-duel resolves the fight in
-// favor of the still-connected side, instead of leaving the arena stuck.
+// TestDuelDisconnectEndsAsWin: uma desconexão no meio do duelo resolve a luta em
+// favor do lado ainda conectado, em vez de deixar a arena travada.
 func TestDuelDisconnectEndsAsWin(t *testing.T) {
 	db := duelDB()
 	a, b, stop := startedDuel(t, db)
 	defer stop()
 	defer a.Close()
 
-	b.Close() // simulate a disconnect mid-duel
+	b.Close() // simula uma desconexão no meio do duelo
 
 	wantPanelWithin(t, a, fmt.Sprintf(duelWinBy, "Hero", "HeroB"), 5*time.Second)
 
@@ -247,8 +247,8 @@ func TestDuelDisconnectEndsAsWin(t *testing.T) {
 	}
 }
 
-// TestDuelingHelper is a focused unit test of the arena-pair check combat.go
-// relies on to bypass the PKMode gate and skip the PK-nick stamp.
+// TestDuelingHelper é um teste unitário focado na checagem de par de arena que o combat.go
+// usa para furar o gate de PKMode e pular a marcação de nick PK.
 func TestDuelingHelper(t *testing.T) {
 	d := New(Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 
@@ -266,8 +266,8 @@ func TestDuelingHelper(t *testing.T) {
 	}
 }
 
-// duelCityDB is duelDB with both characters inside Armia (2096,2096, the same
-// point TestVillage in world/city_test.go asserts resolves to city 0).
+// duelCityDB é duelDB com os dois personagens dentro de Armia (2096,2096, o mesmo
+// ponto que o TestVillage em world/city_test.go afirma resolver para a cidade 0).
 func duelCityDB() *fakeDB {
 	db := newDB()
 	db.loads = map[int64]world.CharacterState{
@@ -277,14 +277,14 @@ func duelCityDB() *fakeDB {
 	return db
 }
 
-// TestDuelRequestAllowedInCity: the legacy request has no position check, so a
-// request from inside a city is forwarded like any other (issue #424).
+// TestDuelRequestAllowedInCity: o pedido legado não tem checagem de posição, então um
+// pedido de dentro de uma cidade é repassado como qualquer outro (issue #424).
 func TestDuelRequestAllowedInCity(t *testing.T) {
 	addr, stop := startServerDuel(t, duelCityDB())
 	defer stop()
-	a := enterWorldAs(t, addr, "tester") // conn 1, inside Armia
+	a := enterWorldAs(t, addr, "tester") // conn 1, dentro de Armia
 	defer a.Close()
-	b := enterWorldAs(t, addr, "tradeb") // conn 2, inside Armia
+	b := enterWorldAs(t, addr, "tradeb") // conn 2, dentro de Armia
 	defer b.Close()
 
 	reqRankingFrame(t, a, 2, 0)
@@ -293,8 +293,8 @@ func TestDuelRequestAllowedInCity(t *testing.T) {
 	}
 }
 
-// TestDuelRequestDeniedByWhisperBlock: a target that blocks whispers gets no
-// invite, and the requester reads the legacy _NN_Deny_Whisper text.
+// TestDuelRequestDeniedByWhisperBlock: um alvo que bloqueia sussurros não recebe
+// convite, e o solicitante lê o texto legado _NN_Deny_Whisper.
 func TestDuelRequestDeniedByWhisperBlock(t *testing.T) {
 	addr, stop := startServerDuel(t, duelDB())
 	defer stop()
@@ -303,7 +303,7 @@ func TestDuelRequestDeniedByWhisperBlock(t *testing.T) {
 	b := enterWorldAs(t, addr, "tradeb")
 	defer b.Close()
 
-	chatFrame(t, b, "whisper") // toggle B's whisper block
+	chatFrame(t, b, "whisper") // liga o bloqueio de sussurros de B
 	drain(t, b)
 	reqRankingFrame(t, a, 2, 0)
 	wantPanelWithin(t, a, denyWhisper, 2*time.Second)
@@ -312,8 +312,8 @@ func TestDuelRequestDeniedByWhisperBlock(t *testing.T) {
 	}
 }
 
-// TestDuelStartAnnouncesBattle: DoRanking sends _NN_Battle_Started naming the
-// accepter first, and StartTime 2*121-2 = 240.
+// TestDuelStartAnnouncesBattle: DoRanking envia _NN_Battle_Started nomeando
+// o aceitante primeiro, e StartTime 2*121-2 = 240.
 func TestDuelStartAnnouncesBattle(t *testing.T) {
 	addr, stop := startServerDuel(t, duelDB())
 	defer stop()
@@ -347,10 +347,10 @@ func TestDuelStartAnnouncesBattle(t *testing.T) {
 	}
 }
 
-// wantPanelWithin polls c for a MsgMessagePanel carrying text, bounded by
-// wall-clock time instead of a fixed read count: the arena's closing-wall
-// broadcasts (up to a dozen MsgEnvEffect frames per step) would outrun a
-// fixed read budget well before a duel-resolution text arrives.
+// wantPanelWithin consulta c por um MsgMessagePanel carregando text, limitado por
+// tempo de relógio em vez de uma contagem fixa de leituras: as transmissões da parede
+// fechando da arena (até uma dúzia de frames MsgEnvEffect por passo) estourariam um
+// orçamento fixo de leituras bem antes de um texto de resolução de duelo chegar.
 func wantPanelWithin(t *testing.T, c net.Conn, text string, budget time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(budget)
@@ -363,15 +363,15 @@ func wantPanelWithin(t *testing.T, c net.Conn, text string, budget time.Duration
 	t.Fatalf("did not observe panel %q within %v", text, budget)
 }
 
-// TestDuelDrawOnTimeout: when the arena countdown runs out with both
-// duelists still alive and in bounds, the duel resolves as a draw — both
-// sides are notified and, unlike a win, nothing is persisted.
+// TestDuelDrawOnTimeout: quando a contagem da arena acaba com os dois
+// duelistas ainda vivos e dentro dos limites, o duelo resolve como empate — os dois
+// lados são avisados e, ao contrário de uma vitória, nada é persistido.
 func TestDuelDrawOnTimeout(t *testing.T) {
 	orig := duelTicks
-	// Must resolve after startedDuel's drainDuelStart returns: that helper
-	// drains frames until a ~300ms read times out, so a countdown shorter
-	// than that would race the draw notice into being silently swallowed by
-	// the drain instead of observed below.
+	// Precisa resolver depois que o drainDuelStart de startedDuel retorna: aquele helper
+	// drena frames até uma leitura de ~300ms dar timeout, então uma contagem menor
+	// que isso colocaria o aviso de empate a ser engolido em silêncio pelo
+	// dreno em vez de observado abaixo.
 	duelTicks = 100
 	defer func() { duelTicks = orig }()
 
@@ -390,9 +390,9 @@ func TestDuelDrawOnTimeout(t *testing.T) {
 	}
 }
 
-// TestDuelEndClearsArena: ClearAreaTeleport runs on a win and on a draw alike —
-// everyone inside the arena goes to (2572,1752), the dead come back with HP 1,
-// and whoever already left the box stays put (issue #424).
+// TestDuelEndClearsArena: ClearAreaTeleport roda tanto numa vitória quanto num empate —
+// todos dentro da arena vão para (2572,1752), os mortos voltam com HP 1,
+// e quem já saiu da caixa fica onde está (issue #424).
 func TestDuelEndClearsArena(t *testing.T) {
 	d, w, s, e := startOnePlayer(t)
 	for _, tc := range []struct {
@@ -433,27 +433,27 @@ func TestDuelEndClearsArena(t *testing.T) {
 	}
 }
 
-// TestDuelSweepCadence: one ProcessRanking step every duelStepTicks ticks, and
-// a dead duelist only ends the duel on a liveness scan (ticksLeft%5 == 0).
+// TestDuelSweepCadence: um passo de ProcessRanking a cada duelStepTicks ticks, e
+// um duelista morto só encerra o duelo numa varredura de vivacidade (ticksLeft%5 == 0).
 func TestDuelSweepCadence(t *testing.T) {
 	d, w, s, e := startOnePlayer(t)
 	runInLoop(t, w, func() {
 		w.SetEntityPos(s.Conn, 160, 4044)
 		e.HP = 300
-		// player2 (conn 0) is absent, so the first scan ends the duel.
+		// player2 (conn 0) está ausente, então a primeira varredura encerra o duelo.
 		d.duel = duelArena{active: true, player1: s.Conn, ticksLeft: 13, name1: "Hero", name2: "Gone"}
 
-		d.sweepDuelArena(w) // tick 1 of 2: no step yet
+		d.sweepDuelArena(w) // tick 1 de 2: ainda sem passo
 		if d.duel.ticksLeft != 13 {
 			t.Fatalf("ticksLeft = %d after one tick, want 13", d.duel.ticksLeft)
 		}
-		for range 2 * 2 { // two steps: 12, 11 — no scan
+		for range 2 * 2 { // dois passos: 12, 11 — sem varredura
 			d.sweepDuelArena(w)
 		}
 		if !d.duel.active || d.duel.ticksLeft != 11 {
 			t.Fatalf("active=%v ticksLeft=%d, want a running duel at 11", d.duel.active, d.duel.ticksLeft)
 		}
-		for range 2 * 1 { // step to 10: the scan sees the missing opponent
+		for range 2 * 1 { // passo para 10: a varredura vê o oponente ausente
 			d.sweepDuelArena(w)
 		}
 		if d.duel.active {
@@ -465,8 +465,8 @@ func TestDuelSweepCadence(t *testing.T) {
 	})
 }
 
-// TestDuelStageThresholds is a table-driven unit test of duelStage's bucket
-// boundaries (Server.cpp:8834-8869's three closing-wall stages).
+// TestDuelStageThresholds é um teste unitário com tabela dos limites de balde do
+// duelStage (os três estágios de parede fechando do Server.cpp:8834-8869).
 func TestDuelStageThresholds(t *testing.T) {
 	cases := []struct {
 		ticksLeft int
@@ -484,9 +484,9 @@ func TestDuelStageThresholds(t *testing.T) {
 	}
 }
 
-// TestDuelWallDamageFloorsHP is a pure unit test of duelWallDamage: it floors
-// HP down by 2000, or to 1 if the duelist has less than that, and never
-// drives HP to 0 or below (SendDamage's punishing effect, Server.cpp:5970-6009).
+// TestDuelWallDamageFloorsHP é um teste unitário puro de duelWallDamage: ele baixa
+// o HP em 2000, ou até 1 se o duelista tiver menos que isso, e nunca
+// leva o HP a 0 ou abaixo (o efeito punitivo do SendDamage, Server.cpp:5970-6009).
 func TestDuelWallDamageFloorsHP(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -500,8 +500,8 @@ func TestDuelWallDamageFloorsHP(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			s := &world.Session{}
-			// MaxHP must be high enough that setReqHp's effectiveMaxHP clamp
-			// (item.go) never kicks in and masks the damage this test checks.
+			// MaxHP precisa ser alto o suficiente para o clamp de effectiveMaxHP do setReqHp
+			// (item.go) nunca entrar e mascarar o dano que este teste verifica.
 			e := &world.Entity{HP: c.hp, MaxHP: 10000}
 			duelWallDamage(s, e)
 			if e.HP != c.wantHP {

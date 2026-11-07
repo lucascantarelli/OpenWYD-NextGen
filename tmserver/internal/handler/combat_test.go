@@ -37,20 +37,20 @@ func attackFrame(t *testing.T, c net.Conn, tick uint32, targetID, skill int) {
 	}
 }
 
-// TestAttackHitExact is the end-to-end exact golden case: with a clean LCG
-// (seed 1) and a known attacker/target, the server-authoritative damage is
-// deterministic. BASE_GetDoubleCritical consumes the first rand() even when no
-// crit lands, so BASE_GetDamage sees the second rand(): 140 * 110 / 100 = 154.
+// TestAttackHitExact é o caso dourado exato ponta a ponta: com um LCG limpo
+// (semente 1) e um atacante/alvo conhecidos, o dano server-authoritative é
+// determinístico. BASE_GetDoubleCritical consome o primeiro rand() mesmo quando nenhum
+// crítico entra, então BASE_GetDamage vê o segundo rand(): 140 * 110 / 100 = 154.
 func TestAttackHitExact(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
 
-	attacker := enterWorld(t, addr) // conn 1 (attacker)
+	attacker := enterWorld(t, addr) // conn 1 (atacante)
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2 (target), in view
+	target := enterWorld(t, addr) // conn 2 (alvo), em view
 	defer target.Close()
 
-	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP requires PK mode
+	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP exige PK mode
 	attackFrame(t, attacker, serverTime, 2, 0)
 
 	ty, payload, ok := readMaybe(t, target)
@@ -73,12 +73,12 @@ func TestAttackSyncsVictimHpMp(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
 
-	attacker := enterWorld(t, addr) // conn 1 (attacker)
+	attacker := enterWorld(t, addr) // conn 1 (atacante)
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2 (target), in view
+	target := enterWorld(t, addr) // conn 2 (alvo), em view
 	defer target.Close()
 
-	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP requires PK mode
+	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1)) // PvP exige PK mode
 	attackFrame(t, attacker, serverTime, 2, 0)
 
 	var damage, hp, reqHp int32
@@ -125,17 +125,17 @@ func TestAttackSyncsVictimHpMp(t *testing.T) {
 	}
 }
 
-// TestAttackPlayerWithoutPKModeBlocked: PvP damage never lands without the
-// attacker having opted into PK mode first (K key, _MSG_PKMode) — issue #59
-// follow-up (pressing K alone must not blink the nickname; only a landed PvP
-// hit does, and a hit can't land without PK mode).
+// TestAttackPlayerWithoutPKModeBlocked: dano PvP nunca entra sem o
+// atacante ter optado por PK mode antes (tecla K, _MSG_PKMode) — sequência
+// da issue #59 (apertar K sozinho não pode piscar o apelido; só um acerto PvP
+// aplicado pisca, e um acerto não entra sem PK mode).
 func TestAttackPlayerWithoutPKModeBlocked(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
 
-	attacker := enterWorld(t, addr) // conn 1, PK mode never toggled
+	attacker := enterWorld(t, addr) // conn 1, PK mode nunca alternado
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2, in view
+	target := enterWorld(t, addr) // conn 2, em view
 	defer target.Close()
 
 	attackFrame(t, attacker, serverTime, 2, 0)
@@ -153,32 +153,32 @@ func TestAttackPlayerWithoutPKModeBlocked(t *testing.T) {
 	}
 }
 
-// TestAttackPlayerWithPKModeSetsGuilty: toggling PK mode alone must not blink
-// the nickname (no PKInfo(1) on the ack); landing a PvP hit afterward must.
+// TestAttackPlayerWithPKModeSetsGuilty: alternar o PK mode sozinho não pode piscar
+// o apelido (nenhum PKInfo(1) no ack); aplicar um acerto PvP depois precisa.
 func TestAttackPlayerWithPKModeSetsGuilty(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
 
 	attacker := enterWorld(t, addr) // conn 1
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2, in view
+	target := enterWorld(t, addr) // conn 2, em view
 	defer target.Close()
 	drainRaw(t, attacker)
 	drainRaw(t, target)
 
 	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1))
-	// Pressing K only sends a PKInfo (attackable flag) — NO CreateMob, so the nick
-	// color (MobName[12]) is untouched. Just drain the ack.
+	// Apertar K só envia um PKInfo (flag de atacável) — NADA de CreateMob, então a cor
+	// do apelido (MobName[12]) fica intocada. Só drena o ack.
 	if ty, _, ok := readMaybeRaw(t, attacker); !ok || ty != protocol.MsgPKInfo {
 		t.Fatalf("attacker K-ack = %#x ok=%v, want PKInfo", ty, ok)
 	}
-	drainRaw(t, target) // the toggle also reaches the target as a viewer
+	drainRaw(t, target) // o toggle também alcança o alvo como espectador
 
 	attackFrame(t, attacker, serverTime, 2, 0)
 
-	// Landing the hit recolors the attacker's nick red: the target (in view) gets a
-	// fresh CreateMob for the attacker (id 1) whose MobName[12] = 0 (chaos/red),
-	// before the MsgAttack frame. Scan for it, then for the damage.
+	// Aplicar o acerto recolore o apelido do atacante de vermelho: o alvo (em view) recebe um
+	// CreateMob novo do atacante (id 1) com MobName[12] = 0 (caos/vermelho),
+	// antes do frame MsgAttack. Procure por ele, depois pelo dano.
 	sawRedNick, sawAttack := false, false
 	for i := 0; i < 20 && !sawAttack; i++ {
 		ty, payload, ok := readMaybeRaw(t, target)
@@ -212,11 +212,11 @@ func TestAttackPlayerWithPKModeSetsGuilty(t *testing.T) {
 	}
 }
 
-// TestAttackMarksBothSidesGuilty is the issue #210 behavior change: legacy sets
-// Guilty on BOTH SetGuilty(conn,8) and SetGuilty(idx,8) (_MSG_Attack.cpp "PK -
-// War - Miss"), not just the attacker — the prior Go model only ever touched the
-// attacker's flat GuiltyUntil timer. Both combatants' /cp must read chaotic
-// (-75) after the hit lands.
+// TestAttackMarksBothSidesGuilty é a mudança de comportamento da issue #210: o legado marca
+// Guilty nos DOIS SetGuilty(conn,8) e SetGuilty(idx,8) (_MSG_Attack.cpp "PK -
+// War - Miss"), não só no atacante — o modelo Go anterior só tocava no
+// timer GuiltyUntil fixo do atacante. O /cp dos dois combatentes precisa ler caótico
+// (-75) depois que o acerto entra.
 func TestAttackMarksBothSidesGuilty(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
@@ -248,9 +248,9 @@ func TestAttackMarksBothSidesGuilty(t *testing.T) {
 	}
 }
 
-// pkGateDB gives two distinct accounts (matching newDB's "tester"=7/"tradeb"=11)
-// different starting PKPoint values, so a test can put one side below and the
-// other above the pointPK<=10 damage-block threshold.
+// pkGateDB dá duas contas distintas (casando com "tester"=7/"tradeb"=11 do newDB)
+// valores iniciais de PKPoint diferentes, então um teste pode pôr um lado abaixo e o
+// outro acima do limiar pointPK<=10 de bloqueio de dano.
 func pkGateDB(attackerPKPoint, targetPKPoint uint8) *fakeDB {
 	db := newDB()
 	db.loads = map[int64]world.CharacterState{
@@ -260,24 +260,24 @@ func pkGateDB(attackerPKPoint, targetPKPoint uint8) *fakeDB {
 	return db
 }
 
-// TestAttackBlockedWhenAttackerTooChaotic is the _MSG_Attack.cpp "PK - War -
-// Miss" can't-kill gate (issue #210): an attacker with PKPoint<=10 (raw byte,
-// not the -75 display value) cannot damage a comparatively clean target
-// (PKPoint>10) at all — the hit resolves with Dam=0 and a chat notice, no
-// Guilty is set on either side.
+// TestAttackBlockedWhenAttackerTooChaotic é o gate de não-matar "PK - War -
+// Miss" do _MSG_Attack.cpp (issue #210): um atacante com PKPoint<=10 (byte cru,
+// não o valor -75 de exibição) não pode causar dano a um alvo comparativamente limpo
+// (PKPoint>10) de jeito nenhum — o acerto resolve com Dam=0 e um aviso no chat, nenhum
+// Guilty é marcado em nenhum dos lados.
 func TestAttackBlockedWhenAttackerTooChaotic(t *testing.T) {
 	addr, stop, _ := startServerClock(t, pkGateDB(5, 75))
 	defer stop()
 
-	attacker := enterWorldAs(t, addr, "tester") // conn 1, PKPoint=5 (very chaotic)
+	attacker := enterWorldAs(t, addr, "tester") // conn 1, PKPoint=5 (muito caótico)
 	defer attacker.Close()
-	target := enterWorldAs(t, addr, "tradeb") // conn 2, PKPoint=75 (clean)
+	target := enterWorldAs(t, addr, "tradeb") // conn 2, PKPoint=75 (limpo)
 	defer target.Close()
 
 	send(t, attacker, protocol.MsgPKMode, protocol.EncodeStandardParm(1))
 	attackFrame(t, attacker, serverTime, 2, 0)
 
-	// _DN_CantKillUser carries the raw PKPoint (issue #422).
+	// _DN_CantKillUser carrega o PKPoint cru (issue #422).
 	if ty, p, ok := readMaybe(t, attacker); !ok || ty != protocol.MsgMessagePanel || cstr(p) != fmt.Sprintf(cantKillUser, 5) {
 		t.Fatalf("attacker got %#x %q ok=%v, want the cant-kill panel", ty, p, ok)
 	}
@@ -294,9 +294,9 @@ func TestAttackBlockedWhenAttackerTooChaotic(t *testing.T) {
 	}
 }
 
-// TestAttackAllowedWhenBothChaotic verifies the can't-kill gate does NOT fire
-// between two already-chaotic players (SummonerPointPK<=10): legacy only blocks
-// when the VICTIM is still comparatively clean.
+// TestAttackAllowedWhenBothChaotic verifica que o gate de não-matar NÃO dispara
+// entre dois jogadores já caóticos (SummonerPointPK<=10): o legado só bloqueia
+// quando a VÍTIMA ainda está comparativamente limpa.
 func TestAttackAllowedWhenBothChaotic(t *testing.T) {
 	addr, stop, _ := startServerClock(t, pkGateDB(5, 5))
 	defer stop()
@@ -322,8 +322,8 @@ func TestAttackAllowedWhenBothChaotic(t *testing.T) {
 	}
 }
 
-// readFrameHeader reads one frame and returns its full header (not just the type),
-// skipping entity-visibility noise, so a test can assert HEADER.ID.
+// readFrameHeader lê um frame e devolve seu header completo (não só o tipo),
+// pulando o ruído de visibilidade de entidade, então um teste pode afirmar HEADER.ID.
 func readFrameHeader(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	t.Helper()
 	for {
@@ -348,18 +348,18 @@ func readFrameHeader(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	}
 }
 
-// TestAttackHeaderIsSceneField locks in the exp-bar fix: the attack broadcast must
-// carry HEADER.ID = ESCENE_FIELD (protocol.IDScene), exactly as the original
-// (_MSG_Attack.cpp:25). The client only applies the attacker's own CurrentExp/Hp/Mp
-// — i.e. moves the exp bar — when the attack arrives as a field/scene event; with
-// HEADER.ID = the attacker conn it did not.
+// TestAttackHeaderIsSceneField trava a correção da barra de EXP: a transmissão do ataque precisa
+// carregar HEADER.ID = ESCENE_FIELD (protocol.IDScene), exatamente como o original
+// (_MSG_Attack.cpp:25). O cliente só aplica CurrentExp/Hp/Mp do próprio atacante
+// — ou seja, move a barra de EXP — quando o ataque chega como evento de campo/cena; com
+// HEADER.ID = a conn do atacante ele não fazia.
 func TestAttackHeaderIsSceneField(t *testing.T) {
 	addr, stop, _ := startServerClock(t, combatDB())
 	defer stop()
 
 	attacker := enterWorld(t, addr) // conn 1
 	defer attacker.Close()
-	target := enterWorld(t, addr) // conn 2, in view
+	target := enterWorld(t, addr) // conn 2, em view
 	defer target.Close()
 
 	attackFrame(t, attacker, serverTime, 2, 0)
@@ -385,19 +385,19 @@ func TestAttackTooFastDropped(t *testing.T) {
 	if ty, _, ok := readMaybe(t, target); !ok || ty != protocol.MsgAttack {
 		t.Fatalf("first attack not broadcast (%#x ok=%v)", ty, ok)
 	}
-	// Second attack only 300ms later (< 800ms cadence) ⇒ dropped, no broadcast.
+	// Segundo ataque só 300ms depois (< cadência de 800ms) ⇒ descartado, sem transmissão.
 	attackFrame(t, attacker, serverTime+300, 2, 0)
 	if ty, _, ok := readMaybe(t, target); ok {
 		t.Errorf("target received %#x; too-fast attack should be dropped", ty)
 	}
 }
 
-// TestDeadCharacterRevivedOnLogin: a character persisted at HP 0 (slain by a mob
-// before disconnecting, now that mobs can kill) must not enter the world dead —
-// login revives it to full HP so it can act normally instead of being stuck.
+// TestDeadCharacterRevivedOnLogin: um personagem persistido com HP 0 (morto por um mob
+// antes de desconectar, agora que mobs podem matar) não pode entrar no mundo morto —
+// o login o revive com HP cheio para ele agir normalmente em vez de ficar travado.
 func TestDeadCharacterRevivedOnLogin(t *testing.T) {
 	db := combatDB()
-	db.loadResult.HP = 0 // was saved dead
+	db.loadResult.HP = 0 // foi salvo morto
 	addr, stop, _ := startServerClock(t, db)
 	defer stop()
 	attacker := enterWorld(t, addr)
@@ -405,7 +405,7 @@ func TestDeadCharacterRevivedOnLogin(t *testing.T) {
 	target := enterWorld(t, addr)
 	defer target.Close()
 
-	// Revived → alive → the attack resolves and reaches the in-view target.
+	// Revivido → vivo → o ataque resolve e alcança o alvo em view.
 	attackFrame(t, attacker, serverTime, 2, 0)
 	if ty, _, ok := readMaybe(t, target); !ok || ty != protocol.MsgAttack {
 		t.Fatalf("revived attacker could not act: got %#x ok=%v, want MsgAttack", ty, ok)

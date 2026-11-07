@@ -11,36 +11,36 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// attackCadence is the minimum ms between attacks (handlers/_MSG_Attack.md §4):
+// attackCadence é o mínimo de ms entre ataques (handlers/_MSG_Attack.md §4):
 // ClientTick < LastAttackTick + 800 ⇒ AddCrackError(1,107).
 const attackCadence = 800
 
-// Per-target Dam sentinel values (_MSG_Attack.cpp:355): the client marks each
-// entry melee or skill; any other non-zero claimed damage is a crack.
+// Sentinelas de Dam por alvo (_MSG_Attack.cpp:355): o cliente marca cada
+// entrada como corpo a corpo ou skill; qualquer outro dano alegado não-zero é crack.
 const (
 	damMelee = -2
 	damSkill = -1
 )
 
-// affectSamaritano is affect 24 ON A PLAYER (SkillData.csv:14, the only skill row
-// that uses it). The same id on a MOB is the summon lifespan counter —
-// affectSummonLife, summon.go:25 — which is why every read of it is index-gated.
+// affectSamaritano é o affect 24 NUM JOGADOR (SkillData.csv:14, a única linha de skill
+// que o usa). O mesmo id num MOB é o contador de vida da invocação —
+// affectSummonLife, summon.go:25 — por isso toda leitura dele é condicionada por índice.
 const affectSamaritano = 24
 
-// removeSamaritano ports DoRemoveSamaritano (Server.cpp:9129), which the legacy
-// calls on EVERY attack packet — melee or cast, before any damage is resolved
-// (_MSG_Attack.cpp:274). Samaritano is a purely defensive buff: it is meant to
-// hold only while its owner is not swinging back.
+// removeSamaritano porta DoRemoveSamaritano (Server.cpp:9129), que o legado
+// chama em TODO pacote de ataque — corpo a corpo ou conjuração, antes de qualquer dano ser resolvido
+// (_MSG_Attack.cpp:274). Samaritano é um buff puramente defensivo: ele deve
+// durar só enquanto o dono não está revidando.
 //
-// This runs at the TOP of attack, while the cast that installs the affect only
-// lands much later in applyCastAffect — so casting Samaritano never cancels the
-// buff it is putting up.
+// Isto roda no TOPO do attack, enquanto a conjuração que instala o affect só
+// chega bem depois em applyCastAffect — então conjurar Samaritano nunca cancela o
+// buff que está sendo colocado.
 func (d *Dispatcher) removeSamaritano(w *world.World, e *world.Entity) {
 	if !e.ClearFirstAffect(affectSamaritano) {
 		return
 	}
-	// Losing the buff shrinks MaxHP, so the refresh may clamp current HP down —
-	// the same thing the legacy's GetCurrentScore does before SendScore.
+	// Perder o buff encolhe MaxHP, então o refresh pode baixar o HP atual —
+	// a mesma coisa que o GetCurrentScore do legado faz antes do SendScore.
 	d.refreshScore(e)
 	if s := w.Session(e.ID); s != nil {
 		d.sendScore(w, s, e)
@@ -48,17 +48,17 @@ func (d *Dispatcher) removeSamaritano(w *world.World, e *world.Entity) {
 	}
 }
 
-// attack handles _MSG_Attack / _MSG_AttackOne / _MSG_AttackTwo (0x0367/039D/039E),
-// handlers/_MSG_Attack.md. Damage is SERVER-AUTHORITATIVE: the client's Dam[]
-// damage is recomputed via the combat formulas (game-rules.md §4) and overwritten
-// before broadcast. Skill casts are validated (learned mask, class, Passive) and
-// charged mana here, mirroring _MSG_Attack.cpp.
+// attack trata _MSG_Attack / _MSG_AttackOne / _MSG_AttackTwo (0x0367/039D/039E),
+// handlers/_MSG_Attack.md. O dano é AUTORITATIVO DO SERVIDOR: o Dam[] do cliente
+// é recalculado pelas fórmulas de combate (game-rules.md §4) e sobrescrito
+// antes do broadcast. Conjurações são validadas (máscara de aprendidas, classe, Passive) e
+// têm a mana cobrada aqui, espelhando _MSG_Attack.cpp.
 func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header, payload []byte) {
 	if s.TradeMode != 0 {
-		return // cannot attack while auto-trading
+		return // não pode atacar durante troca automática
 	}
 	if s.Mode != world.UserPlay {
-		return // SendHpMode in the original
+		return // SendHpMode no original
 	}
 	e := w.Entity(s.Conn)
 	if e == nil {
@@ -70,24 +70,24 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		return
 	}
 
-	// Liveness: the dead may only act with the resurrect skill (99). Use <= 0 (not
-	// == 0) so a negative-HP edge can never slip an action through.
+	// Vivacidade: os mortos só podem agir com a skill de ressurreição (99). Usar <= 0 (não
+	// == 0) para uma borda de HP negativo nunca deixar passar uma ação.
 	if e.HP <= 0 && int(body.SkillIndex) != combat.ResurrectSkill {
 		w.AddCrackError(s, 1, 8)
 		return
 	}
 
-	// Anti-speed cadence + tick sanity (int64 math avoids uint32 underflow on the
-	// first attack, when LastAttackTick == 0). SkipCheckTick bypasses the checks.
+	// Cadência anti-velocidade + sanidade de tick (aritmética int64 evita underflow de uint32 no
+	// primeiro ataque, quando LastAttackTick == 0). SkipCheckTick ignora as checagens.
 	tick := h.ClientTick
 	if tick != protocol.SkipCheckTick {
 		last := int64(s.LastAttackTick)
 		if int64(tick) < last+attackCadence {
-			w.AddCrackError(s, 1, 107) // too fast
+			w.AddCrackError(s, 1, 107) // rápido demais
 			return
 		}
 		if int64(tick) < last-100 {
-			w.AddCrackError(s, 4, 7) // tick too far in the past
+			w.AddCrackError(s, 4, 7) // tick no passado demais
 			return
 		}
 	}
@@ -95,13 +95,13 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 	s.LastAttack = int(body.SkillIndex)
 
 	skillnum := int(body.SkillIndex)
-	// REGRESSION GUARD (B12, TestMeleeAlwaysDamagesMob): the skill path (learn
-	// mask, class gate, mana) only engages when the packet actually MARKS a
-	// skill hit — a Dam entry with the -1 sentinel. The 12000 client's melee
-	// encoding of SkillIndex/Dam is UNVERIFIED (agent-prompt-skills.md), and
-	// gating the whole attack on those fields once silently killed all
-	// player→mob damage. Melee (no -1 entries) must NEVER be dropped or
-	// mana-charged, whatever SkillIndex says — damage is server-authoritative.
+	// GUARDA DE REGRESSÃO (B12, TestMeleeAlwaysDamagesMob): o caminho de skill (máscara de
+	// aprendidas, gate de classe, mana) só engata quando o pacote de fato MARCA um
+	// acerto de skill — uma entrada de Dam com a sentinela -1. A codificação de corpo a corpo
+	// de SkillIndex/Dam do cliente 12000 é UNVERIFIED (agent-prompt-skills.md), e
+	// condicionar o ataque inteiro a esses campos uma vez matou silenciosamente todo o dano
+	// de jogador→criatura. Corpo a corpo (sem entradas -1) NUNCA pode ser descartado ou
+	// ter mana cobrada, diga o SkillIndex o que disser — o dano é autoritativo do servidor.
 	skillIntent := false
 	for i := range body.Dam {
 		if body.Dam[i].Damage == damSkill {
@@ -121,10 +121,10 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		}
 	}
 	if cast.isSkill {
-		// Mana (BASE_GetManaSpent → abort broke): insufficient MP cancels the cast;
-		// otherwise spend and echo the authoritative MP in the attack body
-		// (_MSG_Attack.cpp:240-256). ReqMp is the server-owned CUser.ReqMp target,
-		// initialized on login and clamped by SetReqMp.
+		// Mana (BASE_GetManaSpent → abortar porque quebrou): MP insuficiente cancela a conjuração;
+		// senão gastar e ecoar o MP autoritativo no corpo do ataque
+		// (_MSG_Attack.cpp:240-256). ReqMp é o alvo CUser.ReqMp do servidor,
+		// inicializado no login e limitado por SetReqMp.
 		spent := combat.ManaSpent(cast.spell.ManaSpent, int(e.SaveMana), cast.special)
 		if int(e.MP)-spent < 0 {
 			d.sendSetHpMp(w, s, e)
@@ -136,9 +136,9 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		setReqMp(s, e)
 		body.ReqMp = int16(s.ReqMp)
 
-		// BM evocation (InstanceType 11, _MSG_Attack.cpp:809-837): spawn the
-		// summons once per cast — the Dam entries carry no damage for it. A cast
-		// that spawns nothing refunds its mana (the legacy restores Mp/ReqMp).
+		// Evocação do BM (InstanceType 11, _MSG_Attack.cpp:809-837): gerar as
+		// invocações uma vez por conjuração — as entradas de Dam não carregam dano para isso. Uma conjuração
+		// que não gera nada devolve sua mana (o legado restaura Mp/ReqMp).
 		if cast.spell.InstanceType == 11 {
 			count := summonCount(cast.spell.InstanceValue, effectiveSpecial(e, 2))
 			if !d.generateSummon(w, s, e, cast.spell.InstanceValue-1, count) {
@@ -154,19 +154,19 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		body.ReqMp = int16(s.ReqMp)
 	}
 
-	// Swinging drops Samaritano (_MSG_Attack.cpp:274), before the damage loop.
+	// Atacar derruba Samaritano (_MSG_Attack.cpp:274), antes do laço de dano.
 	d.removeSamaritano(w, e)
 
-	// Server-authoritative attack power = CurrentScore.Damage + the equipped weapon's
-	// damage, with the Divine buff's +20% folded in (effectiveDamage).
+	// Poder de ataque autoritativo do servidor = CurrentScore.Damage + o dano da arma
+	// equipada, com os +20% do buff Divino embutidos (effectiveDamage).
 	atkDamage := int(d.effectiveDamage(e))
 	doubleCritical := uint8(0)
 	doubleCriticalReady := false
 	var healExp int64
 	var hpSyncTargets []int
-	// The legacy reads the caster's HP once, before the target loop
-	// (_MSG_Attack.cpp:281), so Julgamento Divino adds the same pre-hit HP to
-	// every target even though each hit cuts it to HP/6+1 (issue #392).
+	// O legado lê o HP do conjurador uma vez, antes do laço de alvos
+	// (_MSG_Attack.cpp:281), então Julgamento Divino soma o mesmo HP pré-acerto a
+	// todo alvo mesmo que cada acerto o corte para HP/6+1 (issue #392).
 	cast.casterHP = e.HP
 	for i := range body.Dam {
 		tid := int(body.Dam[i].TargetID)
@@ -175,26 +175,26 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// Per-entry claim: -1 marks a skill hit; everything else resolves as
-		// melee. The legacy cracks claims other than -2/-1/0 (_MSG_Attack.cpp:355),
-		// but the 12000 client's melee encoding is UNVERIFIED and the claimed
-		// value is IGNORED anyway (server-authoritative) — so tolerate + log
-		// instead of zeroing, or unknown encodings silently disable all player
-		// damage again (B12).
+		// Alegado por entrada: -1 marca um acerto de skill; todo o resto resolve como
+		// corpo a corpo. O legado quebra alegados diferentes de -2/-1/0 (_MSG_Attack.cpp:355),
+		// mas a codificação de corpo a corpo do cliente 12000 é UNVERIFIED e o valor
+		// alegado é IGNORADO de qualquer modo (autoritativo do servidor) — então tolerar + logar
+		// em vez de zerar, senão codificações desconhecidas desativam silenciosamente todo o dano
+		// de jogador de novo (B12).
 		claim := body.Dam[i].Damage
 		if claim != damMelee && claim != damSkill && claim != 0 {
 			d.log.Debug("attack: unexpected Dam claim (resolving as melee)",
 				"conn", s.Conn, "claim", claim, "skill", skillnum)
 		}
-		// Untouchable NPCs (shops/banks/quest givers/town services) never take damage.
+		// NPCs intocáveis (lojas/bancos/quest givers/serviços da cidade) nunca levam dano.
 		if !world.IsPlayer(tid) && target.NonCombatNPC {
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// The legacy isFrag branch treats equal kingdom clans (7/7 or 8/8) as
-		// allied and leaves this target entry before SetBattle can run. Apply the
-		// gate before hit/effect resolution so an aggressive skill cannot leave
-		// damage, affects, EnemyList entries, or group battle state behind.
+		// O ramo isFrag legado trata clãs de reino iguais (7/7 ou 8/8) como
+		// aliados e sai desta entrada de alvo antes de SetBattle poder rodar. Aplicar o
+		// gate antes da resolução de acerto/efeito para uma skill agressiva não deixar
+		// dano, affects, entradas de EnemyList ou estado de batalha de grupo para trás.
 		skillHit := cast.isSkill && claim == damSkill
 		combatHit := !skillHit || cast.spell.Aggressive != 0
 		if !world.IsPlayer(tid) && combatHit && sameKingdom(e.Clan, target.Clan) {
@@ -205,14 +205,14 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// Dead targets can only be hit by the resurrection skills (31/99)
+		// Alvos mortos só podem ser atingidos pelas skills de ressurreição (31/99)
 		// (_MSG_Attack.cpp:333).
 		if target.HP <= 0 && skillnum != 31 && skillnum != combat.ResurrectSkill {
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// skillHit: this entry resolves through the skill pipeline; anything
-		// else (sentinel -2, 0, or an unknown claim) is melee.
+		// skillHit: esta entrada resolve pelo pipeline de skill; qualquer
+		// outra coisa (sentinela -2, 0, ou um alegado desconhecido) é corpo a corpo.
 		pvpHit := world.IsPlayer(tid) && tid != s.Conn
 		// Canal verde (novato): sem PvP. O legado bloqueia o ramo inteiro de PvP
 		// quando NewbieEventServer está ligado (_MSG_Attack.cpp:405), e o duelo
@@ -221,31 +221,31 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// PvP gate: combat damage (melee or an aggressive skill) requires the
-		// attacker to opt into PK mode (K key, _MSG_PKMode). The legacy server
-		// leaves this to the client; we keep it as an anti-cheat guard, which
-		// the unmodified client never notices because it already refuses to
-		// attack without K. Do not use world.Village as a town safe-zone
-		// approximation here: the coarse city rectangles caused issue #67 by
-		// zeroing PvP damage near every spawn point.
+		// Gate de PvP: dano de combate (corpo a corpo ou skill agressiva) exige o
+		// atacante optar pelo modo PK (tecla K, _MSG_PKMode). O servidor legado
+		// deixa isso para o cliente; mantemos como guarda anti-cheat, que o
+		// cliente não modificado nunca percebe porque ele já recusa
+		// atacar sem K. Não usar world.Village como aproximação de zona segura
+		// de cidade aqui: os retângulos grosseiros de cidade causaram a issue #67 ao
+		// zerar o dano PvP perto de todo ponto de spawn.
 		if pvpHit && combatHit && !e.PKMode && !d.dueling(s.Conn, tid) && !d.towerPvP(e, target) {
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// Legacy server-side gate (_MSG_Attack.cpp:405-419, issue #420): on an
-		// AttributeMap PvP-arena tile (bit 0x40, under the ATTACKER), a target
-		// that has neither K on nor Guilty takes no damage. No duel exception —
-		// the duel arena tile is 0x44 and the legacy has none. towerPvP stands in
-		// for the legacy war-state guard (RvR/castle siege are not modeled).
+		// Gate legado do lado do servidor (_MSG_Attack.cpp:405-419, issue #420): num tile
+		// de arena PvP do AttributeMap (bit 0x40, sob o ATACANTE), um alvo
+		// que não tem K ligado nem Guilty não leva dano. Sem exceção de duelo —
+		// o tile da arena de duelo é 0x44 e o legado não tem nenhuma. towerPvP substitui
+		// a guarda de estado de guerra legada (RvR/cerco de castelo não são modelados).
 		if pvpHit && combatHit && !d.towerPvP(e, target) && d.pvpArenaTile(e.X, e.Y) && !target.PKMode && !pkGuilty(target) {
 			writeDamage(payload, i, 0)
 			continue
 		}
-		// A maximally-chaotic attacker cannot damage a comparatively clean target
+		// Um atacante maximamente caótico não pode ferir um alvo comparativamente limpo
 		// (_MSG_Attack.cpp "PK - War - Miss": pointPK<=10 && SummonerPointPK>10 ⇒
-		// dam=0 + _DN_CantKillUser). Compares the raw PKPoint byte, not the -75
-		// display value. Like the Guilty stamp below, it only runs outside cities
-		// and guild war areas (arena == 5 && village == 5, attacker's position;
+		// dam=0 + _DN_CantKillUser). Compara o byte cru de PKPoint, não o valor
+		// de exibição -75. Como o carimbo Guilty abaixo, só roda fora de cidades
+		// e áreas de guerra de guilda (arena == 5 && village == 5, posição do atacante;
 		// issue #421).
 		if pvpHit && combatHit && !d.dueling(s.Conn, tid) && !world.PvPZone(e.X, e.Y) && int(e.PKPoint) <= 10 && int(target.PKPoint) > 10 {
 			d.sendClientMessage(w, s, fmt.Sprintf(cantKillUser, int(e.PKPoint)))
@@ -261,9 +261,9 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			}
 			dmg = d.resolveSkillHit(w, e, target, tid, skillnum, cast)
 			skipGenericAffect := d.applySkillSpecial(w, s, e, target, tid, skillnum, cast, &body, &dmg)
-			// The client can self-target aggressive skill rows through the hotbar.
-			// Do not turn those rows into damage against the caster; explicit HP
-			// costs, such as Julgamento Divino, are handled in applySkillSpecial.
+			// O cliente pode auto-mirar linhas de skill agressivas pela hotbar.
+			// Não transformar essas linhas em dano contra o conjurador; custos explícitos
+			// de HP, como Julgamento Divino, são tratados em applySkillSpecial.
 			if dmg > 0 && tid == s.Conn && cast.spell.Aggressive != 0 && skillnum != 30 {
 				dmg = 0
 			}
@@ -307,8 +307,8 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 				target.HP = 0
 			}
 			ts := w.Session(tid)
-			// Drop the victim's heal target by the damage, or the regen tick heals
-			// it straight back (_MSG_Attack.cpp:1638-1642).
+			// Baixar o alvo de cura da vítima pelo dano, senão o tick de regen o cura
+			// de volta na hora (_MSG_Attack.cpp:1638-1642).
 			damageReqHp(ts, target, int32(dmg))
 			if ts != nil && target.HP != hpBefore {
 				seen := false
@@ -324,18 +324,18 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			}
 			d.applyOnHitAffects(w, e, target, tid)
 			d.applyHpAbs(w, s, e, dmg)
-			// Landing a PvP hit against a comparatively clean target (PKPoint>10)
-			// marks BOTH sides Guilty (_MSG_Attack.cpp: SetGuilty(conn,8);
-			// SetGuilty(idx,8)) — re-broadcasting whichever side's nick wasn't
-			// already red. A duel hit must never mark PK (issue #118 acceptance
-			// criteria), and neither does a hit landed from inside a city or a
-			// guild war area (attacker's position, issue #421).
+			// Acertar um golpe PvP num alvo comparativamente limpo (PKPoint>10)
+			// marca OS DOIS lados como Guilty (_MSG_Attack.cpp: SetGuilty(conn,8);
+			// SetGuilty(idx,8)) — retransmitindo o nick de qualquer lado que ainda não
+			// estivesse vermelho. Um golpe de duelo nunca pode marcar PK (critérios de aceite
+			// da issue #118), e nem um golpe dado de dentro de uma cidade ou de uma
+			// área de guerra de guilda (posição do atacante, issue #421).
 			if pvpHit && combatHit && !d.dueling(s.Conn, tid) && !world.PvPZone(e.X, e.Y) && int(target.PKPoint) > 10 {
 				d.markGuilty(w, s, e)
 				d.markGuilty(w, w.Session(tid), target)
 			}
 		} else if dmg < 0 && cast.isSkill && cast.spell.InstanceType == 6 {
-			// Heal: a negative Dam is the healed amount; clamp to the target's max.
+			// Cura: um Dam negativo é a quantidade curada; limitar ao máximo do alvo.
 			before := target.HP
 			target.HP += d.foemaHealAmount(target, -int32(dmg))
 			if m := effectiveMaxHP(target); target.HP > m {
@@ -347,26 +347,26 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 			}
 			healExp += healExpGain(e, target, before)
 		}
-		// A struck mob either dies (rewards) or records the attacker in its
-		// EnemyList — and drags its spawn group into the fight (SetBattle +
-		// PartyList propagation, setGroupBattle). Provocation happens even on a
-		// blocked hit, matching the original AddEnemyList-on-attack.
+		// Uma criatura atingida ou morre (recompensas) ou registra o atacante no
+		// próprio EnemyList — e arrasta seu grupo de spawn para a luta (SetBattle +
+		// propagação por PartyList, setGroupBattle). A provocação acontece mesmo num
+		// acerto bloqueado, igual ao AddEnemyList-no-ataque original.
 		if !world.IsPlayer(tid) {
 			if target.HP == 0 {
 				d.mobKilled(w, e, target)
 			} else {
 				setGroupBattle(w, tid, target, e)
-				// The attacker's summons join their owner's fight (the legacy
-				// EnemyList propagation; summon.go).
+				// As invocações do atacante entram na luta do dono (a propagação de
+				// EnemyList legada; summon.go).
 				d.commandSummons(w, s.Conn, target)
 			}
 		} else if pvpHit && target.HP == 0 {
 			if d.dueling(s.Conn, tid) {
-				// Duel eliminations are handled by the duel-arena sweep (duel.go), not
-				// as a chaos-relevant PvP kill — a duel death must not grant/cost
-				// PKPoint or EXP (same exclusion as the Guilty-set gate above). The
-				// legacy death still lands in MobKilled's arena branch via ZoneUnk
-				// (map 1,31; issue #427), so the victim reads the no-EXP-loss text.
+				// Eliminações em duelo são tratadas pela varredura da arena de duelo (duel.go), não
+				// como uma morte PvP relevante para o caos — uma morte em duelo não pode conceder/custar
+				// PKPoint ou EXP (mesma exclusão do gate de Guilty acima). A morte
+				// legada ainda cai no ramo de arena do MobKilled via ZoneUnk
+				// (map 1,31; issue #427), então a vítima lê o texto de sem perda de EXP.
 				if ts := w.Session(tid); ts != nil {
 					d.sendClientMessage(w, ts, inArenaNoExpLoss)
 				}
@@ -388,27 +388,27 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 		d.applyLevelUpsWithoutCirclet(w, s, e)
 	}
 
-	// Overwrite the attacker's status with the server's authoritative values so every
-	// recipient (and the attacker's own client) sees the real HP/MP and the post-kill
-	// experience. CurrentExp is how the client refreshes its exp bar — there is no
-	// separate exp packet (MSG_UpdateScore carries no exp).
+	// Sobrescrever o status do atacante com os valores autoritativos do servidor para todo
+	// destinatário (e o próprio cliente do atacante) ver o HP/MP real e a
+	// experiência pós-morte. CurrentExp é como o cliente atualiza sua barra de exp — não há
+	// pacote de exp separado (MSG_UpdateScore não carrega exp).
 	writeAttackerStatus(payload, e.HP, e.MP, e.Exp, body.ReqMp)
 
-	// Broadcast the server-authoritative result with HEADER.ID = ESCENE_FIELD, exactly
-	// as the original (_MSG_Attack.cpp:25 `m->ID = ESCENE_FIELD`). This matters for the
-	// exp bar: the client applies Dam[] to the named targets regardless of header (so a
-	// mob's attack with HEADER.ID = the mob still hurts the player), but it only applies
-	// the ATTACKER's own CurrentExp/CurrentHp/CurrentMp when the attack arrives as a
-	// field/scene event. With HEADER.ID = the attacker conn the exp bar never moved.
-	// The original GridMulticast (around the target) includes the attacker, so we both
-	// echo to the attacker and send to the in-view players.
+	// Transmitir o resultado autoritativo do servidor com HEADER.ID = ESCENE_FIELD, exatamente
+	// como o original (_MSG_Attack.cpp:25 `m->ID = ESCENE_FIELD`). Isto importa para a
+	// barra de exp: o cliente aplica Dam[] aos alvos nomeados independentemente do header (então um
+	// ataque de criatura com HEADER.ID = a criatura ainda machuca o jogador), mas só aplica
+	// o CurrentExp/CurrentHp/CurrentMp do PRÓPRIO ATACANTE quando o ataque chega como
+	// evento de campo/cena. Com HEADER.ID = o conn do atacante a barra de exp nunca mexia.
+	// O GridMulticast original (em volta do alvo) inclui o atacante, então nós dois
+	// ecoamos para o atacante e enviamos aos jogadores em visão.
 	hdr := protocol.Header{Type: protocol.MsgAttack, ID: protocol.IDScene}
 	w.SendTo(s, hdr, payload)
 	w.ForEachInView(s.Conn, func(vs *world.Session, _ *world.Entity) {
 		w.SendTo(vs, hdr, payload)
 	})
 	if cast.isSkill && skillnum == 30 {
-		d.sendSetHpMp(w, s, e) // one sync after every Julgamento hit (_MSG_Attack.cpp:1749)
+		d.sendSetHpMp(w, s, e) // um sync após cada acerto de Julgamento (_MSG_Attack.cpp:1749)
 	}
 	for _, tid := range hpSyncTargets {
 		ts := w.Session(tid)
@@ -419,24 +419,24 @@ func (d *Dispatcher) attack(w *world.World, s *world.Session, h protocol.Header,
 	}
 }
 
-// castInfo is the resolved skill context for one attack packet.
+// castInfo é o contexto de skill resolvido para um pacote de ataque.
 type castInfo struct {
 	isSkill bool
 	spell   content.Spell
-	special int // CurrentScore.Special[kind] (or Level for Sephira skills)
-	master  int // skill-mitigation mastery (TK bit-14 rule; 0 otherwise)
-	// casterHP is the caster's HP before the target loop (the legacy `hp`).
+	special int // CurrentScore.Special[kind] (ou Level para skills Sephira)
+	master  int // maestria de mitigação de skill (regra bit-14 do TK; 0 caso contrário)
+	// casterHP é o HP do conjurador antes do laço de alvos (o `hp` legado).
 	casterHP int32
 }
 
-// validateCast runs the skill gates of _MSG_Attack.cpp:98-215 for SkillIndex ∈
-// [0,MaxSkillIndex): Passive reject, class gate, learned-mask check (crack), and
-// resolves the Special/mastery the damage formulas need. Melee (SkillIndex out of
-// range, typically -1) passes through with isSkill=false. Returns ok=false when
-// the whole attack must be dropped.
+// validateCast roda os gates de skill de _MSG_Attack.cpp:98-215 para SkillIndex ∈
+// [0,MaxSkillIndex): rejeitar Passive, gate de classe, checagem de máscara de aprendidas (crack), e
+// resolve o Special/maestria que as fórmulas de dano precisam. Corpo a corpo (SkillIndex fora do
+// intervalo, tipicamente -1) passa com isSkill=false. Devolve ok=false quando
+// o ataque inteiro precisa ser descartado.
 func (d *Dispatcher) validateCast(w *world.World, s *world.Session, e *world.Entity, skillnum int, tick uint32) (castInfo, bool) {
 	if skillnum < 0 || skillnum >= content.MaxSkillIndex || d.spells == nil {
-		return castInfo{}, true // melee
+		return castInfo{}, true // corpo a corpo
 	}
 	spell, ok := d.spells.Get(skillnum)
 	if !ok {
@@ -447,10 +447,10 @@ func (d *Dispatcher) validateCast(w *world.World, s *world.Session, e *world.Ent
 	}
 	cast := castInfo{isSkill: true, spell: spell}
 	if tick != protocol.SkipCheckTick {
-		// Class gate only applies to the four base-class blocks. Shared/Sephira
-		// rows (96+) skip it, but still use the same live learned gate:
-		// LearnedSkill & (1 << (skillnum % 24)). The old SecLearnedSkill branch in
-		// _MSG_Attack is unreachable because it sits under skillnum>=MAX_SKILLINDEX.
+		// O gate de classe só se aplica aos quatro blocos de classe base. Linhas Shared/Sephira
+		// (96+) o pulam, mas ainda usam o mesmo gate vivo de aprendidas:
+		// LearnedSkill & (1 << (skillnum % 24)). O antigo ramo SecLearnedSkill em
+		// _MSG_Attack é inalcançável porque fica sob skillnum>=MAX_SKILLINDEX.
 		if content.SkillClass(skillnum) <= 3 && content.SkillClass(skillnum) != int(e.Class) {
 			return castInfo{}, false
 		}
@@ -460,7 +460,7 @@ func (d *Dispatcher) validateCast(w *world.World, s *world.Session, e *world.Ent
 		}
 	}
 	cast.special = effectiveSpecial(e, content.SkillKind(skillnum))
-	// Escudo Dourado (85) charges 100×Special gold on cast (_MSG_Attack.cpp:222).
+	// Escudo Dourado (85) cobra 100×Special de ouro ao conjurar (_MSG_Attack.cpp:222).
 	if skillnum == 85 {
 		coin := int32(100 * cast.special)
 		if e.Coin < coin {
@@ -469,8 +469,8 @@ func (d *Dispatcher) validateCast(w *world.World, s *world.Session, e *world.Ent
 		e.Coin -= coin
 		d.sendEtc(w, s, e)
 	}
-	// Skill mitigation mastery: only a TK with bit 14 learned gets Special[2]/20
-	// (clamped 0..15); everyone else casts with 0 (_MSG_Attack.cpp:258-268).
+	// Maestria de mitigação de skill: só um TK com o bit 14 aprendido ganha Special[2]/20
+	// (limitado 0..15); todos os outros conjuram com 0 (_MSG_Attack.cpp:258-268).
 	if e.Class == 0 && e.LearnedSkill&(1<<14) != 0 {
 		m := int(e.Special[2]) / 20
 		if m < 0 {
@@ -490,8 +490,8 @@ func learnedSkillBit(skillnum int) int32 {
 
 func (d *Dispatcher) validateSkillTarget(w *world.World, s *world.Session, caster, target *world.Entity, targetSlot int, cast castInfo, tick uint32) bool {
 	sp := cast.spell
-	// MaxTarget is a legacy max Dam[] index, not a count: _MSG_Attack.cpp rejects
-	// only i > MaxTarget. Keep that off-by-one shape for packet parity.
+	// MaxTarget é um índice máximo legado de Dam[], não uma contagem: _MSG_Attack.cpp rejeita
+	// só i > MaxTarget. Manter esse formato off-by-one para paridade de pacote.
 	if tick != protocol.SkipCheckTick && sp.MaxTarget >= 0 && targetSlot > sp.MaxTarget {
 		w.AddCrackError(s, 10, 28)
 		return false
@@ -506,10 +506,10 @@ func (d *Dispatcher) validateSkillTarget(w *world.World, s *world.Session, caste
 	if sp.Range > 0 && mobDistance(caster.X, caster.Y, target.X, target.Y) > sp.Range {
 		return false
 	}
-	// TargetType is otherwise client/UI guidance in the local legacy _MSG_Attack
-	// source. The one safe server gate is target type 0 for self-only effects;
-	// party-wide skills and summons are exempt because their target fan-out is
-	// controlled by bParty/InstanceType.
+	// TargetType é, fora isso, orientação de cliente/UI no _MSG_Attack
+	// legado local. O único gate seguro no servidor é o tipo de alvo 0 para efeitos só-em-si;
+	// skills de grupo e invocações são isentas porque seu espalhamento de alvos é
+	// controlado por bParty/InstanceType.
 	if sp.TargetType == 0 && sp.BParty == 0 && sp.InstanceType != 11 && sp.Aggressive == 0 &&
 		(sp.AffectType > 0 || sp.TickType > 0) && target.ID != caster.ID {
 		return false
@@ -566,10 +566,10 @@ func validateGuardianCannon(w *world.World, body *protocol.MsgAttackBody, payloa
 	return true
 }
 
-// applyCastAffect applies a cast's affect/tick to one target (_MSG_Attack.cpp
-// buff block ~1172-1240): aggressive casts skip allies (same leader/guild) and
-// roll the resist gate; then SetAffect (players only) + SetTick land and the
-// target's score/icons refresh. Delay = 100 + Special, Level = Special.
+// applyCastAffect aplica o affect/tick de uma conjuração a um alvo (_MSG_Attack.cpp
+// bloco de buff ~1172-1240): conjurações agressivas pulam aliados (mesmo líder/guilda) e
+// sorteiam o gate de resistência; depois SetAffect (só jogadores) + SetTick entram e o
+// score/ícones do alvo atualizam. Delay = 100 + Special, Level = Special.
 func (d *Dispatcher) applyCastAffect(w *world.World, e, target *world.Entity, tid int, cast castInfo) {
 	sp := cast.spell
 	if sp.AffectType <= 0 && sp.TickType <= 0 {
@@ -592,11 +592,11 @@ func (d *Dispatcher) applyCastAffect(w *world.World, e, target *world.Entity, ti
 			guild = -1
 		}
 		if leader == tleader || guild == tguild {
-			return // allies never take hostile affects
+			return // aliados nunca recebem affects hostis
 		}
-		// Resist roll: rand()%100 vs RegenMP + AffectResist + level advantage.
-		// UNVERIFIED: RegenMP is not modeled on the Entity yet (0); tier level
-		// adders (celestial +MAX_LEVEL) wait on the tier system.
+		// Sorteio de resistência: rand()%100 vs RegenMP + AffectResist + vantagem de nível.
+		// UNVERIFIED: RegenMP ainda não é modelado na Entity (0); somadores de nível
+		// de tier (celestial +MAX_LEVEL) esperam o sistema de tiers.
 		if sp.AffectResist >= 1 && sp.AffectResist <= 4 {
 			difLevel := -(int(target.Level) - int(e.Level)) / 2
 			if w.Rand().Intn(100) > sp.AffectResist+difLevel {
@@ -607,7 +607,7 @@ func (d *Dispatcher) applyCastAffect(w *world.World, e, target *world.Entity, ti
 			return
 		}
 		if world.IsPlayer(e.ID) && target.Clan == 6 {
-			return // clan 6 is immune to player-cast affects
+			return // clã 6 é imune a affects conjurados por jogadores
 		}
 	}
 	delay := 100 + cast.special
@@ -618,11 +618,11 @@ func (d *Dispatcher) applyCastAffect(w *world.World, e, target *world.Entity, ti
 	if !applied {
 		return
 	}
-	// A landed transform (skills 64/66/68/70/71) also swaps the body mesh, which
-	// everyone in view must render — the legacy follows the SetAffect with
+	// Uma transformação que entra (skills 64/66/68/70/71) também troca a malha do corpo, que
+	// todo mundo em visão precisa renderizar — o legado segue o SetAffect com
 	// GetCurrentScore + SendScore + SendEquip(conn,0) (_MSG_Attack.cpp:1242-1248).
-	// refreshEquip recomputes visual gear/glow (where the beast override lives),
-	// broadcasts UpdateEquip self+in-view and re-sends the score.
+	// refreshEquip recalcula equipamento/brilho visual (onde fica a sobreposição de fera),
+	// transmite UpdateEquip para si+em visão e reenvia o score.
 	if sp.AffectType == affectTransform {
 		if ts := w.Session(tid); ts != nil {
 			d.refreshEquip(w, ts, target)
@@ -632,16 +632,16 @@ func (d *Dispatcher) applyCastAffect(w *world.World, e, target *world.Entity, ti
 	}
 	d.refreshScore(target)
 	if ts := w.Session(tid); ts != nil {
-		d.sendScore(w, ts, target) // UpdateScore carries the Affect[32] icon array
+		d.sendScore(w, ts, target) // UpdateScore carrega o array de ícones Affect[32]
 		d.sendAffect(w, ts, target)
 	}
 }
 
-// resolveSkillHit runs the per-target skill pipeline (_MSG_Attack.cpp:552-607):
-// raw power (SkillBaseDamage) → mitigation (SkillDamage with def ×2 vs players,
-// ×1.5 vs Foema) → elemental resist scale. InstanceType 6 returns a NEGATIVE
-// value (the heal amount, as the wire encodes it). Non-damage InstanceTypes
-// (buffs/specials) return 0 here — the affect engine (M4) handles them.
+// resolveSkillHit roda o pipeline de skill por alvo (_MSG_Attack.cpp:552-607):
+// poder bruto (SkillBaseDamage) → mitigação (SkillDamage com def ×2 vs jogadores,
+// ×1,5 vs Foema) → escala de resistência elemental. InstanceType 6 devolve um valor
+// NEGATIVO (a quantidade de cura, como o pacote a codifica). InstanceTypes que não são de dano
+// (buffs/especiais) devolvem 0 aqui — o motor de affect (M4) cuida deles.
 func (d *Dispatcher) resolveSkillHit(w *world.World, e, target *world.Entity, tid, skillnum int, cast castInfo) int {
 	sp := combat.SkillSpell{
 		InstanceType:  cast.spell.InstanceType,
@@ -657,9 +657,9 @@ func (d *Dispatcher) resolveSkillHit(w *world.World, e, target *world.Entity, ti
 		Magic:   int(effectiveMagic(e)),
 		Special: cast.special,
 	}
-	// CurrentWeather scales InstanceType 2/3/5 output (_MSG_Attack.cpp:520,594,972
-	// → BASE_GetSkillDamage). Weather 0 is neutral, so this is a no-op until a
-	// roll or a GM override moves it (weather.go).
+	// CurrentWeather escala a saída de InstanceType 2/3/5 (_MSG_Attack.cpp:520,594,972
+	// → BASE_GetSkillDamage). Clima 0 é neutro, então isto é no-op até um
+	// sorteio ou um override de GM movê-lo (weather.go).
 	raw := combat.SkillBaseDamage(skillnum, sp, caster, int(d.currentWeather()), int(d.weaponDamage(e)))
 
 	switch {
@@ -679,7 +679,7 @@ func (d *Dispatcher) resolveSkillHit(w *world.World, e, target *world.Entity, ti
 		if world.IsPlayer(tid) {
 			def *= 2
 		}
-		if target.Class == 1 { // Foema resists skills ×1.5
+		if target.Class == 1 { // Foema resiste a skills ×1,5
 			def = def * 3 / 2
 		}
 		dmg := combat.SkillDamage(w.Rand(), raw, def, cast.master)
@@ -707,20 +707,20 @@ func (d *Dispatcher) resolveSkillHit(w *world.World, e, target *world.Entity, ti
 		if heal > 0 && heal < 6 {
 			heal = 6
 		}
-		return -heal // heal rides as negative damage
+		return -heal // cura vai como dano negativo
 	default:
-		return 0 // buffs/specials: no direct damage (affects land in M4)
+		return 0 // buffs/especiais: sem dano direto (affects entram em M4)
 	}
 }
 
 func (d *Dispatcher) applySkillSpecial(w *world.World, s *world.Session, e, target *world.Entity, tid, skillnum int, cast castInfo, body *protocol.MsgAttackBody, dmg *int) bool {
 	switch {
-	case skillnum == 6: // Furia Divina: displacement only.
+	case skillnum == 6: // Furia Divina: só deslocamento.
 		*dmg = 0
 		d.applyDivineFury(w, e, target, tid, cast.special)
 		return true
 
-	case cast.spell.InstanceType == 7: // Flash: clear combat state.
+	case cast.spell.InstanceType == 7: // Flash: limpar estado de combate.
 		target.Target = 0
 		clearEnemyList(target)
 		if !world.IsPlayer(tid) && target.Mode == world.MobCombat {
@@ -748,9 +748,9 @@ func (d *Dispatcher) applySkillSpecial(w *world.World, s *world.Session, e, targ
 		e.HP = e.HP/6 + 1
 		s.ReqHp = e.HP
 		setReqHp(s, e)
-		return false // attack sends the single SetHpMp after the loop
+		return false // attack envia o único SetHpMp depois do laço
 
-	case skillnum == 22: // Exterminar spends all remaining MP into the hit.
+	case skillnum == 22: // Exterminar gasta todo o MP restante no acerto.
 		currentMP := e.MP
 		e.MP = 0
 		s.ReqMp = 0
@@ -759,12 +759,12 @@ func (d *Dispatcher) applySkillSpecial(w *world.World, s *world.Session, e, targ
 		d.applyExterminarMotion(w, e, target, tid)
 		return false
 
-	case skillnum == 98: // Muro de Espinhos creates a Vinha/Vine mob.
+	case skillnum == 98: // Muro de Espinhos cria uma criatura Vinha/Vine.
 		*dmg = 0
 		d.createVine(w, body)
 		return true
 
-	case skillnum == 47: // Cancelamento removes block first.
+	case skillnum == 47: // Cancelamento remove o bloqueio primeiro.
 		if target.ClearFirstAffect(19) {
 			d.refreshScore(target)
 			if ts := w.Session(tid); ts != nil {
@@ -948,30 +948,30 @@ func (d *Dispatcher) applyFoemaResurrection(w *world.World, s *world.Session, ca
 	})
 }
 
-// attrPvPArena is the AttributeMap bit of the PvP arenas (Armia arena 0x40,
-// duel arena 0x44), tested by the legacy target gate (_MSG_Attack.cpp:409).
+// attrPvPArena é o bit do AttributeMap das arenas PvP (arena de Armia 0x40,
+// arena de duelo 0x44), testado pelo gate de alvo legado (_MSG_Attack.cpp:409).
 const attrPvPArena = 0x40
 
-// pvpArenaTile reports whether (x,y) sits on an AttributeMap PvP-arena tile.
+// pvpArenaTile informa se (x,y) fica num tile de arena PvP do AttributeMap.
 func (d *Dispatcher) pvpArenaTile(x, y int16) bool {
 	return d.attrs != nil && x >= 0 && y >= 0 && d.attrs.At(int(x)/4, int(y)/4)&attrPvPArena != 0
 }
 
-// Teleporte refusals (tmserver/content/TMsrv/run/Language.txt, cp1252).
+// Recusas do Teleporte (tmserver/content/TMsrv/run/Language.txt, cp1252).
 const (
 	msgCantSummonDeadPerson = "Personagem derrotado n\xe3o pode ser invocado ou transferido." // _NN_Cant_Summon_Dead_Person (48)
 	msgSummonNotAllowedHere = "Voc\xea n\xe3o pode invocar ou transferir nesta zona."         // _NN_Summon_Not_Allowed_Here (49)
 	msgTooHighLevelToSummon = "O n\xedvel do oponente \xe9 muito alto para isto."             // _NN_Too_High_Level_To_Summon (50)
 	msgSummonedBy           = "Convocado por [%s]."                                           // _SN_Summoned_By_S (52)
-	attrNoSummon            = 0x04                                                            // AttributeMap bit tested by the Teleporte
-	foemaSummonMaxCasterLvl = 1000                                                            // stored level from which the zone bit is ignored (GM)
+	attrNoSummon            = 0x04                                                            // Bit do AttributeMap testado pelo Teleporte
+	foemaSummonMaxCasterLvl = 1000                                                            // nível guardado a partir do qual o bit de zona é ignorado (GM)
 	foemaSummonHPAllowance  = 30
 )
 
-// applyFoemaSummon ports the Teleporte (skill 42, InstanceType 9,
-// _MSG_Attack.cpp:751-786): the target is pulled next to the Foema's
-// server-side position. The packet's TargetX/Y is never a destination, so a
-// self-cast leaves the Foema where she is (issue #393).
+// applyFoemaSummon porta o Teleporte (skill 42, InstanceType 9,
+// _MSG_Attack.cpp:751-786): o alvo é puxado para perto da posição
+// do Foema no servidor. O TargetX/Y do pacote nunca é destino, então um
+// self-cast deixa o Foema onde ele está (issue #393).
 func (d *Dispatcher) applyFoemaSummon(w *world.World, s *world.Session, caster, target *world.Entity, tid int, cast castInfo) bool {
 	if caster == nil || target == nil {
 		return false
@@ -990,7 +990,7 @@ func (d *Dispatcher) applyFoemaSummon(w *world.World, s *world.Session, caster, 
 		return false
 	}
 	if target.X&^0xFF == 0 && target.Y&^0xFF == 0 {
-		d.notify(w, s, NoticeCantUseHere) // _NN_Cant_Use_That_Here: target in the unused map corner
+		d.notify(w, s, NoticeCantUseHere) // _NN_Cant_Use_That_Here: alvo no canto de mapa não usado
 		return false
 	}
 	if !world.IsPlayer(tid) {
@@ -1000,8 +1000,8 @@ func (d *Dispatcher) applyFoemaSummon(w *world.World, s *world.Session, caster, 
 	if ts == nil || ts.Mode != world.UserPlay {
 		return false
 	}
-	// GetEmptyMobGrid counts the mover's own cell as free, so a self-cast
-	// teleports in place instead of hopping to the next cell.
+	// GetEmptyMobGrid conta a célula do próprio movedor como livre, então um self-cast
+	// teleporta no lugar em vez de pular para a próxima célula.
 	x, y := caster.X, caster.Y
 	if id, occupied := w.EntityAt(x, y); !occupied || id != tid {
 		var ok bool
@@ -1035,11 +1035,11 @@ func (d *Dispatcher) applyManaControl(w *world.World, caster, target *world.Enti
 	return reduced
 }
 
-// applyHpAbs is the Jóia da Absorção lifesteal (_MSG_Attack.cpp:1651): on a
-// landed hit, a 50% roll heals the attacker AffHpAbs% of the damage dealt, capped
-// at 350/hit. The original has a bug in its else branch (ReqHp = RecHP overwrites
-// instead of adding); we add-then-clamp so the heal is coherent. No-op unless the
-// attacker carries the buff.
+// applyHpAbs é o lifesteal da Jóia da Absorção (_MSG_Attack.cpp:1651): num
+// acerto que entra, um sorteio de 50% cura o atacante em AffHpAbs% do dano causado, limitado
+// a 350/acerto. O original tem um bug no ramo else (ReqHp = RecHP sobrescreve
+// em vez de somar); nós somamos e limitamos para a cura ficar coerente. No-op a menos que o
+// atacante carregue o buff.
 func (d *Dispatcher) applyHpAbs(w *world.World, s *world.Session, e *world.Entity, dmg int) {
 	if e.AffHpAbs == 0 || dmg < 1 || w.Rand().Intn(2) != 0 {
 		return
@@ -1050,12 +1050,12 @@ func (d *Dispatcher) applyHpAbs(w *world.World, s *world.Session, e *world.Entit
 	}
 	e.HP += rec
 	s.ReqHp = e.HP
-	setReqHp(s, e) // clamps HP/ReqHp to effectiveMaxHP
+	setReqHp(s, e) // limita HP/ReqHp a effectiveMaxHP
 	d.sendSetHpMp(w, s, e)
 }
 
-// hpAbsHeal is the Jóia da Absorção heal amount: AffHpAbs% of the damage dealt,
-// capped at 350 (_MSG_Attack.cpp:1653).
+// hpAbsHeal é a quantidade de cura da Jóia da Absorção: AffHpAbs% do dano causado,
+// limitado a 350 (_MSG_Attack.cpp:1653).
 func hpAbsHeal(dmg int, absPct int32) int32 {
 	rec := (int32(dmg)*absPct + 1) / 100
 	if rec > 350 {
@@ -1087,13 +1087,13 @@ func manaControlDamage(target *world.Entity, dmg int, enhanced bool) (int, int32
 	return int(reduced), spent, true
 }
 
-// itemRawSanc returns an item's PACKED sanc cValue, not its refine level.
+// itemRawSanc devolve o cValue PACKED de sanc de um item, não seu nível de refino.
 //
-// The fairy heal-reduction divisor below is the one place that wants the raw
-// number: the legacy reads Equip[13].stEffect[0].cValue straight off the struct
-// (Server.cpp:10068, :10077) rather than going through BASE_GetItemSanc, so the
-// pity counter deliberately feeds into the divisor. Use refine.Level anywhere a
-// real refine level is meant.
+// O divisor de redução de cura da fada abaixo é o único lugar que quer o número
+// cru: o legado lê Equip[13].stEffect[0].cValue direto da struct
+// (Server.cpp:10068, :10077) em vez de passar por BASE_GetItemSanc, então o
+// contador de piedade alimenta o divisor de propósito. Usar refine.Level em qualquer lugar onde
+// um nível de refino real é pretendido.
 func itemRawSanc(it world.Item) int {
 	for _, ef := range it.Effects {
 		if ef.Effect >= 116 && ef.Effect <= 125 {
@@ -1307,8 +1307,8 @@ func onHitSpell(spells *content.SkillData, skillnum int) (content.Spell, bool) {
 	}
 }
 
-// writeDamage overwrites the server-authoritative damage of Dam[i] in the wire
-// payload (the client value is ignored).
+// writeDamage sobrescreve o dano autoritativo do servidor de Dam[i] no
+// payload do pacote (o valor do cliente é ignorado).
 func writeDamage(payload []byte, i int, dmg int32) {
 	off := protocol.MsgAttackDamOffset + i*protocol.MsgAttackDamStride + 4
 	if off+4 <= len(payload) {
@@ -1328,11 +1328,11 @@ func writeDoubleCritical(payload []byte, doubleCritical uint8) {
 	}
 }
 
-// writeAttackerStatus overwrites the attacker's CurrentHp@4, CurrentExp@12,
-// CurrentMp@40 and ReqMp@46 in the MSG_Attack body with the server's
-// authoritative values (MsgAttackBody layout, messages.go). These fixed fields
-// sit below the Dam[] region (offset 48), so they never collide with per-target
-// damage.
+// writeAttackerStatus sobrescreve CurrentHp@4, CurrentExp@12,
+// CurrentMp@40 e ReqMp@46 do atacante no corpo de MSG_Attack com os valores
+// autoritativos do servidor (layout MsgAttackBody, messages.go). Esses campos fixos
+// ficam abaixo da região Dam[] (offset 48), então nunca colidem com o dano
+// por alvo.
 func writeAttackerStatus(payload []byte, hp, mp int32, exp int64, reqMp int16) {
 	if len(payload) < protocol.MsgAttackDamOffset {
 		return

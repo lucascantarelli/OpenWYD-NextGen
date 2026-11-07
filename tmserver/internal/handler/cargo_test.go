@@ -16,9 +16,9 @@ import (
 func le(b []byte) uint32   { return binary.LittleEndian.Uint32(b) }
 func le16(b []byte) uint16 { return binary.LittleEndian.Uint16(b) }
 
-// cargoDB seeds the "tester" account with a character holding charCoin (and an
-// optional carry-slot-0 item) plus an account cargo holding cargoCoin (and an
-// optional cargo-slot-0 item).
+// cargoDB semeia a conta "tester" com um personagem carregando charCoin (e um
+// item opcional no slot 0 do carry) mais um cargo de conta carregando cargoCoin (e um
+// item opcional no slot 0 do cargo).
 func cargoDB(charCoin, cargoCoin int32, carry0, cargo0 int16) *fakeDB {
 	db := newDB()
 	st := world.CharacterState{Slot: 0, Name: "Hero", X: 5, Y: 5, HP: 1000, MaxHP: 1000, Coin: charCoin}
@@ -44,8 +44,8 @@ func withdrawFrame(t *testing.T, c net.Conn, coin int32) {
 	send(t, c, protocol.MsgWithdraw, protocol.EncodeStandardParm2(coin, 0))
 }
 
-// expect drains frames until it sees want, returning that frame's payload. It
-// fails if the stream goes quiet first (the ack never arrived).
+// expect drena frames até ver want, devolvendo o payload daquele frame. Ele
+// falha se o stream ficar mudo antes (o ack nunca chegou).
 //
 // Desde a padronização das mensagens (docs/migration/game-messages.md) um aviso
 // vai como TEXTO em MSG_MessagePanel com HEADER.ID 0, não mais como a caixa
@@ -75,14 +75,14 @@ func TestCargoDepositOK(t *testing.T) {
 	defer c.Close()
 
 	depositFrame(t, c, 600)
-	// Ack echoes MsgDeposit, then both gold displays refresh.
+	// O ack ecoa MsgDeposit, então as duas exibições de ouro atualizam.
 	expect(t, c, protocol.MsgDeposit)
 	cargoCoin := expect(t, c, protocol.MsgUpdateCargoCoin)
 	if got := int32(le(cargoCoin[0:4])); got != 600 {
 		t.Errorf("cargo coin = %d, want 600", got)
 	}
 	etc := expect(t, c, protocol.MsgUpdateEtc)
-	if got := int32(le(etc[28:32])); got != 400 { // char coin @body28
+	if got := int32(le(etc[28:32])); got != 400 { // coin do personagem @body28
 		t.Errorf("char coin = %d, want 400", got)
 	}
 }
@@ -93,16 +93,16 @@ func TestCargoDepositInsufficient(t *testing.T) {
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	depositFrame(t, c, 500) // more than the 100 carried
+	depositFrame(t, c, 500) // mais que os 100 carregados
 	expectPanel(t, c, cantDepositThatMuch)
 	if ty, _, ok := readMaybe(t, c); ok {
 		t.Errorf("over-deposit also produced %#x; should be rejected", ty)
 	}
 }
 
-// TestCargoAmountRefusals: the legacy refuses a negative amount with the same
-// panel as an amount over the balance (_MSG_Deposit/_MSG_Withdraw.cpp:34),
-// and a zero amount stays silent here.
+// TestCargoAmountRefusals: o legado recusa valor negativo com o mesmo
+// painel de um valor acima do saldo (_MSG_Deposit/_MSG_Withdraw.cpp:34),
+// e um valor zero fica silencioso aqui.
 func TestCargoAmountRefusals(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -138,7 +138,7 @@ func TestCargoDepositOverflow(t *testing.T) {
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	depositFrame(t, c, 1) // cargo already at the 2G ceiling
+	depositFrame(t, c, 1) // cargo já no teto de 2G
 	// Aviso padrão: texto de Language.txt (273), não a caixa numérica invisível.
 	if got := readPanel(t, c); got != noticeText(NoticeCargoFull) {
 		t.Errorf("overflow = %q, quer %q", got, noticeText(NoticeCargoFull))
@@ -169,14 +169,14 @@ func TestCargoWithdrawTooMuch(t *testing.T) {
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	withdrawFrame(t, c, 500) // cargo only has 100
+	withdrawFrame(t, c, 500) // o cargo só tem 100
 	expectPanel(t, c, cantWithdrawThatMuch)
 	if ty, _, ok := readMaybe(t, c); ok {
 		t.Errorf("over-withdraw also produced %#x; should be rejected", ty)
 	}
 }
 
-// tradeItemFrame sends a _MSG_TradingItem (0x0376) slot swap.
+// tradeItemFrame envia uma troca de slot _MSG_TradingItem (0x0376).
 func tradeItemFrame(t *testing.T, c net.Conn, srcPlace, srcSlot, dstPlace, dstSlot, warpID int) {
 	t.Helper()
 	body := protocol.MsgTradingItemBody{
@@ -187,12 +187,12 @@ func tradeItemFrame(t *testing.T, c net.Conn, srcPlace, srcSlot, dstPlace, dstSl
 	send(t, c, protocol.MsgTradingItem, body.Encode())
 }
 
-// cargoGuardID is the id SpawnMob assigns to the first NPC (MaxUser).
+// cargoGuardID é o id que SpawnMob atribui ao primeiro NPC (MaxUser).
 const cargoGuardID = world.MaxUser
 
-// startServerCargoGuard is startServerClock with a Merchant==2 cargo-guard NPC
-// spawned at (5,5) — next to where the test character logs in — so cargo-slot
-// moves pass the proximity gate.
+// startServerCargoGuard é startServerClock com um NPC guarda de cargo Merchant==2
+// gerado em (5,5) — ao lado de onde o personagem de teste loga — para os movimentos
+// de slot do cargo passarem o gate de proximidade.
 func startServerCargoGuard(t *testing.T, persist world.Persistence) (string, func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -205,7 +205,7 @@ func startServerCargoGuard(t *testing.T, persist world.Persistence) (string, fun
 
 	tmpl := make([]byte, 816)
 	copy(tmpl[0:16], "CargoGuard")
-	tmpl[92+12] = 2                                  // CurrentScore.Merchant = cargo guard
+	tmpl[92+12] = 2                                  // CurrentScore.Merchant = guarda de cargo
 	binary.LittleEndian.PutUint32(tmpl[92+16:], 100) // MaxHp
 	binary.LittleEndian.PutUint32(tmpl[92+24:], 100) // Hp
 	if id := w.SpawnMob(tmpl, 5, 5); id != cargoGuardID {
@@ -225,8 +225,8 @@ func startServerCargoGuard(t *testing.T, persist world.Persistence) (string, fun
 	}
 }
 
-// TestCargoItemDeposit moves a Carry item into the vault via _MSG_TradingItem and
-// asserts both affected slots are refreshed on the client.
+// TestCargoItemDeposit move um item do Carry para o cofre via _MSG_TradingItem e
+// afirma que os dois slots afetados são atualizados no cliente.
 func TestCargoItemDeposit(t *testing.T) {
 	addr, stop := startServerCargoGuard(t, cargoDB(0, 0, 1100, 0))
 	defer stop()
@@ -234,8 +234,8 @@ func TestCargoItemDeposit(t *testing.T) {
 	defer c.Close()
 
 	tradeItemFrame(t, c, world.ItemPlaceCarry, 0, world.ItemPlaceCargo, 0, cargoGuardID)
-	expect(t, c, protocol.MsgTradingItem) // move echo
-	// Two SendItem refreshes: the now-empty carry slot and the filled cargo slot.
+	expect(t, c, protocol.MsgTradingItem) // eco do movimento
+	// Dois refreshes de SendItem: o slot de carry agora vazio e o slot de cargo preenchido.
 	carry := expect(t, c, protocol.MsgSendItem)
 	if place := int(le16(carry[0:2])); place != world.ItemPlaceCarry {
 		t.Errorf("first refresh place = %d, want carry", place)
@@ -249,7 +249,7 @@ func TestCargoItemDeposit(t *testing.T) {
 	}
 }
 
-// TestCargoItemWithdraw moves a cargo item back into the inventory.
+// TestCargoItemWithdraw move um item do cargo de volta para o inventário.
 func TestCargoItemWithdraw(t *testing.T) {
 	addr, stop := startServerCargoGuard(t, cargoDB(0, 0, 0, 2200))
 	defer stop()
@@ -258,7 +258,7 @@ func TestCargoItemWithdraw(t *testing.T) {
 
 	tradeItemFrame(t, c, world.ItemPlaceCargo, 0, world.ItemPlaceCarry, 5, cargoGuardID)
 	expect(t, c, protocol.MsgTradingItem)
-	expect(t, c, protocol.MsgSendItem) // cargo slot (now empty)
+	expect(t, c, protocol.MsgSendItem) // slot do cargo (agora vazio)
 	carry := expect(t, c, protocol.MsgSendItem)
 	if place := int(le16(carry[0:2])); place != world.ItemPlaceCarry || le16(carry[2:4]) != 5 {
 		t.Errorf("carry refresh place/slot = %d/%d, want carry/5", place, le16(carry[2:4]))
@@ -268,30 +268,30 @@ func TestCargoItemWithdraw(t *testing.T) {
 	}
 }
 
-// TestCargoLogoutSavesBoth is the anti-dup regression for the cross-character
-// scenario: a character withdraws an item from the shared cargo, then logs out to
-// character selection. The character carry (now holding the item) AND the cargo
-// (now without it) must BOTH be persisted before the logout confirm — otherwise
-// the stale account_cargo row keeps the item and it is duplicated on the next
-// load (e.g. when another character of the account logs in).
+// TestCargoLogoutSavesBoth é a regressão anti-dup do cenário entre
+// personagens: um personagem saca um item do cargo compartilhado, então desloga para
+// a seleção de personagem. O carry do personagem (agora com o item) E o cargo
+// (agora sem ele) precisam AMBOS ser persistidos antes da confirmação do logout — senão
+// a linha obsoleta de account_cargo mantém o item e ele é duplicado no próximo
+// carregamento (por exemplo, quando outro personagem da conta loga).
 func TestCargoLogoutSavesBoth(t *testing.T) {
-	db := cargoDB(0, 0, 0, 2200) // cargo holds item 2200 in slot 0; carry empty
+	db := cargoDB(0, 0, 0, 2200) // o cargo tem o item 2200 no slot 0; carry vazio
 	addr, stop := startServerCargoGuard(t, db)
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// Withdraw the cargo item into carry slot 5.
+	// Saca o item do cargo para o slot 5 do carry.
 	tradeItemFrame(t, c, world.ItemPlaceCargo, 0, world.ItemPlaceCarry, 5, cargoGuardID)
 	expect(t, c, protocol.MsgTradingItem)
 	expect(t, c, protocol.MsgSendItem)
 	expect(t, c, protocol.MsgSendItem)
 
-	// Log out to character select — the confirm only arrives after both saves land.
+	// Desloga para a seleção de personagem — a confirmação só chega depois que os dois saves assentam.
 	send(t, c, protocol.MsgCharacterLogout, nil)
 	expect(t, c, protocol.MsgCNFCharacterLogout)
 
-	// The character was saved holding the withdrawn item...
+	// O personagem foi salvo com o item sacado...
 	char, nc := db.lastSavedChar()
 	if nc == 0 {
 		t.Fatal("character not saved on logout")
@@ -299,7 +299,7 @@ func TestCargoLogoutSavesBoth(t *testing.T) {
 	if !hasItem(char.Carry, 2200) {
 		t.Errorf("saved character carry missing withdrawn item 2200: %+v", char.Carry)
 	}
-	// ...and the cargo was saved WITHOUT it (no duplicate left in the warehouse).
+	// ...e o cargo foi salvo SEM ele (nenhuma duplicata deixada no armazém).
 	cargo, ng := db.lastSavedCargo()
 	if ng == 0 {
 		t.Fatal("cargo not saved on logout (item would duplicate on next load)")
@@ -318,15 +318,15 @@ func hasItem(items []world.SavedItem, index int16) bool {
 	return false
 }
 
-// TestCargoMoveNoGuard rejects a cargo move when no cargo-guard NPC is referenced
-// (WarpID 0): the proximity gate blocks it and nothing happens.
+// TestCargoMoveNoGuard recusa um movimento de cargo quando nenhum NPC guarda de cargo é referenciado
+// (WarpID 0): o gate de proximidade bloqueia e nada acontece.
 func TestCargoMoveNoGuard(t *testing.T) {
 	addr, stop := startServerCargoGuard(t, cargoDB(0, 0, 1100, 0))
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	tradeItemFrame(t, c, world.ItemPlaceCarry, 0, world.ItemPlaceCargo, 0, 0) // no NPC
+	tradeItemFrame(t, c, world.ItemPlaceCarry, 0, world.ItemPlaceCargo, 0, 0) // nenhum NPC
 	if ty, _, ok := readMaybe(t, c); ok {
 		t.Errorf("cargo move without guard produced %#x; should be blocked", ty)
 	}

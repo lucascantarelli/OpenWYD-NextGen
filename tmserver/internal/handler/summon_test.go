@@ -21,14 +21,14 @@ func TestSummonCount(t *testing.T) {
 		iv, evo, want int
 	}{
 		{1, 60, 2},  // Condor: Evocação/30
-		{1, 29, 0},  // below the first threshold → nothing spawns (cast refunds)
+		{1, 29, 0},  // abaixo do primeiro limiar → nada é gerado (a conjuração devolve a mana)
 		{2, 90, 3},  // Javali: /30
 		{3, 120, 3}, // Lobo: /40
 		{5, 79, 1},  // Tigre: /40
 		{6, 160, 2}, // Gorila: /80
 		{7, 79, 0},  // Dragão Negro: /80
-		{8, 0, 1},   // Succubus: always exactly one
-		{9, 0, 1},   // Invocação Final value 9: one zero-bonus template
+		{8, 0, 1},   // Succubus: sempre exatamente um
+		{9, 0, 1},   // valor 9 de Invocação Final: um template sem bônus
 		{10, 400, 0},
 	}
 	for _, tt := range tests {
@@ -38,8 +38,8 @@ func TestSummonCount(t *testing.T) {
 	}
 }
 
-// summonTemplate builds an 816-byte BaseSummon-shaped STRUCT_MOB (same offsets
-// as aggressiveMob): known flat stats so the owner-scaling asserts are exact.
+// summonTemplate monta um STRUCT_MOB de 816 bytes no formato do BaseSummon (os mesmos offsets
+// do aggressiveMob): atributos fixos conhecidos para as asserções de escala pelo dono serem exatas.
 func summonTemplate(name string) []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], name)
@@ -48,12 +48,12 @@ func summonTemplate(name string) []byte {
 	binary.LittleEndian.PutUint32(b[cs+8:], 20)   // Damage
 	binary.LittleEndian.PutUint32(b[cs+16:], 100) // MaxHp
 	binary.LittleEndian.PutUint32(b[cs+24:], 100) // Hp
-	binary.LittleEndian.PutUint16(b[cs+34:], 99)  // Int: never hesitates in battle
+	binary.LittleEndian.PutUint16(b[cs+34:], 99)  // Int: nunca hesita em batalha
 	return b
 }
 
-// summonDB is a BM ready to evoke: skill 56 learned (bit 56%24=8), Evocação 60
-// (BaseSpecial[2] → 2 Condors), Int 100 for the stat scaling.
+// summonDB é um BM pronto para evocar: skill 56 aprendida (bit 56%24=8), Evocação 60
+// (BaseSpecial[2] → 2 Condores), Int 100 para a escala de atributos.
 func summonDB(evocacao int16) *fakeDB {
 	db := newDB()
 	db.loadResult = world.CharacterState{
@@ -65,16 +65,16 @@ func summonDB(evocacao int16) *fakeDB {
 	return db
 }
 
-// evokeSpell is the Evocar Condor catalog row (skill 56: InstanceType 11,
-// InstanceValue 1 → summon id 0).
+// evokeSpell é a linha de catálogo do Evocar Condor (skill 56: InstanceType 11,
+// InstanceValue 1 → id de summon 0).
 func evokeSpell() *content.SkillData {
 	return content.NewSkillData([]content.Spell{
 		{Index: 56, ManaSpent: 10, InstanceType: 11, InstanceValue: 1, MaxTarget: 1, Name: "Evocar Condor"},
 	})
 }
 
-// startServerSummon wires a summon-capable server: spells + summon templates +
-// the AI tick (10ms), optionally one extra monster spawned before the loop.
+// startServerSummon monta um servidor com invocação: spells + templates de summon +
+// o tick de IA (10ms), opcionalmente uma criatura extra gerada antes do loop.
 func startServerSummon(t *testing.T, db world.Persistence, mob []byte, mobX, mobY int16) (string, func(), *atomic.Uint32) {
 	mobs := [][]byte{summonTemplate("Condor")}
 	return startServerSummonWith(t, db, evokeSpell(), mobs, mob, mobX, mobY)
@@ -84,9 +84,9 @@ func startServerSummonWith(t *testing.T, db world.Persistence, spells *content.S
 	return startServerSummonTick(t, db, spells, summonMobs, mob, mobX, mobY, 10*time.Millisecond)
 }
 
-// startServerSummonTick is startServerSummonWith with the AI-tick period exposed:
-// the summon lifespan is 20 ticks of affectTickPeriod, so a slow tick keeps a pet
-// alive for the whole test and isolates what the handlers do from what expiry does.
+// startServerSummonTick é startServerSummonWith com o período do tick de IA exposto:
+// a vida útil do summon é de 20 ticks de affectTickPeriod, então um tick lento mantém o pet
+// vivo pelo teste inteiro e isola o que os handlers fazem do que a expiração faz.
 func startServerSummonTick(t *testing.T, db world.Persistence, spells *content.SkillData, summonMobs [][]byte, mob []byte, mobX, mobY int16, tick time.Duration) (string, func(), *atomic.Uint32) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -116,8 +116,8 @@ func startServerSummonTick(t *testing.T, db world.Persistence, spells *content.S
 	}, clock
 }
 
-// petFromCreateMob extracts (mobID, name, level, damage, maxHP) from a
-// MSG_CreateMob body (offsets: createmob.go).
+// petFromCreateMob extrai (mobID, nome, nível, dano, maxHP) de um
+// corpo de MSG_CreateMob (offsets: createmob.go).
 func petFromCreateMob(payload []byte) (id int, name string, level, damage, maxHP int32) {
 	id = int(binary.LittleEndian.Uint16(payload[4:6]))
 	name = cstr(payload[6:22])
@@ -127,8 +127,8 @@ func petFromCreateMob(payload []byte) (id int, name string, level, damage, maxHP
 	return
 }
 
-// collectPets reads frames for up to timeout, returning the pet CreateMobs
-// (names ending in the legacy '^' marker).
+// collectPets lê frames por até timeout, devolvendo os CreateMobs de pet
+// (nomes terminando no marcador legado '^').
 func collectPets(t *testing.T, c net.Conn, timeout time.Duration) map[int][]byte {
 	t.Helper()
 	pets := make(map[int][]byte)
@@ -149,8 +149,8 @@ func collectPets(t *testing.T, c net.Conn, timeout time.Duration) map[int][]byte
 func babyMountItem(index int16, hp uint16) world.Item {
 	it := world.Item{Index: index}
 	putShort(&it.Effects[0], hp)
-	it.Effects[1] = world.Effect{Effect: 5, Value: 10} // mount sanc/life bytes
-	it.Effects[2] = world.Effect{Effect: 30, Value: 1} // feed/kill bytes
+	it.Effects[1] = world.Effect{Effect: 5, Value: 10} // bytes de sanc/life do mount
+	it.Effects[2] = world.Effect{Effect: 30, Value: 1} // bytes de feed/kill
 	return it
 }
 
@@ -325,9 +325,9 @@ func TestBabyMountGrowsWhenPetKillsMob(t *testing.T) {
 
 	mob := make([]byte, 816)
 	copy(mob[0:16], "Rato")
-	mob[16] = 5 // hostile clan
+	mob[16] = 5 // clã hostil
 	const cs = 92
-	binary.LittleEndian.PutUint32(mob[cs+0:], 6) // higher than mount level 5
+	binary.LittleEndian.PutUint32(mob[cs+0:], 6) // acima do nível 5 de montaria
 	binary.LittleEndian.PutUint32(mob[cs+8:], 1)
 	binary.LittleEndian.PutUint32(mob[cs+16:], 1)
 	binary.LittleEndian.PutUint32(mob[cs+24:], 1)
@@ -398,10 +398,10 @@ func TestBabyMountGrowsWhenPetKillsMob(t *testing.T) {
 	}
 }
 
-// TestEvocationSpawnsScaledSummons is the happy path: Evocação 60 evokes two
-// Condors, each owner-scaled per pSummonBonus[0] — Damage 20 + Int·80% +
-// Evo·300% = 280, MaxHp 100 + Int·100% + Evo·400% = 440 — at the owner's level,
-// named with the pet marker.
+// TestEvocationSpawnsScaledSummons é o caminho feliz: Evocação 60 evoca dois
+// Condores, cada um escalado pelo dono conforme pSummonBonus[0] — Dano 20 + Int·80% +
+// Evo·300% = 280, MaxHp 100 + Int·100% + Evo·400% = 440 — no nível do dono,
+// nomeados com o marcador de pet.
 func TestEvocationSpawnsScaledSummons(t *testing.T) {
 	addr, stop, _ := startServerSummon(t, summonDB(60), nil, 0, 0)
 	defer stop()
@@ -484,9 +484,9 @@ func TestEvocationDoesNotDuplicateExistingSummon(t *testing.T) {
 	}
 }
 
-// TestEvocationRefundsWhenNothingSpawns: Evocação below the threshold spawns
-// nothing, so the cast's mana comes back (_MSG_Attack.cpp:830-834) — the attack
-// echo carries the untouched MP @40.
+// TestEvocationRefundsWhenNothingSpawns: Evocação abaixo do limiar não gera
+// nada, então a mana da conjuração volta (_MSG_Attack.cpp:830-834) — o eco do
+// ataque carrega o MP intacto @40.
 func TestEvocationRefundsWhenNothingSpawns(t *testing.T) {
 	addr, stop, _ := startServerSummon(t, summonDB(20), nil, 0, 0)
 	defer stop()
@@ -518,10 +518,10 @@ func TestEvocationRefundsWhenNothingSpawns(t *testing.T) {
 	t.Fatal("no attack echo received")
 }
 
-// TestSummonExpires: the Type-24 lifespan (20 affect ticks) runs out and the
-// pet is removed (DeleteMob(idx,3), Server.cpp:5843).
+// TestSummonExpires: a vida útil do Tipo-24 (20 ticks de affect) se esgota e o
+// pet é removido (DeleteMob(idx,3), Server.cpp:5843).
 func TestSummonExpires(t *testing.T) {
-	// Evocação 30 → exactly one pet, keeping the wire quiet.
+	// Evocação 30 → exatamente um pet, mantendo o wire silencioso.
 	addr, stop, _ := startServerSummon(t, summonDB(30), nil, 0, 0)
 	defer stop()
 	c := enterWorld(t, addr)
@@ -537,7 +537,7 @@ func TestSummonExpires(t *testing.T) {
 		petID = id
 	}
 
-	// 20 lifespan decrements at one per 8 world ticks (10ms each) ≈ 1.6s.
+	// 20 decrementos de vida útil, um a cada 8 ticks de mundo (10ms cada) ≈ 1,6s.
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		h, _, ok := readMaybeHeaderRaw(t, c)
@@ -551,9 +551,9 @@ func TestSummonExpires(t *testing.T) {
 	t.Fatal("summon never expired (no RemoveMob for the pet)")
 }
 
-// TestSummonGoneAfterRelogin: leaving to the character screen orphans the pet;
-// the next tick despawns it, so re-entering the world finds no pet (the lazy
-// owner-gone cleanup in summonTick).
+// TestSummonGoneAfterRelogin: sair para a tela de personagem deixa o pet órfão;
+// o próximo tick o remove, então reentrar no mundo não encontra pet (a limpeza
+// preguiçosa de dono ausente no summonTick).
 func TestSummonGoneAfterRelogin(t *testing.T) {
 	addr, stop, _ := startServerSummon(t, summonDB(30), nil, 0, 0)
 	defer stop()
@@ -566,7 +566,7 @@ func TestSummonGoneAfterRelogin(t *testing.T) {
 	}
 
 	send(t, c, protocol.MsgCharacterLogout, nil)
-	for { // drain until the logout confirmation
+	for { // drenar até a confirmação de logout
 		ty, _, ok := readMaybeRaw(t, c)
 		if !ok {
 			t.Fatal("no logout confirmation")
@@ -575,7 +575,7 @@ func TestSummonGoneAfterRelogin(t *testing.T) {
 			break
 		}
 	}
-	time.Sleep(100 * time.Millisecond) // a few AI ticks: the orphaned pet despawns
+	time.Sleep(100 * time.Millisecond) // alguns ticks de IA: o pet órfão é removido
 
 	var body protocol.MsgCharacterLoginBody
 	send(t, c, protocol.MsgCharacterLogin, body.Encode())
@@ -584,11 +584,11 @@ func TestSummonGoneAfterRelogin(t *testing.T) {
 	}
 }
 
-// --- issue #234: summons must not outlive the party bond that holds them ---
+// --- issue #234: summons não podem sobreviver ao laço de grupo que os mantém ---
 
-// trackPets folds the pet lifecycle frames arriving over timeout into live: a pet
-// CreateMob adds an id, a RemoveMob (HEADER.ID) drops it. What remains in live is
-// what the client still has on screen.
+// trackPets dobra os frames do ciclo de vida do pet que chegam dentro do timeout em live: um
+// CreateMob de pet adiciona um id, um RemoveMob (HEADER.ID) o retira. O que sobra em live é
+// o que o cliente ainda tem na tela.
 func trackPets(t *testing.T, c net.Conn, timeout time.Duration, live map[int]bool) map[int]bool {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
@@ -609,10 +609,10 @@ func trackPets(t *testing.T, c net.Conn, timeout time.Duration, live map[int]boo
 	return live
 }
 
-// summonPartySrv is a summon-capable server whose AI tick is slower than any
-// assert window, so a pet can only vanish because a party handler removed it
-// synchronously — never through the lifespan countdown or summonTick's orphan
-// reaper, which would otherwise mask a missing sweep.
+// summonPartySrv é um servidor com invocação cujo tick de IA é mais lento que qualquer
+// janela de asserção, então um pet só pode sumir porque um handler de grupo o removeu
+// de forma síncrona — nunca pela contagem de vida útil ou pelo
+// ceifador de órfãos do summonTick, que de outro modo mascararia uma varredura ausente.
 func summonPartySrv(t *testing.T, db world.Persistence) (string, func()) {
 	t.Helper()
 	addr, stop, _ := startServerSummonTick(t, db, evokeSpell(),
@@ -620,11 +620,11 @@ func summonPartySrv(t *testing.T, db world.Persistence) (string, func()) {
 	return addr, stop
 }
 
-// summonPartyDB gives the leader (account 7) Evocação 30 → 1 pet and the member
-// (account 11) 60 → 2. The pet budget is shared party-wide — generateSummon counts
-// EVERY pet in the leader's PartyList, whoever evoked it (Server.cpp:2991-2997) —
-// so the member needs the larger allowance to fit one pet of its own alongside
-// the leader's.
+// summonPartyDB dá ao líder (conta 7) Evocação 30 → 1 pet e ao membro
+// (conta 11) 60 → 2. O orçamento de pets é compartilhado no grupo — generateSummon conta
+// TODO pet na PartyList do líder, quem quer que o tenha evocado (Server.cpp:2991-2997) —
+// então o membro precisa da permissão maior para caber um pet seu ao lado
+// do pet do líder.
 func summonPartyDB() *fakeDB {
 	db := summonDB(30)
 	member := db.loadResult
@@ -633,7 +633,7 @@ func summonPartyDB() *fakeDB {
 	return db
 }
 
-// evokeOne casts Evocar Condor from conn and returns the single pet's id.
+// evokeOne conjura Evocar Condor pela conn e devolve o id do único pet.
 func evokeOne(t *testing.T, c net.Conn, conn int) int {
 	t.Helper()
 	skillAttackFrame(t, c, serverTime, conn, 56, damSkill)
@@ -647,9 +647,9 @@ func evokeOne(t *testing.T, c net.Conn, conn int) int {
 	return 0
 }
 
-// TestSoloSummonDespawnsOnRemoveParty is the issue-234 repro. A BM holding pets
-// has Leader == 0 with the pets in its OWN PartyList, so the leave button routes
-// to leaderLeaveParty — which used to zero the list and orphan them.
+// TestSoloSummonDespawnsOnRemoveParty é o repro da issue-234. Um BM com pets
+// tem Leader == 0 com os pets na PRÓPRIA PartyList, então o botão de sair vai
+// para leaderLeaveParty — que antes zerava a lista e os deixava órfãos.
 func TestSoloSummonDespawnsOnRemoveParty(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonDB(30))
 	defer stop()
@@ -658,14 +658,14 @@ func TestSoloSummonDespawnsOnRemoveParty(t *testing.T) {
 
 	pet := evokeOne(t, c, 1)
 	removePartyFrame(t, c, 1)
-	// The 5s tick puts expiry (20 decrements, one per 8 ticks) ~13min out, so this
-	// RemoveMob can only be the leave.
+	// O tick de 5s põe a expiração (20 decrementos, um a cada 8 ticks) ~13min à frente, então este
+	// RemoveMob só pode ser o da saída.
 	expectPetRemove(t, c, pet)
 }
 
-// TestEvocationAfterLeavingPartyStaysCapped is the second half of the report
-// ("...e fazer novas evocações"): the orphans used to be invisible to
-// generateSummon's head count, so a re-cast stacked a whole new set on top.
+// TestEvocationAfterLeavingPartyStaysCapped é a segunda metade do relato
+// ("...e fazer novas evocações"): os órfãos antes eram invisíveis para a
+// contagem de generateSummon, então uma nova conjuração empilhava um conjunto inteiro por cima.
 func TestEvocationAfterLeavingPartyStaysCapped(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonDB(30))
 	defer stop()
@@ -685,8 +685,8 @@ func TestEvocationAfterLeavingPartyStaysCapped(t *testing.T) {
 	}
 }
 
-// partyWithPets: A (conn 1) leads, B (conn 2) joins, each evokes one pet. The
-// returned ids are both visible to A, whose stream the asserts read.
+// partyWithPets: A (conn 1) lidera, B (conn 2) entra, cada um evoca um pet. Os
+// ids devolvidos são visíveis para A, cujo stream as asserções leem.
 func partyWithPets(t *testing.T, addr string) (a, b net.Conn, petA, petB int) {
 	t.Helper()
 	a = enterWorldAs(t, addr, "tester")
@@ -700,7 +700,7 @@ func partyWithPets(t *testing.T, addr string) (a, b net.Conn, petA, petB int) {
 	petA = evokeOne(t, a, 1)
 	drainRaw(t, b)
 	skillAttackFrame(t, b, serverTime, 2, 56, damSkill)
-	pets := collectPets(t, a, 400*time.Millisecond) // A sees the member's pet appear
+	pets := collectPets(t, a, 400*time.Millisecond) // A vê o pet do membro aparecer
 	if len(pets) != 1 {
 		t.Fatalf("member evoked %d pets as seen by the leader, want 1", len(pets))
 	}
@@ -711,8 +711,8 @@ func partyWithPets(t *testing.T, addr string) (a, b net.Conn, petA, petB int) {
 	return a, b, petA, petB
 }
 
-// TestSummonDespawnsWhenOwnerLeavesParty: a member's pets sit in the LEADER's
-// PartyList, so leaving must take them along — and only them (Server.cpp:8185).
+// TestSummonDespawnsWhenOwnerLeavesParty: os pets de um membro ficam na PartyList do
+// LÍDER, então sair precisa levá-los — e só eles (Server.cpp:8185).
 func TestSummonDespawnsWhenOwnerLeavesParty(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonPartyDB())
 	defer stop()
@@ -730,7 +730,7 @@ func TestSummonDespawnsWhenOwnerLeavesParty(t *testing.T) {
 	}
 }
 
-// TestSummonDespawnsWhenKicked is the kick side of the same sweep.
+// TestSummonDespawnsWhenKicked é o lado do kick da mesma varredura.
 func TestSummonDespawnsWhenKicked(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonPartyDB())
 	defer stop()
@@ -738,7 +738,7 @@ func TestSummonDespawnsWhenKicked(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	removePartyFrame(t, a, 2) // leader kicks the member
+	removePartyFrame(t, a, 2) // o líder expulsa o membro
 	live := trackPets(t, a, 600*time.Millisecond, map[int]bool{petA: true, petB: true})
 	if live[petB] {
 		t.Errorf("kicked member's pet %d survived", petB)
@@ -748,9 +748,9 @@ func TestSummonDespawnsWhenKicked(t *testing.T) {
 	}
 }
 
-// TestSummonDespawnsOnPartyDisband: dissolving takes every pet in the list, not
-// just the leader's — the deliberate divergence from Server.cpp:8242, which only
-// zeroes Summoner and would leak ownerless mobs here (party.go leaderLeaveParty).
+// TestSummonDespawnsOnPartyDisband: dissolver leva todo pet da lista, não
+// só os do líder — a divergência deliberada do Server.cpp:8242, que só
+// zera Summoner e vazaria mobs sem dono aqui (party.go leaderLeaveParty).
 func TestSummonDespawnsOnPartyDisband(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonPartyDB())
 	defer stop()
@@ -758,15 +758,15 @@ func TestSummonDespawnsOnPartyDisband(t *testing.T) {
 	defer a.Close()
 	defer b.Close()
 
-	removePartyFrame(t, a, 1) // leader leaves → party dissolves
+	removePartyFrame(t, a, 1) // o líder sai → o grupo se dissolve
 	live := trackPets(t, a, 600*time.Millisecond, map[int]bool{petA: true, petB: true})
 	if len(live) != 0 {
 		t.Fatalf("pets alive after the party dissolved = %v, want none", live)
 	}
 }
 
-// TestSummonPartySlotClearedOnDespawn: DespawnMob only sends RemoveMob, so the
-// sweep has to drop the pet's party row too or the client keeps the slot.
+// TestSummonPartySlotClearedOnDespawn: DespawnMob só envia RemoveMob, então a
+// varredura precisa dropar também a linha de grupo do pet, senão o cliente mantém o slot.
 func TestSummonPartySlotClearedOnDespawn(t *testing.T) {
 	addr, stop := summonPartySrv(t, summonDB(30))
 	defer stop()
@@ -788,42 +788,42 @@ func TestSummonPartySlotClearedOnDespawn(t *testing.T) {
 	t.Fatalf("no RemoveParty row for pet %d; the client keeps a ghost party slot", pet)
 }
 
-// TestSummonAssistsAgainstMob: a monster fight near the owner pulls the pet in
-// (commandSummons) — the pet attacks the monster (mob-vs-mob combat) and the
-// monster eventually dies to it, despawning with the death RemoveMob.
+// TestSummonAssistsAgainstMob: uma luta de criatura perto do dono puxa o pet
+// (commandSummons) — o pet ataca a criatura (combate criatura-vs-criatura) e a
+// criatura acaba morrendo por ele, sumindo com o RemoveMob de morte.
 func TestSummonAssistsAgainstMob(t *testing.T) {
-	// A weak hostile monster right next to the player: it engages the player,
-	// the player's pet defends.
+	// Uma criatura hostil fraca bem ao lado do jogador: ela engaja o jogador,
+	// o pet do jogador defende.
 	mob := make([]byte, 816)
 	copy(mob[0:16], "Rato")
-	mob[16] = 5 // hostile clan
+	mob[16] = 5 // clã hostil
 	const cs = 92
 	binary.LittleEndian.PutUint32(mob[cs+0:], 1)   // Level
-	binary.LittleEndian.PutUint32(mob[cs+8:], 1)   // Damage (harmless)
+	binary.LittleEndian.PutUint32(mob[cs+8:], 1)   // Damage (inofensivo)
 	binary.LittleEndian.PutUint32(mob[cs+16:], 50) // MaxHp
 	binary.LittleEndian.PutUint32(mob[cs+24:], 50) // Hp
 	binary.LittleEndian.PutUint16(mob[cs+34:], 99) // Int
 
-	// (4,3): adjacent to where the pet spawns (freeCellNear picks (4,4)) and two
-	// tiles from the player — the pet reaches it without pathing around anyone
-	// (the blind no-heights step never sidesteps an occupied cell).
+	// (4,3): adjacente a onde o pet nasce (freeCellNear escolhe (4,4)) e a duas
+	// casas do jogador — o pet chega sem desviar de ninguém
+	// (o passo cego sem alturas nunca contorna uma célula ocupada).
 	addr, stop, clock := startServerSummon(t, summonDB(30), mob, 4, 3)
 	defer stop()
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrameAt(t, c, serverTime, 5, 5) // register in the grid next to the mob
+	actionFrameAt(t, c, serverTime, 5, 5) // registrar na grade ao lado da criatura
 
 	skillAttackFrame(t, c, serverTime, 1, 56, damSkill)
 
-	// One unified watch from cast time — the whole chain (mob strikes owner →
-	// pet commanded → pet strikes mob → mob dies) can play out within a few
-	// 10ms AI ticks, so no frame may be discarded while "waiting for the pet".
-	mobID := world.MaxUser // first NPC slot: the pre-spawned monster
+	// Uma única vigilância desde a conjuração — a cadeia inteira (criatura atinge o dono →
+	// pet comandado → pet atinge a criatura → a criatura morre) pode acontecer em poucos
+	// ticks de IA de 10ms, então nenhum frame pode ser descartado enquanto "espera o pet".
+	mobID := world.MaxUser // primeiro slot de NPC: a criatura pré-gerada
 	petID := -1
 	petStruck := false
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		// Advance the frozen clock so attack cadences (1000ms) keep firing.
+		// Avança o relógio congelado para as cadências de ataque (1000ms) continuarem disparando.
 		clock.Add(300)
 		h, payload, ok := readMaybeHeaderRaw(t, c)
 		if !ok {
@@ -848,7 +848,7 @@ func TestSummonAssistsAgainstMob(t *testing.T) {
 			}
 		case protocol.MsgRemoveMob:
 			if int(h.ID) == mobID && petStruck {
-				return // the pet fought the monster down
+				return // o pet derrubou a criatura
 			}
 		}
 	}

@@ -1,12 +1,12 @@
-// Package handler implements the per-message dispatch for the tmServer
-// (handlers/*.md, game-rules.md). Every handler runs inside the world's
-// game-loop goroutine, so it may mutate world state directly; blocking dbServer
-// calls are issued off the loop via World.Go and their results re-enter the loop
+// Package handler implementa o dispatch por mensagem do tmServer
+// (handlers/*.md, game-rules.md). Todo handler roda dentro da goroutine do
+// game-loop do mundo, então pode mutar estado do mundo direto; chamadas bloqueantes ao dbServer
+// são emitidas fora do loop via World.Go e seus resultados voltam ao loop
 // (domain-model.md §5).
 //
-// Batch 1 (login → character selection): AccountLogin, CreateCharacter,
-// DeleteCharacter, CharacterLogin, CharacterLogout, Restart. These are mostly
-// relays to the dbServer guarded by the session state machine (CUser.Mode,
+// Lote 1 (login → seleção de personagem): AccountLogin, CreateCharacter,
+// DeleteCharacter, CharacterLogin, CharacterLogout, Restart. São em boa parte
+// repasses ao dbServer vigiados pela máquina de estados de sessão (CUser.Mode,
 // domain-model.md §3.1).
 package handler
 
@@ -27,205 +27,205 @@ import (
 	"openwyd-nextgen/tmserver/internal/worldevents"
 )
 
-// Config tunes the dispatcher. Zero values get sensible defaults.
+// Config ajusta o dispatcher. Valores zero recebem padrões sensatos.
 type Config struct {
-	ClientVersion int32 // required client version (default AppVersion 7640)
-	MaxNightmare  int   // Counted admissions per map/cycle; default 3.
-	MaxFailLogin  int   // wrong-password lockout threshold (default 3)
-	ServerIndex   int   // legacy guild id high bits (server_index * 4096); also the channel a citizen belongs to (Citizen = ServerIndex+1)
+	ClientVersion int32 // versão de cliente exigida (padrão AppVersion 7640)
+	MaxNightmare  int   // Admissões contadas por mapa/ciclo; padrão 3.
+	MaxFailLogin  int   // limite de bloqueio por senha errada (padrão 3)
+	ServerIndex   int   // bits altos de id de guilda legado (server_index * 4096); também o canal a que um cidadão pertence (Citizen = ServerIndex+1)
 
-	// Novice ("green") channel (canais.md §3), fixed by configuration as in
-	// production: NoviceChannel is the 1-based channel number that plays the
-	// novice role (it runs NewbieEventServer and refuses PvP damage). 0 turns the
-	// novice channel off and leaves the event to the portal flag on every channel.
+	// Canal novato ("verde") (canais.md §3), fixado por configuração como em
+	// produção: NoviceChannel é o número de canal base 1 que faz o
+	// papel de novato (roda NewbieEventServer e recusa dano PvP). 0 desliga o
+	// canal novato e deixa o evento com a flag do portal em todo canal.
 	NoviceChannel int
 
-	// CrossoverKey signs the channel-change token handed to the client by /srv
-	// (canais.md §8.1.2). It must match the dbServer's value; empty disables the
-	// in-game channel switch.
+	// CrossoverKey assina o token de troca de canal entregue ao cliente por /srv
+	// (canais.md §8.1.2). Precisa casar com o valor do dbServer; vazio desativa a
+	// troca de canal in-game.
 	CrossoverKey string
 
-	// RefinePolicy is the dust-refine ceiling table (RefineRate). Zero value
-	// falls back to the legacy 6/9/10/11.
+	// RefinePolicy é a tabela de teto do refino com pó (RefineRate). Valor zero
+	// cai no legado 6/9/10/11.
 	RefinePolicy content.RefinePolicy
-	Log          *slog.Logger     // default slog.Default()
-	Now          func() time.Time // wall clock for calendar-gated guild ops
+	Log          *slog.Logger     // slog.Default() padrão
+	Now          func() time.Time // relógio de parede para operações de guilda condicionadas por calendário
 
-	// KefraEntriesPerScroll is how many Hall of Kefra entries one sealed
-	// scroll grants at the Sobrevivente; default 100 (the legacy value).
+	// KefraEntriesPerScroll é quantas entradas do Salão de Kefra um pergaminho
+	// selado concede no Sobrevivente; padrão 100 (o valor legado).
 	KefraEntriesPerScroll int
 
-	// AffectDuration tunes how long a CAST buff/debuff lasts (issue #229). The
-	// zero value is legacy-faithful; production defaults are set in
-	// cmd/tmserver/main.go. Item/cash/Divine affects never pass through it.
+	// AffectDuration ajusta quanto tempo dura um buff/debuff CONJURADO (issue #229). O
+	// valor zero é fiel ao legado; os padrões de produção são definidos em
+	// cmd/tmserver/main.go. Affects de item/cash/Divino nunca passam por ele.
 	AffectDuration world.AffectDuration
 
-	// CombineFamilies overrides the per-Type combine recipe/rate logic. When nil,
-	// UNVERIFIED placeholders are installed (every recipe reports "no match").
+	// CombineFamilies sobrescreve a lógica de receita/taxa de combine por Type. Quando nil,
+	// placeholders UNVERIFIED são instalados (toda receita informa "sem correspondência").
 	CombineFamilies map[protocol.Type]CombineFamily
 
-	// OdinCatalog is the item metadata combineItemOdin needs (MatchOdin's Extra
-	// lookup, Plus12's nPos gate). NewCombineCatalog builds it the same way
-	// DefaultCombineFamilies does. When zero, every Odin recipe still matches by
-	// sIndex, but Composição de Sets/armas can't resolve a result item.
+	// OdinCatalog é a metadata de item que combineItemOdin precisa (o lookup Extra do
+	// MatchOdin, o gate de nPos do Plus12). NewCombineCatalog o monta do mesmo modo que
+	// DefaultCombineFamilies. Quando zerado, toda receita Odin ainda casa por
+	// sIndex, mas a Composição de Sets/armas não consegue resolver um item de resultado.
 	OdinCatalog    combine.Catalog
 	CombineCatalog combine.Catalog
 	CompRate       *content.CompRate
 	QuestRates     *content.QuestRates
 
-	// BaseMobs are the per-class STRUCT_MOB templates (class index → raw 816 bytes,
-	// content.LoadBaseMobs). Used to render a character on entering the world with
-	// its class's starter equipment/stats. When nil, the snapshot is built from the
-	// stored relational state (no equipment).
+	// BaseMobs são os templates STRUCT_MOB por classe (índice de classe → 816 bytes crus,
+	// content.LoadBaseMobs). Usados para renderizar um personagem ao entrar no mundo com
+	// o equipamento/stats iniciais da classe. Quando nil, o snapshot é montado do
+	// estado relacional guardado (sem equipamento).
 	BaseMobs map[int][]byte
 
-	// SummonMobs are the BM evocation STRUCT_MOB templates indexed by summon id
-	// (content.LoadBaseSummons; GenerateSummon's mSummon.Mob). Slots may be nil
-	// (optional mount templates); when the slice is nil evocation casts fizzle.
+	// SummonMobs são os templates STRUCT_MOB de evocação do BM indexados por id de invocação
+	// (content.LoadBaseSummons; mSummon.Mob do GenerateSummon). Slots podem ser nil
+	// (templates de montaria opcionais); quando a fatia é nil as conjurações de evocação falham.
 	SummonMobs [][]byte
 
-	// VineMob is the STRUCT_MOB template used by Sephira skill 98 (Muro de
-	// Espinhos). The legacy calls CreateMob("Vinha", x, y, "Boss", 3); the shipped
-	// Linux content tree may provide this as npc/Vine instead. When nil the cast
-	// consumes mana but cannot create the wall.
+	// VineMob é o template STRUCT_MOB usado pela skill Sephira 98 (Muro de
+	// Espinhos). O legado chama CreateMob("Vinha", x, y, "Boss", 3); a árvore de conteúdo
+	// Linux entregue pode fornecer isto como npc/Vine. Quando nil a conjuração
+	// consome mana mas não consegue criar a parede.
 	VineMob []byte
 
-	// ItemPrices maps item index → base Price (g_pItemList[].Price) for NPC buy/sell.
+	// ItemPrices mapeia índice de item → Price base (g_pItemList[].Price) para compra/venda em NPC.
 	ItemPrices map[int]int32
 
-	// ItemEffects maps item index → its static base effects (STRUCT_ITEMLIST.stEffect:
-	// weapon damage, armor AC, attribute bonuses). Used to fold equipment into the
-	// CurrentScore (content.ItemList.BaseEffects). When nil, gear contributes nothing.
+	// ItemEffects mapeia índice de item → seus efeitos base estáticos (STRUCT_ITEMLIST.stEffect:
+	// dano de arma, AC de armadura, bônus de atributo). Usado para dobrar equipamento no
+	// CurrentScore (content.ItemList.BaseEffects). Quando nil, equipamento não soma nada.
 	ItemEffects map[int][]content.BaseEffect
 
-	// ItemReqs maps item index → its equip requirement (level/attributes,
-	// content.ItemList.Requirements). When nil, no equip is gated.
+	// ItemReqs mapeia índice de item → seu requisito de equipar (nível/atributos,
+	// content.ItemList.Requirements). Quando nil, nenhum equipamento é condicionado.
 	ItemReqs map[int]content.ItemReq
 
-	// ItemVolatiles maps item index → EF_VOLATILE value, classifying consumables on
-	// use (64-66 Divine, 58 Vigor; content.ItemList.Volatiles). 0/absent = equippable.
+	// ItemVolatiles mapeia índice de item → valor EF_VOLATILE, classificando consumíveis no
+	// uso (64-66 Divino, 58 Vigor; content.ItemList.Volatiles). 0/ausente = equipável.
 	ItemVolatiles map[int]int
 
-	// ItemPos maps item index → nPos (equip-slot class) for the refine (+9) threshold
-	// bonuses. ItemUnique maps index → nUnique (gates EF_DAMAGEADD to jewels).
-	// ItemGrades maps index → Grade (grade-7 pieces grant +2 ExpBonus). ItemExtra maps
-	// index → Extra (the result-item index for the Anct combine and the Adamantita
-	// legendary-upgrade combine, issue #135).
+	// ItemPos mapeia índice de item → nPos (classe de slot de equipamento) para os bônus de
+	// limiar do refino (+9). ItemUnique mapeia índice → nUnique (condiciona EF_DAMAGEADD a joias).
+	// ItemGrades mapeia índice → Grade (peças grade-7 concedem +2 ExpBonus). ItemExtra mapeia
+	// índice → Extra (o índice do item de resultado para o combine Anct e o combine
+	// de upgrade lendário Adamantita, issue #135).
 	ItemPos    map[int]int
 	ItemUnique map[int]int
 	ItemGrades map[int]int
 	ItemExtra  map[int]int
 
-	// SancRate is the dust-refine success table (Common/Settings/SancRate.txt over
-	// the Basedef.cpp defaults; *content.SancRate satisfies it). When nil the
-	// compiled defaults are used, so refine still works without a mounted content
-	// tree.
+	// SancRate é a tabela de sucesso do refino com pó (Common/Settings/SancRate.txt sobre
+	// os padrões de Basedef.cpp; *content.SancRate a satisfaz). Quando nil os
+	// padrões compilados são usados, então o refino ainda funciona sem uma árvore de conteúdo
+	// montada.
 	SancRate refine.RateTable
 
-	// ExpEvents toggles global EXP modifiers (MobKilled.cpp:537-549, Server.cpp defaults).
+	// ExpEvents alterna modificadores globais de EXP (MobKilled.cpp:537-549, padrões de Server.cpp).
 	ExpEvents level.ExpEvents
 
-	// TrainingFieldExp multiplies the event-free solo reward of kills on the
-	// training grounds for mortals below stored level 35 (issue #383,
-	// level.TrainingFieldExpReward). Zero disables it: the field then pays the
-	// plain SoloExpReward like any other map.
+	// TrainingFieldExp multiplica a recompensa solo livre de evento de mortes no
+	// campo de treino para mortais abaixo do nível guardado 35 (issue #383,
+	// level.TrainingFieldExpReward). Zero desativa: o campo então paga o
+	// SoloExpReward simples como qualquer outro mapa.
 	TrainingFieldExp int64
 
-	// Spells is the SkillData.csv catalog (g_pSpell). When nil, skill casting is
-	// rejected and skill learning is refused (no costs are knowable without it).
+	// Spells é o catálogo SkillData.csv (g_pSpell). Quando nil, conjurar skill é
+	// recusado e aprender skill é recusado (sem ele não há custos conhecíveis).
 	Spells *content.SkillData
 
-	// Heights is the walkability grid the mob AI paths over: HeightMap.dat with
-	// AttributeMap.dat already baked in (route.Bake, the boot-time
-	// BASE_ApplyAttribute). Read-only after boot, so sharing it with the loop is
-	// safe. When nil (maps not mounted, or tests) mobs fall back to the blind
-	// one-tile Chebyshev step.
+	// Heights é a grade de caminhabilidade sobre a qual a IA de criaturas traça rotas: HeightMap.dat com
+	// AttributeMap.dat já embutido (route.Bake, o BASE_ApplyAttribute de boot).
+	// Somente leitura após o boot, então compartilhá-la com o loop é
+	// seguro. Quando nil (mapas não montados, ou testes) criaturas caem no passo
+	// Chebyshev cego de um tile.
 	Heights *content.Grid
 
-	// Attrs is the raw AttributeMap.dat (one byte per 4×4 tiles, unbaked). The
-	// movement handler reads its 0x80 bit to keep high-level characters off the
-	// training grounds (newbieZoneGuard). Read-only after boot; nil disables the
-	// guard (maps not mounted, or tests).
+	// Attrs é o AttributeMap.dat cru (um byte por tiles 4×4, não embutido). O
+	// handler de movimento lê seu bit 0x80 para manter personagens de nível alto fora do
+	// campo de treino (newbieZoneGuard). Somente leitura após o boot; nil desativa a
+	// guarda (mapas não montados, ou testes).
 	Attrs *content.Grid
 
-	// NpcConfig is the moderator-edited NPC configuration source (npc-editing-plan.md).
-	// When set, the dispatcher overlays DB-defined merchant NPCs on boot and polls
-	// for changes each tick (hot-reload). When nil, NPCs come only from NPCGener.txt.
+	// NpcConfig é a fonte de configuração de NPC editada pelo moderador (npc-editing-plan.md).
+	// Quando definida, o dispatcher sobrepõe NPCs de mercador definidos no banco no boot e consulta
+	// mudanças a cada tick (hot-reload). Quando nil, NPCs vêm só do NPCGener.txt.
 	NpcConfig npccfg.Source
 
-	// WorldEvents is the portal-managed global event config source (issue #116).
-	// When set, the dispatcher applies EXP/drop event settings at boot and polls
-	// for moderator edits. When nil, ExpEvents stays as the boot-time flags.
+	// WorldEvents é a fonte de configuração de eventos globais gerenciada pelo portal (issue #116).
+	// Quando definida, o dispatcher aplica configurações de evento de EXP/drop no boot e consulta
+	// edições do moderador. Quando nil, ExpEvents fica com as flags de boot.
 	WorldEvents worldcfg.Source
 
-	// CastleQuests is the optional CastleQuest.txt table. Empty keeps the
-	// best-effort Castle/Zakum port disabled.
+	// CastleQuests é a tabela opcional CastleQuest.txt. Vazia mantém o
+	// port best-effort de Castle/Zakum desativado.
 	CastleQuests []content.CastleQuest
 
-	// EventRNGSeed seeds the dedicated world-event stream (see Dispatcher.eventRNG).
-	// Zero keeps the fixed worldEventRNGSeed, which is what tests want; main.go
-	// passes the wall clock so the weather sequence is not replayed identically
-	// after every restart.
+	// EventRNGSeed semeia o fluxo dedicado de eventos de mundo (veja Dispatcher.eventRNG).
+	// Zero mantém o worldEventRNGSeed fixo, que é o que os testes querem; main.go
+	// passa o relógio de parede para a sequência de clima não ser repetida de forma idêntica
+	// após cada restart.
 	EventRNGSeed uint32
 }
 
 type handlerFunc func(w *world.World, s *world.Session, h protocol.Header, payload []byte)
 
-// Dispatcher routes decoded client frames to handlers. It is created once and
-// installed as the world's Handler. Its mutable state (the per-account
-// wrong-password counters) is only touched from the loop goroutine, so it needs
-// no locks.
+// Dispatcher roteia frames decodificados do cliente para handlers. É criado uma vez e
+// instalado como o Handler do mundo. Seu estado mutável (os contadores de
+// senha errada por conta) só é tocado pela goroutine do loop, então não precisa
+// de locks.
 type Dispatcher struct {
-	waterRooms      [3][9]waterRoom // loop-owned; central aliases share slot 8
+	waterRooms      [3][9]waterRoom // do loop; aliases centrais compartilham o slot 8
 	cfg             Config
 	log             *slog.Logger
 	routes          map[protocol.Type]handlerFunc
-	fails           map[string]int // wrong-password count per account (CheckFailAccount)
+	fails           map[string]int // contagem de senha errada por conta (CheckFailAccount)
 	combineFamilies map[protocol.Type]CombineFamily
 	odinCatalog     combine.Catalog
 	combineCatalog  combine.Catalog
 	compRate        *content.CompRate
 	questRates      *content.QuestRates
-	baseMobs        map[int][]byte               // per-class STRUCT_MOB templates
-	summonMobs      [][]byte                     // BM evocation templates (summon id → STRUCT_MOB)
-	vineMob         []byte                       // Sephira Muro de Espinhos template
-	itemPrices      map[int]int32                // item index → base price (NPC shop)
-	itemEffects     map[int][]content.BaseEffect // item index → static base effects (equip score)
-	itemReqs        map[int]content.ItemReq      // item index → equip requirement (level/attrs)
-	itemVolatiles   map[int]int                  // item index → EF_VOLATILE (consumable class)
-	itemPos         map[int]int                  // item index → nPos (refine threshold)
-	itemUnique      map[int]int                  // item index → nUnique (EF_DAMAGEADD gate)
-	itemGrades      map[int]int                  // item index → Grade (ExpBonus)
-	itemExtra       map[int]int                  // item index → Extra (Anct/Adamantita combine result)
-	sancRate        refine.RateTable             // dust-refine success table (g_pSancRate)
-	refinePolicy    content.RefinePolicy         // dust refine ceilings (RefineRate + overlay)
-	expEvents       level.ExpEvents              // global EXP event flags
-	fieldExp        int64                        // training-grounds EXP multiplier (0 = off)
-	kefra           kefraRuntime                 // loop-owned weekly event I/O tracking
-	spells          *content.SkillData           // skill catalog (g_pSpell)
-	heights         *content.Grid                // baked walkability grid (mob pathfinding)
-	attrs           *content.Grid                // raw AttributeMap (training-grounds bit)
-	now             func() time.Time             // wall clock for calendar-gated guild ops
-	tickCount       int                          // loop-only tick counter (affect sweep phase)
-	affectDur       world.AffectDuration         // cast-affect duration tuning (issue #229)
-	serverIndex     int                          // legacy guild id high bits
-	crossoverKey    string                       // HMAC key for the /srv channel-change token
-	guildZones      [5]world.GuildZone           // loop-owned city/guild-zone cache
-	taxChangedAt    [5]time.Time                 // day each zone's guildtax last changed (one change/day, lote2-chat.md)
-	guildWars       map[uint16]uint16            // directed guild -> current war target
-	guildAllies     map[uint16]uint16            // directed guild -> current ally target
-	towerState      world.GuildTowerState        // loop-owned GTorre ownership cache
-	castleState     world.CastleQuestState       // loop-owned Castle/Zakum state cache
+	baseMobs        map[int][]byte               // templates STRUCT_MOB por classe
+	summonMobs      [][]byte                     // templates de evocação do BM (id de invocação → STRUCT_MOB)
+	vineMob         []byte                       // template do Muro de Espinhos da Sephira
+	itemPrices      map[int]int32                // índice de item → preço base (loja de NPC)
+	itemEffects     map[int][]content.BaseEffect // índice de item → efeitos base estáticos (score de equipamento)
+	itemReqs        map[int]content.ItemReq      // índice de item → requisito de equipar (nível/atributos)
+	itemVolatiles   map[int]int                  // índice de item → EF_VOLATILE (classe de consumível)
+	itemPos         map[int]int                  // índice de item → nPos (limiar de refino)
+	itemUnique      map[int]int                  // índice de item → nUnique (gate de EF_DAMAGEADD)
+	itemGrades      map[int]int                  // índice de item → Grade (ExpBonus)
+	itemExtra       map[int]int                  // índice de item → Extra (resultado de combine Anct/Adamantita)
+	sancRate        refine.RateTable             // tabela de sucesso do refino com pó (g_pSancRate)
+	refinePolicy    content.RefinePolicy         // tetos do refino com pó (RefineRate + overlay)
+	expEvents       level.ExpEvents              // flags globais de evento de EXP
+	fieldExp        int64                        // multiplicador de EXP do campo de treino (0 = desligado)
+	kefra           kefraRuntime                 // rastreamento de I/O de evento semanal do loop
+	spells          *content.SkillData           // catálogo de skills (g_pSpell)
+	heights         *content.Grid                // grade de caminhabilidade embutida (pathfinding de criaturas)
+	attrs           *content.Grid                // AttributeMap cru (bit do campo de treino)
+	now             func() time.Time             // relógio de parede para operações de guilda condicionadas por calendário
+	tickCount       int                          // contador de tick só do loop (fase da varredura de affect)
+	affectDur       world.AffectDuration         // ajuste de duração de affect conjurado (issue #229)
+	serverIndex     int                          // bits altos de id de guilda legado
+	crossoverKey    string                       // chave HMAC do token de troca de canal /srv
+	guildZones      [5]world.GuildZone           // cache de zona de cidade/guilda do loop
+	taxChangedAt    [5]time.Time                 // dia em que o guildtax de cada zona mudou por último (uma mudança/dia, lote2-chat.md)
+	guildWars       map[uint16]uint16            // guilda dirigida -> alvo de guerra atual
+	guildAllies     map[uint16]uint16            // guilda dirigida -> alvo aliado atual
+	towerState      world.GuildTowerState        // cache de posse de GTorre do loop
+	castleState     world.CastleQuestState       // cache de estado Castle/Zakum do loop
 	castleQuests    []content.CastleQuest
 	castleParty     [world.MaxParty + 1]int
-	guildStateLoad  bool // guild persistence boot snapshot has been applied
-	guildStateBusy  bool // one guild-state load in flight
+	guildStateLoad  bool // snapshot de boot da persistência de guilda foi aplicado
+	guildStateBusy  bool // uma carga de estado de guilda em andamento
 
-	// NPC-config overlay (npc-editing-plan.md). All loop-only. baseItemPrices is the
-	// immutable content catalog; itemPrices is the effective map (base + global
-	// overrides), rebuilt on reload. managedNPCs maps a definition slug → its live
-	// entity id. npcVersion is the last applied config version; npcPolling guards a
-	// single in-flight version poll; npcPollTick phases the poll cadence.
+	// Overlay de config de NPC (npc-editing-plan.md). Tudo só do loop. baseItemPrices é o
+	// catálogo de conteúdo imutável; itemPrices é o mapa efetivo (base + overrides
+	// globais), reconstruído no reload. managedNPCs mapeia slug de definição → seu id de
+	// entidade vivo. npcVersion é a última versão de config aplicada; npcPolling guarda um
+	// único poll de versão em andamento; npcPollTick faseia a cadência do poll.
 	npcSource      npccfg.Source
 	baseItemPrices map[int]int32
 	managedNPCs    map[string]managedNPC
@@ -233,71 +233,71 @@ type Dispatcher struct {
 	npcPolling     bool
 	npcPollTick    int
 
-	// Portal-managed world events (issue #116). worldEventSource is the dbServer
-	// read/progress bridge; the actual event state lives in world.World.
+	// Eventos de mundo gerenciados pelo portal (issue #116). worldEventSource é a ponte de
+	// leitura/progresso do dbServer; o estado real do evento vive em world.World.
 	worldEventSource   worldcfg.Source
 	worldEventVersion  int64
 	worldEventPolling  bool
 	worldEventPollTick int
 
-	// Novice ("green") channel state (newbie_channel.go). newbieCfg is the raw
-	// NewbieEventServer value from flags/portal; noviceChannel is the configured
-	// 1-based novice channel (0 = none). All loop-only.
+	// Estado do canal novato ("verde") (newbie_channel.go). newbieCfg é o valor
+	// NewbieEventServer cru das flags/portal; noviceChannel é o canal novato configurado
+	// base 1 (0 = nenhum). Tudo só do loop.
 	noviceChannel    int
 	newbieCfg        bool
 	noviceRoleLogged bool
 
-	// playersX/Y are per-tick scratch snapshots of in-play player positions
-	// (mob-AI dormancy gate, mobai.go). Loop-only, reused to avoid allocation.
+	// playersX/Y são snapshots de rascunho por tick das posições de jogadores em jogo
+	// (gate de dormência da IA de criaturas, mobai.go). Só do loop, reutilizados para evitar alocação.
 	playersX, playersY []int16
 
-	// duel is the server-wide active 1v1 duel (issue #118, duel.go). Legacy
-	// RankingProgress/Ranking1/Ranking2/RankingTime are process-wide globals, not
-	// per-pair — only one duel occupies the arena at a time.
+	// duel é o duelo 1v1 ativo do servidor (issue #118, duel.go). Os legados
+	// RankingProgress/Ranking1/Ranking2/RankingTime são globais de processo, não
+	// por par — só um duelo ocupa a arena por vez.
 	duel duelArena
 
-	// events is the timer-driven world-event state (issue #116): weather, the
-	// tower war window, the kingdom clear-area delay. Like every legacy
-	// equivalent in Server.cpp these are process-wide globals, so one instance
-	// per server. Loop-only.
+	// events é o estado de evento de mundo dirigido por timer (issue #116): clima, a
+	// janela de guerra da torre, o atraso de limpeza de área do reino. Como todo
+	// equivalente legado em Server.cpp esses são globais de processo, então uma instância
+	// por servidor. Só do loop.
 	events worldEventState
 
-	// eventRNG is a DEDICATED MSVC stream for world-event rolls. The legacy draws
-	// them from the single global rand(), but that stream is the one our
-	// drop/refine/critical goldens pin the call order of (refine_test.go,
-	// loot_test.go, combat_test.go): a per-minute weather draw on it would
-	// invalidate every one of them. Documented parity deviation, issue #116.
+	// eventRNG é um fluxo MSVC DEDICADO para sorteios de evento de mundo. O legado os
+	// tira do único rand() global, mas esse fluxo é o que nossos goldens de
+	// drop/refino/crítico fixam a ordem de chamadas (refine_test.go,
+	// loot_test.go, combat_test.go): um sorteio de clima por minuto nele
+	// invalidaria todos eles. Desvio de paridade documentado, issue #116.
 	//
-	// Typed as the interface (not *rng.MSVC) so tests can substitute a scripted
-	// or counting generator; production always holds an MSVC.
+	// Tipado como a interface (não *rng.MSVC) para testes poderem substituir por um gerador
+	// roteirizado ou contador; produção sempre guarda um MSVC.
 	eventRNG worldevents.Rand
 }
 
-// worldEventRNGSeed is the fallback seed for eventRNG, used when Config leaves
-// EventRNGSeed zero (tests). It is NOT a legacy value — the original has no
-// srand() at all (rng package doc) — it exists only to keep world-event draws
-// off the world's parity stream.
+// worldEventRNGSeed é a semente de fallback do eventRNG, usada quando Config deixa
+// EventRNGSeed zerado (testes). NÃO é um valor legado — o original não tem
+// srand() nenhum (doc do pacote rng) — existe só para manter os sorteios de evento de mundo
+// fora do fluxo de paridade do mundo.
 //
-// Production overrides it from the wall clock: the legacy weather rolls share
-// the global rand(), whose state every player's drops and criticals advance, so
-// they never actually repeat across restarts. Our dedicated stream has no such
-// churn, and a fixed seed would replay the same weather sequence at the same
-// ticks on every boot.
+// Produção o sobrescreve com o relógio de parede: os sorteios de clima legados compartilham
+// o rand() global, cujo estado cada drop e crítico de jogador avança, então
+// eles nunca se repetem de fato entre restarts. Nosso fluxo dedicado não tem esse
+// movimento, e uma semente fixa repetiria a mesma sequência de clima nos mesmos
+// ticks em todo boot.
 const worldEventRNGSeed uint32 = 116
 
-// worldEventState is the loop-owned runtime state of the timer-driven world
-// events. Each field names the legacy global it ports.
+// worldEventState é o estado de runtime do loop dos eventos de mundo
+// dirigidos por timer. Cada campo nomeia o global legado que ele porta.
 type worldEventState struct {
 	weather      int32 // CurrentWeather, 0/1/2 (Server.cpp:688)
-	forceWeather int32 // ForceWeather; -1 = automatic rolls (Server.cpp:637)
-	kingdom1     uint8 // Kingdom1Clear, delayed throne-room wipe state
-	kingdom2     uint8 // Kingdom2Clear, delayed throne-room wipe state
+	forceWeather int32 // ForceWeather; -1 = sorteios automáticos (Server.cpp:637)
+	kingdom1     uint8 // Kingdom1Clear, estado de limpeza atrasada da sala do trono
+	kingdom2     uint8 // Kingdom2Clear, estado de limpeza atrasada da sala do trono
 	tower        worldevents.Tower
 	towerOwner   uint16
 	castle       worldevents.Castle
 }
 
-// New builds a Dispatcher with the batch-1 routes registered.
+// New constrói um Dispatcher com as rotas do lote 1 registradas.
 func New(cfg Config) *Dispatcher {
 	if cfg.ClientVersion == 0 {
 		cfg.ClientVersion = protocol.AppVersion
@@ -363,14 +363,14 @@ func New(cfg Config) *Dispatcher {
 	for i := range d.guildZones {
 		d.guildZones[i].Zone = i
 	}
-	// The effective price map starts as the content catalog and is later overlaid
-	// with moderator overrides; keep the base immutable so an override can be
-	// cleared. When there is no catalog both stay nil (buy/sell simply find no price).
+	// O mapa de preço efetivo começa como o catálogo de conteúdo e depois é sobreposto
+	// com overrides do moderador; manter a base imutável para um override poder ser
+	// limpo. Quando não há catálogo os dois ficam nil (compra/venda simplesmente não acha preço).
 	d.baseItemPrices = cfg.ItemPrices
 	d.itemPrices = cloneInt32Map(cfg.ItemPrices)
 	if d.sancRate == nil {
-		// No content tree: fall back to the compiled g_pSancRate, like the original
-		// server before it reads SancRate.txt over it.
+		// Sem árvore de conteúdo: cair no g_pSancRate compilado, como o servidor
+		// original antes de ler SancRate.txt por cima dele.
 		d.sancRate = content.DefaultSancRate()
 	}
 	if d.questRates == nil {
@@ -390,7 +390,7 @@ func New(cfg Config) *Dispatcher {
 	d.routes[protocol.MsgCharacterLogin] = d.characterLogin
 	d.routes[protocol.MsgCharacterLogout] = d.characterLogout
 	d.routes[protocol.MsgRestart] = d.restart
-	// Batch 2 — movement & view.
+	// Lote 2 — movimento e visão.
 	d.routes[protocol.MsgAction] = d.action
 	d.routes[protocol.MsgAction2] = d.action
 	d.routes[protocol.MsgAction3] = d.action
@@ -399,36 +399,36 @@ func New(cfg Config) *Dispatcher {
 	d.routes[protocol.MsgReqTeleport] = d.reqTeleport
 	d.routes[protocol.MsgNoViewMob] = d.noViewMob
 	d.routes[protocol.MsgPKMode] = d.pkMode
-	// Batch 3 — combat.
+	// Lote 3 — combate.
 	d.routes[protocol.MsgAttack] = d.attack
 	d.routes[protocol.MsgAttackOne] = d.attack
 	d.routes[protocol.MsgAttackTwo] = d.attack
-	// Batch 4 — items.
+	// Lote 4 — itens.
 	d.routes[protocol.MsgDropItem] = d.dropItem
 	d.routes[protocol.MsgGetItem] = d.getItem
 	d.routes[protocol.MsgUseItem] = d.useItem
 	d.routes[protocol.MsgDeleteItem] = d.deleteItem
 	d.routes[protocol.MsgSplitItem] = d.splitItem
 	d.routes[protocol.MsgUpdateItem] = d.updateItem
-	// NPC shop.
+	// Loja de NPC.
 	d.routes[protocol.MsgREQShopList] = d.reqShopList
 	d.routes[protocol.MsgBuy] = d.buy
 	d.routes[protocol.MsgSell] = d.sell
-	// Cargo (account warehouse) — gold deposit/withdraw; item moves go via useItem.
+	// Carga (armazém da conta) — depósito/saque de ouro; movimentos de item vão via useItem.
 	d.routes[protocol.MsgDeposit] = d.deposit
 	d.routes[protocol.MsgWithdraw] = d.withdraw
-	// Batch 5 — P2P trade.
+	// Lote 5 — troca P2P.
 	d.routes[protocol.MsgTradingItem] = d.tradingItem
 	d.routes[protocol.MsgTrade] = d.trade
 	d.routes[protocol.MsgQuitTrade] = d.quitTrade
 
-	// Personal shop / autotrade (issue #115). Closing a shop is RemoveTrade
-	// (movement / QuitTrade / item ops all route through removeTrade), so there is
-	// no dedicated close route — _MSG_Deprivate is a guild op, left unrouted.
+	// Loja pessoal / trade automático (issue #115). Fechar uma loja é RemoveTrade
+	// (movimento / QuitTrade / operações de item todas passam por removeTrade), então não há
+	// rota de fechamento dedicada — _MSG_Deprivate é operação de guilda, deixada sem rota.
 	d.routes[protocol.MsgSendAutoTrade] = d.sendAutoTrade
 	d.routes[protocol.MsgReqTradeList] = d.reqTradeList
 	d.routes[protocol.MsgReqBuy] = d.reqBuy
-	// Batch 6 — combine/refine (one engine, all Item[]-based variants).
+	// Lote 6 — combine/refino (um motor, todas as variantes baseadas em Item[]).
 	for _, ty := range combineItemTypes {
 		d.routes[ty] = d.combineItem
 	}
@@ -441,7 +441,7 @@ func New(cfg Config) *Dispatcher {
 	d.routes[protocol.MsgCombineItemLindy] = d.combineItemLindy
 	d.routes[protocol.MsgCombineItemAlquimia] = d.combineItemAlquimia
 	d.routes[protocol.MsgCombineItemEhre] = d.combineItemEhre
-	// Batch 7 — party & guild.
+	// Lote 7 — grupo e guilda.
 	d.routes[protocol.MsgSendReqParty] = d.sendReqParty
 	d.routes[protocol.MsgAcceptParty] = d.acceptParty
 	d.routes[protocol.MsgRemoveParty] = d.removeParty
@@ -450,7 +450,7 @@ func New(cfg Config) *Dispatcher {
 	d.routes[protocol.MsgWar] = d.war
 	d.routes[protocol.MsgChallange] = d.challange
 	d.routes[protocol.MsgChallangeConfirm] = d.challangeConfirm
-	// Batch 8 — chat, bonus, quest/cash (stubs).
+	// Lote 8 — chat, bônus, quest/cash (stubs).
 	d.routes[protocol.MsgMessageChat] = d.messageChat
 	d.routes[protocol.MsgMessageWhisper] = d.messageWhisper
 	d.routes[protocol.MsgApplyBonus] = d.applyBonus
@@ -464,11 +464,11 @@ func New(cfg Config) *Dispatcher {
 	return d
 }
 
-// Handle is the world.Handler. It runs in the loop goroutine.
+// Handle é o world.Handler. Roda na goroutine do loop.
 func (d *Dispatcher) Handle(w *world.World, s *world.Session, h protocol.Header, payload []byte) {
 	d.ensureGuildStateLoaded(w)
 	fn, ok := d.routes[h.Type]
-	// DIAGNOSTIC: log every received Type (hex) so client packets can be mapped.
+	// DIAGNÓSTICO: logar todo Type recebido (hex) para pacotes do cliente poderem ser mapeados.
 	d.log.Info("recv packet", "conn", s.Conn, "type", formatType(h.Type), "len", len(payload), "routed", ok)
 	if !ok {
 		return
@@ -476,9 +476,9 @@ func (d *Dispatcher) Handle(w *world.World, s *world.Session, h protocol.Header,
 	fn(w, s, h, payload)
 }
 
-// refineLimits returns the effective dust ceilings. A dispatcher built without a
-// policy (tests, small tools) keeps the legacy 6/9/10/11 instead of zeroing every
-// cap, which would refuse every refine.
+// refineLimits devolve os tetos efetivos do pó. Um dispatcher construído sem
+// policy (testes, ferramentas pequenas) mantém o legado 6/9/10/11 em vez de zerar todo
+// teto, o que recusaria todo refino.
 func (d *Dispatcher) refineLimits() content.RefinePolicy {
 	if d.refinePolicy.HardCap <= 0 {
 		return content.DefaultRefinePolicy()

@@ -15,8 +15,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// startServerWeather is a serving harness that hands the Dispatcher and World
-// back, so tests can seed the world-event state and drive Tick directly.
+// startServerWeather é um harness de serving que entrega o Dispatcher e o World
+// de volta, então os testes podem semear o estado de eventos do mundo e acionar Tick direto.
 func startServerWeather(t *testing.T, persist world.Persistence, baseMobs map[int][]byte) (string, func(), *Dispatcher, *world.World) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -39,8 +39,8 @@ func startServerWeather(t *testing.T, persist world.Persistence, baseMobs map[in
 	}, d, w
 }
 
-// weatherTemplate is a minimal 816-byte BaseMob so character login takes the
-// template branch (the other branch is the relational fallback).
+// weatherTemplate é um BaseMob mínimo de 816 bytes para o login de personagem pegar o
+// ramo do template (o outro ramo é o fallback relacional).
 func weatherTemplate() []byte {
 	tmpl := make([]byte, content.BaseMobSize)
 	copy(tmpl[0:16], "Template")
@@ -49,10 +49,10 @@ func weatherTemplate() []byte {
 	return tmpl
 }
 
-// TestLoginSnapshotCarriesWeather covers BOTH CNFCharacterLogin builders: the
-// legacy ships CurrentWeather inside the login blob rather than as its own
-// packet (sm.Weather = CurrentWeather, ProcessDBMessage.cpp:834), and until
-// issue #116 both call sites hardcoded 0.
+// TestLoginSnapshotCarriesWeather cobre os DOIS construtores de CNFCharacterLogin: o
+// legado embarca CurrentWeather dentro do blob de login em vez de num
+// pacote próprio (sm.Weather = CurrentWeather, ProcessDBMessage.cpp:834), e até a
+// issue #116 os dois pontos de chamada fixavam 0 no código.
 func TestLoginSnapshotCarriesWeather(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -68,7 +68,7 @@ func TestLoginSnapshotCarriesWeather(t *testing.T) {
 			addr, stop, d, w := startServerWeather(t, db, tt.baseMobs)
 			defer stop()
 
-			// Seed the weather from inside the loop, so it is set before login.
+			// Semeia o clima de dentro do loop, então ele está definido antes do login.
 			setWeatherInLoop(t, w, d, 2)
 
 			c := loginAndSelect(t, addr)
@@ -86,8 +86,8 @@ func TestLoginSnapshotCarriesWeather(t *testing.T) {
 	}
 }
 
-// setWeatherInLoop mutates the loop-owned weather state from the loop goroutine
-// (world state is lock-free precisely because only the loop touches it).
+// setWeatherInLoop muta o estado de clima pertencente ao loop a partir da goroutine do loop
+// (o estado do mundo é lock-free justamente porque só o loop o toca).
 func setWeatherInLoop(t *testing.T, w *world.World, d *Dispatcher, weather int32) {
 	t.Helper()
 	done := make(chan struct{})
@@ -104,8 +104,8 @@ func setWeatherInLoop(t *testing.T, w *world.World, d *Dispatcher, weather int32
 	}
 }
 
-// TestTickWeatherBroadcastsChange drives the minute gate with a seeded stream
-// and asserts the global MSG_UpdateWeather reaches an in-play client with
+// TestTickWeatherBroadcastsChange aciona o gate de minuto com um stream semeado
+// e afirma que o MSG_UpdateWeather global alcança um cliente em jogo com
 // HEADER.ID = ESCENE_FIELD (SendWeather, SendFunc.cpp:1669-1696).
 func TestTickWeatherBroadcastsChange(t *testing.T) {
 	db := newDB()
@@ -115,8 +115,8 @@ func TestTickWeatherBroadcastsChange(t *testing.T) {
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// Pin the roll: an eventRNG whose first draw lands in the weather-1 band,
-	// and a tickCount that puts the next Tick exactly on the minute gate.
+	// Fixa o sorteio: um eventRNG cujo primeiro draw cai na faixa do clima 1,
+	// e um tickCount que põe o próximo Tick exatamente no gate de minuto.
 	forceWeatherRoll(t, w, d, 35)
 
 	h, payload, ok := readMaybeHeader(t, c)
@@ -134,9 +134,9 @@ func TestTickWeatherBroadcastsChange(t *testing.T) {
 	}
 }
 
-// TestTickWeatherHonoursForceOverride pins the GM override semantics: the roll
-// is still consumed every minute (the legacy rolls before it reads
-// ForceWeather), but the forced value is what reaches the client, and only once.
+// TestTickWeatherHonoursForceOverride fixa a semântica do override de GM: o sorteio
+// continua consumido a cada minuto (o legado sorteia antes de ler
+// ForceWeather), mas o valor forçado é o que chega ao cliente, e só uma vez.
 func TestTickWeatherHonoursForceOverride(t *testing.T) {
 	db := newDB()
 	db.loadResult = world.CharacterState{Slot: 0, Name: "Hero", Class: 1, Level: 50, X: 5, Y: 5, HP: 1200, MaxHP: 1200}
@@ -145,12 +145,12 @@ func TestTickWeatherHonoursForceOverride(t *testing.T) {
 	c := enterWorld(t, addr)
 	defer c.Close()
 
-	// Seed a stream whose first draw would otherwise select weather 1, so the
-	// assertion below proves the override beat the roll rather than agreeing
-	// with it by luck.
+	// Semeia um stream cujo primeiro draw escolheria clima 1 de outro modo, então a
+	// asserção abaixo prova que o override venceu o sorteio em vez de concordar
+	// com ele por sorte.
 	runInLoop(t, w, func() {
 		d.events.forceWeather = 2
-		d.eventRNG = seededForRoll(35) // band → weather 1
+		d.eventRNG = seededForRoll(35) // faixa → clima 1
 		d.tickCount = weatherTickPeriod - 1
 	})
 	runInLoop(t, w, func() { d.Tick(w) })
@@ -163,9 +163,9 @@ func TestTickWeatherHonoursForceOverride(t *testing.T) {
 		t.Fatalf("CurrentWeather = %d, want the forced 2 (the roll wanted 1)", got)
 	}
 
-	// A second minute must still consume a draw — the legacy rolls before it
-	// looks at ForceWeather, so the stream advances at the same rate either way
-	// — but with the value already matching the override nothing goes on the wire.
+	// Um segundo minuto ainda precisa consumir um draw — o legado sorteia antes de
+	// olhar ForceWeather, então o stream avança no mesmo ritmo de qualquer jeito
+	// — mas com o valor já igual ao override nada vai para o wire.
 	counter := &countingRand{inner: seededForRoll(35)}
 	runInLoop(t, w, func() {
 		d.eventRNG = counter
@@ -183,7 +183,7 @@ func TestTickWeatherHonoursForceOverride(t *testing.T) {
 	}
 }
 
-// countingRand counts draws so tests can assert the stream advanced (or did not).
+// countingRand conta draws para os testes afirmarem que o stream avançou (ou não).
 type countingRand struct {
 	inner *rng.MSVC
 	draws int
@@ -194,8 +194,8 @@ func (c *countingRand) Intn(n int) int {
 	return c.inner.Intn(n)
 }
 
-// forceWeatherRoll seeds eventRNG so the next RollWeather draw returns `roll`,
-// parks tickCount one short of the minute gate, and runs a Tick.
+// forceWeatherRoll semeia o eventRNG para o próximo draw de RollWeather devolver `roll`,
+// deixa o tickCount a um passo do gate de minuto, e roda um Tick.
 func forceWeatherRoll(t *testing.T, w *world.World, d *Dispatcher, roll int) {
 	t.Helper()
 	runInLoop(t, w, func() {
@@ -205,8 +205,8 @@ func forceWeatherRoll(t *testing.T, w *world.World, d *Dispatcher, roll int) {
 	runInLoop(t, w, func() { d.Tick(w) })
 }
 
-// seededForRoll finds an MSVC seed whose first Intn(1200) equals roll. The LCG
-// is cheap and surjective over the modulus, so a short scan always succeeds.
+// seededForRoll acha uma semente MSVC cujo primeiro Intn(1200) é igual a roll. O LCG
+// é barato e sobrejetivo sobre o módulo, então uma varredura curta sempre acha.
 func seededForRoll(roll int) *rng.MSVC {
 	for seed := uint32(1); seed < 100000; seed++ {
 		r := rng.NewSeeded(seed)
@@ -217,7 +217,7 @@ func seededForRoll(roll int) *rng.MSVC {
 	panic("no seed produces the requested roll")
 }
 
-// runInLoop executes fn on the world's loop goroutine and waits for it.
+// runInLoop executa fn na goroutine do loop do mundo e espera por ela.
 func runInLoop(t *testing.T, w *world.World, fn func()) {
 	t.Helper()
 	done := make(chan struct{})
@@ -234,8 +234,8 @@ func runInLoop(t *testing.T, w *world.World, fn func()) {
 	}
 }
 
-// TestGMWeatherRequiresModerator: the bus already gates on AccessLevel, so a
-// plain player's /gm weather must be silently dropped and change nothing.
+// TestGMWeatherRequiresModerator: o bus já barra por AccessLevel, então o
+// /gm weather de um jogador comum precisa ser descartado em silêncio e não mudar nada.
 func TestGMWeatherRequiresModerator(t *testing.T) {
 	addr, stop, d, w := startServerWeather(t, gmDB(), nil)
 	defer stop()
@@ -253,18 +253,18 @@ func TestGMWeatherRequiresModerator(t *testing.T) {
 	}
 }
 
-// TestGMWeatherSetsAndRestoresAuto covers the three improvements over the legacy
-// /weather (imple.cpp:1122-1129): it validates the value, it broadcasts the
-// change, and "auto" restores ForceWeather = -1 (the legacy had no way back).
+// TestGMWeatherSetsAndRestoresAuto cobre as três melhorias sobre o /weather
+// legado (imple.cpp:1122-1129): ele valida o valor, transmite a
+// mudança, e "auto" restaura ForceWeather = -1 (o legado não tinha volta).
 func TestGMWeatherSetsAndRestoresAuto(t *testing.T) {
 	addr, stop, d, w := startServerWeather(t, gmDB(), nil)
 	defer stop()
 	c := enterWorldAs(t, addr, "mod")
 	defer c.Close()
 
-	// Every /gm weather replies with a chat line; draining up to it is what makes
-	// the subsequent state read race-free (the command travels over the socket
-	// and is applied on the loop goroutine).
+	// Todo /gm weather responde com uma linha de chat; drenar até ela é o que torna
+	// a leitura de estado seguinte livre de corrida (o comando viaja pelo socket
+	// e é aplicado na goroutine do loop).
 	gmWeatherCmd(t, c, "weather 2")
 	var weather, force int32
 	runInLoop(t, w, func() { weather, force = d.events.weather, d.events.forceWeather })
@@ -278,7 +278,7 @@ func TestGMWeatherSetsAndRestoresAuto(t *testing.T) {
 		t.Fatalf("forceWeather = %d after /gm weather auto, want %d", force, weatherAuto)
 	}
 
-	// Invalid values are rejected without touching state.
+	// Valores inválidos são recusados sem tocar no estado.
 	gmWeatherCmd(t, c, "weather 9")
 	runInLoop(t, w, func() { weather, force = d.events.weather, d.events.forceWeather })
 	if weather != 2 || force != weatherAuto {
@@ -286,8 +286,8 @@ func TestGMWeatherSetsAndRestoresAuto(t *testing.T) {
 	}
 }
 
-// gmWeatherCmd sends a /gm weather line and waits for its chat acknowledgement,
-// so the caller can then read the loop-owned state without racing the handler.
+// gmWeatherCmd envia uma linha /gm weather e espera pelo seu reconhecimento no chat,
+// para quem chamou então ler o estado pertencente ao loop sem correr contra o handler.
 func gmWeatherCmd(t *testing.T, c net.Conn, line string) {
 	t.Helper()
 	gmFrame(t, c, line)
@@ -296,7 +296,7 @@ func gmWeatherCmd(t *testing.T, c net.Conn, line string) {
 	}
 }
 
-// readUntilType drains frames until `want` shows up or the connection goes quiet.
+// readUntilType drena frames até `want` aparecer ou a conexão ficar muda.
 func readUntilType(t *testing.T, c net.Conn, want protocol.Type) ([]byte, bool) {
 	t.Helper()
 	for {

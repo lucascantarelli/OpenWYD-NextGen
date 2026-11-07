@@ -21,11 +21,11 @@ const (
 	baseDamageCelestial  int32 = 0
 )
 
-// scoreBonusFor is BASE_GetBonusScorePoint by tier (Basedef.cpp:898-1172) over
-// the equipment-free BaseScore: the celestial tiers count their quest grants,
-// including the +200 per Pedra da Furia reset (issue #408), and CELESTIALCS/
-// SCELESTIAL add the parked tier's level (issue #410); every other tier keeps
-// the MORTAL formula.
+// scoreBonusFor é BASE_GetBonusScorePoint por tier (Basedef.cpp:898-1172) sobre
+// o BaseScore sem equipamento: os tiers celestiais contam suas concessões de quest,
+// incluindo os +200 por reset de Pedra da Fúria (issue #408), e CELESTIALCS/
+// SCELESTIAL somam o nível do tier estacionado (issue #410); todo outro tier mantém
+// a fórmula MORTAL.
 func scoreBonusFor(e *world.Entity) uint16 {
 	if isCelestialTier(e.ClassMaster) {
 		var parked int32
@@ -41,41 +41,41 @@ func scoreBonusFor(e *world.Entity) uint16 {
 	return uint16(level.ScoreBonus(e.Class, e.Level, e.BaseStr, e.BaseInt, e.BaseDex, e.BaseCon))
 }
 
-// playerBaseDamage reconstructs the equipment-free BaseScore.Damage omitted by
-// api/db/v1.Character. Mortal and Arch characters inherit 5 from the four
-// BaseMob templates (DBSrv/CFileDB.cpp:981-993,1552-1577); the Pedra Ideal
-// conversion explicitly resets it to 0 (_MSG_UseItem.cpp:3137), which also
-// applies to the subsequent Celestial tiers.
+// playerBaseDamage reconstrói o BaseScore.Damage sem equipamento omitido por
+// api/db/v1.Character. Personagens Mortal e Arch herdam 5 dos quatro
+// templates BaseMob (DBSrv/CFileDB.cpp:981-993,1552-1577); a Pedra Ideal
+// de conversão o reseta explicitamente para 0 (_MSG_UseItem.cpp:3137), o que também
+// vale para os tiers Celestial seguintes.
 func playerBaseDamage(e *world.Entity) int32 {
 	switch e.ClassMaster {
 	case classMasterCelestial, classMasterCelestialCS, classMasterSCelestial:
 		return baseDamageCelestial
 	default:
-		// ClassMaster 0 is the pre-persistence compatibility value and is treated
-		// as Mortal by completeCharacterLogin.
+		// ClassMaster 0 é o valor de compatibilidade pré-persistência e é tratado
+		// como Mortal por completeCharacterLogin.
 		return baseDamageMortalArch
 	}
 }
 
-// playerBaseAC reproduces BaseScore.Ac without persisting it. In the legacy the
-// field is only ever written on creation (the per-tier baseline above) and on
-// level-up, +1 per level for every tier (CMob.cpp:1133,1145,1150) — so it is a
-// pure function of (tier, level). Every tier starts at level 0 with its
-// baseline: creation copies the BaseMob template (BaseScore.Level 0, Ac 4) and
-// the Celestial turn sets Level = 0 with Ac = 230 (_MSG_UseItem.cpp:3124-3135 +
-// handler.useIdealStone), so "baseline + level" holds for all three paths.
+// playerBaseAC reproduz BaseScore.Ac sem persistir. No legado o
+// campo só é escrito na criação (a linha de base por tier acima) e na
+// subida de nível, +1 por nível em todo tier (CMob.cpp:1133,1145,1150) — então é uma
+// função pura de (tier, nível). Todo tier começa no nível 0 com sua
+// linha de base: a criação copia o template BaseMob (BaseScore.Level 0, Ac 4) e
+// a virada Celestial define Level = 0 com Ac = 230 (_MSG_UseItem.cpp:3124-3135 +
+// handler.useIdealStone), então "linha de base + nível" vale nos três caminhos.
 //
-// This derivation exists because the DB contract carries no AC: api/db/v1
-// Character has no `ac` field, so a login always reads CurrentScore.Ac == 0 and
-// the old "base = current − equipment" subtraction produced a NEGATIVE base —
-// defense read ~0 while geared and went negative on unequip (issue #232).
+// Esta derivação existe porque o contrato do banco não carrega AC: api/db/v1
+// Character não tem campo `ac`, então um login sempre lê CurrentScore.Ac == 0 e
+// a antiga subtração "base = atual − equipamento" produzia uma base NEGATIVA —
+// a defesa lia ~0 com equipamento e ficava negativa ao desequipar (issue #232).
 //
-// Crystal AC is reconstructed from the persisted quest stage only for Archs:
-// the Ideal Stone resets AC and must not reapply historical Arch bonuses.
+// O AC de Cristal é reconstruído do estágio de quest persistido só para Archs:
+// a Pedra Ideal reseta o AC e não pode reaplicar bônus históricos de Arch.
 func playerBaseAC(e *world.Entity) int32 {
 	base := baseACArch
-	// ClassMaster == 0 means "never persisted" and is treated as MORTAL, the same
-	// convention completeCharacterLogin applies before this runs (character.go).
+	// ClassMaster == 0 significa "nunca persistido" e é tratado como MORTAL, a mesma
+	// convenção que completeCharacterLogin aplica antes disto rodar (character.go).
 	if e.ClassMaster == classMasterMortal || e.ClassMaster == 0 {
 		base = baseACMortal
 	}
@@ -136,20 +136,20 @@ var htWeaponCoefs = []weaponCoef{
 	{41, 0.27, 0.37},
 }
 
-// magicWeaponCoef is the Dex/Int magic term the legacy adds per equipped weapon
-// (Basedef.cpp:3294-3844). byPos selects which field of the catalog row the
-// nUnique/nPos key is matched against: the original tests nUnique and nPos in
-// SEPARATE ifs, so a Cajado carrying nUnique 47 AND nPos 64 collects BOTH terms.
+// magicWeaponCoef é o termo mágico de Dex/Int que o legado soma por arma equipada
+// (Basedef.cpp:3294-3844). byPos seleciona contra qual campo da linha do catálogo a
+// chave nUnique/nPos é casada: o original testa nUnique e nPos em
+// ifs SEPARADOS, então um Cajado com nUnique 47 E nPos 64 coleta OS DOIS termos.
 type magicWeaponCoef struct {
 	key   int
-	byPos bool // match d.itemPos (ArmaPos) instead of d.itemUnique (ArmaUnique)
+	byPos bool // casa d.itemPos (ArmaPos) em vez de d.itemUnique (ArmaUnique)
 	dexK  float64
 	intK  float64
 }
 
-// Coefficients are the literal .cpp constants (divided by 100 at use) so each row
-// can be diffed against Basedef.cpp directly. 44 = Lança, 47 = Cajado e Cetro,
-// nPos 64 = Cajado. The Huntress block has no nPos 64 branch in the original.
+// Os coeficientes são as constantes literais do .cpp (divididas por 100 no uso) para cada linha
+// poder ser comparada direto com o Basedef.cpp. 44 = Lança, 47 = Cajado e Cetro,
+// nPos 64 = Cajado. O bloco da Huntress não tem ramo nPos 64 no original.
 var tkMagicCoefs = []magicWeaponCoef{
 	{key: 44, dexK: 2.0, intK: 2.5},
 	{key: 47, dexK: 1.2, intK: 1.5},
@@ -260,17 +260,17 @@ func classMagicTable(cls uint8) []magicWeaponCoef {
 	}
 }
 
-// classWeaponMagic derives the magic granted by the equipped weapon category.
-// Basedef.cpp:3294-3844 repeats this term in every learned evolution block, which
-// can triple the loss when a caster unequips a weapon. Issue #280 deliberately
-// limits that legacy behavior to one grant once any class evolution is learned.
-// The separate nUnique and nPos matches remain additive, as they describe distinct
-// properties of the weapon. Dex/Int are read post-equipment (CurrentScore), which
-// is why refreshScore calls this after assigning e.Dex/e.Int.
+// classWeaponMagic deriva a magia concedida pela categoria da arma equipada.
+// Basedef.cpp:3294-3844 repete este termo em todo bloco de evolução aprendida, o que
+// pode triplicar a perda quando um conjurador desequipa uma arma. A issue #280 limita
+// esse comportamento legado a uma concessão, assim que qualquer evolução de classe é aprendida.
+// Os casamentos separados de nUnique e nPos continuam aditivos, já que descrevem propriedades
+// distintas da arma. Dex/Int são lidos pós-equipamento (CurrentScore), e é por isso
+// que refreshScore chama isto depois de atribuir e.Dex/e.Int.
 //
-// The truncation matches the original: `magic` is an int and the right-hand side a
-// double, so each addition truncates. Because `magic` is already integral that is
-// the same as truncating each term on its own.
+// O truncamento casa com o original: `magic` é int e o lado direito um
+// double, então cada soma trunca. Como `magic` já é inteiro, isso é
+// o mesmo que truncar cada termo isoladamente.
 func (d *Dispatcher) classWeaponMagic(e *world.Entity) int32 {
 	if !isPlayerMob(e) {
 		return 0

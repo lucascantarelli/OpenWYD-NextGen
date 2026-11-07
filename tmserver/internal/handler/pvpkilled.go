@@ -7,51 +7,51 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Kill-streak clamps (GetFunc.cpp SetCurKill/SetTotKill).
+// Limites de sequência de mortes (GetFunc.cpp SetCurKill/SetTotKill).
 const (
 	maxCurKill = 200
 	maxTotKill = 32767
 )
 
-// pkPointMin/pkPointMax are the legacy SetPKPoint clamp bounds (GetFunc.cpp:
-// value<1→1, value>150→150); 0 is reserved to mean "never persisted" (see
+// pkPointMin/pkPointMax são os limites legados do SetPKPoint (GetFunc.cpp:
+// valor<1→1, valor>150→150); 0 é reservado para significar "nunca persistido" (ver
 // completeCharacterLogin).
 const (
 	pkPointMin uint8 = 1
 	pkPointMax uint8 = 150
 )
 
-// pvpKilled runs the death penalties for a player slain by another player
-// (MobKilled.cpp "#pragma region PvP", issue #210). This is a straight-line port
-// of the reliably-extractable formulas only — MobKilled.cpp's actual PvP branch
-// is riddled with what looks like a decompiler artifact (an orphaned, brace-less
-// `if` on a coordinate check that appears to swallow the entire arena/exp/
-// CurKill block), so this mirrors mobKilled's clean linear style instead of
-// replicating that control flow.
+// pvpKilled roda as penalidades de morte para um jogador morto por outro jogador
+// (MobKilled.cpp "#pragma region PvP", issue #210). É um port em linha reta
+// só das fórmulas confiavelmente extraíveis — o ramo PvP real do MobKilled.cpp
+// está cheio do que parece artefato de descompilador (um `if` órfão, sem chaves,
+// numa checagem de coordenada que parece engolir todo o bloco arena/exp/
+// CurKill), então isto espelha o estilo linear limpo do mobKilled em vez de
+// replicar aquele fluxo de controle.
 //
-// Geography (issue #421): a death inside a city or a guild war area (victim's
-// position, BASE_GetArena/BASE_GetVillage) takes the legacy arena branch — the
-// victim keeps their EXP and gets _NN_In_Arena_No_Exp_Loss, and the killer pays
-// the arena CP rate (pvpLostPkZone). Everywhere else takes the field branch.
-// The orphaned `if (killed_x == 1 && killed_y == 31)` sets ZoneUnk (its body was
-// lost in decompilation), so a death on map block (1,31) — the duel arena —
-// takes the arena branch too (mapPKZone, issue #427).
+// Geografia (issue #421): uma morte dentro de uma cidade ou de uma área de guerra de guilda (posição
+// da vítima, BASE_GetArena/BASE_GetVillage) pega o ramo de arena legado — a
+// vítima mantém a EXP e recebe _NN_In_Arena_No_Exp_Loss, e o matador paga
+// a taxa de CP de arena (pvpLostPkZone). Em todo o resto vale o ramo de campo.
+// O `if (killed_x == 1 && killed_y == 31)` órfão define ZoneUnk (seu corpo se
+// perdeu na descompilação), então uma morte no bloco de mapa (1,31) — a arena de duelo —
+// também pega o ramo de arena (mapPKZone, issue #427).
 //
-// Deferred/UNVERIFIED (documented, not ported — see the plan for issue #210):
-//   - Castle-siege/RvR-Tower AtWar bypasses — those systems are themselves
-//     UNVERIFIED (tmserver/internal/war/tower.go); only the guild-war bypass is
-//     implemented (guildsAtWar).
-//   - SameClan (legacy: clan 7 vs clan 8, an undocumented kingdom-war NPC-faction
-//     pair, NOT "same guild") — unmodeled anywhere in this repo, treated as
-//     always false: a normal kill always increments the killer's streak/resets
-//     the victim's.
-//   - The item 548/549 "triple the PKPoint penalty" rule — unidentified
-//     equipment, not chased.
-//   - #ifdef PKDrop item-loss-on-death — disabled in the reference build
-//     (Basedef.h:89, `//#define PKDrop`); intentionally not ported.
-//   - extra.Hold/DEADPOINT banked-EXP-loss indirection — no analogue anywhere in
-//     this codebase; the victim's EXP loss below is an IMMEDIATE deduction
-//     instead (documented divergence in intent vs. mechanism).
+// Adiado/UNVERIFIED (documentado, não portado — ver o plano da issue #210):
+// - Bypasses de Castle-siege/RvR-Tower AtWar — esses sistemas são eles próprios
+// UNVERIFIED (tmserver/internal/war/tower.go); só o bypass de guerra de guilda é
+// implementado (guildsAtWar).
+// - SameClan (legado: clã 7 contra clã 8, um par de facções NPC de guerra de reino
+// não documentado, NÃO "mesma guilda") — sem modelo em lugar nenhum deste repo, tratado como
+// sempre falso: uma morte normal sempre incrementa a sequência do matador e reseta
+// a da vítima.
+// - A regra dos itens 548/549 de "triplicar a penalidade de PKPoint" — equipamento
+// não identificado, não perseguido.
+// - Perda de item na morte sob #ifdef PKDrop — desativada no build de referência
+// (Basedef.h:89, `//#define PKDrop`); intencionalmente não portada.
+// - Indireção de perda de EXP bancada por extra.Hold/DEADPOINT — sem análogo em
+// lugar nenhum deste código; a perda de EXP da vítima abaixo é uma dedução
+// IMEDIATA em vez disso (divergência documentada entre intenção e mecanismo).
 func (d *Dispatcher) pvpKilled(w *world.World, killer, victim *world.Entity) {
 	ks := w.Session(killer.ID)
 	vs := w.Session(victim.ID)
@@ -61,7 +61,7 @@ func (d *Dispatcher) pvpKilled(w *world.World, killer, victim *world.Entity) {
 		d.pvpKilledInField(w, ks, vs, killer, victim)
 	}
 
-	// Kill-streak bookkeeping (SameClan treated as always false — see doc above).
+	// Contabilidade de sequência de mortes (SameClan tratado como sempre falso — ver o doc acima).
 	if killer.CurKill < maxCurKill {
 		killer.CurKill++
 	}
@@ -78,20 +78,20 @@ func (d *Dispatcher) pvpKilled(w *world.World, killer, victim *world.Entity) {
 	}
 }
 
-// mapPKZone reports whether (x,y) lies on map block (1,31), the legacy ZoneUnk
-// (MobKilled.cpp:3095 `killed_x = TargetX / 128`, :3131). Read literally, the
-// body-less `if` would nest the whole arena block inside (1,31) and silence
-// Armia's arena too; the adopted reading is that (1,31) sets ZoneUnk, which the
-// duel arena (x 142–195, y 4007–4082) falls inside entirely.
+// mapPKZone informa se (x,y) está no bloco de mapa (1,31), o ZoneUnk legado
+// (MobKilled.cpp:3095 `killed_x = TargetX / 128`, :3131). Lido ao pé da letra, o
+// `if` sem corpo aninharia todo o bloco de arena dentro de (1,31) e silenciaria
+// também a arena de Armia; a leitura adotada é que (1,31) define ZoneUnk, dentro do qual
+// a arena de duelo (x 142–195, y 4007–4082) cai inteira.
 func mapPKZone(x, y int16) bool {
 	return x/128 == 1 && y/128 == 31
 }
 
-// pvpKilledInZone is the legacy arena branch (MobKilled.cpp:3131-3228): no EXP
-// loss, no victim PKPoint recovery, and — unless the victim was already Guilty —
-// the killer loses CP at the arena rate, announced with _DD_PKPointMinus even
-// when the loss rounds to 0 (the legacy sends it inside `if (!killed_guilty)`).
-// The arena branch does not consult AtWar.
+// pvpKilledInZone é o ramo de arena legado (MobKilled.cpp:3131-3228): sem perda
+// de EXP, sem recuperação de PKPoint da vítima, e — a menos que a vítima já estivesse Guilty —
+// o matador perde CP na taxa de arena, anunciado com _DD_PKPointMinus mesmo
+// quando a perda arredonda para 0 (o legado envia isso dentro de `if (!killed_guilty)`).
+// O ramo de arena não consulta AtWar.
 func (d *Dispatcher) pvpKilledInZone(w *world.World, ks, vs *world.Session, killer, victim *world.Entity) {
 	if vs != nil {
 		d.sendClientMessage(w, vs, inArenaNoExpLoss)
@@ -102,13 +102,13 @@ func (d *Dispatcher) pvpKilledInZone(w *world.World, ks, vs *world.Session, kill
 	lost := pvpLostPkZone(victim.PKPoint)
 	killer.PKPoint = clampPKPoint(int(killer.PKPoint) + lost)
 	if ks != nil {
-		// The legacy prints the negative Lostpk as-is ("Menos_-9").
+		// O legado imprime o Lostpk negativo como está ("Menos_-9").
 		d.sendClientMessage(w, ks, fmt.Sprintf(pkPointMinus, int(killer.PKPoint)-75, lost))
 	}
 }
 
-// pvpKilledInField is the open-field branch: EXP loss for the victim, the
-// field CP rate for the killer, and the victim's PKPoint recovery.
+// pvpKilledInField é o ramo de campo aberto: perda de EXP para a vítima, a
+// taxa de CP de campo para o matador, e a recuperação de PKPoint da vítima.
 func (d *Dispatcher) pvpKilledInField(w *world.World, ks, vs *world.Session, killer, victim *world.Entity) {
 	atWar := d.guildsAtWar(killer.Guild, victim.Guild)
 
@@ -136,10 +136,10 @@ func (d *Dispatcher) pvpKilledInField(w *world.World, ks, vs *world.Session, kil
 	}
 }
 
-// pvpExpLoss is the victim's EXP loss on a PvP death (MobKilled.cpp "Lose EXP"
-// region): a tiered per-level divisor of the exp span between the victim's
-// current and next level, scaled by how chaotic the victim already was, then a
-// flat /6.
+// pvpExpLoss é a perda de EXP da vítima numa morte PvP (região "Lose EXP" do
+// MobKilled.cpp): um divisor por nível do intervalo de exp entre o nível
+// atual e o próximo da vítima, escalado por quão caótica a vítima já estava, e depois um
+// /6 fixo.
 func pvpExpLoss(victimLevel int32, victimClassMaster uint8, victimPKPoint uint8) int64 {
 	nextExp := level.NextLevelExpTier(victimLevel, victimClassMaster)
 	curExp := level.NextLevelExpTier(victimLevel-1, victimClassMaster)
@@ -183,10 +183,10 @@ func pvpExpLoss(victimLevel int32, victimClassMaster uint8, victimPKPoint uint8)
 	return delta / 6
 }
 
-// pvpLostPk is the killer's PKPoint change for landing a PvP kill
-// (MobKilled.cpp:3316-3334, "PK Drop - CP"): scaled by how chaotic the victim
-// already was, clamped to [-9,0], and zeroed entirely against an already-guilty
-// victim or during a guild war.
+// pvpLostPk é a mudança de PKPoint do matador por aplicar uma morte PvP
+// (MobKilled.cpp:3316-3334, "PK Drop - CP"): escalada por quão caótica a vítima
+// já estava, limitada a [-9,0], e zerada por completo contra uma vítima
+// já culpada ou durante uma guerra de guilda.
 func pvpLostPk(victimPKPoint uint8, victimGuilty, atWar bool) int {
 	if victimGuilty || atWar {
 		return 0
@@ -194,9 +194,9 @@ func pvpLostPk(victimPKPoint uint8, victimGuilty, atWar bool) int {
 	return clampLostPk(3 * int(victimPKPoint) / -25)
 }
 
-// pvpLostPkZone is the killer's PKPoint change for a kill inside a city or a
-// guild war area (MobKilled.cpp arena branch): the /-20 rate instead of the
-// field's /-25, clamped to [-9,0]. The Guilty check is the caller's.
+// pvpLostPkZone é a mudança de PKPoint do matador por uma morte dentro de uma cidade ou de
+// uma área de guerra de guilda (ramo de arena do MobKilled.cpp): a taxa /-20 em vez da
+// /-25 do campo, limitada a [-9,0]. A checagem de Guilty é de quem chama.
 func pvpLostPkZone(victimPKPoint uint8) int {
 	return clampLostPk(3 * int(victimPKPoint) / -20)
 }
@@ -211,9 +211,9 @@ func clampLostPk(lost int) int {
 	return lost
 }
 
-// clampPKPoint enforces the legacy SetPKPoint write bounds (GetFunc.cpp:
-// [1,150]) — 0 is reserved to mean "never persisted" elsewhere in this code, so
-// arithmetic must never produce it.
+// clampPKPoint impõe os limites de escrita do SetPKPoint legado (GetFunc.cpp:
+// [1,150]) — 0 é reservado para significar "nunca persistido" em outro lugar deste código, então
+// a aritmética nunca pode produzi-lo.
 func clampPKPoint(v int) uint8 {
 	if v < int(pkPointMin) {
 		return pkPointMin
@@ -224,9 +224,9 @@ func clampPKPoint(v int) uint8 {
 	return uint8(v)
 }
 
-// guildsAtWar reports mutual guild war (the only AtWar bypass implemented;
-// MobKilled.cpp:3113-3125's guild-war check), mirroring the legacy double-check
-// against d.guildWars (guild_state.go).
+// guildsAtWar reporta guerra de guilda mútua (o único bypass AtWar implementado;
+// a checagem de guerra de guilda do MobKilled.cpp:3113-3125), espelhando a checagem dupla
+// legada contra d.guildWars (guild_state.go).
 func (d *Dispatcher) guildsAtWar(a, b uint16) bool {
 	if a == 0 || b == 0 {
 		return false

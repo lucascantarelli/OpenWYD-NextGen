@@ -7,30 +7,30 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Pedra_da_Fúria (item 3020) runs the three Celestial quests that /destravar90
-// and /arcana only shortcut: Cythera Arcana and the Celestial reset for a
-// level-199 celestial tier, and the Lv90 unlock for a CELESTIAL
-// (_MSG_UseItem.cpp:3470-3690, issue #408). It has no EF_VOLATILE in
-// ItemList.csv, so useItem routes it by sIndex.
+// Pedra_da_Fúria (item 3020) executa as três quests Celestiais que /destravar90
+// e /arcana só atalham: Cythera Arcana e o reset Celestial para um
+// tier celestial de nível 199, e o desbloqueio Lv90 para um CELESTIAL
+// (_MSG_UseItem.cpp:3470-3690, issue #408). Ela não tem EF_VOLATILE no
+// ItemList.csv, então o useItem a roteia por sIndex.
 const (
 	furyStoneItem = 3020
 
-	furyStoneFame = 500 // Fame every branch costs
+	furyStoneFame = 500 // Fama que todo ramo custa
 
-	// furyStoneArcanaLevel is the stored level (displayed 200) the Arcana and
-	// the reset require; furyStoneLv90Level is the stored 89 the Lv90 unlock does.
+	// furyStoneArcanaLevel é o nível armazenado (exibido 200) que a Arcana e
+	// o reset exigem; furyStoneLv90Level é o 89 armazenado que o desbloqueio Lv90 exige.
 	furyStoneArcanaLevel = 199
 	furyStoneLv90Level   = 89
 
-	celestialResetMax = 3          // QuestInfo.Celestial.Reset cap
-	celestialResetExp = 20_000_000 // exp each reset takes back
+	celestialResetMax = 3          // teto de QuestInfo.Celestial.Reset
+	celestialResetExp = 20_000_000 // exp que cada reset retira
 
 	msgFailure = "Resultou em falha." // _NN_FAILURE (476)
 )
 
-// useFuryStone ports the 3020 block of _MSG_UseItem.cpp:3470-3690 in its order.
-// A refused use leaves the stone in place and resyncs the slot, as the legacy
-// SendItem does; once a quest runs the stone is spent even when it fails.
+// useFuryStone porta o bloco 3020 de _MSG_UseItem.cpp:3470-3690 na sua ordem.
+// Um uso recusado deixa a pedra no lugar e ressincroniza o slot, como o
+// SendItem legado faz; uma vez que uma quest roda, a pedra é gasta mesmo falhando.
 func (d *Dispatcher) useFuryStone(w *world.World, s *world.Session, e *world.Entity, src int) {
 	resync := func() { d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src]) }
 	if isCelestialMaster(e.ClassMaster) && e.Level >= furyStoneArcanaLevel {
@@ -51,8 +51,8 @@ func (d *Dispatcher) useFuryStone(w *world.World, s *world.Session, e *world.Ent
 			d.furyStoneReset(w, s, e, src)
 			return
 		}
-		// A celestial with every reset spent falls through to the Lv90 checks,
-		// where only a CELESTIAL that never unlocked Lv90 can still use it.
+		// Um celestial com todos os resets gastos cai nas checagens de Lv90,
+		// onde só um CELESTIAL que nunca desbloqueou Lv90 ainda pode usá-la.
 	}
 	if e.ClassMaster != classMasterCelestial {
 		resync()
@@ -72,7 +72,7 @@ func (d *Dispatcher) useFuryStone(w *world.World, s *world.Session, e *world.Ent
 		resync()
 		return
 	}
-	// Here the legacy rolls before charging the Fame.
+	// Aqui o legado sorteia antes de cobrar a Fama.
 	success := furyStoneRoll(w)
 	e.Fame -= furyStoneFame
 	if success {
@@ -91,9 +91,9 @@ func (d *Dispatcher) useFuryStone(w *world.World, s *world.Session, e *world.Ent
 	d.log.Info("fury stone lv90", "conn", s.Conn, "name", e.Name, "success", success)
 }
 
-// furyStoneRoll is the legacy rand()%115 with 101..114 folded down by 15 to
-// 86..99. Those still pass the < 100 test, so only a roll of exactly 100 fails:
-// 114 of the 115 outcomes succeed, not the ~87% the issue estimated.
+// furyStoneRoll é o rand()%115 legado com 101..114 reduzido em 15 para
+// 86..99. Esses ainda passam no teste < 100, então só um sorteio de exatamente 100 falha:
+// 114 dos 115 resultados dão certo, não os ~87% que a issue estimou.
 func furyStoneRoll(w *world.World) bool {
 	roll := w.Rand().Intn(115)
 	if roll > 100 {
@@ -102,11 +102,11 @@ func furyStoneRoll(w *world.World) bool {
 	return roll < 100
 }
 
-// furyStoneArcana ports the Cythera Arcana quest (_MSG_UseItem.cpp:3480-3568):
-// the four Pedras Secretas and 500 Fame go first, then the roll decides whether
-// Equip[1] becomes the 3507 and QuestInfo.Circle is set.
+// furyStoneArcana porta a quest Cythera Arcana (_MSG_UseItem.cpp:3480-3568):
+// as quatro Pedras Secretas e 500 de Fama saem primeiro, depois o sorteio decide se
+// Equip[1] vira o 3507 e QuestInfo.Circle é definido.
 func (d *Dispatcher) furyStoneArcana(w *world.World, s *world.Session, e *world.Entity, src int, slots [len(pedraSecretaItems)]int) {
-	// The legacy walks the inventory once, so the slots clear in slot order.
+	// O legado percorre o inventário uma vez, então os slots limpam na ordem de slot.
 	for i := 0; i < activeCarryLimit(e); i++ {
 		for _, slot := range slots {
 			if slot == i {
@@ -118,8 +118,8 @@ func (d *Dispatcher) furyStoneArcana(w *world.World, s *world.Session, e *world.
 	e.Fame -= furyStoneFame
 	success := furyStoneRoll(w)
 	if success {
-		// Only the sIndex changes: a worn armour keeps its refine and effects
-		// under the new 3507, as the legacy writes sIndex alone.
+		// Só o sIndex muda: uma armadura vestida mantém seu refino e efeitos
+		// sob o novo 3507, já que o legado escreve só o sIndex.
 		e.Equip[arcanaEquipSlot].Index = arcanaItemIndex
 		d.sendSlot(w, s, world.ItemPlaceEquip, arcanaEquipSlot, e.Equip[arcanaEquipSlot])
 		d.sendClientMessage(w, s, fmt.Sprintf(msgPlayQuest, "Cythera Arcana"))
@@ -134,19 +134,19 @@ func (d *Dispatcher) furyStoneArcana(w *world.World, s *world.Session, e *world.
 	d.log.Info("fury stone arcana", "conn", s.Conn, "name", e.Name, "success", success)
 }
 
-// furyStoneReset ports the Celestial reset (_MSG_UseItem.cpp:3579-3615): no
-// roll, +1 Reset, -500 Fame and -20M exp, the level looked up again on the
-// celestial curve and the free points recomputed, where each reset is worth
-// +200. The legacy CheckGetLevel right after, with SetCircletSubGod when it
-// returns 4 (:3596-3599, issue #409), is applyLevelUps: the level was just
-// looked up from the exp, so it normally finds nothing to raise.
+// furyStoneReset porta o reset Celestial (_MSG_UseItem.cpp:3579-3615): sem
+// sorteio, +1 Reset, -500 de Fama e -20M de exp, o nível consultado de novo na
+// curva celestial e os pontos livres recalculados, onde cada reset vale
+// +200. O CheckGetLevel logo depois no legado, com SetCircletSubGod quando ele
+// devolve 4 (:3596-3599, issue #409), é o applyLevelUps: o nível acabou de
+// ser consultado da exp, então normalmente não acha nada a subir.
 func (d *Dispatcher) furyStoneReset(w *world.World, s *world.Session, e *world.Entity, src int) {
 	e.CelReset++
 	e.Fame -= furyStoneFame
 	e.Exp -= celestialResetExp
 	e.Level = level.ForExpTier(e.Exp, e.ClassMaster)
-	// The Go login derives BaseAC from the level, so lower it now to keep the
-	// live value equal to the one the next login rebuilds.
+	// O login em Go deriva BaseAC do nível, então baixe-o agora para manter o
+	// valor vivo igual ao que o próximo login reconstrói.
 	e.BaseAC = playerBaseAC(e)
 	d.applyLevelUps(w, s, e)
 	e.ScoreBonus = scoreBonusFor(e)

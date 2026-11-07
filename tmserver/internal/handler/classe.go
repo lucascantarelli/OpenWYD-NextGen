@@ -6,46 +6,46 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Classe A-E item range (_MSG_UseItem.cpp:4989): 4016-4020 are the plain
-// tiers, 4021-4025 the "(P)" variant — both contiguous 5-item ranges mapping
-// to the same tier 1..5 (A..E), matched against the target's EF_ITEMLEVEL.
+// Faixa de itens Classe A-E (_MSG_UseItem.cpp:4989): 4016-4020 são os tiers
+// simples, 4021-4025 a variante "(P)" — as duas faixas contíguas de 5 itens mapeando
+// para o mesmo tier 1..5 (A..E), casadas contra o EF_ITEMLEVEL do alvo.
 const classeALo = 4016
 
-// classeTier maps a Classe item's sIndex to its tier 1..5 (A..E)
-// (_MSG_UseItem.cpp:4989). Only meaningful for items already classified as
-// volClasses by the catalog; callers don't need to range-check idx first —
-// same as the legacy, which computes this arithmetically with no bounds check.
+// classeTier mapeia o sIndex de um item Classe para seu tier 1..5 (A..E)
+// (_MSG_UseItem.cpp:4989). Só faz sentido para itens já classificados como
+// volClasses pelo catálogo; quem chama não precisa checar a faixa de idx antes —
+// como no legado, que calcula isto aritmeticamente sem checar limites.
 func classeTier(idx int16) int {
 	return int(idx-classeALo)%5 + 1
 }
 
-// useClasseItem is the Classe A-E path of _MSG_UseItem (Vol==190,
-// _MSG_UseItem.cpp:4958-5012): dragging a Classe item onto a piece of gear
-// sitting in the INVENTORY at the matching EF_ITEMLEVEL grade rerolls its sanc
-// (capped at +6) and its two bonus stats (SetItemBonus2). The Classe item is
-// consumed on a successful reroll; a gate failure resyncs the dragged slot.
+// useClasseItem é o caminho Classe A-E do _MSG_UseItem (Vol==190,
+// _MSG_UseItem.cpp:4958-5012): arrastar um item Classe sobre uma peça de equipamento
+// que está no INVENTÁRIO com o grade EF_ITEMLEVEL correspondente sorteia de novo seu sanc
+// (limitado a +6) e seus dois atributos de bônus (SetItemBonus2). O item Classe é
+// consumido num sorteio bem-sucedido; uma falha de gate ressincroniza o slot arrastado.
 //
-// The target must NOT be equipped (issue #228). The legacy gate reads
-// `if (!m->DestType || m->DestPos >= 60)` (:4970) — it rejects
-// DestType==ITEM_PLACE_EQUIP(0) and bounds DestPos to the carry range. Two
-// things confirm that polarity is intentional rather than the typo an earlier
-// port took it for: the bound is 60 (maxUnlockedCarry), not 16 (MaxEquip) as in
-// the genuinely equip-only gates at :3779/:3901/:3979/:4057; and SetItemBonus2
-// is followed by SendItem alone, with no score recompute (:4997-5000), which is
-// only safe because the rerolled item is not worn.
+// O alvo NÃO pode estar equipado (issue #228). O gate legado lê
+// `if (!m->DestType || m->DestPos >= 60)` (:4970) — ele rejeita
+// DestType==ITEM_PLACE_EQUIP(0) e limita DestPos à faixa do carry. Duas
+// coisas confirmam que essa polaridade é proposital, e não o erro de digitação que um
+// port anterior tomou: o limite é 60 (maxUnlockedCarry), não 16 (MaxEquip) como nos
+// gates genuinamente só-de-equipamento em :3779/:3901/:3979/:4057; e SetItemBonus2
+// é seguido só por SendItem, sem recomputar score (:4997-5000), o que
+// só é seguro porque o item sorteado de novo não está vestido.
 func (d *Dispatcher) useClasseItem(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, src int) {
 	dst := d.itemSlot(w, s, e, int(body.DestType), int(body.DestPos))
 	if dst == nil || dst.Empty() {
-		return // no such target slot — the legacy just logs and drops the message
+		return // slot alvo inexistente — o legado só registra e descarta a mensagem
 	}
 
-	// The legacy's companion `m->DestPos >= 60` bound needs no explicit port:
-	// itemSlot routes carry through carrySlotAccessible, which already caps at
-	// activeCarryLimit(e) <= maxUnlockedCarry == 60 and yields nil above it —
-	// caught by the dst == nil return above.
+	// O limite companheiro `m->DestPos >= 60` do legado não precisa de port explícito:
+	// itemSlot roteia o carry por carrySlotAccessible, que já limita em
+	// activeCarryLimit(e) <= maxUnlockedCarry == 60 e devolve nil acima disso —
+	// pego pelo retorno dst == nil acima.
 	if int(body.DestType) == world.ItemPlaceEquip {
-		// The legacy used the backwards _NN_Only_To_Equips string here. Give the
-		// player an actionable error while preserving the inventory-only rule.
+		// O legado usava aqui a string invertida _NN_Only_To_Equips. Dê ao
+		// jogador um erro acionável preservando a regra de só inventário.
 		d.sendRefineMessage(w, s, classeMessageInventory)
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 		return
@@ -64,11 +64,11 @@ func (d *Dispatcher) useClasseItem(w *world.World, s *world.Session, e *world.En
 		return
 	}
 
-	// Deliberate deviation from SetItemBonus2 (Server.cpp:2719-2861), which has
-	// no branch for an nPos outside helm/chest/legs/glove/boot and so falls
-	// through to consume the Classe item for no effect — the known legacy bug
-	// recorded in "Source/Lista de bugs.txt:6". Refuse and resync instead of
-	// destroying the item.
+	// Desvio deliberado do SetItemBonus2 (Server.cpp:2719-2861), que não tem
+	// ramo para um nPos fora de helm/chest/legs/glove/boot e por isso cai
+	// adiante e consome o item Classe sem efeito — o bug legado conhecido
+	// registrado em "Source/Lista de bugs.txt:6". Recuse e ressincronize em vez de
+	// destruir o item.
 	if !refine.ClasseBonus(dst, d.itemPos[int(dst.Index)], func(n int) int { return w.Rand().Intn(n) }, d.itemAbility) {
 		d.sendRefineMessage(w, s, classeMessageCantRefine)
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
@@ -80,6 +80,6 @@ func (d *Dispatcher) useClasseItem(w *world.World, s *world.Session, e *world.En
 	d.sendRefineMotion(w, s, e.ID, refineMotionSuccess, refineMotionSuccessParm)
 	d.log.Info("classe item bonus reroll", "conn", s.Conn, "item", dst.Index, "effects", dst.Effects)
 	consumeOneItem(&e.Carry[src])
-	// The Classe slot is deliberately NOT re-sent on success, mirroring
-	// refineSucceed: the client already removed the item it dragged.
+	// O slot Classe deliberadamente NÃO é reenviado no sucesso, espelhando
+	// refineSucceed: o cliente já removeu o item que arrastou.
 }

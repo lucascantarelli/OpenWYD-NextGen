@@ -7,37 +7,37 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Anti-speedhack tick window (_MSG_Action.cpp): the client's movetime
-// (HEADER.ClientTick) must stay within this band of server time, else
-// AddCrackError and the action is dropped (no broadcast). The comparison works
-// with any server clock base because the client resyncs its movetime from the
-// server-stamped ticks it receives (CPSock.cpp:541 stamps CurrentTime on every
-// outbound frame; our enqueue mirrors that).
+// Janela de tick anti-speedhack (_MSG_Action.cpp): o movetime do cliente
+// (HEADER.ClientTick) precisa ficar nesta faixa do tempo do servidor, senão
+// AddCrackError e a ação é descartada (sem broadcast). A comparação funciona
+// com qualquer base de relógio do servidor porque o cliente ressincroniza seu movetime a partir dos
+// ticks carimbados pelo servidor que recebe (CPSock.cpp:541 carimba CurrentTime em todo
+// frame de saída; nosso enqueue espelha isso).
 const (
 	moveFutureWindow = 15000  // movetime > now + 15000
 	movePastWindow   = 120000 // movetime < now - 120000
 )
 
-// action handles _MSG_Action / _MSG_Action2 / _MSG_Action3 (0x036C/0366/0368),
-// _MSG_Action.cpp. It enforces play state, liveness, the anti-speedhack tick
-// window and position bounds, cancels an in-progress trade, then moves the
-// entity to its DESTINATION (pMob.TargetX/Y — the position every legacy read
-// uses) and runs the GridMulticast view reconciliation (moveMulticast), which
-// forwards the raw frame — preserving its Type — to old∪new view windows.
+// action trata _MSG_Action / _MSG_Action2 / _MSG_Action3 (0x036C/0366/0368),
+// _MSG_Action.cpp. Aplica estado de jogo, vivacidade, a janela de tick
+// anti-speedhack e limites de posição, cancela uma troca em andamento, e então move a
+// entidade para o DESTINO dela (pMob.TargetX/Y — a posição que toda leitura legada
+// usa) e roda a reconciliação de visão do GridMulticast (moveMulticast), que
+// repassa o frame cru — preservando seu Type — às janelas de visão antiga∪nova.
 //
-// UNVERIFIED / deferred (not reproduced here): Speed clamp vs AttackRun&0xF
-// (legacy clamps and continues), the >VIEWGRID jump correction (GetAction +
-// crack(1,5)) and the occupied-target-cell reroute (GetEmptyMobGrid/BASE_GetRoute).
+// UNVERIFIED / adiado (não reproduzido aqui): o limite de Speed vs AttackRun&0xF
+// (o legado limita e continua), a correção de salto >VIEWGRID (GetAction +
+// crack(1,5)) e o redirecionamento de célula alvo ocupada (GetEmptyMobGrid/BASE_GetRoute).
 func (d *Dispatcher) action(w *world.World, s *world.Session, h protocol.Header, payload []byte) {
 	if s.Mode != world.UserPlay {
-		return // SendHpMode in the original; no world effect
+		return // SendHpMode no original; nenhum efeito no mundo
 	}
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP == 0 {
-		w.AddCrackError(s, 5, 3) // acting while dead
+		w.AddCrackError(s, 5, 3) // agir morto
 		return
 	}
-	// Moving cancels an in-progress trade for both parties (_MSG_Action.cpp:41-50).
+	// Mover cancela uma troca em andamento dos dois lados (_MSG_Action.cpp:41-50).
 	if s.Trade.Active {
 		d.removeTrade(w, s)
 		return
@@ -74,8 +74,8 @@ func (d *Dispatcher) action(w *world.World, s *world.Session, h protocol.Header,
 		}
 	}
 
-	// Anti-speedhack: movetime must be within the window of server time.
-	// Crack codes per legacy: 102 for Action/Action2, 104 for Action3.
+	// Anti-speedhack: o movetime precisa ficar dentro da janela do tempo do servidor.
+	// Códigos de crack por legado: 102 para Action/Action2, 104 para Action3.
 	mt, now := int64(h.ClientTick), int64(w.Now())
 	if mt > now+moveFutureWindow || mt < now-movePastWindow {
 		code := 102
@@ -86,8 +86,8 @@ func (d *Dispatcher) action(w *world.World, s *world.Session, h protocol.Header,
 		return
 	}
 
-	// Bounds: the destination must be inside the world grid (legacy drops
-	// TargetX/Y <= 0 or >= 4096 silently; we keep the crack accounting).
+	// Limites: o destino precisa ficar dentro da grade do mundo (o legado descarta
+	// TargetX/Y <= 0 ou >= 4096 em silêncio; mantemos a contabilidade de crack).
 	dim := int16(w.GridDim())
 	if outOfBounds(body.PosX, dim) || outOfBounds(body.PosY, dim) ||
 		outOfBounds(body.TargetX, dim) || outOfBounds(body.TargetY, dim) {
@@ -102,28 +102,28 @@ func (d *Dispatcher) action(w *world.World, s *world.Session, h protocol.Header,
 		return
 	}
 
-	// No-op move: legacy only processes when the destination differs from the
-	// current (destination-authoritative) position.
+	// Movimento no-op: o legado só processa quando o destino difere da
+	// posição (autoritativa pelo destino) atual.
 	if body.TargetX == e.X && body.TargetY == e.Y {
 		return
 	}
-	// Inside the destination-changed branch, like the legacy level lock.
+	// Dentro do ramo de destino alterado, como o bloqueio de nível legado.
 	if d.newbieZoneGuard(w, s, e, body.TargetX, body.TargetY) {
 		return
 	}
 
 	oldX, oldY := e.X, e.Y
-	// Destination-authoritative, like legacy pMob.TargetX/Y (GridMulticast tail,
-	// SendFunc.cpp:929-930): every server-side read — multicast center, combat,
-	// GetInView, NoViewMob — uses the destination, never the route start.
+	// Autoritativo pelo destino, como o pMob.TargetX/Y legado (cauda do GridMulticast,
+	// SendFunc.cpp:929-930): toda leitura do lado do servidor — centro do multicast, combate,
+	// GetInView, NoViewMob — usa o destino, nunca o início da rota.
 	w.SetEntityPos(s.Conn, body.TargetX, body.TargetY)
 	e.Route = body.Route
-	// Track the last city the player is in (for the city-based respawn rule).
+	// Rastrear a última cidade em que o jogador está (para a regra de respawn por cidade).
 	if city := world.Village(body.TargetX, body.TargetY); city >= 0 && city <= 3 {
 		e.LastCity = int16(city)
 	}
-	// GridMulticast: view create/remove deltas + raw frame (original Type) to
-	// everyone in the old or new view window.
+	// GridMulticast: deltas de criação/remoção de visão + frame cru (Type original) para
+	// todos na janela de visão antiga ou nova.
 	d.moveMulticast(w, s.Conn, oldX, oldY, h.Type, payload)
 	if h.Type == protocol.MsgAction3 {
 		w.SendTo(s, protocol.Header{Type: protocol.MsgAction3, ID: uint16(s.Conn)}, payload)
@@ -191,7 +191,7 @@ func (d *Dispatcher) dropBootAutoWalk(w *world.World, s *world.Session, e *world
 	return true
 }
 
-// motion handles _MSG_Motion (0x036A): emotes/animations, multicast to in-view.
+// motion trata _MSG_Motion (0x036A): emotes/animações, transmitidos a quem está em visão.
 func (d *Dispatcher) motion(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if s.Mode != world.UserPlay || e == nil || e.HP == 0 {
@@ -201,9 +201,9 @@ func (d *Dispatcher) motion(w *world.World, s *world.Session, _ protocol.Header,
 	w.BroadcastInView(s.Conn, protocol.MsgMotion, payload)
 }
 
-// changeCity handles _MSG_ChangeCity (0x0291): set the spawn city, bit-packed
-// into MOB.Merchant bits 6-7 (lote2-movimento.md). The documented bit layout is
-// preserved; villageAt (BASE_GetVillage) is a placeholder.
+// changeCity trata _MSG_ChangeCity (0x0291): define a cidade de spawn, empacotada em
+// bits nos bits 6-7 de MOB.Merchant (lote2-movimento.md). O layout de bits documentado é
+// preservado; villageAt (BASE_GetVillage) é um placeholder.
 func (d *Dispatcher) changeCity(w *world.World, s *world.Session, _ protocol.Header, _ []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil {
@@ -214,16 +214,16 @@ func (d *Dispatcher) changeCity(w *world.World, s *world.Session, _ protocol.Hea
 	}
 }
 
-// villageAt maps a position to a village id 0..4, or -1.
+// villageAt mapeia uma posição para um id de vila 0..4, ou -1.
 //
-// UNVERIFIED: BASE_GetVillage is not in the source (lote2-movimento.md). This is
-// a placeholder that returns -1 (no village) until the region table is captured.
+// UNVERIFIED: BASE_GetVillage não está na fonte (lote2-movimento.md). Isto é
+// um placeholder que devolve -1 (sem vila) até a tabela de regiões ser capturada.
 func villageAt(int16, int16) int { return -1 }
 
-// reqTeleport handles _MSG_ReqTeleport (0x0290): the client stepped on a teleport
-// tile (the packet is header-only). The destination + cost come from the player's
-// position (world.TeleportDest / GetTeleportPosition). On enough gold it debits
-// and teleports (_MSG_ReqTeleport.cpp).
+// reqTeleport trata _MSG_ReqTeleport (0x0290): o cliente pisou num tile de teleporte
+// (o pacote é só header). O destino + custo vêm da posição do
+// jogador (world.TeleportDest / GetTeleportPosition). Com ouro suficiente ele debita
+// e teleporta (_MSG_ReqTeleport.cpp).
 func (d *Dispatcher) reqTeleport(w *world.World, s *world.Session, _ protocol.Header, _ []byte) {
 	if s.Mode != world.UserPlay {
 		return
@@ -232,7 +232,7 @@ func (d *Dispatcher) reqTeleport(w *world.World, s *world.Session, _ protocol.He
 	if e == nil || e.HP <= 0 {
 		return
 	}
-	// GetFunc.cpp:1007: the city opens only after the boss is defeated.
+	// GetFunc.cpp:1007: a cidade só abre depois que o chefe é derrotado.
 	if e.X&^3 == 2364 && e.Y&^3 == 3924 {
 		st, loaded := w.KefraState()
 		if !loaded || !st.Defeated {
@@ -249,8 +249,8 @@ func (d *Dispatcher) reqTeleport(w *world.World, s *world.Session, _ protocol.He
 		d.doTeleport(w, s, x, y)
 		return
 	}
-	// GetFunc.cpp:994: only the Hall entrance spends a Kefra ticket. Keep
-	// rejected requests out of the MSVC stream; successful entries draw X then Y.
+	// GetFunc.cpp:994: só a entrada do Salão gasta um ticket de Kefra. Manter
+	// pedidos rejeitados fora do fluxo MSVC; entradas bem-sucedidas sorteiam X e depois Y.
 	if e.X&^3 == 2364 && e.Y&^3 == 3892 {
 		if e.KefraTicket <= 0 {
 			return
@@ -268,24 +268,24 @@ func (d *Dispatcher) reqTeleport(w *world.World, s *world.Session, _ protocol.He
 		d.doTeleport(w, s, x, y)
 		return
 	}
-	// GetTeleportPosition only opens the Azran→Vale portal for the equipped
-	// Valley Fairy (item 3916 in Equip[13]); preserve that legacy gate.
+	// GetTeleportPosition só abre o portal Azran→Vale para a
+	// Fada do Vale equipada (item 3916 em Equip[13]); preservar aquele gate legado.
 	access := world.TeleportAccess{
 		HasFairy:      e.Equip[fairyEquipSlot].Index == 3916,
-		KefraDefeated: d.expEvents.KefraLive, // legacy name: true means defeated
+		KefraDefeated: d.expEvents.KefraLive, // nome legado: true significa derrotado
 	}
 	destX, destY, cost, ok := world.TeleportDestWithAccess(e.X, e.Y, access, w.Rand())
 	if !ok {
-		return // no teleport tile here
+		return // nenhum tile de teleporte aqui
 	}
 	if cost > 0 && cost > e.Coin {
 		d.sendClientMessage(w, s, notEnoughMoney) // _MSG_ReqTeleport.cpp:39-64
 		return
 	}
 
-	// Keep the original destination when it is usable; otherwise find a nearby
-	// unoccupied, walkable cell before charging for the teleport.
-	// Noatum -> Nippleheim: keep fallback inside the original landing area.
+	// Manter o destino original quando ele é utilizável; senão achar uma célula
+	// próxima desocupada e caminhável antes de cobrar pelo teleporte.
+	// Noatum -> Nippleheim: manter o fallback dentro da área de pouso original.
 	if e.X&^3 == 1052 && e.Y&^3 == 1708 {
 		destX, destY, ok = d.freeTeleportCellInArea(
 			w, destX, destY, 3650, 3110, 3652, 3112,
@@ -304,7 +304,7 @@ func (d *Dispatcher) reqTeleport(w *world.World, s *world.Session, _ protocol.He
 	d.doTeleport(w, s, destX, destY)
 }
 
-// freeTeleportCellInArea keeps a teleport fallback inside its landing area.
+// freeTeleportCellInArea mantém o fallback de teleporte dentro da sua área de pouso.
 func (d *Dispatcher) freeTeleportCellInArea(
 	w *world.World,
 	x, y, minX, minY, maxX, maxY int16,
@@ -329,9 +329,9 @@ func (d *Dispatcher) freeTeleportCellInArea(
 	return 0, 0, false
 }
 
-// doTeleport moves the player to (x,y) and reconciles visibility (DoTeleport,
-// Server.cpp): RemoveMob from the old view, an MSG_Action with Effect=1 to jump
-// the player's own avatar, then CreateMob for the new surroundings.
+// doTeleport move o jogador para (x,y) e reconcilia a visibilidade (DoTeleport,
+// Server.cpp): RemoveMob da visão antiga, um MSG_Action com Effect=1 para saltar
+// o próprio avatar do jogador, e depois CreateMob para o entorno novo.
 func (d *Dispatcher) doTeleport(w *world.World, s *world.Session, x, y int16) {
 	e := w.Entity(s.Conn)
 	if e == nil {
@@ -344,31 +344,31 @@ func (d *Dispatcher) doTeleport(w *world.World, s *world.Session, x, y int16) {
 	if c := world.Village(x, y); c >= 0 && c <= 3 {
 		e.LastCity = int16(c)
 	}
-	// Jump the player's own avatar: MSG_Action, Effect=1 (PosX/Y old → TargetX/Y dest).
+	// Saltar o próprio avatar do jogador: MSG_Action, Effect=1 (PosX/Y antiga → TargetX/Y destino).
 	body := protocol.MsgActionBody{PosX: oldX, PosY: oldY, Effect: 1, Speed: 2, TargetX: x, TargetY: y}
 	payload := body.Encode()
 	w.SendTo(s, protocol.Header{Type: protocol.MsgAction, ID: uint16(s.Conn)}, payload)
-	// DoTeleport goes through GridMulticast in the legacy: it removes old-window
-	// mobs/NPCs, creates new-window entities and forwards the same jump frame to
-	// watchers, but does not resend the player's own CreateMob/UpdateScore.
+	// O DoTeleport passa pelo GridMulticast no legado: remove criaturas/NPCs da janela
+	// antiga, cria entidades da janela nova e repassa o mesmo frame de salto aos
+	// observadores, mas não reenvia o CreateMob/UpdateScore do próprio jogador.
 	d.moveMulticast(w, s.Conn, oldX, oldY, protocol.MsgAction, payload)
-	// Freeze investigation (investigacao-freeze-cliente.md): the incidents
-	// cluster right after city teleports, and teleports used to be invisible in
-	// the logs. The CreateMob/RemoveMob deltas size the reveal burst the client
-	// had to absorb at the destination.
+	// Investigação de freeze (investigacao-freeze-cliente.md): os casos
+	// se aglomeram logo após teleportes de cidade, e teleportes costumavam ser invisíveis nos
+	// logs. Os deltas de CreateMob/RemoveMob dimensionam a rajada de revelação que o cliente
+	// precisava absorver no destino.
 	d.log.Info("teleport", "conn", s.Conn, "name", e.Name,
 		"from_x", oldX, "from_y", oldY, "to_x", x, "to_y", y,
 		"create_mobs", w.SentOfType(s, protocol.MsgCreateMob)-cmBefore,
 		"remove_mobs", w.SentOfType(s, protocol.MsgRemoveMob)-rmBefore)
 }
 
-// noViewMob handles _MSG_NoViewMob (0x0369): the client asks to re-sync one
-// entity's visibility (Parm = target id). Port of _MSG_NoViewMob.cpp: a live
-// target within GetInView range (±NoViewRange, looser than the multicast
-// window) gets a full CreateMob/CreateMobTrade snapshot + PKInfo; anything else
-// — empty slot, player not in play, or out of range — gets a RemoveMob. The
-// nil-payload CreateMob this used to send made the client rebuild the avatar
-// from a truncated body: the multiplayer "snap-back" bug.
+// noViewMob trata _MSG_NoViewMob (0x0369): o cliente pede para ressincronizar a
+// visibilidade de uma entidade (Parm = id alvo). Port de _MSG_NoViewMob.cpp: um alvo
+// vivo dentro do alcance de GetInView (±NoViewRange, mais frouxo que a janela
+// do multicast) recebe um snapshot completo de CreateMob/CreateMobTrade + PKInfo; qualquer outra coisa
+// — slot vazio, jogador fora de jogo, ou fora de alcance — recebe um RemoveMob. O
+// CreateMob de payload nil que isto enviava fazia o cliente reconstruir o avatar
+// a partir de um corpo truncado: o bug de "snap-back" no multiplayer.
 func (d *Dispatcher) noViewMob(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	if s.Mode != world.UserPlay {
 		return
@@ -381,7 +381,7 @@ func (d *Dispatcher) noViewMob(w *world.World, s *world.Session, _ protocol.Head
 	target := w.Entity(id)
 	inPlay := target != nil && target.Mode != world.MobEmpty
 	if inPlay && id < world.MaxUser {
-		// A player only exists for others while in play (pUser[MobID].Mode check).
+		// Um jogador só existe para os outros enquanto em jogo (checagem pUser[MobID].Mode).
 		ts := w.Session(id)
 		inPlay = ts != nil && ts.Mode == world.UserPlay
 	}
@@ -390,7 +390,7 @@ func (d *Dispatcher) noViewMob(w *world.World, s *world.Session, _ protocol.Head
 		ty, body := d.createMobViewPacket(w, target, 1)
 		w.SendTo(s, protocol.Header{Type: ty, ID: protocol.IDScene}, body)
 		if id < world.MaxUser {
-			// PKInfo travels only about players (SendPKInfo, SendFunc.cpp:1869).
+			// PKInfo só trafega sobre jogadores (SendPKInfo, SendFunc.cpp:1869).
 			w.SendTo(s, protocol.Header{Type: protocol.MsgPKInfo, ID: uint16(id)}, protocol.EncodeStandardParm(pkInfoParm(target)))
 		}
 	} else {
@@ -399,7 +399,7 @@ func (d *Dispatcher) noViewMob(w *world.World, s *world.Session, _ protocol.Head
 	}
 }
 
-// standardParm reads the leading int32 Parm of a MSG_STANDARDPARM body.
+// standardParm lê o Parm int32 inicial de um corpo MSG_STANDARDPARM.
 func standardParm(payload []byte) int {
 	if len(payload) < 4 {
 		return -1

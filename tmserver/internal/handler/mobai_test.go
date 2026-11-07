@@ -18,7 +18,7 @@ import (
 )
 
 func TestChebyshevAndStep(t *testing.T) {
-	if d := chebyshev(5, 5, 8, 6); d != 3 { // king-move distance = max(|dx|,|dy|)
+	if d := chebyshev(5, 5, 8, 6); d != 3 { // distância de movimento de rei = max(|dx|,|dy|)
 		t.Errorf("chebyshev = %d, want 3", d)
 	}
 	if d := chebyshev(5, 5, 5, 5); d != 0 {
@@ -29,49 +29,49 @@ func TestChebyshevAndStep(t *testing.T) {
 	}
 }
 
-// aggressiveMob builds an 816-byte STRUCT_MOB template for a monster that always
-// acts (high Int → no hesitation) and hits hard (high Damage). Merchant=0 so the
-// AI treats it as a combatant, not a shopkeeper; Clan=5 so g_pClanTable marks it
-// hostile to players (clan 0) — a clan-0 template would be FRIENDLY and never
-// aggro (clanTable[0][0]==1).
+// aggressiveMob monta um template STRUCT_MOB de 816 bytes para uma criatura que sempre
+// age (Int alto → sem hesitação) e bate forte (Damage alto). Merchant=0 para a
+// IA tratá-la como combatente, não como lojista; Clan=5 para g_pClanTable marcá-la
+// hostil a jogadores (clã 0) — um template de clã 0 seria AMISTOSO e nunca
+// daria aggro (clanTable[0][0]==1).
 func aggressiveMob() []byte {
 	b := make([]byte, 816)
 	copy(b[0:16], "Biter")
-	b[16] = 5                                     // Clan @16: hostile to player clan 0
+	b[16] = 5                                     // Clan @16: hostil ao clã de jogador 0
 	const cs = 92                                 // CurrentScore
 	binary.LittleEndian.PutUint32(b[cs+0:], 50)   // Level
 	binary.LittleEndian.PutUint32(b[cs+8:], 500)  // Damage
 	binary.LittleEndian.PutUint32(b[cs+16:], 800) // MaxHp
 	binary.LittleEndian.PutUint32(b[cs+24:], 800) // Hp
-	binary.LittleEndian.PutUint16(b[cs+34:], 99)  // Int (never hesitates: 99 < rand%100 is never true)
+	binary.LittleEndian.PutUint16(b[cs+34:], 99)  // Int (nunca hesita: 99 < rand%100 nunca é verdade)
 	return b
 }
 
-// startServerMobAI is the combat harness plus a mob-AI tick: it spawns one
-// aggressive mob at (mobX,mobY) before the loop starts and pulses the AI every
-// 10ms with a frozen clock. gridDim sizes the world (use a city-sized grid to test
-// town safe zones).
+// startServerMobAI é o harness de combate mais um tick de IA de criaturas: nasce uma
+// criatura agressiva em (mobX,mobY) antes do loop começar e pulsa a IA a cada
+// 10ms com relógio congelado. gridDim dimensiona o mundo (use uma grade do tamanho da cidade para testar
+// zonas seguras de cidade).
 func startServerMobAI(t *testing.T, persist world.Persistence, gridDim int, mobX, mobY int16) (string, func()) {
 	t.Helper()
 	return startServerMobAIWith(t, persist, gridDim, aggressiveMob(), mobX, mobY)
 }
 
-// startServerMobAIWith is startServerMobAI with a caller-built mob template, for
-// cases that need a specific clan / Dex / EF_RANGE gear.
+// startServerMobAIWith é startServerMobAI com um template de criatura montado pelo chamador, para
+// casos que precisam de um clã / Dex / equipamento EF_RANGE específico.
 func startServerMobAIWith(t *testing.T, persist world.Persistence, gridDim int, tmpl []byte, mobX, mobY int16) (string, func()) {
 	t.Helper()
 	return startServerMobAIRouted(t, persist, gridDim, tmpl, mobX, mobY, nil)
 }
 
-// startServerMobAIRouted is startServerMobAIWith plus a walkability grid
-// (nil = blind step), mirroring PROD's Config.Heights wiring.
+// startServerMobAIRouted é startServerMobAIWith mais uma grade de caminhabilidade
+// (nil = passo cego), espelhando a ligação de Config.Heights de PROD.
 func startServerMobAIRouted(t *testing.T, persist world.Persistence, gridDim int, tmpl []byte, mobX, mobY int16, heights *content.Grid) (string, func()) {
 	t.Helper()
 	return startServerMobAISpawn(t, persist, gridDim, world.MobSpawn{Template: tmpl, X: mobX, Y: mobY, GenIndex: -1}, heights)
 }
 
-// startServerMobAISpawn is the full-shape harness: the mob comes from a complete
-// MobSpawn (route/waypoints included) exactly as PROD's spawnNPCs builds it.
+// startServerMobAISpawn é o harness de forma completa: a criatura vem de um
+// MobSpawn completo (rota/waypoints incluídos) exatamente como o spawnNPCs de PROD o monta.
 func startServerMobAISpawn(t *testing.T, persist world.Persistence, gridDim int, sp world.MobSpawn, heights *content.Grid) (string, func()) {
 	t.Helper()
 	return startServerMobAISpawns(t, persist, gridDim, []world.MobSpawn{sp}, heights)
@@ -89,7 +89,7 @@ func startServerMobAISpawns(t *testing.T, persist world.Persistence, gridDim int
 	d := New(Config{Log: log, Heights: heights})
 	w := world.New(world.Config{GridDim: gridDim, Now: clock.Load}, log, persist, d.Handle)
 	for _, sp := range spawns {
-		w.SpawnMobAt(sp) // init-time spawn (loop-safe)
+		w.SpawnMobAt(sp) // spawn em tempo de init (seguro no loop)
 	}
 	w.SetTickHandler(10*time.Millisecond, d.Tick)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,8 +157,8 @@ func waitMobChat(t *testing.T, c net.Conn, mobID int, want string) {
 
 func TestMobFightActionChat(t *testing.T) {
 	tmpl := aggressiveMob()
-	tmpl[16] = 2                                     // friendly: no ambient aggro
-	binary.LittleEndian.PutUint32(tmpl[92+16:], 800) // survive the first player hit
+	tmpl[16] = 2                                     // amistosa: sem aggro ambiente
+	binary.LittleEndian.PutUint32(tmpl[92+16:], 800) // sobrevive ao primeiro golpe do jogador
 	binary.LittleEndian.PutUint32(tmpl[92+24:], 800)
 	gen := &world.Generator{
 		MinuteGenerate: -1, MinGroup: 0, MaxGroup: 0, MaxNumMob: 1,
@@ -181,8 +181,8 @@ func TestMobFightActionChat(t *testing.T) {
 
 func TestMobDieActionChat(t *testing.T) {
 	tmpl := aggressiveMob()
-	tmpl[16] = 2                                   // friendly: no ambient aggro
-	binary.LittleEndian.PutUint32(tmpl[92+16:], 1) // first player hit kills
+	tmpl[16] = 2                                   // amistosa: sem aggro ambiente
+	binary.LittleEndian.PutUint32(tmpl[92+16:], 1) // primeiro golpe do jogador mata
 	binary.LittleEndian.PutUint32(tmpl[92+24:], 1)
 	gen := &world.Generator{
 		MinuteGenerate: -1, MinGroup: 0, MaxGroup: 0, MaxNumMob: 1,
@@ -258,8 +258,8 @@ func TestMobKillSendsDieActionChat(t *testing.T) {
 	waitMobChat(t, c, targetID, "MobDown")
 }
 
-// actionFrameAt pins the player at (x,y): _MSG_Action sets the entity position
-// to the body's DESTINATION (TargetX/TargetY, legacy pMob.TargetX semantics).
+// actionFrameAt fixa o jogador em (x,y): _MSG_Action define a posição da entidade
+// para o DESTINO do corpo (TargetX/TargetY, semântica legada de pMob.TargetX).
 func actionFrameAt(t *testing.T, c net.Conn, tick uint32, x, y int16) {
 	t.Helper()
 	body := protocol.MsgActionBody{PosX: x, PosY: y, Speed: 30, TargetX: x, TargetY: y}
@@ -272,26 +272,26 @@ func actionFrameAt(t *testing.T, c net.Conn, tick uint32, x, y int16) {
 	}
 }
 
-// TestMobAttacksAdjacentPlayer is the end-to-end AI case: a mob spawned next to
-// where the player stands acquires it (FindPlayerNear), and because it is adjacent
-// the AI tick makes it melee — the player receives a server-authoritative
-// MSG_Attack naming itself as the damaged target.
+// TestMobAttacksAdjacentPlayer é o caso e2e da IA: uma criatura nascida ao lado de
+// onde o jogador está o pega como alvo (FindPlayerNear), e como está adjacente
+// o tick de IA a faz atacar corpo a corpo — o jogador recebe um
+// MSG_Attack autoritativo do servidor nomeando a si mesmo como alvo danificado.
 func TestMobAttacksAdjacentPlayer(t *testing.T) {
-	addr, stop := startServerMobAI(t, combatDB(), 16, 6, 5) // mob one tile east of (5,5)
+	addr, stop := startServerMobAI(t, combatDB(), 16, 6, 5) // criatura um tile a leste de (5,5)
 	defer stop()
 
-	c := enterWorld(t, addr) // player conn 1
+	c := enterWorld(t, addr) // conn do jogador 1
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin the player at (5,5), adjacent to the mob
+	actionFrame(t, c, serverTime, 5) // fixar o jogador em (5,5), adjacente à criatura
 
-	// Within a few ticks the mob should melee the player.
+	// Em poucos ticks a criatura deve atacar o jogador.
 	for i := 0; i < 20; i++ {
 		ty, payload, ok := readMaybe(t, c)
 		if !ok {
 			continue
 		}
 		if ty != protocol.MsgAttack {
-			continue // skip the mob's move/other noise
+			continue // pular o movimento/ruído da criatura
 		}
 		var body protocol.MsgAttackBody
 		if err := body.Decode(payload); err != nil {
@@ -303,22 +303,22 @@ func TestMobAttacksAdjacentPlayer(t *testing.T) {
 		if body.Dam[0].Damage <= 0 {
 			t.Fatalf("mob attack damage = %d, want > 0", body.Dam[0].Damage)
 		}
-		return // success
+		return // sucesso
 	}
 	t.Fatal("player never received a mob MSG_Attack")
 }
 
-// TestMobAttackHeaderIsSceneField: the mob's attack must reach the player with
-// HEADER.ID = ESCENE_FIELD (GetFunc.cpp GetAttack sets sm->ID = ESCENE_FIELD). The
-// client only puts the VICTIM into the death state from a field/scene attack; with
-// HEADER.ID = the mob the dead player kept acting (attacking, auto-potting).
+// TestMobAttackHeaderIsSceneField: o ataque da criatura precisa chegar ao jogador com
+// HEADER.ID = ESCENE_FIELD (GetFunc.cpp GetAttack define sm->ID = ESCENE_FIELD). O
+// cliente só põe a VÍTIMA no estado de morte a partir de um ataque de campo/cena; com
+// HEADER.ID = a criatura, o jogador morto continuava agindo (atacando, auto-poção).
 func TestMobAttackHeaderIsSceneField(t *testing.T) {
-	addr, stop := startServerMobAI(t, combatDB(), 16, 6, 5) // mob next to (5,5)
+	addr, stop := startServerMobAI(t, combatDB(), 16, 6, 5) // criatura ao lado de (5,5)
 	defer stop()
 
-	c := enterWorld(t, addr) // player conn 1
+	c := enterWorld(t, addr) // conn do jogador 1
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5), adjacent to the mob
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5), adjacente à criatura
 
 	for i := 0; i < 20; i++ {
 		h, _, ok := readMaybeHeader(t, c)
@@ -328,26 +328,26 @@ func TestMobAttackHeaderIsSceneField(t *testing.T) {
 		if h.ID != protocol.IDScene {
 			t.Fatalf("mob attack HEADER.ID = %d, want ESCENE_FIELD %d", h.ID, protocol.IDScene)
 		}
-		return // success
+		return // sucesso
 	}
 	t.Fatal("player never received a mob MSG_Attack")
 }
 
-// TestFriendlyClanMobDoesNotAttack: same adjacent setup as
-// TestMobAttacksAdjacentPlayer, but the mob's template carries Clan 2 — friendly
-// to players (clan 0) in g_pClanTable — so the AI must never acquire the player.
+// TestFriendlyClanMobDoesNotAttack: mesma montagem adjacente de
+// TestMobAttacksAdjacentPlayer, mas o template da criatura carrega Clan 2 — amistoso
+// a jogadores (clã 0) em g_pClanTable — então a IA nunca pode adquirir o jogador.
 func TestFriendlyClanMobDoesNotAttack(t *testing.T) {
 	tmpl := aggressiveMob()
-	tmpl[16] = 2 // Clan @16: clanTable[2][0]==1 → friendly to players
+	tmpl[16] = 2 // Clan @16: clanTable[2][0]==1 → amistoso a jogadores
 	addr, stop := startServerMobAIWith(t, combatDB(), 16, tmpl, 6, 5)
 	defer stop()
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5), adjacent to the mob
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5), adjacente à criatura
 
-	// With a 10ms tick a hostile mob attacks within ~50ms; a few timed-out reads
-	// are a confident negative (same technique as TestMobIgnoresPlayerInCity).
+	// Com tick de 10ms uma criatura hostil ataca em ~50ms; algumas leituras com timeout
+	// são um negativo confiável (mesma técnica de TestMobIgnoresPlayerInCity).
 	for i := 0; i < 3; i++ {
 		ty, _, ok := readMaybe(t, c)
 		if ok && ty == protocol.MsgAttack {
@@ -359,14 +359,14 @@ func TestFriendlyClanMobDoesNotAttack(t *testing.T) {
 func TestGuardAttacksHostileMob(t *testing.T) {
 	guard := aggressiveMob()
 	copy(guard[0:16], "Guard")
-	guard[16] = 7 // clanTable[7][5]==0, but clanTable[7][0]==1 (player-friendly)
+	guard[16] = 7 // clanTable[7][5]==0, mas clanTable[7][0]==1 (amistoso a jogadores)
 	const cs = 92
-	binary.LittleEndian.PutUint32(guard[cs+8:], 5000) // one clean hit kills the weak mob
+	binary.LittleEndian.PutUint32(guard[cs+8:], 5000) // um golpe limpo mata a criatura fraca
 
 	hostile := aggressiveMob()
 	copy(hostile[0:16], "Intruder")
 	hostile[16] = 5
-	binary.LittleEndian.PutUint32(hostile[cs+8:], 1)   // harmless if it ever ticks
+	binary.LittleEndian.PutUint32(hostile[cs+8:], 1)   // inofensivo se algum dia rodar um tick
 	binary.LittleEndian.PutUint32(hostile[cs+16:], 30) // MaxHp
 	binary.LittleEndian.PutUint32(hostile[cs+24:], 30) // Hp
 
@@ -379,7 +379,7 @@ func TestGuardAttacksHostileMob(t *testing.T) {
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrameAt(t, c, serverTime, 5, 5) // observer keeps both mobs awake and in view
+	actionFrameAt(t, c, serverTime, 5, 5) // observador mantém as duas criaturas acordadas e em visão
 
 	guardID := world.MaxUser
 	hostileID := world.MaxUser + 1
@@ -420,7 +420,7 @@ func TestGuardAttacksHostileMob(t *testing.T) {
 func TestGuardAggrosHostileMobInCityAtViewEdge(t *testing.T) {
 	guard := aggressiveMob()
 	copy(guard[0:16], "Guard")
-	guard[16] = 7 // player-friendly guard, hostile to clan 5
+	guard[16] = 7 // guarda amistoso a jogadores, hostil ao clã 5
 	const cs = 92
 	binary.LittleEndian.PutUint32(guard[cs+8:], 5000)
 
@@ -440,7 +440,7 @@ func TestGuardAggrosHostileMobInCityAtViewEdge(t *testing.T) {
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrameAt(t, c, serverTime, 2075, 2095) // inside Armia, 15 tiles from guard
+	actionFrameAt(t, c, serverTime, 2075, 2095) // dentro de Armia, 15 tiles do guarda
 
 	guardID := world.MaxUser
 	hostileID := world.MaxUser + 1
@@ -460,8 +460,8 @@ func TestGuardAggrosHostileMobInCityAtViewEdge(t *testing.T) {
 	t.Fatal("guard did not acquire the hostile mob inside the visible city area")
 }
 
-// TestMobDistance pins BASE_GetDistance (Basedef.cpp:6484): the rounded-Euclidean
-// g_pDistanceTable for deltas ≤6, max+1 beyond — NOT Chebyshev.
+// TestMobDistance fixa BASE_GetDistance (Basedef.cpp:6484): a
+// g_pDistanceTable euclidiana arredondada para deltas ≤6, max+1 além disso — NÃO Chebyshev.
 func TestMobDistance(t *testing.T) {
 	tests := []struct {
 		dx, dy int16
@@ -469,28 +469,28 @@ func TestMobDistance(t *testing.T) {
 	}{
 		{0, 0, 0},
 		{1, 0, 1},
-		{1, 1, 1}, // diagonal adjacency is still 1
-		{2, 2, 3}, // rounded euclidean, not Chebyshev 2
-		{3, 3, 4}, // diagonal costs more than Chebyshev (3) — table row 3
-		{4, 0, 4}, // straight shot at 4
-		{6, 6, 6}, // table corner
-		{7, 0, 8}, // beyond the table: max+1
+		{1, 1, 1}, // adjacência diagonal ainda é 1
+		{2, 2, 3}, // euclidiana arredondada, não Chebyshev 2
+		{3, 3, 4}, // diagonal custa mais que Chebyshev (3) — linha 3 da tabela
+		{4, 0, 4}, // tiro reto em 4
+		{6, 6, 6}, // canto da tabela
+		{7, 0, 8}, // além da tabela: max+1
 		{3, 10, 11},
 	}
 	for _, tt := range tests {
 		if got := mobDistance(0, 0, tt.dx, tt.dy); got != tt.want {
 			t.Errorf("mobDistance(0,0,%d,%d) = %d, want %d", tt.dx, tt.dy, got, tt.want)
 		}
-		// The metric is symmetric in sign and axis order.
+		// A métrica é simétrica em sinal e ordem de eixos.
 		if got := mobDistance(tt.dx, tt.dy, 0, 0); got != tt.want {
 			t.Errorf("mobDistance(%d,%d,0,0) = %d, want %d", tt.dx, tt.dy, got, tt.want)
 		}
 	}
 }
 
-// TestBattleCode pins the BattleProcessor reach decision (CMob.cpp:308-327),
-// including the parity detail that the %100 roll is drawn only inside the
-// in-reach branch. rng.NewSeeded(1) yields 41 as its first Intn(100).
+// TestBattleCode fixa a decisão de alcance do BattleProcessor (CMob.cpp:308-327),
+// incluindo o detalhe de paridade de que o sorteio %100 é tirado só dentro do
+// ramo de alcance. rng.NewSeeded(1) produz 41 como seu primeiro Intn(100).
 func TestBattleCode(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -499,20 +499,20 @@ func TestBattleCode(t *testing.T) {
 		wantRandConsumed bool
 	}{
 		{"melee adjacent attacks", 1, 1, 0, battleAttack, true},
-		{"ranged in reach attacks (high dex)", 3, 4, 99, battleAttack, true}, // roll 41 ≤ 99
+		{"ranged in reach attacks (high dex)", 3, 4, 99, battleAttack, true}, // sorteio 41 ≤ 99
 		{"ranged crowded backs away (low dex)", 3, 4, 0, battleRetreat, true},
 		{"ranged target beyond 4 attacks despite low dex", 5, 6, 0, battleAttack, true},
-		{"short reach never retreats", 2, 3, 0, battleAttack, true}, // reach<4 → no retreat branch
+		{"short reach never retreats", 2, 3, 0, battleAttack, true}, // reach<4 → sem ramo de recuo
 		{"out of reach chases", 5, 4, 0, battleChase, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := rng.NewSeeded(1) // first Intn(100) = 41
+			r := rng.NewSeeded(1) // primeiro Intn(100) = 41
 			if got := battleCode(r, tt.dis, tt.reach, tt.dex); got != tt.want {
 				t.Errorf("battleCode(dis=%d,reach=%d,dex=%d) = %#x, want %#x", tt.dis, tt.reach, tt.dex, got, tt.want)
 			}
-			// Verify the rand draw happened exactly when the original draws it, by
-			// comparing against a fresh generator's stream position.
+			// Verificar que o sorteio de rand aconteceu exatamente quando o original o tira, comparando
+			// com a posição do fluxo de um gerador novo.
 			next, fresh := r.Rand(), rng.NewSeeded(1).Rand()
 			consumed := next != fresh
 			if consumed != tt.wantRandConsumed {
@@ -522,30 +522,30 @@ func TestBattleCode(t *testing.T) {
 	}
 }
 
-// rangedMob is aggressiveMob with an EF_RANGE=4 instance effect on Equip[0] and
-// pinned Dex — the shape of an archer/mage template (reach comes from gear,
+// rangedMob é aggressiveMob com um efeito de instância EF_RANGE=4 em Equip[0] e
+// Dex fixo — a forma de um template de arqueiro/mago (o alcance vem do equipamento,
 // BASE_GetMobAbility).
 func rangedMob(dex uint16) []byte {
 	b := aggressiveMob()
 	const cs = 92
-	binary.LittleEndian.PutUint16(b[cs+36:], dex) // Dex (retreat roll)
-	binary.LittleEndian.PutUint16(b[140:], 1234)  // Equip[0].sIndex (any non-zero item)
+	binary.LittleEndian.PutUint16(b[cs+36:], dex) // Dex (sorteio de recuo)
+	binary.LittleEndian.PutUint16(b[140:], 1234)  // Equip[0].sIndex (qualquer item não-zero)
 	b[142] = 27                                   // Eff[0] = EF_RANGE
-	b[143] = 4                                    //        value 4
+	b[143] = 4                                    // valor 4
 	return b
 }
 
-// TestRangedMobAttacksFromDistance: a mob whose gear grants EF_RANGE=4 must
-// attack a player 3 tiles away WITHOUT closing in (the original fires the same
-// attack message from reach — no projectile, no chase). High Dex so the
-// keep-distance roll never fires.
+// TestRangedMobAttacksFromDistance: uma criatura cujo equipamento concede EF_RANGE=4 precisa
+// atacar um jogador a 3 tiles SEM se aproximar (o original dispara a mesma
+// mensagem de ataque do alcance — sem projétil, sem perseguição). Dex alto para o
+// sorteio de manter distância nunca disparar.
 func TestRangedMobAttacksFromDistance(t *testing.T) {
 	addr, stop := startServerMobAIWith(t, combatDB(), 16, rangedMob(99), 8, 5)
 	defer stop()
 
-	c := enterWorld(t, addr) // player conn 1
+	c := enterWorld(t, addr) // conn do jogador 1
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5): distance 3 ≤ reach 4
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5): distância 3 ≤ alcance 4
 
 	for i := 0; i < 20; i++ {
 		h, payload, ok := readMaybeHeader(t, c)
@@ -568,15 +568,15 @@ func TestRangedMobAttacksFromDistance(t *testing.T) {
 		if len(body.Dam) == 0 || body.Dam[0].TargetID != 1 || body.Dam[0].Damage <= 0 {
 			t.Fatalf("ranged attack Dam = %+v, want damage on player conn 1", body.Dam)
 		}
-		return // success
+		return // sucesso
 	}
 	t.Fatal("player never received the ranged mob's MSG_Attack")
 }
 
-// BenchmarkTickIdle10k measures the per-tick cost of the dormant world: 10k
-// idle monsters and no players in play — the common steady state. The dormancy
-// gate (playerNear) must keep this to microseconds; without it every mob would
-// run the 81-cell FindEnemyFromView scan each second.
+// BenchmarkTickIdle10k mede o custo por tick do mundo dormente: 10k
+// criaturas ociosas e nenhum jogador em jogo — o estado estacionário comum. O gate de
+// dormência (playerNear) precisa manter isto em microssegundos; sem ele toda criatura
+// rodaria a varredura FindEnemyFromView de 81 células a cada segundo.
 func BenchmarkTickIdle10k(b *testing.B) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
@@ -601,8 +601,8 @@ func BenchmarkTickIdle10k(b *testing.B) {
 	}
 }
 
-// heightsWith builds a flat dim×dim walkability grid with the given cells
-// blocked (route.Blocked), mirroring a baked HeightMap for pathfinding tests.
+// heightsWith monta uma grade de caminhabilidade plana dim×dim com as células
+// informadas bloqueadas (route.Blocked), espelhando um HeightMap embutido para testes de pathfinding.
 func heightsWith(dim int, blocked ...[2]int16) *content.Grid {
 	g := &content.Grid{Dim: dim, Data: make([]byte, dim*dim)}
 	for _, c := range blocked {
@@ -611,18 +611,18 @@ func heightsWith(dim int, blocked ...[2]int16) *content.Grid {
 	return g
 }
 
-// TestMobRoutesAroundObstacle: with the height grid wired (PROD shape), a mob
-// chasing past a single blocked cell must slide around it (BASE_GetRoute's
-// deviation branches) — never stepping onto the wall — and still reach and
-// attack the player.
+// TestMobRoutesAroundObstacle: com a grade de altura ligada (forma de PROD), uma criatura
+// perseguindo além de uma única célula bloqueada precisa desviar dela (os ramos de
+// desvio do BASE_GetRoute) — nunca pisando na parede — e ainda alcançar e
+// atacar o jogador.
 func TestMobRoutesAroundObstacle(t *testing.T) {
-	h := heightsWith(16, [2]int16{7, 5}) // wall between mob (8,5) and player (5,5)
+	h := heightsWith(16, [2]int16{7, 5}) // parede entre a criatura (8,5) e o jogador (5,5)
 	addr, stop := startServerMobAIRouted(t, combatDB(), 16, aggressiveMob(), 8, 5, h)
 	defer stop()
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5)
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5)
 
 	for i := 0; i < 40; i++ {
 		h2, payload, ok := readMaybeHeader(t, c)
@@ -644,17 +644,17 @@ func TestMobRoutesAroundObstacle(t *testing.T) {
 				t.Fatal(err)
 			}
 			if len(atk.Dam) > 0 && atk.Dam[0].TargetID == 1 {
-				return // success: routed around and reached the player
+				return // sucesso: desviou e alcançou o jogador
 			}
 		}
 	}
 	t.Fatal("mob never reached the player around the obstacle")
 }
 
-// TestMobHeldByWall: greedy line-walk is NOT A* — a full wall between mob and
-// player must hold the mob on its side (stuck, per Route[0]==0), never clipping
-// through, never attacking. (Compare TestMobRoutesAroundObstacle, where a
-// single-cell obstacle IS avoidable.)
+// TestMobHeldByWall: a caminhada gulosa em linha NÃO é A* — uma parede inteira entre a criatura e o
+// jogador precisa segurar a criatura do seu lado (presa, conforme Route[0]==0), nunca atravessando
+// a parede, nunca atacando. (Compare com TestMobRoutesAroundObstacle, onde um
+// obstáculo de uma célula É evitável.)
 func TestMobHeldByWall(t *testing.T) {
 	var wall [][2]int16
 	for y := int16(0); y < 16; y++ {
@@ -665,7 +665,7 @@ func TestMobHeldByWall(t *testing.T) {
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5), west of the wall
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5), a oeste da parede
 
 	for i := 0; i < 6; i++ {
 		h2, payload, ok := readMaybeHeader(t, c)
@@ -688,8 +688,8 @@ func TestMobHeldByWall(t *testing.T) {
 	}
 }
 
-// TestSetSegment pins the SetSegment port (CMob.cpp:494-620) per RouteType, on
-// the common Start/Dest-only list (waypoints [0] and [4], middles zero-skipped).
+// TestSetSegment fixa o port de SetSegment (CMob.cpp:494-620) por RouteType, sobre
+// a lista comum só Start/Dest (waypoints [0] e [4], meios pulados por zero).
 func TestSetSegment(t *testing.T) {
 	base := func() *world.Entity {
 		return &world.Entity{
@@ -719,7 +719,7 @@ func TestSetSegment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := base()
 			e.RouteType, e.SegProgress, e.SegDir = tt.routeType, tt.progress, tt.dir
-			e.WaitTicks = 9 // must be cleared on every pick
+			e.WaitTicks = 9 // precisa ser limpo em toda escolha
 			ret := setSegment(e)
 			if ret != tt.wantRet || e.SegProgress != tt.wantProg || e.SegDir != tt.wantDir ||
 				e.SegmentX != tt.wantSegX || e.WaitTicks != 0 {
@@ -731,10 +731,10 @@ func TestSetSegment(t *testing.T) {
 	}
 }
 
-// TestMobRoamPatrolAndWait drives mobRoam tick-by-tick on a non-started world:
-// the mob pauses SegWait ticks at its home waypoint, then walks to Dest, and
-// ping-pongs back (RouteType 2) — the StandingByProcessor arrival/wait/advance
-// sequence (CMob.cpp:170-227).
+// TestMobRoamPatrolAndWait conduz mobRoam tick a tick num mundo não iniciado:
+// a criatura pausa SegWait ticks no waypoint natal, depois caminha até Dest, e
+// faz ping-pong de volta (RouteType 2) — a sequência de chegada/espera/avanço do
+// StandingByProcessor (CMob.cpp:170-227).
 func TestMobRoamPatrolAndWait(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
@@ -752,38 +752,38 @@ func TestMobRoamPatrolAndWait(t *testing.T) {
 	})
 	e := w.Entity(id)
 
-	// The spawn pre-arms the home pause (WaitTicks = SegWait[0] = 2, the legacy
-	// WaitSec = SegmentWait[0] at generate, Server.cpp:3665).
+	// O spawn pré-arma a pausa natal (WaitTicks = SegWait[0] = 2, o legado
+	// WaitSec = SegmentWait[0] no generate, Server.cpp:3665).
 	if e.WaitTicks != 2 {
 		t.Fatalf("spawn WaitTicks = %d, want 2 (pre-armed home pause)", e.WaitTicks)
 	}
-	// Tick 1: at home, counting the pause — no movement.
+	// Tick 1: na base, contando a pausa — sem movimento.
 	d.mobRoam(w, id, e)
 	if e.X != 5 || e.WaitTicks != 1 {
 		t.Fatalf("tick1: pos/wait = (%d,%d)/%d, want (5,5)/1", e.X, e.Y, e.WaitTicks)
 	}
-	// Tick 2: pause over → advance to Dest and take the first step east.
+	// Tick 2: pausa acabou → avançar até Dest e dar o primeiro passo a leste.
 	d.mobRoam(w, id, e)
 	if e.SegmentX != 9 || e.X != 6 {
 		t.Fatalf("tick2: segX/pos = %d/(%d,%d), want 9/(6,5) (walking to Dest)", e.SegmentX, e.X, e.Y)
 	}
-	// Walk the rest of the way to Dest.
+	// Caminhar o resto até Dest.
 	for i := 0; i < 3; i++ {
 		d.mobRoam(w, id, e)
 	}
 	if e.X != 9 || e.Y != 5 {
 		t.Fatalf("pos after walk = (%d,%d), want Dest (9,5)", e.X, e.Y)
 	}
-	// Arrived, no Dest wait: ping-pong back toward home on the next tick.
+	// Chegou, sem espera em Dest: ping-pong de volta para a base no tick seguinte.
 	d.mobRoam(w, id, e)
 	if e.SegmentX != 5 || e.X != 8 || e.SegDir != 1 {
 		t.Fatalf("turnaround: segX/pos/dir = %d/(%d,%d)/%d, want 5/(8,5)/1", e.SegmentX, e.X, e.Y, e.SegDir)
 	}
 }
 
-// TestRouteType3DespawnsAtFinalWaypoint pins the StandingByProcessor RT3 branch:
-// when a route-3 mob reaches waypoint 4, it returns 0x10000 and the timer calls
-// DeleteMob(index, 3). It does not ping-pong back home and become idle.
+// TestRouteType3DespawnsAtFinalWaypoint fixa o ramo RT3 do StandingByProcessor:
+// quando uma criatura de rota 3 chega ao waypoint 4, ela devolve 0x10000 e o timer chama
+// DeleteMob(index, 3). Ela não faz ping-pong de volta para a base e não fica ociosa.
 func TestRouteType3DespawnsAtFinalWaypoint(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
@@ -813,9 +813,9 @@ func TestRouteType3DespawnsAtFinalWaypoint(t *testing.T) {
 	}
 }
 
-// TestMobReturnsHomeAfterCombat: a routeless mob displaced from its anchor (e.g.
-// its target died elsewhere) walks back — the emergent MOB_RETURN (the original
-// BattleProcessor code 16 → GetNextPos(1)).
+// TestMobReturnsHomeAfterCombat: uma criatura sem rota deslocada da âncora (ex.:
+// seu alvo morreu em outro lugar) caminha de volta — o MOB_RETURN emergente (o
+// código 16 do BattleProcessor original → GetNextPos(1)).
 func TestMobReturnsHomeAfterCombat(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
@@ -824,7 +824,7 @@ func TestMobReturnsHomeAfterCombat(t *testing.T) {
 
 	id := w.SpawnMob(aggressiveMob(), 5, 5)
 	e := w.Entity(id)
-	w.SetEntityPos(id, 9, 8) // combat dragged it away
+	w.SetEntityPos(id, 9, 8) // o combate a arrastou para longe
 
 	for i := 0; i < 10 && (e.X != 5 || e.Y != 5); i++ {
 		d.mobRoam(w, id, e)
@@ -834,13 +834,13 @@ func TestMobReturnsHomeAfterCombat(t *testing.T) {
 	}
 }
 
-// TestPatrolVisibleToPlayer is the e2e wiring check: a friendly-clan patrol near
-// a player must be seen MOVING (MSG_Action broadcasts reaching Dest and coming
-// back) — i.e. Tick routes idle mobs through mobRoam and the roamRadius gate
-// wakes patrols near players.
+// TestPatrolVisibleToPlayer é a checagem de ligação e2e: uma patrulha de clã amistoso perto
+// de um jogador precisa ser vista SE MOVENDO (MSG_Action transmitindo chegada a Dest e volta)
+// — ou seja, o Tick roteia criaturas ociosas pelo mobRoam e o gate roamRadius
+// acorda patrulhas perto de jogadores.
 func TestPatrolVisibleToPlayer(t *testing.T) {
 	tmpl := aggressiveMob()
-	tmpl[16] = 2 // friendly to players: patrols instead of attacking
+	tmpl[16] = 2 // amistoso a jogadores: patrulha em vez de atacar
 	addr, stop := startServerMobAISpawn(t, combatDB(), 16, world.MobSpawn{
 		Template: tmpl,
 		X:        8, Y: 5,
@@ -853,7 +853,7 @@ func TestPatrolVisibleToPlayer(t *testing.T) {
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5): inside roamRadius
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5): dentro do roamRadius
 
 	reachedDest, cameBack := false, false
 	for i := 0; i < 60 && !cameBack; i++ {
@@ -869,7 +869,7 @@ func TestPatrolVisibleToPlayer(t *testing.T) {
 			reachedDest = true
 		}
 		if reachedDest && mv.TargetX < mv.PosX {
-			cameBack = true // ping-pong: now walking west again
+			cameBack = true // ping-pong: agora caminhando a oeste de novo
 		}
 	}
 	if !reachedDest || !cameBack {
@@ -877,8 +877,8 @@ func TestPatrolVisibleToPlayer(t *testing.T) {
 	}
 }
 
-// groupWorld builds a non-started world with one registered generator (leader +
-// 2 followers, hostile clan 5) and generates its group, returning the ids.
+// groupWorld monta um mundo não iniciado com um gerador registrado (líder +
+// 2 seguidores, clã hostil 5) e gera seu grupo, devolvendo os ids.
 func groupWorld(t *testing.T) (*Dispatcher, *world.World, []int) {
 	t.Helper()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -898,16 +898,16 @@ func groupWorld(t *testing.T) (*Dispatcher, *world.World, []int) {
 	return d, w, ids
 }
 
-// TestSetGroupBattleDragsGroup: striking one follower puts the whole spawn
-// group on the attacker — SetBattle (Server.cpp:8013) plus the PartyList
-// propagation (ProcessSecMinTimer.cpp:1882-1929). A member already fighting
-// someone else keeps its selected target but records the new enemy.
+// TestSetGroupBattleDragsGroup: acertar um seguidor põe todo o grupo de spawn
+// no atacante — SetBattle (Server.cpp:8013) mais a propagação por PartyList
+// (ProcessSecMinTimer.cpp:1882-1929). Um membro já lutando
+// com outro alguém mantém seu alvo selecionado mas registra o novo inimigo.
 func TestSetGroupBattleDragsGroup(t *testing.T) {
 	_, w, ids := groupWorld(t)
 	leader, f1, f2 := w.Entity(ids[0]), w.Entity(ids[1]), w.Entity(ids[2])
-	f2.Target = 7 // already engaged elsewhere — must not be re-dragged
+	f2.Target = 7 // já engajado em outro lugar — não pode ser arrastado de novo
 
-	attacker := &world.Entity{ID: 3, X: 22, Y: 20} // a player next to the group
+	attacker := &world.Entity{ID: 3, X: 22, Y: 20} // um jogador perto do grupo
 	setGroupBattle(w, ids[1], f1, attacker)
 
 	if f1.Target != 3 || f1.Mode != world.MobCombat {
@@ -923,7 +923,7 @@ func TestSetGroupBattleDragsGroup(t *testing.T) {
 		t.Fatalf("engaged follower EnemyList = %v, want attacker 3 recorded", f2.EnemyList)
 	}
 
-	// Out of the ±23 drag box nobody joins.
+	// Fora da caixa de arrasto de ±23 ninguém entra.
 	leader.Target = 0
 	far := &world.Entity{ID: 4, X: 60, Y: 60}
 	setGroupBattle(w, ids[1], f1, far)
@@ -1011,7 +1011,7 @@ func TestTickPromotesEnemyListWithoutCurrentTarget(t *testing.T) {
 func kefraBossMob(dex uint16) []byte {
 	b := aggressiveMob()
 	copy(b[0:16], "Kefra")
-	b[16] = 7 // hostile to clan 5 mobs, player-friendly like guards
+	b[16] = 7 // hostil a criaturas do clã 5, amistoso a jogadores como os guardas
 	binary.LittleEndian.PutUint16(b[92+36:], dex)
 	return b
 }
@@ -1021,8 +1021,8 @@ func TestKefraBossEnemySelectionUsesHalfGrid(t *testing.T) {
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 64}, log, nil, d.Handle)
 	kefraID := w.SpawnMobAt(world.MobSpawn{Template: kefraBossMob(99), X: 10, Y: 10, GenIndex: world.KefraBossGenIndex})
-	nearID := w.SpawnMobAt(world.MobSpawn{Template: aggressiveMob(), X: 25, Y: 10, GenIndex: -1}) // distance 15
-	farID := w.SpawnMobAt(world.MobSpawn{Template: aggressiveMob(), X: 27, Y: 10, GenIndex: -1})  // distance 17
+	nearID := w.SpawnMobAt(world.MobSpawn{Template: aggressiveMob(), X: 25, Y: 10, GenIndex: -1}) // distância 15
+	farID := w.SpawnMobAt(world.MobSpawn{Template: aggressiveMob(), X: 27, Y: 10, GenIndex: -1})  // distância 17
 	kefra := w.Entity(kefraID)
 
 	addEnemyList(kefra, w.Entity(nearID))
@@ -1095,11 +1095,11 @@ func enemyListContains(e *world.Entity, target int) bool {
 	return false
 }
 
-// TestFollowerDoesNotSelfAggro (e2e): a hostile FOLLOWER adjacent to the player
-// must stay passive when its leader is out of range — followers never run the
-// aggro scan themselves (StandingBy only scans for leaders, CMob.cpp:158); they
-// only join via the group drag. Compare TestMobAttacksAdjacentPlayer: the same
-// adjacent mob WITHOUT a leader link does attack.
+// TestFollowerDoesNotSelfAggro (e2e): um SEGUIDOR hostil adjacente ao jogador
+// precisa ficar passivo quando seu líder está fora de alcance — seguidores nunca rodam a
+// varredura de aggro eles mesmos (StandingBy só varre para líderes, CMob.cpp:158); eles
+// só entram pelo arrasto de grupo. Compare com TestMobAttacksAdjacentPlayer: a mesma
+// criatura adjacente SEM vínculo de líder ataca.
 func TestFollowerDoesNotSelfAggro(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -1110,9 +1110,9 @@ func TestFollowerDoesNotSelfAggro(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 64, Now: clock.Load}, log, combatDB(), d.Handle)
-	leaderID := w.SpawnMob(aggressiveMob(), 40, 40) // far outside the player's aggro window
-	followerID := w.SpawnMob(aggressiveMob(), 6, 5) // adjacent to the player
-	w.Entity(followerID).Leader = leaderID          // the GenerateMob group link
+	leaderID := w.SpawnMob(aggressiveMob(), 40, 40) // bem fora da janela de aggro do jogador
+	followerID := w.SpawnMob(aggressiveMob(), 6, 5) // adjacente ao jogador
+	w.Entity(followerID).Leader = leaderID          // o vínculo de grupo do GenerateMob
 	w.SetTickHandler(10*time.Millisecond, d.Tick)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -1124,7 +1124,7 @@ func TestFollowerDoesNotSelfAggro(t *testing.T) {
 
 	c := enterWorld(t, ln.Addr().String())
 	defer c.Close()
-	actionFrame(t, c, serverTime, 5) // pin at (5,5), adjacent to the follower
+	actionFrame(t, c, serverTime, 5) // fixar em (5,5), adjacente ao seguidor
 
 	for i := 0; i < 3; i++ {
 		ty, _, ok := readMaybe(t, c)
@@ -1134,11 +1134,11 @@ func TestFollowerDoesNotSelfAggro(t *testing.T) {
 	}
 }
 
-// TestGroupFocusesAttacker (e2e, PROD wiring): the world is populated through a
-// registered generator (RegisterGenerators + GenerateMob, exactly like
-// spawnNPCs), the player strikes ONE follower, and the whole spawn group joins
-// the fight — the player receives MSG_Attack from at least two distinct mobs
-// (the struck follower plus a dragged group mate).
+// TestGroupFocusesAttacker (e2e, ligação de PROD): o mundo é populado por um
+// gerador registrado (RegisterGenerators + GenerateMob, exatamente como o
+// spawnNPCs), o jogador acerta UM seguidor, e todo o grupo de spawn entra
+// na luta — o jogador recebe MSG_Attack de pelo menos duas criaturas distintas
+// (o seguidor atingido mais um companheiro arrastado).
 func TestGroupFocusesAttacker(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -1150,7 +1150,7 @@ func TestGroupFocusesAttacker(t *testing.T) {
 	d := New(Config{Log: log})
 	w := world.New(world.Config{GridDim: 64, Now: clock.Load}, log, combatDB(), d.Handle)
 	tmpl := aggressiveMob()
-	tmpl[16] = 2 // friendly clan: nobody aggros first — only the retaliation drag
+	tmpl[16] = 2 // clã amistoso: ninguém dá aggro primeiro — só o arrasto de retaliação
 	gen := &world.Generator{
 		MinuteGenerate: -1, MinGroup: 2, MaxGroup: 2, MaxNumMob: 9,
 		SegX: [5]int16{20}, SegY: [5]int16{20},
@@ -1161,9 +1161,9 @@ func TestGroupFocusesAttacker(t *testing.T) {
 	if len(ids) != 3 {
 		t.Fatalf("generated %d mobs, want 3", len(ids))
 	}
-	// Strike the LEADER: the followers spawn on adjacent cells (emptyCellNear
-	// rings), so the dragged ones can hit without pathing around the victim (the
-	// blind fallback step has no avoidance and would stall behind it).
+	// Acertar o LÍDER: os seguidores nascem em células adjacentes (anéis do
+	// emptyCellNear), então os arrastados conseguem acertar sem traçar rota em volta da vítima (o
+	// passo de fallback cego não tem desvio e travaria atrás dela).
 	victim := w.Entity(ids[0])
 	w.SetTickHandler(10*time.Millisecond, d.Tick)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1176,8 +1176,8 @@ func TestGroupFocusesAttacker(t *testing.T) {
 
 	c := enterWorld(t, ln.Addr().String())
 	defer c.Close()
-	actionFrameAt(t, c, serverTime, victim.X-1, victim.Y) // adjacent to the leader
-	attackFrame(t, c, serverTime, ids[0], 0)              // strike it
+	actionFrameAt(t, c, serverTime, victim.X-1, victim.Y) // adjacente ao líder
+	attackFrame(t, c, serverTime, ids[0], 0)              // acertá-lo
 
 	attackers := map[uint16]bool{}
 	for i := 0; i < 40 && len(attackers) < 2; i++ {
@@ -1189,7 +1189,7 @@ func TestGroupFocusesAttacker(t *testing.T) {
 		if err := body.Decode(payload); err != nil {
 			t.Fatal(err)
 		}
-		// Count mob attackers striking the player (skip the echo of our own hit).
+		// Contar criaturas atacando o jogador (pular o eco do nosso próprio golpe).
 		if int(body.AttackerID) >= world.MaxUser &&
 			len(body.Dam) > 0 && body.Dam[0].TargetID == 1 {
 			attackers[body.AttackerID] = true
@@ -1200,9 +1200,9 @@ func TestGroupFocusesAttacker(t *testing.T) {
 	}
 }
 
-// TestGenerateMobsTimer: the minute timer fires a block on its
-// `minute % MinuteGenerate == idx % MinuteGenerate` phase
-// (ProcessSecMinTimer.cpp:2727-2735) and respects MaxNumMob saturation.
+// TestGenerateMobsTimer: o timer de minuto dispara um bloco na sua fase
+// `minute % MinuteGenerate == idx % MinuteGenerate`
+// (ProcessSecMinTimer.cpp:2727-2735) e respeita a saturação de MaxNumMob.
 func TestGenerateMobsTimer(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := New(Config{Log: log})
@@ -1215,33 +1215,33 @@ func TestGenerateMobsTimer(t *testing.T) {
 	}
 	w.RegisterGenerators([]*world.Generator{g})
 
-	d.tickCount = 60 // minute 1: 1%2 != 0%2 → no fire
+	d.tickCount = 60 // minuto 1: 1%2 != 0%2 → sem disparo
 	d.generateMobs(w)
 	if g.CurrentNumMob != 0 {
 		t.Fatalf("fired off-phase: CurrentNumMob = %d, want 0", g.CurrentNumMob)
 	}
-	d.tickCount = 120 // minute 2: 2%2 == 0%2 → fire (leader-only group)
+	d.tickCount = 120 // minuto 2: 2%2 == 0%2 → dispara (grupo só com líder)
 	d.generateMobs(w)
 	if g.CurrentNumMob != 1 {
 		t.Fatalf("minute-2 fire: CurrentNumMob = %d, want 1", g.CurrentNumMob)
 	}
-	d.tickCount = 121 // not a minute boundary → no fire
+	d.tickCount = 121 // não é fronteira de minuto → sem disparo
 	d.generateMobs(w)
 	d.tickCount = 240
 	d.generateMobs(w)
 	if g.CurrentNumMob != 2 {
 		t.Fatalf("minute-4 fire: CurrentNumMob = %d, want 2", g.CurrentNumMob)
 	}
-	d.tickCount = 360 // saturated (2 >= MaxNumMob)
+	d.tickCount = 360 // saturado (2 >= MaxNumMob)
 	d.generateMobs(w)
 	if g.CurrentNumMob != 2 {
 		t.Fatalf("saturated fire: CurrentNumMob = %d, want 2", g.CurrentNumMob)
 	}
 }
 
-// TestApplyHp covers the ApplyHp port (Server.cpp:9530): the live bar closes on the
-// ReqHp target in steps of at most applyCasting, ReqHp is a target (never spent),
-// and an over-max request is clamped to the live effective max.
+// TestApplyHp cobre o port de ApplyHp (Server.cpp:9530): a barra viva fecha no
+// alvo ReqHp em passos de no máximo applyCasting, ReqHp é um alvo (nunca gasto),
+// e um pedido acima do máximo é limitado ao máximo efetivo vivo.
 func TestApplyHp(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1272,8 +1272,8 @@ func TestApplyHp(t *testing.T) {
 	}
 }
 
-// TestApplyHpRampsOverTicks: a 5000 HP debt lands over successive calls rather than
-// at once — this is what makes a potion visibly ramp instead of snapping.
+// TestApplyHpRampsOverTicks: uma dívida de 5000 HP entra em chamadas sucessivas em vez de
+// de uma vez — é isso que faz uma poção subir visivelmente em vez de saltar.
 func TestApplyHpRampsOverTicks(t *testing.T) {
 	e := &world.Entity{HP: 0, MaxHP: 10000}
 	s := &world.Session{Conn: 1, ReqHp: 5000}
@@ -1290,9 +1290,9 @@ func TestApplyHpRampsOverTicks(t *testing.T) {
 	}
 }
 
-// TestDamageReqHp: a landed hit must lower the heal target, or the next applyHp
-// would undo the damage and make the victim near-immune. A potion still in flight
-// keeps whatever debt survives the hit (_MSG_Attack.cpp:1638-1642).
+// TestDamageReqHp: um golpe que entra precisa baixar o alvo de cura, senão o próximo applyHp
+// desfaria o dano e deixaria a vítima quase imune. Uma poção ainda em curso
+// mantém a dívida que sobrevive ao golpe (_MSG_Attack.cpp:1638-1642).
 func TestDamageReqHp(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1306,14 +1306,14 @@ func TestDamageReqHp(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// HP is already decremented by the caller before damageReqHp runs.
+			// O HP já foi decrementado pelo chamador antes de damageReqHp rodar.
 			e := &world.Entity{HP: tt.hp, MaxHP: tt.maxHP}
 			s := &world.Session{Conn: 1, ReqHp: tt.req}
 			damageReqHp(s, e, tt.dmg)
 			if s.ReqHp != tt.wantReq {
 				t.Errorf("ReqHp = %d, want %d", s.ReqHp, tt.wantReq)
 			}
-			// The invariant that matters: the tick must not resurrect the damage.
+			// A invariante que importa: o tick não pode ressuscitar o dano.
 			if s.ReqHp < e.HP {
 				t.Errorf("ReqHp %d fell below HP %d — setReqHp must floor it", s.ReqHp, e.HP)
 			}
@@ -1321,12 +1321,12 @@ func TestDamageReqHp(t *testing.T) {
 	}
 }
 
-// TestDamageThenTickDoesNotHealBack is the invariant in one place: after a hit, the
-// regen tick must not restore the lost HP.
+// TestDamageThenTickDoesNotHealBack é a invariante num só lugar: depois de um golpe, o
+// tick de regen não pode restaurar o HP perdido.
 func TestDamageThenTickDoesNotHealBack(t *testing.T) {
 	e := &world.Entity{HP: 1000, MaxHP: 1000}
 	s := &world.Session{Conn: 1, ReqHp: 1000}
-	e.HP -= 300 // a hit lands
+	e.HP -= 300 // um golpe entra
 	damageReqHp(s, e, 300)
 	if applyHp(s, e) {
 		t.Error("applyHp healed right after a hit — the victim would be near-immune")
@@ -1336,7 +1336,7 @@ func TestDamageThenTickDoesNotHealBack(t *testing.T) {
 	}
 }
 
-// TestApplyMpCapsAndClamps mirrors TestApplyHp for the mana bar (Server.cpp:9564).
+// TestApplyMpCapsAndClamps espelha TestApplyHp para a barra de mana (Server.cpp:9564).
 func TestApplyMpCapsAndClamps(t *testing.T) {
 	e := &world.Entity{MP: 0, MaxMP: 10000}
 	s := &world.Session{Conn: 1, ReqMp: 9999}
@@ -1356,21 +1356,21 @@ func TestApplyMpCapsAndClamps(t *testing.T) {
 	}
 }
 
-// TestMobIgnoresPlayerInCity is the respawn-safety fix: a mob spawned right next
-// to a player who is standing inside a city must NOT attack — the town is a safe
-// zone where a revived player recovers. (Compare TestMobAttacksAdjacentPlayer,
-// where the same setup outside a city does produce an attack.)
+// TestMobIgnoresPlayerInCity é a correção de segurança do respawn: uma criatura nascida logo
+// ao lado de um jogador que está dentro de uma cidade NÃO pode atacar — a cidade é uma zona
+// segura onde um jogador revivido se recupera. (Compare com TestMobAttacksAdjacentPlayer,
+// onde a mesma montagem fora de uma cidade produz ataque.)
 func TestMobIgnoresPlayerInCity(t *testing.T) {
-	// Armia's rectangle is (2052,2052)-(2171,2163); use a grid that fits it.
+	// O retângulo de Armia é (2052,2052)-(2171,2163); use uma grade que caiba nele.
 	addr, stop := startServerMobAI(t, combatDB(), 2200, 2090, 2095)
 	defer stop()
 
 	c := enterWorld(t, addr)
 	defer c.Close()
-	actionFrameAt(t, c, serverTime, 2089, 2095) // adjacent to the mob, inside Armia
+	actionFrameAt(t, c, serverTime, 2089, 2095) // adjacente à criatura, dentro de Armia
 
-	// With a 10ms tick a buggy mob would attack within ~50ms; a few reads (≈0.9s of
-	// timeout) is a confident negative.
+	// Com tick de 10ms uma criatura com bug atacaria em ~50ms; algumas leituras (≈0,9s de
+	// timeout) são um negativo confiável.
 	for i := 0; i < 3; i++ {
 		ty, _, ok := readMaybe(t, c)
 		if ok && ty == protocol.MsgAttack {

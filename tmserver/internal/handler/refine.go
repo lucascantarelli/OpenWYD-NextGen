@@ -6,8 +6,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// The refine dusts, classified (like every _MSG_UseItem action) by the source
-// item's EF_VOLATILE rather than by its index. OriLacto = Vol-4
+// As poeiras de refino, classificadas (como toda ação de _MSG_UseItem) pelo
+// EF_VOLATILE do item de origem e não pelo índice. OriLacto = Vol-4
 // (_MSG_UseItem.cpp:849).
 const (
 	volDustOri = 4 // Poeira de Oriharucon (412)
@@ -15,42 +15,42 @@ const (
 )
 
 const (
-	// itemLacto100 (Lactolerium_100) carries EF_VOLATILE 5 like an ordinary Lac
-	// dust but forces the Âmago row, a flat 100% (_MSG_UseItem.cpp:850).
+	// itemLacto100 (Lactolerium_100) carrega EF_VOLATILE 5 como uma poeira Lac
+	// comum mas força a linha do Âmago, um 100% fixo (_MSG_UseItem.cpp:850).
 	itemLacto100 = 4141
-	// item769 is capped at +9 by name (_MSG_UseItem.cpp:802).
+	// item769 tem teto +9 por nome (_MSG_UseItem.cpp:802).
 	item769 = 769
 
-	// The ceilings (Ori +6, Lac +9, the +10 gem step and the +11 wall) used to be
-	// constants here. They now live in Common/Settings/RefineRate.txt and in the
-	// moderator overlay as content.RefinePolicy (QA 05/11) so a moderator can set
-	// how far each dust refines without a rebuild. Only the pity rule is still
-	// code: it is a quirk of the roll, not a tunable.
-	pityOriMaxLevel = 5 // Ori accrues pity only up to +5 (_MSG_UseItem.cpp:943)
+	// Os tetos (Ori +6, Lac +9, o passo da gema +10 e a muralha +11) costumavam ser
+	// constantes aqui. Agora vivem em Common/Settings/RefineRate.txt e no
+	// overlay do moderador como content.RefinePolicy (QA 05/11) para um moderador poder definir
+	// até onde cada poeira refina sem rebuild. Só a regra de piedade continua em
+	// código: é uma peculiaridade do sorteio, não um ajustável.
+	pityOriMaxLevel = 5 // Ori acumula piedade só até +5 (_MSG_UseItem.cpp:943)
 
-	// refineRollModulo is the dust roll: a plain rand()%100
-	// (_MSG_UseItem.cpp:851). NOT combine.Roll's rand()%115 with the -15 fold —
-	// the two paths use different distributions.
+	// refineRollModulo é o sorteio da poeira: um simples rand()%100
+	// (_MSG_UseItem.cpp:851). NÃO o rand()%115 com o desconto de -15 do combine.Roll —
+	// os dois caminhos usam distribuições diferentes.
 	refineRollModulo = 100
-	// pityRollModulo: rand()%4 <= 2, a 3-in-4 chance to accrue pity on a failure
+	// pityRollModulo: rand()%4 <= 2, chance de 3 em 4 de acumular piedade numa falha
 	// (_MSG_UseItem.cpp:943).
 	pityRollModulo = 4
 	pityRollMax    = 2
 )
 
-// Mount eggs (2300..2329) hatch into their mount at sIndex+30 when refined.
+// Ovos de montaria (2300..2329) chocam na montaria em sIndex+30 quando refinados.
 const (
 	eggLo       = 2300
 	eggHi       = 2330
 	eggHatchAdd = 30
-	// eggIncuDelayBase is the cooldown stamped on a successful egg refine:
+	// eggIncuDelayBase é o cooldown marcado num refino de ovo bem-sucedido:
 	// rand()%4 + 6 (_MSG_UseItem.cpp:899).
 	eggIncuDelayBase = 6
-	// incuLevelExempt: the incubation gate only applies below level 999
+	// incuLevelExempt: o gate de incubação só se aplica abaixo do nível 999
 	// (_MSG_UseItem.cpp:842).
 	incuLevelExempt = 999
 
-	// A freshly hatched mount reinterprets its effect slots as mount data
+	// Uma montaria recém-chocada reinterpreta seus slots de efeito como dados de montaria
 	// (BASE_GetItemAbility, Basedef.cpp:1758-1770): stEffect[0].sValue = MOUNTHP,
 	// [1].cEffect = MOUNTSANC, [1].cValue = MOUNTLIFE, [2].cEffect = MOUNTFEED,
 	// [2].cValue = MOUNTKILL.
@@ -62,20 +62,20 @@ const (
 	hatchLifeSpan  = 20
 )
 
-// Effect ids the refine path gates on (ItemEffect.h).
+// Ids de efeito que o caminho de refino condiciona (ItemEffect.h).
 const (
-	efNoSanc    = 126 // EF_NOSANC: this item can never be refined
-	efIncubate  = 78  // EF_INCUBATE: the refine level an egg hatches at
-	efIncuDelay = 84  // EF_INCUDELAY: an egg's cooldown between refine attempts
+	efNoSanc    = 126 // EF_NOSANC: este item nunca pode ser refinado
+	efIncubate  = 78  // EF_INCUBATE: o nível de refino em que um ovo choca
+	efIncuDelay = 84  // EF_INCUDELAY: o cooldown de um ovo entre tentativas de refino
 )
 
 func isEgg(it world.Item) bool { return it.Index >= eggLo && it.Index < eggHi }
 
-// Tintura items (3397-3406) don't refine — a dust converts them straight into
-// the matching Feijão Mágico (3407-3416 = tintura + 10, mirroring the color
-// order useMagicBean's color math already relies on, item.go:1072). This must
-// run before refine.Bootstrap would plant a bogus EF_SANC pair into a fresh
-// tintura's zeroed effect slots (issue #130).
+// Itens Tintura (3397-3406) não refinam — uma poeira os converte direto no
+// Feijão Mágico correspondente (3407-3416 = tintura + 10, espelhando a ordem
+// de cores que a matemática de cor do useMagicBean já depende, item.go:1072). Isto precisa
+// rodar antes de refine.Bootstrap plantar um par EF_SANC falso nos slots de efeito
+// zerados de uma tintura nova (issue #130).
 const (
 	tinturaLo = 3397 // Tintura_Azul
 	tinturaHi = 3406 // Tintura_Azul_Claro
@@ -83,17 +83,17 @@ const (
 
 func isTintura(it world.Item) bool { return it.Index >= tinturaLo && it.Index <= tinturaHi }
 
-// itemInstanceAbility sums ONLY an item's instance effects, which is what
-// BASE_GetBonusItemAbility does (Basedef.cpp:2048) — unlike itemAbility (=
-// BASE_GetItemAbility) it never reads the catalog.
+// itemInstanceAbility soma SOMENTE os efeitos de instância de um item, que é o que
+// BASE_GetBonusItemAbility faz (Basedef.cpp:2048) — diferentemente de itemAbility (=
+// BASE_GetItemAbility) ele nunca lê o catálogo.
 //
-// Only valid for the effects BASE_GetBonusItemAbility excludes from its
-// `value *= sanc+10` refine scaling (Basedef.cpp:2084). EF_INCUBATE and
-// EF_INCUDELAY, the two this path needs, are both on that exclusion list.
+// Só é válido para os efeitos que BASE_GetBonusItemAbility exclui da sua
+// escala de refino `value *= sanc+10` (Basedef.cpp:2084). EF_INCUBATE e
+// EF_INCUDELAY, os dois que este caminho precisa, estão ambos nessa lista de exclusão.
 //
-// The catalog blindness is load-bearing, not an oversight: an egg's EF_INCUBATE
-// lives in ItemList.csv, so this returns 0 for a fresh egg and the hatch gate
-// `level >= incubate` passes on the first successful refine.
+// A cegueira ao catálogo é estrutural, não um descuido: o EF_INCUBATE de um ovo
+// vive no ItemList.csv, então isto devolve 0 para um ovo novo e o gate de choco
+// `level >= incubate` passa no primeiro refino bem-sucedido.
 func itemInstanceAbility(it world.Item, eff uint8) int {
 	var total int
 	for _, ef := range it.Effects {
@@ -104,28 +104,28 @@ func itemInstanceAbility(it world.Item, eff uint8) int {
 	return total
 }
 
-// putShort writes a raw 16-bit value across an effect pair's two bytes, the way
-// the legacy assigns STRUCT_ITEM's `stEffect[i].sValue` union member on
-// little-endian x86.
+// putShort escreve um valor cru de 16 bits nos dois bytes de um par de efeito, do modo
+// como o legado atribui o membro de união `stEffect[i].sValue` de STRUCT_ITEM em
+// x86 little-endian.
 func putShort(ef *world.Effect, v uint16) {
 	ef.Effect = uint8(v)
 	ef.Value = uint8(v >> 8)
 }
 
-// refineItem is the dust-refine path of _MSG_UseItem (_MSG_UseItem.cpp:153-208
-// and :802-976): dragging a Poeira de Ori (Vol 4) or de Lac (Vol 5) onto an item
-// raises its refine level. The dust is consumed either way; on failure the item
-// itself is never destroyed nor downgraded, it only accrues "pity" that raises
-// the next attempt's odds.
+// refineItem é o caminho de refino com poeira de _MSG_UseItem (_MSG_UseItem.cpp:153-208
+// e :802-976): arrastar uma Poeira de Ori (Vol 4) ou de Lac (Vol 5) sobre um item
+// aumenta seu nível de refino. A poeira é consumida de qualquer modo; na falha o item
+// em si nunca é destruído nem rebaixado, ele só acumula "piedade" que eleva
+// as chances da próxima tentativa.
 //
-// Only the standard-equipment path is ported (issue #103). The legacy's four
-// other dust branches — sealed items (:224), celestial/HC (:385), arch stones
-// (:514) and +10..+14 earrings (:716) — all roll rand()%115 with the -15 fold and
-// destroy or reset the item on failure; they are deferred to their own issues.
+// Só o caminho de equipamento padrão está portado (issue #103). Os quatro
+// outros ramos de poeira do legado — itens selados (:224), celestial/HC (:385), pedras arch
+// (:514) e brincos +10..+14 (:716) — todos sorteiam rand()%115 com o desconto de -15 e
+// destroem ou reiniciam o item na falha; estão adiados para as próprias issues.
 func (d *Dispatcher) refineItem(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, src, vol int) {
 	dst := d.itemSlot(w, s, e, int(body.DestType), int(body.DestPos))
 	if dst == nil || dst.Empty() {
-		return // no such target slot — the legacy just logs and drops the message
+		return // não há slot alvo assim — o legado só loga e descarta a mensagem
 	}
 
 	if isTintura(*dst) {
@@ -133,13 +133,13 @@ func (d *Dispatcher) refineItem(w *world.World, s *world.Session, e *world.Entit
 		return
 	}
 
-	// A dust only refines equipment: a target that is itself a consumable (which
-	// includes dragging a dust onto another dust) is refused (:178).
+	// Uma poeira só refina equipamento: um alvo que é ele mesmo consumível (o que
+	// inclui arrastar uma poeira sobre outra poeira) é recusado (:178).
 	//
-	// The legacy reads EF_VOLATILE with BASE_GetItemAbility (catalog + instance);
-	// this reads the catalog map useItem already classifies the source dust with.
-	// EF_VOLATILE is a catalog property — no minted item carries it as an instance
-	// effect — so the two agree in practice.
+	// O legado lê EF_VOLATILE com BASE_GetItemAbility (catálogo + instância);
+	// aqui se lê o mapa de catálogo com que o useItem já classifica a poeira de origem.
+	// EF_VOLATILE é propriedade de catálogo — nenhum item cunhado a carrega como efeito de
+	// instância — então os dois concordam na prática.
 	if d.itemVolatiles[int(dst.Index)] != 0 {
 		d.refineDustReject(w, s, e, src, refineMessageOnlyEquipment)
 		return
@@ -151,57 +151,57 @@ func (d *Dispatcher) refineItem(w *world.World, s *world.Session, e *world.Entit
 
 	limits := d.refineLimits()
 	level := refine.Level(*dst)
-	// Ori cannot touch an item already at its ceiling (-6 by default, :203).
+	// Ori não toca um item já no seu teto (-6 por padrão, :203).
 	if vol == volDustOri && level >= limits.OriMax {
 		d.refineDustReject(w, s, e, src, refineMessageCantMore)
 		return
 	}
-	// Lac reaches its own ceiling (9) but the +10 step is allowed through as the
-	// one special case (it becomes +11); at HardCap and above the dust path
-	// refuses outright (:802, where the legacy compares against REF_11).
+	// Lac chega ao próprio teto (9) mas o passo +10 é permitido como o
+	// único caso especial (vira +11); em HardCap e acima o caminho da poeira
+	// recusa de imediato (:802, onde o legado compara com REF_11).
 	if level == limits.PLMax || level >= limits.HardCap || (level >= limits.PLMax && dst.Index == item769) {
 		d.refineDustReject(w, s, e, src, refineMessageCantMore)
 		return
 	}
 
-	// Read the pity BEFORE the bootstrap: planting the pair zeroes the slot, and
-	// the legacy reads it first too (:809 before :814), so a failed refine keeps
-	// accruing onto the previous count.
+	// Ler a piedade ANTES do bootstrap: plantar o par zera o slot, e
+	// o legado também a lê primeiro (:809 antes de :814), então um refino falho continua
+	// acumulando sobre a contagem anterior.
 	pity := refine.Pity(*dst)
 
-	// A never-refined item has nowhere to store a level yet. When all three effect
-	// slots hold real effects the legacy refuses to refine the item at all (:814).
+	// Um item nunca refinado não tem onde guardar um nível ainda. Quando os três slots
+	// de efeito têm efeitos reais o legado recusa refinar o item de todo (:814).
 	if level == 0 && !refine.Bootstrap(dst) {
 		d.refineDustReject(w, s, e, src, refineMessageCantMore)
 		return
 	}
 
-	// An egg that failed a previous refine has to sit out its incubation timer,
-	// which RegenMob ticks down while the egg is equipped (:842, regenPlayers).
+	// Um ovo que falhou um refino anterior precisa cumprir seu timer de incubação,
+	// que o RegenMob decrementa enquanto o ovo está equipado (:842, regenPlayers).
 	//
-	// UNVERIFIED: the legacy reads BaseScore.Level here; the Entity only carries
-	// CurrentScore.Level. They differ only via EF_LEVEL gear, never near 999.
+	// UNVERIFIED: o legado lê BaseScore.Level aqui; a Entity só carrega
+	// CurrentScore.Level. Eles diferem só via equipamento EF_LEVEL, nunca perto de 999.
 	if isEgg(*dst) && e.Level < incuLevelExempt && itemInstanceAbility(*dst, efIncuDelay) > 0 {
 		d.refineDustReject(w, s, e, src, refineMessageIncubationWait)
 		return
 	}
 
-	anvil := vol - volDustOri // 0 = Ori, 1 = Lac — also indexes g_pSancGrade
-	// The rate anvil can differ from the grade anvil: Lactolerium_100 forces the
-	// Âmago row for a guaranteed 100%, but still steps the level as a Lac (:850).
+	anvil := vol - volDustOri // 0 = Ori, 1 = Lac — também indexa g_pSancGrade
+	// A bigorna de taxa pode diferir da bigorna de grade: Lactolerium_100 força a
+	// linha do Âmago para um 100% garantido, mas ainda sobe o nível como um Lac (:850).
 	rateAnvil := anvil
 	if e.Carry[src].Index == itemLacto100 {
 		rateAnvil = refine.Amago
 	}
 
-	// Order is parity-critical: the rate is computed BEFORE the roll, and the
-	// grade read after it (:850-853). One rand() on the hot path.
+	// A ordem é crítica para paridade: a taxa é calculada ANTES do sorteio, e a
+	// grade lida depois (:850-853). Um rand() no caminho quente.
 	rate := refine.SuccessRate(d.sancRate, *dst, rateAnvil)
 	roll := w.Rand().Intn(refineRollModulo)
 	grade := d.itemAbility(*dst, efItemLevel)
 
 	t := refineTarget{item: dst, place: int(body.DestType), slot: int(body.DestPos)}
-	// `<=` is inclusive, and a 0 rate always fails despite roll 0 passing it (:855).
+	// `<=` é inclusivo, e uma taxa 0 sempre falha apesar do sorteio 0 passar (:855).
 	if roll <= rate && rate != 0 {
 		d.refineSucceed(w, s, e, t, src, vol, anvil, level, grade)
 		return
@@ -209,10 +209,10 @@ func (d *Dispatcher) refineItem(w *world.World, s *world.Session, e *world.Entit
 	d.refineFail(w, s, e, t, src, anvil, level, pity)
 }
 
-// refineTintura converts a tintura into its matching Feijão Mágico. This is a
-// deterministic conversion, not a success-rate roll — tinturas carry no
-// EF_SANC to roll against, and no legacy source for this branch exists (see
-// game-rules.md §3.6.1); it's a migration design decision, not a port.
+// refineTintura converte uma tintura no Feijão Mágico correspondente. Isto é uma
+// conversão determinística, não um sorteio de taxa de sucesso — tinturas não carregam
+// EF_SANC para sortear, e não existe fonte legada para este ramo (veja
+// game-rules.md §3.6.1); é uma decisão de desenho da migração, não um port.
 func (d *Dispatcher) refineTintura(w *world.World, s *world.Session, e *world.Entity, dst *world.Item, body protocol.MsgUseItemBody, src int) {
 	dst.Index = int16(magicBeanBase + (int(dst.Index) - tinturaLo))
 	d.sendRefineMessage(w, s, refineMessageSuccess)
@@ -221,20 +221,20 @@ func (d *Dispatcher) refineTintura(w *world.World, s *world.Session, e *world.En
 	consumeOneItem(&e.Carry[src])
 }
 
-// refineTarget is the item being refined, together with where it lives so the
-// result can be pushed back to the client.
+// refineTarget é o item sendo refinado, junto com onde ele está para o
+// resultado poder ser empurrado de volta ao cliente.
 type refineTarget struct {
 	item        *world.Item
 	place, slot int
 }
 
-// refineSucceed applies a won roll (_MSG_UseItem.cpp:856-927).
+// refineSucceed aplica um sorteio ganho (_MSG_UseItem.cpp:856-927).
 func (d *Dispatcher) refineSucceed(w *world.World, s *world.Session, e *world.Entity, t refineTarget, src, vol, anvil, level, grade int) {
 	dst := t.item
 
 	limits := d.refineLimits()
 	if level == limits.GemLevel {
-		// +10 → +11, carrying the gem index across (:857).
+		// +10 → +11, carregando o índice da gema junto (:857).
 		refine.Set(dst, limits.GemLevel+1, refine.Gem(*dst))
 	} else {
 		if grade >= 1 && grade <= 5 {
@@ -245,11 +245,11 @@ func (d *Dispatcher) refineSucceed(w *world.World, s *world.Session, e *world.En
 				level = limits.PLMax
 			}
 		} else {
-			// No usable grade → a plain +1. Note the legacy skips BOTH caps on this
-			// branch (:874), so it is the one way past them; reproduced.
+			// Nenhuma grade utilizável → um +1 simples. Note que o legado pula OS DOIS tetos neste
+			// ramo (:874), então é o único jeito de passar deles; reproduzido.
 			level++
 		}
-		refine.Set(dst, level, 0) // a success clears the pity
+		refine.Set(dst, level, 0) // um sucesso limpa a piedade
 	}
 
 	d.refreshScore(e)
@@ -263,19 +263,19 @@ func (d *Dispatcher) refineSucceed(w *world.World, s *world.Session, e *world.En
 	d.sendSlot(w, s, t.place, t.slot, *dst)
 	d.sendRefineMotion(w, s, e.ID, refineMotionSuccess, refineMotionSuccessParm)
 	consumeOneItem(&e.Carry[src])
-	// The dust slot is deliberately NOT re-sent: the client already removed the
-	// item it dragged, and the legacy only echoes the source back on the refusal
-	// paths, to undo that removal.
+	// O slot da poeira deliberadamente NÃO é reenviado: o cliente já removeu o
+	// item que arrastou, e o legado só ecoa a origem nos caminhos
+	// de recusa, para desfazer aquela remoção.
 }
 
-// refineFail applies a lost roll (_MSG_UseItem.cpp:929-974). The item survives
-// untouched — only the dust is spent and the pity counter grows.
+// refineFail aplica um sorteio perdido (_MSG_UseItem.cpp:929-974). O item sobrevive
+// intocado — só a poeira é gasta e o contador de piedade cresce.
 func (d *Dispatcher) refineFail(w *world.World, s *world.Session, e *world.Entity, t refineTarget, src, anvil, level, pity int) {
 	d.sendRefineMessage(w, s, refineMessageFailure)
 	consumeOneItem(&e.Carry[src])
 
 	if w.Rand().Intn(pityRollModulo) <= pityRollMax {
-		// Lac always accrues pity; Ori only up to +5 (:943-949).
+		// Lac sempre acumula piedade; Ori só até +5 (:943-949).
 		if anvil == refine.Lac || (level <= pityOriMaxLevel && anvil == refine.Ori) {
 			pity++
 		}
@@ -283,7 +283,7 @@ func (d *Dispatcher) refineFail(w *world.World, s *world.Session, e *world.Entit
 
 	dst := t.item
 	if isEgg(*dst) {
-		// A failed egg refine starts the incubation cooldown (:951).
+		// Um refino de ovo falho inicia o cooldown de incubação (:951).
 		dst.Effects[2] = world.Effect{Effect: efIncuDelay, Value: uint8(w.Rand().Intn(pityRollModulo))}
 	}
 	if limits := d.refineLimits(); level != limits.GemLevel {
@@ -293,9 +293,9 @@ func (d *Dispatcher) refineFail(w *world.World, s *world.Session, e *world.Entit
 	d.sendRefineFailureMotion(w, s, e)
 }
 
-// hatchEgg is the mount-egg branch inlined in the refine success
-// (_MSG_UseItem.cpp:890-917). It stamps a fresh incubation cooldown and, once the
-// egg's level reaches its EF_INCUBATE threshold, turns it into the mount at
+// hatchEgg é o ramo do ovo de montaria embutido no sucesso do refino
+// (_MSG_UseItem.cpp:890-917). Ele marca um cooldown de incubação novo e, quando o
+// nível do ovo alcança seu limiar EF_INCUBATE, o transforma na montaria em
 // sIndex+30.
 func (d *Dispatcher) hatchEgg(w *world.World, s *world.Session, t refineTarget, level int) {
 	dst := t.item
@@ -304,10 +304,10 @@ func (d *Dispatcher) hatchEgg(w *world.World, s *world.Session, t refineTarget, 
 		Value:  uint8(w.Rand().Intn(pityRollModulo) + eggIncuDelayBase),
 	}
 
-	// Reads the INSTANCE EF_INCUBATE, which a fresh egg does not have (its
-	// threshold is a catalog effect) — so this is 0 and the egg hatches on its
-	// first successful refine. That is the legacy's behaviour, not a shortcut:
-	// see itemInstanceAbility.
+	// Lê o EF_INCUBATE de INSTÂNCIA, que um ovo novo não tem (seu
+	// limiar é efeito de catálogo) — então isto é 0 e o ovo choca no
+	// primeiro refino bem-sucedido. Esse é o comportamento do legado, não um atalho:
+	// veja itemInstanceAbility.
 	if level < itemInstanceAbility(*dst, efIncubate) {
 		return
 	}
@@ -320,29 +320,29 @@ func (d *Dispatcher) hatchEgg(w *world.World, s *world.Session, t refineTarget, 
 	}
 	dst.Effects[2] = world.Effect{Effect: hatchMountFeed, Value: hatchMountKill}
 	d.sendRefineMessage(w, s, refineMessageIncubated)
-	// MountProcess(conn, 0) is a no-op: with a NULL mount its IsEqual stays 1 and
-	// it returns immediately (Server.cpp:4639-4643). Nothing to port.
+	// MountProcess(conn, 0) é no-op: com uma montaria NULL o IsEqual dele fica 1 e
+	// ele retorna de imediato (Server.cpp:4639-4643). Nada a portar.
 	//
-	// The legacy sends the slot here AND again after the egg block (:916, :919);
-	// the duplicate is harmless and refineSucceed does the second send.
+	// O legado envia o slot aqui E de novo depois do bloco do ovo (:916, :919);
+	// a duplicata é inofensiva e o refineSucceed faz o segundo envio.
 	d.sendSlot(w, s, t.place, t.slot, *dst)
 }
 
-// refineDustReject refuses a dust refine and re-sends the DUST slot, so the client puts
-// the item it dragged back where it was (_MSG_UseItem.cpp:805).
+// refineDustReject recusa um refino com poeira e reenvia o slot da POEIRA, para o cliente pôr
+// de volta o item que arrastou onde ele estava (_MSG_UseItem.cpp:805).
 func (d *Dispatcher) refineDustReject(w *world.World, s *world.Session, e *world.Entity, src int, message string) {
 	d.sendRefineMessage(w, s, message)
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 }
 
-// refineReject is shared by refinement-like consumables that still use the
-// placeholder Notice system and are outside issue #317.
+// refineReject é compartilhado por consumíveis parecidos com refino que ainda usam o
+// sistema de Notice provisório e estão fora da issue #317.
 func (d *Dispatcher) refineReject(w *world.World, s *world.Session, e *world.Entity, src int, n Notice) {
 	d.notify(w, s, n)
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 }
 
-// sendSlot pushes one item slot to the client (SendItem).
+// sendSlot empurra um slot de item ao cliente (SendItem).
 func (d *Dispatcher) sendSlot(w *world.World, s *world.Session, place, slot int, it world.Item) {
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(place, slot, itemToSel(it)))
 }

@@ -1111,7 +1111,7 @@ func TestEquipBonusSpecialAll(t *testing.T) {
 }
 
 // TestEquipBonusDamageAddGate confirma que EF_DAMAGEADD é ignorado num item NÃO-joia
-// (nUnique fora de [41,50]) — só joias de dano o contribuem (captura §B/E).
+// (nUnique fora de [41,50]) — só joias de dano o elevam (captura §B/E).
 func TestEquipBonusDamageAddGate(t *testing.T) {
 	d := New(Config{}) // sem nUnique → não é joia
 	e := &world.Entity{}

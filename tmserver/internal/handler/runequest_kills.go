@@ -7,24 +7,24 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Pista de Runas room play: the per-room death hooks (MobKilled.cpp:2158-2500,
-// 2958-2986), the Torre/Sulrang exit prizes (ProcessSecMinTimer.cpp:1186-1416),
-// the Balrog portals (:254-514), the Coelho counter (:536, 1856, 2004, 2049),
-// the Labirinto traps (:1715-1804), the Amon room guard (_MSG_Action.cpp:177-189)
-// and the leader hand-off (Server.cpp:8205-8220).
+// Sala da Pista de Runas em jogo: os hooks de morte por sala (MobKilled.cpp:2158-2500,
+// 2958-2986), os prêmios de saída Torre/Sulrang (ProcessSecMinTimer.cpp:1186-1416),
+// os portais do Balrog (:254-514), o contador do Coelho (:536, 1856, 2004, 2049),
+// as armadilhas do Labirinto (:1715-1804), a guarda da sala Amon (_MSG_Action.cpp:177-189)
+// e a passagem de liderança (Server.cpp:8205-8220).
 //
-// Fixed source bugs (the rand() stream is unchanged by each fix): the Torre
-// group 3 prize gave the leader rune to group 1's leader
-// (ProcessSecMinTimer.cpp:1275); the Sulrang group 2 ticket went to the
-// out-of-bounds Party[3] (:1373); the trap leader scan tested Party[1] twice and
-// never Party[2] (SendFunc.cpp:588, Server.cpp:6111).
+// Bugs de origem corrigidos (o stream do rand() não muda com cada correção): o prêmio
+// do grupo 3 da Torre dava a runa do líder ao líder do grupo 1
+// (ProcessSecMinTimer.cpp:1275); o ticket do grupo 2 do Sulrang ia para o
+// Party[3] fora dos limites (:1373); a varredura de líder das armadilhas testava Party[1] duas vezes e
+// nunca Party[2] (SendFunc.cpp:588, Server.cpp:6111).
 //
-// The original timer runs every 500ms (Server.cpp:4086) and the world tick is
-// 1s, so the per-tick checks below run at half the source rate: the Balrog
-// portal draws half as many rand() per second, SecCounter%12 is 6 ticks and
-// SecCounter%5 (2.5s) is rounded to 3 ticks.
+// O timer original roda a cada 500ms (Server.cpp:4086) e o tick do mundo é
+// 1s, então as checagens por tick abaixo rodam na metade da taxa da origem: o portal
+// do Balrog sorteia metade dos rand() por segundo, SecCounter%12 é 6 ticks e
+// SecCounter%5 (2,5s) é arredondado para 3 ticks.
 
-// Rune track generator blocks (Basedef.h:431-463).
+// Blocos do gerador da pista de runas (Basedef.h:431-463).
 const (
 	runeQuestLich1          = 5653
 	runeQuestLich2          = 5654
@@ -49,7 +49,7 @@ const (
 	runeQuestCoelhoBoss     = 5767
 )
 
-// Room indices into RuneQuestState.Rooms.
+// Índices de sala em RuneQuestState.Rooms.
 const (
 	runeRoomLich = iota
 	runeRoomTorre
@@ -61,36 +61,36 @@ const (
 )
 
 const (
-	// runeQuestKalintzRoll is the rand()%7 boss pick; 5955 is never rolled.
+	// runeQuestKalintzRoll é o sorteio rand()%7 do chefe; 5955 nunca é sorteado.
 	runeQuestKalintzRoll = 7
-	// runeQuestCoelhoStart is the counter the entry sets for the Coelho room.
+	// runeQuestCoelhoStart é o contador que a entrada define para a sala do Coelho.
 	runeQuestCoelhoStart = 100
-	// itemSementeDeCristal is the Balrog portal fare, one per jump.
+	// itemSementeDeCristal é a tarifa do portal do Balrog, uma por salto.
 	itemSementeDeCristal = 4032
 
-	runeQuestCoelhoPeriod = 6 // ticks: SecCounter%12 of the 500ms timer
-	runeQuestTrapPeriod   = 3 // ticks: SecCounter%5 of the 500ms timer, rounded up
+	runeQuestCoelhoPeriod = 6 // ticks: SecCounter%12 do timer de 500ms
+	runeQuestTrapPeriod   = 3 // ticks: SecCounter%5 do timer de 500ms, arredondado para cima
 	runeQuestTrapDamage   = 2000
 )
 
-// Labirinto landing after a group clears its last block (MobKilled.cpp:2323).
-// Group 1's members land one tile east of the leader in the original.
+// Pouso do Labirinto depois que um grupo limpa seu último bloco (MobKilled.cpp:2323).
+// Os membros do grupo 1 pousam uma casa a leste do líder no original.
 const (
 	runeQuestLabyrinthBossX = 3351
 	runeQuestLabyrinthBossY = 1334
 )
 
 var (
-	// runeQuestCoelhoBox is the counter's SendSignalParmArea rectangle
-	// (3330,1475)-(3448,1525), whose upper edges are exclusive.
+	// runeQuestCoelhoBox é o retângulo SendSignalParmArea do contador
+	// (3330,1475)-(3448,1525), cujas bordas superiores não são inclusivas.
 	runeQuestCoelhoBox = areaBox{3330, 1475, 3448, 1525}
-	// runeQuestCoelhoGate is where the rabbits escape (ProcessSecMinTimer.cpp:1856).
+	// runeQuestCoelhoGate é onde os coelhos escapam (ProcessSecMinTimer.cpp:1856).
 	runeQuestCoelhoGate = areaBox{3423, 1492, 3442, 1511}
-	// runeQuestAmonBox is the boss chamber only registered leaders may enter.
+	// runeQuestAmonBox é a câmara do chefe onde só líderes registrados podem entrar.
 	runeQuestAmonBox = areaBox{3378, 1427, 3398, 1448}
 )
 
-// runeQuestPartyLeader is the source's `partyleader = Leader; if (<= 0) conn`.
+// runeQuestPartyLeader é o `partyleader = Leader; if (<= 0) conn` da origem.
 func runeQuestPartyLeader(e *world.Entity) int {
 	if e.Leader > 0 {
 		return e.Leader
@@ -106,8 +106,8 @@ func runeQuestPlaying(w *world.World, conn int) bool {
 	return ok && mode == world.UserPlay
 }
 
-// runeQuestPutItem is PutItem's guard (Server.cpp:1059-1065) in front of the
-// shared carry delivery.
+// runeQuestPutItem é a guarda do PutItem (Server.cpp:1059-1065) na frente da
+// entrega compartilhada de carry.
 func (d *Dispatcher) runeQuestPutItem(w *world.World, conn int, it world.Item) {
 	if !runeQuestPlaying(w, conn) {
 		return
@@ -119,10 +119,10 @@ func runeQuestTicket(sanc int) world.Item {
 	return world.Item{Index: itemPistaDaRunas, Effects: [3]world.Effect{{Effect: efSanc, Value: uint8(sanc)}}}
 }
 
-// runeQuestReward pays a cleared room: one rune for the leader and one per
-// playing member, then the next room's ticket for the leader (ticketSanc < 0
-// for none). The leader's rune is rolled even when the leader cannot receive
-// it, as in the source.
+// runeQuestReward paga uma sala limpa: uma runa para o líder e uma por
+// membro jogando, depois o ticket da próxima sala para o líder (ticketSanc < 0
+// para nenhum). A runa do líder é sorteada mesmo quando o líder não pode recebê-la,
+// como na origem.
 func (d *Dispatcher) runeQuestReward(w *world.World, leader, sala, ticketSanc int) {
 	runes := world.RuneQuestRunes[sala]
 	roll := func() world.Item { return world.Item{Index: runes[w.Rand().Intn(len(runes))]} }
@@ -145,7 +145,7 @@ func (d *Dispatcher) runeQuestReward(w *world.World, leader, sala, ticketSanc in
 	d.log.Info("rune quest complete", "room", sala, "leader", name)
 }
 
-// teleportRuneQuestParty moves a leader and its playing members.
+// teleportRuneQuestParty move um líder e seus membros jogando.
 func (d *Dispatcher) teleportRuneQuestParty(w *world.World, leader int, x, y, memberX int16) {
 	le := w.Entity(leader)
 	if le == nil {
@@ -166,8 +166,8 @@ func (d *Dispatcher) runeQuestGenerate(w *world.World, gen int) {
 	d.revealSpawned(w, w.GenerateMob(gen))
 }
 
-// runeQuestMobKilled runs the room hooks of a mob killed by reward (a player)
-// while the mob still counts in its generator (MobKilled.cpp:2158-2500).
+// runeQuestMobKilled roda os hooks de sala de uma criatura morta por recompensa (um jogador)
+// enquanto a criatura ainda conta no seu gerador (MobKilled.cpp:2158-2500).
 func (d *Dispatcher) runeQuestMobKilled(w *world.World, reward, mob *world.Entity) {
 	gen := int(mob.GenIndex)
 	if gen < runeQuestLich1 || gen > runeQuestSulrangLast {
@@ -178,7 +178,7 @@ func (d *Dispatcher) runeQuestMobKilled(w *world.World, reward, mob *world.Entit
 	switch {
 	case gen == runeQuestLich1 || gen == runeQuestLich2:
 		roll := w.Rand().Intn(100)
-		// Both outcomes delete every Lich, the dying one included.
+		// Os dois desfechos apagam todo Lich, inclusive o que está morrendo.
 		var lichs []int
 		w.ForEachMob(func(id int, e *world.Entity) {
 			if e.GenIndex == runeQuestLich1 || e.GenIndex == runeQuestLich2 {
@@ -201,7 +201,7 @@ func (d *Dispatcher) runeQuestMobKilled(w *world.World, reward, mob *world.Entit
 		st.Rooms[runeRoomTorre].Party[gen-runeQuestTower1].MobCount = 0
 
 	case gen >= runeQuestTowerMobFirst && gen <= runeQuestTowerMobLast:
-		// A kill scores only while the group's own tower stands.
+		// Uma morte só pontua enquanto a torre do próprio grupo está de pé.
 		room := &st.Rooms[runeRoomTorre]
 		for t := range room.Party {
 			g := w.GeneratorAt(runeQuestTower1 + t)
@@ -222,7 +222,7 @@ func (d *Dispatcher) runeQuestMobKilled(w *world.World, reward, mob *world.Entit
 		}
 
 	case gen >= runeQuestLabyrinthFirst && gen <= runeQuestLabyrinthLast:
-		// Only the block's last mob counts; the dying one is still in it.
+		// Só a última criatura do bloco conta; a que morre ainda está nele.
 		if g := w.GeneratorAt(gen); g == nil || g.CurrentNumMob != 1 {
 			break
 		}
@@ -266,11 +266,11 @@ func (d *Dispatcher) runeQuestMobKilled(w *world.World, reward, mob *world.Entit
 	w.SetRuneQuestState(st)
 }
 
-// runeQuestMobRemoved runs the hooks that follow the death's DeleteMob
-// (MobKilled.cpp:2958-2986): the Torre and Amon rooms refill a killed mob at
-// once, and each Kalintz kill spawns the next one and scores for the killer's
-// group. Blocks the death respawn queue already refills (MinuteGenerate <= 0,
-// not event-owned) are skipped so they are not spawned twice.
+// runeQuestMobRemoved roda os hooks que seguem o DeleteMob da morte
+// (MobKilled.cpp:2958-2986): as salas Torre e Amon repõem uma criatura morta na
+// hora, e cada morte de Kalintz gera a próxima e pontua para o grupo do
+// matador. Blocos que a fila de respawn por morte já repõe (MinuteGenerate <= 0,
+// não pertencentes a evento) são pulados para não serem gerados duas vezes.
 func (d *Dispatcher) runeQuestMobRemoved(w *world.World, reward *world.Entity, gen int) {
 	switch {
 	case gen >= runeQuestTowerMobFirst && gen <= runeQuestTowerMobLast,
@@ -297,15 +297,15 @@ func (d *Dispatcher) runeQuestMobRemoved(w *world.World, reward *world.Entity, g
 	}
 }
 
-// runeQuestPrizes pays the Torre and Sulrang winners at exit, before the
-// registrations are cleared (ProcessSecMinTimer.cpp:1186-1416).
+// runeQuestPrizes paga os vencedores de Torre e Sulrang na saída, antes de
+// os registros serem limpos (ProcessSecMinTimer.cpp:1186-1416).
 func (d *Dispatcher) runeQuestPrizes(w *world.World, st *world.RuneQuestState) {
 	d.runeQuestPrize(w, st, runeRoomTorre, 2)
 	d.runeQuestPrize(w, st, runeRoomSulrang, 4)
 }
 
-// runeQuestPrize pays the group whose score is strictly above both others, if
-// its leader still holds the registered name.
+// runeQuestPrize paga o grupo cujo score está estritamente acima dos outros dois, se
+// seu líder ainda detém o nome registrado.
 func (d *Dispatcher) runeQuestPrize(w *world.World, st *world.RuneQuestState, sala, ticketSanc int) {
 	p := &st.Rooms[sala].Party
 	for t := range p {
@@ -319,7 +319,7 @@ func (d *Dispatcher) runeQuestPrize(w *world.World, st *world.RuneQuestState, sa
 	}
 }
 
-// tickRuneQuestRooms runs the rune track's per-second room checks.
+// tickRuneQuestRooms roda as checagens por segundo de sala da pista de runas.
 func (d *Dispatcher) tickRuneQuestRooms(w *world.World) {
 	d.tickRuneQuestBalrog(w)
 	d.sweepRuneQuestCoelhoGate(w)
@@ -331,9 +331,9 @@ func (d *Dispatcher) tickRuneQuestRooms(w *world.World) {
 	}
 }
 
-// tickRuneQuestBalrog moves a Balrog group whose leader stands on a portal
-// (ProcessSecMinTimer.cpp:254-514). Leaders are visited in connection order,
-// as the source's player loop does.
+// tickRuneQuestBalrog move um grupo do Balrog cujo líder está sobre um portal
+// (ProcessSecMinTimer.cpp:254-514). Os líderes são visitados na ordem de conexão,
+// como faz o laço de jogadores da origem.
 func (d *Dispatcher) tickRuneQuestBalrog(w *world.World) {
 	st := w.RuneQuestState()
 	room := st.Rooms[runeRoomBalrog]
@@ -348,7 +348,7 @@ func (d *Dispatcher) tickRuneQuestBalrog(w *world.World) {
 		if e.Leader != 0 && e.Leader != -1 {
 			continue
 		}
-		// Drawn before the tile test, so every second on the track burns one.
+		// Sorteado antes do teste da casa, então cada segundo na pista queima um.
 		rd := w.Rand().Intn(3)
 		px, py := e.X&^3, e.Y&^3
 		i := slices.IndexFunc(world.RuneQuestBalrogPortals, func(pt world.RuneQuestBalrogPortal) bool {
@@ -358,7 +358,7 @@ func (d *Dispatcher) tickRuneQuestBalrog(w *world.World) {
 			continue
 		}
 		dest := world.RuneQuestBalrogPortals[i].Dest[rd]
-		// The boss spawns before the fare is checked.
+		// O chefe nasce antes de a tarifa ser verificada.
 		if dest == world.RuneQuestBalrogBossRoom && w.RuneQuestState().Rooms[runeRoomBalrog].Party[0].MobCount == 0 {
 			d.runeQuestGenerate(w, runeQuestBalrogBoss)
 		}
@@ -379,7 +379,7 @@ func (d *Dispatcher) tickRuneQuestBalrog(w *world.World) {
 	}
 }
 
-// sendRuneQuestCoelhoCount shows the Coelho room's remaining rabbits
+// sendRuneQuestCoelhoCount mostra os coelhos restantes da sala do Coelho
 // (SendSignalParmArea, ProcessSecMinTimer.cpp:536).
 func (d *Dispatcher) sendRuneQuestCoelhoCount(w *world.World) {
 	body := protocol.EncodeStandardParm(int32(w.RuneQuestState().Rooms[runeRoomCoelho].Party[0].MobCount))
@@ -390,8 +390,8 @@ func (d *Dispatcher) sendRuneQuestCoelhoCount(w *world.World) {
 	})
 }
 
-// runeQuestCoelhoEscaped gives a rabbit back to the counter when it leaves
-// the room (ProcessSecMinTimer.cpp:1859-1862,2006-2010).
+// runeQuestCoelhoEscaped devolve um coelho ao contador quando ele sai
+// da sala (ProcessSecMinTimer.cpp:1859-1862,2006-2010).
 func runeQuestCoelhoEscaped(w *world.World, gen, first, last int) {
 	if gen < first || gen > last {
 		return
@@ -403,14 +403,14 @@ func runeQuestCoelhoEscaped(w *world.World, gen, first, last int) {
 	}
 }
 
-// runeQuestRouteEnd is the route-end (Processor 0x10000) half of the escape:
-// only the main rabbit blocks count there.
+// runeQuestRouteEnd é a metade do fim-de-rota (Processor 0x10000) da fuga:
+// só os blocos do coelho principal contam ali.
 func runeQuestRouteEnd(w *world.World, mob *world.Entity) {
 	runeQuestCoelhoEscaped(w, int(mob.GenIndex), runeQuestCoelhoFirst, runeQuestCoelhoLast)
 }
 
-// sweepRuneQuestCoelhoGate deletes any non-boss mob standing in the escape
-// gate; the second rabbit blocks give a rabbit back to the counter first
+// sweepRuneQuestCoelhoGate apaga qualquer criatura que não seja chefe parada no
+// portão de fuga; os segundos blocos de coelho devolvem um coelho ao contador antes
 // (ProcessSecMinTimer.cpp:1856-1865,2049-2059).
 func (d *Dispatcher) sweepRuneQuestCoelhoGate(w *world.World) {
 	var gone []int
@@ -426,9 +426,9 @@ func (d *Dispatcher) sweepRuneQuestCoelhoGate(w *world.World) {
 	}
 }
 
-// pulseRuneQuestTraps fires the Labirinto traps: a box with a registered
-// Labirinto leader in it is safe for everyone; otherwise it flashes and hits
-// every living player inside (SendEnvEffectLeader / SendDamageLeader).
+// pulseRuneQuestTraps dispara as armadilhas do Labirinto: uma caixa com um líder
+// do Labirinto registrado dentro é segura para todos; senão ela pisca e acerta
+// todo jogador vivo ali dentro (SendEnvEffectLeader / SendDamageLeader).
 func (d *Dispatcher) pulseRuneQuestTraps(w *world.World) {
 	room := w.RuneQuestState().Rooms[runeRoomLabyrinth]
 	isLeader := func(conn int) bool {
@@ -467,8 +467,8 @@ func (d *Dispatcher) pulseRuneQuestTraps(w *world.World) {
 	}
 }
 
-// runeQuestAmonGuard bounces a move into the Amon boss chamber unless the mover
-// is a registered Amon leader (_MSG_Action.cpp:177-189).
+// runeQuestAmonGuard recusa um movimento para dentro da câmara do chefe Amon a menos que quem se move
+// seja um líder Amon registrado (_MSG_Action.cpp:177-189).
 func (d *Dispatcher) runeQuestAmonGuard(w *world.World, s *world.Session, e *world.Entity, x, y int16) bool {
 	if !runeQuestAmonBox.contains(x, y) {
 		return false
@@ -485,8 +485,8 @@ func (d *Dispatcher) runeQuestAmonGuard(w *world.World, s *world.Session, e *wor
 	return true
 }
 
-// transferRuneQuestLeader hands every registration held by the leaving leader
-// to the new leader (Server.cpp:8205-8220).
+// transferRuneQuestLeader entrega todo registro detido pelo líder que sai
+// ao novo líder (Server.cpp:8205-8220).
 func transferRuneQuestLeader(w *world.World, oldConn int, oldName string, newConn int, newName string) {
 	st := w.RuneQuestState()
 	changed := false

@@ -9,29 +9,29 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// BM evocations (spell InstanceType 11 → GenerateSummon, Server.cpp:2956).
-// A summon is an NPC-slot mob bound to its owner: Clan 4 (the "pet" clan,
-// friendly to players), Summoner = the owner's conn, Leader = the owner's
-// party leader, RouteType 5. It follows the owner (summonTick), joins its
-// fights (commandSummons), and dies when its Type-24 lifespan affect runs out
-// or the owner leaves.
+// Evocações do BM (spell InstanceType 11 → GenerateSummon, Server.cpp:2956).
+// Uma invocação é uma criatura em slot de NPC presa ao dono: Clan 4 (o clã "mascote",
+// amistoso a jogadores), Summoner = o conn do dono, Leader = o líder de grupo
+// do dono, RouteType 5. Ela segue o dono (summonTick), entra nas lutas
+// dele (commandSummons), e morre quando seu affect de vida Type-24 acaba
+// ou o dono sai.
 
-// summonClan marks a summoned pet (pMob.MOB.Clan = 4, Server.cpp:3168).
+// summonClan marca um mascote invocado (pMob.MOB.Clan = 4, Server.cpp:3168).
 const summonClan = 4
 
-// affectSummonLife is the summon lifespan affect (Type 24 on a MOB — on a
-// player the same type is Samaritano, affectSamaritano in combat.go; the legacy
-// overloads it and disambiguates by idx >= MAX_USER, Server.cpp:5843).
+// affectSummonLife é o affect de vida da invocação (Type 24 num MOB — num
+// jogador o mesmo tipo é Samaritano, affectSamaritano em combat.go; o legado
+// sobrecarrega e desambigua por idx >= MAX_USER, Server.cpp:5843).
 const affectSummonLife = 24
 
-// summonLifeTicks is the non-item summon lifespan: 20 affect ticks of 8s
-// (Server.cpp:3193-3196). The 28..37 "permanent" mounts are out of scope.
+// summonLifeTicks é a vida de invocação não-item: 20 affect ticks de 8s
+// (Server.cpp:3193-3196). As montarias "permanentes" 28..37 estão fora de escopo.
 const summonLifeTicks = 20
 
-// Baby mounts (crias, item 2330..2359) are equipment-backed summons: while the
-// item is alive in Equip[14], MountProcess creates the corresponding BaseSummon
-// entry at sIndex-2320 and keeps it attached to the owner without a lifespan
-// affect (Server.cpp:4633-4676, GenerateSummon sItem branch).
+// Montarias bebês (crias, item 2330..2359) são invocações sustentadas por equipamento: enquanto o
+// item está vivo em Equip[14], o MountProcess cria a entrada BaseSummon
+// correspondente em sIndex-2320 e a mantém presa ao dono sem affect
+// de vida (Server.cpp:4633-4676, ramo sItem do GenerateSummon).
 const (
 	babyMountLo        = 2330
 	babyMountHi        = 2360
@@ -40,20 +40,20 @@ const (
 	babyMountFaceHi    = 345
 )
 
-// summonFollowMax / summonTeleport / summonFollowMin shape the follow AI
-// (CMob.cpp:84-152): past 12 the pet warps to the owner, between 5 and 12 it
-// walks, at 4 or less it idles. summonLeash drops the pet's fight when the
-// owner walks away (CMob.cpp:268-274).
+// summonFollowMax / summonTeleport / summonFollowMin moldam a IA de seguir
+// (CMob.cpp:84-152): acima de 12 o mascote teleporta para o dono, entre 5 e 12 ele
+// anda, a 4 ou menos ele fica parado. summonLeash larga a luta do mascote quando o
+// dono se afasta (CMob.cpp:268-274).
 const (
 	summonTeleport  = 13
 	summonFollowMin = 4
 	summonLeash     = 20
 )
 
-// summonBonus is pSummonBonus[0..8] (Basedef.cpp:745-756), the owner-scaling
-// percentages of the 8 BM evocations plus the zeroed value-9 template used by
-// Invocação Final: each stat gains Int*int/100 + Evo*evo/100 on top of the
-// BaseSummon template (Server.cpp:3073-3086; Evo = Evocação = Special[2]).
+// summonBonus é pSummonBonus[0..8] (Basedef.cpp:745-756), os percentuais
+// escalados pelo dono das 8 evocações do BM mais o template valor-9 zerado usado pela
+// Invocação Final: cada stat ganha Int*int/100 + Evo*evo/100 em cima do
+// template BaseSummon (Server.cpp:3073-3086; Evo = Evocação = Special[2]).
 var summonBonus = [9]struct {
 	damInt, damEvo int32
 	acInt, acEvo   int32
@@ -67,12 +67,12 @@ var summonBonus = [9]struct {
 	{80, 450, 50, 250, 175, 400},  // 5 Gorila
 	{100, 500, 50, 250, 174, 400}, // 6 Dragão Negro
 	{130, 250, 60, 200, 180, 250}, // 7 Succubus
-	{0, 0, 0, 0, 0, 0},            // 8 Porco/Invocação Final: no owner scaling
+	{0, 0, 0, 0, 0, 0},            // 8 Porco/Invocação Final: sem escala pelo dono
 }
 
-// summonCount is the evocation head-count rule (_MSG_Attack.cpp:817-828):
-// Evocação (Special[2]) buys more of the cheaper creatures; the Succubus (iv 8)
-// is always exactly one.
+// summonCount é a regra de quantidade da evocação (_MSG_Attack.cpp:817-828):
+// Evocação (Special[2]) compra mais das criaturas baratas; a Succubus (iv 8)
+// é sempre exatamente uma.
 func summonCount(instanceValue, evocacao int) int {
 	switch instanceValue {
 	case 1, 2:
@@ -87,15 +87,15 @@ func summonCount(instanceValue, evocacao int) int {
 	return 0
 }
 
-// freeCellNear scans the rings around (x,y) for an unoccupied, walkable cell,
-// matching GetEmptyMobGrid's 1..4 square expansion order. It deliberately
-// consumes no RNG so the attack flow's rand-call parity is preserved.
+// freeCellNear varre os anéis em volta de (x,y) por uma célula desocupada e caminhável,
+// casando com a ordem de expansão quadrada 1..4 do GetEmptyMobGrid. Deliberadamente
+// não consome RNG para a paridade de chamadas de rand do fluxo de ataque ser preservada.
 func (d *Dispatcher) freeCellNear(w *world.World, x, y int16) (int16, int16, bool) {
 	for ring := 1; ring <= 4; ring++ {
 		for dy := -ring; dy <= ring; dy++ {
 			for dx := -ring; dx <= ring; dx++ {
 				if abs16(int16(dx)) != ring && abs16(int16(dy)) != ring {
-					continue // interior cell: already scanned on a smaller ring
+					continue // célula interior: já varrida num anel menor
 				}
 				nx, ny := x+int16(dx), y+int16(dy)
 				if d.cellAvailable(w, nx, ny) {
@@ -121,18 +121,18 @@ func (d *Dispatcher) cellAvailable(w *world.World, x, y int16) bool {
 	if _, occupied := w.EntityAt(x, y); occupied {
 		return false
 	}
-	// The baked grid marks impassable cells with route.Blocked (127); fine-grained
-	// slope checks stay with the walker (route.Next).
+	// A grade embutida marca células intransponíveis com route.Blocked (127); checagens
+	// finas de inclinação ficam com o caminhante (route.Next).
 	return d.heights == nil || d.heights.At(int(x), int(y)) != route.Blocked
 }
 
-// generateSummon ports GenerateSummon (Server.cpp:2956) for the evocations
-// (no sItem/mount path): spawn count copies of template summonID around the
-// caster, bound to it. Returns false when NOTHING was spawned (the cast then
-// refunds its mana, _MSG_Attack.cpp:830-834). Partial success is true.
+// generateSummon porta o GenerateSummon (Server.cpp:2956) para as evocações
+// (sem o caminho sItem/montaria): gera summonID cópias do template em volta do
+// conjurador, presas a ele. Devolve false quando NADA foi gerado (a conjuração então
+// devolve sua mana, _MSG_Attack.cpp:830-834). Sucesso parcial é true.
 //
-// The item-backed mount recall path uses refreshBabyMountSummon below; this
-// function stays on the spell/sItem==nil branch.
+// O caminho de recall de montaria sustentada por item usa refreshBabyMountSummon abaixo; esta
+// função fica no ramo de spell/sItem==nil.
 func (d *Dispatcher) generateSummon(w *world.World, s *world.Session, e *world.Entity, summonID, count int) bool {
 	if count <= 0 || summonID < 0 || summonID >= len(d.summonMobs) || summonID >= len(summonBonus) || d.summonMobs[summonID] == nil {
 		return false
@@ -174,7 +174,7 @@ func (d *Dispatcher) generateSummon(w *world.World, s *world.Session, e *world.E
 			}
 		}
 		if slot < 0 {
-			break // party full (_NN_Party_Full_Cant_Summon; message UNVERIFIED — skipped)
+			break // grupo cheio (_NN_Party_Full_Cant_Summon; mensagem UNVERIFIED — ignorada)
 		}
 		x, y, ok := d.freeCellNear(w, e.X, e.Y)
 		if !ok {
@@ -182,11 +182,11 @@ func (d *Dispatcher) generateSummon(w *world.World, s *world.Session, e *world.E
 		}
 		id := w.SpawnMobAt(world.MobSpawn{Template: d.summonMobs[summonID], X: x, Y: y, RouteType: 5, GenIndex: -1})
 		if id < 0 {
-			break // world full (_NN_Cant_Create_More_Summons — skipped)
+			break // mundo cheio (_NN_Cant_Create_More_Summons — ignorado)
 		}
 		mob := w.Entity(id)
-		// The '^' suffix marks the name as a pet on the client; underscores in
-		// the template file names render as spaces (Server.cpp:3063-3070).
+		// O sufixo '^' marca o nome como mascote no cliente; sublinhados nos
+		// nomes dos arquivos de template aparecem como espaços (Server.cpp:3063-3070).
 		mob.Name = strings.ReplaceAll(mob.Name, "_", " ") + "^"
 		mob.Level = e.Level
 		if mob.Level > level.MaxLevel {
@@ -208,7 +208,7 @@ func (d *Dispatcher) generateSummon(w *world.World, s *world.Session, e *world.E
 		}
 		d.sendSummonPartySlot(w, leaderID, id, slot+1)
 
-		// Reveal with CreateType|=3 (the summon-appear effect, Server.cpp:3210-3218).
+		// Revelar com CreateType|=3 (o efeito de aparecimento da invocação, Server.cpp:3210-3218).
 		body := protocol.EncodeCreateMobBody(d.createMobFrom(mob, 3))
 		w.ForEachInView(id, func(vs *world.Session, _ *world.Entity) {
 			if w.MarkSeen(vs, id) {
@@ -250,22 +250,22 @@ func (d *Dispatcher) removeBabyMountSummons(w *world.World, ownerID int, owner *
 	})
 }
 
-// despawnSummonsOf removes every summon parked in leaderID's PartyList that
-// belongs to ownerID; ownerID == 0 means all of them (the party dissolved).
-// This is the DeleteMob sweep inside RemoveParty (Server.cpp:8185-8190 when a
-// member leaves, Server.cpp:8237-8243 when the leader does) — without it the
-// pets outlive the party bond that held them (issue #234).
+// despawnSummonsOf remove toda invocação parada no PartyList de leaderID que
+// pertence a ownerID; ownerID == 0 significa todas (o grupo se desfez).
+// É a varredura DeleteMob dentro do RemoveParty (Server.cpp:8185-8190 quando um
+// membro sai, Server.cpp:8237-8243 quando o líder sai) — sem ela os
+// mascotes sobrevivem ao vínculo de grupo que os prendia (issue #234).
 func (d *Dispatcher) despawnSummonsOf(w *world.World, leaderID, ownerID int) {
 	d.despawnSummons(w, leaderID, func(pet *world.Entity) bool {
-		// Summoner 0 is a stray mob sitting in a player's party slot; the legacy
-		// reaps those on any leave too (Server.cpp:8188-8190).
+		// Summoner 0 é uma criatura avulsa parada no slot de grupo de um jogador; o legado
+		// recolhe essas em qualquer saída também (Server.cpp:8188-8190).
 		return ownerID == 0 || pet.Summoner == ownerID || pet.Summoner == 0
 	})
 }
 
-// despawnSummons is the shared walk of a leader's pet slots: match selects which
-// pets go. The ids and the packet recipients are snapshotted first because
-// DespawnMob frees the slot as it goes (world/api.go:215-223).
+// despawnSummons é a caminhada compartilhada dos slots de mascote de um líder: match seleciona quais
+// mascotes vão. Os ids e os destinatários do pacote são fotografados primeiro porque
+// o DespawnMob libera o slot conforme avança (world/api.go:215-223).
 func (d *Dispatcher) despawnSummons(w *world.World, leaderID int, match func(*world.Entity) bool) {
 	leader := w.Entity(leaderID)
 	if leader == nil {
@@ -286,8 +286,8 @@ func (d *Dispatcher) despawnSummons(w *world.World, leaderID int, match func(*wo
 		}
 	}
 	for _, id := range doomed {
-		// DespawnMob only sends MsgRemoveMob, so the party row has to be dropped
-		// explicitly or the client keeps the pet slot (legacy gets this from
+		// O DespawnMob só envia MsgRemoveMob, então a linha de grupo precisa ser descartada
+		// explicitamente ou o cliente mantém o slot do mascote (o legado obtém isto do
 		// DeleteMob → RemoveParty, Server.cpp:7840).
 		for _, recipientID := range recipients {
 			d.sendRemoveParty(w, recipientID, id)
@@ -382,8 +382,8 @@ func (d *Dispatcher) sendSummonPartySlot(w *world.World, leaderID, summonID, slo
 	}
 }
 
-// petIsListed reports whether the pet still holds a slot in its leader's
-// PartyList — the only registry summons have (generateSummon, commandSummons).
+// petIsListed informa se o mascote ainda tem slot no PartyList do líder —
+// o único registro que invocações têm (generateSummon, commandSummons).
 func petIsListed(w *world.World, id int, e *world.Entity) bool {
 	leader := w.Entity(e.Leader)
 	if leader == nil {
@@ -392,37 +392,37 @@ func petIsListed(w *world.World, id int, e *world.Entity) bool {
 	return hasMember(leader, id)
 }
 
-// summonTick replaces the regular mob AI for a summoned pet (the RouteType-5
-// branch of StandingByProcessor, CMob.cpp:84-152): despawn when the owner is
-// gone, tick the lifespan, fight the owner's fight within the leash, otherwise
-// follow.
+// summonTick substitui a IA normal de criatura para um mascote invocado (o ramo
+// RouteType-5 do StandingByProcessor, CMob.cpp:84-152): despawnar quando o dono
+// sumiu, contar a vida, lutar a luta do dono dentro da contenção, senão
+// seguir.
 func (d *Dispatcher) summonTick(w *world.World, id int, e *world.Entity) {
 	owner := w.Entity(e.Summoner)
 	ownerGone := owner == nil || owner.HP <= 0
 	if !ownerGone {
 		if m, ok := w.SessionMode(e.Summoner); !ok || m != world.UserPlay {
-			ownerGone = true // logout / back to char select / disconnect
+			ownerGone = true // logout / volta para a seleção de personagem / desconexão
 		}
 	}
 	if !ownerGone && !petIsListed(w, id, e) {
-		// Belt and braces: a pet whose party slot is gone has no owner bond left,
-		// and nothing else would ever reap it (its lifespan ticks right here). The
-		// legacy bails the same way when a summon's leader is cleared
-		// (CMob.cpp:118-124). Keeps any future PartyList reset from leaking pets.
+		// Redundância de segurança: um mascote cujo slot de grupo sumiu não tem mais vínculo de dono,
+		// e nada mais iria recolhê-lo (sua vida conta aqui mesmo). O
+		// legado sai do mesmo jeito quando o líder de uma invocação é limpo
+		// (CMob.cpp:118-124). Impede que qualquer reset futuro de PartyList vaze mascotes.
 		ownerGone = true
 	}
 	if ownerGone {
-		// The legacy clears summons via its timers on death/logout
-		// (ProcessSecMinTimer.cpp:2381,2498); this lazy per-tick check covers
-		// every exit path in one place. Owner-death despawn is UNVERIFIED
-		// timing-wise (the original may keep the pet until the timer).
+		// O legado limpa invocações pelos próprios timers na morte/logout
+		// (ProcessSecMinTimer.cpp:2381,2498); esta checagem preguiçosa por tick cobre
+		// todo caminho de saída num lugar só. O despawn por morte do dono é UNVERIFIED
+		// quanto ao timing (o original pode manter o mascote até o timer).
 		w.DespawnMob(id, 3)
 		return
 	}
-	// Lifespan: the Type-24 affect counts down on the same 8s phase the player
-	// sweep uses; at zero the pet vanishes (DeleteMob(idx,3), Server.cpp:5843).
-	// Swept here rather than in sweepAffects so the 10k-mob scan stays free of
-	// affect work for everything that isn't a summon.
+	// Vida: o affect Type-24 conta regressivamente na mesma fase de 8s que a varredura
+	// de jogador usa; em zero o mascote some (DeleteMob(idx,3), Server.cpp:5843).
+	// Varrido aqui em vez de em sweepAffects para a varredura de 10k criaturas ficar livre de
+	// trabalho de affect para tudo que não é invocação.
 	if d.tickCount%affectTickPeriod == id%affectTickPeriod {
 		if af := &e.Affect[0]; af.Type == affectSummonLife && af.Time < affectInfiniteTime {
 			if af.Time > 0 {
@@ -435,8 +435,8 @@ func (d *Dispatcher) summonTick(w *world.World, id int, e *world.Entity) {
 		}
 	}
 	if e.Target != 0 {
-		// Fight, but never further than the leash from the owner: past it the
-		// pet drops the fight and returns (CMob.cpp:268-274).
+		// Lutar, mas nunca além da contenção do dono: passando dela o
+		// mascote larga a luta e volta (CMob.cpp:268-274).
 		if mobDistance(e.X, e.Y, owner.X, owner.Y) >= summonLeash {
 			e.Target = 0
 			clearEnemyList(e)
@@ -449,8 +449,8 @@ func (d *Dispatcher) summonTick(w *world.World, id int, e *world.Entity) {
 	dis := mobDistance(e.X, e.Y, owner.X, owner.Y)
 	switch {
 	case dis >= summonTeleport:
-		// Warp to the owner's side (the recall jump: MSG_Action Effect=8 Speed=6,
-		// Server.cpp:3008-3020) and re-reveal for players who never saw it.
+		// Teleportar para o lado do dono (o salto de recall: MSG_Action Effect=8 Speed=6,
+		// Server.cpp:3008-3020) e revelar de novo para jogadores que nunca o viram.
 		x, y, ok := d.freeCellNear(w, owner.X, owner.Y)
 		if !ok {
 			return
@@ -464,10 +464,10 @@ func (d *Dispatcher) summonTick(w *world.World, id int, e *world.Entity) {
 	}
 }
 
-// commandSummons points the owner's idle pets at target — the stand-in for the
-// legacy EnemyList propagation that made pets assist (attack what the owner
-// attacks, defend when the owner is struck). Same ±23 engage box as the mob
-// group drag (setGroupBattle).
+// commandSummons aponta os mascotes ociosos do dono para target — o substituto da
+// propagação de EnemyList legada que fazia mascotes ajudarem (atacar o que o dono
+// ataca, defender quando o dono é atingido). Mesma caixa de engajamento de ±23 que o
+// arrasto de grupo de criaturas (setGroupBattle).
 func (d *Dispatcher) commandSummons(w *world.World, ownerID int, target *world.Entity) {
 	owner := w.Entity(ownerID)
 	if owner == nil || target == nil {
@@ -483,7 +483,7 @@ func (d *Dispatcher) commandSummons(w *world.World, ownerID int, target *world.E
 	}
 	for _, m := range le.PartyList {
 		if m < world.MaxUser {
-			continue // empty slot or player member
+			continue // slot vazio ou membro jogador
 		}
 		pet := w.Entity(m)
 		if pet == nil || pet.Summoner != ownerID || pet.HP <= 0 || pet.Target != 0 {
