@@ -13,9 +13,9 @@ func TestCharacterSaveExcludesEquipmentAttributeResources(t *testing.T) {
 	s := &Session{Conn: 1, AccountID: 7, Slot: 0}
 	w.entities[1] = e
 	for range 3 {
-		// Both staged operations and the ordinary logout/shutdown path must use
-		// the same representation. Current resources can exceed stored maxima,
-		// just as with the existing read-time percentage/buff bonuses.
+		// Tanto as operações preparadas quanto o caminho comum de logout/shutdown precisam usar
+		// a mesma representação. Recursos atuais podem exceder os máximos guardados,
+		// assim como com os bônus de porcentagem/buff já existentes na leitura.
 		for _, save := range []CharacterSave{w.CharacterSaveFor(s, e), w.characterSave(s)} {
 			if save.MaxHP != 1200 || save.MaxMP != 1650 || save.HP != 1600 || save.MP != 2500 {
 				t.Fatalf("saved resources = %d/%d %d/%d", save.HP, save.MaxHP, save.MP, save.MaxMP)

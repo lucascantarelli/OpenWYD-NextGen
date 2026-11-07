@@ -1,11 +1,11 @@
 //go:build e2e
 
-// End-to-end smoke against a LIVE stack (docker compose up): a raw CPSock client
-// connects to the published tmServer edge, performs the INITCODE handshake and a
-// real MSG_AccountLogin, and asserts the server answers MSG_CNFAccountLogin —
-// proving the full chain tmServer(CPSock) → dbServer(gRPC/mTLS) → PostgreSQL.
+// Fumaça ponta a ponta contra uma stack VIVA (docker compose up): um cliente CPSock bruto
+// conecta na borda publicada do tmServer, faz o handshake INITCODE e um
+// MSG_AccountLogin real, e verifica que o servidor responde MSG_CNFAccountLogin —
+// provando a cadeia completa tmServer(CPSock) → dbServer(gRPC/mTLS) → PostgreSQL.
 //
-// Seed the account first, then:
+// Semear a conta primeiro, depois:
 //
 //	W2PP_E2E_ADDR=127.0.0.1:8281 W2PP_E2E_ACCOUNT=smoke W2PP_E2E_PASSWORD=smoke123 \
 //	  go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
@@ -30,7 +30,7 @@ func env(k, def string) string {
 	return def
 }
 
-// liveDial opens a TCP connection to the live tmServer and sends INITCODE.
+// liveDial abre uma conexão TCP com o tmServer vivo e envia INITCODE.
 func liveDial(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	c, err := net.DialTimeout("tcp", addr, 3*time.Second)
@@ -45,7 +45,7 @@ func liveDial(t *testing.T, addr string) net.Conn {
 	return c
 }
 
-// liveRead reads one S→C frame (2-byte size prefix, no INITCODE) and decodes it.
+// liveRead lê um frame S→C (prefixo de tamanho de 2 bytes, sem INITCODE) e o decodifica.
 func liveRead(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	t.Helper()
 	_ = c.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -84,23 +84,23 @@ func loginFrame(account, password, token string) []byte {
 	return wire
 }
 
-// TestE2ESmokeLogin drives a real login against the seeded account and expects
-// the character-selection confirmation (CNFAccountLogin). An empty char list is
-// fine — the point is that auth round-tripped through gRPC+mTLS to Postgres.
+// TestE2ESmokeLogin conduz um login real contra a conta semeada e espera
+// a confirmação de seleção de personagem (CNFAccountLogin). Uma lista de personagens vazia
+// serve — o ponto é que a autenticação foi e voltou por gRPC+mTLS até o Postgres.
 func TestE2ESmokeLogin(t *testing.T) {
 	addr := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
 	account := env("W2PP_E2E_ACCOUNT", "smoke")
 	password := env("W2PP_E2E_PASSWORD", "smoke123")
 
-	// liveLogin retries while the previous session's save is in flight, the
-	// same retry the client does (MsgAlreadyPlaying/StillPlaying).
+	// liveLogin retenta enquanto o save da sessão anterior está em andamento, a
+	// mesma retentativa que o cliente faz (MsgAlreadyPlaying/StillPlaying).
 	c := liveLogin(t, addr, account, password, "")
 	defer c.Close()
 	t.Log("LOGIN OK — CNFAccountLogin with full character-selection body")
 }
 
-// TestE2ESmokeBadPassword confirms a wrong password is NOT accepted: the server
-// must answer with something other than CNFAccountLogin (a notice panel).
+// TestE2ESmokeBadPassword confirma que senha errada NÃO é aceita: o servidor
+// precisa responder algo diferente de CNFAccountLogin (um painel de aviso).
 func TestE2ESmokeBadPassword(t *testing.T) {
 	addr := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
 	account := env("W2PP_E2E_ACCOUNT", "smoke")

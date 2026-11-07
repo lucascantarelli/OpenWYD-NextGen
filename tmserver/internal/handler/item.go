@@ -11,13 +11,13 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// maxItemList bounds a valid item index (1 <= sIndex < MAX_ITEMLIST).
+// maxItemList delimita um índice de item válido (1 <= sIndex < MAX_ITEMLIST).
 //
-// UNVERIFIED: MAX_ITEMLIST (g_pItemList size) is not documented; placeholder.
+// UNVERIFIED: MAX_ITEMLIST (tamanho de g_pItemList) não está documentado; provisório.
 const maxItemList = 30000
 
-// dropBlacklist holds the sIndex values that may not be dropped (quest/bound
-// items), exactly as in _MSG_DropItem.cpp:110-111 (handlers/_MSG_DropItem.md).
+// dropBlacklist contém os sIndex que não podem ser largados (itens de quest/vinculados
+// a itens), exatamente como em _MSG_DropItem.cpp:110-111 (handlers/_MSG_DropItem.md).
 var dropBlacklist = func() map[int16]bool {
 	m := map[int16]bool{508: true, 509: true, 522: true, 446: true, 747: true, 3993: true, 3994: true}
 	for i := int16(526); i <= 537; i++ {
@@ -26,9 +26,9 @@ var dropBlacklist = func() map[int16]bool {
 	return m
 }()
 
-// dropItem handles _MSG_DropItem (0x0272), handlers/_MSG_DropItem.md: move an
-// inventory item to the floor. Create-on-floor then clear-source is atomic
-// (single loop goroutine) — no dup.
+// dropItem trata _MSG_DropItem (0x0272), handlers/_MSG_DropItem.md: mover um
+// item do inventário para o chão. Criar no chão e depois limpar a origem é atômico
+// (goroutine única do loop) — sem duplicação.
 func (d *Dispatcher) dropItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -36,7 +36,7 @@ func (d *Dispatcher) dropItem(w *world.World, s *world.Session, _ protocol.Heade
 		return
 	}
 	if s.Trade.Active {
-		d.removeTrade(w, s) // dropping mid-trade cancels it (anti-dup)
+		d.removeTrade(w, s) // largar no meio de uma troca a cancela (anti-dup)
 		return
 	}
 	if s.TradeMode != 0 {
@@ -53,7 +53,7 @@ func (d *Dispatcher) dropItem(w *world.World, s *world.Session, _ protocol.Heade
 		return
 	}
 	if int(body.SourType) == world.ItemPlaceEquip || int(body.SourType) != world.ItemPlaceCarry {
-		return // can't drop equipped directly; only CARRY in this batch
+		return // não dá para largar equipado direto; só CARRY neste lote
 	}
 	slot := int(body.SourPos)
 	if !carrySlotAccessible(e, slot) {
@@ -64,20 +64,20 @@ func (d *Dispatcher) dropItem(w *world.World, s *world.Session, _ protocol.Heade
 		return
 	}
 	if dropBlacklist[item.Index] {
-		return // non-droppable
+		return // não largável
 	}
 
 	id := w.CreateGroundItem(item, int16(body.GridX), int16(body.GridY))
 	if id < 0 {
-		return // floor full
+		return // chão cheio
 	}
-	e.Carry[slot] = world.Item{} // clear source
+	e.Carry[slot] = world.Item{} // limpar a origem
 	w.Send(s, protocol.MsgCNFDropItem, slotPayload(slot))
-	// UNVERIFIED: _MSG_CreateItem broadcast (ground spawn in view) — deferred.
+	// UNVERIFIED: broadcast de _MSG_CreateItem (spawn no chão em visão) — adiado.
 }
 
-// getItem handles _MSG_GetItem (0x0270), handlers/_MSG_GetItem.md: pick a floor
-// item up into the inventory. The ground id is ItemID-10000 on the wire.
+// getItem trata _MSG_GetItem (0x0270), handlers/_MSG_GetItem.md: pegar um
+// item do chão para o inventário. O id de chão é ItemID-10000 no wire.
 func (d *Dispatcher) getItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -85,7 +85,7 @@ func (d *Dispatcher) getItem(w *world.World, s *world.Session, _ protocol.Header
 		return
 	}
 	if s.Trade.Active {
-		d.removeTrade(w, s) // picking up mid-trade cancels it (anti-dup)
+		d.removeTrade(w, s) // pegar no meio de uma troca a cancela (anti-dup)
 		return
 	}
 	if s.TradeMode != 0 {
@@ -111,10 +111,10 @@ func (d *Dispatcher) getItem(w *world.World, s *world.Session, _ protocol.Header
 		return
 	}
 	if abs(int(e.X)-int(gi.X)) > 3 || abs(int(e.Y)-int(gi.Y)) > 3 {
-		return // too far (anti-teleport-pickup)
+		return // longe demais (anti-teleporte-de-coleta)
 	}
 	if id == 1727 && e.Level < 1000 {
-		return // special restriction
+		return // restrição especial
 	}
 	if gi.Item.Index == itemPilulaOrc {
 		d.pickUpPilulaOrc(w, s, e, gi, body.ItemID)
@@ -123,26 +123,26 @@ func (d *Dispatcher) getItem(w *world.World, s *world.Session, _ protocol.Header
 
 	slot := int(body.DestPos)
 	if !carrySlotAccessible(e, slot) || !e.Carry[slot].Empty() {
-		return // inventory full/locked/occupied → leave on floor
+		return // inventário cheio/travado/ocupado → deixar no chão
 	}
 	e.Carry[slot] = gi.Item
-	w.RemoveGroundItem(id) // atomic claim point
+	w.RemoveGroundItem(id) // ponto de reivindicação atômica
 	w.Send(s, protocol.MsgCNFGetItem, slotPayload(slot))
 }
 
-// deleteItem handles _MSG_DeleteItem (0x02E4, Basedef.h:2371): destroy a carry
-// item. Like _MSG_DropItem, moving an item mid-trade cancels the trade instead of
-// deleting (the anti-dup path). The legacy clears the slot unconditionally after
-// the slot/mode guards and sends no S→C confirm; we additionally push a clearing
-// MsgSendItem so the client and server never disagree on the slot. The removal
-// persists on the next periodic/logout save (parity: no immediate write). NPC shop
-// is a stateless request/response, so there is no "shop open" state to guard.
+// deleteItem trata _MSG_DeleteItem (0x02E4, Basedef.h:2371): destruir um item do
+// carry. Como no _MSG_DropItem, mover um item no meio de uma troca cancela a troca em vez de
+// apagar (o caminho anti-dup). O legado limpa o slot incondicionalmente depois
+// das guardas de slot/modo e não envia confirmação S→C; nós ainda empurramos um
+// MsgSendItem para cliente e servidor nunca divergirem no slot. A remoção
+// persiste no próximo save periódico/logout (paridade: sem escrita imediata). A loja de NPC
+// é requisição/resposta sem estado, então não há estado de "loja aberta" a proteger.
 //
-// Unlike the legacy, the slot is only cleared when it still holds the SIndex the
-// client named. The client empties its own cell before asking (trash grid,
-// TMFieldScene message box 740), so a client whose grid drifted from the server
-// would otherwise destroy an item the player never saw. On a mismatch the real
-// slot is sent back instead, which resyncs that cell.
+// Diferente do legado, o slot só é limpo quando ainda contém o SIndex que o
+// cliente nomeou. O cliente esvazia a própria célula antes de pedir (grade de lixo,
+// caixa de mensagem TMFieldScene 740), então um cliente cuja grade divergiu do servidor
+// destruiria um item que o jogador nunca viu. Numa divergência o slot
+// real é reenviado, o que ressincroniza aquela célula.
 func (d *Dispatcher) deleteItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -150,7 +150,7 @@ func (d *Dispatcher) deleteItem(w *world.World, s *world.Session, _ protocol.Hea
 		return
 	}
 	if s.Trade.Active {
-		d.removeTrade(w, s) // deleting mid-trade cancels it (anti-dup)
+		d.removeTrade(w, s) // apagar no meio de uma troca a cancela (anti-dup)
 		return
 	}
 	var body protocol.MsgDeleteItemBody
@@ -176,13 +176,13 @@ func (d *Dispatcher) deleteItem(w *world.World, s *world.Session, _ protocol.Hea
 	d.log.Info("item deleted", "conn", s.Conn, "slot", slot, "index", idx)
 }
 
-// isSplittable reports whether an item may be divided by _MSG_SplitItem
-// (_MSG_SplitItem.cpp:45-52): a fixed set of currency/stackable specials plus the
-// 2390..2419 range (dusts Vol 4/5 — the hot case, feeds refino, issue #103).
+// isSplittable informa se um item pode ser dividido por _MSG_SplitItem
+// (_MSG_SplitItem.cpp:45-52): um conjunto fixo de especiais de moeda/empilháveis mais a
+// faixa 2390..2419 (poeiras Vol 4/5 — o caso quente, alimenta o refino, issue #103).
 //
-// itemPedraDoSabio is a deliberate divergence from the legacy list: the NPC shop
-// sells it in packs (npcconfig.go shopEffects writes EF_AMOUNT), so Shift+click
-// must be able to peel units off the stack (issue #268).
+// itemPedraDoSabio é uma divergência deliberada da lista legada: a loja de NPC
+// a vende em pacotes (npcconfig.go shopEffects grava EF_AMOUNT), então Shift+clique
+// precisa poder destacar unidades da pilha (issue #268).
 func isSplittable(index int16) bool {
 	switch index {
 	case 412, 413, 414, 416, 419, 420, itemPedraDoSabio:
@@ -191,15 +191,15 @@ func isSplittable(index int16) bool {
 	return index >= 2390 && index <= 2419 || index >= itemQuestRewardBase && index <= itemQuestRewardLast
 }
 
-// itemPedraDoSabio is the Pedra do Sábio (ItemList.csv:2903), the Huntress
-// extraction catalyst — see combineExtracao.
+// itemPedraDoSabio é a Pedra do Sábio (ItemList.csv:2903), o catalisador de
+// extração da Caçadora — veja combineExtracao.
 const itemPedraDoSabio = 1774
 
 const maxStackAmount = 120
 
-// setItemAmount writes n into the item's EF_AMOUNT effect slot (mirrors
-// BASE_SetItemAmount): reuse an existing EF_AMOUNT effect, else claim the first
-// empty effect slot. It is the inverse of itemAmount/consumeOneItem.
+// setItemAmount grava n no slot de efeito EF_AMOUNT do item (espelha
+// BASE_SetItemAmount): reusa um efeito EF_AMOUNT existente, senão pega o primeiro
+// slot de efeito vazio. É o inverso de itemAmount/consumeOneItem.
 func setItemAmount(it *world.Item, n int) {
 	for i := range it.Effects {
 		if it.Effects[i].Effect == efAmount {
@@ -286,10 +286,10 @@ func nonAmountEffects(it world.Item) ([3]world.Effect, int) {
 	return out, n
 }
 
-// splitItem handles _MSG_SplitItem (0x02E5, Basedef.h:2381): peel Num units off the
-// stack in carry Slot into a fresh stack. Only whitelisted stackables split; the
-// source must hold more than Num (never split a single item or the whole stack) and
-// there must be a free carry cell for the new stack. Deferred persistence (parity).
+// splitItem trata _MSG_SplitItem (0x02E5, Basedef.h:2381): destacar Num unidades da
+// pilha no Slot do carry para uma pilha nova. Só empilháveis da lista branca dividem; a
+// origem precisa ter mais que Num (nunca dividir um item só ou a pilha inteira) e
+// precisa haver célula livre no carry para a pilha nova. Persistência adiada (paridade).
 func (d *Dispatcher) splitItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -297,7 +297,7 @@ func (d *Dispatcher) splitItem(w *world.World, s *world.Session, _ protocol.Head
 		return
 	}
 	if s.Trade.Active {
-		d.removeTrade(w, s) // splitting mid-trade cancels it (anti-dup)
+		d.removeTrade(w, s) // dividir no meio de uma troca a cancela (anti-dup)
 		return
 	}
 	var body protocol.MsgSplitItemBody
@@ -317,14 +317,14 @@ func (d *Dispatcher) splitItem(w *world.World, s *world.Session, _ protocol.Head
 		return
 	}
 	amount := itemAmount(*src)
-	if amount <= 1 || amount <= num { // can't split a single item or peel the whole stack
+	if amount <= 1 || amount <= num { // não dá para dividir um item só nem destacar a pilha inteira
 		return
 	}
 	nItem := *src
 	setItemAmount(&nItem, num)
 	dst := firstEmptyAccessibleCarry(e)
 	if dst < 0 {
-		return // no free cell — leave the stack whole
+		return // sem célula livre — deixar a pilha inteira
 	}
 	e.Carry[dst] = nItem
 	setItemAmount(src, amount-num)
@@ -332,15 +332,15 @@ func (d *Dispatcher) splitItem(w *world.World, s *world.Session, _ protocol.Head
 	d.sendSlot(w, s, world.ItemPlaceCarry, slot, *src)
 }
 
-// Consumable classes (EF_VOLATILE value). Divine's Affect 34 uses Entity.DivineEnd
-// as the real deadline; the other timed buffs store their duration in Affect.Time.
+// Classes de consumível (valor EF_VOLATILE). O Affect 34 do Divino usa Entity.DivineEnd
+// como prazo real; os outros buffs temporizados guardam a duração em Affect.Time.
 const (
 	volHpMpPotion        = 1
 	volFairyDust         = 7
 	volBuffKappa         = 10
-	volRecallScroll      = 11 // Pergaminho do Retorno: recalls to the last-city spawn
-	volGemaEstelar       = 12 // Gema Estelar: records the warp save-point
-	volPortalScroll      = 13 // Pergaminho de Portal: teleports to the save-point
+	volRecallScroll      = 11 // Pergaminho do Retorno: retorna ao spawn da última cidade
+	volGemaEstelar       = 12 // Gema Estelar: registra o ponto de save do warp
+	volPortalScroll      = 13 // Pergaminho de Portal: teleporta para o ponto de save
 	volBuffCombat        = 52
 	volBuffMental        = 53
 	volBuffKappa30       = 55
@@ -357,41 +357,41 @@ const (
 	volSilverBar         = 185
 	volMagicBean         = 186
 	volPaint             = volMagicBean
-	volEntradaTerritorio = 188 // Entrada do Território (LAN) ticket (_MSG_UseItem.cpp:4202)
-	volQuestReward       = 191 // quest reward items 4117..4121 (_MSG_UseItem.cpp:2344)
-	volHuntingScroll     = 195 // Pedido de Caça: destination selected by MSG_UseItem.WarpID
+	volEntradaTerritorio = 188 // ticket Entrada do Território (LAN) (_MSG_UseItem.cpp:4202)
+	volQuestReward       = 191 // itens de recompensa de quest 4117..4121 (_MSG_UseItem.cpp:2344)
+	volHuntingScroll     = 195 // Pedido de Caça: destino escolhido por MSG_UseItem.WarpID
 	volExpChest          = 198
 	volIdealStone        = 211 // Pedra_Ideal 5338: Arch→Celestial (_MSG_UseItem.cpp:3003)
 	volBuffKappa20h      = 200
 	volBuffCombat20h     = 201
 	volBuffMental20h     = 202
-	// affect tick units (Basedef.h): one tick = 8s of real time.
+	// unidades de tick de affect (Basedef.h): um tick = 8s de tempo real.
 	affect1H          = 450
 	affect1D          = 10800
 	affectExpChestInc = affect1H * 2
 	affectTimeCap     = 324000
-	// divineAffectTime is the original's "infinite" Affect.Time for the Divine slot —
-	// the actual expiry is DivineEnd (wall-clock), not this field (captura §B).
+	// divineAffectTime é o Affect.Time "infinito" do original para o slot Divino —
+	// a expiração real é DivineEnd (wall-clock), não este campo (captura §B).
 	divineAffectTime = 2000000000
 )
 
-// issue #135: EF_VOLATILE classes that previously fell through to useItem's
-// default no-op — the client showed a phantom consumption that any later slot
-// resync (e.g. a _MSG_TradingItem move) would revert, since nothing was ever
-// decremented server-side.
+// issue #135: classes EF_VOLATILE que antes caíam no no-op padrão do
+// useItem — o cliente mostrava um consumo fantasma que qualquer ressincronização
+// de slot posterior (ex.: um move de _MSG_TradingItem) revertia, já que nada era
+// decrementado do lado do servidor.
 const (
-	volAdamantita  = 9   // Adamantita/Beril/Tectita/Spinner legendary-upgrade combine (_MSG_UseItem.cpp:1097-1213)
+	volAdamantita  = 9   // combine de upgrade lendário Adamantita/Beril/Tectita/Spinner (_MSG_UseItem.cpp:1097-1213)
 	volChocolate   = 204 // Chocolate do Amor (_MSG_UseItem.cpp:6082-6131)
 	volCoracaoDoce = 205 // Coração Doce (_MSG_UseItem.cpp:6030-6079)
 
-	// Water scroll categories; lifecycle and source tables are in water.go.
+	// Categorias dos pergaminhos da Água; ciclo de vida e tabelas de origem em water.go.
 	volWaterMLo, volWaterMHi = 21, 30   // Pergaminho da Água (M), _MSG_UseItem.cpp:1726
 	volWaterNLo, volWaterNHi = 131, 140 // Pergaminho da Água (N), _MSG_UseItem.cpp:1920
 	volWaterALo, volWaterAHi = 161, 170 // Pergaminho da Água (A), _MSG_UseItem.cpp:2025
 
-	// itemSeloDoGuerreiro and itemPedraMisteriosa carry no EF_VOLATILE in the
-	// catalog (BASE_GetItemAbility falls back to 0), so the legacy — and this
-	// dispatcher — identify them by sIndex instead (_MSG_UseItem.cpp:3184,3325).
+	// itemSeloDoGuerreiro e itemPedraMisteriosa não carregam EF_VOLATILE no
+	// catálogo (BASE_GetItemAbility cai para 0), então o legado — e este
+	// despachante — os identifica por sIndex (_MSG_UseItem.cpp:3184,3325).
 	itemSeloDoGuerreiro = 4146
 	itemPedraMisteriosa = 4148
 	itemFlashPrateado   = 3451
@@ -402,8 +402,8 @@ const (
 	itemFadaVermelha5d  = 3905
 	itemFadaVermelha7d  = 3908
 
-	// Entrada do Território (LAN) tickets — three tiers sharing EF_VOLATILE 188,
-	// distinguished by sIndex: (N)=4111, (M)=4112, (A)=4113. Tier = sIndex - base
+	// tickets Entrada do Território (LAN) — três tiers compartilhando EF_VOLATILE 188,
+	// distinguidos por sIndex: (N)=4111, (M)=4112, (A)=4113. Tier = sIndex - base
 	// (_MSG_UseItem.cpp:4204).
 	itemEntradaTerritorioBase = 4111
 	itemQuestRewardBase       = 4117
@@ -413,9 +413,9 @@ const (
 	itemHuntingScrollLast = 3437
 )
 
-// huntingScrollDestinations preserves HuntingScrolls[6][10][2] from the
-// legacy _MSG_UseItem.cpp. Rows are item indices 3432..3437 and columns are
-// the client selection WarpID 1..10.
+// huntingScrollDestinations preserva HuntingScrolls[6][10][2] do
+// _MSG_UseItem.cpp legado. As linhas são índices de item 3432..3437 e as colunas são
+// a seleção do cliente WarpID 1..10.
 var huntingScrollDestinations = [6][10][2]int16{
 	{{2370, 2106}, {2508, 2101}, {2526, 2109}, {2529, 1882}, {2126, 1600}, {2005, 1617}, {2241, 1474}, {1858, 1721}, {2250, 1316}, {1989, 1755}},
 	{{290, 3799}, {724, 3781}, {481, 4062}, {876, 4058}, {855, 3922}, {808, 3876}, {959, 3813}, {926, 3750}, {1096, 3730}, {1132, 3800}},
@@ -425,15 +425,15 @@ var huntingScrollDestinations = [6][10][2]int16{
 	{{3664, 3024}, {3582, 3007}, {3514, 3008}, {3819, 2977}, {3517, 2889}, {3745, 2977}, {3639, 2877}, {3650, 2727}, {3660, 2773}, {3746, 2879}},
 }
 
-// volClasses (Classes A-E, _MSG_UseItem.cpp:4959) is handled by useClasseItem
-// (classe.go), NOT rejectUnimplementedConsumable: its logic — the #pragma
-// region Classe block, SetItemBonus2
-// (Server.cpp:2719-2861), and the four g_pBonusValue2..5 tables
-// (Basedef.cpp:353-529) — is fully present in Source/.
+// volClasses (Classes A-E, _MSG_UseItem.cpp:4959) é tratado por useClasseItem
+// (classe.go), NÃO por rejectUnimplementedConsumable: sua lógica — o bloco
+// #pragma region Classe, SetItemBonus2
+// (Server.cpp:2719-2861), e as quatro tabelas g_pBonusValue2..5
+// (Basedef.cpp:353-529) — está toda presente em Source/.
 const volClasses = 190
 
-// useFairyFlash transforms an equipped red fairy while retaining its effects
-// and absolute expiry. The Flash items have no EF_VOLATILE entry in the catalog.
+// useFairyFlash transforma uma fada vermelha equipada mantendo seus efeitos
+// e expiração absoluta. Os itens Flash não têm entrada EF_VOLATILE no catálogo.
 func (d *Dispatcher) useFairyFlash(w *world.World, s *world.Session, e *world.Entity, src int) {
 	target := &e.Equip[fairyEquipSlot]
 	if target.Index != itemFadaVermelha3d && target.Index != itemFadaVermelha5d && target.Index != itemFadaVermelha7d {
@@ -465,17 +465,17 @@ func fairyFlashTarget(index int16) (int16, bool) {
 	}
 }
 
-// potionDelay is the minimum ms between potion uses (_MSG_UseItem.cpp:105-115).
-// The original defaults to 100 and exposes it to the runtime config (Server.cpp:647,
-// :1463); we take the default — a config knob can follow if it's ever tuned.
+// potionDelay é o mínimo de ms entre usos de poção (_MSG_UseItem.cpp:105-115).
+// O original usa 100 por padrão e o expõe na config de execução (Server.cpp:647,
+// :1463); usamos o padrão — um botão de config pode vir se algum dia for ajustado.
 const potionDelay = 100
 
-// useItem handles _MSG_UseItem (0x0373), handlers/_MSG_UseItem.md. The action is
-// classified by the source item's EF_VOLATILE value (BASE_GetItemAbility, captura §B):
-// 0 = equip (CARRY → EQUIP); 11 = Retorno (recall); 12/13 = Gema Estelar/Portal
-// (warp save-point, issue #140); 64-66 = Poção Divina. Unknown consumables are
-// rejected with a slot resync instead of silently no-op'ing.
-// Drag-and-drop between slots is a different message (tradingItem).
+// useItem trata _MSG_UseItem (0x0373), handlers/_MSG_UseItem.md. A ação é
+// classificada pelo valor EF_VOLATILE do item de origem (BASE_GetItemAbility, captura §B):
+// 0 = equipar (CARRY → EQUIP); 11 = Retorno (recall); 12/13 = Gema Estelar/Portal
+// (ponto de save do warp, issue #140); 64-66 = Poção Divina. Consumíveis desconhecidos são
+// recusados com ressincronização de slot em vez de no-op silencioso.
+// Arrastar e soltar entre slots é outra mensagem (tradingItem).
 func (d *Dispatcher) useItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -486,7 +486,7 @@ func (d *Dispatcher) useItem(w *world.World, s *world.Session, _ protocol.Header
 		return
 	}
 	if int(body.SourType) != world.ItemPlaceCarry {
-		return // consumed/equipped items come from the inventory
+		return // itens consumidos/equipados vêm do inventário
 	}
 	src := int(body.SourPos)
 	if !carrySlotAccessible(e, src) || e.Carry[src].Empty() {
@@ -507,10 +507,10 @@ func (d *Dispatcher) useItem(w *world.World, s *world.Session, _ protocol.Header
 		d.useArchCrystal(w, s, e, src)
 		return
 	}
-	// Selo do Guerreiro and Pedra Misteriosa have no EF_VOLATILE, so d.itemVolatiles
-	// defaults to 0 for them — check sIndex first so they don't fall into the vol==0
-	// equip path (canEquipSlot would just silently reject them, the same "phantom
-	// consumption" bug this whole block fixes for issue #135).
+	// Selo do Guerreiro e Pedra Misteriosa não têm EF_VOLATILE, então d.itemVolatiles
+	// fica 0 para eles — cheque sIndex primeiro para não caírem no caminho de
+	// equipar do vol==0 (canEquipSlot simplesmente os recusaria em silêncio, o mesmo bug de
+	// "consumo fantasma" que este bloco inteiro corrige para a issue #135).
 	switch e.Carry[src].Index {
 	case itemSeloDoGuerreiro:
 		d.useSeloDoGuerreiro(w, s, e, src)
@@ -518,7 +518,7 @@ func (d *Dispatcher) useItem(w *world.World, s *world.Session, _ protocol.Header
 	case itemPedraMisteriosa:
 		d.usePedraMisteriosa(w, s, e, src)
 		return
-	case furyStoneItem: // issue #408: no EF_VOLATILE either
+	case furyStoneItem: // issue #408: também sem EF_VOLATILE
 		d.useFuryStone(w, s, e, src)
 		return
 	}
@@ -588,15 +588,15 @@ func (d *Dispatcher) useItem(w *world.World, s *world.Session, _ protocol.Header
 		vol >= volWaterALo && vol <= volWaterAHi:
 		d.useWaterScroll(w, s, e, src, vol)
 	default:
-		// issue #204: do not silently no-op unknown consumables. The client may
-		// optimistically remove them, then the next slot resync (buy/move/save)
-		// appears to bring the item back.
+		// issue #204: não fazer no-op silencioso em consumíveis desconhecidos. O cliente pode
+		// removê-los de forma otimista, e então a próxima ressincronização de slot (compra/move/save)
+		// parece trazer o item de volta.
 		d.rejectUnimplementedConsumable(w, s, e, src)
 	}
 }
 
-// useHuntingScroll ports the legacy Pedidos de Caça block. The item selects
-// one of six map rows and WarpID selects one of ten destinations within it.
+// useHuntingScroll porta o bloco legado de Pedidos de Caça. O item seleciona
+// uma de seis linhas de mapa e o WarpID seleciona um de dez destinos dentro dela.
 func (d *Dispatcher) useHuntingScroll(w *world.World, s *world.Session, e *world.Entity, src int, warpID uint16) {
 	itemIndex := int(e.Carry[src].Index)
 	if itemIndex < itemHuntingScrollBase || itemIndex > itemHuntingScrollLast || warpID == 0 || warpID > 10 {
@@ -658,19 +658,19 @@ func (d *Dispatcher) useQuest256Ticket(w *world.World, s *world.Session, e *worl
 	itemIdx := e.Carry[src].Index
 	consumeOneItem(&e.Carry[src])
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
-	// Teleport immediately: _MSG_Quest.cpp's DoTeleport for these same tickets
-	// (COVEIRO/JARDINEIRO/KAIZEN/HIDRA/ELFOS, :332/:376/:420/:464/:508) is
-	// synchronous, and so are this file's other item-triggered teleports
-	// (usePortalScroll, useGemaEstelar). The 9.5s masterGriffTravelDelay this used
-	// to borrow is justified only for the real _MSG_MasterGriff opcode, which has
-	// a matching client-side travel animation; a bare right-click has none, so the
-	// delay just left the player staring at nothing for ~10s after the item vanished.
+	// Teleporta imediatamente: o DoTeleport de _MSG_Quest.cpp para esses mesmos tickets
+	// (COVEIRO/JARDINEIRO/KAIZEN/HIDRA/ELFOS, :332/:376/:420/:464/:508) é
+	// síncrono, e também os outros teleportes disparados por item deste arquivo
+	// (usePortalScroll, useGemaEstelar). O masterGriffTravelDelay de 9.5s que isto
+	// pegava emprestado só se justifica para o opcode real _MSG_MasterGriff, que tem
+	// animação de viagem correspondente no cliente; um clique direito puro não tem, então o
+	// atraso só deixava o jogador olhando para o nada por ~10s depois do item sumir.
 	d.teleportQuest256Step(w, s, e, step)
 	d.log.Info("quest256 ticket teleport", "conn", s.Conn, "item", itemIdx, "level", e.Level, "quest_flag", step.flag)
 	return true
 }
 
-// rejectUnimplementedConsumable refuses unsupported items and restores the client slot.
+// rejectUnimplementedConsumable recusa itens não suportados e restaura o slot no cliente.
 func (d *Dispatcher) rejectUnimplementedConsumable(w *world.World, s *world.Session, e *world.Entity, src int) {
 	d.notify(w, s, NoticeCantUseHere)
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
@@ -678,12 +678,12 @@ func (d *Dispatcher) rejectUnimplementedConsumable(w *world.World, s *world.Sess
 
 const efAmount = 61
 
-// efKeyID is EF_KEYID (ItemEffect.h:96): a gate and its matching key both carry it;
-// a locked gate opens only when a carried item's EF_KEYID equals the gate's (gate.go).
+// efKeyID é EF_KEYID (ItemEffect.h:96): um portão e sua chave correspondente o carregam;
+// um portão trancado só abre quando o EF_KEYID de um item carregado é igual ao do portão (gate.go).
 const efKeyID = 39
 
-// efQuest is EF_QUEST (ItemEffect.h:115), used to bind Castle/Zakum inner keys
-// to the currently active quest level.
+// efQuest é EF_QUEST (ItemEffect.h:115), usado para vincular as chaves internas de Castle/Zakum
+// ao nível de quest ativo no momento.
 const efQuest = 58
 
 func itemAmount(it world.Item) int {
@@ -708,17 +708,17 @@ func consumeOneItem(it *world.Item) {
 	}
 }
 
-// Sephira skill-book volatile range: Vol 31-38 teaches LearnedSkill bit Vol-7
-// (bits 24-31, the extra-class skills; _MSG_UseItem.cpp "Livros Sephira").
+// faixa de voláteis dos livros Sephira: Vol 31-38 ensina o bit LearnedSkill Vol-7
+// (bits 24-31, as skills de classe extra; _MSG_UseItem.cpp "Livros Sephira").
 const (
 	volSephiraLo = 31
 	volSephiraHi = 38
 )
 
-// useSkillBook consumes a Sephira book: sets the learned bit, refreshes the
-// skill window (Learn rides UpdateEtc) and eats one unit. Already-learned
-// refuses and re-syncs the slot. The legacy also sets a cosmetic Affect(44)
-// flash — deferred until the affect engine (M4) lands.
+// useSkillBook consome um livro Sephira: marca o bit aprendido, atualiza a
+// janela de skills (Learn viaja no UpdateEtc) e gasta uma unidade. Já aprendido
+// recusa e ressincroniza o slot. O legado também marca um Affect(44) cosmético
+// de brilho — adiado até o motor de affect (M4) chegar.
 func (d *Dispatcher) useSkillBook(w *world.World, s *world.Session, e *world.Entity, src, vol int) {
 	bit := int32(1) << uint(vol-7)
 	if e.LearnedSkill&bit != 0 {
@@ -792,10 +792,10 @@ func legacyBuffConsumableSlot(e *world.Entity, value uint8) int {
 	return -1
 }
 
-// useLegacyBuffConsumable ports _MSG_UseItem.cpp:1215-1341: Kappa,
-// Combatente, Mental, Sephira and Antidoto share Affect type 4 and differ by
-// Value/Time. The slot lookup is narrower than GetEmptyAffect: only an existing
-// type-4 slot with the same Value may be refreshed.
+// useLegacyBuffConsumable porta _MSG_UseItem.cpp:1215-1341: Kappa,
+// Combatente, Mental, Sephira e Antidoto compartilham o Affect tipo 4 e diferem por
+// Value/Time. A busca de slot é mais restrita que GetEmptyAffect: só um slot
+// tipo 4 existente com o mesmo Value pode ser reavivado.
 func (d *Dispatcher) useLegacyBuffConsumable(w *world.World, s *world.Session, e *world.Entity, src, vol int) {
 	itemIdx := e.Carry[src].Index
 	value, ticks, ok := legacyBuffConsumableEffect(itemIdx)
@@ -819,7 +819,7 @@ func (d *Dispatcher) useLegacyBuffConsumable(w *world.World, s *world.Session, e
 	d.log.Info("legacy buff consumable used", "conn", s.Conn, "item", itemIdx, "vol", vol, "value", value, "time", ticks)
 }
 
-// equipItem is the CARRY → EQUIP path of _MSG_UseItem (Vol==0 items).
+// equipItem é o caminho CARRY → EQUIP do _MSG_UseItem (itens com Vol==0).
 func (d *Dispatcher) equipItem(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, payload []byte) {
 	if int(body.DestType) != world.ItemPlaceEquip {
 		return
@@ -829,15 +829,15 @@ func (d *Dispatcher) equipItem(w *world.World, s *world.Session, e *world.Entity
 		return
 	}
 	if !d.canEquipSlot(e.Carry[src].Index, dst) {
-		return // wrong slot for this item (e.g. a consumable into the body slot)
+		return // slot errado para este item (ex.: um consumível no slot do corpo)
 	}
 	if !d.meetsEquipReq(e, e.Carry[src]) {
-		d.notify(w, s, NoticeReqNotMet) // level/attributes too low for this item
+		d.notify(w, s, NoticeReqNotMet) // nível/atributos insuficientes para este item
 		return
 	}
 	e.Carry[src], e.Equip[dst] = e.Equip[dst], e.Carry[src]
-	w.Send(s, protocol.MsgUseItem, payload) // echo result
-	d.refreshEquip(w, s, e)                 // update the rendered gear
+	w.Send(s, protocol.MsgUseItem, payload) // devolver o resultado
+	d.refreshEquip(w, s, e)                 // atualizar o equipamento renderizado
 	if dst == mountEquipSlot {
 		d.refreshBabyMountSummon(w, s, e)
 	}
@@ -865,9 +865,9 @@ func (d *Dispatcher) useExpChest(w *world.World, s *world.Session, e *world.Enti
 	d.sendAffect(w, s, e)
 }
 
-// useFairyDust consumes Poeira de Fada (EF_VOLATILE 7). The legacy handler sets
-// Exp directly to the next curve threshold, then calls CheckGetLevel; both sides
-// of its rand()%2 branch do the same in this fork.
+// useFairyDust consome Poeira de Fada (EF_VOLATILE 7). O handler legado coloca
+// a Exp direto no próximo limiar da curva e chama CheckGetLevel; os dois lados
+// do seu ramo rand()%2 fazem o mesmo neste fork.
 func (d *Dispatcher) useFairyDust(w *world.World, s *world.Session, e *world.Entity, src int) {
 	if archExpLocked(e) {
 		d.sendChatText(w, s, "Conclua a liberacao de nivel na Lindy antes de usar Poeira de Fada.")
@@ -890,29 +890,29 @@ func (d *Dispatcher) useFairyDust(w *world.World, s *world.Session, e *world.Ent
 	d.log.Info("fairy dust used", "conn", s.Conn, "classmaster", e.ClassMaster, "level", e.Level)
 }
 
-// inPesadelo reports whether (x,y) falls in the Pesadelo_A or Pesadelo_M
-// instanced-dungeon zones (tmserver/content/TMsrv/run/Regions.txt rows 5-6), the same
-// 128-unit segment test _MSG_UseItem.cpp reuses for the Vol 12/13/174/175
-// tickets (Gema Estelar, Portal, and the two Pesadelo entry scrolls).
+// inPesadelo informa se (x,y) cai nas zonas de dungeon instanciada Pesadelo_A
+// ou Pesadelo_M (linhas 5-6 de tmserver/content/TMsrv/run/Regions.txt), o mesmo
+// teste de segmento de 128 unidades que _MSG_UseItem.cpp reusa para os
+// tickets Vol 12/13/174/175 (Gema Estelar, Portal e os dois pergaminhos de entrada do Pesadelo).
 func inPesadelo(x, y int16) bool {
 	return (x/128 == 9 && y/128 == 1) || (x/128 == 8 && y/128 == 2)
 }
 
-// useRecallScroll consumes a Pergaminho do Retorno (EF_VOLATILE 11): the legacy
-// handler calls DoRecall(conn) and then decrements the item (_MSG_UseItem.cpp:1344).
+// useRecallScroll consome um Pergaminho do Retorno (EF_VOLATILE 11): o handler
+// legado chama DoRecall(conn) e depois decrementa o item (_MSG_UseItem.cpp:1344).
 func (d *Dispatcher) useRecallScroll(w *world.World, s *world.Session, e *world.Entity, src int) {
 	consumeOneItem(&e.Carry[src])
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
 	d.recall(w, s, e)
 }
 
-// useGemaEstelar consumes a Gema Estelar (EF_VOLATILE 12): records the player's
-// current position as the warp save-point (_MSG_UseItem.cpp:1360-1419). Blocked
-// while standing inside a city's limits, unless the tile is a Pesadelo instance
-// carve-out (legacy goto CanSave) — mirrors the legacy Village/Arena gate, minus
-// the map_att&4 and BASE_GetArena checks: the raw per-tile attribute grid has no
-// runtime query path today and BASE_GetArena's WarArea table has no Go
-// equivalent yet (issue #140 plan), so those two are a deliberate divergence.
+// useGemaEstelar consome uma Gema Estelar (EF_VOLATILE 12): registra a posição
+// atual do jogador como ponto de save do warp (_MSG_UseItem.cpp:1360-1419). Bloqueado
+// quando se está dentro dos limites de uma cidade, a menos que o tile seja uma exceção
+// de instância Pesadelo (goto CanSave legado) — espelha o gate Village/Arena legado, menos
+// as checagens map_att&4 e BASE_GetArena: a grade bruta de atributo por tile não tem
+// caminho de consulta em execução hoje e a tabela WarArea de BASE_GetArena não tem
+// equivalente em Go ainda (plano da issue #140), então esses dois são divergência deliberada.
 func (d *Dispatcher) useGemaEstelar(w *world.World, s *world.Session, e *world.Entity, src int) {
 	if !inPesadelo(e.X, e.Y) && world.Village(e.X, e.Y) >= 0 {
 		d.notify(w, s, NoticeCantUseHere)
@@ -925,13 +925,13 @@ func (d *Dispatcher) useGemaEstelar(w *world.World, s *world.Session, e *world.E
 	d.notify(w, s, NoticeSetWarp)
 }
 
-// usePortalScroll consumes a Pergaminho de Portal (EF_VOLATILE 13): teleports
-// the player to their saved Gema Estelar point (_MSG_UseItem.cpp:1421-1452).
-// Blocked if the saved point is inside a Pesadelo instance (can't portal into
-// it from outside, mirroring the legacy check), or if no point has ever been
-// saved (SaveX/SaveY still zero — a Go-port guard against teleporting to the
-// map origin; the legacy always has some default via the character's seeded
-// save position).
+// usePortalScroll consome um Pergaminho de Portal (EF_VOLATILE 13): teleporta
+// o jogador ao ponto de Gema Estelar salvo (_MSG_UseItem.cpp:1421-1452).
+// Bloqueado se o ponto salvo estiver dentro de uma instância Pesadelo (não dá para entrar
+// nela de fora, espelhando a checagem legada), ou se nenhum ponto nunca foi
+// salvo (SaveX/SaveY ainda zero — uma proteção do port em Go contra teleportar para a
+// origem do mapa; o legado sempre tem algum padrão pela posição de save semeada do
+// personagem).
 func (d *Dispatcher) usePortalScroll(w *world.World, s *world.Session, e *world.Entity, src int) {
 	if inPesadelo(e.SaveX, e.SaveY) {
 		d.notify(w, s, NoticeCantUseHere)
@@ -946,21 +946,21 @@ func (d *Dispatcher) usePortalScroll(w *world.World, s *world.Session, e *world.
 	d.doTeleport(w, s, e.SaveX, e.SaveY)
 }
 
-// useEntradaTerritorio consumes an "Entrada do Território" (LAN) ticket
-// (EF_VOLATILE 188) and teleports the player into the matching Lan_N/M/A region,
-// porting _MSG_UseItem.cpp:4202-4236. The tier is the item's sIndex minus the
-// (N) base (4111→0, 4112→1, 4113→2); each tier lands at a fixed coordinate on
-// map 0 with a rand()%5-3 spread per axis, inside the region bounds declared in
+// useEntradaTerritorio consome um ticket "Entrada do Território" (LAN)
+// (EF_VOLATILE 188) e teleporta o jogador para a região Lan_N/M/A correspondente,
+// portando _MSG_UseItem.cpp:4202-4236. O tier é o sIndex do item menos a
+// base (N) (4111→0, 4112→1, 4113→2); cada tier cai numa coordenada fixa no
+// mapa 0 com um espalhamento rand()%5-3 por eixo, dentro dos limites da região declarados em
 // tmserver/content/TMsrv/run/Regions.txt:45-47 (Lan_N/M/A).
 //
-// The gate matches legacy exactly — class tier only, no citizenship check: tiers
-// N/M (0,1) require ClassMaster Arch or Mortal; tier A (>=2) requires a celestial
-// tier. On a class mismatch the legacy code re-sends the slot and returns without
-// consuming; we do the same (plus a NoticeReqNotMet, as the other ticket handlers
-// do). In practice only N/M fire today: no character reaches a celestial
-// ClassMaster until the deferred celestial evolution system lands
-// (docs/migration/celestial-system-plan.md), but the (A) gate is ported faithfully
-// so it works automatically once that exists.
+// O gate casa exatamente com o legado — só tier de classe, sem checagem de cidadania: tiers
+// N/M (0,1) exigem ClassMaster Arch ou Mortal; tier A (>=2) exige um tier
+// celestial. Numa divergência de classe o código legado reenvia o slot e retorna sem
+// consumir; fazemos o mesmo (mais um NoticeReqNotMet, como os outros handlers de
+// ticket). Na prática só N/M disparam hoje: nenhum personagem alcança um
+// ClassMaster celestial até o sistema adiado de evolução celestial chegar
+// (docs/migration/celestial-system-plan.md), mas o gate (A) é portado fielmente
+// para funcionar sozinho quando ele existir.
 func (d *Dispatcher) useEntradaTerritorio(w *world.World, s *world.Session, e *world.Entity, src int) {
 	territorio := int(e.Carry[src].Index) - itemEntradaTerritorioBase
 
@@ -987,7 +987,7 @@ func (d *Dispatcher) useEntradaTerritorio(w *world.World, s *world.Session, e *w
 	default:
 		bx, by = 3911, 3655
 	}
-	// rand()%5 - 3 per axis, X then Y, to preserve the legacy call order/spread.
+	// rand()%5 - 3 por eixo, X depois Y, para preservar a ordem/espalhamento legado das chamadas.
 	x := bx + int16(w.Rand().Intn(5)) - 3
 	y := by + int16(w.Rand().Intn(5)) - 3
 
@@ -996,9 +996,9 @@ func (d *Dispatcher) useEntradaTerritorio(w *world.World, s *world.Session, e *w
 	d.doTeleport(w, s, x, y)
 }
 
-// useQuestReward handles the five Vol-191 quest trophies. Their row is the
-// contiguous item offset, and QuestsRate.txt supplies tier-specific rewards and
-// half-open level ranges. All mutation stays in the world loop.
+// useQuestReward trata os cinco troféus de quest Vol-191. Sua linha é o
+// deslocamento contíguo de item, e QuestsRate.txt fornece recompensas por tier e
+// faixas de nível semiabertas. Toda mutação fica no loop do mundo.
 func (d *Dispatcher) useQuestReward(w *world.World, s *world.Session, e *world.Entity, src int) {
 	tier := int(e.Carry[src].Index) - itemQuestRewardBase
 	rate, ok := d.questRates.Tier(tier)
@@ -1029,14 +1029,14 @@ func (d *Dispatcher) useQuestReward(w *world.World, s *world.Session, e *world.E
 
 	consumeOneItem(&e.Carry[src])
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
-	d.sendEtc(w, s, e) // coin changed even when EXP was already at its ceiling
+	d.sendEtc(w, s, e) // moeda alterada mesmo com a EXP já no teto
 }
 
-// grantQuestPartyExp ports the trophy's party split (_MSG_UseItem.cpp:2403-2480).
-// The leader is consumer.Leader, or the consumer itself when that is <= 0 or
-// >= MAX_USER, and always receives the share, even when it is the consumer:
-// a solo or leader consumer gets QuestExp plus QuestExp/10 (issue #396). Only
-// the leader's party members skip the consumer and non-playing sessions.
+// grantQuestPartyExp porta a divisão por grupo do troféu (_MSG_UseItem.cpp:2403-2480).
+// O líder é consumer.Leader, ou o próprio consumidor quando isso é <= 0 ou
+// >= MAX_USER, e sempre recebe a parte, mesmo quando é o consumidor:
+// um consumidor solo ou líder recebe QuestExp mais QuestExp/10 (issue #396). Só
+// os membros do grupo do líder pulam o consumidor e as sessões fora de jogo.
 func (d *Dispatcher) grantQuestPartyExp(w *world.World, consumer *world.Entity, share int64) {
 	if share <= 0 {
 		return
@@ -1049,8 +1049,8 @@ func (d *Dispatcher) grantQuestPartyExp(w *world.World, consumer *world.Entity, 
 	if leader == nil {
 		return
 	}
-	// The legacy leader grant has no USER_PLAY filter; a nil session still
-	// raises Exp and only skips the client packets.
+	// O grant legado ao líder não tem filtro USER_PLAY; uma sessão nil ainda
+	// aumenta a Exp e só pula os pacotes do cliente.
 	d.grantDirectExp(w, w.Session(leaderID), leader, share)
 
 	seen := map[int]bool{consumer.ID: true, leaderID: true}
@@ -1067,23 +1067,23 @@ func (d *Dispatcher) grantQuestPartyExp(w *world.World, consumer *world.Entity, 
 	}
 }
 
-// useHealPotion consumes an HP/MP potion (EF_VOLATILE 1), porting
+// useHealPotion consome uma poção de HP/MP (EF_VOLATILE 1), portando
 // _MSG_UseItem.cpp:101-148 (docs/migration/handlers/_MSG_UseItem.md, catalog.go:102).
 //
-// The potion does NOT heal: it raises the ReqHp/ReqMp request targets by the item's
-// catalog EF_HP/EF_MP (clamped to the live effective max) and the 1s tick's
-// applyHp/applyMp closes the bars on them (regenPlayers, mobai.go). That ramp is the
-// original's behavior — a potion is out-damageable, not an instant top-off.
+// A poção NÃO cura: ela eleva os alvos de pedido ReqHp/ReqMp pelo
+// EF_HP/EF_MP do catálogo do item (limitado ao máximo efetivo atual) e o applyHp/applyMp do tick
+// de 1s fecha as barras neles (regenPlayers, mobai.go). Essa rampa é o
+// comportamento do original — dá para superar a cura com dano, não é preenchimento instantâneo.
 //
-// The reply is SetHpMp and is deliberately self-only (SendSetHpMp, SendFunc.cpp:1722):
-// it carries ReqHp/ReqMp so the drinker's own client can animate the fill. Nearby
-// players are informed by the tick's multicast sendScore once HP actually moves —
-// that path, not this one, is what fixes the stale HP bar in issue #99.
+// A resposta é SetHpMp e é deliberadamente só para si (SendSetHpMp, SendFunc.cpp:1722):
+// ela carrega ReqHp/ReqMp para o cliente de quem bebe animar o preenchimento. Jogadores
+// próximos são informados pelo sendScore multicast do tick quando o HP realmente muda —
+// esse caminho, não este, é o que corrige a barra de HP velha da issue #99.
 func (d *Dispatcher) useHealPotion(w *world.World, s *world.Session, e *world.Entity, src int) {
-	// PotionDelay anti-spam (_MSG_UseItem.cpp:105-115): a use inside the window is
-	// dropped and the slot re-synced, so the stack is not consumed. Gate on the
-	// SERVER clock — the original reads GetTickCount(), and a client-supplied tick
-	// would be spoofable. int64 math avoids uint32 underflow at tick 0.
+	// Anti-spam do PotionDelay (_MSG_UseItem.cpp:105-115): um uso dentro da janela é
+	// descartado e o slot ressincronizado, então a pilha não é consumida. A guarda usa o
+	// relógio do SERVIDOR — o original lê GetTickCount(), e um tick fornecido pelo cliente
+	// seria falsificável. Aritmética int64 evita underflow de uint32 no tick 0.
 	now := w.Now()
 	if s.PotionTick != 0 && int64(now)-int64(s.PotionTick) < potionDelay {
 		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
@@ -1111,10 +1111,10 @@ func (d *Dispatcher) useHealPotion(w *world.World, s *world.Session, e *world.En
 	d.sendSetHpMp(w, s, e)
 }
 
-// useDivine consumes a Poção Divina: it sets the Divine buff (Affect 34) for 8/16/31
-// days and recomputes the score so the client sees +20% MaxHp/MaxMp/Damage. Mirrors
-// _MSG_UseItem.cpp:2128 (captura §B,C). If the player is already divine, it refuses
-// (_NN_CantEatMore) and re-syncs the item slot.
+// useDivine consome uma Poção Divina: define o buff Divino (Affect 34) por 8/16/31
+// dias e recalcula o score para o cliente ver +20% MaxHp/MaxMp/Damage. Espelha
+// _MSG_UseItem.cpp:2128 (captura §B,C). Se o jogador já está divino, recusa
+// (_NN_CantEatMore) e ressincroniza o slot do item.
 func (d *Dispatcher) useDivine(w *world.World, s *world.Session, e *world.Entity, src, vol int) {
 	slot := e.EmptyAffect(world.AffectDivine)
 	if slot < 0 || e.Affect[slot].Type == world.AffectDivine {
@@ -1122,7 +1122,7 @@ func (d *Dispatcher) useDivine(w *world.World, s *world.Session, e *world.Entity
 		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
 		return
 	}
-	// Vol 64/65/66 → 8/16/31 days (the +1 grace matches _MSG_UseItem.cpp:2142).
+	// Vol 64/65/66 → 8/16/31 dias (a folga de +1 casa com _MSG_UseItem.cpp:2142).
 	days := int64(8)
 	switch vol {
 	case 65:
@@ -1133,14 +1133,14 @@ func (d *Dispatcher) useDivine(w *world.World, s *world.Session, e *world.Entity
 	e.DivineEnd = time.Now().Unix() + days*86400
 	e.Affect[slot] = world.Affect{Type: world.AffectDivine, Level: 1, Time: divineAffectTime}
 	consumeOneItem(&e.Carry[src])
-	d.refreshScore(e) // re-clamp; the +20% is read-time (effective getters)
+	d.refreshScore(e) // re-limite; os +20% são na leitura (getters efetivos)
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
 	d.sendScore(w, s, e)
 	d.sendAffect(w, s, e)
 }
 
-// useVigor consumes a Poção de Vigor (EF_VOLATILE 58): Affect 35 adds +10% MaxHp/MaxMp
-// at read time (_MSG_UseItem.cpp:2174, captura §B,C). Re-applying refreshes the slot.
+// useVigor consome uma Poção de Vigor (EF_VOLATILE 58): o Affect 35 soma +10% MaxHp/MaxMp
+// na leitura (_MSG_UseItem.cpp:2174, captura §B,C). Reaplicar reaviva o slot.
 func (d *Dispatcher) useVigor(w *world.World, s *world.Session, e *world.Entity, src, itemIdx int) {
 	slot := e.EmptyAffect(world.AffectVigor)
 	if slot < 0 {
@@ -1165,9 +1165,9 @@ func (d *Dispatcher) useVigor(w *world.World, s *world.Session, e *world.Entity,
 	d.sendAffect(w, s, e)
 }
 
-// useFrangoAssado consumes a Frango Assado (EF_VOLATILE 63): Affect 30 adds a flat
-// +2000 ForceMobDamage for 4h (_MSG_UseItem.cpp:2308-2341, Basedef.cpp:4427). Unlike
-// the healing potions this is not a heal — it's a mob-damage buff read at score time.
+// useFrangoAssado consome um Frango Assado (EF_VOLATILE 63): o Affect 30 soma
+// +2000 fixos de ForceMobDamage por 4h (_MSG_UseItem.cpp:2308-2341, Basedef.cpp:4427). Diferente
+// das poções de cura, isto não é cura — é um buff de dano contra criatura lido no score.
 func (d *Dispatcher) useFrangoAssado(w *world.World, s *world.Session, e *world.Entity, src int) {
 	slot := e.EmptyAffect(world.AffectForceMobDamage)
 	if slot < 0 {
@@ -1183,8 +1183,8 @@ func (d *Dispatcher) useFrangoAssado(w *world.World, s *world.Session, e *world.
 	d.sendAffect(w, s, e)
 }
 
-// silverBarGold returns the gold credited by Vol 185 "Barra de Prata" items
-// (_MSG_UseItem.cpp, "Barra de Prata"). The 4011 path is issue #56's 1Bi bar.
+// silverBarGold devolve o ouro creditado pelos itens "Barra de Prata" Vol 185
+// (_MSG_UseItem.cpp, "Barra de Prata"). O caminho 4011 é a barra de 1Bi da issue #56.
 func silverBarGold(itemIdx int16) (int32, bool) {
 	switch itemIdx {
 	case 4026:
@@ -1204,8 +1204,8 @@ func silverBarGold(itemIdx int16) (int32, bool) {
 	}
 }
 
-// useSilverBar consumes a silver-bar item and credits its fixed gold value,
-// preserving the legacy 2G character-gold ceiling.
+// useSilverBar consome um item de barra de prata e credita seu valor fixo em ouro,
+// preservando o teto legado de 2G de ouro do personagem.
 func (d *Dispatcher) useSilverBar(w *world.World, s *world.Session, e *world.Entity, src int) {
 	itemIdx := e.Carry[src].Index
 	gold, ok := silverBarGold(itemIdx)
@@ -1224,8 +1224,8 @@ func (d *Dispatcher) useSilverBar(w *world.World, s *world.Session, e *world.Ent
 	d.log.Info("silver bar used", "conn", s.Conn, "item", itemIdx, "gold", gold, "coin", e.Coin)
 }
 
-// baseGemVariant maps the four base-change gems to the +10..+15 packed gem
-// index used by BASE_SetItemSanc (_MSG_UseItem.cpp:3890-4201).
+// baseGemVariant mapeia as quatro gemas de troca de base para o índice de gema
+// empacotado +10..+15 usado por BASE_SetItemSanc (_MSG_UseItem.cpp:3890-4201).
 func baseGemVariant(vol int) (int, bool) {
 	switch vol {
 	case volGemDiamond:
@@ -1241,10 +1241,10 @@ func baseGemVariant(vol int) (int, bool) {
 	}
 }
 
-// useBaseGem handles Gema de Diamante/Esmeralda/Coral/Garnet (Vol 180..183).
-// They change an equipped ANCT grade-5..8 item to the selected base variant and,
-// on +10..+15 targets, rewrite the packed sanc gem index. The legacy accepts only
-// equipped gear except body slot 0 and accessory slots 8..15.
+// useBaseGem trata Gema de Diamante/Esmeralda/Coral/Garnet (Vol 180..183).
+// Elas trocam um item equipado ANCT grau 5..8 pela variante de base escolhida e,
+// em alvos +10..+15, reescrevem o índice de gema de sanc empacotado. O legado aceita só
+// equipamento equipado, exceto o slot de corpo 0 e os slots de acessório 8..15.
 func (d *Dispatcher) useBaseGem(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, src, vol int) {
 	gem, ok := baseGemVariant(vol)
 	if !ok {
@@ -1287,37 +1287,37 @@ func (d *Dispatcher) baseGemReject(w *world.World, s *world.Session, e *world.En
 	d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 }
 
-// Jóia (cash jewel) volatiles. Vol 242 is the PvP buff set (grants affect type
-// 8, one Level bit per jewel); Vol 243 is the recovery/storage pair.
+// Voláteis de Jóia (joia de cash). Vol 242 é o conjunto de buff PvP (concede affect tipo
+// 8, um bit de Level por joia); Vol 243 é o par recuperação/armazenagem.
 const (
 	volJoiaPvP      = 242
 	volJoiaRecovery = 243
 	affectPvP       = 8
 )
 
-// joiaPvPBit maps each Vol-242 jewel's sIndex to its affect-8 Level bit
-// (_MSG_UseItem.cpp:4287-4313). The bit selects which bonus BASE_GetCurrentScore
-// applies (see applyAffectScore case 8). Note 3203/3207 are Vol 243, not here.
+// joiaPvPBit mapeia o sIndex de cada joia Vol-242 para seu bit de Level do affect 8
+// (_MSG_UseItem.cpp:4287-4313). O bit escolhe qual bônus BASE_GetCurrentScore
+// aplica (veja applyAffectScore case 8). Note que 3203/3207 são Vol 243, não aqui.
 var joiaPvPBit = map[int16]uint{
-	3200: 0, // Sagacidade (bit 0 has no score effect — a legacy quirk)
+	3200: 0, // Sagacidade (o bit 0 não tem efeito no score — peculiaridade do legado)
 	3201: 1, // Resistência
 	3202: 2, // Revelação
 	3204: 3, // Absorção
 	3205: 4, // Proteção
 	3206: 5, // Poder
-	3208: 6, // Precisão (Accuracy is a dead field in the legacy — icon only)
+	3208: 6, // Precisão (Accuracy é um campo morto no legado — só ícone)
 	3209: 7, // Magia
 }
 
-// joiaRecoveryCleanse are the skill-buff affect types the Jóia da Recuperação
-// (3203) strips (_MSG_UseItem.cpp:4356).
+// joiaRecoveryCleanse são os tipos de affect de buff de skill que a Jóia da Recuperação
+// (3203) remove (_MSG_UseItem.cpp:4356).
 var joiaRecoveryCleanse = map[uint8]bool{1: true, 3: true, 5: true, 7: true, 10: true, 12: true, 20: true, 32: true}
 
-// useJoiaPvP consumes a Vol-242 PvP jewel: it sets (or OR-refreshes) the shared
-// affect-8 slot with the jewel's Level bit for one hour, then recomputes and
-// pushes the score/affect snapshot. Stacking jewels accumulate their bits in the
-// same slot (GetEmptyAffect returns the existing type-8 slot). Mirrors the
-// "Jóias PvP" region of _MSG_UseItem.cpp.
+// useJoiaPvP consome uma joia PvP Vol-242: define (ou reaviva por OR) o slot
+// affect 8 compartilhado com o bit de Level da joia por uma hora, depois recalcula e
+// empurra o snapshot de score/affect. Joias empilhadas acumulam seus bits no
+// mesmo slot (GetEmptyAffect devolve o slot tipo 8 existente). Espelha a
+// região "Jóias PvP" de _MSG_UseItem.cpp.
 func (d *Dispatcher) useJoiaPvP(w *world.World, s *world.Session, e *world.Entity, src int) {
 	bit, ok := joiaPvPBit[e.Carry[src].Index]
 	if !ok {
@@ -1342,10 +1342,10 @@ func (d *Dispatcher) useJoiaPvP(w *world.World, s *world.Session, e *world.Entit
 	d.sendAffect(w, s, e)
 }
 
-// useJoiaRecovery consumes a Vol-243 jewel. The Jóia da Recuperação (3203)
-// strips the player's skill buffs/debuffs (joiaRecoveryCleanse) before consuming;
-// the Jóia da Armazenagem (3207) has no server-side stat, so it is consumed only.
-// Mirrors the "Armazenagem - Recuperação" region of _MSG_UseItem.cpp.
+// useJoiaRecovery consome uma joia Vol-243. A Jóia da Recuperação (3203)
+// remove os buffs/debuffs de skill do jogador (joiaRecoveryCleanse) antes de consumir;
+// a Jóia da Armazenagem (3207) não tem atributo do lado do servidor, então é só consumida.
+// Espelha a região "Armazenagem - Recuperação" de _MSG_UseItem.cpp.
 func (d *Dispatcher) useJoiaRecovery(w *world.World, s *world.Session, e *world.Entity, src int) {
 	if e.Carry[src].Index == 3203 {
 		cleared := false
@@ -1368,8 +1368,8 @@ func (d *Dispatcher) useJoiaRecovery(w *world.World, s *world.Session, e *world.
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(protocol.ItemPlaceCarry, src, itemToSel(e.Carry[src])))
 }
 
-// useCoracaoDoce consumes Coração Doce (EF_VOLATILE 205): a short Velocidade
-// (Affect 2) + Defesa (Affect 11) buff, 1h/5 = 12min (_MSG_UseItem.cpp:6030-6079).
+// useCoracaoDoce consome Coração Doce (EF_VOLATILE 205): um buff curto de Velocidade
+// (Affect 2) + Defesa (Affect 11), 1h/5 = 12min (_MSG_UseItem.cpp:6030-6079).
 func (d *Dispatcher) useCoracaoDoce(w *world.World, s *world.Session, e *world.Entity, src int) {
 	speedSlot := e.EmptyAffect(2) // Velocidade
 	if speedSlot < 0 {
@@ -1394,8 +1394,8 @@ func (d *Dispatcher) useCoracaoDoce(w *world.World, s *world.Session, e *world.E
 	d.sendAffect(w, s, e)
 }
 
-// useChocolateDoAmor consumes Chocolate do Amor (EF_VOLATILE 204): a short Dano
-// (Affect 9) + Skill (Affect 15) buff, 1h/5 = 12min (_MSG_UseItem.cpp:6082-6131).
+// useChocolateDoAmor consome Chocolate do Amor (EF_VOLATILE 204): um buff curto de Dano
+// (Affect 9) + Skill (Affect 15), 1h/5 = 12min (_MSG_UseItem.cpp:6082-6131).
 func (d *Dispatcher) useChocolateDoAmor(w *world.World, s *world.Session, e *world.Entity, src int) {
 	dmgSlot := e.EmptyAffect(9) // Dano
 	if dmgSlot < 0 {
@@ -1420,10 +1420,10 @@ func (d *Dispatcher) useChocolateDoAmor(w *world.World, s *world.Session, e *wor
 	d.sendAffect(w, s, e)
 }
 
-// adamantitaUniqueType maps a target item's nUnique to the Adamantita tier it
-// belongs to (0-3), or -1 if it isn't legendary-upgradeable — the literal bucket
-// table from _MSG_UseItem.cpp:1113-1126, including its 10/20/30/40→3 duplicate
-// mapping (a legacy quirk, preserved rather than "fixed").
+// adamantitaUniqueType mapeia o nUnique de um item alvo para o tier de Adamantita a
+// que pertence (0-3), ou -1 se não for atualizável a lendário — a tabela literal de
+// baldes de _MSG_UseItem.cpp:1113-1126, incluindo o mapeamento duplicado
+// 10/20/30/40→3 (peculiaridade do legado, preservada em vez de "corrigida").
 func adamantitaUniqueType(nUnique int) int {
 	switch nUnique {
 	case 5, 14, 24, 34:
@@ -1439,16 +1439,16 @@ func adamantitaUniqueType(nUnique int) int {
 	}
 }
 
-// useAdamantita applies the Vol 9 legendary-upgrade combine (Spinner/Beril/
-// Tectita/Adamantita, item indices 575-578) onto the body.DestType/DestPos target,
-// matching _MSG_UseItem.cpp:1097-1213. The source item's index picks a tier
-// (Type = index-575); the target's catalog nUnique must bucket into the same
-// tier and its Grade must be 1-3. A 51% roll (rand()%100<=50) swaps the target's
-// index for the catalog's Extra result; either way the source is spent.
+// useAdamantita aplica o combine de upgrade lendário Vol 9 (Spinner/Beril/
+// Tectita/Adamantita, índices de item 575-578) no alvo body.DestType/DestPos,
+// casando com _MSG_UseItem.cpp:1097-1213. O índice do item de origem escolhe um tier
+// (Type = index-575); o nUnique de catálogo do alvo precisa cair no mesmo
+// tier e seu Grade precisa ser 1-3. Um sorteio de 51% (rand()%100<=50) troca o
+// índice do alvo pelo resultado Extra do catálogo; de um jeito ou de outro a origem é gasta.
 func (d *Dispatcher) useAdamantita(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, src int) {
 	dst := d.itemSlot(w, s, e, int(body.DestType), int(body.DestPos))
 	if dst == nil || dst.Empty() {
-		return // no such target — the legacy just logs and drops the message
+		return // sem esse alvo — o legado só loga e descarta a mensagem
 	}
 	adamType := int(e.Carry[src].Index) - 575
 	if adamType < 0 || adamType >= 4 {
@@ -1466,10 +1466,10 @@ func (d *Dispatcher) useAdamantita(w *world.World, s *world.Session, e *world.En
 		return
 	}
 
-	// The dragged Adamantita is already gone from the client's own inventory view
-	// by the time this reply arrives (the drag itself is optimistic) — only the
-	// target slot needs a resync, matching refineSucceed/refineFail's dust
-	// convention (refine.go:232,262), not the source.
+	// A Adamantita arrastada já sumiu da visão de inventário do próprio cliente
+	// quando esta resposta chega (o arrasto em si é otimista) — só o
+	// slot alvo precisa de ressincronização, casando com a convenção de poeira de
+	// refineSucceed/refineFail (refine.go:232,262), não a origem.
 	if w.Rand().Intn(100) <= 50 {
 		if extra := d.itemExtra[int(dst.Index)]; extra > 0 {
 			dst.Index = int16(extra)
@@ -1484,15 +1484,15 @@ func (d *Dispatcher) useAdamantita(w *world.World, s *world.Session, e *world.En
 	consumeOneItem(&e.Carry[src])
 }
 
-// amuletSlot is the Equip index Selo do Guerreiro's kingdom amulet lands in
+// amuletSlot é o índice de Equip em que o amuleto de reino do Selo do Guerreiro cai
 // (_MSG_UseItem.cpp:3325-3364, Equip[15]).
 const amuletSlot = 15
 
-// useSeloDoGuerreiro consumes Selo do Guerreiro (sIndex 4146, no EF_VOLATILE):
-// grants Fame and, once at a high mortal level without any kingdom amulet
-// already equipped, an entry-tier one (_MSG_UseItem.cpp:3325-3364).
-// SendEmotion(conn,14,3) is cosmetic and not ported, matching the existing
-// precedent in refine.go:233,263 (no emotion opcode exists in this fork yet).
+// useSeloDoGuerreiro consome Selo do Guerreiro (sIndex 4146, sem EF_VOLATILE):
+// concede Fama e, uma vez em nível mortal alto sem nenhum amuleto de reino
+// já equipado, um de tier de entrada (_MSG_UseItem.cpp:3325-3364).
+// SendEmotion(conn,14,3) é cosmético e não é portado, casando com o
+// precedente existente em refine.go:233,263 (nenhum opcode de emoção existe neste fork ainda).
 func (d *Dispatcher) useSeloDoGuerreiro(w *world.World, s *world.Session, e *world.Entity, src int) {
 	const maxFame int32 = 2_000_000_000
 	if e.Fame >= maxFame-10 {
@@ -1507,7 +1507,7 @@ func (d *Dispatcher) useSeloDoGuerreiro(w *world.World, s *world.Session, e *wor
 		hasAmulet = true
 	}
 	if e.ClassMaster == classMasterMortal && e.Level >= 354 && !hasAmulet {
-		amulet := int16(3193) // Elite dos Aventureiros — default/other kingdoms
+		amulet := int16(3193) // Elite dos Aventureiros — reino padrão/outros
 		switch e.Clan {
 		case 7:
 			amulet = 3191 // Elite de Hekalotia
@@ -1515,9 +1515,9 @@ func (d *Dispatcher) useSeloDoGuerreiro(w *world.World, s *world.Session, e *wor
 			amulet = 3192 // Elite de Akelonia
 		}
 		e.Equip[amuletSlot] = world.Item{Index: amulet}
-		// The legacy doesn't refresh score here, but the amulet carries real
-		// EF_AC/EF_HP bonuses (ItemList.csv) — recompute so they take effect
-		// immediately instead of waiting for the next unrelated score refresh.
+		// O legado não atualiza o score aqui, mas o amuleto carrega bônus reais de
+		// EF_AC/EF_HP (ItemList.csv) — recalcular para valerem
+		// imediatamente em vez de esperar o próximo refresh de score não relacionado.
 		d.refreshScore(e)
 		d.sendSlot(w, s, world.ItemPlaceEquip, amuletSlot, e.Equip[amuletSlot])
 		d.sendScore(w, s, e)
@@ -1531,16 +1531,16 @@ func (d *Dispatcher) useSeloDoGuerreiro(w *world.World, s *world.Session, e *wor
 
 const celestialArchLevelReq = 355
 
-// useIdealStone ports the EF_VOLATILE 211 block (_MSG_UseItem.cpp:3003-3181),
-// reached by right-clicking the Pedra_Ideal 5338 the King fuses from the four
-// Pedras Secretas (kingPedraIdeal). Issue #407 reverted #222, which had wired
-// this to the 1742: that one is the Pedra_da_Imortalidade, has no EF_VOLATILE
-// and only matters equipped in Equip[10] for the King's Arch creation.
+// useIdealStone porta o bloco EF_VOLATILE 211 (_MSG_UseItem.cpp:3003-3181),
+// alcançado clicando com o botão direito na Pedra_Ideal 5338 que o Rei funde das quatro
+// Pedras Secretas (kingPedraIdeal). A issue #407 reverteu a #222, que havia ligado
+// isto à 1742: aquela é a Pedra_da_Imortalidade, não tem EF_VOLATILE
+// e só importa equipada em Equip[10] para a criação de Arch do Rei.
 //
-// An Arch becomes a Celestial (:3101-3181, below); a Celestial with a Sephirot
-// becomes a Sub-Celestial (:3026-3085, createSubCelestial, issue #410). Any other
-// tier gets the silent slot resync of :3005-3009, and so do the Arch refusals
-// (:3011-3024) except for the armor text — no notice in any of them (issue #413).
+// Um Arch vira Celestial (:3101-3181, abaixo); um Celestial com um Sephirot
+// vira Sub-Celestial (:3026-3085, createSubCelestial, issue #410). Qualquer outro
+// tier recebe a ressincronização silenciosa de slot de :3005-3009, e as recusas de Arch
+// (:3011-3024) também, exceto pelo texto de armadura — sem aviso em nenhuma delas (issue #413).
 func (d *Dispatcher) useIdealStone(w *world.World, s *world.Session, e *world.Entity, src int) {
 	switch e.ClassMaster {
 	case classMasterArch:
@@ -1551,14 +1551,14 @@ func (d *Dispatcher) useIdealStone(w *world.World, s *world.Session, e *world.En
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 		return
 	}
-	// :3011-3015 — below the level cap the legacy only resyncs the slot.
+	// :3011-3015 — abaixo do teto de nível o legado só ressincroniza o slot.
 	if e.Level < celestialArchLevelReq {
 		d.sendSlot(w, s, world.ItemPlaceCarry, src, e.Carry[src])
 		return
 	}
-	// :3017-3024 — armor and the origin Mortal's level share one refusal whose
-	// only text is _NN_Cant_with_armor, and only when Equip[1] is occupied: a
-	// low MortalLevel without armor is silent, and with both the armor text wins.
+	// :3017-3024 — armadura e o nível do Mortal de origem dividem uma recusa cujo
+	// único texto é _NN_Cant_with_armor, e só quando Equip[1] está ocupado: um
+	// MortalLevel baixo sem armadura é silencioso, e com os dois o texto de armadura vence.
 	if !e.Equip[1].Empty() || e.MortalLevel < 99 {
 		if !e.Equip[1].Empty() {
 			d.sendClientMessage(w, s, cantWithArmor)
@@ -1660,10 +1660,10 @@ const (
 	magicBeanLastSlot  = 7
 )
 
-// useMagicBean consumes a Feijao Magico / Removedor de tintura (EF_VOLATILE 186)
-// by stamping only the destination effect id byte, preserving the cValue exactly
-// as _MSG_UseItem.cpp:3767-3861 does. Paint effects reuse the sanc effect slots:
-// 116..125 are colors, while EF_SANC (43) is the remover/neutral marker.
+// useMagicBean consome um Feijao Magico / Removedor de tintura (EF_VOLATILE 186)
+// carimbando só o byte do id do efeito de destino, preservando o cValue exatamente
+// como _MSG_UseItem.cpp:3767-3861 faz. Efeitos de tinta reusam os slots de efeito de sanc:
+// 116..125 são cores, enquanto EF_SANC (43) é o marcador removedor/neutro.
 func (d *Dispatcher) useMagicBean(w *world.World, s *world.Session, e *world.Entity, body protocol.MsgUseItemBody, src int) {
 	dstSlot := int(body.DestPos)
 	if int(body.DestType) != world.ItemPlaceEquip || dstSlot < magicBeanFirstSlot || dstSlot > magicBeanLastSlot {
@@ -1705,10 +1705,10 @@ func (d *Dispatcher) useMagicBean(w *world.World, s *world.Session, e *world.Ent
 	dst.Effects[i].Effect = effect
 
 	d.notify(w, s, NoticeRefineSuccess)
-	// refreshEquip recomputes e.EquipVisual/EquipAnct (the cached worn-item color
-	// codes) and rebroadcasts them; refreshScore alone leaves them stale, so on a
-	// later teleport createMobFrom would re-send the pre-paint color (#157). It also
-	// folds in refreshScore + sendScore internally.
+	// refreshEquip recalcula e.EquipVisual/EquipAnct (os códigos de cor das peças
+	// vestidas em cache) e os retransmite; só refreshScore os deixa velhos, então num
+	// teleporte posterior createMobFrom reenviaria a cor pré-tinta (#157). Ele também
+	// embute refreshScore + sendScore internamente.
 	d.refreshEquip(w, s, e)
 	consumeOneItem(&e.Carry[src])
 	d.sendSlot(w, s, int(body.DestType), dstSlot, *dst)
@@ -1743,14 +1743,14 @@ func magicBeanSlotWritable(ef world.Effect, remover bool) bool {
 	return false
 }
 
-// sendAffect pushes MSG_SendAffect (0x03B9): the full 32-slot buff snapshot, so the
-// client renders the buff icons/timers. Time is ticks of 8 real seconds for every
-// slot (affect1H=450, affect1D=10800); Divine's stored Affect.Time is only the
-// "infinite" display sentinel (divineAffectTime) — the real deadline is DivineEnd
-// (wall clock), so the displayed Time is recomputed here as the remaining seconds
-// ÷ 8. Sending the raw remaining seconds (or, once DivineEnd had passed, letting
-// the raw 2e9 sentinel fall through unconverted) showed a wildly inflated
-// duration — issue #202.
+// sendAffect empurra MSG_SendAffect (0x03B9): o snapshot completo dos 32 slots de buff, para o
+// cliente renderizar ícones/timers. O Time é em ticks de 8 segundos reais para todo
+// slot (affect1H=450, affect1D=10800); o Affect.Time guardado do Divino é só o
+// sentinela "infinito" de exibição (divineAffectTime) — o prazo real é DivineEnd
+// (wall clock), então o Time exibido é recalculado aqui como os segundos restantes
+// ÷ 8. Enviar os segundos restantes crus (ou, depois de DivineEnd ter passado, deixar
+// o sentinela cru de 2e9 passar sem conversão) mostrava uma duração
+// muito inflada — issue #202.
 func (d *Dispatcher) sendAffect(w *world.World, s *world.Session, e *world.Entity) {
 	now := time.Now().Unix()
 	var a [protocol.MaxAffect]protocol.AffectData
@@ -1771,15 +1771,15 @@ func (d *Dispatcher) sendAffect(w *world.World, s *world.Session, e *world.Entit
 	w.Send(s, protocol.MsgSendAffect, protocol.EncodeSendAffect(a))
 }
 
-// canEquipSlot reports whether an item may be equipped in equip slot dst. nPos
-// (STRUCT_ITEMLIST.nPos) is a BITMASK of the slots an item fits — body=1<<0, hat=1<<1,
-// armor 1<<2/1<<3, weapons 1<<6/1<<7, mount 1<<14 — confirmed against the template gear
-// (Garra nPos 64=slot6, Shire 16384=slot14, body items nPos 1=slot0). A consumable or
-// material has nPos 0 and fits nowhere, so this rejects a potion landing in an equip
-// slot. Items absent from the catalog are allowed (legacy/unknown gear, e.g. tests).
+// canEquipSlot informa se um item pode ser equipado no slot dst. nPos
+// (STRUCT_ITEMLIST.nPos) é uma MÁSCARA dos slots em que um item cabe — body=1<<0, hat=1<<1,
+// armadura 1<<2/1<<3, armas 1<<6/1<<7, montaria 1<<14 — confirmada contra o equipamento dos templates
+// (Garra nPos 64=slot6, Shire 16384=slot14, itens de corpo nPos 1=slot0). Um consumível ou
+// material tem nPos 0 e não cabe em lugar nenhum, então isto recusa uma poção caindo num slot
+// de equipamento. Itens ausentes do catálogo são permitidos (equipamento legado/desconhecido, ex.: testes).
 func (d *Dispatcher) canEquipSlot(idx int16, dst int) bool {
 	if idx == 0 {
-		return true // empty/unequip is always fine
+		return true // vazio/desequipar é sempre válido
 	}
 	pos, ok := d.itemPos[int(idx)]
 	if !ok {
@@ -1788,16 +1788,16 @@ func (d *Dispatcher) canEquipSlot(idx int16, dst int) bool {
 	return pos != 0 && pos&(1<<uint(dst)) != 0
 }
 
-// meetsEquipReq reports whether the entity satisfies an item's equip requirement
-// (level + Str/Int/Dex/Con, STRUCT_ITEMLIST Req*). It is checked against the live
-// CurrentScore (attributes including other equipped gear), as the original does.
-// Items absent from the requirement catalog (or with no requirement) always pass.
+// meetsEquipReq informa se a entidade satisfaz o requisito de equipar de um item
+// (nível + Str/Int/Dex/Con, STRUCT_ITEMLIST Req*). É checado contra o
+// CurrentScore vivo (atributos incluindo outros equipamentos), como o original faz.
+// Itens ausentes do catálogo de requisitos (ou sem requisito) sempre passam.
 //
-// The requirement only gates MORTAL characters (Basedef.cpp:5024-5028,
-// BASE_CanEquip): for any other ClassMaster tier (ARCH, CELESTIAL*) the legacy
-// code forces Lvl/Str/Int/Dex/Con to 0 before comparing, an outright bypass —
-// not a different level basis. Arch characters created via kingArch would
-// otherwise fail these checks at their fresh, low post-creation level (issue #209).
+// O requisito só condiciona personagens MORTAIS (Basedef.cpp:5024-5028,
+// BASE_CanEquip): para qualquer outro tier de ClassMaster (ARCH, CELESTIAL*) o código
+// legado força Lvl/Str/Int/Dex/Con para 0 antes de comparar, um bypass total —
+// não uma base de nível diferente. Personagens Arch criados via kingArch
+// falhariam nessas checagens no nível baixo de recém-criados (issue #209).
 func (d *Dispatcher) meetsEquipReq(e *world.Entity, it world.Item) bool {
 	if e.ClassMaster != classMasterMortal {
 		return true
@@ -1810,17 +1810,17 @@ func (d *Dispatcher) meetsEquipReq(e *world.Entity, it world.Item) bool {
 		e.Str >= r.Str && e.Int >= r.Int && e.Dex >= r.Dex && e.Con >= r.Con
 }
 
-// equipVisual derives the 16 visible equipment codes and refine/ancient overlay
-// bytes from the entity's equipped items, matching BASE_VisualItemCode and
+// equipVisual deriva os 16 códigos visíveis de equipamento e os bytes de
+// sobreposição de refino/ancestral dos itens equipados da entidade, casando com BASE_VisualItemCode e
 // BASE_VisualAnctCode.
 //
-// A live BM transform overrides slot 0 (the body/face mesh) with the beast
-// model — READ-time, unlike the legacy which mutates MOB.Equip[0].sIndex and
-// must reset it on every recompute (Basedef.cpp:4106/3908). Keeping e.Equip
-// untouched means the persisted body item can't be corrupted and the revert on
-// expiry is just this override no longer firing. Regular item glow is carried
-// by EquipAnct; the transform-specific synthetic EF_SANC from Basedef.cpp:4166
-// is deliberately left out until that separate cosmetic rule is captured.
+// Uma transformação BM ativa sobrescreve o slot 0 (a malha do corpo/rosto) com o
+// modelo da fera — na LEITURA, diferente do legado que muta MOB.Equip[0].sIndex e
+// precisa reiniciá-lo em todo recálculo (Basedef.cpp:4106/3908). Manter e.Equip
+// intocado significa que o item de corpo persistido não pode ser corrompido e a reversão na
+// expiração é só esta sobreposição deixar de atuar. O brilho normal do item é carregado
+// por EquipAnct; o EF_SANC sintético específico da transformação de Basedef.cpp:4166
+// fica deliberadamente de fora até aquela regra cosmética separada ser capturada.
 func equipVisual(e *world.Entity) ([16]uint16, [16]uint8) {
 	var v [16]uint16
 	var a [16]uint8
@@ -1830,10 +1830,10 @@ func equipVisual(e *world.Entity) ([16]uint16, [16]uint8) {
 	if value, _, ok := activeTransform(e); ok {
 		v[0] = transMesh(value)
 		a[0] = 0
-		// Costumes compete with the beast mesh on the client (issue #320).
-		// The legacy costume range/slot is in ProcessSecMinTimer.cpp:601.
-		// Hide only the visual: real equipment must retain its bonuses and
-		// reappear automatically when the transform ends.
+		// Figurinos competem com a malha da fera no cliente (issue #320).
+		// A faixa/slot de figurino legado está em ProcessSecMinTimer.cpp:601.
+		// Esconder só o visual: o equipamento real precisa manter seus bônus e
+		// reaparecer sozinho quando a transformação termina.
 		if costume := e.Equip[12].Index; costume >= 4150 && costume <= 4188 {
 			v[12], a[12] = 0, 0
 		}
@@ -1851,18 +1851,18 @@ func (d *Dispatcher) sendEquipVisual(w *world.World, s *world.Session, e *world.
 	})
 }
 
-// refreshEquip recomputes the entity's visible gear and pushes _MSG_UpdateEquip to
-// the player's own client AND every in-view player, so an equip/unequip is
-// rendered on the character model everywhere (SendFunc.cpp:SendEquip). HEADER.ID
-// is the entity id so the client applies it to the right mob. It also re-sends the
-// score, since equipment changes the character's attributes.
+// refreshEquip recalcula o equipamento visível da entidade e empurra _MSG_UpdateEquip para
+// o cliente do próprio jogador E para todo jogador em visão, para um equipar/desequipar ser
+// renderizado no modelo do personagem em todo lugar (SendFunc.cpp:SendEquip). HEADER.ID
+// é o id da entidade para o cliente aplicar na criatura certa. Ele também reenvia o
+// score, já que equipamento muda os atributos do personagem.
 func (d *Dispatcher) refreshEquip(w *world.World, s *world.Session, e *world.Entity) {
 	d.sendEquipVisual(w, s, e)
-	d.refreshScore(e) // fold the new gear's AC/attributes/HP/MP into CurrentScore
+	d.refreshScore(e) // somar o AC/atributos/HP/MP do equipamento novo no CurrentScore
 	d.sendScore(w, s, e)
 }
 
-// Item-effect type bytes (ItemEffect.h) summed into the CurrentScore.
+// Bytes de tipo de efeito de item (ItemEffect.h) somados no CurrentScore.
 const (
 	efDamage     = 2
 	efAc         = 3
@@ -1877,32 +1877,32 @@ const (
 	efSpecial3   = 13
 	efSpecial4   = 14
 	efSpecialAll = 74 // EF_SPECIALALL → CurrentScore.Special[1..3], "Aprendizagem de Skill"
-	efWType      = 21 // EF_WTYPE: weapon animation/type, used by Huntress RSV gates
-	efCritical   = 42 // EF_CRITICAL: crit source; summed over equip then /4 (Basedef.cpp:3209)
-	efSanc       = 43 // EF_SANC: item refine ("anc"/joias) level — gates the +9 threshold, not a flat stat
-	efHpAdd      = 45 // EF_HPADD: % bonus to MaxHp (MaxHp*(HPADD+HPADD2+100)/100), captura §E
-	efMpAdd      = 46 // EF_MPADD: % bonus to MaxMp
-	efResist1    = 49 // EF_RESIST1..4: per-type resist/immunity, see itemResist
+	efWType      = 21 // EF_WTYPE: animação/tipo de arma, usado pelos gates RSV da Caçadora
+	efCritical   = 42 // EF_CRITICAL: fonte de crítico; somado no equipamento e depois /4 (Basedef.cpp:3209)
+	efSanc       = 43 // EF_SANC: nível de refino ("anc"/joias) do item — condiciona o limiar +9, não é atributo fixo
+	efHpAdd      = 45 // EF_HPADD: bônus % de MaxHp (MaxHp*(HPADD+HPADD2+100)/100), captura §E
+	efMpAdd      = 46 // EF_MPADD: bônus % de MaxMp
+	efResist1    = 49 // EF_RESIST1..4: resistência/imunidade por tipo, veja itemResist
 	efResist2    = 50
 	efResist3    = 51
 	efResist4    = 52
-	efAcAdd      = 53 // EF_ACADD: extra AC — FLAT (summed with EF_AC), captura §E
-	efResistAll  = 54 // EF_RESISTALL: folds into all four EF_RESISTi — see itemResist
-	efMagic      = 60 // EF_MAGIC: flat magic-attack — excluded on the off-hand weapon slot only (Basedef.cpp:2447)
-	efDamageAdd  = 67 // EF_DAMAGEADD: extra flat damage — only counts for jewels (nUnique 41-50)
-	efMagicAdd   = 68 // EF_MAGICADD: extra flat magic-attack — jewel-gated like EF_DAMAGEADD (Basedef.cpp:1699-1703)
-	efHpAdd2     = 69 // EF_HPADD2/EF_MPADD2: also fold into the HPADD%/MPADD% multiplier
+	efAcAdd      = 53 // EF_ACADD: AC extra — FIXO (somado com EF_AC), captura §E
+	efResistAll  = 54 // EF_RESISTALL: se soma aos quatro EF_RESISTi — veja itemResist
+	efMagic      = 60 // EF_MAGIC: ataque mágico fixo — excluído só no slot de arma da mão secundária (Basedef.cpp:2447)
+	efDamageAdd  = 67 // EF_DAMAGEADD: dano fixo extra — só conta para joias (nUnique 41-50)
+	efMagicAdd   = 68 // EF_MAGICADD: ataque mágico fixo extra — condicionado a joia como EF_DAMAGEADD (Basedef.cpp:1699-1703)
+	efHpAdd2     = 69 // EF_HPADD2/EF_MPADD2: também entram no multiplicador HPADD%/MPADD%
 	efMpAdd2     = 70
-	efCritical2  = 71 // EF_CRITICAL2: enchanted crit — SUPERSEDES EF_CRITICAL on the same item
+	efCritical2  = 71 // EF_CRITICAL2: crítico encantado — SUBSTITUI EF_CRITICAL no mesmo item
 	efItemLevel  = 87
 	efMobType    = 112
-	efRunSpeed   = 29 // EF_RUNSPEED: boots' bonus to the move-speed (low) nibble of AttackRun
-	efDamage2    = 73 // EF_DAMAGE2: enchanted damage — SUPERSEDES EF_DAMAGE on a nPos 32 item
+	efRunSpeed   = 29 // EF_RUNSPEED: bônus das botas no nibble de velocidade de movimento (baixo) de AttackRun
+	efDamage2    = 73 // EF_DAMAGE2: dano encantado — SUBSTITUI EF_DAMAGE num item nPos 32
 
-	// Effect ids that BASE_GetItemAbility leaves UNSCALED by the refine multiplier
-	// (Basedef.cpp:1854). They are item identity/requirement metadata, not stats, so
-	// refining an item must not move them. efWType, efItemLevel, efMobType above and
-	// efNoSanc/efIncubate/efIncuDelay (refine.go) belong to the same list.
+	// Ids de efeito que BASE_GetItemAbility deixa SEM ESCALA pelo multiplicador de refino
+	// (Basedef.cpp:1854). São metadados de identidade/requisito do item, não atributos, então
+	// refinar um item não pode movê-los. efWType, efItemLevel, efMobType acima e
+	// efNoSanc/efIncubate/efIncuDelay (refine.go) pertencem à mesma lista.
 	efLevel    = 1
 	efPos      = 17
 	efClass    = 18
@@ -1917,45 +1917,45 @@ const (
 	efItemType = 113
 	efNoTrade  = 127
 
-	// baseAttackRun is the class templates' base speed byte (run<<4 | move) = 82
-	// (run 5, move 2). UNVERIFIED: per-state speed curves are not reproduced.
+	// baseAttackRun é o byte de velocidade base dos templates de classe (run<<4 | move) = 82
+	// (run 5, move 2). UNVERIFIED: as curvas de velocidade por estado não são reproduzidas.
 	baseAttackRun = 82
-	// Issue #64 movement policy: bare player = 2, boots = 4, mount = 6.
+	// Política de movimento da issue #64: jogador a pé = 2, botas = 4, montaria = 6.
 	bootMoveSpeed    = 4
 	mountedMoveSpeed = 6
 
-	// Weapon hands in STRUCT_MOB.Equip (right/left). GetCurrentScore (CMob.cpp:756)
-	// derives WeaponDamage from these two slots' EF_DAMAGE.
+	// Mãos de arma em STRUCT_MOB.Equip (direita/esquerda). GetCurrentScore (CMob.cpp:756)
+	// deriva WeaponDamage do EF_DAMAGE desses dois slots.
 	weaponSlotR = 6
 	weaponSlotL = 7
 )
 
-// itemSanc reads an item's refine ("anc") level from its instance effects, 0..15
-// (BASE_GetItemSanc). 0 = unrefined.
+// itemSanc lê o nível de refino ("anc") de um item pelos efeitos de instância, 0..15
+// (BASE_GetItemSanc). 0 = sem refino.
 //
-// The cValue is NOT the level: it packs the level together with the pity counter,
-// so it has to be unpacked. See the refine package doc.
+// O cValue NÃO é o nível: ele empacota o nível junto com o contador de pena,
+// então precisa ser desempacotado. Veja o doc do pacote refine.
 func itemSanc(it world.Item) int { return refine.Level(it) }
 
-// nPos equip-slot classes that get refine (+9) threshold bonuses (captura §E).
+// Classes de slot de equipamento nPos que recebem bônus de limiar de refino (+9) (captura §E).
 const (
-	nPosWeapon1     = 64  // weapon hand → +40 WeaponDamage at sanc>=9
-	nPosWeapon2     = 192 // dual-class weapon → +40
-	nPosDef1        = 4   // armor/helm/boots → +25 AC
+	nPosWeapon1     = 64  // mão de arma → +40 WeaponDamage com sanc>=9
+	nPosWeapon2     = 192 // arma de classe dupla → +40
+	nPosDef1        = 4   // armadura/elmo/botas → +25 AC
 	nPosDef2        = 8
-	nPosDef3        = 128 // shield → +25 AC
-	nPosDamage2     = 32  // the slot class whose EF_DAMAGE2 supersedes EF_DAMAGE
+	nPosDef3        = 128 // escudo → +25 AC
+	nPosDamage2     = 32  // a classe de slot cujo EF_DAMAGE2 substitui EF_DAMAGE
 	refineThreshold = 9
 )
 
-// itemBaseDamage is BASE_GetItemAbility(item, EF_DAMAGE) for a weapon hand: the
-// catalog+instance EF_DAMAGE, refine-scaled. captura §E ("o dano cru do item, que já
-// cresce com o refino, vem dos stEffect/catálogo via BASE_GetItemAbility") describes that
-// growth as coming FROM this multiplier — the separate +40 threshold in weaponDamage sits
-// on top of it, it does not replace it.
+// itemBaseDamage é BASE_GetItemAbility(item, EF_DAMAGE) para uma mão de arma: o
+// EF_DAMAGE de catálogo+instância, escalado pelo refino. captura §E ("o dano cru do item, que já
+// cresce com o refino, vem dos stEffect/catálogo via BASE_GetItemAbility") descreve esse
+// crescimento como vindo DESTE multiplicador — o limiar separado de +40 em weaponDamage fica
+// em cima dele, não o substitui.
 //
-// EF_DAMAGE2 (Basedef.cpp:1711-1715) substitutes for EF_DAMAGE on nPos 32 items, the same
-// either/or shape as itemCritical's EF_CRITICAL2.
+// EF_DAMAGE2 (Basedef.cpp:1711-1715) substitui EF_DAMAGE em itens nPos 32, a mesma
+// forma ou-um-ou-outro do EF_CRITICAL2 de itemCritical.
 func (d *Dispatcher) itemBaseDamage(it world.Item) int32 {
 	if it.Empty() {
 		return 0
@@ -1968,15 +1968,15 @@ func (d *Dispatcher) itemBaseDamage(it world.Item) int32 {
 	return d.itemAbilityRefined(it, want)
 }
 
-// forEachEffectID calls fn once per DISTINCT effect id carried by an item, across its
-// catalog entries and its instance effects. BASE_GetItemAbility is queried per effect id
-// and sums every entry carrying it, so a caller folding an item into a score must visit
-// each id exactly once — visiting per entry would double-count and, worse, truncate the
-// refine multiplier once per entry instead of once per effect.
+// forEachEffectID chama fn uma vez por id de efeito DISTINTO carregado por um item, ao longo de suas
+// entradas de catálogo e de seus efeitos de instância. BASE_GetItemAbility é consultado por id de efeito
+// e soma toda entrada que o carrega, então um chamador que soma um item no score precisa visitar
+// cada id exatamente uma vez — visitar por entrada contaria em dobro e, pior, truncaria o
+// multiplicador de refino uma vez por entrada em vez de uma vez por efeito.
 func (d *Dispatcher) forEachEffectID(it world.Item, fn func(eff uint8)) {
-	var seen [4]uint64 // bitset over the 0..255 effect id space
+	var seen [4]uint64 // bitset sobre o espaço 0..255 de ids de efeito
 	visit := func(eff uint8) {
-		if eff == 0 { // EF_NONE: an empty slot, not an effect
+		if eff == 0 { // EF_NONE: um slot vazio, não um efeito
 			return
 		}
 		bit := uint64(1) << (eff % 64)
@@ -2012,8 +2012,8 @@ func (d *Dispatcher) itemAbility(it world.Item, effect uint8) int {
 	return total
 }
 
-// itemScoreSanc converts the true 0..15 level reported by the Go refine
-// package back to BASE_GetItemSanc's REF_* values used in score arithmetic.
+// itemScoreSanc converte o nível real 0..15 informado pelo pacote refine
+// em Go de volta para os valores REF_* de BASE_GetItemSanc usados na aritmética de score.
 func itemScoreSanc(level int) int {
 	if level <= 10 {
 		return level
@@ -2021,13 +2021,13 @@ func itemScoreSanc(level int) int {
 	return [...]int{11: 12, 12: 15, 13: 18, 14: 22, 15: 27}[level]
 }
 
-// accessoryPosMask marks the four accessory slots (Equip[8..11]) in an item's catalog
-// nPos bitmask — the slots Pedra_Amunra equips into, which is why a player wears four.
-// BASE_GetItemAbility keys the +9 refine promotion off it (Basedef.cpp:1850).
+// accessoryPosMask marca os quatro slots de acessório (Equip[8..11]) na máscara nPos
+// do catálogo de um item — os slots em que a Pedra_Amunra equipa, e é por isso que o jogador usa quatro.
+// BASE_GetItemAbility condiciona a promoção de refino +9 a ela (Basedef.cpp:1850).
 const accessoryPosMask = 0xF00
 
-// refineScaled reports whether the refine multiplier applies to eff, i.e. whether it is
-// absent from BASE_GetItemAbility's exemption list (Basedef.cpp:1854).
+// refineScaled informa se o multiplicador de refino se aplica a eff, ou seja, se ele está
+// ausente da lista de isenção de BASE_GetItemAbility (Basedef.cpp:1854).
 func refineScaled(eff uint8) bool {
 	switch eff {
 	case efGrid, efClass, efPos, efWType, efRange, efLevel,
@@ -2039,11 +2039,11 @@ func refineScaled(eff uint8) bool {
 	return true
 }
 
-// refineFactor is BASE_GetItemAbility's refine multiplier numerator (Basedef.cpp:1849-1852):
-// the item's REF_* score sanc + 10, so +11..+15 use their legacy nonlinear values.
-// Accessories (nPos & 0xF00) reaching +9 are promoted to sanc 10 first, which is what
-// turns the +9 bonus into a clean x2 — the rule behind a +9 Pedra_Amunra granting 200
-// per attribute instead of 100 (#282).
+// refineFactor é o numerador do multiplicador de refino de BASE_GetItemAbility (Basedef.cpp:1849-1852):
+// o sanc de score REF_* do item + 10, então +11..+15 usam seus valores não lineares legados.
+// Acessórios (nPos & 0xF00) que chegam a +9 são promovidos a sanc 10 primeiro, o que é o que
+// transforma o bônus +9 num x2 limpo — a regra por trás de uma Pedra_Amunra +9 conceder 200
+// por atributo em vez de 100 (#282).
 func (d *Dispatcher) refineFactor(it world.Item) int {
 	sanc := itemScoreSanc(itemSanc(it))
 	if sanc == refineThreshold && d.itemPos[int(it.Index)]&accessoryPosMask != 0 {
@@ -2052,13 +2052,13 @@ func (d *Dispatcher) refineFactor(it world.Item) int {
 	return sanc + 10
 }
 
-// itemAbilityRefined is BASE_GetItemAbility (Basedef.cpp:1687-1867): the catalog+instance
-// sum for one effect, then the refine multiplier for every non-exempt effect. The legacy
-// multiplies the SUM, not each entry, and the division truncates — so callers must ask for
-// a whole effect at once rather than scaling individual entries.
+// itemAbilityRefined é BASE_GetItemAbility (Basedef.cpp:1687-1867): a soma de
+// catálogo+instância de um efeito, depois o multiplicador de refino para todo efeito não isento. O legado
+// multiplica a SOMA, não cada entrada, e a divisão trunca — então os chamadores precisam pedir
+// um efeito inteiro de uma vez em vez de escalar entradas individuais.
 //
-// EF_RUNSPEED carries a post-multiplier clamp of its own (Basedef.cpp:1860-1867): boots
-// never contribute more than 2 to the move nibble, and a +9 pair gets one extra point.
+// EF_RUNSPEED carrega um limite pós-multiplicador próprio (Basedef.cpp:1860-1867): botas
+// nunca contribuem mais que 2 no nibble de movimento, e um par +9 ganha um ponto extra.
 func (d *Dispatcher) itemAbilityRefined(it world.Item, eff uint8) int32 {
 	v := int32(d.itemAbility(it, eff))
 	if v == 0 || !refineScaled(eff) {
@@ -2070,8 +2070,8 @@ func (d *Dispatcher) itemAbilityRefined(it world.Item, eff uint8) int32 {
 		if v >= 3 {
 			v = 2
 		}
-		// The legacy tests the PROMOTED sanc, so an accessory at +9 (promoted to 10)
-		// misses this extra point while +9 boots get it.
+		// O legado testa o sanc PROMOVIDO, então um acessório em +9 (promovido a 10)
+		// perde esse ponto extra enquanto botas +9 o ganham.
 		if v > 0 && factor == refineThreshold+10 {
 			v++
 		}
@@ -2079,16 +2079,16 @@ func (d *Dispatcher) itemAbilityRefined(it world.Item, eff uint8) int32 {
 	return v
 }
 
-// itemCritical is BASE_GetItemAbility(item, EF_CRITICAL) with the one legacy rule
-// itemAbilityRefined cannot express, because it is a property of the whole item rather
-// than of one effect: the EF_CRITICAL2 substitution (Basedef.cpp:1705-1709). 42 is the
-// query id and 71 the storage id for enchanted crit, so an item carrying EF_CRITICAL2 in
-// stEffect[1] or [2] reports that value INSTEAD of its EF_CRITICAL — either/or, never
-// summed. Only slots 1 and 2 arm it; slot 0 does not.
+// itemCritical é BASE_GetItemAbility(item, EF_CRITICAL) com a única regra legada que
+// itemAbilityRefined não consegue expressar, porque é propriedade do item inteiro e
+// não de um efeito: a substituição por EF_CRITICAL2 (Basedef.cpp:1705-1709). 42 é o
+// id de consulta e 71 o id de armazenamento do crítico encantado, então um item com EF_CRITICAL2 em
+// stEffect[1] ou [2] informa esse valor EM VEZ do seu EF_CRITICAL — ou um ou outro, nunca
+// somados. Só os slots 1 e 2 o ativam; o slot 0 não.
 //
-// The refine multiplier comes from itemAbilityRefined, and inherits itemSanc's decoding of
-// the EF_SANC byte (issue #103 is correcting that decode); crit scales with whatever level
-// it reports, so it improves in step.
+// O multiplicador de refino vem de itemAbilityRefined e herda a decodificação do byte
+// EF_SANC feita por itemSanc (a issue #103 está corrigindo essa decodificação); o crítico escala com o nível
+// que ela informar, então melhora junto.
 func (d *Dispatcher) itemCritical(it world.Item) int32 {
 	want := uint8(efCritical)
 	if it.Effects[1].Effect == efCritical2 || it.Effects[2].Effect == efCritical2 {
@@ -2097,15 +2097,15 @@ func (d *Dispatcher) itemCritical(it world.Item) int32 {
 	return d.itemAbilityRefined(it, want)
 }
 
-// resistEffects maps resist index [0..3] to its EF_RESISTn id (CMob.cpp:640-643 assigns
-// MOB.Resist[0..3] from EF_RESIST1..4 in that literal order).
+// resistEffects mapeia o índice de resistência [0..3] para seu id EF_RESISTn (CMob.cpp:640-643 atribui
+// MOB.Resist[0..3] a partir de EF_RESIST1..4 nessa ordem literal).
 var resistEffects = [4]uint8{efResist1, efResist2, efResist3, efResist4}
 
-// itemResist is BASE_GetItemAbility(item, EF_RESISTn) (Basedef.cpp:1830-1858): the flat
-// catalog+instance sum for the queried resist index, PLUS any EF_RESISTALL folded in from
-// the same item (catalog+instance), THEN the refine multiplier. The two sums are added
-// BEFORE the multiplier, as the legacy does, so the truncation happens once — which is why
-// this cannot just call itemAbilityRefined twice (issue #211).
+// itemResist é BASE_GetItemAbility(item, EF_RESISTn) (Basedef.cpp:1830-1858): a soma fixa
+// de catálogo+instância para o índice de resistência consultado, MAIS qualquer EF_RESISTALL somado do
+// mesmo item (catálogo+instância), E DEPOIS o multiplicador de refino. As duas somas são somadas
+// ANTES do multiplicador, como o legado faz, então a truncagem acontece uma vez — e é por isso que
+// isto não pode simplesmente chamar itemAbilityRefined duas vezes (issue #211).
 func (d *Dispatcher) itemResist(it world.Item, i int) int32 {
 	if it.Empty() {
 		return 0
@@ -2117,10 +2117,10 @@ func (d *Dispatcher) itemResist(it world.Item, i int) int32 {
 	return v * int32(d.refineFactor(it)) / 10
 }
 
-// weaponDamage is GetCurrentScore's WeaponDamage (CMob.cpp:756-789): the stronger
-// weapon hand at full damage plus the weaker at half (dual-wield), plus a +40 refine
-// threshold per weapon hand at sanc>=9 (captura §E). It is a SEPARATE field from
-// CurrentScore.Damage, added at hit/display time, so it is not in e.Damage.
+// weaponDamage é o WeaponDamage de GetCurrentScore (CMob.cpp:756-789): a mão de arma
+// mais forte com dano cheio mais a mais fraca pela metade (dupla empunhadura), mais um limiar
+// de refino +40 por mão de arma com sanc>=9 (captura §E). É um campo SEPARADO de
+// CurrentScore.Damage, somado no momento do acerto/exibição, então não está em e.Damage.
 func (d *Dispatcher) weaponDamage(e *world.Entity) int32 {
 	w1 := d.itemBaseDamage(e.Equip[weaponSlotR])
 	w2 := d.itemBaseDamage(e.Equip[weaponSlotL])
@@ -2129,10 +2129,10 @@ func (d *Dispatcher) weaponDamage(e *world.Entity) int32 {
 	}
 	offhandDivisor := int32(2)
 	if e.Class == 0 && e.LearnedSkill&(1<<9) != 0 {
-		offhandDivisor = 1 // TK Mestre das Armas: off-hand contributes at full EF_DAMAGE.
+		offhandDivisor = 1 // TK Mestre das Armas: a mão secundária contribui com EF_DAMAGE cheio.
 	}
 	if e.Class == 3 && e.LearnedSkill&(1<<10) != 0 {
-		offhandDivisor = 1 // HT Pericia do Cacador: off-hand contributes at full EF_DAMAGE.
+		offhandDivisor = 1 // HT Pericia do Cacador: a mão secundária contribui com EF_DAMAGE cheio.
 	}
 	dmg := w1 + w2/offhandDivisor
 	for _, slot := range [2]int{weaponSlotR, weaponSlotL} {
@@ -2146,11 +2146,11 @@ func (d *Dispatcher) weaponDamage(e *world.Entity) int32 {
 	return dmg
 }
 
-// equipBonus is the summed FLAT contribution of all equipped items to the CurrentScore
-// (catalog base effects + per-item instance refines/divines). EF_DAMAGE from the two
-// weapon hands is EXCLUDED (it is the separate weaponDamage). The percent effects
-// EF_HPADD/EF_MPADD are accumulated separately (hpAddPct/mpAddPct) and applied at READ
-// time, never baked here — so the stored score stays flat (captura §E).
+// equipBonus é a contribuição FIXA somada de todos os itens equipados no CurrentScore
+// (efeitos base do catálogo + refinos/divinos de instância por item). O EF_DAMAGE das duas
+// mãos de arma fica FORA (é o weaponDamage separado). Os efeitos percentuais
+// EF_HPADD/EF_MPADD são acumulados separadamente (hpAddPct/mpAddPct) e aplicados na
+// LEITURA, nunca embutidos aqui — então o score guardado fica fixo (captura §E).
 type equipBonus struct {
 	str, intel, dex, con int16
 	special              [4]int16
@@ -2158,26 +2158,26 @@ type equipBonus struct {
 	maxHP, maxMP         int32
 	hpAddPct, mpAddPct   int32
 	runSpeed             int32
-	// criticalRaw is the pre-/4 EF_CRITICAL sum over the equipment
-	// (BASE_GetMobAbility(EF_CRITICAL), Basedef.cpp:3209) — see itemCritical.
+	// criticalRaw é a soma de EF_CRITICAL antes do /4 sobre o equipamento
+	// (BASE_GetMobAbility(EF_CRITICAL), Basedef.cpp:3209) — veja itemCritical.
 	criticalRaw int32
-	// magicRaw is the pre-scaling EF_MAGIC+EF_MAGICADD sum (see mountMagicScore) over ALL
-	// equipment: the mount slot's g_pMountBonus-derived contribution (Equip[14], not
-	// generic item effects) PLUS ordinary gear's flat EF_MAGIC/EF_MAGICADD, folded in by
-	// the add closure below — Basedef.cpp:3194-3195 sums both across every slot before
-	// applying the single (x+1)/4 scaling. parry/resist remain mount-only broadcasts
-	// (Equip[14]); damage already folds into the field above.
+	// magicRaw é a soma EF_MAGIC+EF_MAGICADD antes da escala (veja mountMagicScore) sobre TODO
+	// o equipamento: a contribuição derivada de g_pMountBonus do slot de montaria (Equip[14], não
+	// efeitos genéricos de item) MAIS o EF_MAGIC/EF_MAGICADD fixo do equipamento comum, somados pela
+	// closure add abaixo — Basedef.cpp:3194-3195 soma os dois em cada slot antes de
+	// aplicar a única escala (x+1)/4. parry/resist continuam broadcasts só de montaria
+	// (Equip[14]); o dano já se soma no campo acima.
 	magicRaw, parry, resist int32
-	// itemResist is the per-type EF_RESIST1..4/EF_RESISTALL sum from ordinary equipment
-	// (see itemResist), refine-scaled — distinct from the flat mount broadcast above.
+	// itemResist é a soma por tipo de EF_RESIST1..4/EF_RESISTALL do equipamento comum
+	// (veja itemResist), escalada pelo refino — distinta do broadcast fixo de montaria acima.
 	itemResist [4]int32
 }
 
 func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 	var b equipBonus
-	// add folds one effect/value pair into the bonus. weaponSlot excludes weapon-hand
-	// EF_DAMAGE; dmgJewel gates EF_DAMAGEADD/EF_MAGICADD to nUnique 41-50 items;
-	// offHand excludes EF_MAGIC on the off-hand weapon slot only.
+	// add soma um par efeito/valor no bônus. weaponSlot exclui o EF_DAMAGE da mão de
+	// arma; dmgJewel condiciona EF_DAMAGEADD/EF_MAGICADD a itens nUnique 41-50;
+	// offHand exclui EF_MAGIC só no slot de arma da mão secundária.
 	add := func(eff uint8, val int32, weaponSlot, dmgJewel, offHand bool) {
 		switch eff {
 		case efStr:
@@ -2200,22 +2200,22 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 			for i := 1; i <= 3; i++ {
 				b.special[i] += int16(val)
 			}
-		case efAc, efAcAdd: // EF_AC + EF_ACADD, both summed straight into AC (captura §E)
+		case efAc, efAcAdd: // EF_AC + EF_ACADD, ambos somados direto no AC (captura §E)
 			b.ac += val
 		case efDamage:
-			if !weaponSlot { // weapon-hand damage is the separate WeaponDamage
+			if !weaponSlot { // o dano da mão de arma é o WeaponDamage separado
 				b.damage += val
 			}
 		case efDamageAdd:
-			if dmgJewel { // only jewels (nUnique 41-50) contribute EF_DAMAGEADD
+			if dmgJewel { // só joias (nUnique 41-50) contribuem EF_DAMAGEADD
 				b.damage += val
 			}
 		case efMagic:
-			if !offHand { // BASE_GetMobAbility excludes only the off-hand weapon slot
+			if !offHand { // BASE_GetMobAbility exclui só o slot de arma da mão secundária
 				b.magicRaw += val
 			}
 		case efMagicAdd:
-			if dmgJewel { // only jewels (nUnique 41-50) contribute EF_MAGICADD
+			if dmgJewel { // só joias (nUnique 41-50) contribuem EF_MAGICADD
 				b.magicRaw += val
 			}
 		case efHp:
@@ -2235,9 +2235,9 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 		if it.Empty() {
 			continue
 		}
-		// The mount slot draws its stats from the g_pMountBonus tables, not from
-		// generic item effects (a mount's Effects hold HP/level/feed, not stats) —
-		// mirror BASE_GetItemAbility's early mount return and skip the effect loop.
+		// O slot de montaria tira seus atributos das tabelas g_pMountBonus, não de
+		// efeitos genéricos de item (os Effects de uma montaria guardam HP/nível/alimentação, não atributos) —
+		// espelhar o retorno antecipado de montaria de BASE_GetItemAbility e pular o laço de efeitos.
 		if slot == mountEquipSlot {
 			if mb, ok := mountBonusFor(it); ok {
 				b.damage += mb.damage
@@ -2247,9 +2247,9 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 			}
 			continue
 		}
-		// Critical is read per item, not per effect (the EF_CRITICAL2 substitution and
-		// the refine multiplier are item-wide) — after the mount slot's early return,
-		// which matches BASE_GetItemAbility returning no crit for mounts.
+		// O crítico é lido por item, não por efeito (a substituição EF_CRITICAL2 e
+		// o multiplicador de refino são do item inteiro) — depois do retorno antecipado do slot de montaria,
+		// o que casa com BASE_GetItemAbility não retornar crítico para montarias.
 		b.criticalRaw += d.itemCritical(it)
 		for i := range b.itemResist {
 			b.itemResist[i] += d.itemResist(it, i)
@@ -2258,13 +2258,13 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 		offHand := slot == weaponSlotL
 		nUnique := d.itemUnique[int(it.Index)]
 		dmgJewel := nUnique >= 41 && nUnique <= 50
-		// One add per DISTINCT effect id, not per entry: BASE_GetItemAbility sums the
-		// catalog and instance entries of an effect and only then applies the refine
-		// multiplier, so the integer division must truncate the whole sum once.
+		// Um add por id de efeito DISTINTO, não por entrada: BASE_GetItemAbility soma as
+		// entradas de catálogo e de instância de um efeito e só então aplica o multiplicador
+		// de refino, então a divisão inteira precisa truncar a soma inteira uma vez.
 		d.forEachEffectID(it, func(eff uint8) {
 			add(eff, d.itemAbilityRefined(it, eff), weaponSlot, dmgJewel, offHand)
 		})
-		// Refine (+9) threshold: defense pieces gain +25 AC (weapons' +40 is in
+		// Limiar de refino (+9): peças de defesa ganham +25 AC (o +40 das armas está em
 		// weaponDamage). captura §E.
 		if itemSanc(it) >= refineThreshold {
 			switch d.itemPos[int(it.Index)] {
@@ -2276,13 +2276,13 @@ func (d *Dispatcher) equipBonus(e *world.Entity) equipBonus {
 	return b
 }
 
-// deriveBaseScore captures the equipment-free BaseScore on login. Persisted
-// attributes and MaxHP/MaxMP recover their base by subtracting equipment;
-// saved maxima exclude equipment CON/INT resources (issue #321). refreshScore
-// adds those runtime-only contributions after this historical base derivation.
+// deriveBaseScore captura o BaseScore sem equipamento no login. Os atributos
+// persistidos e MaxHP/MaxMP recuperam sua base subtraindo o equipamento;
+// os máximos salvos excluem recursos de CON/INT do equipamento (issue #321). refreshScore
+// soma essas contribuições só de execução depois desta derivação histórica da base.
 //
-// AC and Damage are reconstructed because the DB contract omits them.
-// WeaponDamage remains separate.
+// AC e Damage são reconstruídos porque o contrato do banco os omite.
+// WeaponDamage continua separado.
 func (d *Dispatcher) deriveBaseScore(e *world.Entity) {
 	b := d.equipBonus(e)
 	e.BaseStr = e.Str - b.str
@@ -2290,8 +2290,8 @@ func (d *Dispatcher) deriveBaseScore(e *world.Entity) {
 	e.BaseDex = e.Dex - b.dex
 	e.BaseCon = e.Con - b.con
 	if e.BaseStr < 0 || e.BaseInt < 0 || e.BaseDex < 0 || e.BaseCon < 0 {
-		// The stored CurrentScore does not match today's equipment bonus: the
-		// rules changed after it was saved. Logged so a drift is never silent.
+		// O CurrentScore guardado não casa com o bônus de equipamento de hoje: as
+		// regras mudaram depois que ele foi salvo. Logado para uma divergência nunca ser silenciosa.
 		d.log.Warn("derived base score is negative", "name", e.Name,
 			"str", e.BaseStr, "int", e.BaseInt, "dex", e.BaseDex, "con", e.BaseCon)
 	}
@@ -2299,14 +2299,14 @@ func (d *Dispatcher) deriveBaseScore(e *world.Entity) {
 	e.BaseDamage = playerBaseDamage(e)
 	e.BaseMaxHP = e.MaxHP - b.maxHP
 	e.BaseMaxMP = e.MaxMP - b.maxMP
-	// Magic/Parry/Resist have no BaseScore term in the legacy. refreshScore derives
-	// them entirely from current equipment instead of subtracting the login value.
+	// Magic/Parry/Resist não têm termo de BaseScore no legado. refreshScore os deriva
+	// inteiramente do equipamento atual em vez de subtrair o valor do login.
 }
 
-// loadBaseScore takes the BaseScore as saved (migration 0027) instead of deriving it;
-// the login's refreshScore then rebuilds the CurrentScore with today's equipment
-// rules, so a change to those rules can move the CurrentScore but never the base the
-// player built.
+// loadBaseScore pega o BaseScore como salvo (migration 0027) em vez de derivá-lo;
+// o refreshScore do login então reconstrói o CurrentScore com as regras de equipamento
+// de hoje, então uma mudança nessas regras pode mover o CurrentScore mas nunca a base que o
+// jogador construiu.
 func (d *Dispatcher) loadBaseScore(e *world.Entity, st world.CharacterState) {
 	e.BaseStr, e.BaseInt, e.BaseDex, e.BaseCon = st.BaseStr, st.BaseInt, st.BaseDex, st.BaseCon
 	e.BaseAC = playerBaseAC(e)
@@ -2314,19 +2314,19 @@ func (d *Dispatcher) loadBaseScore(e *world.Entity, st world.CharacterState) {
 	e.BaseMaxHP, e.BaseMaxMP = st.BaseMaxHP, st.BaseMaxMP
 }
 
-// refreshScore recomputes the live CurrentScore = BaseScore + FLAT equipment, after any
-// equipment or attribute change, and caches the percent EF_HPADD/EF_MPADD bonuses. The
-// multiplicative effects (HPADD%/MPADD% and the Divine/Vigor buffs) are NOT baked here —
-// they are layered at read time (effectiveMaxHP/MP, effectiveDamage), so the stored
-// score stays flat and the base derivation by subtraction holds. HP/MP are clamped to
-// the live (effective) maxima.
+// refreshScore recalcula o CurrentScore vivo = BaseScore + equipamento FIXO, após qualquer
+// mudança de equipamento ou atributo, e faz cache dos bônus percentuais EF_HPADD/EF_MPADD. Os
+// efeitos multiplicativos (HPADD%/MPADD% e os buffs Divino/Vigor) NÃO são embutidos aqui —
+// são aplicados em camadas na leitura (effectiveMaxHP/MP, effectiveDamage), então o score
+// guardado fica fixo e a derivação da base por subtração se mantém. HP/MP são limitados aos
+// máximos vivos (efetivos).
 func (d *Dispatcher) refreshScore(e *world.Entity) {
 	b := d.equipBonus(e)
 	e.Str = e.BaseStr + b.str
 	e.Int = e.BaseInt + b.intel
 	e.Dex = e.BaseDex + b.dex
 	e.Con = e.BaseCon + b.con
-	for i := range e.Special { // allocated mastery + gear (EF_SPECIAL1..4)
+	for i := range e.Special { // maestria alocada + equipamento (EF_SPECIAL1..4)
 		e.Special[i] = e.BaseSpecial[i] + b.special[i]
 	}
 	flatAC := e.BaseAC + b.ac
@@ -2334,9 +2334,9 @@ func (d *Dispatcher) refreshScore(e *world.Entity) {
 	e.Damage = e.BaseDamage + b.damage + d.derivedDamageBeforeAffects(e)
 	e.EquipmentAttributeHP, e.EquipmentAttributeMP = 0, 0
 	if world.IsPlayer(e.ID) {
-		// Basedef.cpp:3152-3156 converts equipment-only CON/INT at 2 resources
-		// per point. Do not copy that block's additional doubling of the whole
-		// maximum, or count allocated/buff attributes again (issue #321).
+		// Basedef.cpp:3152-3156 converte CON/INT só de equipamento em 2 recursos
+		// por ponto. Não copie o dobramento adicional do bloco inteiro do
+		// máximo, nem conte de novo atributos alocados/buffados (issue #321).
 		e.EquipmentAttributeHP = 2 * int32(b.con)
 		e.EquipmentAttributeMP = 2 * int32(b.intel)
 	}
@@ -2345,24 +2345,24 @@ func (d *Dispatcher) refreshScore(e *world.Entity) {
 	e.HpAddPct = b.hpAddPct
 	e.MpAddPct = b.mpAddPct
 	e.RunSpeedBonus = b.runSpeed
-	// Critical is derived ENTIRELY from equipment on every refresh — there is no
-	// BaseCritical to add, and no subtraction in deriveBaseScore, because the legacy has
-	// no base term either (Basedef.cpp:3209). The /4 divides the SUM, not each item. Mobs
-	// derive it from their gear too (BASE_GetCurrentScore runs for them, CMob.cpp:709) and
-	// carry no template Critical, so unlike the mount block below this needs no IsPlayer
-	// guard. The clamp is re-applied in effectiveCritical after the skill/affect terms.
-	// (The low clamp is belt-and-braces: no catalog row carries negative crit, but a
-	// bare uint8 conversion would wrap one into a near-guaranteed crit.)
+	// O crítico é derivado INTEIRAMENTE do equipamento em todo refresh — não há
+	// BaseCritical a somar, e nenhuma subtração em deriveBaseScore, porque o legado também
+	// não tem termo de base (Basedef.cpp:3209). O /4 divide a SOMA, não cada item. Criaturas
+	// também o derivam do equipamento (BASE_GetCurrentScore roda para elas, CMob.cpp:709) e
+	// não carregam Critical de template, então diferente do bloco de montaria abaixo isto não precisa de
+	// guarda IsPlayer. O limite é reaplicado em effectiveCritical depois dos termos de skill/affect.
+	// (O limite inferior é redundância: nenhuma linha de catálogo carrega crítico negativo, mas uma
+	// conversão uint8 crua transformaria um em crítico quase garantido.)
 	e.Critical = uint8(min(max(b.criticalRaw/4, 0), 255))
-	// Magic gets the (sum+1)/4 equipment scaling plus the class/weapon Dex+Int term.
-	// Magic, Parry (evasion), and each Resist are derived ENTIRELY from equipment on
-	// every refresh, like Critical above: the legacy has no BaseScore fields for them.
-	// Treating a zero-valued persisted Magic as a base would cancel the equipped bonus
-	// on login (issue #231). Resist is capped
-	// at the legacy ceiling (CMob.cpp:640-643,692). Mounts live only in a player's
-	// Equip[14]; mobs carry their Magic/Parry/Resist straight from their template
-	// (world.SpawnMob) and never derive a BaseScore, so recomputing them here would zero
-	// those template values — guard to players.
+	// Magic recebe a escala (sum+1)/4 do equipamento mais o termo Dex+Int de classe/arma.
+	// Magic, Parry (esquiva) e cada Resist são derivados INTEIRAMENTE do equipamento em
+	// todo refresh, como o Critical acima: o legado não tem campos de BaseScore para eles.
+	// Tratar um Magic persistido de valor zero como base cancelaria o bônus do equipamento
+	// no login (issue #231). Resist é limitado
+	// ao teto legado (CMob.cpp:640-643,692). Montarias vivem só no Equip[14] de um
+	// jogador; criaturas carregam Magic/Parry/Resist direto do template
+	// (world.SpawnMob) e nunca derivam um BaseScore, então recalculá-los aqui zeraria
+	// esses valores de template — restrinja a jogadores.
 	if world.IsPlayer(e.ID) {
 		e.Magic = clampInt16(mountMagicScore(b.magicRaw) + d.classWeaponMagic(e))
 		e.Parry = int(b.parry)
@@ -2384,8 +2384,8 @@ func (d *Dispatcher) refreshScore(e *world.Entity) {
 	}
 }
 
-// affectMul returns the buff multiplier (×100) on MaxHp/MaxMp from active buffs:
-// Divine (+20%) or Vigor (+10%). 100 = no buff (captura §C).
+// affectMul devolve o multiplicador de buff (×100) em MaxHp/MaxMp dos buffs ativos:
+// Divino (+20%) ou Vigor (+10%). 100 = sem buff (captura §C).
 func affectMul(e *world.Entity) int32 {
 	switch {
 	case e.HasAffect(world.AffectDivine):
@@ -2396,25 +2396,25 @@ func affectMul(e *world.Entity) int32 {
 	return 100
 }
 
-// effectiveMaxHP is the player's real max HP: (flat MaxHP + affect deltas) ×
-// EF_HPADD% × buff. Applied at read time (display/combat/regen), never stored
+// effectiveMaxHP é o HP máximo real do jogador: (MaxHP fixo + deltas de affect) ×
+// EF_HPADD% × buff. Aplicado na leitura (exibição/combate/regen), nunca guardado
 // (captura §C,E).
 func effectiveMaxHP(e *world.Entity) int32 {
 	return (e.MaxHP + e.AffMaxHP) * (e.HpAddPct + 100) / 100 * affectMul(e) / 100
 }
 
-// effectiveMaxMP is the player's real max MP: (flat MaxMP + affect deltas) ×
+// effectiveMaxMP é o MP máximo real do jogador: (MaxMP fixo + deltas de affect) ×
 // EF_MPADD% × buff.
 func effectiveMaxMP(e *world.Entity) int32 {
 	return (e.MaxMP + e.AffMaxMP) * (e.MpAddPct + 100) / 100 * affectMul(e) / 100
 }
 
-// effectiveDamage is the attack power the client/combat see: the flat CurrentScore.Damage
-// plus the affect deltas (Buff Loop), scaled by the DAMAGEMULTI percentage (BM transform;
-// applied where Basedef.cpp:4654 multiplies CurrentScore.Damage), boosted +20% by the
-// Divine buff, plus the separate WeaponDamage (which neither multiplier touches — it is a
-// separate field added after, captura §C). UNVERIFIED: the legacy folds the Divine into
-// DAMAGEMULTI additively; composing the two here diverges by a few points when both are up.
+// effectiveDamage é o poder de ataque que cliente/combate veem: o CurrentScore.Damage fixo
+// mais os deltas de affect (Buff Loop), escalado pela porcentagem DAMAGEMULTI (transformação BM;
+// aplicada onde Basedef.cpp:4654 multiplica CurrentScore.Damage), aumentado +20% pelo
+// buff Divino, mais o WeaponDamage separado (que nenhum dos multiplicadores toca — é um
+// campo separado somado depois, captura §C). UNVERIFIED: o legado embute o Divino no
+// DAMAGEMULTI de forma aditiva; compor os dois aqui diverge em alguns pontos quando ambos estão ativos.
 func (d *Dispatcher) effectiveDamage(e *world.Entity) int32 {
 	dmg := e.Damage + e.AffDamage
 	if e.AffDamageMultiPct != 100 && e.AffDamageMultiPct > 0 {
@@ -2426,9 +2426,9 @@ func (d *Dispatcher) effectiveDamage(e *world.Entity) int32 {
 	return dmg + d.weaponDamage(e)
 }
 
-// computeScore builds the CurrentScore the client shows. Multiplicative effects
-// (EF_HPADD%/MPADD% and the Divine/Vigor buffs) and the separate weapon damage are
-// folded in here via the effective getters; the mount speed bump too.
+// computeScore monta o CurrentScore que o cliente mostra. Efeitos multiplicativos
+// (EF_HPADD%/MPADD% e os buffs Divino/Vigor) e o dano de arma separado são
+// embutidos aqui pelos getters efetivos; o incremento de velocidade da montaria também.
 func (d *Dispatcher) computeScore(e *world.Entity) protocol.ScoreData {
 	var special [4]int16
 	for i := range special {
@@ -2446,8 +2446,8 @@ func (d *Dispatcher) computeScore(e *world.Entity) protocol.ScoreData {
 		GuildLevel: uint16(e.GuildLevel),
 		Magic:      effectiveMagic(e),
 	}
-	// Buff icon array (SendScore → GetAffect): the client renders/refreshes the
-	// buff bar from this, so every score push keeps the icons in sync.
+	// Vetor de ícones de buff (SendScore → GetAffect): o cliente renderiza/atualiza a
+	// barra de buff a partir disto, então todo push de score mantém os ícones em sincronia.
 	for i := range e.Affect {
 		if e.Affect[i].Type == 0 {
 			continue
@@ -2462,12 +2462,12 @@ func (d *Dispatcher) computeScore(e *world.Entity) protocol.ScoreData {
 	return sc
 }
 
-// attackRunOf is the entity's live speed byte (run<<4 | move). Players get the
-// issue #64 move-speed tiers (bare=2, boots=4, mount=6); mobs carry their
-// template's CurrentScore value (set at spawn). Every S→C score/snapshot
-// (UpdateScore, CreateMob, the login MOB blob) must carry it: the client animates
-// walks — its own and remote entities' — at this speed, and a 0 here renders a
-// crawling, rubber-banding avatar.
+// attackRunOf é o byte de velocidade vivo da entidade (run<<4 | move). Jogadores recebem os
+// tiers de velocidade de movimento da issue #64 (a pé=2, botas=4, montaria=6); criaturas carregam o
+// valor de CurrentScore do template (definido no spawn). Todo score/snapshot S→C
+// (UpdateScore, CreateMob, o blob MOB do login) precisa carregá-lo: o cliente anima as
+// caminhadas — as próprias e as de entidades remotas — nessa velocidade, e um 0 aqui renderiza um
+// avatar rastejante e elástico.
 func attackRunOf(e *world.Entity) uint8 {
 	if !world.IsPlayer(e.ID) {
 		return e.AttackRun
@@ -2480,7 +2480,7 @@ func attackRunOf(e *world.Entity) uint8 {
 		attack = 150
 	}
 	attack /= 10
-	// A mount takes precedence over boots and uses the max client movement tier.
+	// Uma montaria tem precedência sobre botas e usa o tier máximo de movimento do cliente.
 	if !e.Equip[mountEquipSlot].Empty() {
 		return uint8(attack<<4) | mountedMoveSpeed
 	}
@@ -2498,41 +2498,41 @@ func attackRunOf(e *world.Entity) uint8 {
 	return uint8(attack<<4) | uint8(move)
 }
 
-// sendScore publishes the recomputed CurrentScore (_MSG_UpdateScore) to the player
-// AND to everyone in view, mirroring the legacy SendScore — whose single exit is
-// GridMulticast(TargetX, TargetY, ..., skip=0), i.e. self plus the whole view
-// window (SendFunc.cpp:1298; all 113 SendScore call sites funnel through it).
+// sendScore publica o CurrentScore recalculado (_MSG_UpdateScore) para o jogador
+// E para todos em visão, espelhando o SendScore legado — cuja única saída é
+// GridMulticast(TargetX, TargetY, ..., skip=0), ou seja, ele mesmo mais a janela
+// de visão inteira (SendFunc.cpp:1298; todos os 113 pontos de chamada de SendScore passam por ali).
 //
-// The multicast is what resynchronizes an out-of-band HP change (potion, regen,
-// heal, revive) on OTHER clients: MSG_Attack carries only STRUCT_DAM deltas that
-// the client SUBTRACTS from its own copy of the target's HP, so without an
-// explicit push an attacker renders a stale HP bar for a drinker (issue #99).
+// O multicast é o que ressincroniza uma mudança de HP fora de banda (poção, regen,
+// cura, ressurreição) nos OUTROS clientes: o MSG_Attack carrega só deltas de STRUCT_DAM que
+// o cliente SUBTRAI da própria cópia do HP do alvo, então sem um push
+// explícito um atacante renderiza uma barra de HP velha para quem bebeu (issue #99).
 //
-// HEADER.ID is the SUBJECT's conn for every recipient — that is how a client knows
-// which entity the score describes. Nothing here is private: gold/exp/free points
-// live in MSG_UpdateEtc (sendEtc), which stays unicast like the legacy SendEtc.
+// HEADER.ID é o conn do SUJEITO para todo destinatário — é assim que o cliente sabe
+// qual entidade o score descreve. Nada aqui é privado: ouro/exp/pontos livres
+// ficam em MSG_UpdateEtc (sendEtc), que continua unicast como o SendEtc legado.
 func (d *Dispatcher) sendScore(w *world.World, s *world.Session, e *world.Entity) {
 	body := protocol.EncodeUpdateScore(d.computeScore(e))
 	w.SendTo(s, protocol.Header{Type: protocol.MsgUpdateScore, ID: uint16(s.Conn)}, body)
-	w.BroadcastInView(s.Conn, protocol.MsgUpdateScore, body) // excludes the source
+	w.BroadcastInView(s.Conn, protocol.MsgUpdateScore, body) // exclui a origem
 }
 
-// sendScoreSelf is the unicast score push, for the one path where the subject is not
-// yet visible to the players around it — enterWorldView pushes the score BEFORE
-// broadcasting the newcomer's CreateMob, and the legacy has no SendScore there at
-// all (ProcessDBMessage.cpp:1017-1037 unicasts the login blob, then GridMulticasts
-// CreateMob, which already carries Hp/MaxHp to observers).
+// sendScoreSelf é o push unicast de score, para o único caminho em que o sujeito ainda
+// não é visível aos jogadores ao redor — enterWorldView empurra o score ANTES
+// de transmitir o CreateMob do recém-chegado, e o legado não tem SendScore ali
+// (ProcessDBMessage.cpp:1017-1037 envia o blob de login por unicast e depois faz GridMulticast
+// do CreateMob, que já carrega Hp/MaxHp para os observadores).
 func (d *Dispatcher) sendScoreSelf(w *world.World, s *world.Session, e *world.Entity) {
 	w.SendTo(s, protocol.Header{Type: protocol.MsgUpdateScore, ID: uint16(s.Conn)}, protocol.EncodeUpdateScore(d.computeScore(e)))
 }
 
-// sendEtc pushes the player's MSG_UpdateEtc (SendFunc.cpp SendEtc): gold, exp and —
-// crucially — the free points (ScoreBonus/SpecialBonus/SkillBonus) and the
-// learned-skill mask (Learn), which is what populates the client's skill window.
-// STRUCT_SCORE/UpdateScore does NOT carry these, so this packet is the only
-// refresh path. It is the full struct (not coin-only) because the original
-// always sends all fields; a partial refresh would zero the client's state.
-// Hold is not modeled yet (0).
+// sendEtc empurra o MSG_UpdateEtc do jogador (SendFunc.cpp SendEtc): ouro, exp e —
+// crucialmente — os pontos livres (ScoreBonus/SpecialBonus/SkillBonus) e a
+// máscara de skills aprendidas (Learn), que é o que popula a janela de skills do cliente.
+// STRUCT_SCORE/UpdateScore NÃO carrega esses, então este pacote é o único caminho
+// de atualização. É a struct inteira (não só moeda) porque o original
+// sempre envia todos os campos; uma atualização parcial zeraria o estado do cliente.
+// Hold ainda não é modelado (0).
 func (d *Dispatcher) sendEtc(w *world.World, s *world.Session, e *world.Entity) {
 	w.Send(s, protocol.MsgUpdateEtc, protocol.EncodeUpdateEtc(protocol.UpdateEtcData{
 		Exp:          e.Exp,
@@ -2545,17 +2545,17 @@ func (d *Dispatcher) sendEtc(w *world.World, s *world.Session, e *world.Entity) 
 	}))
 }
 
-// tradingItem handles _MSG_TradingItem (0x0376): the client's universal
-// drag-and-drop item swap between two slots — within the inventory, between
-// inventory and equipment, and to/from the account warehouse (cargo). Despite the
-// "Trading" name this is NOT the P2P player trade (that is _MSG_Trade, 0x0383); it
-// is the slot-swap the client sends whenever an item is dragged
-// (Source/Code/TMSrv/_MSG_TradingItem.cpp). Moving an item while in a P2P trade
-// cancels the trade (anti-dup).
+// tradingItem trata _MSG_TradingItem (0x0376): a troca universal de item por
+// arrastar e soltar do cliente entre dois slots — dentro do inventário, entre
+// inventário e equipamento, e de/para o armazém da conta (cargo). Apesar do
+// nome "Trading" isto NÃO é a troca P2P entre jogadores (essa é _MSG_Trade, 0x0383); é
+// a troca de slot que o cliente envia sempre que um item é arrastado
+// (Source/Code/TMSrv/_MSG_TradingItem.cpp). Mover um item durante uma troca P2P
+// cancela a troca (anti-dup).
 //
-// The swap exchanges the two slots' contents (so dragging onto an occupied slot
-// swaps them; onto an empty slot moves). It runs in the single loop goroutine, so
-// concurrent swaps cannot duplicate an item.
+// A troca permuta o conteúdo dos dois slots (então arrastar sobre um slot ocupado
+// os troca; sobre um slot vazio move). Roda na goroutine única do loop, então
+// trocas concorrentes não podem duplicar um item.
 func (d *Dispatcher) tradingItem(w *world.World, s *world.Session, _ protocol.Header, payload []byte) {
 	e := w.Entity(s.Conn)
 	if e == nil || e.HP <= 0 || s.Mode != world.UserPlay {
@@ -2563,7 +2563,7 @@ func (d *Dispatcher) tradingItem(w *world.World, s *world.Session, _ protocol.He
 		return
 	}
 	if s.Trade.Active {
-		d.removeTrade(w, s) // moving an item mid-trade cancels it
+		d.removeTrade(w, s) // mover um item no meio de uma troca a cancela
 		return
 	}
 	if s.TradeMode != 0 {
@@ -2577,8 +2577,8 @@ func (d *Dispatcher) tradingItem(w *world.World, s *world.Session, _ protocol.He
 	srcPlace, srcSlot := int(body.SrcPlace), int(body.SrcSlot)
 	dstPlace, dstSlot := int(body.DestPlace), int(body.DestSlot)
 
-	// Cargo is account-shared and only reachable next to the cargo-guard NPC
-	// (WarpID identifies it). Inventory/equip-only moves skip this gate.
+	// O cargo é compartilhado pela conta e só acessível perto do NPC guarda do cargo
+	// (WarpID o identifica). Moves só de inventário/equipamento pulam este gate.
 	if (srcPlace == world.ItemPlaceCargo || dstPlace == world.ItemPlaceCargo) && !d.nearCargoGuard(w, e, int(body.WarpID)) {
 		return
 	}
@@ -2592,28 +2592,28 @@ func (d *Dispatcher) tradingItem(w *world.World, s *world.Session, _ protocol.He
 		return
 	}
 	if src.Empty() && dst.Empty() {
-		return // nothing to move
+		return // nada a mover
 	}
-	// Equip rules: the item that would land in an equip slot must fit that slot (nPos)
-	// AND meet the level/attribute requirement. On a swap the src item moves into the
-	// dst slot (and vice-versa).
+	// Regras de equipamento: o item que cairia num slot de equipamento precisa caber nele (nPos)
+	// E cumprir o requisito de nível/atributo. Numa troca o item de origem vai para o
+	// slot de destino (e vice-versa).
 	if dstPlace == world.ItemPlaceEquip && !src.Empty() && (!d.canEquipSlot(src.Index, dstSlot) || !d.meetsEquipReq(e, *src)) ||
 		srcPlace == world.ItemPlaceEquip && !dst.Empty() && (!d.canEquipSlot(dst.Index, srcSlot) || !d.meetsEquipReq(e, *dst)) {
 		d.notify(w, s, NoticeReqNotMet)
 		return
 	}
 	if srcPlace == world.ItemPlaceCarry && dstPlace == world.ItemPlaceCarry && tryMergeItemStacks(src, dst) {
-		w.Send(s, protocol.MsgTradingItem, payload) // echo the move
+		w.Send(s, protocol.MsgTradingItem, payload) // devolver o move
 		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(srcPlace, srcSlot, itemToSel(*src)))
 		w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(dstPlace, dstSlot, itemToSel(*dst)))
 		return
 	}
 	*src, *dst = *dst, *src
-	w.Send(s, protocol.MsgTradingItem, payload) // echo the move
+	w.Send(s, protocol.MsgTradingItem, payload) // devolver o move
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(srcPlace, srcSlot, itemToSel(*src)))
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(dstPlace, dstSlot, itemToSel(*dst)))
 	d.shiftWeaponToRightHand(w, s, e)
-	// An equip/unequip changes the rendered gear: refresh the model everywhere.
+	// Um equipar/desequipar muda o equipamento renderizado: atualize o modelo em todo lugar.
 	if srcPlace == world.ItemPlaceEquip || dstPlace == world.ItemPlaceEquip {
 		d.refreshEquip(w, s, e)
 	}
@@ -2622,13 +2622,13 @@ func (d *Dispatcher) tradingItem(w *world.World, s *world.Session, _ protocol.He
 	}
 }
 
-// shiftWeaponToRightHand mirrors _MSG_TradingItem.cpp:394-414: after any
-// trading-item swap, if the primary weapon hand (slot 6) is left empty while
-// the off-hand (slot 7) holds a non-shield item, the server force-moves it
-// into slot 6 and echoes a synthetic swap so the client stays in sync. This
-// is what makes quick-equipping (double-click) a one-handed weapon land in
-// the primary hand instead of the shield slot, since the client itself
-// picks the destination slot and sometimes targets slot 7 directly.
+// shiftWeaponToRightHand espelha _MSG_TradingItem.cpp:394-414: depois de qualquer
+// troca de item, se a mão de arma principal (slot 6) fica vazia enquanto
+// a mão secundária (slot 7) tem um item que não é escudo, o servidor o move à força
+// para o slot 6 e devolve uma troca sintética para o cliente ficar em sincronia. Isto
+// é o que faz o equipar rápido (clique duplo) de uma arma de uma mão cair na
+// mão principal em vez do slot de escudo, já que o próprio cliente
+// escolhe o slot de destino e às vezes mira direto no slot 7.
 func (d *Dispatcher) shiftWeaponToRightHand(w *world.World, s *world.Session, e *world.Entity) {
 	if !e.Equip[weaponSlotR].Empty() {
 		return
@@ -2638,7 +2638,7 @@ func (d *Dispatcher) shiftWeaponToRightHand(w *world.World, s *world.Session, e 
 		return
 	}
 	if pos, ok := d.itemPos[int(off.Index)]; ok && pos == nPosDef3 {
-		return // a real shield stays in the off-hand
+		return // um escudo de verdade fica na mão secundária
 	}
 	e.Equip[weaponSlotR], *off = *off, world.Item{}
 	shiftBody := protocol.MsgTradingItemBody{
@@ -2650,10 +2650,10 @@ func (d *Dispatcher) shiftWeaponToRightHand(w *world.World, s *world.Session, e 
 	w.Send(s, protocol.MsgSendItem, protocol.EncodeSendItemBody(world.ItemPlaceEquip, weaponSlotL, itemToSel(e.Equip[weaponSlotL])))
 }
 
-// itemSlot returns a pointer to the live item slot for a place/slot pair, or nil
-// if the place is unknown or the slot is out of bounds. Carry moves are bounded by
-// the currently unlocked Carry range. The cargo slot is nil unless the account's
-// warehouse is loaded.
+// itemSlot devolve um ponteiro para o slot de item vivo de um par lugar/slot, ou nil
+// se o lugar é desconhecido ou o slot está fora dos limites. Moves de carry são limitados
+// pela faixa de Carry desbloqueada no momento. O slot de cargo é nil a menos que o
+// armazém da conta esteja carregado.
 func (d *Dispatcher) itemSlot(w *world.World, s *world.Session, e *world.Entity, place, slot int) *world.Item {
 	switch place {
 	case world.ItemPlaceEquip:
@@ -2676,8 +2676,8 @@ func (d *Dispatcher) itemSlot(w *world.World, s *world.Session, e *world.Entity,
 	return nil
 }
 
-// nearCargoGuard reports whether warpID is a cargo-guard NPC (Merchant==2) within
-// view of the player — the proximity gate for any cargo slot access.
+// nearCargoGuard informa se warpID é um NPC guarda do cargo (Merchant==2) em
+// visão do jogador — o gate de proximidade para qualquer acesso a slot de cargo.
 func (d *Dispatcher) nearCargoGuard(w *world.World, e *world.Entity, warpID int) bool {
 	npc := w.Entity(warpID)
 	if npc == nil || npc.Mode == world.MobEmpty || npc.Merchant != 2 {
@@ -2693,8 +2693,8 @@ func abs(v int) int {
 	return v
 }
 
-// slotPayload is a placeholder S→C body carrying an affected slot index.
-// UNVERIFIED: real _MSG_CNFDropItem/_MSG_CNFGetItem layouts (deferred to capture).
+// slotPayload é um corpo S→C provisório carregando um índice de slot afetado.
+// UNVERIFIED: layouts reais de _MSG_CNFDropItem/_MSG_CNFGetItem (adiados até a captura).
 func slotPayload(slot int) []byte { return uint32Payload(uint32(slot)) }
 
 func uint32Payload(v uint32) []byte {

@@ -13,13 +13,13 @@ type teleRoute struct {
 	cost   int32
 }
 
-// teleportTable maps a rounded origin tile (x&0xFFFC, y&0xFFFC) to its
-// destination + gold cost (GetTeleportPosition, GetFunc.cpp). The client sends an
-// empty _MSG_ReqTeleport when it steps on a teleport tile; the server resolves
-// the route from the player's position.
+// teleportTable mapeia um tile de origem arredondado (x&0xFFFC, y&0xFFFC) para seu
+// destino + custo em ouro (GetTeleportPosition, GetFunc.cpp). O cliente envia um
+// _MSG_ReqTeleport vazio quando pisa num tile de teleporte; o servidor resolve
+// a rota a partir da posição do jogador.
 //
-// The data itself lives in internal/teleportdata so the web-api can list and
-// simulate the same table (issue 42); this map is the runtime form of it.
+// Os dados em si ficam em internal/teleportdata para o web-api listar e
+// simular a mesma tabela (issue 42); este mapa é a forma de execução dela.
 var teleportTable = buildTeleportTable()
 
 func buildTeleportTable() map[[2]int16]teleRoute {
@@ -31,10 +31,10 @@ func buildTeleportTable() map[[2]int16]teleRoute {
 	return m
 }
 
-// OverlayRoute is one moderator-editable route row (teleport_route, issue 42).
-// The overlay is additive: a row overrides the compiled route at the same origin
-// tile, Enabled=false removes it, and an origin with no row keeps the compiled
-// route.
+// OverlayRoute é uma linha de rota editável por moderador (teleport_route, issue 42).
+// O overlay é aditivo: uma linha substitui a rota compilada no mesmo tile de
+// origem, Enabled=false a remove, e uma origem sem linha mantém a rota
+// compilada.
 type OverlayRoute struct {
 	SrcX, SrcY  int16
 	DstX, DstY  int16
@@ -50,15 +50,15 @@ type overlayRoute struct {
 	enabled     bool
 }
 
-// teleportOverlay is config, not world state: the poll goroutine publishes a new
-// immutable snapshot and the game loop only reads it. An atomic pointer keeps
-// handlers lock-free, which is what invariant #1 (single owner of world state)
-// asks for — there is nothing here to own, only a read-only snapshot.
+// teleportOverlay é config, não estado do mundo: a goroutine de polling publica um novo
+// snapshot imutável e o loop do jogo só o lê. Um ponteiro atômico mantém os
+// handlers sem lock, que é o que a invariante #1 (dono único do estado do mundo)
+// pede — não há nada aqui para possuir, só um snapshot somente leitura.
 var teleportOverlay atomic.Pointer[map[[2]int16]overlayRoute]
 
-// SetTeleportOverlay replaces the live overlay with the given rows. An empty or
-// nil slice clears it, restoring the compiled table exactly. It returns how many
-// rows were published, for the boot/poll log.
+// SetTeleportOverlay substitui o overlay vivo pelas linhas dadas. Uma fatia
+// nil ou vazia o limpa, restaurando a tabela compilada exatamente. Devolve quantas
+// linhas foram publicadas, para o log de boot/polling.
 func SetTeleportOverlay(routes []OverlayRoute) int {
 	if len(routes) == 0 {
 		teleportOverlay.Store(nil)
@@ -76,8 +76,8 @@ func SetTeleportOverlay(routes []OverlayRoute) int {
 	return len(m)
 }
 
-// TeleportOverlaySize reports how many overlay rows are live (0 = compiled table
-// only).
+// TeleportOverlaySize informa quantas linhas de overlay estão vivas (0 = só a tabela
+// compilada).
 func TeleportOverlaySize() int {
 	if m := teleportOverlay.Load(); m != nil {
 		return len(*m)
@@ -96,7 +96,7 @@ func normalizeRequirement(req string) string {
 	}
 }
 
-// routeAt resolves the tile against the overlay first, then the compiled table.
+// routeAt resolve o tile contra o overlay primeiro, depois contra a tabela compilada.
 func routeAt(tile [2]int16) (teleRoute, string, bool) {
 	if m := teleportOverlay.Load(); m != nil {
 		if r, ok := (*m)[tile]; ok {
@@ -113,40 +113,40 @@ func routeAt(tile [2]int16) (teleRoute, string, bool) {
 	return r, teleportdata.RequirementAt(tile[0], tile[1]), true
 }
 
-// TeleportAccess is the per-player and world state some routes are gated on.
+// TeleportAccess é o estado por jogador e do mundo em que algumas rotas são condicionadas.
 type TeleportAccess struct {
-	// HasFairy: the Vale portal requires item 3916 in Equip[13].
+	// HasFairy: o portal do Vale exige o item 3916 em Equip[13].
 	HasFairy bool
-	// KefraDefeated: the Deserto → Kefra portal only opens once the Kefra is
-	// dead (the legacy KefraLive != 0, GetFunc.cpp:1006-1010).
+	// KefraDefeated: o portal Deserto → Kefra só abre depois que o Kefra está
+	// morto (o legado KefraLive != 0, GetFunc.cpp:1006-1010).
 	KefraDefeated bool
 }
 
-// TeleportDest resolves a teleport from (x,y): it rounds to the tile, looks up
-// the route, and returns the destination (+rand%3 spread) and gold cost. ok is
-// false when there is no teleport tile at that position.
+// TeleportDest resolve um teleporte a partir de (x,y): arredonda para o tile, busca
+// a rota e devolve o destino (espalhamento +rand%3) e o custo em ouro. ok é
+// falso quando não há tile de teleporte naquela posição.
 func TeleportDest(x, y int16) (destX, destY int16, cost int32, ok bool) {
 	return teleportDest(x, y, TeleportAccess{}, nil)
 }
 
-// TeleportDestWithAccess resolves routes whose access can depend on equipped
-// items or world state (see TeleportAccess).
+// TeleportDestWithAccess resolve rotas cujo acesso pode depender de itens
+// equipados ou estado do mundo (veja TeleportAccess).
 func TeleportDestWithAccess(x, y int16, access TeleportAccess, random *rng.MSVC) (destX, destY int16, cost int32, ok bool) {
 	return teleportDest(x, y, access, random)
 }
 
 func teleportDest(x, y int16, access TeleportAccess, random *rng.MSVC) (destX, destY int16, cost int32, ok bool) {
-	tile := [2]int16{x &^ 3, y &^ 3} // round down to a multiple of 4
+	tile := [2]int16{x &^ 3, y &^ 3} // arredonda para baixo, múltiplo de 4
 	r, requirement, found := routeAt(tile)
 	vale, kefra := requirement == teleportdata.RequirementFairy, requirement == teleportdata.RequirementKefra
 	if !found || (vale && !access.HasFairy) || (kefra && !access.KefraDefeated) {
 		return 0, 0, 0, false
 	}
-	// The spread stays the LAST operation of the route: the RNG order is part of
-	// the gameplay contract (issue 42 forbids changing it), overlay or not.
+	// O espalhamento continua sendo a ÚLTIMA operação da rota: a ordem do RNG faz parte
+	// do contrato de gameplay (a issue 42 proíbe mudá-la), com ou sem overlay.
 	spread := func() int { return rand.Intn(3) }
-	// Keep existing route randomness unchanged; the Vale and Kefra branches are
-	// the ones newly ported from the legacy path and use the world's MSVC stream.
+	// Manter a aleatoriedade das rotas existentes inalterada; os ramos do Vale e do Kefra são
+	// os recém-portados do caminho legado e usam o fluxo MSVC do mundo.
 	if random != nil && (vale || kefra) {
 		spread = func() int { return random.Intn(3) }
 	}

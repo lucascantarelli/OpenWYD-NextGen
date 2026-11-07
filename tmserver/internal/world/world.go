@@ -1,12 +1,12 @@
-// Package world is the authoritative, in-memory game state of the tmServer and
-// its single-owner game loop (domain-model.md §1/§5, migration-plan.md §3.5).
+// Package world é o estado de jogo autorotativo em memória do tmServer e
+// do seu laço de jogo de dono único (domain-model.md §1/§5, migration-plan.md §3.5).
 //
-// Concurrency model — the one rule that preserves parity and kills item dup:
-// ALL world state is owned by exactly one goroutine (Run); it is never mutated
-// elsewhere. Network I/O runs in per-connection goroutines that only exchange
-// messages with the loop over channels (events in, per-session out). There are
-// no locks on world state, mirroring the original single-threaded WinSock
-// reactor (domain-model.md §5, guidelines §9).
+// Modelo de concorrência — a única regra que preserva a paridade e mata a duplicação de item:
+// TODO o estado do mundo pertence a exatamente uma goroutine (Run); ele nunca é mutado
+// em outro lugar. O I/O de rede roda em goroutines por conexão que só trocam
+// mensagens com o loop por canais (eventos entram, saída por sessão). Não há
+// locks no estado do mundo, espelhando o servidor WinSock single-threaded
+// original (domain-model.md §5, guidelines §9).
 package world
 
 import (
@@ -21,32 +21,32 @@ import (
 	"openwyd-nextgen/tmserver/internal/rng"
 )
 
-// Capacity limits (Basedef.h via domain-model.md §6). The index space is shared:
-// pMob[0..MaxUser) are players, pMob[MaxUser..MaxMob) are mobs/NPCs.
+// Limites de capacidade (Basedef.h via domain-model.md §6). O espaço de índices é compartilhado:
+// pMob[0..MaxUser) são jogadores, pMob[MaxUser..MaxMob) são mobs/NPCs.
 const (
 	MaxUser        = 1000
 	MaxMob         = 25000
-	MaxItem        = 5000 // ground items (pItem[])
-	MaxCarry       = 64   // inventory slots per entity (MAX_CARRY)
-	MaxEquip       = 16   // equipment slots (MAX_EQUIP)
-	MaxCargo       = 128  // account-shared warehouse slots (MAX_CARGO)
-	MaxAutoTrade   = 12   // personal-shop item slots (MAX_AUTOTRADE, issue #115)
-	MaxParty       = 12   // party members (MAX_PARTY)
+	MaxItem        = 5000 // itens no chão (pItem[])
+	MaxCarry       = 64   // slots de inventário por entidade (MAX_CARRY)
+	MaxEquip       = 16   // slots de equipamento (MAX_EQUIP)
+	MaxCargo       = 128  // slots do armazém compartilhado da conta (MAX_CARGO)
+	MaxAutoTrade   = 12   // slots de itens da loja pessoal (MAX_AUTOTRADE, issue #115)
+	MaxParty       = 12   // membros de party (MAX_PARTY)
 	DefaultGridDim = 4096
 
-	// KefraBossGenIndex is KEFRA_BOSS (Basedef.h:475), the NPCGener block with
-	// special fixed-range / fixed-position combat rules in CMob.cpp.
+	// KefraBossGenIndex é KEFRA_BOSS (Basedef.h:475), o bloco NPCGener com
+	// regras especiais de combate de alcance/posição fixos no CMob.cpp.
 	KefraBossGenIndex = 396
 
-	// GroundItemIDOffset is added to a ground item's index on the wire
-	// (_MSG_GetItem decodes ItemID-10000; handlers/_MSG_GetItem.md).
+	// GroundItemIDOffset é somado ao índice de um item no chão no wire
+	// (_MSG_GetItem decodifica ItemID-10000; handlers/_MSG_GetItem.md).
 	GroundItemIDOffset = 10000
 )
 
-// Mode is the session state machine CUser.Mode (domain-model.md §3.1).
+// Mode é a máquina de estados da sessão CUser.Mode (domain-model.md §3.1).
 type Mode uint8
 
-// Session modes (CUser.h:26-37).
+// Modos de sessão (CUser.h:26-37).
 const (
 	UserEmpty       Mode = 0
 	UserAccept      Mode = 1
@@ -58,10 +58,10 @@ const (
 	UserSaving4Quit Mode = 24
 )
 
-// EntityMode is the world-entity state machine CMob.Mode (domain-model.md §3.2).
+// EntityMode é a máquina de estados de entidade do mundo CMob.Mode (domain-model.md §3.2).
 type EntityMode uint8
 
-// Entity modes (CMob.h:26-35).
+// Modos de entidade (CMob.h:26-35).
 const (
 	MobEmpty    EntityMode = 0
 	MobUserDock EntityMode = 1
@@ -75,48 +75,48 @@ const (
 	MobWaitDB   EntityMode = 9
 )
 
-// Handler processes one decoded client frame inside the loop goroutine, so it
-// may freely mutate world state. Phase 4 replaces the default with the real
-// per-message dispatch (handlers/*.md).
+// Handler processa um frame de cliente já decodificado dentro da goroutine do loop, então
+// pode mutar o estado do mundo à vontade. A Fase 4 substitui o default pelo
+// despacho real por mensagem (handlers/*.md).
 type Handler func(w *World, s *Session, h protocol.Header, payload []byte)
 
-// Config tunes a World. GridDim defaults to DefaultGridDim (4096); tests use a
-// small value to avoid allocating the full dense spatial grids.
+// Config ajusta um World. GridDim usa DefaultGridDim (4096); os testes usam um
+// valor pequeno para não alocar os grids espaciais densos completos.
 type Config struct {
 	GridDim        int
-	OutBufferBytes int           // per-session unsent S→C bytes (default DefaultOutBufferBytes)
-	EventQueue     int           // inbound event queue depth
-	Now            func() uint32 // server clock (ClientTick); injectable for tests
+	OutBufferBytes int           // bytes S→C não enviados por sessão (default DefaultOutBufferBytes)
+	EventQueue     int           // profundidade da fila de eventos de entrada
+	Now            func() uint32 // relógio do servidor (ClientTick); injetável para testes
 
-	// Hardening (Fase 7, migration-plan.md §5), all opt-in:
-	// RejectChecksum drops a connection on a CPSock checksum mismatch. The legacy
-	// stack is non-rejecting and the ClientPatch NOPs client checks, so this is
-	// off by default; enable once a capture confirms the client sends correct
-	// checksums (protocol-spec.md §1.5).
+	// Endurecimento (Fase 7, migration-plan.md §5), tudo opcional:
+	// RejectChecksum derruba a conexão em caso de checksum CPSock divergente. A pilha
+	// legada não rejeita e o ClientPatch anula as checagens do cliente, então isto fica
+	// desligado por default; ligue quando uma captura confirmar que o cliente envia
+	// checksums corretos (protocol-spec.md §1.5).
 	RejectChecksum bool
-	// MaxMsgPerSec rate-limits inbound messages per connection (0 = disabled);
-	// MsgBurst is the bucket depth (defaults to MaxMsgPerSec when <=0). A flood
-	// disconnects the offending connection, protecting the reactor (NF1).
+	// MaxMsgPerSec limita a taxa de mensagens de entrada por conexão (0 = desligado);
+	// MsgBurst é a profundidade do balde (usa MaxMsgPerSec quando <=0). Um flood
+	// desconecta a conexão infratora, protegendo o reator (NF1).
 	MaxMsgPerSec float64
 	MsgBurst     int
 
-	// ItemRanges maps item index → its catalog EF_RANGE value (content
-	// ItemList.Ranges). SpawnMob uses it to derive a mob's attack reach from its
-	// template equips (BASE_GetMobAbility, Basedef.cpp:2415). Immutable after
-	// boot; nil means no catalog (every mob fights at melee reach).
+	// ItemRanges mapeia índice de item → seu valor EF_RANGE do catálogo (content
+	// ItemList.Ranges). SpawnMob usa isso para derivar o alcance de ataque de um mob
+	// dos equips do template (BASE_GetMobAbility, Basedef.cpp:2415). Imutável após
+	// o boot; nil significa sem catálogo (todo mob luta em alcance corpo a corpo).
 	ItemRanges map[int]int16
 
-	// LogSends logs every queued S→C frame (conn/type/id/len) at INFO — the
-	// outbound mirror of the dispatcher's "recv packet" log. High volume: enable
-	// only while reproducing an incident (freeze investigation,
+	// LogSends registra em INFO cada frame S→C enfileirado (conn/tipo/id/len) — o
+	// espelho de saída do log "recv packet" do dispatcher. Volume alto: ligue
+	// só enquanto reproduz um incidente (investigação de freeze,
 	// docs/migration/investigacao-freeze-cliente.md).
 	LogSends bool
 
-	// StatusFile is the path to the channel-status page (serv00.htm) the client
-	// fetches over HTTP before opening the CPSock game connection. When set, the
-	// edge answers a "GET" probe with this file's contents; empty serves a
-	// built-in default. The client-edge HTTP status check is undocumented in
-	// protocol-spec.md (CPSock-only) — discovered from a live client capture.
+	// StatusFile é o caminho da página de status do canal (serv00.htm) que o cliente
+	// busca por HTTP antes de abrir a conexão CPSock do jogo. Quando definido, o
+	// edge responde a uma sondagem "GET" com o conteúdo deste arquivo; vazio serve um
+	// default embutido. A checagem HTTP de status do client-edge não está documentada
+	// no protocol-spec.md (só CPSock) — descoberta numa captura de cliente ao vivo.
 	StatusFile string
 
 	// Metrics recebe os contadores do loop (tick, conexões) e é exportado pelo
@@ -124,8 +124,8 @@ type Config struct {
 	Metrics *metrics.Registry
 }
 
-// World holds all mutable game state. Every field is touched only by Run's
-// goroutine (and by helpers it calls). Do not access from other goroutines.
+// World guarda todo o estado de jogo mutável. Cada campo é tocado só pela
+// goroutine de Run (e por auxiliares que ela chama). Não acesse de outras goroutines.
 type World struct {
 	cfg     Config
 	log     *slog.Logger
@@ -135,72 +135,72 @@ type World struct {
 	handler Handler
 
 	sessions []*Session    // index = conn ∈ [0, MaxUser)
-	entities []*Entity     // index space shared with players (domain-model.md §1)
-	ground   []*GroundItem // pItem[]: items on the floor, index ∈ [1, MaxItem)
+	entities []*Entity     // espaço de índices compartilhado com os jogadores (domain-model.md §1)
+	ground   []*GroundItem // pItem[]: itens no chão, índice ∈ [1, MaxItem)
 	grid     *Grid
-	rng      *rng.MSVC // loop-owned MSVC LCG (parity; like the original global rand())
+	rng      *rng.MSVC // LCG do MSVC do loop (paridade; como o rand() global original)
 
-	// cargo is the account-shared warehouse, keyed by account id. It is loaded on
-	// account login and lives for the whole account session (it spans character
-	// select ↔ play), so it is keyed by account, not session/conn. Loop-owned.
+	// cargo é o armazém compartilhado da conta, com chave por id de conta. Ele é carregado no
+	// login da conta e vive por toda a sessão da conta (atravessa a seleção de
+	// personagem ↔ jogo), então a chave é a conta, não a sessão/conn. Do loop.
 	cargo map[int64]*CargoState
 
-	// savingAccounts counts, per account id, the closed sessions whose final
-	// character/cargo save is still in flight (saveAccountOnClose). A new login
-	// of that account waits for zero, so it never loads rows older than what the
-	// previous session held in memory. Created on first use. Loop-owned.
+	// savingAccounts conta, por id de conta, as sessões fechadas cujo save final de
+	// personagem/cargo ainda está em voo (saveAccountOnClose). Um novo login
+	// dessa conta espera chegar a zero, então nunca carrega linhas mais velhas do que
+	// a sessão anterior tinha em memória. Criado no primeiro uso. Do loop.
 	savingAccounts map[int64]int
 
-	// guilds is the minimal guild registry (guild.go): name/fame keyed by guild
-	// id. In-memory only — there is no guild-creation flow yet to persist
-	// against. Loop-owned.
+	// guilds é o registro mínimo de guildas (guild.go): nome/fama com chave por id
+	// de guilda. Só em memória — ainda não há fluxo de criação de guilda a
+	// persistir. Do loop.
 	guilds map[uint16]GuildInfo
 
-	// worldEvent is the portal-managed global drop event state. Loop-owned; the
-	// dispatcher applies snapshots from dbServer and advances CurrentIndex on
-	// successful event drops.
+	// worldEvent é o estado do evento global de drop gerenciado pelo portal. Do loop; o
+	// dispatcher aplica snapshots vindos do dbServer e avança o CurrentIndex em
+	// drops bem-sucedidos do evento.
 	worldEvent EventConfig
 
-	// The loaded cycle also supplies the final shutdown snapshot, so a pending
-	// older asynchronous save cannot lose a defeat during a normal restart.
+	// O ciclo carregado também fornece o snapshot final de shutdown, para que um save
+	// assíncrono mais antigo pendente não perca uma derrota num restart normal.
 	kefraState  KefraState
 	nightmare   NightmareState
 	runeQuest   RuneQuestState
 	kefraLoaded bool
 
-	// newbieEvent mirrors the legacy NewbieEventServer flag (Server.cpp:617).
-	// The world itself only needs it for the spawn-time HP handicap; the EXP
-	// side lives in the dispatcher's ExpEvents. Loop-owned.
+	// newbieEvent espelha a flag legada NewbieEventServer (Server.cpp:617).
+	// O próprio mundo só precisa dela para o handicap de HP no spawn; o lado do EXP
+	// vive nos ExpEvents do dispatcher. Do loop.
 	newbieEvent bool
 
 	events    chan event
-	callbacks chan event // async handler results (World.Go / World.GoDetached); separate
-	// from events so a long mob-AI tick cannot block login/db callbacks on the main queue.
-	done   chan struct{}  // closed when the loop stops; unblocks conn goroutines
-	saveWG sync.WaitGroup // tracks in-flight async character saves (logout/disconnect)
+	callbacks chan event // resultados assíncronos de handler (World.Go / World.GoDetached); separado
+	// dos eventos para um tick longo da IA de mob não travar login/db na fila principal.
+	done   chan struct{}  // fechado quando o loop para; desbloqueia as goroutines de conexão
+	saveWG sync.WaitGroup // acompanha os saves assíncronos de personagem em voo (logout/desconexão)
 
-	// onTick is the periodic simulation hook (mob AI), run inside the loop; see
-	// tick.go. nil disables the ticker (e.g. in protocol/transport tests).
+	// onTick é o gancho periódico de simulação (IA de mob), roda dentro do loop; veja
+	// tick.go. nil desliga o ticker (ex.: em testes de protocol/transporte).
 	onTick       func(*World)
 	tickInterval time.Duration
 
-	// onSessionEnd is the teardown hook (party unlink), run inside the loop just
-	// before a session's slot is freed; see event.go. nil disables it.
+	// onSessionEnd é o gancho de desmonte (desvincula a party), roda dentro do loop
+	// logo antes de o slot da sessão ser liberado; veja event.go. nil o desliga.
 	onSessionEnd func(*World, *Session)
 
-	// respawnQueue holds dead monsters awaiting respawn, drained by SpawnDueRespawns
-	// from the tick (world/respawn.go). Loop-owned.
+	// respawnQueue guarda criaturas mortas aguardando respawn, drenada por SpawnDueRespawns
+	// a partir do tick (world/respawn.go). Do loop.
 	respawnQueue []respawnEntry
 
-	// generators is the NPCGener block table (world/generator.go): spawn recipes
-	// plus live CurrentNumMob accounting. mobCount tracks the live mob/NPC total
-	// (the generateWorldCap gate). Loop-owned.
+	// generators é a tabela de blocos NPCGener (world/generator.go): receitas de spawn
+	// mais a contabilidade viva de CurrentNumMob. mobCount acompanha o total vivo de mobs/NPCs
+	// (o gate generateWorldCap). Do loop.
 	generators []*Generator
 	mobCount   int
 }
 
-// New creates a World with the given dependencies. A nil handler installs a
-// no-op default (Phase 3: transport plumbing only).
+// New cria um World com as dependências dadas. Um handler nil instala um
+// default sem efeito (Fase 3: só a fiação de transporte).
 func New(cfg Config, log *slog.Logger, persist Persistence, handler Handler) *World {
 	if cfg.GridDim <= 0 {
 		cfg.GridDim = DefaultGridDim
@@ -240,8 +240,8 @@ func New(cfg Config, log *slog.Logger, persist Persistence, handler Handler) *Wo
 	}
 }
 
-// Run is the single owner of world state. It processes inbound events until ctx
-// is cancelled, then drains/saves active sessions and returns ctx.Err().
+// Run é o dono único do estado do mundo. Processa eventos de entrada até ctx
+// ser cancelado, depois drena/salva as sessões ativas e devolve ctx.Err().
 func (w *World) Run(ctx context.Context) error {
 	w.log.Info("world loop started", "grid", w.cfg.GridDim)
 	if w.onTick != nil && w.tickInterval > 0 {
@@ -269,14 +269,14 @@ func (w *World) Run(ctx context.Context) error {
 	}
 }
 
-// slowEventThreshold is how long one loop event may take before it is logged:
-// anything past this stalls every session at once (the loop is single-owner), so
-// a "slow world event" WARN is the smoking gun for server-side global lag.
+// slowEventThreshold é quanto um evento de loop pode durar antes de ser logado:
+// qualquer coisa acima disso trava todas as sessões de uma vez (o loop é de dono único), então
+// um WARN de "slow world event" é a prova de lag global do lado do servidor.
 const slowEventThreshold = 100 * time.Millisecond
 
-// applyTimed applies one loop event and warns when it exceeds slowEventThreshold,
-// identifying the event (frame type/conn, tick, callback) so a stall can be
-// traced to its handler (freeze investigation instrumentation).
+// applyTimed aplica um evento de loop e avisa quando ele excede slowEventThreshold,
+// identificando o evento (tipo de frame/conn, tick, callback) para que um travamento possa
+// ser rastreado até seu handler (instrumentação da investigação de freeze).
 func (w *World) applyTimed(ev event) {
 	start := time.Now()
 	ev.apply(w)
@@ -307,9 +307,9 @@ func (w *World) applyTimed(ev event) {
 	}
 }
 
-// shutdown drains active sessions: persist players in-world, then stop their I/O.
+// shutdown drena as sessões ativas: persiste os jogadores no mundo, depois para o I/O deles.
 func (w *World) shutdown() {
-	close(w.done) // signal conn goroutines to stop sending events
+	close(w.done) // sinaliza às goroutines de conexão para pararem de enviar eventos
 	if w.kefraLoaded && w.persist != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		if err := w.persist.SaveKefraState(ctx, w.kefraState); err != nil {
@@ -331,22 +331,22 @@ func (w *World) shutdown() {
 		}
 		s.close()
 	}
-	// Persist any account warehouses still loaded (account-scoped, so saved once
-	// per account, independent of the per-session character saves above).
+	// Persiste os armazéns de conta ainda carregados (escopo da conta, logo salvos uma vez
+	// por conta, independente dos saves de personagem por sessão acima).
 	for accountID := range w.cargo {
 		if err := w.persist.SaveCargo(context.Background(), w.cargoSave(accountID)); err != nil {
 			w.log.Warn("save cargo on shutdown failed", "account", accountID, "err", err)
 		}
 	}
-	// Wait for in-flight disconnect/logout saves so a shutdown never loses one.
+	// Espera os saves de desconexão/logout em voo, para um shutdown nunca perder um.
 	w.saveWG.Wait()
 	w.log.Info("world loop stopped", "sessions_saved", saved)
 }
 
-// SaveCharacterAsync persists an in-play character's live state (Carry/Coin/stats)
-// without blocking the loop: it captures the CharacterSave in the loop (a value
-// copy) and runs the gRPC save in a goroutine. Called on logout/disconnect so
-// purchases, gold and progress survive the session. Loop-only (captures state).
+// SaveCharacterAsync persiste o estado vivo de um personagem em jogo (Carry/Coin/stats)
+// sem bloquear o loop: captura o CharacterSave no loop (uma cópia
+// por valor) e roda o save gRPC numa goroutine. Chamado no logout/desconexão para
+// compras, ouro e progresso sobreviverem à sessão. Só no loop (captura estado).
 func (w *World) SaveCharacterAsync(s *Session) {
 	if s == nil || s.Mode != UserPlay || s.AccountID == 0 {
 		return
@@ -361,11 +361,11 @@ func (w *World) SaveCharacterAsync(s *Session) {
 	}()
 }
 
-// SaveCharacterThen persists the character and runs then (back in the loop) only
-// after the save commits. Use it where the client may immediately re-read the
-// character from the DB (logout to character selection): deferring the
-// confirmation until the save lands prevents the reload racing the write. then
-// always runs, even when there is nothing to save.
+// SaveCharacterThen persiste o personagem e roda then (de volta no loop) só
+// depois do save commitar. Use onde o cliente pode reler o personagem do banco
+// imediatamente (logout para a seleção de personagem): adiar a
+// confirmação até o save chegar evita a releitura correr contra a escrita. then
+// sempre roda, mesmo quando não há nada a salvar.
 func (w *World) SaveCharacterThen(s *Session, then func(*World, *Session)) {
 	if s == nil || s.Mode != UserPlay || s.AccountID == 0 {
 		then(w, s)
@@ -384,15 +384,15 @@ func (w *World) SaveCharacterThen(s *Session, then func(*World, *Session)) {
 	})
 }
 
-// characterSave snapshots a session's in-world entity into a CharacterSave. Only
-// world-authoritative fields are captured (see CharacterSave). Loop-only.
+// characterSave faz snapshot da entidade em jogo de uma sessão para um CharacterSave. Só
+// campos autoritativos do mundo são capturados (veja CharacterSave). Só no loop.
 func (w *World) characterSave(s *Session) CharacterSave {
 	e := w.entities[s.Conn]
 	return w.CharacterSaveFor(s, e)
 }
 
-// CharacterSaveFor snapshots a staged entity without publishing it to the world.
-// Handlers use it for persistence-first operations such as kingdom cape purchases.
+// CharacterSaveFor faz snapshot de uma entidade preparada sem publicá-la no mundo.
+// Os handlers usam isso para operações que persistem primeiro, como a compra da capa de reino.
 func (w *World) CharacterSaveFor(s *Session, e *Entity) CharacterSave {
 	cs := CharacterSave{AccountID: s.AccountID, Slot: s.Slot}
 	if e == nil {
@@ -418,22 +418,22 @@ func (w *World) CharacterSaveFor(s *Session, e *Entity) CharacterSave {
 	cs.SaveX, cs.SaveY = e.SaveX, e.SaveY
 	cs.Level, cs.Exp, cs.Coin = e.Level, e.Exp, e.Coin
 	cs.Str, cs.Int, cs.Dex, cs.Con = e.Str, e.Int, e.Dex, e.Con
-	// Keep the historical flat save representation: old saves lack equipment
-	// CON/INT resources. Login derives the base from this value, then adds the
-	// current equipment contribution once, including for pre-issue-321 saves.
+	// Mantém a representação plana histórica de save: saves antigos não têm os recursos
+	// CON/INT do equipamento. O login deriva a base deste valor e então soma a
+	// contribuição do equipamento atual uma vez, inclusive em saves anteriores à issue 321.
 	cs.HP, cs.MaxHP = e.HP, e.MaxHP-e.EquipmentAttributeHP
 	cs.MP, cs.MaxMP = e.MP, e.MaxMP-e.EquipmentAttributeMP
-	// The equipment-free base travels on its own (migration 0027): rebuilding it
-	// at login from the values above depends on the bonus rules of that moment.
+	// A base sem equipamento viaja por conta própria (migration 0027): reconstruí-la
+	// no login a partir dos valores acima depende das regras de bônus daquele momento.
 	cs.BaseStr, cs.BaseInt, cs.BaseDex, cs.BaseCon = e.BaseStr, e.BaseInt, e.BaseDex, e.BaseCon
 	cs.BaseMaxHP, cs.BaseMaxMP = e.BaseMaxHP, e.BaseMaxMP
-	cs.DivineEnd = e.DivineEnd // 0 once the buff has expired (cleared by the tick sweep)
+	cs.DivineEnd = e.DivineEnd // 0 quando o buff expirou (zerado pela varredura do tick)
 	cs.ScoreBonus, cs.SpecialBonus = e.ScoreBonus, e.SpecialBonus
 	cs.LearnedSkill, cs.SecLearnedSkill, cs.BaseSpecial = e.LearnedSkill, e.SecLearnedSkill, e.BaseSpecial
 	cs.SkillBar, cs.ShortSkill = e.SkillBar, s.ShortSkill
 	cs.PKPoint, cs.Guilty, cs.CurKill, cs.TotKill = e.PKPoint, e.Guilty, e.CurKill, e.TotKill
 	for _, a := range e.Affect {
-		// Divine persists separately as the wall-clock DivineEnd; empty slots drop.
+		// Divine persiste à parte como o DivineEnd em wall-clock; slots vazios caem.
 		if a.Type == 0 || a.Type == AffectDivine {
 			continue
 		}
@@ -444,7 +444,7 @@ func (w *World) CharacterSaveFor(s *Session, e *Entity) CharacterSave {
 	return cs
 }
 
-// savedItems flattens a positional item array into the non-empty SavedItem slots.
+// savedItems achata um vetor posicional de itens nos slots não vazios de SavedItem.
 func savedItems(items []Item) []SavedItem {
 	var out []SavedItem
 	for i, it := range items {
@@ -463,8 +463,8 @@ func savedItems(items []Item) []SavedItem {
 	return out
 }
 
-// Cargo returns the account's loaded warehouse, or nil if none is loaded (e.g.
-// the account is not logged in, or LoadCargo failed). Loop-only.
+// Cargo devolve o armazém carregado da conta, ou nil se nenhum estiver carregado (ex.:
+// a conta não está logada, ou o LoadCargo falhou). Só no loop.
 func (w *World) Cargo(accountID int64) *CargoState {
 	if accountID == 0 {
 		return nil
@@ -472,8 +472,8 @@ func (w *World) Cargo(accountID int64) *CargoState {
 	return w.cargo[accountID]
 }
 
-// SetCargo installs an account's loaded warehouse in the store. Called from the
-// loop right after a successful account login. Loop-only.
+// SetCargo instala no store o armazém carregado de uma conta. Chamado do
+// loop logo após um login de conta bem-sucedido. Só no loop.
 func (w *World) SetCargo(accountID int64, st *CargoState) {
 	if accountID == 0 || st == nil {
 		return
@@ -482,13 +482,13 @@ func (w *World) SetCargo(accountID int64, st *CargoState) {
 	w.cargo[accountID] = st
 }
 
-// ApplyDeliveries places the account's already-fetched pending delivery_queue
-// grants (donate web shop, issue #34) into its cargo. pending is loaded in the
-// same off-loop round-trip as the account login itself (dbclient.AccountLogin),
-// so draining the mailbox costs no extra backend round-trip. Called from the loop
-// right after the cargo is installed at login: places each item in the next free
-// cargo slot (lost when the cargo is full) and persists the cargo + acks the
-// queue rows in one backend transaction, off the loop. Loop-only.
+// ApplyDeliveries coloca no cargo da conta os grants pendentes já buscados da
+// delivery_queue (loja de doação web, issue #34). pending é carregado na
+// mesma ida-e-volta fora do loop do próprio login da conta (dbclient.AccountLogin),
+// então drenar a caixa de entrada não custa ida-e-volta extra ao backend. Chamado do loop
+// logo após o cargo ser instalado no login: coloca cada item no próximo slot
+// livre do cargo (perdido quando o cargo está cheio) e persiste o cargo + confirma as
+// linhas da fila numa única transação de backend, fora do loop. Só no loop.
 func (w *World) ApplyDeliveries(s *Session, pending []Delivery) {
 	if s == nil || s.AccountID == 0 || len(pending) == 0 {
 		return
@@ -523,7 +523,7 @@ func (w *World) ApplyDeliveries(s *Session, pending []Delivery) {
 	})
 }
 
-// cargoSave snapshots an account's warehouse into a CargoSave. Loop-only.
+// cargoSave faz snapshot do armazém de uma conta num CargoSave. Só no loop.
 func (w *World) cargoSave(accountID int64) CargoSave {
 	cs := CargoSave{AccountID: accountID}
 	if c := w.cargo[accountID]; c != nil {
@@ -533,11 +533,11 @@ func (w *World) cargoSave(accountID int64) CargoSave {
 	return cs
 }
 
-// ReleaseCargo persists an account's warehouse and removes it from the store. It
-// is called when the account session ends (disconnect/logout) so the in-memory
-// vault does not leak and the latest deposits survive. The save runs off the loop
-// (tracked by saveWG, like SaveCharacterAsync) so a shutdown never loses it.
-// Loop-only (snapshots state before going async).
+// ReleaseCargo persiste o armazém de uma conta e o remove do store. É
+// chamado quando a sessão da conta termina (desconexão/logout) para o cofre em
+// memória não vazar e os últimos depósitos sobreviverem. O save roda fora do loop
+// (acompanhado por saveWG, como SaveCharacterAsync) para um shutdown nunca perdê-lo.
+// Só no loop (captura o estado antes de ir para async).
 func (w *World) ReleaseCargo(accountID int64) {
 	if accountID == 0 || w.cargo[accountID] == nil {
 		return
@@ -553,14 +553,14 @@ func (w *World) ReleaseCargo(accountID int64) {
 	}()
 }
 
-// saveAccountOnClose is the account teardown of a closing session: it snapshots
-// the in-play character and, when no other session of the account remains, the
-// account cargo (evicting it), then saves both off the loop under saveWG. The
-// account counts as saving until both saves return; AccountSaving lets a new
-// login of the same account wait for it, so the duplicate-login kick
-// (handler/login.go) never reloads rows older than this session's state.
-// A failed save is logged and still ends the saving state, as the fire-and-forget
-// saves it replaces did. Loop-only (snapshots state before going async).
+// saveAccountOnClose é o desmonte da conta de uma sessão que fecha: faz snapshot
+// do personagem em jogo e, quando não resta outra sessão da conta, do
+// cargo da conta (despejando-o), depois salva ambos fora do loop sob saveWG. A
+// conta conta como salvando até os dois saves retornarem; AccountSaving deixa um novo
+// login da mesma conta esperar por isso, para o chute de login duplicado
+// (handler/login.go) nunca reler linhas mais velhas que o estado desta sessão.
+// Um save que falha é logado e ainda encerra o estado de salvamento, como os saves
+// dispara-e-esquece que ele substitui faziam. Só no loop (captura antes de ir para async).
 func (w *World) saveAccountOnClose(s *Session) {
 	if s == nil || s.AccountID == 0 {
 		return
@@ -609,14 +609,14 @@ func (w *World) saveAccountOnClose(s *Session) {
 	}()
 }
 
-// AccountSaving reports whether a closed session of the account still has its
-// final save in flight. Loop-only.
+// AccountSaving informa se uma sessão fechada da conta ainda tem seu
+// save final em voo. Só no loop.
 func (w *World) AccountSaving(accountID int64) bool { return w.savingAccounts[accountID] > 0 }
 
-// SessionByAccount returns a session of the account, other than except, that
-// finished the account login (character selection or later), or nil. Sessions
-// are indexed by conn only; a linear scan over MaxUser is fine for a login-time
-// check. Loop-only.
+// SessionByAccount devolve uma sessão da conta, diferente de except, que
+// concluiu o login da conta (seleção de personagem ou adiante), ou nil. As sessões
+// são indexadas só por conn; uma varredura linear sobre MaxUser é suficiente para uma
+// checagem no login. Só no loop.
 func (w *World) SessionByAccount(accountID int64, except *Session) *Session {
 	if accountID == 0 {
 		return nil
@@ -629,14 +629,14 @@ func (w *World) SessionByAccount(accountID int64, except *Session) *Session {
 	return nil
 }
 
-// SaveCargoThen persists the account cargo WITHOUT evicting it (the account
-// session continues, e.g. returning to character selection) and runs then back in
-// the loop after the save commits. This is the anti-dup boundary for character
-// switches: deposits/withdrawals move items between a character's carry and the
-// shared cargo, so the cargo must be persisted alongside the character save —
-// otherwise an item withdrawn into the carry is saved on the character row while
-// the stale account_cargo row still holds it, duplicating it on the next load.
-// then always runs, even when there is no cargo to save. Loop-only.
+// SaveCargoThen persiste o cargo da conta SEM despejá-lo (a sessão da conta
+// continua, ex.: voltando à seleção de personagem) e roda then de volta no
+// loop depois do save commitar. Esta é a fronteira anti-duplicação na troca de
+// personagem: depósitos/saques movem itens entre o carry do personagem e o
+// cargo compartilhado, então o cargo precisa ser persistido junto do save do personagem —
+// senão um item sacado para o carry fica salvo na linha do personagem enquanto
+// a linha velha de account_cargo ainda o guarda, duplicando-o na próxima carga.
+// then sempre roda, mesmo quando não há cargo a salvar. Só no loop.
 func (w *World) SaveCargoThen(s *Session, then func(*World, *Session)) {
 	if s == nil || s.AccountID == 0 || w.cargo[s.AccountID] == nil {
 		then(w, s)
@@ -655,20 +655,20 @@ func (w *World) SaveCargoThen(s *Session, then func(*World, *Session)) {
 	})
 }
 
-// outWarnStepBytes spaces the "queue high" warnings: one per new 8 KB high-water
-// step past half the limit, so a burst leaves a bounded trail before any drop.
+// outWarnStepBytes espaça os avisos de "fila alta": um por novo degrau de 8 KB de
+// pico acima da metade do limite, então uma rajada deixa um rastro limitado antes de qualquer derrubada.
 const outWarnStepBytes = 8 * 1024
 
-// send queues an outbound message to the session's writer goroutine. It never
-// blocks the loop: if the session's unsent bytes would pass the limit (a
-// slow/stuck client), the session is dropped instead of stalling the whole
-// world (head-of-line safety). A session already closed (e.g. dropped earlier in
-// the same tick) is skipped, so one overflow drops it once.
+// send enfileira uma mensagem de saída para a goroutine de escrita da sessão. Nunca
+// bloqueia o loop: se os bytes não enviados da sessão passarem do limite (um
+// cliente lento/travado), a sessão é derrubada em vez de travar o mundo
+// inteiro (segurança contra bloqueio de cabeça de fila). Uma sessão já fechada (ex.: derrubada antes
+// no mesmo tick) é ignorada, então um overflow a derruba uma vez.
 func (w *World) enqueue(s *Session, h protocol.Header, payload []byte) {
 	if s.closed {
 		return
 	}
-	if s.out == nil { // bare test sessions; connectEvent always sets it
+	if s.out == nil { // sessões de teste sem conexão; o connectEvent sempre define
 		s.out = newOutQueue()
 	}
 	h.ClientTick = w.cfg.Now()
@@ -683,9 +683,9 @@ func (w *World) enqueue(s *Session, h protocol.Header, payload []byte) {
 		w.dropSession(s)
 		return
 	}
-	// Track writer backpressure: a growing queue means the socket (or the
-	// client) is not draining what the loop produces. Warn per new high-water
-	// step past half capacity — bounded, and it precedes the hard drop above.
+	// Acompanha a contrapressão do escritor: uma fila crescendo significa que o socket (ou o
+	// cliente) não está drenando o que o loop produz. Avisa por novo degrau de
+	// pico acima de metade da capacidade — limitado, e precede a derrubada dura acima.
 	if frames > s.outHighWater {
 		s.outHighWater = frames
 	}
@@ -698,7 +698,7 @@ func (w *World) enqueue(s *Session, h protocol.Header, payload []byte) {
 	}
 }
 
-// SessionMode returns a session's mode (test/observability helper; loop-only).
+// SessionMode devolve o modo de uma sessão (auxiliar de teste/observabilidade; só no loop).
 func (w *World) SessionMode(conn int) (Mode, bool) {
 	if conn < 0 || conn >= MaxUser || w.sessions[conn] == nil {
 		return UserEmpty, false
@@ -706,7 +706,7 @@ func (w *World) SessionMode(conn int) (Mode, bool) {
 	return w.sessions[conn].Mode, true
 }
 
-// ActiveSessions counts non-nil sessions (loop-only helper).
+// ActiveSessions conta as sessões não nulas (auxiliar do loop).
 func (w *World) ActiveSessions() int {
 	n := 0
 	for _, s := range w.sessions {

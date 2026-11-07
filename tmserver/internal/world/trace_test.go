@@ -13,9 +13,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// TestConnectAssignsTraceID proves the trace_id is born at the CPSock accept
-// (OBS-02) and reaches both the session the handlers see and the connect log
-// line — the id the login RPC later carries to the dbServer.
+// TestConnectAssignsTraceID prova que o trace_id nasce no aceite CPSock
+// (OBS-02) e chega tanto à sessão que os handlers veem quanto à linha de log de
+// conexão — o id que o RPC de login depois leva ao dbServer.
 func TestConnectAssignsTraceID(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))

@@ -10,18 +10,18 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// Fase 7 disconnect reasons (migration-plan.md §5).
+// Motivos de desconexão da Fase 7 (migration-plan.md §5).
 var (
 	errRateLimited      = errors.New("world: connection exceeded message rate limit")
 	errChecksumMismatch = errors.New("world: rejected frame on checksum mismatch")
 )
 
-// event is something the loop applies to world state. Every event is applied in
-// the loop goroutine, so apply may mutate the World freely.
+// event é algo que o loop aplica ao estado do mundo. Todo evento é aplicado na
+// goroutine do loop, então apply pode mutar o World livremente.
 type event interface{ apply(*World) }
 
-// emit sends an event to the loop, or returns false if the world is shutting
-// down (so connection goroutines stop instead of blocking forever).
+// emit envia um evento para o loop, ou devolve false se o mundo está desligando
+// (para as goroutines de conexão pararem em vez de bloquear para sempre).
 func (w *World) emit(ev event) bool {
 	select {
 	case w.events <- ev:
@@ -31,7 +31,7 @@ func (w *World) emit(ev event) bool {
 	}
 }
 
-// --- connect ---
+// --- conexão ---
 
 type connectEvent struct {
 	conn net.Conn
@@ -66,9 +66,9 @@ func (e connectEvent) apply(w *World) {
 	w.log.Info("connection accepted", "conn", conn, "ip", e.ip, "trace_id", s.TraceID)
 }
 
-// allocConn finds a free player slot. Conn 0 is reserved (the original requires
-// conn > 0 for login — handlers/_MSG_AccountLogin.md; trade/attack ids also use
-// (0, MAX_USER)). The top ADMIN_RESERV slots are reserved too (value UNVERIFIED).
+// allocConn acha um slot livre de jogador. Conn 0 é reservado (o original exige
+// conn > 0 para login — handlers/_MSG_AccountLogin.md; ids de trade/ataque também usam
+// (0, MAX_USER)). Os ADMIN_RESERV slots do topo também são reservados (valor UNVERIFIED).
 func (w *World) allocConn() int {
 	for i := 1; i < MaxUser; i++ {
 		if w.sessions[i] == nil {
@@ -87,12 +87,12 @@ type frameEvent struct {
 }
 
 func (e frameEvent) apply(w *World) {
-	// Ignore frames from a session whose slot was already freed/reused.
+	// Ignora frames de uma sessão cujo slot já foi liberado/reutilizado.
 	if w.sessions[e.s.Conn] != e.s {
 		return
 	}
-	// Global dispatcher guards (protocol-spec.md §2): Ping is a no-op; the
-	// internal SkipCheckTick must never come from a client.
+	// Guardas globais do despachante (protocol-spec.md §2): Ping não faz nada; o
+	// SkipCheckTick interno nunca pode vir de um cliente.
 	if e.header.Type == protocol.MsgPing {
 		return
 	}
@@ -102,10 +102,10 @@ func (e frameEvent) apply(w *World) {
 	w.handler(w, e.s, e.header, e.payload)
 }
 
-// --- async callback (DB results re-entering the loop) ---
+// --- callback assíncrono (resultados do banco voltando ao loop) ---
 
-// callbackEvent carries the result of off-loop work (World.Go) back into the
-// loop. It is dropped if the session's slot was freed or reused meanwhile.
+// callbackEvent traz o resultado de trabalho fora do loop (World.Go) de volta ao
+// loop. Ele é descartado se o slot da sessão foi liberado ou reutilizado nesse meio tempo.
 type callbackEvent struct {
 	conn int
 	sess *Session
@@ -119,17 +119,17 @@ func (e callbackEvent) apply(w *World) {
 	e.cb(w, e.sess)
 }
 
-// worldCallbackEvent carries the result of off-loop work that is NOT tied to a
-// session (World.GoDetached) — e.g. an NPC-config reload. It always applies (no
-// session-liveness guard), so its callback runs inside the loop goroutine and
-// may mutate world state directly.
+// worldCallbackEvent traz o resultado de trabalho fora do loop que NÃO está ligado a uma
+// sessão (World.GoDetached) — ex.: um reload de config de NPC. Ele sempre aplica (sem
+// guarda de vivacidade da sessão), então seu callback roda dentro da goroutine do loop e
+// pode mutar o estado do mundo direto.
 type worldCallbackEvent struct {
 	cb func(*World)
 }
 
 func (e worldCallbackEvent) apply(w *World) { e.cb(w) }
 
-// --- disconnect ---
+// --- desconexão ---
 
 type disconnectEvent struct {
 	s   *Session
@@ -137,50 +137,50 @@ type disconnectEvent struct {
 }
 
 func (e disconnectEvent) apply(w *World) {
-	// Surface WHY a connection dropped (bad INITCODE, EOF, oversize, rate, checksum)
-	// instead of swallowing it — essential to diagnose client-edge handshakes.
+	// Expor POR QUE uma conexão caiu (INITCODE inválido, EOF, tamanho excessivo, taxa, checksum)
+	// em vez de engolir o motivo — fundamental para diagnosticar o handshake com o cliente.
 	if e.err != nil && w.sessions[e.s.Conn] == e.s {
 		w.log.Info("connection drop reason", "conn", e.s.Conn, "ip", e.s.IP, "err", e.err.Error())
 	}
 	w.removeSession(e.s)
 }
 
-// SetSessionEndHandler registers the session-teardown hook (party unlink). Like
-// the tick handler it runs INSIDE the loop goroutine and may mutate world state
-// directly; it sees the session and its entity still live. Call before Run.
+// SetSessionEndHandler registra o gancho de desmonte de sessão (desvincular grupo). Como
+// o handler de tick, ele roda DENTRO da goroutine do loop e pode mutar o estado do mundo
+// direto; ele vê a sessão e sua entidade ainda vivas. Chame antes de Run.
 func (w *World) SetSessionEndHandler(fn func(*World, *Session)) { w.onSessionEnd = fn }
 
-// removeSession tears down a session and frees its slot. It only acts if the
-// slot still holds this exact session (guards against a reused slot). Loop-only.
+// removeSession desmonta uma sessão e libera seu slot. Só age se o
+// slot ainda contém exatamente esta sessão (protege contra slot reutilizado). Só no loop.
 func (w *World) removeSession(s *Session) {
 	if s == nil || w.sessions[s.Conn] != s {
 		return
 	}
 	w.metricAdd("cpsock_connections_active", "Conexões CPSock ativas.", -1)
-	// Shared-state teardown (the party bond and its summons) while the session and
-	// its entity are still addressable — the legacy calls RemoveParty from CloseUser
-	// for the same reason (Server.cpp:7654).
+	// Desmonte de estado compartilhado (o vínculo de grupo e suas invocações) enquanto a sessão e
+	// sua entidade ainda são endereçáveis — o legado chama RemoveParty de CloseUser
+	// pelo mesmo motivo (Server.cpp:7654).
 	if w.onSessionEnd != nil {
 		w.onSessionEnd(w, s)
 	}
-	// S→C post-mortem first, while the slot still identifies the session: what
-	// the client was sent last is the key evidence for a client-side freeze
+	// Primeiro o post-mortem S→C, enquanto o slot ainda identifica a sessão: o que
+	// foi enviado ao cliente por último é a evidência-chave de um travamento no cliente
 	// (docs/migration/investigacao-freeze-cliente.md).
 	w.logSendStats(s)
-	// Persist the live character (purchases/gold/stats) and, as the account
-	// session ends with the connection, the account-shared cargo, which is
-	// evicted (it outlives individual characters but not the connection).
-	// Tracked, so a new login of the account waits for the save.
+	// Persistir o personagem vivo (compras/ouro/atributos) e, como a sessão de
+	// conta termina com a conexão, o cargo compartilhado da conta, que é
+	// despejado (ele sobrevive a cada personagem em separado, mas não à conexão).
+	// Rastreado, para um novo login da conta esperar o save.
 	w.saveAccountOnClose(s)
-	// Tell in-view players this entity left (logout), so their clients despawn it.
+	// Avisar os jogadores em visão que esta entidade saiu (logout), para seus clientes a removerem.
 	if e := w.entities[s.Conn]; e != nil && e.Mode == MobUser {
 		body := protocol.EncodeRemoveMobBody(2) // 2 = logout
 		w.ForEachInView(s.Conn, func(vs *Session, _ *Entity) {
 			w.enqueue(vs, protocol.Header{Type: protocol.MsgRemoveMob, ID: uint16(s.Conn)}, body)
-			w.UnmarkSeen(vs, s.Conn) // a future player on this conn id must re-create
+			w.UnmarkSeen(vs, s.Conn) // um jogador futuro neste id de conexão precisa recriar
 		})
-		// Free the player's grid cell (occupied since login/last move), or mob
-		// aggro and view scans keep hitting a ghost.
+		// Liberar a célula de grade do jogador (ocupada desde o login/último movimento), senão a
+		// perseguição das criaturas e as varreduras de visão seguem batendo num fantasma.
 		if cur, ok := w.grid.MobAt(int(e.X), int(e.Y)); ok && int(cur) == s.Conn {
 			w.grid.ClearMob(int(e.X), int(e.Y))
 		}
@@ -191,15 +191,15 @@ func (w *World) removeSession(s *Session) {
 	w.log.Info("connection closed", "conn", s.Conn)
 }
 
-// dropSession is removeSession by pointer, used when the loop must shed a slow
-// client (out queue past its byte limit).
+// dropSession é removeSession por ponteiro, usado quando o loop precisa dispensar um
+// cliente lento (fila de saída acima do limite de bytes).
 func (w *World) dropSession(s *Session) { w.removeSession(s) }
 
-// --- per-connection I/O goroutines (NOT the loop) ---
+// --- goroutines de I/O por conexão (NÃO o loop) ---
 
-// readLoop de-frames and decodes CPSock messages from one connection and feeds
-// them to the loop as frameEvents. It runs in its own goroutine and never
-// touches world state directly.
+// readLoop desenquadra e decodifica mensagens CPSock de uma conexão e as alimenta
+// no loop como frameEvents. Roda na própria goroutine e nunca
+// toca o estado do mundo diretamente.
 func (w *World) readLoop(s *Session) {
 	fr := protocol.NewFramer(s.conn)
 	bucket := newTokenBucket(w.cfg.MaxMsgPerSec, w.cfg.MsgBurst, time.Now())
@@ -209,7 +209,7 @@ func (w *World) readLoop(s *Session) {
 			w.emit(disconnectEvent{s: s, err: err})
 			return
 		}
-		// Fase 7: flood protection — a connection exceeding its rate is dropped.
+		// Fase 7: proteção contra flood — uma conexão que excede sua taxa é derrubada.
 		if !bucket.allow(time.Now()) {
 			w.emit(disconnectEvent{s: s, err: errRateLimited})
 			return
@@ -219,22 +219,22 @@ func (w *World) readLoop(s *Session) {
 			w.emit(disconnectEvent{s: s, err: err})
 			return
 		}
-		// Fase 7: optional rejecting checksum (off by default; legacy is non-rejecting).
+		// Fase 7: checksum rejeitador opcional (desligado por padrão; o legado não rejeita).
 		if mismatch && w.cfg.RejectChecksum {
 			w.emit(disconnectEvent{s: s, err: errChecksumMismatch})
 			return
 		}
 		if !w.emit(frameEvent{s: s, header: h, payload: payload}) {
-			return // world shutting down
+			return // mundo desligando
 		}
 	}
 }
 
-// writeLoop encodes queued S→C messages and writes them to the socket. The
-// writer owns the socket close: on close it flushes whatever is still queued so
-// a final notice sent just before close is delivered. The per-packet keyword
-// index is random (CPSock.cpp:535) and irrelevant to parity (parity-tests.md
-// §4.0), so the global RNG is fine here.
+// writeLoop codifica mensagens S→C enfileiradas e as escreve no socket. O
+// escritor é dono do fechamento do socket: ao fechar ele esvazia o que ainda está na fila para
+// um aviso final enviado logo antes do fechamento ser entregue. O índice de palavra-chave
+// por pacote é aleatório (CPSock.cpp:535) e irrelevante para a paridade (parity-tests.md
+// §4.0), então o RNG global serve aqui.
 func (w *World) writeLoop(s *Session) {
 	defer func() { _ = s.conn.Close() }()
 	for {
@@ -250,8 +250,8 @@ func (w *World) writeLoop(s *Session) {
 				}
 			}
 		case <-s.closeCh:
-			// Graceful close: drain and write whatever is still queued, then exit
-			// (the deferred Close unblocks the reader).
+			// Fechamento gracioso: esvaziar e escrever o que ainda está na fila, depois sair
+			// (o Close adiado desbloqueia o leitor).
 			for {
 				of, ok := s.out.pop()
 				if !ok {
@@ -265,8 +265,8 @@ func (w *World) writeLoop(s *Session) {
 	}
 }
 
-// writeFrame encodes and writes one S→C frame. It returns false (stopping the
-// writer) only on a socket write error; an encode error is logged and skipped.
+// writeFrame codifica e escreve um frame S→C. Devolve false (parando o
+// escritor) só em erro de escrita no socket; um erro de codificação é logado e pulado.
 func (w *World) writeFrame(s *Session, of outFrame) bool {
 	wire, err := protocol.Encode(of.header, of.payload, uint8(rand.IntN(256)))
 	if err != nil {

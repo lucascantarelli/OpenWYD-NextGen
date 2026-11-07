@@ -6,13 +6,13 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// createMobBody is a CreateMob-sized payload (220 B on the wire with the header,
-// the frame that floods the queue when the Coliseum enters the view).
+// createMobBody é um payload do tamanho de CreateMob (220 B no wire com o cabeçalho,
+// o frame que inunda a fila quando o Coliseu entra na visão).
 var createMobBody = make([]byte, 220-protocol.HeaderSize)
 
-// TestEnqueueCreateMobBurstFits: a view delta of a few hundred CreateMob in one
-// tick (walking into the Coliseum, issue #419) must be buffered, not dropped —
-// the legacy only fails AddMessage past 128 KB (CPSock.cpp:513-520).
+// TestEnqueueCreateMobBurstFits: um delta de visão de algumas centenas de CreateMob num
+// tick (entrando no Coliseu, issue #419) precisa ser bufferizado, não descartado —
+// o legado só falha no AddMessage acima de 128 KB (CPSock.cpp:513-520).
 func TestEnqueueCreateMobBurstFits(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 	s := &Session{Conn: 1, Mode: UserPlay, out: newOutQueue(), closeCh: make(chan struct{})}
@@ -28,9 +28,9 @@ func TestEnqueueCreateMobBurstFits(t *testing.T) {
 	}
 }
 
-// TestEnqueueDropsPastByteLimitOnce: a client that stops draining is dropped
-// when its unsent bytes pass the limit, and later sends in the same tick are a
-// no-op on the dead session instead of re-dropping it.
+// TestEnqueueDropsPastByteLimitOnce: um cliente que para de drenar é derrubado
+// quando seus bytes não enviados passam do limite, e envios posteriores no mesmo tick são
+// no-op na sessão morta em vez de derrubá-la de novo.
 func TestEnqueueDropsPastByteLimitOnce(t *testing.T) {
 	w := New(Config{GridDim: 16, OutBufferBytes: 10 * 220}, slogDiscard(), nil, nil)
 	s := &Session{Conn: 1, Mode: UserPlay, out: newOutQueue(), closeCh: make(chan struct{})}
@@ -54,8 +54,8 @@ func TestEnqueueDropsPastByteLimitOnce(t *testing.T) {
 	}
 }
 
-// TestOutQueuePopReleasesBytes: the writer popping a frame frees its bytes, so a
-// client that keeps up never hits the limit however much it is sent over time.
+// TestOutQueuePopReleasesBytes: o escritor retirando um frame libera seus bytes, então um
+// cliente que acompanha nunca atinge o limite por mais que receba ao longo do tempo.
 func TestOutQueuePopReleasesBytes(t *testing.T) {
 	q := newOutQueue()
 	for i := 0; i < 1000; i++ {

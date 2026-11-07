@@ -10,48 +10,48 @@ import (
 	"time"
 )
 
-// defaultStatusBody is served when Config.StatusFile is unset. It mirrors the
-// shape of the distribution's tmserver/content/Common/serv00.htm (a small numeric status
-// list the client parses for the channel-selection screen).
+// defaultStatusBody é servido quando Config.StatusFile não está definido. Ele espelha o
+// formato do tmserver/content/Common/serv00.htm da distribuição (uma pequena lista
+// numérica de status que o cliente interpreta para a tela de seleção de canal).
 var defaultStatusBody = []byte("4\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n")
 
-// handleConn classifies a freshly accepted connection before it becomes a game
-// session. The WYD client probes the server over HTTP ("GET /serv00.htm") to
-// read channel status, and only then opens a separate CPSock game connection.
-// We peek the first bytes: an HTTP method is answered with the status page and
-// closed; anything else (the CPSock INITCODE) becomes a normal session, with the
-// peeked bytes replayed to the framer. Runs in its own goroutine per connection
-// so a slow/idle probe never stalls the accept loop.
+// handleConn classifica uma conexão recém-aceita antes que ela se torne uma
+// sessão de jogo. O cliente WYD sonda o servidor por HTTP ("GET /serv00.htm") para
+// ler o status do canal, e só então abre uma conexão de jogo CPSock separada.
+// Espiamos os primeiros bytes: um método HTTP é respondido com a página de status e
+// fechado; qualquer outra coisa (o INITCODE CPSock) vira sessão normal, com os
+// bytes espiados replicados ao enquadrador. Roda na própria goroutine por conexão
+// para uma sonda lenta/ociosa nunca travar o loop de aceite.
 func (w *World) handleConn(c net.Conn) {
 	ip := c.RemoteAddr().String()
 	br := bufio.NewReader(c)
 	_ = c.SetReadDeadline(time.Now().Add(10 * time.Second))
 	pre, err := br.Peek(4)
 	if err != nil {
-		// A connection that opens but sends no data before timing out/closing —
-		// e.g. a port probe, OR a client that expects the SERVER to speak first.
-		// Logged (not swallowed) so the client-edge handshake can be mapped.
+		// Uma conexão que abre mas não envia dados antes de dar timeout/fechar —
+		// ex.: uma sonda de porta, OU um cliente que espera o SERVIDOR falar primeiro.
+		// Logado (não engolido) para o handshake da borda do cliente poder ser mapeado.
 		w.log.Info("connection sent no data", "ip", ip, "err", err.Error())
 		_ = c.Close()
 		return
 	}
-	_ = c.SetReadDeadline(time.Time{}) // clear for the (possibly long-lived) session
+	_ = c.SetReadDeadline(time.Time{}) // limpa o deadline para a sessão (possivelmente longeva)
 
 	if isHTTPMethod(pre) {
 		w.serveStatus(c, br)
 		return
 	}
 
-	// CPSock: hand to the loop, replaying the peeked bytes via the buffered reader.
+	// CPSock: entregar ao loop, replicando os bytes espiados pelo leitor com buffer.
 	w.log.Info("cpsock connection", "ip", ip, "first4", fmt.Sprintf("% x", pre))
 	if !w.emit(connectEvent{conn: &prefixConn{Conn: c, r: br}, ip: ip}) {
 		_ = c.Close()
 	}
 }
 
-// isHTTPMethod reports whether the leading bytes look like an HTTP request. The
-// CPSock stream always starts with INITCODE (0x1F11F311 = bytes 11 F3 11 1F), so
-// there is no collision with these ASCII method prefixes.
+// isHTTPMethod informa se os primeiros bytes parecem uma requisição HTTP. O
+// fluxo CPSock sempre começa com INITCODE (0x1F11F311 = bytes 11 F3 11 1F), então
+// não há colisão com esses prefixos de método ASCII.
 func isHTTPMethod(b []byte) bool {
 	switch string(b) {
 	case "GET ", "POST", "HEAD":
@@ -60,9 +60,9 @@ func isHTTPMethod(b []byte) bool {
 	return false
 }
 
-// serveStatus answers the client's HTTP status probe with the channel-status
-// page, then closes. It reads and logs the request line (the path the client
-// asks for at each step of the connect flow) so the edge behaviour can be mapped.
+// serveStatus responde à sonda HTTP de status do cliente com a página de status
+// página, e então fecha. Lê e loga a linha de requisição (o caminho que o cliente
+// pede em cada passo do fluxo de conexão) para o comportamento da borda poder ser mapeado.
 func (w *World) serveStatus(c net.Conn, br *bufio.Reader) {
 	defer func() { _ = c.Close() }()
 	_ = c.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -71,8 +71,8 @@ func (w *World) serveStatus(c net.Conn, br *bufio.Reader) {
 
 	body := w.statusBody()
 	_ = c.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	// Mirror a standard web server's response (matches the working snalmir WYD
-	// server: Date + Server headers), in case the client's HTTP parser is picky.
+	// Espelhar a resposta de um servidor web padrão (combina com o servidor WYD snalmir
+	// que funciona: cabeçalhos Date + Server), caso o parser HTTP do cliente seja exigente.
 	resp := fmt.Sprintf(
 		"HTTP/1.1 200 OK\r\nDate: %s\r\nServer: w2pp\r\nContent-Length: %d\r\nConnection: close\r\n\r\n",
 		time.Now().UTC().Format(time.RFC1123), len(body))
@@ -83,9 +83,9 @@ func (w *World) serveStatus(c net.Conn, br *bufio.Reader) {
 	w.log.Info("served status probe", "ip", c.RemoteAddr().String(), "req", reqLine, "bytes", len(body))
 }
 
-// statusBody returns the status page bytes: the configured file when set and
-// readable, otherwise the built-in default. Read per request so the file can be
-// edited and re-tested without restarting the server.
+// statusBody devolve os bytes da página de status: o arquivo configurado quando definido e
+// legível, senão o padrão embutido. Lido a cada requisição para o arquivo poder ser
+// editado e retestado sem reiniciar o servidor.
 func (w *World) statusBody() []byte {
 	if w.cfg.StatusFile != "" {
 		if b, err := os.ReadFile(w.cfg.StatusFile); err == nil {
@@ -95,9 +95,9 @@ func (w *World) statusBody() []byte {
 	return defaultStatusBody
 }
 
-// prefixConn is a net.Conn whose reads come from a buffered reader (so bytes
-// peeked during protocol detection are replayed to the framer) while writes and
-// close go straight to the underlying connection.
+// prefixConn é um net.Conn cujas leituras vêm de um leitor com buffer (para bytes
+// espiados na detecção de protocolo serem replicados ao enquadrador) enquanto escritas e
+// fechamento vão direto à conexão subjacente.
 type prefixConn struct {
 	net.Conn
 	r io.Reader

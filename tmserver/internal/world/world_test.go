@@ -16,13 +16,13 @@ import (
 
 func slogDiscard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
-// testWorld starts a World serving on a loopback listener and returns its
-// address and a cancel func. GridDim is tiny to avoid the full dense grid.
+// testWorld inicia um World servindo num listener de loopback e devolve seu
+// endereço e uma função de cancelamento. GridDim é minúsculo para evitar a grade densa inteira.
 func testWorld(t *testing.T, h Handler, persist Persistence) (addr string, stop func()) {
 	return testWorldConfig(t, Config{GridDim: 16}, h, persist)
 }
 
-// testWorldConfig is testWorld with an explicit Config (for hardening tests).
+// testWorldConfig é o testWorld com um Config explícito (para testes de endurecimento).
 func testWorldConfig(t *testing.T, cfg Config, h Handler, persist Persistence) (addr string, stop func()) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -49,7 +49,7 @@ func testWorldConfig(t *testing.T, cfg Config, h Handler, persist Persistence) (
 	}
 }
 
-// dialClient connects and sends the mandatory INITCODE handshake.
+// dialClient conecta e envia o handshake INITCODE obrigatório.
 func dialClient(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	c, err := net.Dial("tcp", addr)
@@ -75,7 +75,7 @@ func sendFrame(t *testing.T, c net.Conn, h protocol.Header, payload []byte) {
 	}
 }
 
-// readFrame reads one S→C frame (no INITCODE on this direction) and decodes it.
+// readFrame lê um frame S→C (sem INITCODE nesta direção) e o decodifica.
 func readFrame(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	t.Helper()
 	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
@@ -96,8 +96,8 @@ func readFrame(t *testing.T, c net.Conn) (protocol.Header, []byte) {
 	return h, payload
 }
 
-// echoHandler replies to every client frame with a MessagePanel echoing the
-// payload, and records what it received.
+// echoHandler responde a todo frame do cliente com um MessagePanel ecoando o
+// payload, e registra o que recebeu.
 func echoHandler(got chan<- protocol.Header) Handler {
 	return func(w *World, s *Session, h protocol.Header, payload []byte) {
 		got <- h
@@ -131,8 +131,8 @@ func TestHeadlessConnectAndExchange(t *testing.T) {
 	if string(rp) != "hello-world" {
 		t.Errorf("response payload = %q, want hello-world", rp)
 	}
-	// HEADER.ID on S→C must be the session's conn (1 for the first client; conn 0
-	// is reserved).
+	// HEADER.ID no S→C precisa ser o conn da sessão (1 para o primeiro cliente; conn 0
+	// é reservado).
 	if rh.ID != 1 {
 		t.Errorf("response ID = %d, want 1", rh.ID)
 	}
@@ -145,10 +145,10 @@ func TestPingAndSkipTickIgnored(t *testing.T) {
 	c := dialClient(t, addr)
 	defer c.Close()
 
-	// Ping is a no-op; SkipCheckTick frames are dropped (protocol-spec.md §2).
+	// Ping não faz nada; frames SkipCheckTick são descartados (protocol-spec.md §2).
 	sendFrame(t, c, protocol.Header{Type: protocol.MsgPing}, nil)
 	sendFrame(t, c, protocol.Header{Type: protocol.MsgAction, ClientTick: protocol.SkipCheckTick}, nil)
-	// A normal frame after them must still be delivered.
+	// Um frame normal depois deles ainda precisa ser entregue.
 	sendFrame(t, c, protocol.Header{Type: protocol.MsgAction}, nil)
 
 	select {
@@ -161,9 +161,9 @@ func TestPingAndSkipTickIgnored(t *testing.T) {
 	}
 }
 
-// TestConcurrentConnections is the -race concurrency check: many clients hammer
-// the loop at once; the single owner goroutine is the only state mutator, so
-// there must be no data race and every client must be served.
+// TestConcurrentConnections é a verificação de concorrência com -race: muitos clientes martelam
+// o loop ao mesmo tempo; a goroutine dona única é a única mutadora de estado, então
+// não pode haver data race e todo cliente precisa ser atendido.
 func TestConcurrentConnections(t *testing.T) {
 	const n = 64
 	var served atomic.Int64
@@ -182,7 +182,7 @@ func TestConcurrentConnections(t *testing.T) {
 			c := dialClient(t, addr)
 			defer c.Close()
 			sendFrame(t, c, protocol.Header{Type: protocol.MsgAction}, []byte{byte(i)})
-			readFrame(t, c) // wait for the echo
+			readFrame(t, c) // espera o eco
 		}(i)
 	}
 	wg.Wait()
@@ -207,9 +207,9 @@ func TestGracefulShutdownSavesPlayers(t *testing.T) {
 	c := dialClient(t, addr)
 	defer c.Close()
 	sendFrame(t, c, protocol.Header{Type: protocol.MsgAction}, nil)
-	<-ready // session is now in UserPlay
+	<-ready // sessão agora está em UserPlay
 
-	stop() // cancels ctx → graceful drain
+	stop() // cancela ctx → drenagem graciosa
 	if n := fake.saved.Load(); n != 1 {
 		t.Errorf("SaveOnShutdown called %d times, want 1", n)
 	}
@@ -225,8 +225,8 @@ func (f *fakePersistence) SaveOnShutdown(context.Context, CharacterSave) error {
 	return nil
 }
 
-// cargoCapture records the last SaveCargo it received (ReleaseCargo saves off the
-// loop in a goroutine, so access is mutex-guarded).
+// cargoCapture registra o último SaveCargo que recebeu (ReleaseCargo salva fora do
+// loop numa goroutine, então o acesso é protegido por mutex).
 type cargoCapture struct {
 	NopPersistence
 	mu    sync.Mutex
@@ -249,15 +249,15 @@ func (c *cargoCapture) last() (CargoSave, int) {
 	return c.saves[len(c.saves)-1], len(c.saves)
 }
 
-// TestCargoLifecycle covers the account-scoped warehouse store: install via
-// SetCargo, read via Cargo, snapshot via cargoSave, and persist+evict via
-// ReleaseCargo. These run on a non-started World (loop-only helpers touch only the
-// map and persistence port).
+// TestCargoLifecycle cobre o armazém com escopo de conta: instalar via
+// SetCargo, ler via Cargo, snapshot via cargoSave, e persistir+despejar via
+// ReleaseCargo. Rodam num World não iniciado (auxiliares só-no-loop tocam apenas o
+// mapa e a porta de persistência).
 func TestCargoLifecycle(t *testing.T) {
 	capture := &cargoCapture{}
 	w := New(Config{GridDim: 16}, slogDiscard(), capture, nil)
 
-	// Unknown account → nil; account 0 is never stored.
+	// Conta desconhecida → nil; a conta 0 nunca é guardada.
 	if w.Cargo(42) != nil || w.Cargo(0) != nil {
 		t.Fatalf("expected nil cargo before load")
 	}
@@ -271,7 +271,7 @@ func TestCargoLifecycle(t *testing.T) {
 		t.Fatalf("Cargo after SetCargo: %+v", got)
 	}
 
-	// A handler mutation (deposit) is reflected because Cargo returns the pointer.
+	// Uma mutação do handler (depósito) se reflete porque Cargo devolve o ponteiro.
 	got.Coin += 500
 
 	snap := w.cargoSave(42)
@@ -279,7 +279,7 @@ func TestCargoLifecycle(t *testing.T) {
 		t.Fatalf("cargoSave snapshot: %+v", snap)
 	}
 
-	// ReleaseCargo persists then evicts; the save runs off-loop, drained by saveWG.
+	// ReleaseCargo persiste e então despeja; o save roda fora do loop, drenado por saveWG.
 	w.ReleaseCargo(42)
 	w.saveWG.Wait()
 	if w.Cargo(42) != nil {
@@ -290,7 +290,7 @@ func TestCargoLifecycle(t *testing.T) {
 		t.Fatalf("ReleaseCargo did not persist latest state: %+v (n=%d)", last, n)
 	}
 
-	// Releasing an unknown account is a no-op (no extra save).
+	// Liberar uma conta desconhecida não faz nada (sem save extra).
 	w.ReleaseCargo(42)
 	w.saveWG.Wait()
 	if _, n := capture.last(); n != 1 {

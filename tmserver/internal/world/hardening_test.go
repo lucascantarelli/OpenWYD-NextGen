@@ -9,15 +9,15 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// corruptChecksum encodes a frame and flips its checksum byte (offset 3) so the
-// receiver sees a mismatch.
+// corruptChecksum codifica um frame e inverte seu byte de checksum (offset 3) para o
+// receptor ver uma divergência.
 func corruptChecksum(t *testing.T, h protocol.Header, payload []byte) []byte {
 	t.Helper()
 	wire, err := protocol.Encode(h, payload, 7)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wire[3]++ // break the checksum
+	wire[3]++ // quebra o checksum
 	return wire
 }
 
@@ -32,7 +32,7 @@ func TestRejectChecksumDropsConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The handler must NOT have seen the frame, and the connection must be closed.
+	// O handler NÃO pode ter visto o frame, e a conexão precisa estar fechada.
 	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
 	var b [1]byte
 	if _, err := c.Read(b[:]); err == nil {
@@ -47,7 +47,7 @@ func TestRejectChecksumDropsConnection(t *testing.T) {
 
 func TestChecksumNotRejectedByDefault(t *testing.T) {
 	got := make(chan protocol.Header, 1)
-	addr, stop := testWorld(t, echoHandler(got), nil) // RejectChecksum defaults to false
+	addr, stop := testWorld(t, echoHandler(got), nil) // RejectChecksum é falso por padrão
 	defer stop()
 
 	c := dialClient(t, addr)
@@ -56,7 +56,7 @@ func TestChecksumNotRejectedByDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Legacy semantics: a bad checksum is still delivered.
+	// Semântica legada: checksum ruim ainda é entregue.
 	select {
 	case <-got:
 	case <-time.After(2 * time.Second):
@@ -65,7 +65,7 @@ func TestChecksumNotRejectedByDefault(t *testing.T) {
 }
 
 func TestRateLimitDropsFlood(t *testing.T) {
-	// Tiny limit: burst of 2, then dropped.
+	// Limite minúsculo: rajada de 2, depois derrubado.
 	addr, stop := testWorldConfig(t, Config{GridDim: 16, MaxMsgPerSec: 1, MsgBurst: 2},
 		func(*World, *Session, protocol.Header, []byte) {}, nil)
 	defer stop()
@@ -78,10 +78,10 @@ func TestRateLimitDropsFlood(t *testing.T) {
 		}
 	}
 
-	// The flood must get the connection dropped (reads eventually fail / EOF).
+	// O flood precisa fazer a conexão cair (as leituras falham/EOF no fim).
 	_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if _, err := io.Copy(io.Discard, c); err == nil {
-		// io.Copy returns nil on clean EOF, which is the expected drop.
+		// io.Copy devolve nil em EOF limpo, que é a queda esperada.
 		return
 	} else if !isClosed(err) {
 		t.Fatalf("expected connection drop, got %v", err)

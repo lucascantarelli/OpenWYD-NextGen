@@ -2,10 +2,10 @@ package world
 
 import "testing"
 
-// TestDespawnMob covers the mob-death cleanup (used by handler.mobKilled): the
-// entity slot is freed and its grid cell cleared so the mob can't be retargeted
-// and the slot is reclaimable. Runs on a non-started World (DespawnMob is a
-// loop-only helper that here touches only entities/grid — no in-view sessions).
+// TestDespawnMob cobre a limpeza de morte de criatura (usada por handler.mobKilled): o
+// slot da entidade é liberado e sua célula de grade limpa para a criatura não poder ser realvo
+// e o slot ser recuperável. Roda num World não iniciado (DespawnMob é um
+// auxiliar só-no-loop que aqui toca apenas entities/grade — sem sessões em visão).
 func TestDespawnMob(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 
@@ -20,7 +20,7 @@ func TestDespawnMob(t *testing.T) {
 		t.Fatalf("grid cell after spawn = (%d,%v), want (%d,true)", got, ok, id)
 	}
 
-	w.DespawnMob(id, 1) // 1 = death
+	w.DespawnMob(id, 1) // 1 = morte
 
 	if w.Entity(id) != nil {
 		t.Error("entity slot not freed after DespawnMob")
@@ -29,10 +29,10 @@ func TestDespawnMob(t *testing.T) {
 		t.Error("grid cell not cleared after DespawnMob")
 	}
 
-	// No-ops: an already-freed slot and a player-range id must not panic.
+	// No-ops: um slot já liberado e um id na faixa de jogador não podem dar panic.
 	w.DespawnMob(id, 1)
 	w.DespawnMob(1, 1)
 }
 
-// structMobTemplateSize is the raw STRUCT_MOB length SpawnMob parses (mob.go).
+// structMobTemplateSize é o comprimento bruto de STRUCT_MOB que SpawnMob interpreta (mob.go).
 const structMobTemplateSize = 816

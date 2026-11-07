@@ -7,9 +7,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// TestNoteSendTracking: every queued frame must land in the counters and the
-// ring, and the ring must keep only the trailing lastSentRing frames in order —
-// that tail is the freeze post-mortem, so its ordering is load-bearing.
+// TestNoteSendTracking: todo frame enfileirado precisa cair nos contadores e no
+// anel, e o anel precisa manter só os últimos lastSentRing frames em ordem —
+// essa cauda é o post-mortem do travamento, então sua ordem é fundamental.
 func TestNoteSendTracking(t *testing.T) {
 	s := &Session{Conn: 7}
 	for i := 0; i < lastSentRing+3; i++ {
@@ -36,19 +36,19 @@ func TestNoteSendTracking(t *testing.T) {
 	if len(records) != lastSentRing {
 		t.Fatalf("tail records = %d, want %d (full ring)", len(records), lastSentRing)
 	}
-	// Newest entry last: the CreateMob with its HEADER.ID and payload length.
+	// Entrada mais nova por último: o CreateMob com seu HEADER.ID e tamanho de payload.
 	if last := records[len(records)-1]; last != "0x0364(30000)/504/-0ms" {
 		t.Fatalf("newest tail record = %q, want %q", last, "0x0364(30000)/504/-0ms")
 	}
-	// Oldest surviving entry is frame #4 (three MsgAction were overwritten by the
-	// wrap plus one by the CreateMob).
+	// Entrada mais antiga sobrevivente é o frame #4 (três MsgAction foram sobrescritos pelo
+	// giro e um pelo CreateMob).
 	if first := records[0]; !strings.HasPrefix(first, "0x036c(4)/28/") {
 		t.Fatalf("oldest tail record = %q, want prefix %q", first, "0x036c(4)/28/")
 	}
 }
 
-// TestFormatByTypeOrdering: the per-type breakdown must read dominant-first so
-// the disconnect post-mortem leads with the traffic that mattered.
+// TestFormatByTypeOrdering: a quebra por tipo precisa ler do dominante primeiro para
+// o post-mortem de desconexão abrir com o tráfego que importava.
 func TestFormatByTypeOrdering(t *testing.T) {
 	got := formatByType(map[protocol.Type]uint32{
 		protocol.MsgAction:    3,
@@ -61,8 +61,8 @@ func TestFormatByTypeOrdering(t *testing.T) {
 	}
 }
 
-// TestEnqueueHighWater: enqueue must track the out-queue high-water mark (writer
-// backpressure evidence) without ever blocking the loop.
+// TestEnqueueHighWater: enqueue precisa acompanhar a marca d'água da fila de saída
+// (evidência de contrapressão do escritor) sem nunca bloquear o loop.
 func TestEnqueueHighWater(t *testing.T) {
 	w := New(Config{}, nil, nil, nil)
 	s := &Session{Conn: 1, out: newOutQueue(), closeCh: make(chan struct{})}

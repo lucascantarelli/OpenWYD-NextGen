@@ -6,9 +6,9 @@ import (
 	"openwyd-nextgen/internal/teleportdata"
 )
 
-// AtlasCity is a read-only view of the fixed city table (city.go). It exists so
-// the world-atlas generator (webserver/cmd/worldatlas) can publish the same
-// numbers the server uses at runtime instead of keeping a second copy of them.
+// AtlasCity é uma visão somente leitura da tabela fixa de cidades (city.go). Ele existe para
+// o gerador de atlas do mundo (webserver/cmd/worldatlas) publicar os mesmos
+// números que o servidor usa em execução em vez de manter uma segunda cópia deles.
 type AtlasCity struct {
 	Index   int    `json:"index"`
 	Name    string `json:"name"`
@@ -24,10 +24,10 @@ type AtlasCity struct {
 	WarY2   int    `json:"war_y2"`
 }
 
-// cityNames is the display name per village index (Basedef.cpp:54 order).
+// cityNames é o nome de exibição por índice de vila (ordem de Basedef.cpp:54).
 var cityNames = [5]string{"Armia", "Azran", "Erion", "Nippleheim", "Noatum"}
 
-// AtlasCities returns the five city zones in table order.
+// AtlasCities devolve as cinco zonas de cidade na ordem da tabela.
 func AtlasCities() []AtlasCity {
 	out := make([]AtlasCity, 0, len(cities))
 	for i, c := range cities {
@@ -43,7 +43,7 @@ func AtlasCities() []AtlasCity {
 	return out
 }
 
-// AtlasTeleport is one teleportTable entry, sorted by origin.
+// AtlasTeleport é uma entrada de teleportTable, ordenada por origem.
 type AtlasTeleport struct {
 	SrcX        int    `json:"src_x"`
 	SrcY        int    `json:"src_y"`
@@ -53,9 +53,9 @@ type AtlasTeleport struct {
 	Requirement string `json:"requirement"` // none | fairy | kefra
 }
 
-// AtlasTeleports returns every route of teleportTable in a stable order. The
-// requirement is the same gate teleportDest applies (Vale needs the fairy,
-// Deserto→Kefra needs the Kefra defeated).
+// AtlasTeleports devolve toda rota de teleportTable numa ordem estável. O
+// requisito é o mesmo gate que teleportDest aplica (o Vale precisa da fada,
+// Deserto→Kefra precisa do Kefra derrotado).
 func AtlasTeleports() []AtlasTeleport {
 	routes := teleportdata.Routes()
 	sort.Slice(routes, func(i, j int) bool {

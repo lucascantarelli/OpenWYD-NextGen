@@ -5,16 +5,16 @@ import (
 	"fmt"
 )
 
-// CelestialSheet is one STRUCT_MOBEXTRA.SaveCelestial[] entry (Basedef.h:682-707):
-// the parked character sheet of the Celestial tier that is not being played.
-// Index 0 holds the Celestial, index 1 the Sub-Celestial. The Pedra Ideal
-// writes [1] when a Celestial becomes CELESTIALCS (_MSG_UseItem.cpp:3040-3073),
-// the Urnammu rewrites its class there (_MSG_Quest.cpp:1248-1310) and the Pedra
-// Misteriosa swaps the active sheet with the parked one (_MSG_UseItem.cpp:3188-3260).
+// CelestialSheet é uma entrada de STRUCT_MOBEXTRA.SaveCelestial[] (Basedef.h:682-707):
+// a ficha de personagem estacionada do tier Celestial que não está em uso.
+// O índice 0 guarda o Celestial, o índice 1 o Sub-Celestial. A Pedra Ideal
+// escreve [1] quando um Celestial vira CELESTIALCS (_MSG_UseItem.cpp:3040-3073),
+// o Urnammu reescreve sua classe ali (_MSG_Quest.cpp:1248-1310) e a Pedra
+// Misteriosa troca a ficha ativa pela estacionada (_MSG_UseItem.cpp:3188-3260).
 //
-// The BaseScore fields the tmServer does not model for players (Merchant,
-// AttackRun, Direction, ChaosRate) are left out; the legacy only ever copies
-// them along.
+// Os campos de BaseScore que o tmServer não modela para jogadores (Merchant,
+// AttackRun, Direction, ChaosRate) ficam de fora; o legado só os copia
+// junto.
 type CelestialSheet struct {
 	Class           int32
 	Exp             int64
@@ -36,24 +36,24 @@ type CelestialSheet struct {
 	Soul            uint8
 }
 
-// celestialSheetVersion prefixes the persisted blob so the layout below can grow
-// without guessing at old rows.
+// celestialSheetVersion prefixa o blob persistido para o layout abaixo poder crescer
+// sem adivinhar nas linhas antigas.
 const celestialSheetVersion = 1
 
-// celestialSheetSize is the encoded size of one sheet (see MarshalCelestialSheets).
+// celestialSheetSize é o tamanho codificado de uma ficha (veja MarshalCelestialSheets).
 const celestialSheetSize = 96
 
-// celestialSheetsBlobSize is the encoded size of both SaveCelestial entries.
+// celestialSheetsBlobSize é o tamanho codificado das duas entradas de SaveCelestial.
 const celestialSheetsBlobSize = 1 + 2*celestialSheetSize
 
-// MarshalCelestialSheets encodes SaveCelestial[2] for the character.save_celestial
-// column (migration 0033). It is our own fixed little-endian layout, not the
-// MSVC STRUCT_MOBEXTRA image: version byte, then per sheet Class@0 Exp@4 SPX@12
+// MarshalCelestialSheets codifica SaveCelestial[2] para a coluna character.save_celestial
+// (migration 0033). É o nosso próprio layout fixo little-endian, não a
+// imagem MSVC de STRUCT_MOBEXTRA: byte de versão, depois por ficha Class@0 Exp@4 SPX@12
 // SPY@14 Level@16 AC@20 Damage@24 MaxHP@28 MaxMP@32 HP@36 MP@40 Str@44 Int@46
 // Dex@48 Con@50 Special@52 LearnedSkill@60 SecLearnedSkill@64 ScoreBonus@68
 // SpecialBonus@70 SkillBonus@72 SkillBar1@74 SkillBar2@78 Soul@94 (pad @95).
-// A character that never had a Sub-Celestial encodes as nil, so its row keeps
-// the empty default.
+// Um personagem que nunca teve Sub-Celestial codifica como nil, então sua linha mantém
+// o padrão vazio.
 func MarshalCelestialSheets(sheets [2]CelestialSheet) []byte {
 	if sheets == [2]CelestialSheet{} {
 		return nil
@@ -93,10 +93,10 @@ func MarshalCelestialSheets(sheets [2]CelestialSheet) []byte {
 	return b
 }
 
-// UnmarshalCelestialSheets decodes MarshalCelestialSheets. An empty blob is a
-// character without parked sheets. Any other size or version is an error: the
-// caller must refuse the load rather than play on with zeroed sheets that the
-// next save would write over the real ones.
+// UnmarshalCelestialSheets decodifica MarshalCelestialSheets. Um blob vazio é um
+// personagem sem fichas estacionadas. Qualquer outro tamanho ou versão é erro: o
+// chamador precisa recusar a carga em vez de jogar com fichas zeradas que o
+// próximo save sobrescreveria nas reais.
 func UnmarshalCelestialSheets(b []byte) ([2]CelestialSheet, error) {
 	var sheets [2]CelestialSheet
 	if len(b) == 0 {
