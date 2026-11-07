@@ -10,17 +10,17 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// EnqueueItemGrant puts `quantity` item grants for one character into the
-// delivery_queue mailbox and records the action in character_admin_audit, all in
-// one transaction (issue 43).
+// EnqueueItemGrant coloca `quantity` concessões de item para um personagem na
+// caixa delivery_queue e registra a ação em character_admin_audit, tudo na mesma
+// transação (issue 43).
 //
-// It is the ONLY write path for a character item from the web: the tmServer
-// drains the mailbox into the account cargo inside its single-owner loop at
-// login, so an online character never gets its in-memory STRUCT_MOB clobbered.
+// É o ÚNICO caminho de escrita de item de personagem vindo da web: o tmServer
+// drena a caixa para o cargo da conta dentro do seu loop de dono único no login,
+// então um personagem online nunca tem o STRUCT_MOB em memória sobrescrito.
 //
-// One row per unit: delivery_queue.payload (donate.go:itemPayload) has no
-// quantity field, and encoding the stack as EF_AMOUNT would silently overwrite
-// one of the moderator's chosen effects.
+// Uma linha por unidade: delivery_queue.payload (donate.go:itemPayload) não tem
+// campo de quantidade, e codificar a pilha como EF_AMOUNT sobrescreveria em
+// silêncio um dos efeitos escolhidos pelo moderador.
 func (s *Store) EnqueueItemGrant(
 	ctx context.Context,
 	moderatorID, accountID, characterID int64,
@@ -53,13 +53,13 @@ func (s *Store) EnqueueItemGrant(
 		}
 
 		after, err := json.Marshal(map[string]any{
-			"item_index":    item.Index,
-			"quantity":      quantity,
-			"effects":       [][2]uint8{{item.Eff1, item.EffV1}, {item.Eff2, item.EffV2}, {item.Eff3, item.EffV3}},
-			"expires_at":    item.ExpiresAt,
-			"delivery_ids":  ids,
-			"account_id":    accountID,
-			"source":        source,
+			"item_index":   item.Index,
+			"quantity":     quantity,
+			"effects":      [][2]uint8{{item.Eff1, item.EffV1}, {item.Eff2, item.EffV2}, {item.Eff3, item.EffV3}},
+			"expires_at":   item.ExpiresAt,
+			"delivery_ids": ids,
+			"account_id":   accountID,
+			"source":       source,
 		})
 		if err != nil {
 			return fmt.Errorf("store: marshalling audit: %w", err)
@@ -78,7 +78,7 @@ func (s *Store) EnqueueItemGrant(
 	return ids, nil
 }
 
-// CharacterItemGrant is one pending grant shown in the character history.
+// CharacterItemGrant é uma concessão listada no histórico do personagem.
 type CharacterItemGrant struct {
 	DeliveryID  int64
 	CharacterID int64
@@ -88,8 +88,9 @@ type CharacterItemGrant struct {
 	CreatedAt   string
 }
 
-// PendingItemGrants lists the character's mailbox rows (pending and delivered),
-// newest first, so the portal can show "entrou na fila / já entregue".
+// PendingItemGrants lista as linhas da caixa do personagem (pendentes e
+// entregues), da mais nova para a mais antiga, para o portal mostrar "entrou na
+// fila / já entregue".
 func (s *Store) PendingItemGrants(ctx context.Context, characterID int64, limit int) ([]CharacterItemGrant, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20

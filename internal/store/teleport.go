@@ -7,10 +7,10 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// ListTeleportRoutes returns the moderator-editable teleport overlay, ordered by
-// origin tile (issue 42). The overlay is additive: rows here override the
-// compiled table in internal/teleportdata, and an origin without a row keeps the
-// compiled route.
+// ListTeleportRoutes devolve o overlay de teleporte editável pelo moderador,
+// ordenado pelo tile de origem (issue 42). O overlay é aditivo: linhas aqui
+// sobrepõem a tabela compilada de internal/teleportdata, e uma origem sem linha
+// mantém a rota compilada.
 func (s *Store) ListTeleportRoutes(ctx context.Context) ([]domain.TeleportRoute, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT src_x, src_y, dst_x, dst_y, cost, requirement, enabled, note,
@@ -37,8 +37,8 @@ func (s *Store) ListTeleportRoutes(ctx context.Context) ([]domain.TeleportRoute,
 	return out, nil
 }
 
-// UpsertTeleportRoute stores (or replaces) the route at r.SrcX,r.SrcY. The
-// origin tile is the key, so editing a route never duplicates it.
+// UpsertTeleportRoute grava (ou substitui) a rota em r.SrcX,r.SrcY. O tile de
+// origem é a chave, então editar uma rota nunca a duplica.
 func (s *Store) UpsertTeleportRoute(ctx context.Context, r domain.TeleportRoute, moderatorID int64) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO teleport_route
@@ -60,9 +60,9 @@ func (s *Store) UpsertTeleportRoute(ctx context.Context, r domain.TeleportRoute,
 	return nil
 }
 
-// SetTeleportRouteEnabled toggles a route row. applied is false when there is no
-// row at that origin (a compiled-only route has to be created before it can be
-// disabled).
+// SetTeleportRouteEnabled liga/desliga uma linha de rota. applied é falso quando
+// não há linha naquela origem (uma rota só compilada precisa ser criada antes de
+// poder ser desligada).
 func (s *Store) SetTeleportRouteEnabled(ctx context.Context, srcX, srcY int, enabled bool, moderatorID int64) (bool, error) {
 	tag, err := s.pool.Exec(ctx, `
 		UPDATE teleport_route
@@ -74,9 +74,9 @@ func (s *Store) SetTeleportRouteEnabled(ctx context.Context, srcX, srcY int, ena
 	return tag.RowsAffected() > 0, nil
 }
 
-// DeleteTeleportRoute drops the overlay row, restoring the compiled route (if
-// any) at that origin. applied is false when there was no row.
-func (s *Store) DeleteTeleportRoute(ctx context.Context, srcX, srcY int, moderatorID int64) (bool, error) {
+// DeleteTeleportRoute remove a linha de overlay e devolve a rota compilada (se
+// houver) naquela origem. applied é falso quando não havia linha.
+func (s *Store) DeleteTeleportRoute(ctx context.Context, srcX, srcY int, _ int64) (bool, error) {
 	tag, err := s.pool.Exec(ctx, `
 		DELETE FROM teleport_route WHERE src_x = $1 AND src_y = $2`, srcX, srcY)
 	if err != nil {

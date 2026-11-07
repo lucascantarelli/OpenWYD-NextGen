@@ -66,9 +66,9 @@ func newDocker(socket string) *docker {
 			dialer := &net.Dialer{Timeout: 3 * time.Second}
 			return dialer.DialContext(ctx, "unix", socket)
 		},
-		MaxIdleConns:        8,
-		IdleConnTimeout:     30 * time.Second,
-		DisableCompression:  true,
+		MaxIdleConns:          8,
+		IdleConnTimeout:       30 * time.Second,
+		DisableCompression:    true,
 		ResponseHeaderTimeout: 10 * time.Second,
 	}
 	return &docker{client: &http.Client{Transport: transport}}

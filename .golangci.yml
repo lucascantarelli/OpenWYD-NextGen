@@ -54,6 +54,8 @@ linters:
         - devolvendo
         - duplicatas
         - alternar
+        - montanha
+        - incrementos
   exclusions:
     generated: lax
     presets:

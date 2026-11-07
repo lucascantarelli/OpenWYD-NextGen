@@ -11,10 +11,10 @@ import (
 )
 
 type fakeStore struct {
-	roles   map[int64]string
-	rows    map[int]int64
-	lastSlot  int
-	lastValue int64
+	roles      map[int64]string
+	rows       map[int]int64
+	lastSlot   int
+	lastValue  int64
 	lastReason string
 
 	carry       map[string][]domain.MobTemplateEquipItem
@@ -81,7 +81,7 @@ func (f *fakeStore) DeleteMobCarry(_ context.Context, templateName string, _ int
 	return true, nil
 }
 
-// carryTemplate builds a raw 816-byte template with one populated Carry slot.
+// carryTemplate monta um template cru de 816 bytes com um slot de Carry preenchido.
 func carryTemplate(t *testing.T, item int16, eff, value uint8) []byte {
 	t.Helper()
 	mob := savefmt.Mob{}

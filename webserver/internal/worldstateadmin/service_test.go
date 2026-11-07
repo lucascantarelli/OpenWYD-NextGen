@@ -21,7 +21,6 @@ type fakeStore struct {
 
 	savedZones      []domain.GuildZone
 	kefraApplied    bool
-	kefraFailure    bool
 	masterApplied   bool
 	removeApplied   bool
 	relationApplied bool
@@ -58,23 +57,23 @@ func (f *fakeStore) LoadKefraState(context.Context) (domain.KefraState, error) {
 func (f *fakeStore) SetKefraDefeated(context.Context, bool) (bool, error) {
 	return f.kefraApplied, nil
 }
-func (f *fakeStore) SetGuildMasterByCharacter(_ context.Context, guildID int32, characterID, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) SetGuildMasterByCharacter(_ context.Context, guildID int32, characterID, _ int64, reason string) (bool, error) {
 	f.writeCalls = append(f.writeCalls, fmt.Sprintf("master:%d:%d:%s", guildID, characterID, reason))
 	return f.masterApplied, nil
 }
-func (f *fakeStore) RemoveGuildMemberByCharacter(_ context.Context, guildID int32, characterID, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) RemoveGuildMemberByCharacter(_ context.Context, guildID int32, characterID, _ int64, reason string) (bool, error) {
 	f.writeCalls = append(f.writeCalls, fmt.Sprintf("remove:%d:%d:%s", guildID, characterID, reason))
 	return f.removeApplied, nil
 }
-func (f *fakeStore) SetGuildRelationAudited(_ context.Context, guildID, targetGuildID int32, kind int, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) SetGuildRelationAudited(_ context.Context, guildID, targetGuildID int32, kind int, _ int64, reason string) (bool, error) {
 	f.writeCalls = append(f.writeCalls, fmt.Sprintf("relation:%d:%d:%d:%s", guildID, targetGuildID, kind, reason))
 	return f.relationApplied, nil
 }
-func (f *fakeStore) SetZoneOwner(_ context.Context, zone, guildID int32, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) SetZoneOwner(_ context.Context, zone, guildID int32, _ int64, reason string) (bool, error) {
 	f.writeCalls = append(f.writeCalls, fmt.Sprintf("zone:%d:%d:%s", zone, guildID, reason))
 	return f.zoneApplied, nil
 }
-func (f *fakeStore) SetTowerOwner(_ context.Context, guildID int32, moderatorID int64, reason string) (bool, error) {
+func (f *fakeStore) SetTowerOwner(_ context.Context, guildID int32, _ int64, reason string) (bool, error) {
 	f.writeCalls = append(f.writeCalls, fmt.Sprintf("tower:%d:%s", guildID, reason))
 	return f.towerApplied, nil
 }
@@ -176,8 +175,8 @@ func TestSetKefraDefeatedReportsNullRow(t *testing.T) {
 	}
 }
 
-// guildFixture is a guild whose level-9 leader and level-0 member are the only
-// rows the write validations look at.
+// guildFixture é uma guild cujo líder nível 9 e membro nível 0 são as únicas
+// linhas que as validações de escrita olham.
 func guildFixture() *fakeStore {
 	return &fakeStore{
 		role:   "admin",

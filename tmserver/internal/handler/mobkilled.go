@@ -10,37 +10,33 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// coinCap is the total-gold overflow guard (game-rules.md §7, MobKilled.cpp:2715).
+// coinCap é o guarda de estouro do ouro total (game-rules.md §7, MobKilled.cpp:2715).
 const coinCap = 2_000_000_000
 
-// expPanelDefaultColor is TNColor::Default from Basedef.h. The alpha byte is
-// required by the unmodified client; RGB alone leaves the panel text invisible.
-const expPanelDefaultColor uint32 = 0xFFCCAAFF
-
-// Level-up effect (captura-wyd-levelup.md §7): MSG_Motion with these values is the
-// client-side level-up animation/sound.
+// Efeito de level-up (captura-wyd-levelup.md §7): MSG_Motion com estes valores é a
+// animação/som de subir de nível no cliente.
 const (
 	motionLevelUp     = 14
 	motionLevelUpParm = 3
 )
 
-// babyMountLevelCap is the mount-growth ceiling from MobKilled.cpp:296.
+// babyMountLevelCap é o teto de crescimento da montaria (MobKilled.cpp:296).
 const (
 	babyMountGrowthHi = 2390
 	babyMountLevelCap = 100
 )
 
-// mobKilled runs the death rewards for a mob slain by a player or a player's
-// summon (game-rules.md §1-2, MobKilled.cpp). This batch implements the exact
-// drop rolls (gold §2.1 and per-slot item §2.2 using the real g_pDropRate table).
-// The mob's Carry is its loot table.
+// mobKilled executa as recompensas de morte de um mob abatido por um jogador ou
+// por uma invocação dele (game-rules.md §1-2, MobKilled.cpp). Esta leva implementa
+// as rolagens de drop exatas (ouro §2.1 e item por slot §2.2 com a tabela real
+// g_pDropRate). O Carry do mob é a tabela de loot dele.
 //
-// UNVERIFIED / deferred: generic-field party EXP distribution and the
-// _MSG_CNFMobKill kill confirmation. Water Scroll regions use their dedicated
-// legacy distribution below.
+// UNVERIFIED / adiado: distribuição de EXP em party no campo genérico e a
+// confirmação de morte _MSG_CNFMobKill. Regiões de Pergaminho d'Água usam a
+// distribuição legada própria logo abaixo.
 func (d *Dispatcher) mobKilled(w *world.World, killer, mob *world.Entity) {
-	// Record the event even if a summon owner disconnected before the kill.
-	// Refill auxiliaries after DespawnMob releases their population slot.
+	// Registra o evento mesmo se o dono da invocação desconectou antes do abate.
+	// Recompõe os auxiliares depois de DespawnMob liberar o slot de população.
 	defer d.kefraMobKilled(w, mob)
 	d.kingdomKingKilled(w, mob)
 	reward := killer
@@ -62,20 +58,20 @@ func (d *Dispatcher) mobKilled(w *world.World, killer, mob *world.Entity) {
 	d.castleBossKilled(w, reward, mob)
 	d.waterMobKilled(w, reward, mob)
 	d.runeQuestMobKilled(w, reward, mob)
-	// The reward target is a player, so its entity id equals its connection slot;
-	// the session is needed for gold/level-up packets (nil if it disconnected).
+	// O alvo da recompensa é jogador, então o id de entidade é o slot de conexão;
+	// a sessão é necessária para os pacotes de ouro/level-up (nil se desconectou).
 	ks := w.Session(reward.ID)
-	// Nightmare's legacy death script draws DieSay and regenerates BEFORE
-	// rolling loot (MobKilled.cpp:1430,1882,2693). Keep the dying mob counted
-	// until the final despawn: GenerateMob's population clamp depends on it.
+	// O script de morte legado do Nightmare sorteia o DieSay e regenera ANTES de
+	// rolar o loot (MobKilled.cpp:1430,1882,2693). O mob que morre continua contado
+	// até o despawn final: o limite de população do GenerateMob depende disso.
 	nightmareDeath := world.NightmareGenerator(int(mob.GenIndex)) >= 0
 	if nightmareDeath {
 		sendDieAction(w, mob)
 		d.nightmareMobKilled(w, mob)
 	}
 
-	// Gold drop → reward target's coin (clamped). The new total is pushed to the target's
-	// client (MSG_UpdateEtc); otherwise the gain isn't visible until relog.
+	// Drop de ouro → moeda do alvo (limitada ao teto). O novo total vai para o
+	// cliente do alvo (MSG_UpdateEtc); senão o ganho só apareceria no relog.
 	if gold := loot.GoldDrop(w.Rand(), int(mob.Level), int(mob.Coin)); gold > 0 {
 		reward.Coin += int32(gold)
 		if reward.Coin > coinCap {
@@ -86,21 +82,21 @@ func (d *Dispatcher) mobKilled(w *world.World, killer, mob *world.Entity) {
 		}
 	}
 
-	// Experience → rewarder (solo). The raw total reaches the client via the attack
-	// handler's MSG_Attack echo (CurrentExp); grantExp also applies any level-ups.
-	// Clan 4 mobs never award EXP: the legacy wraps the whole distribution in
-	// `MOB.Clan != 4` (MobKilled.cpp:402); gold and drops sit outside that gate.
+	// Experiência → premiado (solo). O total bruto chega ao cliente pelo eco
+	// MSG_Attack do handler de ataque (CurrentExp); grantExp também aplica os
+	// level-ups. Mob de clan 4 nunca dá EXP: o legado embrulha toda a distribuição
+	// em `MOB.Clan != 4` (MobKilled.cpp:402); ouro e drops ficam fora desse gate.
 	if mob.Clan != 4 && !d.grantNightmareExp(w, reward, mob) && !d.grantWaterExp(w, reward, mob) {
 		d.grantExp(w, ks, reward, mob)
 	}
 
 	d.tryWorldEventDrop(w, reward)
 
-	// Item drop: each occupied loot slot rolls against its g_pDropRate odds.
+	// Drop de item: cada slot de loot ocupado rola contra a chance de g_pDropRate.
 	for slot := range mob.Carry {
 		it := mob.Carry[slot]
-		// MobKilled.cpp only admits real droppable catalog entries here. Low
-		// indices are internal/legacy objects and 454 is explicitly suppressed.
+		// MobKilled.cpp só admite aqui entradas reais do catálogo de drop. Índices
+		// baixos são objetos internos/legados e o 454 é suprimido de propósito.
 		if it.Index <= 390 || int(it.Index) >= maxItemList || it.Index == 454 {
 			continue
 		}
@@ -110,9 +106,9 @@ func (d *Dispatcher) mobKilled(w *world.World, killer, mob *world.Entity) {
 			if d.castleKeyDrop(w, reward, it) {
 				continue
 			}
-			// Ordinary legacy mob loot goes through PutItem: it is delivered
-			// directly to the killer's Carry and synchronized with SendItem. It is
-			// not a floor object and therefore must not use CreateGroundItem.
+			// O loot comum de mob legado passa por PutItem: vai direto para o Carry
+			// de quem matou e é sincronizado com SendItem. Não é objeto de chão e
+			// portanto não pode usar CreateGroundItem.
 			d.putMobDrop(w, reward, it)
 		}
 	}
@@ -120,25 +116,25 @@ func (d *Dispatcher) mobKilled(w *world.World, killer, mob *world.Entity) {
 
 	gen := int(mob.GenIndex)
 	if w.Entity(mob.ID) != mob {
-		// A rune track hook already deleted it (the Lich cleanup), and its slot
-		// may hold a fresh spawn: keep only the DieSay draw.
+		// Um hook de trilha de runa já o apagou (limpeza do Lich), e o slot pode
+		// ter um spawn novo: mantém só o sorteio do DieSay.
 		w.Rand().Intn(4)
 	} else {
 		if !nightmareDeath {
 			sendDieAction(w, mob)
 		}
 
-		// Despawn: tell in-view clients the mob died (RemoveMob, type 1 = death) and
-		// free its grid cell + entity slot, so the corpse disappears and it can't be
-		// retargeted. Without this the client keeps rendering the dead mob.
+		// Despawn: avisa os clientes na visão que o mob morreu (RemoveMob, tipo 1 =
+		// morte) e libera a célula da grade + o slot de entidade, para o corpo sumir
+		// e não poder ser re-alvejado. Sem isso o cliente segue desenhando o morto.
 		w.DespawnMob(mob.ID, 1)
 	}
 	d.runeQuestMobRemoved(w, reward, gen)
 }
 
-// putMobDrop mirrors legacy PutItem for common mob loot. A full accessible Carry
-// loses the rolled item and receives the same no-space notification; there is no
-// fallback to the ground.
+// putMobDrop espelha o PutItem legado para loot comum de mob. Um Carry acessível
+// cheio perde o item rolado e recebe o mesmo aviso de falta de espaço; não há
+// fallback para o chão.
 func (d *Dispatcher) putMobDrop(w *world.World, reward *world.Entity, it world.Item) bool {
 	if reward == nil {
 		return false
@@ -236,7 +232,7 @@ func sendDieAction(w *world.World, mob *world.Entity) {
 	if mob == nil {
 		return
 	}
-	say := w.Rand().Intn(4) // MobKilled.cpp draws DieSay after rewards, before DeleteMob.
+	say := w.Rand().Intn(4) // MobKilled.cpp sorteia o DieSay depois das recompensas, antes do DeleteMob.
 	gen := w.GeneratorAt(int(mob.GenIndex))
 	if gen == nil || mob.Leader != 0 || gen.DieAction[say] == "" {
 		return
@@ -244,16 +240,16 @@ func sendDieAction(w *world.World, mob *world.Entity) {
 	sendMobChat(w, mob.ID, gen.DieAction[say])
 }
 
-// grantExp awards solo PvE experience to the killer and applies any resulting
-// level-ups (captura-wyd-levelup.md, CMob::CheckGetLevel). The gain is
-// GetExpApply-scaled by the attacker↔target level ratio; the total is clamped to
-// the curve ceiling. Each level raises MaxHp/MaxMp by the per-class increment,
-// refills HP/MP, and recomputes the free attribute points (BASE_GetBonusScorePoint
-// — idempotent from level+stats, so it need not be persisted). On a level gain the
-// killer's client gets a fresh score and the level-up effect, with the effect also
-// shown to in-view players.
+// grantExp dá experiência de PvE solo a quem matou e aplica os level-ups
+// resultantes (captura-wyd-levelup.md, CMob::CheckGetLevel). O ganho é escalado
+// pelo GetExpApply na razão de nível atacante↔alvo; o total é limitado ao teto da
+// curva. Cada nível sobe MaxHp/MaxMp pelo incremento da classe, recompõe HP/MP e
+// recalcula os pontos livres de atributo (BASE_GetBonusScorePoint — idempotente a
+// partir de nível+stats, então não precisa ser persistido). Ao subir de nível, o
+// cliente de quem matou recebe um score novo e o efeito de level-up, que também
+// aparece para os jogadores na visão.
 //
-// UNVERIFIED / deferred: party distribution and the per-level reward items
+// UNVERIFIED / adiado: distribuição em party e os itens de recompensa por nível
 // (DoItemLevel).
 func (d *Dispatcher) grantExp(w *world.World, ks *world.Session, killer, mob *world.Entity) {
 	if archExpLocked(killer) {
@@ -268,14 +264,14 @@ func (d *Dispatcher) grantExp(w *world.World, ks *world.Session, killer, mob *wo
 	d.applyMobExp(w, ks, killer, gain)
 }
 
-// trainingFieldTopLevel is the first stored level the training grounds refuse
-// (_MSG_Action.cpp:215 blocks Level >= 35, i.e. displayed 36+); the field bonus
-// stops at the same edge.
+// trainingFieldTopLevel é o primeiro nível armazenado que o campo de treino
+// recusa (_MSG_Action.cpp:215 bloqueia Level >= 35, ou seja 36+ na tela); o bônus
+// do campo para na mesma borda.
 const trainingFieldTopLevel = 35
 
-// trainingFieldBonus reports whether a kill earns the training-grounds EXP
-// multiplier (issue #383): the mob came from a generator on an AttributeMap
-// 0x80 cell and the killer is a mortal the field still admits.
+// trainingFieldBonus diz se um abate ganha o multiplicador de EXP do campo de
+// treino (issue #383): o mob veio de um gerador numa célula 0x80 do AttributeMap
+// e quem matou é um mortal que o campo ainda aceita.
 func (d *Dispatcher) trainingFieldBonus(w *world.World, killer, mob *world.Entity) bool {
 	if d.fieldExp <= 0 || killer.ClassMaster != classMasterMortal || killer.Level >= trainingFieldTopLevel {
 		return false
@@ -284,7 +280,7 @@ func (d *Dispatcher) trainingFieldBonus(w *world.World, killer, mob *world.Entit
 	return gen != nil && gen.TrainingField
 }
 
-// applyMobExp applies an already calculated PvE reward without recalculating bonuses.
+// applyMobExp aplica uma recompensa de PvE já calculada, sem recalcular bônus.
 func (d *Dispatcher) applyMobExp(w *world.World, ks *world.Session, killer *world.Entity, gain int64) {
 	if archExpLocked(killer) {
 		return
@@ -298,17 +294,17 @@ func (d *Dispatcher) applyMobExp(w *world.World, ks *world.Session, killer *worl
 		killer.Exp = level.MaxExp
 	}
 	if applied := killer.Exp - previousExp; applied > 0 && ks != nil {
-		// Legacy SendMsgExp (MobKilled.cpp:2606, TNColor::Default): MSG_Exp_Msg_Panel_
-		// (0x5000) paints the gain on the character. It used to go out as
-		// MsgMessageChat, which the client renders as the player speaking the line
+		// SendMsgExp legado (MobKilled.cpp:2606, TNColor::Default):
+		// MSG_Exp_Msg_Panel_ (0x5000) pinta o ganho sobre o personagem. Antes saía
+		// como MsgMessageChat, que o cliente desenha como o jogador falando a linha
 		// (QA 06/11).
 		d.sendMsgExp(w, ks, fmt.Sprintf(expGainFormat, applied), expPanelColor)
 	}
 
-	// A player attack carries the post-kill EXP in its authoritative attack
-	// echo. Summon kills do not produce that owner attack echo, so refresh the
-	// complete etc state here when the reward did not cross a level boundary.
-	// Level-up handling already sends MSG_UpdateEtc with the new score fields.
+	// Um ataque de jogador carrega a EXP pós-abate no eco autoritativo do ataque.
+	// Abates por invocação não geram esse eco do dono, então o estado etc completo
+	// é reenviado aqui quando a recompensa não cruzou fronteira de nível. O
+	// tratamento de level-up já manda MSG_UpdateEtc com os campos novos do score.
 	if applied := killer.Exp - previousExp; applied > 0 {
 		if !d.applyLevelUps(w, ks, killer) && ks != nil {
 			d.sendEtc(w, ks, killer)
@@ -316,8 +312,9 @@ func (d *Dispatcher) applyMobExp(w *world.World, ks *world.Session, killer *worl
 	}
 }
 
-// grantDirectExp awards a fixed, already-calculated amount. Quest rewards must
-// not pass through monster level scaling, equipment bonuses, or EXP events.
+// grantDirectExp concede uma quantia fixa, já calculada. Recompensa de quest não
+// pode passar pelo escalonamento de nível do monstro, bônus de equipamento nem
+// eventos de EXP.
 func (d *Dispatcher) grantDirectExp(w *world.World, s *world.Session, e *world.Entity, gain int64) int64 {
 	if archExpLocked(e) {
 		return 0
@@ -334,9 +331,9 @@ func (d *Dispatcher) grantDirectExp(w *world.World, s *world.Session, e *world.E
 	if applied <= 0 || s == nil {
 		return applied
 	}
-	// Legacy SendClientMessage (_MSG_UseItem.cpp:2386,2416,2464), i.e. a message
-	// panel with ID 0 — NOT MsgMessageChat, which the client renders as the
-	// character speaking (QA 06/11).
+	// SendClientMessage legado (_MSG_UseItem.cpp:2386,2416,2464), ou seja, painel de
+	// mensagem com ID 0 — NÃO MsgMessageChat, que o cliente desenha como o
+	// personagem falando (QA 06/11).
 	d.sendClientMessage(w, s, fmt.Sprintf(expGainFormat, applied))
 	if !d.applyLevelUps(w, s, e) {
 		d.sendEtc(w, s, e)
@@ -347,70 +344,70 @@ func (d *Dispatcher) grantDirectExp(w *world.World, s *world.Session, e *world.E
 	return applied
 }
 
-// archExpLocked uses >= so characters that bypassed a lock before issue #327
-// cannot keep progressing until Lindy completes their missing unlocks.
+// archExpLocked usa >= para que personagens que passaram por cima de um lock antes
+// da issue #327 não continuem progredindo até o Lindy completar os destravamentos
+// que faltam.
 func archExpLocked(e *world.Entity) bool {
 	return e.ClassMaster == classMasterArch && ((e.Level >= 354 && e.ArchLv355 == 0) || (e.Level >= 369 && e.ArchLv370 == 0))
 }
 
-// isCelestialTier reports whether the tier rides the Celestial curve (g_pNextLevel_2)
-// and cap (MAX_CLEVEL): CELESTIAL/CELESTIALCS/SCELESTIAL (CMob.cpp:1085).
+// isCelestialTier diz se o tier anda na curva Celestial (g_pNextLevel_2) e no teto
+// (MAX_CLEVEL): CELESTIAL/CELESTIALCS/SCELESTIAL (CMob.cpp:1085).
 func isCelestialTier(classMaster uint8) bool {
 	return classMaster == classMasterCelestial ||
 		classMaster == classMasterCelestialCS ||
 		classMaster == classMasterSCelestial
 }
 
-// applyLevelUps ports CMob::CheckGetLevel after Exp has already been raised to the
-// desired total. It is tier-aware: Mortal/Arch ride g_pNextLevel to MAX_LEVEL and
-// gain skill/special points per level; Celestial tiers ride g_pNextLevel_2 to
-// MAX_CLEVEL, gain only AC + attribute points, and stay gated at levels 40/90 until
-// /destravar40 and /destravar90 set the flags (CMob.cpp:1107, 1121-1151). Shared by
-// kill EXP, quest EXP, Ehre and the Celestial reset; each level reached also
-// runs SetCircletSubGod, as the legacy does after CheckGetLevel returns 4
-// (SendFunc.cpp:1039, _MSG_UseItem.cpp:2393/2431/2471/3599,
-// _MSG_CombineItemEhre.cpp:165).
+// applyLevelUps porta o CMob::CheckGetLevel depois de a Exp já ter sido elevada ao
+// total desejado. É ciente do tier: Mortal/Arch andam em g_pNextLevel até MAX_LEVEL
+// e ganham pontos de skill/especial por nível; os tiers Celestial andam em
+// g_pNextLevel_2 até MAX_CLEVEL, ganham só AC + pontos de atributo e ficam travados
+// nos níveis 40/90 até /destravar40 e /destravar90 marcarem as flags
+// (CMob.cpp:1107, 1121-1151). É compartilhado por EXP de abate, EXP de quest, Ehre
+// e o reset Celestial; cada nível alcançado também roda SetCircletSubGod, como o
+// legado faz depois de CheckGetLevel devolver 4 (SendFunc.cpp:1039,
+// _MSG_UseItem.cpp:2393/2431/2471/3599, _MSG_CombineItemEhre.cpp:165).
 func (d *Dispatcher) applyLevelUps(w *world.World, s *world.Session, e *world.Entity) bool {
 	return d.levelUps(w, s, e, true)
 }
 
-// applyLevelUpsWithoutCirclet is applyLevelUps for the legacy level checks that
-// never call SetCircletSubGod: Poeira de Fada (_MSG_UseItem.cpp:1019/1036),
-// the attacker's own check after a heal (_MSG_Attack.cpp:1764) and the GM exp
-// command (imple.cpp:159). A Sub-Celestial that reaches 120/150/180/199 there
-// keeps its AddNNN flag at 0 and, since the add only fires at that exact level,
-// never gets that diadem add (issue #409).
+// applyLevelUpsWithoutCirclet é o applyLevelUps para as checagens de nível legadas
+// que nunca chamam SetCircletSubGod: Poeira de Fada (_MSG_UseItem.cpp:1019/1036),
+// a checagem do próprio atacante depois de uma cura (_MSG_Attack.cpp:1764) e o
+// comando de EXP de GM (imple.cpp:159). Um Sub-Celestial que chega a 120/150/180/199
+// por ali mantém a flag AddNNN em 0 e, como o add só dispara naquele nível exato,
+// nunca recebe aquele add de diadema (issue #409).
 func (d *Dispatcher) applyLevelUpsWithoutCirclet(w *world.World, s *world.Session, e *world.Entity) bool {
 	return d.levelUps(w, s, e, false)
 }
 
 func (d *Dispatcher) levelUps(w *world.World, s *world.Session, e *world.Entity, circlet bool) bool {
-	gained := int32(0) // levels actually crossed — the Chaos Point grant below is per level
+	gained := int32(0) // níveis realmente cruzados — a concessão de Ponto de Caos abaixo é por nível
 	celestial := isCelestialTier(e.ClassMaster)
 	levelCap := level.MaxLevelForTier(e.ClassMaster)
 	for e.Level < levelCap && e.Exp >= level.NextLevelExpTier(e.Level, e.ClassMaster) {
 		if archExpLocked(e) {
 			break
 		}
-		// Celestial quest gates: the 40/90 caps stay locked until /destravar40 and
-		// /destravar90 set the flags. At the gate CheckGetLevel returns 0 without
-		// leveling (CMob.cpp:1107), so stop the loop here.
+		// Gates de quest Celestial: os tetos 40/90 continuam travados até
+		// /destravar40 e /destravar90 marcarem as flags. No gate o CheckGetLevel
+		// devolve 0 sem subir de nível (CMob.cpp:1107), então o laço para aqui.
 		if celestial && ((e.Level == 39 && e.CelLv40 == 0) || (e.Level == 89 && e.CelLv90 == 0)) {
 			break
 		}
 		e.Level++
-		// The HP/MP increments belong to the BaseScore (CMob.cpp:1116) — writing
-		// only the live MaxHP would be undone by the next refreshScore (= base +
-		// equip).
+		// Os incrementos de HP/MP pertencem ao BaseScore (CMob.cpp:1116) — escrever
+		// só o MaxHP vivo seria desfeito no próximo refreshScore (= base + equip).
 		e.BaseMaxHP = addClamp(e.BaseMaxHP, level.IncHP(e.Class), level.MaxHPCap)
 		e.BaseMaxMP = addClamp(e.BaseMaxMP, level.IncMP(e.Class), level.MaxMPCap)
-		// +1 AC per level for every tier (CMob.cpp:1133,1145,1150). This keeps the
-		// live value right for the rest of the session; playerBaseAC rebuilds the
-		// same total from the (now higher) level on the next login.
+		// +1 de AC por nível para todo tier (CMob.cpp:1133,1145,1150). Isso mantém o
+		// valor vivo certo pelo resto da sessão; playerBaseAC reconstrói o mesmo
+		// total a partir do nível (agora maior) no próximo login.
 		e.BaseAC++
-		// SkillBonus +3/level (+4 from 200) and SpecialBonus +2/level are Mortal/Arch
-		// grants only; Celestial tiers grant AC + attribute points and nothing else
-		// (CMob.cpp:1121-1151).
+		// SkillBonus +3/nível (+4 a partir de 200) e SpecialBonus +2/nível são
+		// concessões só de Mortal/Arch; os tiers Celestial dão AC + pontos de
+		// atributo e nada mais (CMob.cpp:1121-1151).
 		if !celestial {
 			if e.Level >= 200 {
 				e.SkillBonus += 4
@@ -419,8 +416,8 @@ func (d *Dispatcher) levelUps(w *world.World, s *world.Session, e *world.Entity,
 			}
 			e.SpecialBonus += 2
 		}
-		// The legacy levels once per CheckGetLevel and runs SetCircletSubGod
-		// after each one, so check every level crossed, not only the last.
+		// O legado sobe um nível por CheckGetLevel e roda SetCircletSubGod depois de
+		// cada um, então cada nível cruzado é checado, não só o último.
 		if circlet {
 			d.setCircletSubGod(w, s, e)
 		}
@@ -429,37 +426,38 @@ func (d *Dispatcher) levelUps(w *world.World, s *world.Session, e *world.Entity,
 	if gained == 0 {
 		return false
 	}
-	// BASE_GetBonusScorePoint reads the equipment-free BaseScore attributes: it
-	// derives "points already spent" as (attr − class base). The live e.Str/e.Int/…
-	// are CurrentScore (base + equipment), so feeding them here over-counts the spend
-	// by whatever the gear adds and drives the grant to 0 — the "no points on level-up"
-	// bug for any character wearing attribute gear. Use the allocated BaseScore.
+	// BASE_GetBonusScorePoint lê os atributos do BaseScore, sem equipamento: ele
+	// deriva os "pontos já gastos" como (atributo − base da classe). Os e.Str/e.Int/…
+	// vivos são CurrentScore (base + equipamento), então alimentá-los aqui conta a
+	// mais o que o equipamento soma e leva a concessão a 0 — o bug de "nenhum ponto
+	// ao subir de nível" para qualquer personagem com equipamento de atributo. Usa o
+	// BaseScore alocado.
 	e.ScoreBonus = scoreBonusFor(e)
-	d.refreshScore(e)             // fold the base HP/MP gains into the live score
-	e.HP, e.MP = e.MaxHP, e.MaxMP // full heal on level-up
+	d.refreshScore(e)             // funde os ganhos de HP/MP da base no score vivo
+	e.HP, e.MP = e.MaxHP, e.MaxMP // cura cheia ao subir de nível
 
-	// Visible level-up: a fresh score window (own attributes) + the etc packet that
-	// carries the new ScoreBonus (free attribute points) — UpdateScore does NOT carry
-	// it, so without SendEtc the client never shows the points gained. Plus the
-	// level-up sparkle to the killer and everyone who can see it.
+	// Level-up visível: uma janela de score nova (atributos próprios) + o pacote etc
+	// que carrega o novo ScoreBonus (pontos livres de atributo) — o UpdateScore NÃO
+	// carrega isso, então sem SendEtc o cliente nunca mostra os pontos ganhos. Some
+	// o brilho de level-up para quem matou e para todos que conseguem ver.
 	motion := protocol.EncodeMotion(motionLevelUp, motionLevelUpParm)
 	if s != nil {
 		d.sendScore(w, s, e)
 		d.sendEtc(w, s, e)
-		// _NN_Level_Up (SendFunc.cpp:1040): the sparkle alone was not readable.
+		// _NN_Level_Up (SendFunc.cpp:1040): só o brilho não era legível.
 		d.sendClientMessage(w, s, levelUpText)
 		w.Send(s, protocol.MsgMotion, motion)
 	}
 	w.BroadcastInView(e.ID, protocol.MsgMotion, motion)
 
-	// Chaos Points paid back for the levels just gained (issue #279). Last on
-	// purpose: it can emit a CreateMob that recolors the nick, which must land
-	// after the score/etc refresh above, not in the middle of it.
+	// Pontos de Caos devolvidos pelos níveis recém-ganhos (issue #279). De propósito
+	// por último: pode emitir um CreateMob que recolore o nick, o que precisa cair
+	// depois da atualização de score/etc acima, não no meio dela.
 	d.grantLevelUpPKPoint(w, s, e, gained)
 	return true
 }
 
-// addClamp returns v+inc clamped to [0, limit], avoiding int32 overflow.
+// addClamp devolve v+inc limitado a [0, limit], evitando estouro de int32.
 func addClamp(v, inc, limit int32) int32 {
 	sum := int64(v) + int64(inc)
 	if sum > int64(limit) {
@@ -471,25 +469,25 @@ func addClamp(v, inc, limit int32) int32 {
 	return int32(sum)
 }
 
-// Terra Mistica step 2 (MobKilled.cpp:2909-2921): after the loot rolls, a
-// kill of a face-239/241 mob has a 1-in-20 chance to move the reward target's
-// flag 1 -> 2. The legacy short-circuits the face test before rand(), so
-// other mobs draw nothing; the roll happens whatever the flag is.
+// Terra Mística passo 2 (MobKilled.cpp:2909-2921): depois das rolagens de loot, um
+// abate de mob com face 239/241 tem 1 chance em 20 de mover a flag do alvo de 1
+// para 2. O legado curto-circuita o teste de face antes do rand(), então outros
+// mobs não consomem número aleatório; a rolagem acontece qualquer que seja a flag.
 const (
 	terraMisticaMissionFlag = 1
 	terraMisticaFaceA       = 239
 	terraMisticaFaceB       = 241
 	terraMisticaKillOdds    = 20
 
-	// mobFaceOffset is STRUCT_MOB.Equip[0].sIndex in the 816-byte template.
+	// mobFaceOffset é STRUCT_MOB.Equip[0].sIndex no template de 816 bytes.
 	mobFaceOffset = 140
 )
 
-// msgWatchingTownSuccess is Language.txt _NN_Watching_Town_Success (4), in Windows-1252.
+// msgWatchingTownSuccess é o _NN_Watching_Town_Success (4) do Language.txt, em Windows-1252.
 const msgWatchingTownSuccess = "Quest: Voc\xea aprova a prote\xe7\xe3o da cidade."
 
-// mobFace returns the mob's Equip[0].sIndex from its template. EquipVisual
-// carries the refine overlay, so the raw template is the faithful source.
+// mobFace devolve o Equip[0].sIndex do mob a partir do template. O EquipVisual
+// carrega o overlay de refino, então o template cru é a fonte fiel.
 func mobFace(mob *world.Entity) int {
 	if len(mob.Template) < mobFaceOffset+2 {
 		return 0
@@ -512,7 +510,7 @@ func (d *Dispatcher) terraMisticaKill(w *world.World, ks *world.Session, reward,
 		return
 	}
 	d.sendClientMessage(w, ks, msgWatchingTownSuccess)
-	// Persist off the loop, like amuMistico and exploitLeader.
+	// Persiste fora do loop, como amuMistico e exploitLeader.
 	w.SaveCharacterThen(ks, func(*world.World, *world.Session) {})
 	d.log.Info("terra mistica mission", "conn", ks.Conn, "name", reward.Name)
 }

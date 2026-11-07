@@ -11,7 +11,6 @@ import (
 type fakeStore struct {
 	role     string
 	hits     []store.CharacterSearchHit
-	char     domain.Character
 	detail   Detail
 	notFound bool
 	grants   []domain.Item
@@ -48,9 +47,9 @@ func (f *fakeStore) PendingItemGrants(context.Context, int64, int) ([]store.Char
 	return nil, nil
 }
 
-// TestGrantValidationAndQueue covers the issue-43 grant rules: staff only, item
-// index/quantity bounds and a required reason, with the units landing in the
-// mailbox rather than in the character row.
+// TestGrantValidationAndQueue cobre as regras de concessão da issue 43: só staff,
+// limites de índice/quantidade e motivo obrigatório, com as unidades caindo na
+// caixa de entrega em vez de na linha do personagem.
 func TestGrantValidationAndQueue(t *testing.T) {
 	st := &fakeStore{role: "moderator", detail: Detail{AccountID: 7}}
 	svc := New(st)
@@ -97,7 +96,7 @@ func TestSearchRequiresStaffAndRealQuery(t *testing.T) {
 	}
 
 	st.role = "moderator"
-	// One letter would scan the whole table.
+	// Uma letra varreria a tabela inteira.
 	if res, _, err := svc.Search(context.Background(), 1, "c"); res != Invalid || err != nil {
 		t.Fatalf("Search(short query) = %v, %v; want Invalid", res, err)
 	}

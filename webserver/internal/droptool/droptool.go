@@ -1,7 +1,7 @@
-// Package droptool builds the web-api's read-only equivalent of the legacy
-// DropTool.exe report. The legacy tool scanned STRUCT_MOB templates under
-// TMsrv/run/npc and inverted each mob's Carry[] table into item->mob and
-// mob->item reports; it was not consumed by the game server at runtime.
+// Package droptool monta o equivalente somente leitura, no web-api, do relatório
+// do antigo DropTool.exe. A ferramenta legada varria os templates STRUCT_MOB em
+// TMsrv/run/npc e invertia a tabela Carry[] de cada mob em relatórios item→mob e
+// mob→item; ela não era consumida pelo servidor de jogo em runtime.
 package droptool
 
 import (
@@ -19,20 +19,20 @@ import (
 	"openwyd-nextgen/webserver/internal/itemcatalog"
 )
 
-// ItemEntry is one item known to the drop report.
+// ItemEntry é um item conhecido pelo relatório de drop.
 type ItemEntry struct {
 	Index int32
 	Name  string
 }
 
-// MobEntry is one decoded mob template from tmserver/content/TMsrv/run/npc.
+// MobEntry é um template de mob decodificado de tmserver/content/TMsrv/run/npc.
 type MobEntry struct {
 	TemplateName string
 	DisplayName  string
 	Level        int32
 }
 
-// DropEntry is one non-empty STRUCT_MOB.Carry slot.
+// DropEntry é um slot STRUCT_MOB.Carry não vazio.
 type DropEntry struct {
 	TemplateName string
 	MobName      string
@@ -43,14 +43,14 @@ type DropEntry struct {
 	RateDivisor  int32
 }
 
-// ItemDropEntry is the item-centric projection served to the portal.
+// ItemDropEntry é a projeção por item servida ao portal.
 type ItemDropEntry struct {
 	ItemIndex int32
 	ItemName  string
 	Mobs      []ItemDropMob
 }
 
-// ItemDropMob is one mob/slot where an item can drop.
+// ItemDropMob é um mob/slot onde o item pode cair.
 type ItemDropMob struct {
 	TemplateName string
 	MobName      string
@@ -59,7 +59,7 @@ type ItemDropMob struct {
 	RateDivisor  int32
 }
 
-// MobDropEntry is the mob-centric projection served to the portal.
+// MobDropEntry é a projeção por mob servida ao portal.
 type MobDropEntry struct {
 	TemplateName string
 	MobName      string
@@ -67,7 +67,7 @@ type MobDropEntry struct {
 	Items        []MobDropItem
 }
 
-// MobDropItem is one drop slot in a mob template.
+// MobDropItem é um slot de drop num template de mob.
 type MobDropItem struct {
 	Slot        int32
 	ItemIndex   int32
@@ -75,19 +75,20 @@ type MobDropItem struct {
 	RateDivisor int32
 }
 
-// ExclusionRange mirrors the optional ItensExceptions.txt "from,to" ranges the
-// legacy DropTool used to suppress known catalog buckets from item->mob matches.
+// ExclusionRange espelha as faixas "de,até" opcionais do ItensExceptions.txt que
+// o DropTool legado usava para suprimir faixas conhecidas do catálogo nos
+// cruzamentos item→mob.
 type ExclusionRange struct {
 	From int32
 	To   int32
 }
 
-// Options controls a content-tree scan.
+// Options controla uma varredura da árvore de conteúdo.
 type Options struct {
 	Exclusions []ExclusionRange
 }
 
-// Filter controls the in-memory projections returned by Catalog.
+// Filter controla as projeções em memória devolvidas por Catalog.
 type Filter struct {
 	ItemIndex            int32
 	ItemQuery            string
@@ -95,22 +96,23 @@ type Filter struct {
 	IncludeZeroDropItems bool
 }
 
-// Catalog is a scan of the content tree. It is immutable after construction and
-// safe to share between requests.
+// Catalog é uma varredura da árvore de conteúdo. É imutável depois de construído
+// e seguro para compartilhar entre requisições.
 type Catalog struct {
 	Items []ItemEntry
 	Mobs  []MobEntry
 	Drops []DropEntry
 }
 
-// LoadContentExclusions reads the optional legacy ItensExceptions.txt beside
-// the TMsrv run files. A missing file is normal and means no exclusions.
+// LoadContentExclusions lê o ItensExceptions.txt legado opcional ao lado dos
+// arquivos de execução do TMsrv. Arquivo ausente é normal e significa nenhuma
+// exclusão.
 func LoadContentExclusions(contentDir string) ([]ExclusionRange, error) {
 	return LoadExclusions(filepath.Join(contentDir, "TMsrv", "run", "ItensExceptions.txt"))
 }
 
-// LoadExclusions parses an ItensExceptions.txt-style file. Lines beginning with
-// '#' and blank lines are ignored; each data line is "from,to".
+// LoadExclusions interpreta um arquivo no formato ItensExceptions.txt. Linhas
+// começadas por '#' e linhas vazias são ignoradas; cada linha de dados é "de,até".
 func LoadExclusions(path string) ([]ExclusionRange, error) {
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -148,9 +150,9 @@ func LoadExclusions(path string) ([]ExclusionRange, error) {
 	return out, nil
 }
 
-// SlotDropRate is g_pDropRate[64], duplicated from the runtime package because
-// webserver cannot import tmserver/internal/loot. The values are from
-// Basedef.cpp and docs/migration/game-rules.md §2.2; larger divisors are rarer.
+// SlotDropRate é g_pDropRate[64], duplicado do pacote de runtime porque o
+// webserver não pode importar tmserver/internal/loot. Os valores vêm de
+// Basedef.cpp e docs/migration/game-rules.md §2.2; divisor maior = mais raro.
 var SlotDropRate [savefmt.MaxCarry]int
 
 func init() {
@@ -171,11 +173,11 @@ func init() {
 	}
 }
 
-// Scan reads <contentDir>/Common/ItemList.csv and <contentDir>/TMsrv/run/npc/,
-// accepting every STRUCT_MOB layout savefmt knows (816 canonical plus the
-// legacy 756/920 forms â€” data-formats.md Â§1.4.1). Files that are not templates
-// at all are counted in the returned stats and skipped, matching the existing
-// content scanners used by the moderator UI.
+// Scan lê <contentDir>/Common/ItemList.csv e <contentDir>/TMsrv/run/npc/,
+// aceitando todo layout STRUCT_MOB que o savefmt conhece (816 canônico mais as
+// formas legadas 756/920 — data-formats.md §1.4.1). Arquivos que não são template
+// nenhum entram nas estatísticas devolvidas e são ignorados, igual aos scanners de
+// conteúdo já usados pela UI de moderação.
 func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctemplate.ScanStats, error) {
 	catalog, err := itemcatalog.Scan(contentDir)
 	if err != nil {
@@ -190,10 +192,10 @@ func Scan(contentDir string, logger *slog.Logger, opts Options) (Catalog, npctem
 	return out, stats, nil
 }
 
-// FromBlobs builds the same catalog from what the database holds â€” the item
-// catalog rows plus the canonical STRUCT_MOB blobs of npc_template (issue
-// 58/62). ItemList.csv and npc/ both left tmserver/content/ in phase 5, so the directory
-// scan can only come up empty.
+// FromBlobs monta o mesmo catálogo a partir do que o banco guarda — as linhas
+// do catálogo de item mais os blobs STRUCT_MOB canônicos de npc_template
+// (issues 58/62). ItemList.csv e npc/ saíram de tmserver/content/ na fase 5, então a
+// varredura de diretório só pode vir vazia.
 func FromBlobs(items []itemcatalog.Entry, blobs map[string][]byte, opts Options) (Catalog, npctemplate.ScanStats) {
 	out, stats, _ := build(items, opts, func(visit func(string, savefmt.Mob)) (npctemplate.ScanStats, error) {
 		return npctemplate.ScanBlobs(blobs, visit), nil
@@ -201,9 +203,9 @@ func FromBlobs(items []itemcatalog.Entry, blobs map[string][]byte, opts Options)
 	return out, stats
 }
 
-// build projects the item list and the decoded templates into the DropTool
-// catalog. walk supplies the templates, so the directory and the database
-// sources share one projection instead of drifting apart.
+// build projeta a lista de itens e os templates decodificados no catálogo do
+// DropTool. walk fornece os templates, então o diretório e o banco
+// compartilham uma única projeção em vez de divergirem.
 func build(items []itemcatalog.Entry, opts Options, walk func(func(string, savefmt.Mob)) (npctemplate.ScanStats, error)) (Catalog, npctemplate.ScanStats, error) {
 	itemByIndex := make(map[int32]string, len(items))
 	out := Catalog{Items: make([]ItemEntry, 0, len(items))}
@@ -266,9 +268,10 @@ func build(items []itemcatalog.Entry, opts Options, walk func(func(string, savef
 	})
 	return out, stats, nil
 }
-// ListDropItems returns the item-centric report. By default it includes only
-// items that have at least one matching drop, while IncludeZeroDropItems mirrors
-// the legacy report's item headers with zero mobs.
+
+// ListDropItems devolve o relatório por item. Por padrão inclui só
+// itens com pelo menos um drop correspondente; IncludeZeroDropItems espelha
+// os cabeçalhos de item do relatório legado com zero mobs.
 func (c Catalog) ListDropItems(filter Filter) []ItemDropEntry {
 	itemQuery := normalize(filter.ItemQuery)
 	mobQuery := normalize(filter.MobQuery)
@@ -305,8 +308,8 @@ func (c Catalog) ListDropItems(filter Filter) []ItemDropEntry {
 	return out
 }
 
-// ListMobDrops returns the mob-centric report. Without item filters it includes
-// all decoded mob templates, including templates with no drop slots.
+// ListMobDrops devolve o relatório por mob. Sem filtro de item inclui
+// todos os templates de mob decodificados, inclusive os sem slot de drop.
 func (c Catalog) ListMobDrops(filter Filter) []MobDropEntry {
 	itemQuery := normalize(filter.ItemQuery)
 	mobQuery := normalize(filter.MobQuery)

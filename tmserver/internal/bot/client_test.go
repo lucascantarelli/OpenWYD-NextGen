@@ -281,7 +281,7 @@ func TestRunnerExecutesScenario(t *testing.T) {
 		DurationSeconds: 1,
 		TickMillis:      20,
 		Address:         addr,
-		Bots: []BotSpec{
+		Bots: []Spec{
 			{Account: "bot1", Password: "x", Slot: 0, Profile: ProfileFarmer, Region: "armia"},
 			{Account: "bot2", Password: "x", Slot: 0, Profile: ProfileCombatente, Region: "armia"},
 		},
@@ -331,7 +331,7 @@ func TestRunnerCountsFailedBots(t *testing.T) {
 		DurationSeconds: 1,
 		TickMillis:      50,
 		Address:         addr,
-		Bots: []BotSpec{
+		Bots: []Spec{
 			{Account: "blocked", Password: "x", Slot: 0, Profile: ProfileCasual},
 		},
 		Failure: []Condition{{Metric: "bots_failed", Op: ">", Value: 0}},
