@@ -2,18 +2,18 @@ package world
 
 import "time"
 
-// tokenBucket is a simple per-connection rate limiter (Fase 7 hardening). It is
-// used only by a single connection's readLoop goroutine, so it needs no locking.
+// tokenBucket é um limitador de taxa simples por conexão (endurecimento da Fase 7). Ele é
+// usado só pela goroutine readLoop de uma conexão, então não precisa de lock.
 type tokenBucket struct {
 	tokens float64
 	max    float64
-	refill float64 // tokens added per second
+	refill float64 // tokens adicionados por segundo
 	last   time.Time
 }
 
-// newTokenBucket builds a bucket allowing refillPerSec sustained messages with a
-// burst depth of burst. A non-positive refill yields a disabled bucket (allow
-// always returns true).
+// newTokenBucket monta um balde permitindo refillPerSec mensagens sustentadas com
+// profundidade de rajada burst. Um refill não positivo gera um balde desativado (allow
+// sempre devolve true).
 func newTokenBucket(refillPerSec float64, burst int, now time.Time) *tokenBucket {
 	if refillPerSec <= 0 {
 		return nil
@@ -25,8 +25,8 @@ func newTokenBucket(refillPerSec float64, burst int, now time.Time) *tokenBucket
 	return &tokenBucket{tokens: b, max: b, refill: refillPerSec, last: now}
 }
 
-// allow reports whether one message may be processed at time now, consuming a
-// token when it can. A nil bucket is disabled and always allows.
+// allow informa se uma mensagem pode ser processada no instante now, consumindo um
+// token quando pode. Um balde nil fica desativado e sempre permite.
 func (b *tokenBucket) allow(now time.Time) bool {
 	if b == nil {
 		return true

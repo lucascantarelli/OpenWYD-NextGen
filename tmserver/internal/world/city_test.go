@@ -7,13 +7,13 @@ func TestVillage(t *testing.T) {
 		x, y int16
 		want int
 	}{
-		{2096, 2096, 0}, // Armia (player default spawn area)
-		{2086, 2093, 0}, // Armia spawn point
+		{2096, 2096, 0}, // Armia (área de spawn padrão do jogador)
+		{2086, 2093, 0}, // ponto de spawn de Armia
 		{2494, 1707, 1}, // Azran
 		{2453, 2000, 2}, // Erion
 		{3652, 3122, 3}, // Nippleheim
 		{1050, 1706, 4}, // Noatum
-		{0, 0, -1},      // wilderness
+		{0, 0, -1},      // ermos
 		{3000, 3000, -1},
 	}
 	for _, c := range cases {
@@ -30,7 +30,7 @@ func TestPvPZone(t *testing.T) {
 		wantArena int
 		wantZone  bool
 	}{
-		{"armia pvp arena", 2135, 2147, -1, true}, // inside the Armia city limits
+		{"armia pvp arena", 2135, 2147, -1, true}, // dentro dos limites da cidade de Armia
 		{"armia square", 2110, 2095, -1, true},
 		{"field east of armia", 2185, 2100, -1, false},
 		{"armia guild war area", 220, 220, 0, true},
@@ -50,8 +50,8 @@ func TestPvPZone(t *testing.T) {
 }
 
 func TestCitySpawn(t *testing.T) {
-	// Spawn is CitySpawn base + rand%15 → must land in the city and on Armia for
-	// out-of-range ids (the saved last-city only holds 2 bits; Noatum=4 → Armia).
+	// O spawn é a base CitySpawn + rand%15 → precisa cair na cidade e em Armia para
+	// ids fora da faixa (a última cidade salva só ocupa 2 bits; Noatum=4 → Armia).
 	for city := 0; city < 4; city++ {
 		for i := 0; i < 50; i++ {
 			x, y := CitySpawn(city)
@@ -64,7 +64,7 @@ func TestCitySpawn(t *testing.T) {
 			}
 		}
 	}
-	x, y := CitySpawn(4) // Noatum not savable → Armia
+	x, y := CitySpawn(4) // Noatum não salvavel → Armia
 	if Village(x, y) != 0 {
 		t.Errorf("CitySpawn(4) should fall back to Armia, got village %d", Village(x, y))
 	}
@@ -73,7 +73,7 @@ func TestCitySpawn(t *testing.T) {
 func TestSpawnMobClassifiesTownNPCsAsNonCombat(t *testing.T) {
 	w := New(Config{GridDim: 4096}, slogDiscard(), nil, nil)
 
-	neutral := w.SpawnMob(genMobTemplate(3), 2086, 2093) // friendly city actor
+	neutral := w.SpawnMob(genMobTemplate(3), 2086, 2093) // ator amistoso de cidade
 	if neutral < 0 {
 		t.Fatal("neutral town NPC did not spawn")
 	}
@@ -81,7 +81,7 @@ func TestSpawnMobClassifiesTownNPCsAsNonCombat(t *testing.T) {
 		t.Fatalf("neutral town NPC NonCombatNPC = %v, want true", e)
 	}
 
-	hostile := w.SpawnMob(genMobTemplate(1), 2087, 2093) // hostile mob inside a city rectangle
+	hostile := w.SpawnMob(genMobTemplate(1), 2087, 2093) // criatura hostil dentro de um retângulo de cidade
 	if hostile < 0 {
 		t.Fatal("hostile city mob did not spawn")
 	}
@@ -89,7 +89,7 @@ func TestSpawnMobClassifiesTownNPCsAsNonCombat(t *testing.T) {
 		t.Fatalf("hostile city mob NonCombatNPC = %v, want false", e)
 	}
 
-	merchant := w.SpawnMob(genMerchantTemplate(1), 0, 0) // merchants are non-combat anywhere
+	merchant := w.SpawnMob(genMerchantTemplate(1), 0, 0) // mercadores não combatem em lugar nenhum
 	if merchant < 0 {
 		t.Fatal("merchant NPC did not spawn")
 	}

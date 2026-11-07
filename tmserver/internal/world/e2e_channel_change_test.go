@@ -1,9 +1,9 @@
 //go:build e2e
 
-// End-to-end channel change against the LIVE stack: login + character selection
-// on channel 1, "/srv 2", the MSG_CNFServerChange token, the server closing the
-// session, and a second login on channel 2 carrying that token in Zero[52].
-// Mirrors the legacy flow (canais.md §8.1.2, CFileDB.cpp:662-812).
+// Troca de canal ponta a ponta contra a stack VIVA: login + seleção de personagem
+// no canal 1, "/srv 2", o token MSG_CNFServerChange, o servidor fechando a
+// sessão, e um segundo login no canal 2 carregando esse token em Zero[52].
+// Espelha o fluxo legado (canais.md §8.1.2, CFileDB.cpp:662-812).
 //
 //	W2PP_E2E_ADDR=tmserver:8281 W2PP_E2E_ADDR2=tmserver2:8282 \
 //	W2PP_E2E_ACCOUNT=test W2PP_E2E_PASSWORD=test123 W2PP_E2E_SLOT=0 \
@@ -24,8 +24,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// liveReadMaybe is liveRead without Fatal: it reports false on timeout/EOF so a
-// test can drain the login snapshot until the frame it wants (or the close).
+// liveReadMaybe é o liveRead sem Fatal: reporta false em timeout/EOF para um
+// teste poder drenar o snapshot de login até o frame que quer (ou o fechamento).
 func liveReadMaybe(c net.Conn, timeout time.Duration) (protocol.Header, []byte, bool) {
 	_ = c.SetReadDeadline(time.Now().Add(timeout))
 	var sz [2]byte
@@ -58,10 +58,10 @@ func e2eSlot(t *testing.T) int {
 	return n
 }
 
-// liveLogin performs one MSG_AccountLogin, putting token in Zero[52] when it is
-// a channel-change token. A save in flight after the previous session closes
-// answers AlreadyPlaying/StillPlaying; that is retried on a fresh connection,
-// exactly as the client does.
+// liveLogin executa um MSG_AccountLogin, pondo token em Zero[52] quando ele é
+// um token de troca de canal. Um save em andamento depois que a sessão anterior fecha
+// responde AlreadyPlaying/StillPlaying; isso é retentado numa conexão nova,
+// exatamente como o cliente faz.
 func liveLogin(t *testing.T, addr, account, password, token string) net.Conn {
 	t.Helper()
 	for attempt := 0; attempt < 20; attempt++ {
@@ -91,8 +91,8 @@ func liveLogin(t *testing.T, addr, account, password, token string) net.Conn {
 	return nil
 }
 
-// liveSelectCharacter sends MSG_CharacterLogin and waits for the in-world
-// snapshot (MSG_CNFCharacterLogin), skipping the view frames that precede it.
+// liveSelectCharacter envia MSG_CharacterLogin e espera o snapshot
+// em jogo (MSG_CNFCharacterLogin), pulando os frames de visão que o precedem.
 func liveSelectCharacter(t *testing.T, c net.Conn, slot int) {
 	t.Helper()
 	body := protocol.MsgCharacterLoginBody{Slot: int32(slot)}
@@ -122,13 +122,13 @@ func TestE2EChannelChange(t *testing.T) {
 	password := env("W2PP_E2E_PASSWORD", "smoke123")
 	slot := e2eSlot(t)
 
-	// 1. Channel 1: real login + select character.
+	// 1. Canal 1: login real + selecionar personagem.
 	c1 := liveLogin(t, addr1, account, password, "")
 	defer c1.Close()
 	liveSelectCharacter(t, c1, slot)
 	t.Logf("channel 1: logged in and selected slot %d", slot)
 
-	// 2. /srv 2, sent the way the client sends a GM/player command.
+	// 2. /srv 2, enviado como o cliente envia um comando de GM/jogador.
 	var wb protocol.MsgWhisperBody
 	copy(wb.MobName[:], "srv")
 	wb.String = []byte("2")
@@ -140,8 +140,8 @@ func TestE2EChannelChange(t *testing.T) {
 		t.Fatalf("write /srv 2: %v", err)
 	}
 
-	// The client drains whatever the login snapshot left queued (score, PK and
-	// view frames) until the token frame arrives.
+	// O cliente drena o que o snapshot de login deixou na fila (score, PK e
+	// frames de visão) até o frame do token chegar.
 	var h protocol.Header
 	var payload []byte
 	found := false
@@ -181,9 +181,9 @@ func TestE2EChannelChange(t *testing.T) {
 	}
 	t.Logf("channel 1: /srv 2 issued token %q (%d bytes)", token, len(token))
 
-	// 3. Legacy parity: the server must close the session so the client
-	// reconnects; without this the command is a no-op in the graphic client.
-	// Drain anything still queued; the next read must fail (EOF/timeout).
+	// 3. Paridade legada: o servidor precisa fechar a sessão para o cliente
+	// reconectar; sem isso o comando é no-op no cliente gráfico.
+	// Drenar tudo que ainda está na fila; a próxima leitura precisa falhar (EOF/timeout).
 	closed := false
 	for i := 0; i < 100; i++ {
 		if _, _, ok := liveReadMaybe(c1, 3*time.Second); !ok {
@@ -195,17 +195,17 @@ func TestE2EChannelChange(t *testing.T) {
 		t.Fatal("session stayed open after /srv: client never reconnects")
 	}
 
-	// 4. Channel 2: login carrying the token in Zero[52], then select the same
-	// character. This is the proof the token is accepted across instances.
+	// 4. Canal 2: login carregando o token em Zero[52], depois selecionar o mesmo
+	// personagem. Esta é a prova de que o token é aceito entre instâncias.
 	c2 := liveLogin(t, addr2, account, "", token)
 	defer c2.Close()
 	liveSelectCharacter(t, c2, slot)
 	t.Logf("channel 2: token login OK, selected slot %d", slot)
 }
 
-// TestE2EChannelChangeBack is the reverse path of TestE2EChannelChange: a
-// character on channel 2 runs "/srv 1", receives a token whose legacy wire
-// prefix names channel 1, and logs back into channel 1 with that token.
+// TestE2EChannelChangeBack é o caminho inverso do TestE2EChannelChange: um
+// personagem no canal 2 roda "/srv 1", recebe um token cujo prefixo legado
+// de wire nomeia o canal 1, e loga de volta no canal 1 com esse token.
 func TestE2EChannelChangeBack(t *testing.T) {
 	addr1 := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
 	addr2 := env("W2PP_E2E_ADDR2", "127.0.0.1:8282")
@@ -261,8 +261,8 @@ func TestE2EChannelChangeBack(t *testing.T) {
 	t.Logf("channel 1: token login OK, selected slot %d", slot)
 }
 
-// TestE2EServerChangeSameChannel confirms the guard answers a notice (not a
-// token) when the character is already on the requested channel.
+// TestE2EServerChangeSameChannel confirma que a guarda responde um aviso (não um
+// token) quando o personagem já está no canal pedido.
 func TestE2EServerChangeSameChannel(t *testing.T) {
 	addr := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
 	account := env("W2PP_E2E_ACCOUNT", "smoke")
@@ -283,8 +283,8 @@ func TestE2EServerChangeSameChannel(t *testing.T) {
 	if _, err := c.Write(wire); err != nil {
 		t.Fatalf("write /srv 1: %v", err)
 	}
-	// Drain the rest of the login snapshot; a same-channel /srv answers a
-	// notice, never a token.
+	// Drenar o resto do snapshot de login; um /srv no mesmo canal responde um
+	// aviso, nunca um token.
 	last := protocol.Type(0)
 	for i := 0; i < 100; i++ {
 		h, _, ok := liveReadMaybe(c, 3*time.Second)

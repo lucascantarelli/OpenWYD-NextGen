@@ -2,18 +2,18 @@ package world
 
 import "context"
 
-// Billing is the port the character-login gate uses to ask the binServer whether
-// an account may enter the world (api/bin/v1). This is the NEW billing boundary
-// designed in Fase 6 (migration-plan.md §4) — the legacy _AUTH_GAME link is not
-// reproduced. The real implementation is a gRPC client adapter; the world
-// depends only on this interface. Check is called OFF the loop via World.Go.
+// Billing é a porta que o gate de login de personagem usa para perguntar ao binServer se
+// uma conta pode entrar no mundo (api/bin/v1). Esta é a NOVA fronteira de billing
+// projetada na Fase 6 (migration-plan.md §4) — o link legado _AUTH_GAME não é
+// reproduzido. A implementação real é um adaptador de cliente gRPC; o mundo
+// depende só desta interface. Check é chamado FORA do loop via World.Go.
 type Billing interface {
 	Check(ctx context.Context, accountName string) (allowed bool, err error)
 }
 
-// AllowAllBilling is the default gate when no binServer is wired (free-to-play
-// bring-up and tests): every account is allowed.
+// AllowAllBilling é o gate padrão quando nenhum binServer está ligado (bring-up
+// de free-to-play e testes): toda conta é permitida.
 type AllowAllBilling struct{}
 
-// Check always allows.
+// Check sempre permite.
 func (AllowAllBilling) Check(context.Context, string) (bool, error) { return true, nil }

@@ -125,8 +125,8 @@ func clientEncChannel(enc []byte) (int, bool) {
 	return n, true
 }
 
-// liveWhisper sends MSG_MessageWhisper the way the client does for both a
-// command ("day", "srv") and a private message.
+// liveWhisper envia MSG_MessageWhisper como o cliente faz tanto para um
+// comando ("day", "srv") quanto para uma mensagem privada.
 func liveWhisper(t *testing.T, c net.Conn, name, text string) {
 	t.Helper()
 	var wb protocol.MsgWhisperBody
@@ -141,11 +141,11 @@ func liveWhisper(t *testing.T, c net.Conn, name, text string) {
 	}
 }
 
-// TestE2EClientReloginPacket is the end-to-end proof of the channel switch from
-// the client side: the frame the server emits is parsed with the client's own
-// rule, and the relogin packet built from the shared Basedef/CPSock sources is
-// accepted by the destination tmServer, which puts the character back in the map
-// and keeps answering world requests.
+// TestE2EClientReloginPacket é a prova ponta a ponta da troca de canal pelo
+// lado do cliente: o frame que o servidor emite é interpretado com a própria
+// regra do cliente, e o pacote de relogin montado a partir das fontes Basedef/CPSock é
+// aceito pelo tmServer de destino, que devolve o personagem ao mapa
+// e continua respondendo pedidos do mundo.
 func TestE2EClientReloginPacket(t *testing.T) {
 	addr1 := env("W2PP_E2E_ADDR", "127.0.0.1:8281")
 	addr2 := env("W2PP_E2E_ADDR2", "127.0.0.1:8282")

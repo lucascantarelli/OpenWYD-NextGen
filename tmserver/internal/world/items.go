@@ -1,61 +1,61 @@
 package world
 
-// Effect is one of an item's three effect/value pairs (STRUCT_ITEM, data-formats
-// §1.5). World-local mirror, kept separate from internal/savefmt on purpose: this
-// type backs the hot wire/world path, while internal/savefmt models the on-disk
-// save-file layout (different concerns, same bytes).
+// Effect é um dos três pares efeito/valor de um item (STRUCT_ITEM, data-formats
+// §1.5). Espelho local do mundo, separado de internal/savefmt de propósito: este
+// tipo sustenta o caminho quente de wire/mundo, enquanto internal/savefmt modela o
+// layout de arquivo de save em disco (preocupações diferentes, mesmos bytes).
 type Effect struct {
 	Effect uint8
 	Value  uint8
 }
 
-// Item is an in-memory STRUCT_ITEM. Index==0 means an empty slot.
+// Item é um STRUCT_ITEM em memória. Index==0 significa slot vazio.
 type Item struct {
 	Index   int16
 	Effects [3]Effect
-	// ExpiresAt is the Unix-seconds expiry for timed items (0 = permanent). It is
-	// carried through persistence; the world drops the item once it passes.
+	// ExpiresAt é a expiração em segundos Unix para itens temporizados (0 = permanente). Ele é
+	// levado pela persistência; o mundo descarta o item quando ela passa.
 	ExpiresAt int64
 }
 
-// Empty reports whether the slot holds no item.
+// Empty informa se o slot não contém item.
 func (it Item) Empty() bool { return it.Index == 0 }
 
-// Item container kinds (ITEM_PLACE_*), confirmed by Basedef.h:146-148.
+// Tipos de contêiner de item (ITEM_PLACE_*), confirmados em Basedef.h:146-148.
 const (
 	ItemPlaceEquip = 0
 	ItemPlaceCarry = 1
 	ItemPlaceCargo = 2
 )
 
-// Gate states for a Static world object (GroundItem.State), Basedef.h:2209/2211. A
-// seeded gate starts StateOpen (parity with CreateItem, Server.cpp:8075). Untyped so
-// they assign to both the int16 GroundItem.State and the int32 wire State field.
+// Estados de portão de um objeto estático do mundo (GroundItem.State), Basedef.h:2209/2211. Um
+// portão semeado começa StateOpen (paridade com CreateItem, Server.cpp:8075). Sem tipo para
+// atribuir tanto ao GroundItem.State int16 quanto ao campo State int32 do wire.
 const (
 	StateOpen   = 1
 	StateLocked = 3
 )
 
-// GroundItem is an item lying on the floor (CItem / pItem[], domain-model.md
-// §2.3): contents, position and a presence flag. Mode==0 means a free slot.
+// GroundItem é um item no chão (CItem / pItem[], domain-model.md
+// §2.3): conteúdo, posição e um flag de presença. Mode==0 significa slot livre.
 //
-// The same id space also holds static world objects (gates/doors from
-// InitItem.csv): State carries their gate state (see gate.go) and Static marks
-// them so the pickup/decay paths leave them alone. For a dropped item State is 0
-// and Static is false.
+// O mesmo espaço de ids também contém objetos estáticos do mundo (portões/portas de
+// InitItem.csv): State carrega o estado do portão (veja gate.go) e Static os marca
+// para que os caminhos de coleta/decaimento os deixem em paz. Para um item largado State é 0
+// e Static é false.
 type GroundItem struct {
 	ID     int
 	Item   Item
 	X      int16
 	Y      int16
 	Mode   int
-	State  int16 // gate state for Static world objects (STATE_OPEN/STATE_LOCKED); 0 for dropped items
-	Static bool  // true for boot-seeded gates/doors: never picked up or decayed
+	State  int16 // estado de portão para objetos estáticos do mundo (STATE_OPEN/STATE_LOCKED); 0 para itens largados
+	Static bool  // true para portões/portas semeados no boot: nunca coletados nem decaídos
 }
 
-// CreateGroundItem places item on the floor at (x,y) and indexes it in the
-// spatial grid. It returns the new ground id (∈ [1, MaxItem)) or -1 if the floor
-// is full. Loop-only.
+// CreateGroundItem coloca item no chão em (x,y) e o indexa na
+// grade espacial. Devolve o novo id de chão (∈ [1, MaxItem)) ou -1 se o chão
+// está cheio. Só no loop.
 func (w *World) CreateGroundItem(item Item, x, y int16) int {
 	for id := 1; id < MaxItem; id++ {
 		if w.ground[id] == nil {
@@ -67,12 +67,12 @@ func (w *World) CreateGroundItem(item Item, x, y int16) int {
 	return -1
 }
 
-// SeedWorldItem places a static world object (a gate/door from InitItem.csv) into
-// the ground id space at (x,y) with an initial gate state, returning its id or -1
-// when the table is full. Unlike CreateGroundItem it does not index the spatial
-// grid — gates are looked up by id, not position, and must not shadow a droppable
-// cell. It must run at boot (before Serve, single-threaded) so ids are assigned in
-// file order and line up with the legacy CreateItem sequence the client expects.
+// SeedWorldItem coloca um objeto estático do mundo (um portão/porta de InitItem.csv) no
+// espaço de ids de chão em (x,y) com um estado inicial de portão, devolvendo seu id ou -1
+// quando a tabela está cheia. Diferente de CreateGroundItem, ele não indexa a
+// grade — portões são buscados por id, não por posição, e não podem sombrear uma
+// célula de drop. Precisa rodar no boot (antes de Serve, single-threaded) para os ids serem atribuídos em
+// ordem de arquivo e baterem com a sequência legada de CreateItem que o cliente espera.
 func (w *World) SeedWorldItem(item Item, x, y, state int16) int {
 	for id := 1; id < MaxItem; id++ {
 		if w.ground[id] == nil {
@@ -83,7 +83,7 @@ func (w *World) SeedWorldItem(item Item, x, y, state int16) int {
 	return -1
 }
 
-// GroundItem returns the floor item with the given id, or nil.
+// GroundItem devolve o item de chão com o id dado, ou nil.
 func (w *World) GroundItem(id int) *GroundItem {
 	if id <= 0 || id >= MaxItem {
 		return nil
@@ -91,8 +91,8 @@ func (w *World) GroundItem(id int) *GroundItem {
 	return w.ground[id]
 }
 
-// GroundItemAt returns the floor item indexed at (x,y), or nil when the cell is
-// empty/out of bounds.
+// GroundItemAt devolve o item de chão indexado em (x,y), ou nil quando a célula está
+// vazia/fora dos limites.
 func (w *World) GroundItemAt(x, y int16) *GroundItem {
 	if int(x) < 0 || int(y) < 0 || int(x) >= w.grid.dim || int(y) >= w.grid.dim {
 		return nil
@@ -104,9 +104,9 @@ func (w *World) GroundItemAt(x, y int16) *GroundItem {
 	return w.GroundItem(int(id))
 }
 
-// RemoveGroundItem clears a floor item and its grid cell. This is the atomic
-// claim point: because it runs in the single loop goroutine, two GetItem events
-// for the same id are serialized and only the first succeeds (no dup). Loop-only.
+// RemoveGroundItem limpa um item de chão e sua célula de grade. Este é o ponto
+// de reivindicação atômico: como roda na única goroutine do loop, dois eventos GetItem
+// para o mesmo id são serializados e só o primeiro tem sucesso (sem duplicação). Só no loop.
 func (w *World) RemoveGroundItem(id int) {
 	gi := w.GroundItem(id)
 	if gi == nil {
@@ -118,16 +118,16 @@ func (w *World) RemoveGroundItem(id int) {
 	w.ground[id] = nil
 }
 
-// AddToCarry puts item in the entity's first empty inventory slot, returning the
-// slot index, or -1 if the inventory is full. Loop-only.
+// AddToCarry coloca item no primeiro slot vazio do inventário da entidade, devolvendo o
+// índice do slot, ou -1 se o inventário está cheio. Só no loop.
 func (w *World) AddToCarry(e *Entity, item Item) int {
 	return addFirstEmpty(e.Carry[:], item)
 }
 
-// AddToCargo puts item in the account warehouse's first empty slot, returning the
-// slot index, or -1 if the cargo is full. It is the delivery target for the
-// donate web shop (issue #34): a purchase lands in the next free cargo slot, and
-// a full cargo (-1) means the item is lost. Loop-only.
+// AddToCargo coloca item no primeiro slot vazio do armazém da conta, devolvendo o
+// índice do slot, ou -1 se o cargo está cheio. É o destino de entrega da
+// loja de doação web (issue #34): uma compra cai no próximo slot livre do cargo, e
+// um cargo cheio (-1) significa que o item é perdido. Só no loop.
 func (w *World) AddToCargo(st *CargoState, item Item) int {
 	if st == nil {
 		return -1
@@ -135,8 +135,8 @@ func (w *World) AddToCargo(st *CargoState, item Item) int {
 	return addFirstEmpty(st.Items[:], item)
 }
 
-// addFirstEmpty places item in the first empty slot of items, returning its
-// index, or -1 if every slot is occupied.
+// addFirstEmpty coloca item no primeiro slot vazio de items, devolvendo seu
+// índice, ou -1 se todos os slots estão ocupados.
 func addFirstEmpty(items []Item, item Item) int {
 	for i := range items {
 		if items[i].Empty() {

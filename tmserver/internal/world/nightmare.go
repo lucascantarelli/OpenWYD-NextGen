@@ -1,7 +1,7 @@
 package world
 
-// NightmareCycle is one shared map's transient event state. OpeningUnix identifies
-// an occurrence so late/repeated ticks cannot spawn or admit twice.
+// NightmareCycle é o estado transitório de evento de um mapa compartilhado. OpeningUnix identifica
+// uma ocorrência para ticks atrasados/repetidos não invocarem nem admitirem duas vezes.
 type NightmareCycle struct {
 	OpeningUnix int64
 	Available   bool
@@ -10,19 +10,19 @@ type NightmareCycle struct {
 	Admissions  int
 }
 
-// NightmareState holds the three loop-owned cycles (Normal, Mystic, Arcane).
+// NightmareState contém os três ciclos de posse do loop (Normal, Mystic, Arcane).
 type NightmareState struct {
 	Initialized bool
 	Cycles      [3]NightmareCycle
 }
 
-// NightmareState returns a value snapshot. Loop-only.
+// NightmareState devolve um snapshot por valor. Só no loop.
 func (w *World) NightmareState() NightmareState { return w.nightmare }
 
-// SetNightmareState replaces the transient cycle state. Loop-only.
+// SetNightmareState substitui o estado transitório dos ciclos. Só no loop.
 func (w *World) SetNightmareState(st NightmareState) { w.nightmare = st }
 
-// NightmareGenerator returns the event kind for a legacy generator, or -1.
+// NightmareGenerator devolve o tipo de evento de um gerador legado, ou -1.
 func NightmareGenerator(idx int) int {
 	switch {
 	case idx >= 2368 && idx <= 2375:
@@ -36,7 +36,7 @@ func NightmareGenerator(idx int) int {
 	}
 }
 
-// NightmareMap returns the event kind for a legacy 128-tile map, or -1.
+// NightmareMap devolve o tipo de evento de um mapa legado de 128 tiles, ou -1.
 func NightmareMap(x, y int16) int {
 	switch {
 	case x/128 == 10 && y/128 == 2:

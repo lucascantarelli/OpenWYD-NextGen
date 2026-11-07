@@ -9,28 +9,28 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// S→C send diagnostics (docs/migration/investigacao-freeze-cliente.md): the
-// 18-19/jul client-freeze incident showed the server healthy while the client
-// silently stopped processing what it received — and nothing logged the S→C
-// side. Every queued frame is counted per type and remembered in a small ring,
-// and the whole picture is dumped when the connection closes, so every freeze
-// leaves a post-mortem of what the client was sent last. All of it is loop-owned
-// session state (enqueue and removeSession both run in the loop), so no locks.
+// Diagnóstico de envio S→C (docs/migration/investigacao-freeze-cliente.md): o
+// incidente de travamento do cliente de 18-19/jul mostrou o servidor saudável enquanto o cliente
+// parava de processar em silêncio o que recebia — e nada logava o lado
+// S→C. Todo frame enfileirado é contado por tipo e lembrado num pequeno anel,
+// e o quadro completo é despejado quando a conexão fecha, então todo travamento
+// deixa um post-mortem do que foi enviado ao cliente por último. Tudo isso é estado de sessão
+// de posse do loop (enqueue e removeSession rodam no loop), então sem locks.
 
-// lastSentRing is how many trailing S→C frames each session remembers. 64 covers
-// the final seconds even under a CreateMob burst while costing ~1KB per session.
+// lastSentRing é quantos frames S→C finais cada sessão lembra. 64 cobre
+// os segundos finais mesmo sob uma rajada de CreateMob, custando ~1KB por sessão.
 const lastSentRing = 64
 
-// sentRecord is one remembered S→C frame: type, HEADER.ID (the subject entity —
-// which mob/player the message was about), payload length and when it was queued.
+// sentRecord é um frame S→C lembrado: tipo, HEADER.ID (a entidade assunto —
+// sobre qual criatura/jogador era a mensagem), tamanho do payload e quando foi enfileirado.
 type sentRecord struct {
 	t   protocol.Type
 	id  uint16
 	len uint16
-	at  int64 // unix milliseconds
+	at  int64 // milissegundos unix
 }
 
-// noteSend records one queued S→C frame in the session's diagnostics.
+// noteSend registra um frame S→C enfileirado no diagnóstico da sessão.
 func (s *Session) noteSend(h protocol.Header, payloadLen int) {
 	s.sentFrames++
 	s.sentBytes += uint64(payloadLen + protocol.HeaderSize)
@@ -44,15 +44,15 @@ func (s *Session) noteSend(h protocol.Header, payloadLen int) {
 	s.lastSentIdx++
 }
 
-// SentOfType returns how many S→C frames of type t were queued to s in this
-// session. Loop-only; used by handlers to log per-action deltas (e.g. how many
-// CreateMob/RemoveMob a teleport produced).
+// SentOfType devolve quantos frames S→C do tipo t foram enfileirados para s nesta
+// sessão. Só no loop; usado pelos handlers para logar deltas por ação (ex.: quantos
+// CreateMob/RemoveMob um teleporte produziu).
 func (w *World) SentOfType(s *Session, t protocol.Type) uint32 { return s.sentByType[t] }
 
-// logSendStats emits the session's S→C post-mortem: totals, the per-type
-// breakdown and the trailing frames with their age relative to the close. Called
-// from removeSession, so every disconnect (including a user killing a frozen
-// client) leaves the evidence in the logs.
+// logSendStats emite o post-mortem S→C da sessão: totais, a quebra por
+// tipo e os frames finais com sua idade relativa ao fechamento. Chamado
+// de removeSession, então toda desconexão (inclusive um usuário matando um cliente
+// travado) deixa a evidência nos logs.
 func (w *World) logSendStats(s *Session) {
 	if s.sentFrames == 0 {
 		return
@@ -68,8 +68,8 @@ func (w *World) logSendStats(s *Session) {
 	w.log.Info("session last sends", "conn", s.Conn, "tail", formatLastSends(&s.lastSent, s.lastSentIdx, time.Now().UnixMilli()))
 }
 
-// formatByType renders a per-type count map as "0x0366:120 0x0181:80 …",
-// descending by count so the dominant traffic reads first.
+// formatByType renderiza um mapa de contagem por tipo como "0x0366:120 0x0181:80 …",
+// em ordem decrescente de contagem para o tráfego dominante aparecer primeiro.
 func formatByType(m map[protocol.Type]uint32) string {
 	type kv struct {
 		t protocol.Type
@@ -97,8 +97,8 @@ func formatByType(m map[protocol.Type]uint32) string {
 	return b.String()
 }
 
-// formatLastSends renders the ring oldest→newest as
-// "0x0165(30000)/504/-830ms …" — type(HEADER.ID)/payload-len/age-before-close.
+// formatLastSends renderiza o anel do mais antigo→mais novo como
+// "0x0165(30000)/504/-830ms …" — tipo(HEADER.ID)/tamanho-do-payload/idade-antes-do-fechamento.
 func formatLastSends(ring *[lastSentRing]sentRecord, next int, nowMs int64) string {
 	n := next
 	if n > lastSentRing {
@@ -122,8 +122,8 @@ func formatLastSends(ring *[lastSentRing]sentRecord, next int, nowMs int64) stri
 	return b.String()
 }
 
-// formatSendType renders a message type as 0xNNNN (same shape as the handler
-// package's recv-packet formatType; duplicated because world cannot import
+// formatSendType renderiza um tipo de mensagem como 0xNNNN (mesmo formato do
+// formatType de pacote recebido do pacote handler; duplicado porque world não pode importar
 // handler).
 func formatSendType(t protocol.Type) string {
 	const hexdigits = "0123456789abcdef"

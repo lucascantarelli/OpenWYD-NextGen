@@ -1,8 +1,8 @@
 package world
 
-// EventConfig is the loop-owned global event state applied from the portal
-// config. Version is the dbServer config version that produced the snapshot and
-// is used when persisting progress to avoid stale writes after moderator edits.
+// EventConfig é o estado global de evento de posse do loop, aplicado a partir da
+// config do portal. Version é a versão de config do dbServer que produziu o snapshot e
+// é usada ao persistir progresso para evitar escritas obsoletas após edições de moderador.
 type EventConfig struct {
 	Version       int64
 	Enabled       bool
@@ -15,32 +15,32 @@ type EventConfig struct {
 	NoticeEnabled bool
 }
 
-// SetWorldEventConfig replaces the global event state. Loop-only.
+// SetWorldEventConfig substitui o estado global de evento. Só no loop.
 func (w *World) SetWorldEventConfig(cfg EventConfig) {
 	w.worldEvent = cfg
 }
 
-// WorldEventConfig returns a copy of the global event state. Loop-only.
+// WorldEventConfig devolve uma cópia do estado global de evento. Só no loop.
 func (w *World) WorldEventConfig() EventConfig {
 	return w.worldEvent
 }
 
-// newbieHPLevelCap is the level below which the newbie event handicaps a
-// monster's spawn HP (Server.cpp:3326, 3616, 3755).
+// newbieHPLevelCap é o nível abaixo do qual o evento de novato reduz o
+// HP de spawn de uma criatura (Server.cpp:3326, 3616, 3755).
 const newbieHPLevelCap = 120
 
-// SetNewbieEvent toggles the NewbieEventServer handicap. Loop-only; safe to
-// call at boot (before Serve) or from the tick when the portal config changes.
+// SetNewbieEvent alterna o handicap do NewbieEventServer. Só no loop; seguro
+// para chamar no boot (antes de Serve) ou do tick quando a config do portal muda.
 func (w *World) SetNewbieEvent(on bool) { w.newbieEvent = on }
 
-// NewbieEvent reports whether the newbie event handicap is active. Loop-only.
+// NewbieEvent informa se o handicap do evento de novato está ativo. Só no loop.
 func (w *World) NewbieEvent() bool { return w.newbieEvent }
 
-// applyNewbieHandicap spawns sub-120 monsters at 3/4 HP during the newbie event
-// (Server.cpp:3326-3327 and the two sibling spawn paths).
+// applyNewbieHandicap invoca criaturas abaixo do nível 120 com 3/4 do HP durante o evento de novato
+// (Server.cpp:3326-3327 e os dois caminhos de spawn irmãos).
 //
-// Note it scales CURRENT HP only — MaxHp is untouched, so a handicapped mob
-// regenerates back to full. That asymmetry is the legacy's, not an oversight.
+// Note que ele escala só o HP ATUAL — MaxHp não é tocado, então uma criatura com handicap
+// regenera até o total. Essa assimetria é do legado, não um descuido.
 func (w *World) applyNewbieHandicap(e *Entity) {
 	if !w.newbieEvent || e.Level >= newbieHPLevelCap {
 		return

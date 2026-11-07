@@ -5,23 +5,23 @@ import (
 	"time"
 )
 
-// DefaultMobTick is how often the mob-AI tick fires. The original server's main
-// timer loop (which called CMob::BattleProcessor/StandingByProcessor per mob) is
-// NOT in the available source, so the exact cadence is UNVERIFIED — SECBATTLE=8 is
-// the only hint. 1s is a safe, tunable default: a mob chases ~1 tile/s and attacks
-// at most once per cadence window.
+// DefaultMobTick é a frequência do tick da IA de criaturas. O loop principal de
+// timer do servidor original (que chamava CMob::BattleProcessor/StandingByProcessor por criatura) NÃO
+// está no código-fonte disponível, então a cadência exata é UNVERIFIED — SECBATTLE=8 é
+// a única pista. 1s é um padrão seguro e ajustável: uma criatura persegue ~1 tile/s e ataca
+// no máximo uma vez por janela de cadência.
 const DefaultMobTick = time.Second
 
-// SetTickHandler registers the periodic simulation hook (mob AI) and its interval.
-// The handler runs INSIDE the loop goroutine — like frame handlers, it may mutate
-// world state directly, preserving the single-owner invariant. Call before Run.
+// SetTickHandler registra o gancho periódico de simulação (IA de criaturas) e seu intervalo.
+// O handler roda DENTRO da goroutine do loop — como os handlers de frame, ele pode mutar
+// o estado do mundo direto, preservando a invariante de dono único. Chame antes de Run.
 func (w *World) SetTickHandler(interval time.Duration, fn func(*World)) {
 	w.tickInterval = interval
 	w.onTick = fn
 }
 
-// tickEvent is the simulation pulse. Its apply runs the registered hook in the
-// loop goroutine, so the hook never races the rest of world state.
+// tickEvent é o pulso de simulação. Seu apply roda o gancho registrado na
+// goroutine do loop, então o gancho nunca corre junto com o resto do estado do mundo.
 type tickEvent struct{}
 
 func (tickEvent) apply(w *World) {
@@ -34,9 +34,9 @@ func (tickEvent) apply(w *World) {
 	}
 }
 
-// runTicker emits a tickEvent every tickInterval until the context is cancelled or
-// the world stops. It runs in its own goroutine but only ever sends events into
-// the loop (no direct state access), so the single-owner rule holds.
+// runTicker emite um tickEvent a cada tickInterval até o contexto ser cancelado ou
+// o mundo parar. Roda na própria goroutine mas só envia eventos para
+// o loop (sem acesso direto ao estado), então a regra de dono único se mantém.
 func (w *World) runTicker(ctx context.Context) {
 	t := time.NewTicker(w.tickInterval)
 	defer t.Stop()
@@ -46,13 +46,13 @@ func (w *World) runTicker(ctx context.Context) {
 			return
 		case <-t.C:
 			if !w.emit(tickEvent{}) {
-				return // world shutting down
+				return // mundo desligando
 			}
 		}
 	}
 }
 
-// ForEachMob calls fn for every live mob/NPC entity (index ≥ MaxUser). Loop-only.
+// ForEachMob chama fn para toda entidade viva de criatura/NPC (índice ≥ MaxUser). Só no loop.
 func (w *World) ForEachMob(fn func(id int, e *Entity)) {
 	for id := MaxUser; id < MaxMob; id++ {
 		if e := w.entities[id]; e != nil {
@@ -61,8 +61,8 @@ func (w *World) ForEachMob(fn func(id int, e *Entity)) {
 	}
 }
 
-// ForEachPlayer calls fn for every in-play player (session + its entity). Used by
-// the tick for per-player upkeep like HP/MP regeneration. Loop-only.
+// ForEachPlayer chama fn para todo jogador em jogo (sessão + sua entidade). Usado
+// pelo tick para manutenção por jogador, como regeneração de HP/MP. Só no loop.
 func (w *World) ForEachPlayer(fn func(s *Session, e *Entity)) {
 	for _, s := range w.sessions {
 		if s == nil || s.Mode != UserPlay {
@@ -74,21 +74,21 @@ func (w *World) ForEachPlayer(fn func(s *Session, e *Entity)) {
 	}
 }
 
-// FindEnemyFromView returns the id of the first living entity around (x,y) that
-// clan treats as hostile (g_pClanTable), or 0 if none. It ports
-// GetEnemyFromView (CMob.cpp:1308-1358) exactly:
-//   - window [x-4, x+5) × [y-4, y+5) (StartX = TargetX-4, Size 9);
-//   - clans 7/8 scan [x-6, x+10) — start −6 with HALFGRIDX=16 width, an
-//     intentionally asymmetric box in the original;
-//   - y-outer/x-inner scan order (it decides WHICH enemy is found first);
-//   - the mob's own cell is skipped, and hidden players (Rsv & RsvHide) are
-//     invisible to aggro (CMob.cpp:1342);
-//   - an out-of-range clan aborts the whole scan (CMob.cpp:1345-1350).
+// FindEnemyFromView devolve o id da primeira entidade viva ao redor de (x,y) que
+// o clã trata como hostil (g_pClanTable), ou 0 se não houver. Porta
+// GetEnemyFromView (CMob.cpp:1308-1358) exatamente:
+// - janela [x-4, x+5) × [y-4, y+5) (StartX = TargetX-4, Size 9);
+// - clãs 7/8 varrem [x-6, x+10) — início −6 com largura HALFGRIDX=16, uma
+// caixa intencionalmente assimétrica no original;
+// - ordem de varredura y externo/x interno (decide QUAL inimigo é achado primeiro);
+// - a célula da própria criatura é pulada, e jogadores ocultos (Rsv & RsvHide) são
+// invisíveis para a perseguição (CMob.cpp:1342);
+// - um clã fora da faixa aborta a varredura inteira (CMob.cpp:1345-1350).
 //
-// Summons stay out of spontaneous acquisition so the owner-assist/retaliation
-// flow remains the only pet-vs-mob entry point.
+// Invocações ficam fora da aquisição espontânea para o fluxo de auxílio ao dono/retaliação
+// continuar sendo o único ponto de entrada de mascote contra criatura.
 //
-// Loop-only.
+// Só no loop.
 func (w *World) FindEnemyFromView(x, y int16, clan uint8) int {
 	startX, startY, sizeX, sizeY := int(x)-4, int(y)-4, 9, 9
 	if clan == 7 || clan == 8 {
@@ -101,7 +101,7 @@ func (w *World) FindEnemyFromView(x, y int16, clan uint8) int {
 			}
 			id, ok := w.grid.MobAt(gx, gy)
 			if !ok {
-				continue // empty/out-of-bounds cell
+				continue // célula vazia/fora dos limites
 			}
 			e := w.entities[id]
 			if e == nil || e.Mode == MobEmpty || e.HP <= 0 {
@@ -111,19 +111,19 @@ func (w *World) FindEnemyFromView(x, y int16, clan uint8) int {
 				continue
 			}
 			if int(id) >= MaxUser && e.NonCombatNPC {
-				continue // town/service NPCs are not combat targets
+				continue // NPCs de cidade/serviço não são alvos de combate
 			}
 			if int(id) >= MaxUser && e.Summoner != 0 {
-				continue // summons use the owner-assist path, not ambient aggro
+				continue // invocações usam o caminho de auxílio ao dono, não a perseguição ambiente
 			}
 			if int(id) < MaxUser && e.Rsv&RsvHide != 0 {
-				continue // hidden players don't draw aggro (CMob.cpp:1342 Rsv & 0x10)
+				continue // jogadores ocultos não atraem perseguição (CMob.cpp:1342 Rsv & 0x10)
 			}
 			if clan >= 9 || e.Clan >= 9 {
-				// A handful of real event/arena templates ship Clan 9 (Aberest, Pikeman,
-				// Wizard, …), and this scan runs every tick — Debug, not Warn, or they
-				// would flood the log. The original logs and aborts the whole scan
-				// (CMob.cpp:1345-1350), not just this cell.
+				// Alguns templates reais de evento/arena trazem Clan 9 (Aberest, Pikeman,
+				// Wizard, …), e esta varredura roda a cada tick — Debug, não Warn, senão eles
+				// encheriam o log. O original loga e aborta a varredura inteira
+				// (CMob.cpp:1345-1350), não só esta célula.
 				w.log.Debug("clan out of range in aggro scan", "clan", clan, "target_clan", e.Clan)
 				return 0
 			}
@@ -135,7 +135,7 @@ func (w *World) FindEnemyFromView(x, y int16, clan uint8) int {
 	return 0
 }
 
-// EntityAt reports the entity occupying grid cell (x,y), if any. Loop-only.
+// EntityAt informa a entidade que ocupa a célula de grade (x,y), se houver. Só no loop.
 func (w *World) EntityAt(x, y int16) (int, bool) {
 	id, ok := w.grid.MobAt(int(x), int(y))
 	return int(id), ok

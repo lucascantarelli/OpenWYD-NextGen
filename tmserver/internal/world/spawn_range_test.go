@@ -5,18 +5,18 @@ import (
 	"testing"
 )
 
-// TestSpawnMobRange covers the Entity.Range derivation at spawn — the port of
-// BASE_GetMobAbility(EF_RANGE) (Basedef.cpp:2415/2523): per equip, catalog
-// EF_RANGE (Config.ItemRanges) plus the instance EF_RANGE effects, and the MAX
-// across the 16 equips wins. This is the production path (main wires
-// ItemList.Ranges() into the Config): archer mobs get their reach from their
-// Equip[0] model item, e.g. Ciclope_Arqueiro 242 → EF_RANGE 4.
+// TestSpawnMobRange cobre a derivação de Entity.Range no spawn — o port de
+// BASE_GetMobAbility(EF_RANGE) (Basedef.cpp:2415/2523): por equipamento, catálogo
+// EF_RANGE (Config.ItemRanges) mais os efeitos EF_RANGE da instância, e o MAX
+// entre os 16 equipamentos vence. Este é o caminho de produção (main liga
+// ItemList.Ranges() no Config): criaturas arqueiras ganham seu alcance pelo
+// item modelo de Equip[0], por exemplo Ciclope_Arqueiro 242 → EF_RANGE 4.
 func TestSpawnMobRange(t *testing.T) {
 	w := New(Config{GridDim: 32, ItemRanges: map[int]int16{242: 4}}, slogDiscard(), nil, nil)
 
-	// Equip[0] = item 242 (catalog reach 4); Equip[1] = item 99 with an instance
-	// EF_RANGE=2 effect (a lesser source — the max must win, not the sum across
-	// items).
+	// Equip[0] = item 242 (alcance 4 do catálogo); Equip[1] = item 99 com um efeito
+	// EF_RANGE=2 de instância (uma fonte menor — o máximo precisa vencer, não a soma
+	// entre itens).
 	tmpl := make([]byte, structMobTemplateSize)
 	binary.LittleEndian.PutUint16(tmpl[140:], 242)
 	binary.LittleEndian.PutUint16(tmpl[148:], 99)
@@ -27,18 +27,18 @@ func TestSpawnMobRange(t *testing.T) {
 		t.Errorf("Range with catalog gear = %d, want 4", got)
 	}
 
-	// Catalog and instance effects on the SAME item add up (BASE_GetItemAbility
-	// sums the catalog stEffect and the instance stEffect for the queried type).
+	// Efeitos de catálogo e de instância no MESMO item se somam (BASE_GetItemAbility
+	// soma o stEffect do catálogo e o stEffect da instância para o tipo consultado).
 	tmpl2 := make([]byte, structMobTemplateSize)
 	binary.LittleEndian.PutUint16(tmpl2[140:], 242)
-	tmpl2[142] = 27 // instance EF_RANGE +3 on the same item
+	tmpl2[142] = 27 // EF_RANGE +3 de instância no mesmo item
 	tmpl2[143] = 3
 	id2 := w.SpawnMob(tmpl2, 6, 5)
 	if got := w.Entity(id2).Range; got != 7 {
 		t.Errorf("Range with catalog+instance on one item = %d, want 7", got)
 	}
 
-	// No gear (or no catalog): Range stays 0 → the AI falls back to melee reach.
+	// Sem equipamento (ou sem catálogo): Range fica 0 → a IA cai para o alcance corpo a corpo.
 	id3 := w.SpawnMob(make([]byte, structMobTemplateSize), 7, 5)
 	if got := w.Entity(id3).Range; got != 0 {
 		t.Errorf("Range with no gear = %d, want 0", got)

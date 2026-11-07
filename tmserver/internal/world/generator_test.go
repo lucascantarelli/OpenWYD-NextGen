@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// genMobTemplate is an 816-byte STRUCT_MOB with enough score to spawn alive.
+// genMobTemplate é um STRUCT_MOB de 816 bytes com score suficiente para nascer vivo.
 func genMobTemplate(clan uint8) []byte {
 	b := make([]byte, structMobTemplateSize)
 	copy(b[0:16], "Grunt")
@@ -48,14 +48,14 @@ func TestClearGeneratorRemovesWholeGroup(t *testing.T) {
 	}
 }
 
-// TestGenerateMobGroup covers the GenerateMob port (Server.cpp:3442-3810):
-// group size, leader/follower linking, per-block population accounting
-// (including the leader-not-counted-in-the-clamp quirk) and the cap.
+// TestGenerateMobGroup cobre o port de GenerateMob (Server.cpp:3442-3810):
+// tamanho de grupo, vínculo líder/seguidor, contabilização de população por bloco
+// (inclusive a peculiaridade do líder não contado no clamp) e o teto.
 func TestGenerateMobGroup(t *testing.T) {
 	w := New(Config{GridDim: 64}, slogDiscard(), nil, nil)
 	g := &Generator{
 		MinuteGenerate: 1,
-		MinGroup:       2, MaxGroup: 2, // qmob=1 → rand%1=0 → always 2 followers
+		MinGroup:       2, MaxGroup: 2, // qmob=1 → rand%1=0 → sempre 2 seguidores
 		MaxNumMob:    5,
 		RouteType:    2,
 		SegX:         [5]int16{20, 0, 0, 0, 30},
@@ -88,27 +88,27 @@ func TestGenerateMobGroup(t *testing.T) {
 			t.Fatalf("follower %d start = %d,%d; leader = %d,%d; want offset %+v",
 				i, fe.SegListX[0], fe.SegListY[0], leader.SegListX[0], leader.SegListY[0], wantOffset[i])
 		}
-		// Waypoints without SegmentRange keep the generator's exact coordinate,
-		// matching GenerateMob's follower branch.
+		// Waypoints sem SegmentRange mantêm a coordenada exata do gerador,
+		// batendo com o ramo de seguidor do GenerateMob.
 		if fe.SegListX[4] != 30 || fe.SegListY[4] != 20 {
 			t.Fatalf("follower %d dest = %d,%d, want 30,20", i, fe.SegListX[4], fe.SegListY[4])
 		}
 	}
-	// Waypoint 0 randomized within [seg-Range, seg] (the legacy negative bias);
-	// waypoint 4 has no range → exact.
+	// Waypoint 0 aleatorizado dentro de [seg-Range, seg] (o viés negativo legado);
+	// o waypoint 4 não tem faixa → exato.
 	if leader.SegListX[0] < 18 || leader.SegListX[0] > 20 || leader.SegListX[4] != 30 {
 		t.Fatalf("leader waypoints = %v, want [0] in [18,20] and [4]==30", leader.SegListX)
 	}
 
-	// Second group: clamp says current(3)+n(2) ≤ 5 → allowed; the leader itself
-	// is NOT counted by the clamp (kept quirk), so CurrentNumMob overshoots to 6.
+	// Segundo grupo: o clamp diz current(3)+n(2) ≤ 5 → permitido; o próprio líder
+	// NÃO é contado pelo clamp (peculiaridade mantida), então CurrentNumMob estoura para 6.
 	if got := len(w.GenerateMob(0)); got != 3 {
 		t.Fatalf("second GenerateMob spawned %d, want 3", got)
 	}
 	if g.CurrentNumMob != 6 {
 		t.Fatalf("CurrentNumMob after overshoot = %d, want 6", g.CurrentNumMob)
 	}
-	// Now saturated: no more spawns until deaths bring the count down.
+	// Agora saturado: sem mais spawns até mortes baixarem a contagem.
 	if got := len(w.GenerateMob(0)); got != 0 {
 		t.Fatalf("saturated GenerateMob spawned %d, want 0", got)
 	}
@@ -180,10 +180,10 @@ func TestGenerateMobFormationFourOffsetsFollowers(t *testing.T) {
 	}
 }
 
-// TestGenerateMobDeathAccounting: a death decrements the block's population
-// (DeleteMob, Server.cpp:7825-7831), releases the group links, and — for a
-// timer-regenerated block (MinuteGenerate>0) — does NOT enter the 15s respawn
-// queue (the minute timer refills whole groups instead).
+// TestGenerateMobDeathAccounting: uma morte decrementa a população do bloco
+// (DeleteMob, Server.cpp:7825-7831), solta os vínculos do grupo, e — para um
+// bloco regenerado por timer (MinuteGenerate>0) — NÃO entra na fila de respawn
+// de 15s (o timer de minuto reenche grupos inteiros em vez disso).
 func TestGenerateMobDeathAccounting(t *testing.T) {
 	w := New(Config{GridDim: 64}, slogDiscard(), nil, nil)
 	g := &Generator{
@@ -192,7 +192,7 @@ func TestGenerateMobDeathAccounting(t *testing.T) {
 		LeaderTmpl: genMobTemplate(5), FollowerTmpl: genMobTemplate(5),
 	}
 	w.RegisterGenerators([]*Generator{g})
-	ids := w.GenerateMob(0) // leader + 1 follower
+	ids := w.GenerateMob(0) // líder + 1 seguidor
 	if len(ids) != 2 || g.CurrentNumMob != 2 {
 		t.Fatalf("setup: ids=%v CurrentNumMob=%d, want 2/2", ids, g.CurrentNumMob)
 	}
@@ -215,10 +215,10 @@ func TestGenerateMobDeathAccounting(t *testing.T) {
 	}
 }
 
-// TestGenerateMobQueueFallback: a block the timer never touches
-// (MinuteGenerate<=0) falls back to the 15s respawn queue — our deliberate
-// divergence (the original never regenerates those outside events) — and the
-// queue respawn restores the block's population count.
+// TestGenerateMobQueueFallback: um bloco que o timer nunca toca
+// (MinuteGenerate<=0) cai para a fila de respawn de 15s — nossa divergência
+// deliberada (o original nunca regenera esses fora de eventos) — e o
+// respawn da fila restaura a contagem de população do bloco.
 func TestGenerateMobQueueFallback(t *testing.T) {
 	w := New(Config{GridDim: 64}, slogDiscard(), nil, nil)
 	g := &Generator{
@@ -236,7 +236,7 @@ func TestGenerateMobQueueFallback(t *testing.T) {
 	if g.CurrentNumMob != 0 {
 		t.Fatalf("CurrentNumMob after death = %d, want 0", g.CurrentNumMob)
 	}
-	respawned := w.SpawnDueRespawns(^uint32(0)) // far future: delay elapsed
+	respawned := w.SpawnDueRespawns(^uint32(0)) // futuro distante: atraso já passou
 	if len(respawned) != 1 {
 		t.Fatalf("queue respawned %d mobs, want 1", len(respawned))
 	}

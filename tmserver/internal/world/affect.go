@@ -1,20 +1,20 @@
 package world
 
-// MaxAffect is the number of affect (buff/debuff) slots per entity
+// MaxAffect é o número de slots de affect (buff/debuff) por entidade
 // (STRUCT_AFFECT Affect[MAX_AFFECT], captura-wyd-affect-divina.md §A).
 const MaxAffect = 32
 
-// Affect types the score model reacts to (BASE_GetCurrentScore, captura §C).
+// Tipos de affect aos quais o modelo de score reage (BASE_GetCurrentScore, captura §C).
 const (
 	AffectExpChest       = 39 // Baú de Experiência: +100 ExpBonus (Basedef.cpp:4451)
 	AffectDivine         = 34 // Poção Divina: +20% MaxHp/MaxMp/Damage
 	AffectVigor          = 35 // Poção de Vigor: +10% MaxHp/MaxMp
-	AffectForceMobDamage = 30 // Frango Assado: +2000 flat mob-damage, 4h (Basedef.cpp:4427)
+	AffectForceMobDamage = 30 // Frango Assado: +2000 de dano fixo em criatura, 4h (Basedef.cpp:4427)
 )
 
-// Affect mirrors STRUCT_AFFECT (8 bytes): a timed buff/debuff. Type==0 is an empty
-// slot. For the Divine buff the real deadline is Entity.DivineEnd (wall-clock); the
-// Affect.Time field is only the client icon timer.
+// Affect espelha STRUCT_AFFECT (8 bytes): um buff/debuff temporizado. Type==0 é um
+// slot vazio. Para o buff Divino o prazo real é Entity.DivineEnd (wall-clock); o
+// campo Affect.Time é só o timer do ícone no cliente.
 type Affect struct {
 	Type  uint8
 	Value uint8
@@ -22,8 +22,8 @@ type Affect struct {
 	Time  uint32
 }
 
-// EmptyAffect returns the slot already holding affect type t, else the first free
-// slot, else -1 when full — mirrors GetEmptyAffect (GetFunc.cpp:734).
+// EmptyAffect devolve o slot que já contém o affect do tipo t, senão o primeiro slot
+// livre, senão -1 quando cheio — espelha GetEmptyAffect (GetFunc.cpp:734).
 func (e *Entity) EmptyAffect(t uint8) int {
 	for i := range e.Affect {
 		if e.Affect[i].Type == t {
@@ -38,13 +38,13 @@ func (e *Entity) EmptyAffect(t uint8) int {
 	return -1
 }
 
-// ResetAffects wipes every buff/debuff slot and the derived affect state
-// (caches + Rsv + DivineEnd). The player Entity lives as long as the
-// CONNECTION, not the character (allocated once per TCP connection, reused
-// across character-select swaps), so both character-login (before rehydrating
-// the persisted slots) and the return to the selection screen must call this;
-// otherwise a buff cast on one character survives the swap, applies to a
-// different character and even gets persisted onto it by the next logout save.
+// ResetAffects limpa todo slot de buff/debuff e o estado derivado de affect
+// (caches + Rsv + DivineEnd). A Entity do jogador vive enquanto a
+// CONEXÃO, não o personagem (alocada uma vez por conexão TCP, reutilizada
+// entre trocas de seleção de personagem), então tanto o login de personagem (antes de
+// reidratar os slots persistidos) quanto o retorno à tela de seleção precisam chamar isto;
+// caso contrário um buff lançado num personagem sobrevive à troca, aplica-se a um
+// personagem diferente e ainda é persistido nele pelo próximo save de logout.
 func (e *Entity) ResetAffects() {
 	e.Affect = [MaxAffect]Affect{}
 	e.DivineEnd = 0
@@ -58,7 +58,7 @@ func (e *Entity) ResetAffects() {
 	e.AffDamageMultiPct = 100
 }
 
-// HasAnyAffect reports whether any slot holds a buff/debuff (Type != 0).
+// HasAnyAffect informa se algum slot contém um buff/debuff (Type != 0).
 func (e *Entity) HasAnyAffect() bool {
 	for i := range e.Affect {
 		if e.Affect[i].Type != 0 {
@@ -68,7 +68,7 @@ func (e *Entity) HasAnyAffect() bool {
 	return false
 }
 
-// HasAffect reports whether any slot holds affect type t.
+// HasAffect informa se algum slot contém o affect do tipo t.
 func (e *Entity) HasAffect(t uint8) bool {
 	for i := range e.Affect {
 		if e.Affect[i].Type == t {
@@ -78,7 +78,7 @@ func (e *Entity) HasAffect(t uint8) bool {
 	return false
 }
 
-// ClearAffect removes every slot holding affect type t.
+// ClearAffect remove todo slot que contém o affect do tipo t.
 func (e *Entity) ClearAffect(t uint8) {
 	for i := range e.Affect {
 		if e.Affect[i].Type == t {
@@ -87,7 +87,7 @@ func (e *Entity) ClearAffect(t uint8) {
 	}
 }
 
-// ClearFirstAffect removes the first slot holding affect type t.
+// ClearFirstAffect remove o primeiro slot que contém o affect do tipo t.
 func (e *Entity) ClearFirstAffect(t uint8) bool {
 	for i := range e.Affect {
 		if e.Affect[i].Type == t {
@@ -98,8 +98,8 @@ func (e *Entity) ClearFirstAffect(t uint8) bool {
 	return false
 }
 
-// Rsv state flags (Basedef.h:244-251) — recomputed from the active affects by
-// the score refresh; combat and the affect engine read them.
+// Flags de estado Rsv (Basedef.h:244-251) — recalculados a partir dos affects ativos
+// pelo refresh de score; o combate e o motor de affect os leem.
 const (
 	RsvFrost uint8 = 0x01
 	RsvDrain uint8 = 0x02
@@ -110,70 +110,70 @@ const (
 	RsvBlock uint8 = 0x80
 )
 
-// AffectDuration is the deliberate server-side tuning of how long a CAST affect
-// lasts (issue #229) — the same class of divergence as the affect-25 index fix of
-// issue #233. Its zero value is legacy-faithful: nothing is scaled or clamped, so
-// the parity tests still exercise the original formula.
+// AffectDuration é o ajuste deliberado do lado do servidor de quanto tempo dura um affect
+// dura (issue #229) — a mesma classe de divergência da correção do índice do affect 25
+// da issue #233. Seu valor zero é fiel ao legado: nada é escalado nem limitado, então
+// os testes de paridade ainda exercitam a fórmula original.
 //
-// It replaces the issue #92 attempt at the same goal, which halved the loader's
-// AffectTime divisor. That knob was in the wrong place and was the wrong knob:
-// the load-time division is integer, so it truncated the short tail of the table
-// far past the intended half (issue #236), and it left untouched the term that
-// actually dominates the duration — the (100+Special)/100 mastery multiplier,
-// worth up to 5x at the Special cap, which is why the level-400 characters who
-// filed #92, #202 and #229 kept seeing 30-100 min buffs.
+// Ele substitui a tentativa da issue #92 para o mesmo objetivo, que dividia pela metade o
+// divisor de AffectTime do loader. Aquele botão estava no lugar errado e era o botão errado:
+// a divisão em tempo de carga é inteira, então truncava a cauda curta da tabela
+// muito além da metade pretendida (issue #236), e deixava intacto o termo que
+// de fato domina a duração — o multiplicador de maestria (100+Special)/100,
+// que vale até 5x no teto de Special, e é por isso que os personagens nível 400 que
+// abriram #92, #202 e #229 continuavam vendo buffs de 30-100 min.
 //
-// Only affects installed by a cast pass through here. Item, mount, cash-jewel and
-// Divine affects write Entity.Affect directly with their own intentional
-// durations (7/30 days, 1 h) and are untouched.
+// Só os affects instalados por um cast passam por aqui. Affects de item, montaria,
+// joia de cash e Divino escrevem direto em Entity.Affect com suas próprias
+// duras intencionais (7/30 dias, 1 h) e não são tocados.
 //
-// The scale is deliberately NOT uniform: it only touches what the policy exists
-// to cut. See withinTargetBand — a first cut applied ScalePct to everything and
-// crushed the short tail of SkillData.csv into MinTicks, which is what issue #236
-// kept reporting from the other direction.
+// A escala é deliberadamente NÃO uniforme: ela só toca o que a política existe para
+// cortar. Veja withinTargetBand — um primeiro corte aplicava ScalePct a tudo e
+// esmagava a cauda curta do SkillData.csv em MinTicks, que é o que a issue #236
+// seguia relatando pelo outro lado.
 type AffectDuration struct {
-	// ScalePct scales the legacy tick count. 0 or 100 leaves it alone. It applies
-	// only OUTSIDE the target band (see withinTargetBand).
+	// ScalePct escala a contagem legada de ticks. 0 ou 100 a deixam como está. Aplica-se
+	// só FORA da banda alvo (veja withinTargetBand).
 	ScalePct int
-	// MinTicks floors the result for NON-aggressive affects only, so the very
-	// shortest friendly buffs (raw AffectTime 1-15) stay usable. Hostile affects
-	// are excluded so the floor cannot LENGTHEN a short debuff like Enfraquecer
-	// (raw 5).
+	// MinTicks impõe um piso ao resultado só para affects NÃO agressivos, para que os
+	// buffs amistosos mais curtos (AffectTime bruto 1-15) continuem utilizáveis. Affects
+	// hostis ficam de fora para o piso não ALONGAR um debuff curto como Enfraquecer
+	// (bruto 5).
 	MinTicks int
-	// MaxTicks caps the result, cutting the mastery tail that no base-side
-	// tuning could reach. It doubles as the edge of the target band.
+	// MaxTicks limita o resultado, cortando a cauda de maestria que nenhum ajuste do lado
+	// da base alcançaria. Ele também serve como borda da banda alvo.
 	MaxTicks int
 }
 
-// withinTargetBand reports whether a row's BASE duration — its AffectTime+1, the
-// unmastered tick count — already fits the band the policy targets, in which case
-// there is nothing to cut and the legacy mastery curve is kept as-is.
+// withinTargetBand informa se a duração BASE de uma linha — seu AffectTime+1, a
+// contagem de ticks sem maestria — já cabe na banda alvo da política, caso em que
+// não há nada a cortar e a curva de maestria legada é mantida como está.
 //
-// Membership is judged on the base, NOT on the mastery-inflated count, so that it
-// is a property of the SkillData row and constant across Special. Judging the
-// inflated count instead makes the curve non-monotonic: Teleporte (raw 60 → base
-// 16) crosses MaxTicks at high mastery and falls off the identity branch into the
-// 15% one, which had it landing at 2m08 unmastered, 6m24 at Special 200 and back
-// down to 1m36 at Special 400 — a buff that gets WORSE the more you invest.
-// There is no threshold to tune here: base durations in SkillData.csv are 1-16
-// ticks and then 151, nothing in between, so any cut inside that gap is the
-// same cut.
+// A pertinência é julgada na base, NÃO na contagem inflada pela maestria, para que ela
+// seja uma propriedade da linha de SkillData e constante ao longo de Special. Julgar a
+// contagem inflada em vez disso torna a curva não monotônica: Teleporte (bruto 60 → base
+// 16) cruza MaxTicks em maestria alta e sai do ramo de identidade para o
+// ramo de 15%, o que o fazia cair em 2m08 sem maestria, 6m24 com Special 200 e voltar
+// a 1m36 com Special 400 — um buff que fica PIOR quanto mais você investe.
+// Não há limiar a ajustar aqui: as durações base no SkillData.csv são 1-16
+// ticks e depois 151, nada no meio, então qualquer corte dentro dessa lacuna é o
+// mesmo corte.
 //
-// Only friendly affects qualify. Hostile crowd-control length (Perseguição,
-// Lâmina Congelante, Nevasca, Conexão de Gelo — all base 1-2) is a separate
-// balance question nobody has filed, and letting the bypass reach it would
-// silently multiply freeze durations by up to 5x. Same restriction the MinTicks
-// floor already carries, for the same reason.
+// Só affects amistosos se qualificam. A duração hostil de controle de grupo (Perseguição,
+// Lâmina Congelante, Nevasca, Conexão de Gelo — todas base 1-2) é uma questão de
+// balanceamento separada que ninguém abriu, e deixar o bypass alcançá-la
+// multiplicaria em silêncio as durações de congelamento por até 5x. Mesma restrição que o piso
+// de MinTicks já carrega, pelo mesmo motivo.
 //
-// With MaxTicks unset there is no band to be inside of, so nothing is exempt.
+// Com MaxTicks não definido não há banda na qual estar, então nada fica isento.
 func (d AffectDuration) withinTargetBand(baseTicks, aggressive int) bool {
 	return aggressive == 0 && d.MaxTicks > 0 && baseTicks <= d.MaxTicks
 }
 
-// scale applies the policy to a legacy tick count. baseTicks is the same affect's
-// unmastered count, which selects the branch (see withinTargetBand). A landed
-// affect never becomes 0 ticks — that would install a buff the very next sweep
-// deletes.
+// scale aplica a política a uma contagem legada de ticks. baseTicks é a contagem do mesmo
+// affect sem maestria, que seleciona o ramo (veja withinTargetBand). Um affect
+// aplicado nunca vira 0 ticks — isso instalaria um buff que a próxima varredura
+// apagaria.
 func (d AffectDuration) scale(ticks, baseTicks, aggressive int) int {
 	if d.ScalePct > 0 && d.ScalePct != 100 && !d.withinTargetBand(baseTicks, aggressive) {
 		ticks = ticks * d.ScalePct / 100
@@ -190,13 +190,13 @@ func (d AffectDuration) scale(ticks, baseTicks, aggressive int) int {
 	return ticks
 }
 
-// SetAffect is the legacy SetAffect (Server.cpp:9209): install a timed affect
-// from a cast. Only PLAYERS take affects (`conn > MAX_USER` returns FALSE);
-// aggressive casts bounce off RSV_BLOCK. time is the cast Delay (100+Special);
-// the stored Time is (affectTime+1)*time/100 ticks (one tick = 8s of real time),
-// then tuned by dur. A slot being reused whose PREVIOUS type is 1/3/10 gets the
-// short 4-tick timer (the legacy's odd sType clamp) and skips the tuning, as does
-// the "infinite" sentinel. Returns false when nothing was applied.
+// SetAffect é o SetAffect legado (Server.cpp:9209): instala um affect temporizado
+// a partir de um cast. Só JOGADORES recebem affects (`conn > MAX_USER` devolve FALSE);
+// casts agressivos batem em RSV_BLOCK. time é o Delay do cast (100+Special);
+// o Time guardado é (affectTime+1)*time/100 ticks (um tick = 8s de tempo real),
+// depois ajustado por dur. Um slot reutilizado cujo tipo ANTERIOR é 1/3/10 recebe o
+// timer curto de 4 ticks (o clamp estranho de sType do legado) e pula o ajuste, assim como
+// o sentinela "infinito". Devolve false quando nada foi aplicado.
 func (e *Entity) SetAffect(affectType, affectValue, affectTime, aggressive, time, level int, dur AffectDuration) bool {
 	if !IsPlayer(e.ID) || e.Merchant == 1 {
 		return false
@@ -226,10 +226,10 @@ func (e *Entity) SetAffect(affectType, affectValue, affectTime, aggressive, time
 	return true
 }
 
-// SetTick is the legacy SetTick (Server.cpp:9256): install a periodic affect
-// (HoT 17 / DoT 20 / …). Unlike SetAffect, MOBS may carry ticks (only merchant
-// NPCs are excluded); types 1/3/10 clamp to 2 ticks. Periodic affects share the
-// AffectTime column with the cast buffs, so they take the same dur tuning.
+// SetTick é o SetTick legado (Server.cpp:9256): instala um affect periódico
+// (HoT 17 / DoT 20 / …). Diferente de SetAffect, CRIATURAS podem carregar ticks (só NPCs
+// mercadores ficam de fora); tipos 1/3/10 são limitados a 2 ticks. Affects periódicos compartilham a
+// coluna AffectTime com os buffs de cast, então recebem o mesmo ajuste de dur.
 func (e *Entity) SetTick(tickType, tickValue, affectTime, aggressive, delay, level int, dur AffectDuration) bool {
 	if e.Merchant == 1 && !IsPlayer(e.ID) {
 		return false

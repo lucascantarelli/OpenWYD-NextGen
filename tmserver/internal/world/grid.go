@@ -1,16 +1,16 @@
 package world
 
-// gridEmpty is the sentinel for an empty cell. The original pMobGrid/pItemGrid
-// store a ushort index per cell (domain-model.md §4); since index 0 is a valid
-// player conn, an empty cell needs a non-zero sentinel. 0xFFFF is used here.
+// gridEmpty é o sentinela de célula vazia. O pMobGrid/pItemGrid original
+// guarda um índice ushort por célula (domain-model.md §4); como o índice 0 é uma
+// conexão de jogador válida, uma célula vazia precisa de sentinela não zero. Aqui se usa 0xFFFF.
 //
-// UNVERIFIED: the original's exact empty sentinel is not documented; confirm
-// against a capture/build before relying on it for visibility/collision parity.
+// UNVERIFIED: o sentinela exato de vazio do original não está documentado; confirme
+// contra uma captura/build antes de confiar nele para paridade de visão/colisão.
 const gridEmpty uint16 = 0xFFFF
 
-// Grid is the dense spatial index of mobs and ground items by cell
-// (pMobGrid/pItemGrid, domain-model.md §4). It is derived state kept in sync
-// with entity positions by the loop; it is not safe for concurrent use.
+// Grid é o índice espacial denso de criaturas e itens de chão por célula
+// (pMobGrid/pItemGrid, domain-model.md §4). É estado derivado mantido em sincronia
+// com as posições das entidades pelo loop; não é seguro para uso concorrente.
 type Grid struct {
 	dim  int
 	mob  []uint16
@@ -26,12 +26,12 @@ func newGrid(dim int) *Grid {
 	return g
 }
 
-// Dim returns the grid's side length.
+// Dim devolve o lado da grade.
 func (g *Grid) Dim() int { return g.dim }
 
 func (g *Grid) inBounds(x, y int) bool { return x >= 0 && y >= 0 && x < g.dim && y < g.dim }
 
-// MobAt returns the mob index at (x,y) and whether the cell is occupied.
+// MobAt devolve o índice de criatura em (x,y) e se a célula está ocupada.
 func (g *Grid) MobAt(x, y int) (uint16, bool) {
 	if !g.inBounds(x, y) {
 		return 0, false
@@ -40,21 +40,21 @@ func (g *Grid) MobAt(x, y int) (uint16, bool) {
 	return v, v != gridEmpty
 }
 
-// SetMob records mob id at (x,y). Out-of-bounds writes are ignored.
+// SetMob registra o id da criatura em (x,y). Escritas fora dos limites são ignoradas.
 func (g *Grid) SetMob(x, y int, id uint16) {
 	if g.inBounds(x, y) {
 		g.mob[y*g.dim+x] = id
 	}
 }
 
-// ClearMob empties the cell at (x,y).
+// ClearMob esvazia a célula em (x,y).
 func (g *Grid) ClearMob(x, y int) {
 	if g.inBounds(x, y) {
 		g.mob[y*g.dim+x] = gridEmpty
 	}
 }
 
-// ItemAt returns the ground-item index at (x,y) and whether the cell holds one.
+// ItemAt devolve o índice do item de chão em (x,y) e se a célula contém um.
 func (g *Grid) ItemAt(x, y int) (uint16, bool) {
 	if !g.inBounds(x, y) {
 		return 0, false
@@ -63,14 +63,14 @@ func (g *Grid) ItemAt(x, y int) (uint16, bool) {
 	return v, v != gridEmpty
 }
 
-// SetItem records ground-item id at (x,y). Out-of-bounds writes are ignored.
+// SetItem registra o id do item de chão em (x,y). Escritas fora dos limites são ignoradas.
 func (g *Grid) SetItem(x, y int, id uint16) {
 	if g.inBounds(x, y) {
 		g.item[y*g.dim+x] = id
 	}
 }
 
-// ClearItem empties the ground-item cell at (x,y).
+// ClearItem esvazia a célula de item de chão em (x,y).
 func (g *Grid) ClearItem(x, y int) {
 	if g.inBounds(x, y) {
 		g.item[y*g.dim+x] = gridEmpty

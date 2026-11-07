@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestRespawnMob covers the runtime respawn loop: killing a monster queues it, it
-// stays gone until the delay elapses, then SpawnDueRespawns re-creates it at its
-// leash origin. Uses an injectable clock so the delay is deterministic.
+// TestRespawnMob cobre o loop de respawn em execução: matar uma criatura a enfileira, ela
+// fica ausente até o atraso passar, então SpawnDueRespawns a recria em seu
+// ponto de origem. Usa um relógio injetável para o atraso ser determinístico.
 func TestRespawnMob(t *testing.T) {
 	now := uint32(1000)
 	w := New(Config{GridDim: 16, Now: func() uint32 { return now }}, slogDiscard(), nil, nil)
@@ -17,12 +17,12 @@ func TestRespawnMob(t *testing.T) {
 		t.Fatalf("SpawnMob = %d, want a mob id >= %d", id, MaxUser)
 	}
 
-	w.DespawnMob(id, 1) // death → should queue a respawn
+	w.DespawnMob(id, 1) // morte → deve enfileirar um respawn
 	if len(w.respawnQueue) != 1 {
 		t.Fatalf("respawnQueue len = %d, want 1 after kill", len(w.respawnQueue))
 	}
 
-	// Before the delay elapses: nothing respawns and the entry is retained.
+	// Antes do atraso passar: nada respawna e a entrada é retida.
 	if ids := w.SpawnDueRespawns(now); len(ids) != 0 {
 		t.Fatalf("SpawnDueRespawns before due = %v, want none", ids)
 	}
@@ -30,7 +30,7 @@ func TestRespawnMob(t *testing.T) {
 		t.Fatalf("respawnQueue len = %d, want entry retained before due", len(w.respawnQueue))
 	}
 
-	// At/after the delay: the mob respawns at its spawn origin and the queue drains.
+	// No/após o atraso: a criatura respawna na origem de spawn e a fila drena.
 	now += DefaultRespawnDelay
 	ids := w.SpawnDueRespawns(now)
 	if len(ids) != 1 {
@@ -51,9 +51,9 @@ func TestRespawnMob(t *testing.T) {
 	}
 }
 
-// TestSpawnMobCopiesTemplateCoin: the template's STRUCT_MOB.Coin (@28) reaches
-// the live mob, on the first spawn and on every respawn, so loot.GoldDrop has a
-// base to roll from (the legacy GenerateMob copies the whole template).
+// TestSpawnMobCopiesTemplateCoin: o STRUCT_MOB.Coin (@28) do template chega à
+// criatura viva, no primeiro spawn e em todo respawn, para loot.GoldDrop ter uma
+// base para sortear (o GenerateMob legado copia o template inteiro).
 func TestSpawnMobCopiesTemplateCoin(t *testing.T) {
 	now := uint32(1000)
 	w := New(Config{GridDim: 16, Now: func() uint32 { return now }}, slogDiscard(), nil, nil)
@@ -80,13 +80,13 @@ func TestSpawnMobCopiesTemplateCoin(t *testing.T) {
 	}
 }
 
-// TestRespawnSkipsNPC verifies that a non-monster NPC (Merchant != 0) is never
-// queued for respawn — shops/quest givers don't die.
+// TestRespawnSkipsNPC verifica que um NPC não-criatura (Merchant != 0) nunca é
+// enfileirado para respawn — lojas/quest givers não morrem.
 func TestRespawnSkipsNPC(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 
 	id := w.SpawnMob(make([]byte, structMobTemplateSize), 5, 6)
-	w.Entity(id).Merchant = 1 // mark as a merchant NPC
+	w.Entity(id).Merchant = 1 // marca como NPC mercador
 
 	w.DespawnMob(id, 1)
 	if len(w.respawnQueue) != 0 {
@@ -94,8 +94,8 @@ func TestRespawnSkipsNPC(t *testing.T) {
 	}
 }
 
-// TestClearSeenAllOnDespawn verifies the dead id is dropped from every session's
-// view set, so a reused slot triggers a fresh CreateMob.
+// TestClearSeenAllOnDespawn verifica que o id morto é retirado do conjunto de visão
+// de toda sessão, para um slot reutilizado disparar um CreateMob novo.
 func TestClearSeenAllOnDespawn(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 	s := &Session{Conn: 0}

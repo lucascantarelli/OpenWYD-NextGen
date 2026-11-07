@@ -10,8 +10,8 @@ import (
 	"openwyd-nextgen/internal/metrics"
 )
 
-// TestTickSetsTimestampGauge covers the OBS-03 alert source: a fresh tick
-// timestamp lets Prometheus tell "mundo vivo" from "mundo parado".
+// TestTickSetsTimestampGauge cobre a origem do alerta OBS-03: um timestamp de tick
+// recente deixa o Prometheus distinguir "mundo vivo" de "mundo parado".
 func TestTickSetsTimestampGauge(t *testing.T) {
 	reg := metrics.New("tmserver")
 	w := New(Config{GridDim: 16, Metrics: reg}, slogDiscard(), NopPersistence{}, nil)

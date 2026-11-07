@@ -8,7 +8,7 @@ import (
 )
 
 func TestTeleportDestDungeon(t *testing.T) {
-	// Independent legacy coordinates catch omissions as well as misrouting.
+	// Coordenadas legadas independentes pegam omissões e também roteamento errado.
 	routes := []struct{ x, y, dx, dy int16 }{
 		{144, 3780, 1004, 4028},
 		{148, 3780, 1004, 4028},
@@ -42,8 +42,8 @@ func TestTeleportDestDungeon(t *testing.T) {
 }
 
 func TestTeleportDest(t *testing.T) {
-	// Armia teleport tile → Noatum, cost 700 (rounds the position to the tile and
-	// spreads the destination by +rand%3).
+	// tile de teleporte de Armia → Noatum, custo 700 (arredonda a posição para o tile e
+	// espalha o destino por +rand%3).
 	for i := 0; i < 30; i++ {
 		dx, dy, cost, ok := TeleportDest(2116+int16(i%4), 2100+int16(i%4))
 		if !ok || cost != 700 {
@@ -56,11 +56,11 @@ func TestTeleportDest(t *testing.T) {
 			t.Fatalf("Armia teleport landed in village %d, want Noatum(4)", Village(dx, dy))
 		}
 	}
-	// Free hub route Noatum → Armia.
+	// Rota gratuita do hub Noatum → Armia.
 	if _, _, cost, ok := TeleportDest(1044, 1724); !ok || cost != 0 {
 		t.Errorf("Noatum→Armia: ok=%v cost=%d, want ok cost=0", ok, cost)
 	}
-	// Non-teleport position.
+	// Posição sem teleporte.
 	if _, _, _, ok := TeleportDest(2096, 2096); ok {
 		t.Errorf("non-tile position reported a teleport")
 	}
@@ -81,8 +81,8 @@ func TestTeleportDestValeRequiresEquippedFairy(t *testing.T) {
 	}
 }
 
-// TestTeleportDestKefraRequiresDefeat covers issue #410: the Deserto → Kefra
-// portal (the way to the Urnammu) only opens once the Kefra is dead.
+// TestTeleportDestKefraRequiresDefeat cobre a issue #410: o portal Deserto → Kefra
+// (o caminho para o Urnammu) só abre depois que o Kefra está morto.
 func TestTeleportDestKefraRequiresDefeat(t *testing.T) {
 	for _, defeated := range []bool{false, true} {
 		x, y, cost, ok := TeleportDestWithAccess(2365, 3926, TeleportAccess{KefraDefeated: defeated}, rng.NewSeeded(1))

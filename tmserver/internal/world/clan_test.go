@@ -2,8 +2,8 @@ package world
 
 import "testing"
 
-// TestClanHostile pins g_pClanTable (Basedef.cpp:207-220) semantics: a 0 cell
-// means hostile, 1 means friendly, and out-of-range clans are never hostile.
+// TestClanHostile fixa a semântica de g_pClanTable (Basedef.cpp:207-220): uma célula 0
+// significa hostil, 1 significa amistoso, e clãs fora da faixa nunca são hostis.
 func TestClanHostile(t *testing.T) {
 	tests := []struct {
 		name string

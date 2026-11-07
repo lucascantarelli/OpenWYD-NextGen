@@ -1,28 +1,28 @@
 //go:build e2e
 
-// End-to-end validation of the WORLD EVENTS (issue #116) against a LIVE stack,
-// driven by a headless CPSock client that speaks exactly what WYD.exe speaks.
+// Validação ponta a ponta dos EVENTOS DE MUNDO (issue #116) contra uma stack VIVA,
+// conduzida por um cliente CPSock headless que fala exatamente o que o WYD.exe fala.
 //
-// Why this exists: the world events are timer-driven and their only observable
-// contract is the S→C frame the client receives — a server that computes the
-// right state but ships the wrong packet is indistinguishable from a broken one
-// at the unit-test level (SESSION-PRIMER §5.1, "servidor-correto ≠ cliente-correto").
-// These tests assert the bytes on the wire, from a real socket, against a real
-// tmServer → dbServer → PostgreSQL chain.
+// Por que isto existe: os eventos de mundo são movidos a timer e seu único
+// contrato observável é o frame S→C que o cliente recebe — um servidor que calcula o
+// estado certo mas envia o pacote errado é indistinguível de um quebrado
+// no nível de teste unitário (SESSION-PRIMER §5.1, "servidor-correto ≠ cliente-correto").
+// Estes testes verificam os bytes no wire, de um socket real, contra uma cadeia real
+// tmServer → dbServer → PostgreSQL.
 //
-// The client here is deliberately dumb: it performs the INITCODE handshake, a
-// real MSG_AccountLogin, MSG_CreateCharacter and MSG_CharacterLogin, then reads
-// frames. It renders nothing, so it validates the SERVER half of "what WYD.exe
-// would see" — the rendering half still needs a human at the real client, and
-// the events that have no S→C frame at all are listed in
-// docs/migration/worldevents-e2e-report.md rather than silently skipped.
+// O cliente aqui é deliberadamente burro: ele faz o handshake INITCODE, um
+// MSG_AccountLogin real, MSG_CreateCharacter e MSG_CharacterLogin, e então lê
+// frames. Ele não renderiza nada, então valida a metade do SERVIDOR de "o que o WYD.exe
+// veria" — a metade de renderização ainda precisa de um humano no cliente real, e
+// os eventos que não têm frame S→C algum estão listados em
+// docs/migration/worldevents-e2e-report.md em vez de silenciosamente pulados.
 //
-// Run against a stack brought up by scripts/run-local.sh:
+// Rodar contra uma stack subida por scripts/run-local.sh:
 //
 //	W2PP_E2E_ADDR=127.0.0.1:8281 W2PP_E2E_ACCOUNT=test W2PP_E2E_PASSWORD=test123 \
 //	  W2PP_E2E_VERSION=12000 go test -tags=e2e -run TestE2EWorldEvent ./tmserver/internal/world/ -v
 //
-// The GM-driven cases need the account promoted to a moderator/admin role:
+// Os casos movidos a GM precisam da conta promovida a papel de moderador/admin:
 //
 //	docker compose exec db psql -U postgres -c "UPDATE account SET role='admin' WHERE name='test'"
 package world
@@ -41,36 +41,36 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// clientKeyWord seeds the C→S obfuscation. Any value works (the server reads it
-// out of byte 2); 7 is what the smoke test uses.
+// clientKeyWord semeia a ofuscação C→S. Qualquer valor serve (o servidor o lê
+// do byte 2); 7 é o que o teste de fumaça usa.
 const clientKeyWord = 7
 
-// cnfCharLoginWeatherOffset is where CurrentWeather rides the login snapshot:
-// MSG_CNFCharacterLogin body @1032, an unsigned short (protocol/mob.go
-// EncodeCNFCharacterLoginRaw, legacy sm.Weather at ProcessDBMessage.cpp:834).
-// Weather is NOT sent as its own packet at login — if this offset is wrong the
-// client shows the wrong sky until the next broadcast.
+// cnfCharLoginWeatherOffset é onde o CurrentWeather viaja no snapshot de login:
+// corpo do MSG_CNFCharacterLogin @1032, um unsigned short (protocol/mob.go
+// EncodeCNFCharacterLoginRaw, sm.Weather legado em ProcessDBMessage.cpp:834).
+// Weather NÃO é enviado como pacote próprio no login — se este offset estiver errado o
+// cliente mostra o céu errado até a próxima transmissão.
 const cnfCharLoginWeatherOffset = 1032
 
-// liveClient is a headless stand-in for WYD.exe: one CPSock connection plus a
-// backlog of frames already pulled off the socket.
+// liveClient é um substituto headless do WYD.exe: uma conexão CPSock mais um
+// backlog de frames já retirados do socket.
 //
-// The backlog matters. Entering the world triggers a burst of unrelated frames
-// (CreateMob for every visible entity, affects, item slots), and a world-event
-// frame arrives interleaved with them. Every wait therefore scans forward and
-// keeps what it did not want, so a later wait can still find it.
+// O backlog importa. Entrar no mundo dispara uma rajada de frames não relacionados
+// (CreateMob para cada entidade visível, affects, slots de item), e um frame de
+// evento de mundo chega intercalado com eles. Toda espera portanto varre adiante e
+// guarda o que não queria, para uma espera posterior ainda poder achá-lo.
 type liveClient struct {
 	t       *testing.T
 	conn    net.Conn
 	account string
 	backlog []protocol.Frame
 	connID  uint16
-	// snapshot is the MSG_CNFCharacterLogin this client entered the world with.
-	// Weather rides it, so tests read it instead of re-deriving state.
+	// snapshot é o MSG_CNFCharacterLogin com que este cliente entrou no mundo.
+	// Weather viaja nele, então os testes o leem em vez de rederivar o estado.
 	snapshot protocol.Frame
 }
 
-// dialLive opens a connection and completes the INITCODE handshake.
+// dialLive abre uma conexão e completa o handshake INITCODE.
 func dialLive(t *testing.T, addr, account string) *liveClient {
 	t.Helper()
 	return &liveClient{t: t, conn: liveDial(t, addr), account: account}
@@ -82,7 +82,7 @@ func (c *liveClient) close() {
 	}
 }
 
-// send encodes and writes one C→S frame.
+// send codifica e escreve um frame C→S.
 func (c *liveClient) send(typ protocol.Type, id uint16, body []byte) {
 	c.t.Helper()
 	wire, err := protocol.Encode(protocol.Header{Type: typ, ID: id}, body, clientKeyWord)
@@ -94,7 +94,7 @@ func (c *liveClient) send(typ protocol.Type, id uint16, body []byte) {
 	}
 }
 
-// readFrame pulls exactly one frame off the socket, honouring deadline.
+// readFrame retira exatamente um frame do socket, respeitando o deadline.
 func (c *liveClient) readFrame(deadline time.Time) (protocol.Frame, error) {
 	if err := c.conn.SetReadDeadline(deadline); err != nil {
 		return protocol.Frame{}, err
@@ -119,8 +119,8 @@ func (c *liveClient) readFrame(deadline time.Time) (protocol.Frame, error) {
 	return protocol.Frame{Header: h, Payload: payload}, nil
 }
 
-// waitFor scans the backlog and then the socket for the first frame of type typ.
-// Frames of other types are retained in the backlog, never dropped.
+// waitFor varre o backlog e depois o socket procurando o primeiro frame do tipo typ.
+// Frames de outros tipos são retidos no backlog, nunca descartados.
 func (c *liveClient) waitFor(typ protocol.Type, within time.Duration) (protocol.Frame, bool) {
 	c.t.Helper()
 	for i, f := range c.backlog {
@@ -143,9 +143,9 @@ func (c *liveClient) waitFor(typ protocol.Type, within time.Duration) (protocol.
 	return protocol.Frame{}, false
 }
 
-// waitForAny is waitFor over a set of types, for the branches where the server
-// legitimately answers one of several frames. Waiting for them one at a time
-// would burn a full timeout on the branch that did not happen.
+// waitForAny é o waitFor sobre um conjunto de tipos, para os ramos em que o servidor
+// legitimamente responde um de vários frames. Esperar por eles um a um
+// gastaria um timeout inteiro no ramo que não aconteceu.
 func (c *liveClient) waitForAny(types []protocol.Type, within time.Duration) (protocol.Frame, bool) {
 	c.t.Helper()
 	match := func(t protocol.Type) bool {
@@ -176,12 +176,12 @@ func (c *liveClient) waitForAny(types []protocol.Type, within time.Duration) (pr
 	return protocol.Frame{}, false
 }
 
-// waitForChat scans for a MSG_MessageChat whose text contains substr. World
-// event announcements (tower, castle, event drops) all ride this frame.
+// waitForChat varre um MSG_MessageChat cujo texto contém substr. Anúncios de
+// evento de mundo (torre, castelo, drops de evento) todos viajam neste frame.
 func (c *liveClient) waitForChat(substr string, within time.Duration) (string, bool) {
 	c.t.Helper()
 	deadline := time.Now().Add(within)
-	// Backlog first, then the socket, with the same matching rule.
+	// Backlog primeiro, depois o socket, com a mesma regra de casamento.
 	for i := 0; i < len(c.backlog); i++ {
 		if text, ok := chatText(c.backlog[i]); ok && strings.Contains(text, substr) {
 			c.backlog = append(c.backlog[:i], c.backlog[i+1:]...)
@@ -201,7 +201,7 @@ func (c *liveClient) waitForChat(substr string, within time.Duration) (string, b
 	return "", false
 }
 
-// chatText extracts the NUL-terminated text of a MSG_MessageChat frame.
+// chatText extrai o texto terminado em NUL de um frame MSG_MessageChat.
 func chatText(f protocol.Frame) (string, bool) {
 	if f.Header.Type != protocol.MsgMessageChat {
 		return "", false
@@ -209,7 +209,7 @@ func chatText(f protocol.Frame) (string, bool) {
 	return cstring(f.Payload), true
 }
 
-// cstring reads a NUL-terminated string from b.
+// cstring lê uma string terminada em NUL de b.
 func cstring(b []byte) string {
 	if i := bytes.IndexByte(b, 0); i >= 0 {
 		b = b[:i]
@@ -217,8 +217,8 @@ func cstring(b []byte) string {
 	return string(b)
 }
 
-// quiet drains whatever the server pushes for d, so a later waitFor cannot match
-// a frame the PREVIOUS step caused. Retains nothing: callers use it as a barrier.
+// quiet drena tudo que o servidor empurra por d, para um waitFor posterior não casar
+// um frame que o passo ANTERIOR causou. Não retém nada: chamadores o usam como barreira.
 func (c *liveClient) quiet(d time.Duration) {
 	deadline := time.Now().Add(d)
 	for time.Now().Before(deadline) {
@@ -228,7 +228,7 @@ func (c *liveClient) quiet(d time.Duration) {
 	}
 }
 
-// login performs MSG_AccountLogin and waits for the character-selection reply.
+// login executa MSG_AccountLogin e espera a resposta de seleção de personagem.
 func (c *liveClient) login(password string) {
 	c.t.Helper()
 	if _, err := c.conn.Write(loginFrame(c.account, password, "")); err != nil {
@@ -241,18 +241,18 @@ func (c *liveClient) login(password string) {
 	c.connID = f.Header.ID
 }
 
-// enterWorld creates the character if it does not exist yet and selects slot 0,
-// leaving the session in USER_PLAY. Returns the CNFCharacterLogin snapshot.
+// enterWorld cria o personagem se ele ainda não existe e seleciona o slot 0,
+// deixando a sessão em USER_PLAY. Devolve o snapshot CNFCharacterLogin.
 //
-// Creation is attempted unconditionally: on a re-run the name is taken and the
-// server answers MSG_NewCharacterFail, which is the same "slot 0 is ready"
-// state. That keeps the test idempotent without a delete/recreate cycle.
+// A criação é tentada incondicionalmente: numa re-execução o nome está tomado e o
+// servidor responde MSG_NewCharacterFail, que é o mesmo estado "slot 0 pronto"
+// . Isso mantém o teste idempotente sem ciclo de apagar/recriar.
 func (c *liveClient) enterWorld(charName string, class int32) protocol.Frame {
 	c.t.Helper()
 	create := protocol.MsgCreateCharacterBody{Slot: 0, MobClass: class}
 	copy(create.MobName[:], charName)
 	c.send(protocol.MsgCreateCharacter, 0, create.Encode())
-	// Either outcome is fine; both mean slot 0 is settled.
+	// Qualquer resultado serve; ambos significam que o slot 0 está resolvido.
 	if _, ok := c.waitForAny([]protocol.Type{protocol.MsgCNFNewCharacter, protocol.MsgNewCharacterFail},
 		8*time.Second); !ok {
 		c.t.Fatalf("create char %q: neither CNFNewCharacter nor NewCharacterFail", charName)
@@ -271,9 +271,9 @@ func (c *liveClient) enterWorld(charName string, class int32) protocol.Frame {
 	return f
 }
 
-// gm sends a "/gm <line>" command. The client encodes slash commands as a
-// whisper whose TARGET NAME is the keyword ("gm") and whose text is the rest of
-// the line — the legacy _MSG_MessageWhisper quirk (handler/chat.go runCommand).
+// gm envia um comando "/gm <linha>". O cliente codifica comandos com barra como um
+// sussurro cujo NOME DE ALVO é a palavra-chave ("gm") e cujo texto é o resto da
+// linha — a peculiaridade legada do _MSG_MessageWhisper (handler/chat.go runCommand).
 func (c *liveClient) gm(line string) {
 	c.t.Helper()
 	body := protocol.MsgWhisperBody{String: append([]byte(line), 0)}
@@ -295,22 +295,22 @@ func (c *liveClient) backlogTypes() string {
 	return b.String()
 }
 
-// snapshotWeather reads CurrentWeather out of a CNFCharacterLogin body.
+// snapshotWeather lê CurrentWeather de um corpo de CNFCharacterLogin.
 func snapshotWeather(f protocol.Frame) int32 {
 	return int32(binary.LittleEndian.Uint16(f.Payload[cnfCharLoginWeatherOffset:]))
 }
 
-// newPlayer is the common arrangement: connect, log in, enter the world.
+// newPlayer é o arranjo comum: conectar, logar, entrar no mundo.
 func newPlayer(t *testing.T, account, password, charName string) *liveClient {
 	t.Helper()
 	c := dialLive(t, env("W2PP_E2E_ADDR", "127.0.0.1:8281"), account)
 	t.Cleanup(c.close)
 	c.login(password)
-	c.enterWorld(charName, 0) // class 0 = TransKnight
+	c.enterWorld(charName, 0) // classe 0 = TransKnight
 	return c
 }
 
-// gmPlayer is newPlayer for the privileged account under test.
+// gmPlayer é newPlayer para a conta privilegiada em teste.
 func gmPlayer(t *testing.T) *liveClient {
 	t.Helper()
 	return newPlayer(t,
@@ -323,15 +323,15 @@ func gmPlayer(t *testing.T) *liveClient {
 // Weather (issue #116 fase 1)
 // ---------------------------------------------------------------------------
 
-// TestE2EWorldEventWeatherBroadcast is the core weather contract: a GM forcing a
-// value must produce ONE MSG_UpdateWeather (0x018B) per in-play client, carrying
-// that value as an int32, with HEADER.ID = ESCENE_FIELD (30000).
+// TestE2EWorldEventWeatherBroadcast é o contrato central do clima: um GM forçando um
+// valor precisa produzir UM MSG_UpdateWeather (0x018B) por cliente em jogo, carregando
+// esse valor como int32, com HEADER.ID = ESCENE_FIELD (30000).
 //
-// Both halves matter to the real client: a wrong Type is ignored, and a wrong
-// HEADER.ID routes the packet to the wrong scene handler (SendFunc.cpp:1669-1696).
+// As duas metades importam ao cliente real: um Type errado é ignorado, e um
+// HEADER.ID errado roteia o pacote ao handler de cena errado (SendFunc.cpp:1669-1696).
 func TestE2EWorldEventWeatherBroadcast(t *testing.T) {
 	c := gmPlayer(t)
-	defer c.gm("weather auto") // leave the server on automatic rolls
+	defer c.gm("weather auto") // deixa o servidor em sorteios automáticos
 
 	for _, want := range []int32{1, 2, 0} {
 		c.quiet(300 * time.Millisecond)
@@ -358,10 +358,10 @@ func TestE2EWorldEventWeatherBroadcast(t *testing.T) {
 	}
 }
 
-// TestE2EWorldEventWeatherIdempotent pins the legacy's
-// `ForceWeather != CurrentWeather` guard: re-forcing the value that is already
-// live must NOT put a second packet on the wire. A client that receives a
-// redundant weather change restarts the sky transition, so the guard is visible.
+// TestE2EWorldEventWeatherIdempotent fixa a guarda
+// `ForceWeather != CurrentWeather` do legado: forçar de novo o valor que já está
+// vivo NÃO pode pôr um segundo pacote no wire. Um cliente que recebe uma
+// mudança de clima redundante reinicia a transição do céu, então a guarda é visível.
 func TestE2EWorldEventWeatherIdempotent(t *testing.T) {
 	c := gmPlayer(t)
 	defer c.gm("weather auto")
@@ -372,7 +372,7 @@ func TestE2EWorldEventWeatherIdempotent(t *testing.T) {
 	}
 	c.quiet(500 * time.Millisecond)
 
-	c.gm("weather 1") // already 1 — must be a no-op on the wire
+	c.gm("weather 1") // já é 1 — precisa ser no-op no wire
 	if f, ok := c.waitFor(protocol.MsgUpdateWeather, 3*time.Second); ok {
 		t.Errorf("re-forcing the live weather re-broadcast it: payload=%d",
 			int32(binary.LittleEndian.Uint32(f.Payload)))
@@ -381,10 +381,10 @@ func TestE2EWorldEventWeatherIdempotent(t *testing.T) {
 	}
 }
 
-// TestE2EWorldEventWeatherRejectsInvalid covers the deliberate divergence from
-// the legacy: imple.cpp:1122-1129 shipped ANY int straight to the client, which
-// is how a bad /weather bricked the sky. The port validates and answers with an
-// error line instead of broadcasting.
+// TestE2EWorldEventWeatherRejectsInvalid cobre a divergência deliberada do
+// legado: imple.cpp:1122-1129 enviava QUALQUER int direto ao cliente, e é
+// assim que um /weather ruim quebrava o céu. O port valida e responde com uma
+// linha de erro em vez de transmitir.
 func TestE2EWorldEventWeatherRejectsInvalid(t *testing.T) {
 	c := gmPlayer(t)
 	defer c.gm("weather auto")
@@ -401,12 +401,12 @@ func TestE2EWorldEventWeatherRejectsInvalid(t *testing.T) {
 	}
 }
 
-// TestE2EWorldEventWeatherLoginSnapshot proves the second delivery path: a
-// client that logs in AFTER a weather change learns the current value from the
-// MSG_CNFCharacterLogin snapshot (@1032), not from a broadcast it never saw.
-// Without this a relogging player renders clear skies during a storm.
+// TestE2EWorldEventWeatherLoginSnapshot prova o segundo caminho de entrega: um
+// cliente que loga DEPOIS de uma mudança de clima aprende o valor atual pelo
+// snapshot do MSG_CNFCharacterLogin (@1032), não de uma transmissão que nunca viu.
+// Sem isso um jogador que reloga renderiza céu limpo durante uma tempestade.
 //
-// Needs a second seeded account so the first session can stay in play:
+// Precisa de uma segunda conta semeada para a primeira sessão poder ficar em jogo:
 //
 //	docker compose run --rm dbserver seed-account -name test2 -pass test123
 func TestE2EWorldEventWeatherLoginSnapshot(t *testing.T) {
@@ -435,12 +435,12 @@ func TestE2EWorldEventWeatherLoginSnapshot(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Newbie event (issue #116 fase 2)
+// Evento de novato (issue #116 fase 2)
 // ---------------------------------------------------------------------------
 
-// createMobScoreOffset is where STRUCT_SCORE starts inside a MSG_CreateMob body
-// (protocol/createmob.go: Score @abs136 → body124). Level sits at +0, MaxHp at
-// +16 and Hp at +24 within it.
+// createMobScoreOffset é onde STRUCT_SCORE começa dentro de um corpo MSG_CreateMob
+// (protocol/createmob.go: Score @abs136 → body124). Level fica em +0, MaxHp em
+// +16 e Hp em +24 dentro dele.
 const createMobScoreOffset = 124
 
 type mobView struct {
@@ -449,7 +449,7 @@ type mobView struct {
 	maxHP, hp int32
 }
 
-// parseCreateMob reads the fields the newbie handicap is visible in.
+// parseCreateMob lê os campos em que o handicap de novato é visível.
 func parseCreateMob(f protocol.Frame) (mobView, bool) {
 	const need = createMobScoreOffset + 32
 	if f.Header.Type != protocol.MsgCreateMob || len(f.Payload) < need {
@@ -464,11 +464,11 @@ func parseCreateMob(f protocol.Frame) (mobView, bool) {
 	}, true
 }
 
-// spawnAndInspect runs `/gm spawn tmpl` and returns the CreateMob the server
-// pushes for the freshly spawned mob (revealSpawned).
+// spawnAndInspect roda `/gm spawn tmpl` e devolve o CreateMob que o servidor
+// empurra para a criatura recém-invocada (revealSpawned).
 func (c *liveClient) spawnAndInspect(tmpl int, within time.Duration) (mobView, bool) {
 	c.t.Helper()
-	c.quiet(time.Second) // let the entering-the-world burst finish first
+	c.quiet(time.Second) // deixa a rajada de entrada no mundo terminar primeiro
 	c.backlog = nil
 	c.gm(fmt.Sprintf("spawn %d", tmpl))
 	deadline := time.Now().Add(within)
@@ -478,7 +478,7 @@ func (c *liveClient) spawnAndInspect(tmpl int, within time.Duration) (mobView, b
 			return mobView{}, false
 		}
 		m, ok := parseCreateMob(f)
-		if !ok || m.id < MaxUser { // players share the id space below MaxUser
+		if !ok || m.id < MaxUser { // jogadores compartilham o espaço de ids abaixo de MaxUser
 			continue
 		}
 		return m, true
@@ -486,23 +486,23 @@ func (c *liveClient) spawnAndInspect(tmpl int, within time.Duration) (mobView, b
 	return mobView{}, false
 }
 
-// TestE2EWorldEventNewbieMobHandicap validates fase 2's one CLIENT-VISIBLE
-// effect: while NewbieEventServer is on, a sub-120 monster spawns at 3/4 HP
-// (Server.cpp:3326-3327 → world.applyNewbieHandicap). MaxHp is deliberately left
-// alone, so the client renders a monster whose health bar starts three-quarters
-// full — that difference is the whole observable contract.
+// TestE2EWorldEventNewbieMobHandicap valida o único efeito VISÍVEL AO CLIENTE da fase 2:
+// enquanto NewbieEventServer está ligado, uma criatura abaixo do nível 120 nasce com 3/4 do HP
+// (Server.cpp:3326-3327 → world.applyNewbieHandicap). MaxHp é deliberadamente
+// deixado em paz, então o cliente renderiza uma criatura cuja barra de vida começa três quartos
+// cheia — essa diferença é todo o contrato observável.
 //
-// The EXP side of the same flag has no S→C frame of its own and is not
-// observable from a client; it is covered by internal/level's unit tests.
+// O lado de EXP da mesma flag não tem frame S→C próprio e não é
+// observável de um cliente; é coberto pelos testes unitários de internal/level.
 //
-// The flag is driven by the PORTAL config, not the -newbie-event boot flag:
-// ApplyWorldEventConfigBoot calls setNewbieEvent with whatever
-// world_event_config.newbie_event_enabled says, so the DB value wins over the
-// CLI flag at boot. The runner therefore flips the DB row (bumping
-// world_event_meta.version so the 15-tick poll reloads) and runs this test twice:
+// A flag é movida pela config do PORTAL, não pela flag de boot -newbie-event:
+// ApplyWorldEventConfigBoot chama setNewbieEvent com o que
+// world_event_config.newbie_event_enabled disser, então o valor do banco ganha da
+// flag de CLI no boot. O executor portanto alterna a linha do banco (incrementando
+// world_event_meta.version para o polling de 15 ticks recarregar) e roda este teste duas vezes:
 //
-//	W2PP_E2E_NEWBIE_EXPECT=full       # row false → mobs spawn at MaxHp
-//	W2PP_E2E_NEWBIE_EXPECT=handicap   # row true  → mobs spawn at 3/4 MaxHp
+// W2PP_E2E_NEWBIE_EXPECT=full       # linha false → criaturas nascem com MaxHp
+// W2PP_E2E_NEWBIE_EXPECT=handicap   # linha true  → criaturas nascem com 3/4 do MaxHp
 func TestE2EWorldEventNewbieMobHandicap(t *testing.T) {
 	expect := os.Getenv("W2PP_E2E_NEWBIE_EXPECT")
 	if expect != "full" && expect != "handicap" {
@@ -540,18 +540,18 @@ func TestE2EWorldEventNewbieMobHandicap(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Tower capture war (issue #116 fase 4)
+// Guerra de captura da torre (issue #116 fase 4)
 // ---------------------------------------------------------------------------
 
-// TestE2EWorldEventTowerWar validates the calendar-gated tower window end to end:
-// the announce notice at minute ≤5 and the start notice at minute ≥6, both as
-// MSG_MessageChat lines every in-play client receives.
+// TestE2EWorldEventTowerWar valida a janela da torre condicionada ao calendário ponta a ponta:
+// o aviso de anúncio no minuto ≤5 e o aviso de início no minuto ≥6, ambos como
+// linhas MSG_MessageChat que todo cliente em jogo recebe.
 //
-// The window is a weekday at hour 20 with NewbieEventServer on (CWarTower.cpp:203,
-// handler/towerwar.go). Rather than wait for a real Tuesday evening, the runner
-// starts a SECOND tmserver whose TZ places it inside the window — the event reads
-// time.Now(), so the container's zone is the whole gate. See
-// scripts/e2e-worldevents.sh, which computes the zone and exports the address.
+// A janela é um dia de semana na hora 20 com NewbieEventServer ligado (CWarTower.cpp:203,
+// handler/towerwar.go). Em vez de esperar uma terça-feira real à noite, o executor
+// inicia um SEGUNDO tmserver cuja TZ o coloca dentro da janela — o evento lê
+// time.Now(), então o fuso do container é o gate inteiro. Veja
+// scripts/e2e-worldevents.sh, que calcula o fuso e exporta o endereço.
 func TestE2EWorldEventTowerWar(t *testing.T) {
 	addr := os.Getenv("W2PP_E2E_TOWER_ADDR")
 	if addr == "" {
@@ -562,16 +562,16 @@ func TestE2EWorldEventTowerWar(t *testing.T) {
 	c.login(env("W2PP_E2E_PASSWORD", "test123"))
 	c.enterWorld(env("W2PP_E2E_CHAR", "EvtProbe"), 0)
 
-	// tickTowerWar runs one pass per minute, so the announce lands within ~2
-	// minutes of boot when the server started inside the window.
+	// tickTowerWar roda uma passada por minuto, então o anúncio cai em ~2
+	// minutos do boot quando o servidor iniciou dentro da janela.
 	if text, ok := c.waitForChat("[Torre]", 3*time.Minute); ok {
 		t.Logf("tower announce reached the client: %q", text)
 	} else {
 		t.Fatalf("no [Torre] notice within the window — the client would never learn the war started")
 	}
-	// The start transition needs minute >= 6, so from an announce at minute 0-5 it
-	// can be a full six minutes away. Waiting less than that would report a
-	// working event as broken.
+	// A transição de início precisa de minuto >= 6, então de um anúncio no minuto 0-5 ela
+	// pode estar a seis minutos inteiros. Esperar menos que isso reportaria um
+	// evento que funciona como quebrado.
 	if text, ok := c.waitForChat("comecou", 8*time.Minute); ok {
 		t.Logf("tower start reached the client: %q", text)
 	} else {

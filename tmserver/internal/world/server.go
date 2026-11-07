@@ -6,17 +6,17 @@ import (
 	"net"
 )
 
-// Serve runs the world: it starts the accept loop on ln and then runs the game
-// loop (blocking) until ctx is cancelled. On cancellation it stops accepting,
-// drains/saves sessions and returns ctx.Err().
+// Serve roda o mundo: inicia o loop de aceite em ln e então roda o loop do jogo
+// (bloqueante) até ctx ser cancelado. No cancelamento ele para de aceitar,
+// drena/salva as sessões e devolve ctx.Err().
 func (w *World) Serve(ctx context.Context, ln net.Listener) error {
 	go w.acceptLoop(ctx, ln)
 	return w.Run(ctx)
 }
 
-// acceptLoop accepts connections and hands each to the loop as a connectEvent.
-// It runs in its own goroutine; closing the listener on ctx cancellation makes
-// Accept return so the loop can exit.
+// acceptLoop aceita conexões e entrega cada uma ao loop como connectEvent.
+// Roda na própria goroutine; fechar o listener no cancelamento de ctx faz
+// Accept retornar para o loop poder sair.
 func (w *World) acceptLoop(ctx context.Context, ln net.Listener) {
 	go func() {
 		<-ctx.Done()
@@ -31,8 +31,8 @@ func (w *World) acceptLoop(ctx context.Context, ln net.Listener) {
 			w.log.Warn("accept failed", "err", err)
 			return
 		}
-		// Classify HTTP status probe vs CPSock game connection off the accept
-		// goroutine so a slow probe never blocks accepting other clients.
+		// Classificar sonda de status HTTP vs conexão de jogo CPSock fora da
+		// goroutine de aceite para uma sonda lenta nunca bloquear o aceite de outros clientes.
 		go w.handleConn(c)
 	}
 }

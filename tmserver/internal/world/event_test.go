@@ -2,10 +2,10 @@ package world
 
 import "testing"
 
-// TestSessionEndHandlerPlumbing verifies the teardown hook wiring: removeSession
-// runs it while the session AND its entity are still addressable (the party
-// unlink reads Leader/PartyList off the entity), exactly once per slot, and a nil
-// hook stays a safe no-op.
+// TestSessionEndHandlerPlumbing verifica a ligação do gancho de desmonte: removeSession
+// o executa enquanto a sessão E sua entidade ainda são endereçáveis (o
+// desvínculo de grupo lê Leader/PartyList da entidade), exatamente uma vez por slot, e um
+// gancho nil continua um no-op seguro.
 func TestSessionEndHandlerPlumbing(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 	const conn = 3
@@ -30,16 +30,16 @@ func TestSessionEndHandlerPlumbing(t *testing.T) {
 	if w.sessions[conn] != nil || w.entities[conn] != nil {
 		t.Fatal("removeSession did not free the slot")
 	}
-	// Tearing the same (already freed) session down again must not re-run the hook.
+	// Desmontar a mesma sessão (já liberada) de novo não pode reexecutar o gancho.
 	w.removeSession(s)
 	if calls != 1 {
 		t.Fatalf("onSessionEnd ran again for a freed slot (calls = %d)", calls)
 	}
 
-	// A nil handler is a safe no-op (e.g. transport-only tests).
+	// Um handler nil é no-op seguro (ex.: testes só de transporte).
 	w2 := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 	s2 := &Session{Conn: 1, Mode: UserPlay, out: newOutQueue(), closeCh: make(chan struct{})}
 	w2.sessions[1] = s2
 	w2.entities[1] = &Entity{ID: 1, Mode: MobUser, HP: 100}
-	w2.removeSession(s2) // must not panic
+	w2.removeSession(s2) // não pode dar panic
 }

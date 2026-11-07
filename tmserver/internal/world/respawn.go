@@ -1,31 +1,31 @@
 package world
 
-// Runtime mob respawn. A monster killed in combat is removed by DespawnMob, which
-// queues a respawnEntry; SpawnDueRespawns (called each tick) re-creates the mob at
-// its leash origin once the delay elapses. This keeps the world from permanently
-// depleting as players grind. All functions here are loop-only (queue is owned by
-// the loop goroutine, like the rest of world state).
+// Respawn de criaturas em execução. Uma criatura morta em combate é removida por DespawnMob, que
+// enfileira um respawnEntry; SpawnDueRespawns (chamado a cada tick) recria a criatura em
+// seu ponto de origem quando o atraso passa. Isso impede o mundo de se esvaziar
+// permanentemente conforme os jogadores farmam. Todas as funções aqui são só no loop (a fila pertence
+// à goroutine do loop, como o resto do estado do mundo).
 
-// DefaultRespawnDelay is how long after death a monster reappears, in the same
-// millisecond unit as World.Now().
+// DefaultRespawnDelay é quanto tempo após a morte uma criatura reaparece, na mesma
+// unidade de milissegundos de World.Now().
 //
-// UNVERIFIED: the original per-generator RegenTime/RegenMob (Server.cpp) is not in
-// the available source and our NPCGener parser doesn't read a regen field, so this
-// is a tunable stand-in (mirrors how DefaultMobTick is handled in tick.go).
+// UNVERIFIED: o RegenTime/RegenMob por gerador do original (Server.cpp) não está
+// no fonte disponível e nosso parser de NPCGener não lê campo de regen, então este
+// é um substituto ajustável (espelha como DefaultMobTick é tratado em tick.go).
 const DefaultRespawnDelay = 15_000 // 15s
 
-// respawnEntry is a dead monster awaiting respawn: the full MobSpawn to rebuild
-// it (template, spawn point AND its instance patrol route), after `due`
-// (World.Now units).
+// respawnEntry é uma criatura morta aguardando respawn: o MobSpawn completo para recriá-la
+// (template, ponto de spawn E sua rota de patrulha da instância), após `due`
+// (unidades de World.Now).
 type respawnEntry struct {
 	spawn MobSpawn
 	due   uint32
 }
 
-// SpawnDueRespawns re-spawns every queued monster whose delay has elapsed (due <=
-// now) and returns the new mob ids so the caller can reveal them to in-view
-// players. Entries that respawn (or fail because the world is full) are removed
-// from the queue; not-yet-due entries are kept. Loop-only.
+// SpawnDueRespawns recria toda criatura enfileirada cujo atraso passou (due <=
+// now) e devolve os novos ids de criatura para o chamador revelá-los aos
+// jogadores em visão. Entradas que respawnam (ou falham porque o mundo está cheio) são removidas
+// da fila; entradas ainda não vencidas são mantidas. Só no loop.
 func (w *World) SpawnDueRespawns(now uint32) []int {
 	if len(w.respawnQueue) == 0 {
 		return nil
@@ -40,16 +40,16 @@ func (w *World) SpawnDueRespawns(now uint32) []int {
 		if id := w.SpawnMobAt(r.spawn); id >= 0 {
 			ids = append(ids, id)
 		}
-		// On SpawnMob failure (world full) the entry is dropped rather than retried
-		// forever; a full world has no free slot to retry into anyway.
+		// Em falha de SpawnMob (mundo cheio) a entrada é descartada em vez de tentada
+		// para sempre; um mundo cheio não tem slot livre para tentar de novo de qualquer forma.
 	}
 	w.respawnQueue = kept
 	return ids
 }
 
-// clearSeenAll removes entity id from every session's view set, so a slot reused
-// by a later spawn is treated as a brand-new entity (a fresh CreateMob is sent).
-// Called from DespawnMob when the slot is freed. Loop-only.
+// clearSeenAll remove o id da entidade do conjunto de visão de toda sessão, para um slot reutilizado
+// por um spawn posterior ser tratado como entidade nova (um CreateMob novo é enviado).
+// Chamado de DespawnMob quando o slot é liberado. Só no loop.
 func (w *World) clearSeenAll(id int) {
 	for _, s := range w.sessions {
 		if s == nil || s.seen == nil {

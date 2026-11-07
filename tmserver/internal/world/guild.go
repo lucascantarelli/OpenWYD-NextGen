@@ -1,31 +1,31 @@
 package world
 
-// GuildInfo is the minimal guild metadata not modeled on Entity itself: the
-// name and fame score, keyed by guild id (issue #131). In-memory only — there
-// is no guild-creation flow yet to persist against (guildRelay, chat.go
-// leaveGuild); populated today only via the /gm guildname|guildfame admin
-// commands, mirroring the legacy GM-only "+guildfame set" tool
+// GuildInfo são os metadados mínimos de guilda não modelados na própria Entity: o
+// nome e a pontuação de fama, indexados por id de guilda (issue #131). Só em memória — não
+// existe ainda fluxo de criação de guilda para persistir (guildRelay, chat.go
+// leaveGuild); populado hoje só pelos comandos admin /gm guildname|guildfame,
+// espelhando a ferramenta legada só-de-GM "+guildfame set"
 // (Source/Comandos GM.txt).
 type GuildInfo struct {
 	Name string
 	Fame int32
 }
 
-// GuildInfo returns the registered name/fame for a guild id, or false if
-// nothing has been registered for it yet. Loop-only.
+// GuildInfo devolve o nome/fama registrados para um id de guilda, ou false se
+// nada foi registrado para ele ainda. Só no loop.
 func (w *World) GuildInfo(id uint16) (GuildInfo, bool) {
 	gi, ok := w.guilds[id]
 	return gi, ok
 }
 
-// SetGuildName sets (or creates) a guild's registered name. Loop-only.
+// SetGuildName define (ou cria) o nome registrado de uma guilda. Só no loop.
 func (w *World) SetGuildName(id uint16, name string) {
 	gi := w.guilds[id]
 	gi.Name = name
 	w.guilds[id] = gi
 }
 
-// SetGuildFame sets (or creates) a guild's registered fame. Loop-only.
+// SetGuildFame define (ou cria) a fama registrada de uma guilda. Só no loop.
 func (w *World) SetGuildFame(id uint16, fame int32) {
 	gi := w.guilds[id]
 	gi.Fame = fame

@@ -2,8 +2,8 @@ package world
 
 import "testing"
 
-// TestAddToCargo places items in the first free slot and reports -1 when full —
-// the donate-shop delivery target (issue #34): a full cargo means the item is lost.
+// TestAddToCargo coloca itens no primeiro slot livre e reporta -1 quando cheio —
+// o destino de entrega da loja de doação (issue #34): cargo cheio significa item perdido.
 func TestAddToCargo(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 
@@ -12,7 +12,7 @@ func TestAddToCargo(t *testing.T) {
 	}
 
 	st := &CargoState{AccountID: 1}
-	// Pre-occupy slot 0 so the next add lands in slot 1.
+	// Ocupar previamente o slot 0 para a próxima adição cair no slot 1.
 	st.Items[0] = Item{Index: 42}
 	if got := w.AddToCargo(st, Item{Index: 100}); got != 1 {
 		t.Fatalf("AddToCargo into first free slot = %d, want 1", got)
@@ -21,7 +21,7 @@ func TestAddToCargo(t *testing.T) {
 		t.Errorf("slot 1 index = %d, want 100", st.Items[1].Index)
 	}
 
-	// Fill the rest; the cargo is now full and further adds are lost.
+	// Preencher o resto; o cargo agora está cheio e adições posteriores são perdidas.
 	for i := 2; i < MaxCargo; i++ {
 		if got := w.AddToCargo(st, Item{Index: int16(i)}); got != i {
 			t.Fatalf("fill slot %d = %d", i, got)
@@ -32,9 +32,9 @@ func TestAddToCargo(t *testing.T) {
 	}
 }
 
-// TestSeedWorldItem seeds static world objects (gates/doors) into the ground id
-// space in call order, keeping them off the spatial grid and out of the pickup
-// path (they carry a gate State and the Static flag).
+// TestSeedWorldItem semeia objetos estáticos do mundo (portões/portas) no espaço de
+// ids de chão na ordem das chamadas, mantendo-os fora da grade espacial e fora do
+// caminho de coleta (eles carregam State de portão e o flag Static).
 func TestSeedWorldItem(t *testing.T) {
 	w := New(Config{GridDim: 16}, slogDiscard(), nil, nil)
 
@@ -48,7 +48,7 @@ func TestSeedWorldItem(t *testing.T) {
 	if g == nil || !g.Static || g.State != 3 || g.Item.Index != 472 || g.X != 7 || g.Y != 8 {
 		t.Fatalf("seeded gate = %+v, want Static gate 472 state 3 at (7,8)", g)
 	}
-	// Gates are not indexed on the item grid (looked up by id, not position).
+	// Portões não são indexados na grade de itens (buscados por id, não por posição).
 	if got := w.GroundItemAt(7, 8); got != nil {
 		t.Errorf("GroundItemAt(7,8) = %+v, want nil (gate not on grid)", got)
 	}
