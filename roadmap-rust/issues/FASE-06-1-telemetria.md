@@ -14,7 +14,7 @@ entidades ativas e memória, sem `println!` como telemetria.
 
 ## Passos
 
-1. Adicionar `tracing` (+ subscriber) e `prometheus`/`metrics` via ADR.
+1. Adicionar `tracing` (+ subscriber) e `prometheus`/`metrics` via ADR (ver ADR-0006 — diferidos até rede/vendor).
 2. Instrumentar `wyd-core`: histograma de latência de tick, entidades ativas,
    memória amostrada (fora do quente).
 3. Instrumentar `wyd-net`: pacotes/s, rejeições, tamanho de filas.

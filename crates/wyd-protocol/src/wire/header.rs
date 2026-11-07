@@ -20,8 +20,6 @@ pub const HEADER_SIZE: usize = 12;
 pub const MIN_MESSAGE_SIZE: usize = HEADER_SIZE;
 /// `MAX_MESSAGE_SIZE` de `CPSock.h:38`.
 pub const MAX_MESSAGE_SIZE: usize = 8192;
-/// Gate de conexão (`CPSock.h:40`): primeiros 4 bytes de toda conexão nova.
-pub const INITCODE: u32 = 0x1F11_F311;
 /// Tick interno que o cliente nunca deve usar (`Basedef.h:232`).
 pub const SKIPCHECKTICK: u32 = 235_543_242;
 /// Versão declarada em `Basedef.h:102` (o cliente medido envia 12000 — ver `PROTOCOL_VERSION`).
@@ -64,6 +62,12 @@ impl fmt::Display for HeaderError {
 impl std::error::Error for HeaderError {}
 
 /// Cabeçalho de 12 bytes comum a todo pacote CPSock.
+///
+/// `repr(C)` fixa o layout na ordem declarada (sem reordenação do compilador);
+/// os offsets de fio são provados por teste (`repr_c_matches_wire_offsets`).
+/// O parse continua por leitura explícita little-endian (sem `unsafe`, sem
+/// dependência externa) — veja a decisão na issue FASE-08-2.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Header {
     /// Tamanho total do pacote, incluindo o próprio `HEADER`.
@@ -118,31 +122,10 @@ impl Header {
 
     /// Tamanho validado do frame declarado por este cabeçalho.
     pub fn frame_len(&self) -> Result<usize, HeaderError> {
-        validate_size(self.size)
+        super::frame::validate_size(self.size).map_err(|_| HeaderError::SizeOutOfRange {
+            size: self.size as usize,
+        })
     }
-}
-
-/// Valida `Size` contra `[HEADER_SIZE, MAX_MESSAGE_SIZE]` (`CPSock.cpp:397-406`).
-pub fn validate_size(size: u16) -> Result<usize, HeaderError> {
-    let size = size as usize;
-    if (MIN_MESSAGE_SIZE..=MAX_MESSAGE_SIZE).contains(&size) {
-        Ok(size)
-    } else {
-        Err(HeaderError::SizeOutOfRange { size })
-    }
-}
-
-/// Lê o cabeçalho e devolve também o tamanho do frame a consumir do stream.
-pub fn split_frame(buf: &[u8]) -> Result<(Header, usize), HeaderError> {
-    let header = Header::decode(buf)?;
-    let declared = header.frame_len()?;
-    if buf.len() < declared {
-        return Err(HeaderError::FrameIncomplete {
-            declared,
-            available: buf.len(),
-        });
-    }
-    Ok((header, declared))
 }
 
 #[cfg(test)]
@@ -188,44 +171,27 @@ mod tests {
     }
 
     #[test]
-    fn size_bounds_follow_cpsock_limits() {
-        assert_eq!(validate_size(12), Ok(12));
-        assert_eq!(validate_size(8192), Ok(8192));
-        assert!(validate_size(11).is_err());
-        assert!(validate_size(8193).is_err());
-        assert_eq!(
-            validate_size(0),
-            Err(HeaderError::SizeOutOfRange { size: 0 })
-        );
+    fn repr_c_matches_wire_offsets() {
+        use core::mem::{offset_of, size_of};
+        assert_eq!(size_of::<Header>(), HEADER_SIZE);
+        assert_eq!(offset_of!(Header, size), 0);
+        assert_eq!(offset_of!(Header, key_word), 2);
+        assert_eq!(offset_of!(Header, checksum), 3);
+        assert_eq!(offset_of!(Header, message_type), 4);
+        assert_eq!(offset_of!(Header, id), 6);
+        assert_eq!(offset_of!(Header, client_tick), 8);
     }
 
     #[test]
-    fn split_frame_reports_incomplete_frame() {
-        let header = Header {
-            size: 20,
-            ..sample()
-        };
-        let mut buf = [0u8; HEADER_SIZE];
-        header.encode(&mut buf).expect("cabeçalho");
+    fn frame_len_delegates_to_frame_validation() {
+        assert_eq!(sample().frame_len(), Ok(116));
         assert_eq!(
-            split_frame(&buf),
-            Err(HeaderError::FrameIncomplete {
-                declared: 20,
-                available: HEADER_SIZE
-            })
+            Header {
+                size: 11,
+                ..sample()
+            }
+            .frame_len(),
+            Err(HeaderError::SizeOutOfRange { size: 11 })
         );
-    }
-
-    #[test]
-    fn split_frame_returns_declared_length() {
-        let header = Header {
-            size: 20,
-            ..sample()
-        };
-        let mut buf = [0u8; 20];
-        header.encode(&mut buf).expect("cabeçalho");
-        let (decoded, len) = split_frame(&buf).expect("frame completo");
-        assert_eq!(decoded, header);
-        assert_eq!(len, 20);
     }
 }

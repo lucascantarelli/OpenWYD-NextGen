@@ -53,17 +53,40 @@ Saída esperada: `test result: ok` incluindo golden e rejeições.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Golden byte-exato por opcode implementado; truncado/desconhecido rejeitado.
-- [ ] Nenhum `unsafe` fora do validado pelo parser.
+- [x] Golden byte-exato por opcode implementado; truncado/desconhecido rejeitado.
+- [x] Nenhum `unsafe` fora do validado pelo parser.
+
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- `Header` com `#[repr(C)]` + teste de offsets (`offset_of!`: size 0, key_word 2,
+  checksum 3, type 4, id 6, tick 8; `size_of == 12`). Sem crate externa: `zerocopy`/
+  `rkyv`/`nom` exigiriam dependência de rede + ADR (offline nesta máquina, sem
+  ADR aprovada) — decisão: layout provado por `repr(C)` + teste, parse por
+  empréstimo sem alocação — ver ADR-0005 (`docs/arquitetura/adr/0005-serializacao-manual-diferida.md`).
+- Pipeline tamanho → opcode → payload: `wire::inspect` (`split_frame` +
+  `Opcode::from_wire`, novo `FrameError::UnknownOpcode`) e
+  `payload::require_ported` (novo `PayloadError::Unported` — gate UNVERIFIED).
+- `tests/golden.rs` (9 testes): 5 fixtures `fixtures/cliente/*.json` passam por
+  corte → desofuscação → `Strict` → `inspect` → decode, com asserções semânticas
+  (GOLDEN/12000, posições da Action…) e ida-volta selado → claro → selado
+  byte-idêntica ao `wireHex`; tamper de checksum, truncado, opcode 0xFFFF e
+  opcode não-portado rejeitados com erro tipado.
+- Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes (protocolo
+  35 lib + 9 golden + 4 roundtrip; zero `unsafe` na crate).
+- `Cargo.toml` intocado (sem deps novas); `.deprecated-go/` e `client/` intocados.
+- Limitação herdada: fixtures são sintéticos (`--gen`); golden contra captura
+  real aguarda FASE-08-6.
 
 ## Riscos / rollback
 

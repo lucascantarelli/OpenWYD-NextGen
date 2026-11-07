@@ -5,6 +5,9 @@ version = 4
 [[package]]
 name = "wyd-admin"
 version = "0.1.0"
+dependencies = [
+ "wyd-db",
+]
 
 [[package]]
 name = "wyd-core"

@@ -64,6 +64,8 @@ Saída esperada: `make ci` verde; benches executam e publicam números.
 - [ ] Workflow verde em PR que toque `crates/**`; falha comprovada e revertida.
 - [ ] `deny` + `audit` passando (evidência anexada).
 
+> Nota (2026-11-07): `audit`/`deny`/`criterion` exigem rede (instalação de binários/crates) — ver ADR-0006. Pipeline executável offline hoje: `make check` (fmt+clippy+build+test), já verde em toda entrega.
+
 ## Riscos / rollback
 
 - Risco: gate flaky bloqueando PRs → mitigação: warmup e tolerância nos

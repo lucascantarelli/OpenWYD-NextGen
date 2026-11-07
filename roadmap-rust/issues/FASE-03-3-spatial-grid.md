@@ -50,17 +50,19 @@ densidade).
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07, entregue dentro da FASE-03: `spatial/grid.rs` + teste de guerra em `tests/determinism.rs` — 8,6 ms inserts, 79 µs consulta).
+
 ## Critérios de aceite
 
-- [ ] Consulta de vizinhança O(1); travessia entre zonas definida e testada.
-- [ ] Cenário de alta densidade (guerra) sem degradação anormal (números anexados).
+- [x] Consulta de vizinhança O(1); travessia entre zonas definida e testada.
+- [x] Cenário de alta densidade (guerra) sem degradação anormal (números anexados).
 
 ## Riscos / rollback
 

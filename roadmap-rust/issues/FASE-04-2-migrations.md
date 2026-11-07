@@ -49,18 +49,20 @@ Saída esperada: `test result: ok`; log mostrando zero→última→revert→últ
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07, entregue dentro da FASE-04: 6 migrations + `seeds/dev.sql` + `tests/constraints.rs`; prova ao vivo zero→última→revert→última em PG17 descartável. Ferramenta runner (sqlx/refinery) pendente — ver ADR-0006; aplicação por `psql -f` até lá).
+
 ## Critérios de aceite
 
-- [ ] Migrations sobem do zero e revertem (evidência anexada); FK violada falha
+- [x] Migrations sobem do zero e revertem (evidência anexada); FK violada falha
   em teste.
-- [ ] Seeds reproduzíveis dev/prod.
+- [x] Seeds reproduzíveis dev/prod.
 
 ## Riscos / rollback
 

@@ -63,18 +63,36 @@ Saída esperada: `test result: ok`; migrations aplicam do zero e rollback funcio
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Migrations sobem do zero e revertem sem perda (evidência anexada).
-- [ ] FKs/CHECKs validados por teste (violação falha como esperado).
-- [ ] Nenhum acesso a banco dentro do tick; DSN real nunca versionado.
+- [x] Migrations sobem do zero e revertem sem perda (evidência anexada).
+- [x] FKs/CHECKs validados por teste (violação falha como esperado).
+- [x] Nenhum acesso a banco dentro do tick; DSN real nunca versionado.
+
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- `docs/arquitetura/modelo-banco.md`: ER, 8 tabelas com FKs/CHECKs/índices,
+  6 decisões; lacuna do arquivo registrada (pastas do legado vazias).
+- 6 migrations reversíveis (`-- migrate:up/down`): contas, personagens
+  (soft-delete), inventário+baú (normalizado), guildas, auditoria, delivery_queue.
+- `src/{error.rs (DbError sem segredo), model/, repo/ (traits Accounts/
+  Characters/Grants), pool/config.rs, transfer/delivery_queue.rs (mpsc
+  limitada + drain)}`; `tests/constraints.rs` (marcadores, reversibilidade,
+  FKs, seeds); `SCHEMA_VERSION=6`; `Cargo.toml` intocado (sqlx exige rede+ADR).
+- Prova ao vivo em PG17 descartável: 6 ups → 8 tabelas; FK/CHECK/UNIQUE
+  violados falham; revert → 0 tabelas; re-apply + `seeds/dev.sql` OK.
+  Container e senha efêmera destruídos; DSN nunca versionado.
+- Escopo consciente: implementação `pg`/pool async (04-3) aguarda rede + ADR;
+  traits e fila prontos para ela.
 
 ## Riscos / rollback
 

@@ -59,6 +59,8 @@ retry de compra não duplica entrega.
 
 - [ ] E2E verde nos 3 fluxos; teste de duplicidade de entrega passando.
 
+> Nota (2026-11-07): idempotência de entrega já provada no backend (`retry` devolve recibo original); E2E aguarda transporte + runtime do portal.
+
 ## Riscos / rollback
 
 - Risco: E2E flaky mascarando regressão → mitigação: retries limitados +

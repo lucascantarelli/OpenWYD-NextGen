@@ -61,6 +61,8 @@ Saída esperada: `test result: ok`; `portal-test` verde (log anexado).
 - [ ] 4 fluxos (conta, recuperação, rankings, personagens) funcionando via gateway.
 - [ ] Respostas pessoais com `no-store`; sem segredo no cliente.
 
+> Nota (2026-11-07): aguarda transporte do gateway (07-1 backend pronto) + runtime do portal; telas consomem o contrato já testado (`find_account`, `request_grant`).
+
 ## Riscos / rollback
 
 - Risco: vazar dado pessoal em cache/SSR → mitigação: revisão de

@@ -55,17 +55,19 @@ duas execuções); `make check` verde.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+**Status:** ✅ (2026-11-07, entregue dentro da FASE-03: `tick/scheduler.rs` + `ports/clock.rs` + teste de fatiamento em `tests/determinism.rs`).
+
 ## Critérios de aceite
 
-- [ ] Tick 20–50 Hz com intervalo fixo; ordem de sistemas documentada.
-- [ ] Teste de determinismo verde; zero alocação/I-O/lock no quente.
+- [x] Tick 20–50 Hz com intervalo fixo; ordem de sistemas documentada.
+- [x] Teste de determinismo verde; zero alocação/I-O/lock no quente.
 
 ## Riscos / rollback
 

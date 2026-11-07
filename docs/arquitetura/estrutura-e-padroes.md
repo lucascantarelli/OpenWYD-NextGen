@@ -6,8 +6,8 @@
 >
 > Este documento existe porque a execução anterior criou módulos soltos na raiz da
 > crate (`header.rs`, `payload.rs`, `opcodes.rs`…) sem plano de organização. O
-> código atual de `wyd-protocol` é **protótipo congelado** até a reorganização
-> prevista na FASE-08-1; nada novo é escrito fora desta árvore.
+> `wyd-protocol` foi **reorganizado na FASE-08-1** exatamente nesta árvore
+> (movimento sem mudança de comportamento); nada novo é escrito fora dela.
 
 ## 1. Fronteiras entre crates (DAG, sem ciclos)
 

@@ -83,20 +83,29 @@ completo verde (`fmt`, `clippy -D warnings`, `build`, `test`).
 ## Subtasks
 
 - [x] Codificar issue (protótipo congelado, sem árvore)
-- [ ] Reorganizar na árvore alvo (passo 1)
-- [ ] Publicar `docs/arquitetura/protocolo.md` (passo 3)
-- [ ] Testar issue (round-trip por payload + integração)
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Reorganizar na árvore alvo (passo 1)
+- [x] Publicar `docs/arquitetura/protocolo.md` (passo 3)
+- [x] Testar issue (round-trip por payload + integração)
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 
 ## Critérios de aceite
 
-- [ ] Crate segue a árvore de `estrutura-e-padroes.md` §3 (sem arquivo de
+- [x] Crate segue a árvore de `estrutura-e-padroes.md` §3 (sem arquivo de
   domínio na raiz de `src/`).
-- [ ] Tabela publicada com fonte por linha; UNVERIFIED marcado e sem tipo.
-- [ ] Round-trip verde para todo payload portado; gate verde.
-- [ ] Evidência datada em `docs/rust/03-progresso.md`.
+- [x] Tabela publicada com fonte por linha; UNVERIFIED marcado e sem tipo.
+- [x] Round-trip verde para todo payload portado; gate verde.
+- [x] Evidência datada em `docs/rust/03-progresso.md`.
+
+**Status:** ✅ (2026-11-07)
+
+## Resultados
+
+- Movidos sem mudar comportamento: `header.rs`→`wire/header.rs`, `opcodes.rs`→`wire/generated/`, `keyword.rs`→`codec/generated/`; novos `wire/{frame,opcode}`, `codec/{keyword,checksum}`, `error.rs` (`ProtocolError`), `payload/` em 7 domínios, `tests/{common,roundtrip}`.
+- `gen-protocol.mjs` agora emite nos caminhos novos + catálogo de 198 opcodes em `protocolo.md` (marcadores GERADO, regeneração sem diff).
+- Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes (protocolo 32 lib + 4 integração, launcher 27, resto ok).
+- Achado documentado: checksum CPSock é função da chave, não do conteúdo (tamper de 1 byte o preserva); `Strict` detecta corrupção do campo — registrado em `protocolo.md` §3 e provado em teste.
 
 ## Riscos / rollback
 

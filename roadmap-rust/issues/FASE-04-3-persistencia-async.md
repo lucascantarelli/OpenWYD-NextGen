@@ -62,6 +62,10 @@ Saída esperada: `test result: ok`; teste de carga de saves sem degradar o tick.
 - [ ] Zero await de banco no tick; fila drenada com política documentada.
 - [ ] Save-on-shutdown sem perda (teste dedicado).
 
+> Nota (2026-11-07): base pronta na FASE-04 (traits `Accounts`/`Characters`/
+> `Grants`, `PoolConfig`, `DeliveryQueue` em memória). Resta a implementação
+> `pg` + pool async — ver ADR-0006 (exige rede + vendor — fora do escopo desta entrega).
+
 ## Riscos / rollback
 
 - Risco: perda de dados em crash entre saves → mitigação: janela de perda
