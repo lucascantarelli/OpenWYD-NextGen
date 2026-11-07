@@ -94,7 +94,7 @@ func TestApplyPreservesNameWhenDisplayNameEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeMob: %v", err)
 	}
-	got := string(mob.Name[:9]) // "Karkarian" is 9 bytes
+	got := string(mob.Name[:9]) // "Karkarian" tem 9 bytes
 	if got != "Karkarian" {
 		t.Errorf("Name = %q, want Karkarian", got)
 	}
@@ -103,7 +103,7 @@ func TestApplyPreservesNameWhenDisplayNameEmpty(t *testing.T) {
 // TestApplyOverwritesDisplayName verifica que um DisplayName não vazio substitui
 // o nome do próprio template e limpa bytes finais de um nome antigo mais longo.
 func TestApplyOverwritesDisplayName(t *testing.T) {
-	tmpl := blankTemplate("VeryLongOldName") // 15 bytes, fills most of the 16-byte field
+	tmpl := blankTemplate("VeryLongOldName") // 15 bytes, ocupa quase todo o campo de 16 bytes
 	out := Apply(tmpl, Override{DisplayName: "Short"})
 	mob, err := savefmt.DecodeMob(out)
 	if err != nil {

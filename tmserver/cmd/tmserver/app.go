@@ -385,9 +385,9 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 	}
 
 	// Sobreposição de stats de template de mob/NPC do moderador (mob-template-editing-plan.md, o
-	// sucessor equivalente da ferramenta legada EDITAPPMOB): o único interruptor é
+	// equivalente posterior da ferramenta legada EDITAPPMOB): o único interruptor é
 	// -mob-stat-editing (W2PP_MOB_STAT_EDITING), desligado por default. A
-	// sobreposição de stats se aplica a QUALQUER arquivo npc/<template_name> — monstros
+	// sobreposição de stats se aplica a QUALQUER arquivo npc/<template_name> — criaturas
 	// incluídos, o caso de uso principal de rebalanceamento da ferramenta — não só ao
 	// subconjunto de mercadores gerenciado pelo banco, então é de propósito independente do
 	// catálogo de NPCs (fonte própria, checagem de dependência própria). Buscada UMA vez
@@ -672,7 +672,7 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		LogSends:       cfg.logSends,
 		Metrics:        metricsReg,
 	}, logger, persist, dispatch.Handle)
-	// Pulso da IA de mobs: monstros adquirem/perseguem/atacam corpo a corpo jogadores próximos a cada tick (mobai.go).
+	// Pulso da IA de mobs: criaturas adquirem/perseguem/atacam corpo a corpo jogadores próximos a cada tick (mobai.go).
 	w.SetTickHandler(world.DefaultMobTick, dispatch.Tick)
 	// Desmontagem de party ao desconectar: desvincula o laço de party e remove as
 	// invocações antes do slot ser liberado (party.go SessionEnd).
@@ -774,9 +774,9 @@ func seedWorldItems(w *world.World, items []content.InitItem, logger *slog.Logge
 
 // registerNPCGenerators monta os slots de gerador do mundo a partir do catálogo
 // de spawn (issue 57) em vez de ler NPCGener.txt no boot. O slot i é o bloco de
-// conteúdo i, exatamente a ordem de arquivo que o servidor legado usava, para as faixas de índice que o cliente já conhece continuarem
-// classify event blocks (IsWaterGenerator, NightmareGenerator, rune quest) keep
-// funcionando. Um bloco que o importador pulou (template ausente/indecodificável) deixa seu
+// conteúdo i, exatamente a ordem de arquivo que o servidor legado usava, para as faixas de índice que o cliente já conhece
+// continuarem classificando os blocos de evento (IsWaterGenerator, NightmareGenerator, quest de runa) e
+// seguirem funcionando. Um bloco que o importador pulou (template ausente/indecodificável) deixa seu
 // slot nil, e blocos de propriedade de evento são registrados mas ficam para o código do evento.
 func registerNPCGenerators(w *world.World, defs []npccfg.Definition, attrs *content.Grid, logger *slog.Logger) {
 	slots := 0
@@ -923,7 +923,7 @@ type loadedContent struct {
 	sanc    *content.SancRate
 	quests  *content.QuestRates
 	heights *content.Grid
-	attrs   *content.Grid // raw AttributeMap (training-grounds bit); nil when not mounted
+	attrs   *content.Grid // AttributeMap cru (bit do campo de treino); nil quando não montado
 }
 
 // sancRow renderiza a linha de taxa de uma bigorna para o log de boot.

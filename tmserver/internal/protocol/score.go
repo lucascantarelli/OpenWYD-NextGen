@@ -20,12 +20,12 @@ type ScoreData struct {
 	Int       int16
 	Dex       int16
 	Con       int16
-	Special   [4]int16 // STRUCT_SCORE.Special[4] — live mastery (allocated+gear+buffs)
+	Special   [4]int16 // STRUCT_SCORE.Special[4] — maestria viva (alocada+equipamento+buffs)
 
 	// Campos de cauda depois do score (MSG_UpdateScore, Basedef.h:1825).
 	Critical   uint8
 	SaveMana   uint8
-	Affect     [MaxAffect]uint16 // buff icon array: (Type<<8) | (Time&0xFF) — PackAffect
+	Affect     [MaxAffect]uint16 // vetor de ícones de buff: (Type<<8) | (Time&0xFF) — PackAffect
 	Guild      uint16
 	GuildLevel uint16
 	Resist     [4]int8

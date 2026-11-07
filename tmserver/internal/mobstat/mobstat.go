@@ -1,6 +1,6 @@
-// Package mobstat applies moderator-edited stat overrides onto raw STRUCT_MOB
-// bytes do template de mob/NPC (mob-template-editing-plan.md) — o sucessor
-// equivalente da ferramenta legada EDITAPPMOB. É irmão de npccfg: aquele
+// Package mobstat aplica sobreposições de stats editadas por moderador em STRUCT_MOB
+// bytes do template de mob/NPC (mob-template-editing-plan.md) — o equivalente
+// posterior da ferramenta legada EDITAPPMOB. É irmão de npccfg: aquele
 // pacote carrega sobreposições de posicionamento/loja de NPC materializadas por
 // handler/npcconfig.go; este carrega sobreposições de stats de combate/atributo
 // aplicadas a QUALQUER template npc/<template_name> no carregamento (só no boot —
@@ -25,10 +25,10 @@ type EquipItem struct {
 
 // Override é uma sobreposição de stats editada por moderador para um template
 // STRUCT_MOB cru, resolvida do snapshot de ListMobTemplateStats do dbServer. Espelha o
-// EDITAPPMOB-editable field surface, minus Carry[] (npccfg.ShopItem's job)
+// superfície de campos editável no EDITAPPMOB, menos Carry[] (trabalho do npccfg.ShopItem)
 // e a posição de spawn gerenciada pelo banco (trabalho de npccfg.Definition).
 type Override struct {
-	DisplayName                     string // "" keeps the template file's own name
+	DisplayName                     string // "" mantém o nome do próprio arquivo do template
 	Clan, Merchant, Class           uint8
 	Coin                            int32
 	Exp                             int64

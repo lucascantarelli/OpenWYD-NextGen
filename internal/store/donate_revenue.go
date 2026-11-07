@@ -34,9 +34,9 @@ type RevenueWindow struct {
 
 // TopupOrderFilter restringe ListTopupOrders. Zero significa "qualquer" em cada dimensão.
 type TopupOrderFilter struct {
-	Status        int16 // 0 = any; 1 = PENDING; 2 = PAID
-	PaymentMethod int16 // 0 = any
-	AccountID     int64 // 0 = any
+	Status        int16 // 0 = qualquer; 1 = PENDING; 2 = PAID
+	PaymentMethod int16 // 0 = qualquer
+	AccountID     int64 // 0 = qualquer
 }
 
 // Palavras de balde da série. Passadas a date_trunc como PARÂMETRO DE BIND (nunca

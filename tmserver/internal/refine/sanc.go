@@ -6,8 +6,8 @@
 // O nível de refino NÃO mora no cValue do item como número simples. Ele é
 // empacotado junto de um segundo contador (Basedef.cpp:2282, BASE_SetItemSanc):
 //
-//	levels 0..9   cValue = level + 10*pity     (pity 0..20, so 0..209)
-//	levels 10..15 cValue = base + gem          (base 230/234/238/242/246/250, gem 0..3)
+//	níveis 0..9   cValue = level + 10*pity     (pity 0..20, então 0..209)
+//	níveis 10..15 cValue = base + gem          (base 230/234/238/242/246/250, gem 0..3)
 //
 // Ler um cValue como está reporta, portanto, um nível muito errado para qualquer
 // item que já falhou um refino.

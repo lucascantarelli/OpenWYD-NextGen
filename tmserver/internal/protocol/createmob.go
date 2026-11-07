@@ -25,10 +25,10 @@ type CreateMobData struct {
 	Level, Ac, Damage    int32
 	MaxHp, MaxMp, Hp, Mp int32
 	Str, Int, Dex, Con   int16
-	Merchant             uint8 // NPC type (shop/bank/…); makes the name always-visible
-	AttackRun            uint8 // speed byte (run<<4 | move): the client animates this entity's walks with it — 0 = crawling avatar that rubber-bands
+	Merchant             uint8 // tipo de NPC (loja/banco/…); deixa o nome sempre visível
+	AttackRun            uint8 // byte de velocidade (run<<4 | move): o cliente anima os passos desta entidade com ele — 0 = avatar rastejando que volta sozinho
 	Direction            uint8
-	CreateType           uint16 // 0 normal, 2 "just entered"
+	CreateType           uint16 // 0 normal, 2 "acabou de entrar"
 	Equip                [16]uint16
 	Affect               [MaxAffect]uint16
 	AnctCode             [16]uint8
@@ -66,7 +66,7 @@ func writeCreateMobScore(b []byte, d CreateMobData) {
 // PackMobName escreve o campo MobName de 16 bytes para um JOGADOR: só os primeiros
 // 12 bytes guardam o nome; os bytes [12..15] carregam os dados de PK/caos que o
 // cliente lê para colorir o nick (GetFunc.cpp:1082-1101). MobName[12] = PKPoint (75 =
-// white, 0 = red blinking), [13] = curkill, [14..15] = totkill (little-endian).
+// branco, 0 = vermelho piscando), [13] = curkill, [14..15] = totkill (little-endian).
 // NPCs/mobs (id ≥ MAX_USER) passam pkPoint=0 curkill=0 totkill=0 — o legado só
 // empacota isso para id < MAX_USER, e o nome de um mob não tem coloração de PK.
 func PackMobName(dst []byte, name string, pkPoint, curKill uint8, totKill uint16) {

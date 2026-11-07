@@ -59,7 +59,7 @@ func SkillDamage(r Rand, dam, ac, combat int) int {
 	switch {
 	case tdam < -50:
 		tdam = 0
-	case tdam > -50 && tdam < 0: // strict on -50 (per §4.2)
+	case tdam > -50 && tdam < 0: // estrito em -50 (conforme §4.2)
 		tdam = (tdam + 50) / 10
 	case tdam >= 0 && tdam <= 45:
 		tdam = 5*tdam/4 + 5
@@ -80,12 +80,12 @@ type HitInput struct {
 	AttackerDamage int
 	TargetAC       int
 	TargetIsPlayer bool
-	DoubleCritical uint8 // bit 1 = total crit (×2), bit 2 = partial crit
+	DoubleCritical uint8 // bit 1 = crítico total (×2), bit 2 = crítico parcial
 	Master         int   // weapon mastery (combat level)
 	UseSkill       bool
 	SkillIndex     int
 	ParryRate      int  // 0..1000
-	TargetRsvBlock bool // target.Rsv & 0x200 → -4 instead of -3 on a low-roll block
+	TargetRsvBlock bool // target.Rsv & 0x200 → -4 em vez de -3 num bloqueio de roll baixo
 	ReflectDamage  int
 	ReflectPvP     int
 	ForceMobDamage int
@@ -93,14 +93,14 @@ type HitInput struct {
 }
 
 // ResolveHit roda o pipeline de golpe por alvo (§4.3): crítico parcial → AC
-// (×3 vs players) → BASE_GetDamage/SkillDamage → total critical → parry → reflect
+// (×3 contra players) → BASE_GetDamage/SkillDamage → crítico total → aparo → reflexo
 // → forçar/limitar. Um resultado negativo é o código de "erro/bloqueio" (-3, ou -4 num
 // roll baixo bloqueado) propagado ao cliente. As chamadas de rand() acontecem na
 // ordem original para o fluxo do LCG casar.
 func ResolveHit(r Rand, in HitInput) int {
 	dam := in.AttackerDamage
 
-	// Partial critical (DoubleCritical & 2): ×1.3–1.4 vs players, ×1.5–1.6 vs mobs.
+	// Crítico parcial (DoubleCritical & 2): ×1.3–1.4 contra players, ×1.5–1.6 contra mobs.
 	if in.DoubleCritical&2 != 0 {
 		if in.TargetIsPlayer {
 			dam = (r.Intn(2) + 13) * dam / 10
@@ -111,7 +111,7 @@ func ResolveHit(r Rand, in HitInput) int {
 
 	ac := in.TargetAC
 	if in.TargetIsPlayer {
-		ac *= 3 // players resist 3× in PvP
+		ac *= 3 // players resistem 3× no PvP
 	}
 	if in.UseSkill {
 		dam = SkillDamage(r, dam, ac, in.Master)
@@ -119,7 +119,7 @@ func ResolveHit(r Rand, in HitInput) int {
 		dam = Damage(r, dam, ac, in.Master)
 	}
 
-	// Total critical (DoubleCritical & 1).
+	// Crítico total (DoubleCritical & 1).
 	if in.DoubleCritical&1 != 0 {
 		dam *= 2
 	}

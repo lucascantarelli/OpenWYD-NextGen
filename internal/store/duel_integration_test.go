@@ -26,7 +26,7 @@ func TestRecordDuelResult(t *testing.T) {
 		t.Fatalf("SaveAccount: %v", err)
 	}
 
-	// First result: upsert-creates both rows.
+	// Primeiro resultado: o upsert cria as duas linhas.
 	if err := s.RecordDuelResult(ctx, "Winner", "Loser"); err != nil {
 		t.Fatalf("RecordDuelResult: %v", err)
 	}

@@ -27,7 +27,7 @@ func spawnNPCsForTest(w *world.World, dir string, attrs *content.Grid, log *slog
 	for i, b := range blocks {
 		leader, _, lerr := npctemplate.Load(dir, b.Leader)
 		if lerr != nil {
-			continue // same rule as the importer: a block without its template cannot spawn
+			continue // mesma regra do importador: um bloco sem o seu template não pode spawnar
 		}
 		def := npccfg.Definition{
 			Slug: fmt.Sprintf("%s-%d", b.Leader, i), Origin: "content", GeneratorIndex: i,
@@ -53,7 +53,7 @@ func spawnNPCsForTest(w *world.World, dir string, attrs *content.Grid, log *slog
 	registerNPCGenerators(w, defs, attrs, log)
 	for _, idx := range slots {
 		if world.EventOwnedGenerator(idx) {
-			continue // the event code owns the spawn; boot must not materialize it
+			continue // o código do evento é dono do spawn; o boot não pode materializá-lo
 		}
 		w.GenerateMob(idx)
 	}

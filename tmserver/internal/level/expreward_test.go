@@ -42,7 +42,7 @@ func TestSoloExpReward(t *testing.T) {
 			ev: ExpEvents{KefraLive: true}, want: 45_961,
 		},
 		{
-			// Capped at eMob=1000 → +100% item bonus → 2000 → −15% = 1700.
+			// Limitado em eMob=1000 → +100% de bônus de item → 2000 → −15% = 1700.
 			name: "exp bonus applies after the cap", mobExp: 1000,
 			killerLevel: 50, mobLevel: 50, classMaster: classMortal, expBonus: 100,
 			ev: ExpEvents{KefraLive: true}, want: 1700,
@@ -55,7 +55,7 @@ func TestSoloExpReward(t *testing.T) {
 		},
 		{
 			// myLevel=50+400=450: 450*100000/480=93750 → ÷320=292 → ×0.6=175 →
-			// Kefra down 87 → −15% = 74. The near-zero tier issue #43 hit.
+			// Kefra abatido 87 → −15% = 74. A tier quase zero que a issue #43 atingiu.
 			name: "celestial tier offset and divisors", mobExp: 100_000,
 			killerLevel: 50, mobLevel: 50, classMaster: classCelestial,
 			ev: ExpEvents{}, want: 74,
@@ -73,8 +73,8 @@ func TestSoloExpReward(t *testing.T) {
 			ev: ExpEvents{DoubleMode: true, KefraLive: true}, want: 1700,
 		},
 		{
-			// ExpApply penalty: mult=31*100/101=30 → 30*2−100<0 → 0 exp. A
-			// level-100 killer farming level-30 mobs gains nothing (parity).
+			// ExpApply penalty: mult=31*100/101=30 → 30*2−100<0 → 0 exp. Um
+			// matador nível 100 farmando mobs nível 30 não ganha nada (paridade).
 			name: "overleveled killer gets zero", mobExp: 1000,
 			killerLevel: 100, mobLevel: 30, classMaster: classMortal,
 			ev: ExpEvents{KefraLive: true}, want: 0,

@@ -2,7 +2,7 @@ package protocol
 
 // keyWord é a tabela estática de obfuscação de 512 bytes usada pelo transform de
 // keyword do CPSock. É transcrita tal e qual de protocol-spec.md §4.4
-// (Source/Code/CPSock.cpp:29-46, labelled "7.xx keys").
+// (Source/Code/CPSock.cpp:29-46, rotulada "7.xx keys").
 //
 // Bytes de índice par são "sementes KeyWord" (usadas para semear a posição do
 // transform a partir de HEADER.KeyWord); bytes de índice ímpar são valores "Trans"

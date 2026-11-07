@@ -301,7 +301,7 @@ func LoadItemList(path string) (*ItemList, error) {
 func parseItemList(r io.Reader) (*ItemList, error) {
 	l := &ItemList{items: make(map[int]ItemEntry)}
 	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 64*1024), 1024*1024) // rows can be long
+	sc.Buffer(make([]byte, 64*1024), 1024*1024) // as linhas podem ser longas
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" {

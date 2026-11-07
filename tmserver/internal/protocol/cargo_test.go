@@ -6,7 +6,7 @@ import (
 )
 
 func TestStandardParm(t *testing.T) {
-	b := EncodeStandardParm2(1_500_000, 0) // first int32 is the Parm we read
+	b := EncodeStandardParm2(1_500_000, 0) // o primeiro int32 é o Parm que lemos
 	parm, ok := StandardParm(b)
 	if !ok || parm != 1_500_000 {
 		t.Fatalf("StandardParm = %d ok=%v, want 1500000 true", parm, ok)

@@ -38,7 +38,7 @@ func TestMaxLevelForTier(t *testing.T) {
 	}
 }
 
-// TestNextLevelExpTier confere a escolha da curva: Mortal/Arch andam em g_pNextLevel,
+// TestNextLevelExpTier confere a escolha da curva: Mortal/Arch andam na g_pNextLevel,
 // as tiers celestiais andam em g_pNextLevel_2, e cada uma trava no próprio teto.
 func TestNextLevelExpTier(t *testing.T) {
 	// O caminho Mortal bate exatamente com a curva Mortal.

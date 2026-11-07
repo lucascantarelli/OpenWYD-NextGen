@@ -198,7 +198,7 @@ func TestRevenueSeriesMonthBoundaryBRT(t *testing.T) {
 	}
 }
 
-// TestRevenueSeriesWeekStartsMonday documents Postgres' ISO week boundary.
+// TestRevenueSeriesWeekStartsMonday documenta a fronteira de semana ISO do Postgres.
 func TestRevenueSeriesWeekStartsMonday(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_week", "a@b.c", "player", 0)
@@ -282,7 +282,7 @@ func TestRevenueSeriesRejectsUnknownBucket(t *testing.T) {
 
 // TestListTopupOrdersPaidUsesConfirmedAtBasis: o filtro PAID seleciona a
 // variante de confirmed_at, então um pedido criado antes da janela mas liquidado dentro dela
-// it IS returned.
+// É devolvido.
 func TestListTopupOrdersPaidUsesConfirmedAtBasis(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "ord_basis", "a@b.c", "player", 0)

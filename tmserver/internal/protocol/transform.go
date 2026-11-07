@@ -1,8 +1,8 @@
 package protocol
 
-// O transform de keyword ofusca o payload (bytes [4:Size)); o cabeçalho
-// bytes 0..3 sempre viajam em claro (protocol-spec.md §1.4,
-// Source/Code/CPSock.cpp:428-453 decode / :556-581 encode).
+// O transform de keyword ofusca o payload (bytes [4:Size)); os bytes 0..3 do
+// cabeçalho sempre viajam em claro (protocol-spec.md §1.4,
+// Source/Code/CPSock.cpp:428-453 decodifica / :556-581 codifica).
 //
 // Notas de paridade (precisa casar byte a byte):
 //   - Toda aritmética é uint8 com wrap mod 256. Em C o Trans deslocado é

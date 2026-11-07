@@ -12,7 +12,7 @@ import (
 	"fmt"
 )
 
-// Transport constants (protocol-spec.md §4.5; Source/Code/CPSock.h, Basedef.h).
+// Constantes de transporte (protocol-spec.md §4.5; Source/Code/CPSock.h, Basedef.h).
 const (
 	// HeaderSize é sizeof(HEADER) — um prefixo fixo de 12 bytes em todo pacote
 	// exceto o handshake e o link de billing (protocol-spec.md §1.1).
@@ -31,7 +31,7 @@ const (
 	AppVersion = 7640
 
 	// SkipCheckTick é um valor de tick interno que o cliente nunca deve enviar; o
-	// dispatcher drops client packets carrying it (Basedef.h:232, §2).
+	// dispatcher descarta pacotes de cliente que o carreguem (Basedef.h:232, §2).
 	SkipCheckTick uint32 = 235543242
 
 	// MaxUser é a contagem de slots de conexão/jogador por canal; HEADER.ID precisa

@@ -43,10 +43,10 @@ func TestCreateMobBodyLayout(t *testing.T) {
 	if got := le.Uint16(b[118:]); got != 7 { // Guild @abs130 → body118
 		t.Errorf("Guild = %d, want 7", got)
 	}
-	if b[124+12] != 1 { // Score.Merchant @abs148 → body124+12 (name-visible NPC flag)
+	if b[124+12] != 1 { // Score.Merchant @abs148 → body124+12 (flag de NPC com nome visível)
 		t.Errorf("Score.Merchant = %d, want 1", b[124+12])
 	}
-	if b[124+13] != 82 { // Score.AttackRun @abs149 → body124+13 (walk-animation speed)
+	if b[124+13] != 82 { // Score.AttackRun @abs149 → body124+13 (velocidade da animação de caminhada)
 		t.Errorf("Score.AttackRun = %d, want 82", b[124+13])
 	}
 	if got := le.Uint32(b[124:]); got != 171 { // Score.Level @abs136 → body124

@@ -114,5 +114,5 @@ const (
 	offReceived   = 7864 // bool
 	offQuestDaily = 7872 // STRUCT_QUEST (7 bytes de padding depois de ReceivedItem, alinhamento 8)
 	offBlockPass  = 7928 // char[16]
-	offIsBlocked  = 7944 // bool; struct rounds to 7952 (align 8)
+	offIsBlocked  = 7944 // bool; a struct arredonda para 7952 (align 8)
 )

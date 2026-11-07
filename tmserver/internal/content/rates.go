@@ -249,7 +249,7 @@ func parseCompRate(r io.Reader) (*CompRate, error) {
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		fields := strings.Fields(sc.Text())
-		if len(fields) != 3 { // blank or malformed → skip
+		if len(fields) != 3 { // vazia ou malformada → pula
 			continue
 		}
 		rate, err := strconv.Atoi(fields[2])

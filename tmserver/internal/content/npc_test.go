@@ -79,7 +79,7 @@ func TestLoadNPCGenerators(t *testing.T) {
 	if g1.Leader != "Ciclop_Selvagem" || g1.MinGroup != 3 || g1.SegX[0] != 2700 {
 		t.Errorf("gen[1] = %+v", g1)
 	}
-	if g1.Follower != "" { // "Follower: 0" means none
+	if g1.Follower != "" { // "Follower: 0" significa nenhum
 		t.Errorf("gen[1] Follower = %q, want empty", g1.Follower)
 	}
 	if g1.SegX[1] != 2710 || g1.SegY[1] != 1810 || g1.SegWait[1] != 4 {

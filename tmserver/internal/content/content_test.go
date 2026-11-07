@@ -181,9 +181,9 @@ func TestSancAnvilRow(t *testing.T) {
 		{"PO", sancAnvilOri, true},
 		{"po", sancAnvilOri, true},
 		{"PL", sancAnvilLac, true},
-		{"\xC2mago", sancAnvilAma, true}, // cp1252, as the real file spells it
+		{"\xC2mago", sancAnvilAma, true}, // cp1252, como o arquivo real o escreve
 		{"\xC2MAGO", sancAnvilAma, true},
-		{"\xC3\x82mago", sancAnvilAma, true}, // UTF-8, if the file is ever re-saved
+		{"\xC3\x82mago", sancAnvilAma, true}, // UTF-8, caso o arquivo seja regravado algum dia
 		{"Ori", 0, false},
 		{"", 0, false},
 	}
@@ -393,8 +393,8 @@ func TestBaseEffectsMagic(t *testing.T) {
 		idx  int
 		want int16
 	}{
-		{3582, 55},                                     // The common Cajado Caotico keeps its legacy value.
-		{3725, 70}, {3726, 70}, {3727, 70}, {3728, 70}, // Issue #281: rebalanced Anct variants.
+		{3582, 55},                                     // O Cajado Caotico comum mantém o valor legado.
+		{3725, 70}, {3726, 70}, {3727, 70}, {3728, 70}, // Issue #281: variantes Anct rebalanceadas.
 	} {
 		var got int16
 		for _, e := range realEffects[tc.idx] {

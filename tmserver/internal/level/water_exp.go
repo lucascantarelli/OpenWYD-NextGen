@@ -21,7 +21,7 @@ func WaterExpReward(tier WaterTier, mobExp int64, memberLevel, mobLevel int32, c
 		return 0
 	}
 	// GetExpApply tem ajustes por classe antes da razão comum de nível.
-	// Arch earns half base EXP; celestial tiers compare at MAX_LEVEL.
+	// Arch ganha metade do EXP base; as tiers celestiais comparam em MAX_LEVEL.
 	baseExp := mobExp
 	applyLevel := memberLevel
 	if classMaster == classArch {

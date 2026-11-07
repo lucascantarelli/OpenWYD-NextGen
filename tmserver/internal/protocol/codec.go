@@ -14,7 +14,7 @@ type Frame struct {
 // calculados aqui. iKeyWord semeia o transform de keyword — é injetável para
 // os testes serem determinísticos; em produção é rand()%256 (CPSock.cpp:535).
 //
-// The obfuscation/checksum cover bytes [4:Size), i.e. Type, ID, ClientTick AND
+// A obfuscação/checksum cobre os bytes [4:Size), ou seja Type, ID, ClientTick E
 // o corpo; só Size, KeyWord e CheckSum (bytes 0..3) ficam em claro
 // (protocol-spec.md §1.1, §1.4).
 func Encode(h Header, payload []byte, iKeyWord uint8) ([]byte, error) {

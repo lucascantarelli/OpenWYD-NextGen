@@ -109,7 +109,7 @@ func TestFramerSizeBounds(t *testing.T) {
 
 func TestFramerTruncatedFrame(t *testing.T) {
 	frame := mustEncode(t, MsgAction, bytes.Repeat([]byte{5}, 20), 1)
-	truncated := withInitCode(frame)[:len(frame)] // drop the last few bytes
+	truncated := withInitCode(frame)[:len(frame)] // descarta os últimos bytes
 	f := NewFramer(bytes.NewReader(truncated))
 	if _, err := f.ReadFrame(); !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Errorf("ReadFrame on truncated stream = %v, want io.ErrUnexpectedEOF", err)

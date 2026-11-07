@@ -35,18 +35,18 @@ const affectTimeDivisor = 4
 // coluna final do CSV, que o servidor legado nunca lia — mantida aqui para logs.
 type Spell struct {
 	Index             int
-	SkillPoint        int // learn cost in skill points
+	SkillPoint        int // custo de aprendizado em pontos de skill
 	TargetType        int
-	ManaSpent         int // base MP cost (scaled by BASE_GetManaSpent)
+	ManaSpent         int // custo base de MP (escalado por BASE_GetManaSpent)
 	Delay             int
 	Range             int
-	InstanceType      int // 0 none, 1-5 elemental damage, 6 heal, 7-12 specials
+	InstanceType      int // 0 nada, 1-5 dano elemental, 6 cura, 7-12 especiais
 	InstanceValue     int
-	TickType          int // affect type applied by SetTick (17 HoT, 20 DoT, …)
+	TickType          int // tipo de affect aplicado por SetTick (17 HoT, 20 DoT, …)
 	TickValue         int
-	AffectType        int // affect type applied by SetAffect
+	AffectType        int // tipo de affect aplicado por SetAffect
 	AffectValue       int
-	AffectTime        int // stored ÷affectTimeDivisor, as the legacy loader does post-parse
+	AffectTime        int // gravado ÷affectTimeDivisor, como o loader legado faz após o parse
 	InstanceAttribute int
 	TickAttribute     int
 	Aggressive        int // 1 = hostile (resist roll applies)
@@ -117,12 +117,12 @@ func parseSkillData(r io.Reader) (*SkillData, error) {
 		if len(fields) < 22 {
 			continue
 		}
-		var v [20]int // the 20 numeric conversions, in sscanf order
+		var v [20]int // as 20 conversões numéricas, na ordem do sscanf
 		ok := true
 		for i := 0; i < 20; i++ {
 			col := i
 			if i >= 13 {
-				col = i + 2 // skip the two Act columns
+				col = i + 2 // pula as duas colunas Act
 			}
 			n, err := strconv.Atoi(strings.TrimSpace(fields[col]))
 			if err != nil {

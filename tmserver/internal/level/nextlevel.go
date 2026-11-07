@@ -58,7 +58,7 @@ var nextLevel = [...]int64{
 
 // nextLevel2 é g_pNextLevel_2[] (Basedef.h:2865): a curva de experiência CELESTIAL,
 // indexada por nível celestial, escolhida por CheckGetLevel quando ClassMaster
-// CELESTIAL/CELESTIALCS/SCELESTIAL (CMob.cpp:1092-1093). Celestial levels run
+// CELESTIAL/CELESTIALCS/SCELESTIAL (CMob.cpp:1092-1093). Os níveis celestiais vão de
 // 0..MaxCLevel (199).
 //
 // SUBSTITUTO — os valores long-long reais NÃO estão no fonte local (Basedef.cpp

@@ -12,7 +12,7 @@ func TestManaSpent(t *testing.T) {
 		{"special raises", 15, 0, 100, 22},   // 15*150/100=22 (int)
 		{"savemana halves", 15, 50, 100, 11}, // 50*22/100=11
 		{"full savemana", 200, 100, 50, 0},
-		{"zero base mana costs nothing", 0, 0, 100, 0}, // 0*(150)/100=0 regardless of scaling
+		{"zero base mana costs nothing", 0, 0, 100, 0}, // 0*(150)/100=0 independente da escala
 		{"odd special truncates first", 53, 0, 75, 72}, // 53*(37+100)/100=72
 	}
 	for _, tt := range tests {
@@ -36,21 +36,21 @@ func TestSkillBaseDamage(t *testing.T) {
 		weapon   int
 		want     int
 	}{
-		// TK tree 1 (skill 0, skind=0): special+base+weapon+level+Int/4+Int/40,
+		// TK árvore 1 (skill 0, skind=0): special+base+weapon+level+Int/4+Int/40,
 		// depois multiplicador mágico e 5/4.
 		{"tk tree1 elemental", 0, elem,
 			SkillCaster{Class: 0, Level: 100, Str: 50, Int: 80, Magic: 10, Special: 20},
 			0, 30,
 			// dam = 20+5+30+100+20+2 = 177; *(4*10+100)/100 = 247; *5/4 = 308
 			308},
-		// TK tree 2 (skill 8, skind=1): 3*weapon+3*Str+level+special+base, NO
+		// TK árvore 2 (skill 8, skind=1): 3*weapon+3*Str+level+special+base, SEM
 		// multiplicador mágico, depois 5/4.
 		{"tk tree2 weapon-scaled", 8, SkillSpell{InstanceType: 1, InstanceValue: 10},
 			SkillCaster{Class: 0, Level: 50, Str: 40, Magic: 99, Special: 15},
 			0, 20,
 			// dam = 60+120+50+15+10 = 255; 5/4 = 318
 			318},
-		// Foema: Int/30+Int/3+level+base+2*special, magic multiplier + 5/4.
+		// Foema: Int/30+Int/3+level+base+2*special, multiplicador mágico + 5/4.
 		{"foema caster", 30, SkillSpell{InstanceType: 3, InstanceValue: 8},
 			SkillCaster{Class: 1, Level: 60, Int: 300, Magic: 5, Special: 25},
 			0, 0,
@@ -98,7 +98,7 @@ func TestSkillBaseDamage(t *testing.T) {
 			SkillCaster{}, 0, 0, 77},
 		{"fallback magic", 50, SkillSpell{InstanceType: 9},
 			SkillCaster{Magic: 33}, 0, 0, 33},
-		// Level clamps at MAX_LEVEL=399.
+		// O nível trava em MAX_LEVEL=399.
 		{"level clamp", 97, SkillSpell{InstanceType: 5, InstanceValue: 0},
 			SkillCaster{Class: 0, Level: 1000},
 			0, 0,
@@ -147,7 +147,7 @@ func TestSkillResistScale(t *testing.T) {
 	// Resist turbinado por affect: o handler alimenta o array resolvido de resolveSkillHit
 	// (handler.effectiveResist = base + affect, limitado a 0..100) nesta
 	// função, então um buff de resist precisa aumentar a mitigação. Monte o array a
-	// partir de base + componentes de affect em vez de um literal para travar esse
+	// partir de base + partes de affect em vez de um literal para travar esse
 	// contrato (combat.go resolveSkillHit). O teto 0..100 pertence a quem chama, não aqui.
 	t.Run("resist raised by affect mitigates more", func(t *testing.T) {
 		const base, affResist = int16(40), int16(30)
