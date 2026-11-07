@@ -15,7 +15,7 @@ management O(1); §0.2: thread-per-core com zonas isoladas e canais lock-free
 
 ## Passos
 
-1. Implementar `crates/wyd-core/src/grid.rs`: célula fixa, inserção/remoção/
+1. Implementar `crates/wyd-core/src/spatial/grid.rs` (árvore §10): célula fixa, inserção/remoção/
    consulta de vizinhança.
 2. Definir fronteiras de zona (thread-per-core futuro) e protocolo de travessia
    entre células/zonas.
@@ -24,7 +24,7 @@ management O(1); §0.2: thread-per-core com zonas isoladas e canais lock-free
 
 ## Arquivos
 
-- Criados: `crates/wyd-core/src/grid.rs`, testes de vizinhança/travessia.
+- Criados: `crates/wyd-core/src/spatial/grid.rs`, testes de vizinhança/travessia.
 - Alterados: `crates/wyd-core/src/lib.rs`.
 - Proibido tocar: `crates/wyd-protocol/src/`, `.deprecated-go/`.
 
@@ -66,4 +66,4 @@ densidade).
 
 - Risco: tamanho de célula errado para o mapa real → mitigação: parâmetro
   configurável + teste com dimensões do mapa legado.
-- Rollback: `git checkout -- crates/wyd-core/src/grid.rs`.
+- Rollback: `git checkout -- crates/wyd-core/src/spatial/grid.rs`.

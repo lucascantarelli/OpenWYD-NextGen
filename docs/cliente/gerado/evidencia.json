@@ -1,0 +1,250 @@
+{
+  "build": {
+    "format": "PE32",
+    "machine": "i386",
+    "imageBase": "0x400000"
+  },
+  "anchors": [
+    {
+      "name": "ReadMessage",
+      "va": 4346582,
+      "vaHex": "0x4252d6",
+      "role": "hook de recebimento: todo pacote antes do parse",
+      "offset": 152278,
+      "section": ".text",
+      "bytes": "0f 8d f0 00 00 00 8b 4d d4 81 e1 ff 00 00 80 79",
+      "instruction": "jge    0x4253cc",
+      "instructionBoundary": true,
+      "functionEntry": false,
+      "prologue": null,
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; o endereço é um desvio interno que o hook reescreve, não a entrada da função",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n004252c6 <.text+0x242c6>:\n  4252c6:\tc2 01 89             \tret    0x8901\n  4252c9:\t55                   \tpush   ebp\n  4252ca:\td4 8b                \taam    0x8b\n  4252cc:\t45                   \tinc    ebp\n  4252cd:\tf8                   \tclc\n  4252ce:\t25 ff ff 00 00       \tand    eax,0xffff\n  4252d3:\t39 45 dc             \tcmp    DWORD PTR [ebp-0x24],eax\n  4252d6:\t0f 8d f0 00 00 00    \tjge    0x4253cc\n  4252dc:\t8b 4d d4             \tmov    ecx,DWORD PTR [ebp-0x2c]\n  4252df:\t81 e1 ff 00 00 80    \tand    ecx,0x800000ff\n  4252e5:\t79 08                \tjns    0x4252ef\n  4252e7:\t49                   \tdec    ecx\n  4252e8:\t81 c9 00 ff ff ff    \tor     ecx,0xffffff00\n  4252ee:\t41                   \tinc    ecx\n  4252ef:\t89 4d b4             \tmov    DWORD PTR [ebp-0x4c],ecx\n  4252f2:\t8b 55 fc             \tmov    edx,DWORD PTR [ebp-0x4]\n  4252f5:\t81 e2 ff 00 00 00    \tand    edx,0xff\n  4252fb:\t8b 45 e8             \tmov    eax,DWORD PTR [ebp-0x18]\n  4252fe:\t03 45 dc             \tadd    eax,DWORD PTR [ebp-0x24]\n  425301:\t0f be 08             \tmovsx  ecx,BYTE PTR [eax]\n  425304:\t03 d1                \tadd    edx,ecx",
+      "disassemblyAvailable": true
+    },
+    {
+      "name": "SendChat",
+      "va": 4617925,
+      "vaHex": "0x4676c5",
+      "role": "hook de chat digitado",
+      "offset": 423621,
+      "section": ".text",
+      "bytes": "75 79 a1 48 6e 63 00 33 c9 83 b8 8c 13 00 00 00",
+      "instruction": "jne    0x467740",
+      "instructionBoundary": true,
+      "functionEntry": false,
+      "prologue": null,
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; o endereço é um desvio interno que o hook reescreve, não a entrada da função",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n004676b5 <.text+0x666b5>:\n  4676b5:\t92                   \txchg   edx,eax\n  4676b6:\t88 00                \tmov    BYTE PTR [eax],al\n  4676b8:\t00 00                \tadd    BYTE PTR [eax],al\n  4676ba:\t50                   \tpush   eax\n  4676bb:\te8 e0 e3 15 00       \tcall   0x5c5aa0\n  4676c0:\t83 c4 08             \tadd    esp,0x8\n  4676c3:\t85 c0                \ttest   eax,eax\n  4676c5:\t75 79                \tjne    0x467740\n  4676c7:\ta1 48 6e 63 00       \tmov    eax,ds:0x636e48\n  4676cc:\t33 c9                \txor    ecx,ecx\n  4676ce:\t83 b8 8c 13 00 00 00 \tcmp    DWORD PTR [eax+0x138c],0x0\n  4676d5:\t0f 94 c1             \tsete   cl\n  4676d8:\t8b 15 48 6e 63 00    \tmov    edx,DWORD PTR ds:0x636e48\n  4676de:\t89 8a 8c 13 00 00    \tmov    DWORD PTR [edx+0x138c],ecx\n  4676e4:\t68 08 a3 63 00       \tpush   0x63a308\n  4676e9:\t8b 85 68 ff ff ff    \tmov    eax,DWORD PTR [ebp-0x98]\n  4676ef:\t8b 10                \tmov    edx,DWORD PTR [eax]\n  4676f1:\t8b                   \t.byte 0x8b\n  4676f2:\t8d 68 ff             \tlea    ebp,[eax-0x1]",
+      "disassemblyAvailable": true
+    },
+    {
+      "name": "SendPack",
+      "va": 4199018,
+      "vaHex": "0x40126a",
+      "role": "envio pelo socket do cliente",
+      "offset": 4714,
+      "section": ".text",
+      "bytes": "51 89 4d fc 8b 45 fc 8b 4d 08 89 48 54 8b 55 fc",
+      "instruction": "push   ecx",
+      "instructionBoundary": true,
+      "functionEntry": false,
+      "prologue": null,
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; instrução interna (ponto de patch/hook)",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0040125a <.text+0x25a>:\n  40125a:\tfc                   \tcld\n  40125b:\t8b 55 f4             \tmov    edx,DWORD PTR [ebp-0xc]\n  40125e:\td9 5a 50             \tfstp   DWORD PTR [edx+0x50]\n  401261:\t8b e5                \tmov    esp,ebp\n  401263:\t5d                   \tpop    ebp\n  401264:\tc2 08 00             \tret    0x8\n  401267:\t55                   \tpush   ebp\n  401268:\t8b ec                \tmov    ebp,esp\n  40126a:\t51                   \tpush   ecx\n  40126b:\t89 4d fc             \tmov    DWORD PTR [ebp-0x4],ecx\n  40126e:\t8b 45 fc             \tmov    eax,DWORD PTR [ebp-0x4]\n  401271:\t8b 4d 08             \tmov    ecx,DWORD PTR [ebp+0x8]\n  401274:\t89 48 54             \tmov    DWORD PTR [eax+0x54],ecx\n  401277:\t8b 55 fc             \tmov    edx,DWORD PTR [ebp-0x4]\n  40127a:\t8b 45 0c             \tmov    eax,DWORD PTR [ebp+0xc]\n  40127d:\t89 42 58             \tmov    DWORD PTR [edx+0x58],eax\n  401280:\t8b e5                \tmov    esp,ebp\n  401282:\t5d                   \tpop    ebp\n  401283:\tc2 08 00             \tret    0x8\n  401286:\t55                   \tpush   ebp\n  401287:\t8b ec                \tmov    ebp,esp\n  401289:\t51                   \tpush   ecx\n  40128a:\t89 4d fc             \tmov    DWORD PTR [ebp-0x4],ecx\n  40128d:\t8b 45 fc             \tmov    eax,DWORD PTR [ebp-0x4]\n  401290:\t8b 4d 08             \tmov    ecx,DWORD PTR [ebp+0x8]\n  401293:\t89 48 4c             \tmov    DWORD PTR [eax+0x4c],ecx\n  401296:\t8b 55 fc             \tmov    edx,DWORD PTR [ebp-0x4]\n  401299:\t8b                   \t.byte 0x8b",
+      "disassemblyAvailable": true
+    },
+    {
+      "name": "SendPacket",
+      "va": 5560867,
+      "vaHex": "0x54da23",
+      "role": "função de envio original (ponteiro fixo)",
+      "offset": 1366563,
+      "section": ".text",
+      "bytes": "55 8b ec 83 ec 08 83 7d 08 00 75 05 e9 e4 00 00",
+      "instruction": "push   ebp",
+      "instructionBoundary": true,
+      "functionEntry": true,
+      "prologue": "push ebp",
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; prólogo de função",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0054da13 <.text+0x14ca13>:\n  54da13:\t89 85 60 ff ff ff    \tmov    DWORD PTR [ebp-0xa0],eax\n  54da19:\teb ab                \tjmp    0x54d9c6\n  54da1b:\t33 c0                \txor    eax,eax\n  54da1d:\t8b e5                \tmov    esp,ebp\n  54da1f:\t5d                   \tpop    ebp\n  54da20:\tc2 0c 00             \tret    0xc\n  54da23:\t55                   \tpush   ebp\n  54da24:\t8b ec                \tmov    ebp,esp\n  54da26:\t83 ec 08             \tsub    esp,0x8\n  54da29:\t83 7d 08 00          \tcmp    DWORD PTR [ebp+0x8],0x0\n  54da2d:\t75 05                \tjne    0x54da34\n  54da2f:\te9 e4 00 00 00       \tjmp    0x54db18\n  54da34:\t8b 45 08             \tmov    eax,DWORD PTR [ebp+0x8]\n  54da37:\t89 45 f8             \tmov    DWORD PTR [ebp-0x8],eax\n  54da3a:\t8b 0d d4 21 9a 00    \tmov    ecx,DWORD PTR ds:0x9a21d4\n  54da40:\t81 c1 e8 03 00 00    \tadd    ecx,0x3e8\n  54da46:\t89 4d fc             \tmov    DWORD PTR [ebp-0x4],ecx\n  54da49:\t8b 55 fc             \tmov    edx,DWORD PTR [ebp-0x4]\n  54da4c:\t3b 15 d0 21 9a 00    \tcmp    edx,DWORD PTR ds:0x9a21d0\n  54da52:\t72                   \t.byte 0x72",
+      "disassemblyAvailable": true
+    },
+    {
+      "name": "AddVolatileMessageItem",
+      "va": 4333575,
+      "vaHex": "0x422007",
+      "role": "hook de item com confirmação",
+      "offset": 139271,
+      "section": ".text",
+      "bytes": "81 7d 0c e2 15 00 00 75 07 b8 01 00 00 00 eb 02",
+      "instruction": "cmp    DWORD PTR [ebp+0xc],0x15e2",
+      "instructionBoundary": true,
+      "functionEntry": false,
+      "prologue": null,
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; instrução interna (ponto de patch/hook)",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n00421ff7 <.text+0x20ff7>:\n  421ff7:\t81 7d 0c 33 13 00 00 \tcmp    DWORD PTR [ebp+0xc],0x1333\n  421ffe:\t7f 07                \tjg     0x422007\n  422000:\tb8 01 00 00 00       \tmov    eax,0x1\n  422005:\teb 12                \tjmp    0x422019\n  422007:\t81 7d 0c e2 15 00 00 \tcmp    DWORD PTR [ebp+0xc],0x15e2\n  42200e:\t75 07                \tjne    0x422017\n  422010:\tb8 01 00 00 00       \tmov    eax,0x1\n  422015:\teb 02                \tjmp    0x422019\n  422017:\t33 c0                \txor    eax,eax\n  422019:\t8b e5                \tmov    esp,ebp\n  42201b:\t5d                   \tpop    ebp\n  42201c:\tc2 08 00             \tret    0x8\n  42201f:\t55                   \tpush   ebp\n  422020:\t8b ec                \tmov    ebp,esp\n  422022:\te8 69 9e fe ff       \tcall   0x40be90\n  422027:\te8 02 00 00 00       \tcall   0x42202e\n  42202c:\t5d                   \tpop    ebp\n  42202d:\tc3                   \tret\n  42202e:\t55                   \tpush   ebp\n  42202f:\t8b ec                \tmov    ebp,esp\n  422031:\t68 c0 be 40 00       \tpush   0x40bec0\n  422036:\te8                   \t.byte 0xe8",
+      "disassemblyAvailable": true
+    },
+    {
+      "name": "SetVolatileMessageBoxText",
+      "va": 4324144,
+      "vaHex": "0x41fb30",
+      "role": "hook de texto de diálogo",
+      "offset": 129840,
+      "section": ".text",
+      "bytes": "81 bd 54 fe ff ff d3 00 00 00 75 76 a1 b0 0a 6f",
+      "instruction": "cmp    DWORD PTR [ebp-0x1ac],0xd3",
+      "instructionBoundary": true,
+      "functionEntry": false,
+      "prologue": null,
+      "status": "CONFIRMADO",
+      "reason": "fronteira de instrução confirmada; instrução interna (ponto de patch/hook)",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0041fb20 <.text+0x1eb20>:\n  41fb20:\t8b 82 cc 00 00 00    \tmov    eax,DWORD PTR [edx+0xcc]\n  41fb26:\t8b 10                \tmov    edx,DWORD PTR [eax]\n  41fb28:\tff 52 60             \tcall   DWORD PTR [edx+0x60]\n  41fb2b:\te9 cc 01 00 00       \tjmp    0x41fcfc\n  41fb30:\t81 bd 54 fe ff ff d3 \tcmp    DWORD PTR [ebp-0x1ac],0xd3\n  41fb37:\t00 00 00 \n  41fb3a:\t75 76                \tjne    0x41fbb2\n  41fb3c:\ta1 b0 0a 6f 00       \tmov    eax,ds:0x6f0ab0\n  41fb41:\t89 85 78 fc ff ff    \tmov    DWORD PTR [ebp-0x388],eax\n  41fb47:\t6a 00                \tpush   0x0\n  41fb49:\t68 73 03 00 00       \tpush   0x373\n  41fb4e:\t68 b8 56 0a 01       \tpush   0x10a56b8\n  41fb53:\t8b 8d 78 fc ff ff    \tmov    ecx,DWORD PTR [ebp-0x388]\n  41fb59:\t8b 89 cc 00 00 00    \tmov    ecx,DWORD PTR [ecx+0xcc]\n  41fb5f:\t8b                   \t.byte 0x8b",
+      "disassemblyAvailable": true
+    }
+  ],
+  "patchSites": [
+    {
+      "va": 5483626,
+      "vaHex": "0x53ac6a",
+      "role": "desliga a 1ª checagem de checksum",
+      "offset": 1289322,
+      "section": ".text",
+      "bytes": "eb 04 33 c0 eb 35 c7 45",
+      "instruction": "jmp    0x53ac70",
+      "instructionBoundary": true,
+      "shape": "jmp rel8 (EB)",
+      "alreadyPatched": true,
+      "status": "CONFIRMADO",
+      "note": "o binário em disco já contém o salto incondicional: a checagem foi desativada antes da distribuição",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0053ac5a <.text+0x139c5a>:\n  53ac5a:\tf9                   \tstc\n  53ac5b:\tff                   \t(bad)\n  53ac5c:\tff 83 c4 08 89 45    \tinc    DWORD PTR [ebx+0x458908c4]\n  53ac62:\tfc                   \tcld\n  53ac63:\t81 7d fc 01 3e 18 00 \tcmp    DWORD PTR [ebp-0x4],0x183e01\n  53ac6a:\teb 04                \tjmp    0x53ac70\n  53ac6c:\t33 c0                \txor    eax,eax\n  53ac6e:\teb 35                \tjmp    0x53aca5\n  53ac70:\tc7 45 f0 00 00 00 00 \tmov    DWORD PTR [ebp-0x10],0x0\n  53ac77:\teb 09                \tjmp    0x53ac82\n  53ac79:\t8b 45 f0             \tmov    eax,DWORD PTR [ebp-0x10]\n  53ac7c:\t83 c0 01             \tadd    eax,0x1\n  53ac7f:\t89 45 f0             \tmov    DWORD PTR [ebp-0x10],eax\n  53ac82:\t8b 4d f0             \tmov    ecx,DWORD PTR [ebp-0x10]\n  53ac85:\t3b 4d f8             \tcmp    ecx,DWORD PTR [ebp-0x8]\n  53ac88:\t7d 16                \tjge    0x53aca0\n  53ac8a:\t8b 55 f4             \tmov    edx,DWORD PTR [ebp-0xc]\n  53ac8d:\t03 55 f0             \tadd    edx,DWORD PTR [ebp-0x10]\n  53ac90:\t0f be 02             \tmovsx  eax,BYTE PTR [edx]\n  53ac93:\t83 f0 5a             \txor    eax,0x5a\n  53ac96:\t8b 4d f4             \tmov    ecx,DWORD PTR [ebp-0xc]\n  53ac99:\t03                   \t.byte 0x3"
+    },
+    {
+      "va": 5483858,
+      "vaHex": "0x53ad52",
+      "role": "desliga a 2ª checagem de checksum",
+      "offset": 1289554,
+      "section": ".text",
+      "bytes": "eb 07 33 c0 e9 5e 01 00",
+      "instruction": "jmp    0x53ad5b",
+      "instructionBoundary": true,
+      "shape": "jmp rel8 (EB)",
+      "alreadyPatched": true,
+      "status": "CONFIRMADO",
+      "note": "o binário em disco já contém o salto incondicional: a checagem foi desativada antes da distribuição",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0053ad42 <.text+0x139d42>:\n  53ad42:\tf9                   \tstc\n  53ad43:\tff                   \t(bad)\n  53ad44:\tff 83 c4 08 89 45    \tinc    DWORD PTR [ebx+0x458908c4]\n  53ad4a:\tf8                   \tclc\n  53ad4b:\t81 7d f8 0c 15 81 03 \tcmp    DWORD PTR [ebp-0x8],0x381150c\n  53ad52:\teb 07                \tjmp    0x53ad5b\n  53ad54:\t33 c0                \txor    eax,eax\n  53ad56:\te9 5e 01 00 00       \tjmp    0x53aeb9\n  53ad5b:\tc7 45 ec 00 00 00 00 \tmov    DWORD PTR [ebp-0x14],0x0\n  53ad62:\teb 09                \tjmp    0x53ad6d\n  53ad64:\t8b 55 ec             \tmov    edx,DWORD PTR [ebp-0x14]\n  53ad67:\t83 c2 01             \tadd    edx,0x1\n  53ad6a:\t89 55 ec             \tmov    DWORD PTR [ebp-0x14],edx\n  53ad6d:\t8b 45 ec             \tmov    eax,DWORD PTR [ebp-0x14]\n  53ad70:\t3b 45 f4             \tcmp    eax,DWORD PTR [ebp-0xc]\n  53ad73:\t7d 16                \tjge    0x53ad8b\n  53ad75:\t8b 4d f0             \tmov    ecx,DWORD PTR [ebp-0x10]\n  53ad78:\t03 4d ec             \tadd    ecx,DWORD PTR [ebp-0x14]\n  53ad7b:\t0f be 11             \tmovsx  edx,BYTE PTR [ecx]\n  53ad7e:\t83 f2 5a             \txor    edx,0x5a\n  53ad81:\t8b                   \t.byte 0x8b"
+    },
+    {
+      "va": 5484158,
+      "vaHex": "0x53ae7e",
+      "role": "desliga a 3ª checagem de checksum",
+      "offset": 1289854,
+      "section": ".text",
+      "bytes": "eb 04 33 c0 eb 35 c7 45",
+      "instruction": "jmp    0x53ae84",
+      "instructionBoundary": true,
+      "shape": "jmp rel8 (EB)",
+      "alreadyPatched": true,
+      "status": "CONFIRMADO",
+      "note": "o binário em disco já contém o salto incondicional: a checagem foi desativada antes da distribuição",
+      "disassembly": "client/WYD.exe:     file format pei-i386\n\n\nDisassembly of section .text:\n\n0053ae72 <.text+0x139e72>:\n  53ae72:\tc4 08                \tles    ecx,FWORD PTR [eax]\n  53ae74:\t89 45 e0             \tmov    DWORD PTR [ebp-0x20],eax\n  53ae77:\t81 7d e0 0c 15 81 03 \tcmp    DWORD PTR [ebp-0x20],0x381150c\n  53ae7e:\teb 04                \tjmp    0x53ae84\n  53ae80:\t33 c0                \txor    eax,eax\n  53ae82:\teb 35                \tjmp    0x53aeb9\n  53ae84:\tc7 45 dc 00 00 00 00 \tmov    DWORD PTR [ebp-0x24],0x0\n  53ae8b:\teb 09                \tjmp    0x53ae96\n  53ae8d:\t8b 45 dc             \tmov    eax,DWORD PTR [ebp-0x24]\n  53ae90:\t83 c0 01             \tadd    eax,0x1\n  53ae93:\t89 45 dc             \tmov    DWORD PTR [ebp-0x24],eax\n  53ae96:\t8b 4d dc             \tmov    ecx,DWORD PTR [ebp-0x24]\n  53ae99:\t3b 4d f4             \tcmp    ecx,DWORD PTR [ebp-0xc]\n  53ae9c:\t7d 16                \tjge    0x53aeb4\n  53ae9e:\t8b 55 f0             \tmov    edx,DWORD PTR [ebp-0x10]\n  53aea1:\t03 55 dc             \tadd    edx,DWORD PTR [ebp-0x24]\n  53aea4:\t0f be 02             \tmovsx  eax,BYTE PTR [edx]\n  53aea7:\t83 f0 5a             \txor    eax,0x5a\n  53aeaa:\t8b 4d f0             \tmov    ecx,DWORD PTR [ebp-0x10]\n  53aead:\t03                   \t.byte 0x3"
+    }
+  ],
+  "cpsock": {
+    "header": {
+      "sizeBytes": 12,
+      "layout": "Size(2) KeyWord(1) CheckSum(1) Type(2) ID(2) ClientTick(4)",
+      "status": "CONFIRMADO INDIRETO",
+      "evidence": "tabela de 512 bytes embutida byte-idêntica + constante INITCODE presente no binário",
+      "pending": "offsets de campo e a leitura de Size por instrução ficam para 08-6 (trace dinâmico)"
+    },
+    "keyTable": {
+      "sha256": "e47996fe5e92de5d86d503d5415665f1f464bf344370c709be450607dd97cf8f",
+      "occurrences": [
+        {
+          "offset": 2162644,
+          "va": 6356948,
+          "section": ".data"
+        }
+      ],
+      "status": "CONFIRMADO"
+    },
+    "initcode": {
+      "value": "0x1F11F311",
+      "dataOccurrences": [
+        {
+          "offset": 150059,
+          "va": 4344363,
+          "section": ".text"
+        },
+        {
+          "offset": 150556,
+          "va": 4344860,
+          "section": ".text"
+        },
+        {
+          "offset": 151488,
+          "va": 4345792,
+          "section": ".text"
+        }
+      ],
+      "codeReferences": [],
+      "status": "CONFIRMADO (dado)"
+    },
+    "sizeLimit": {
+      "value": 8192,
+      "note": "MAX_MESSAGE_SIZE do CPSock; os padrões abaixo são candidatos a checagem de enquadramento",
+      "candidates": [
+        {
+          "offset": 152034,
+          "va": 4346338,
+          "section": ".text",
+          "pattern": "cmp eax, 0x2000"
+        },
+        {
+          "offset": 270599,
+          "va": 4464903,
+          "section": ".text",
+          "pattern": "push 0x2000"
+        },
+        {
+          "offset": 755490,
+          "va": 4949794,
+          "section": ".text",
+          "pattern": "push 0x2000"
+        },
+        {
+          "offset": 755550,
+          "va": 4949854,
+          "section": ".text",
+          "pattern": "push 0x2000"
+        },
+        {
+          "offset": 1166284,
+          "va": 5360588,
+          "section": ".text",
+          "pattern": "push 0x2000"
+        },
+        {
+          "offset": 1825764,
+          "va": 6020068,
+          "section": ".text",
+          "pattern": "push 0x2000"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "anchorsConfirmed": 6,
+    "anchorsFunctionEntry": 1,
+    "anchorsTotal": 6,
+    "patchesConfirmed": 3,
+    "patchesAlreadyPatched": 3,
+    "patchesTotal": 3
+  }
+}

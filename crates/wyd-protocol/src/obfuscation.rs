@@ -90,23 +90,23 @@ pub fn decode_in_place(packet: &mut [u8]) -> Result<u8, TransformError> {
         });
     }
     let key_word = packet[2];
-    let mut pos = KEY_TABLE[usize::from(key_word) * 2] as usize;
+    let start = KEY_TABLE[usize::from(key_word) * 2] as usize;
     let mut sum_plain: u8 = 0;
     let mut sum_cipher: u8 = 0;
 
-    for i in KEYWORD_OFFSET..size {
-        let cipher = packet[i];
+    for (offset, slot) in packet[KEYWORD_OFFSET..size].iter_mut().enumerate() {
+        let index = KEYWORD_OFFSET + offset;
+        let cipher = *slot;
         sum_cipher = sum_cipher.wrapping_add(cipher);
-        let trans = trans_at(pos);
-        let plain = match i & 0x3 {
+        let trans = trans_at(start + offset);
+        let plain = match index & 0x3 {
             0 => cipher.wrapping_sub(trans << 1),
             1 => cipher.wrapping_add(trans >> 3),
             2 => cipher.wrapping_sub(trans << 2),
             _ => cipher.wrapping_add(trans >> 5),
         };
-        packet[i] = plain;
+        *slot = plain;
         sum_plain = sum_plain.wrapping_add(plain);
-        pos += 1;
     }
 
     Ok(sum_cipher.wrapping_sub(sum_plain))
@@ -124,23 +124,23 @@ pub fn encode_in_place(packet: &mut [u8], key_word: u8) -> Result<u8, TransformE
         });
     }
     packet[2] = key_word;
-    let mut pos = KEY_TABLE[usize::from(key_word) * 2] as usize;
+    let start = KEY_TABLE[usize::from(key_word) * 2] as usize;
     let mut sum_plain: u8 = 0;
     let mut sum_cipher: u8 = 0;
 
-    for i in KEYWORD_OFFSET..size {
-        let plain = packet[i];
+    for (offset, slot) in packet[KEYWORD_OFFSET..size].iter_mut().enumerate() {
+        let index = KEYWORD_OFFSET + offset;
+        let plain = *slot;
         sum_plain = sum_plain.wrapping_add(plain);
-        let trans = trans_at(pos);
-        let cipher = match i & 0x3 {
+        let trans = trans_at(start + offset);
+        let cipher = match index & 0x3 {
             0 => plain.wrapping_add(trans << 1),
             1 => plain.wrapping_sub(trans >> 3),
             2 => plain.wrapping_add(trans << 2),
             _ => plain.wrapping_sub(trans >> 5),
         };
-        packet[i] = cipher;
+        *slot = cipher;
         sum_cipher = sum_cipher.wrapping_add(cipher);
-        pos += 1;
     }
 
     let checksum = sum_cipher.wrapping_sub(sum_plain);
@@ -182,7 +182,11 @@ mod tests {
             let mut buf = packet(&plain_body, key_word);
             let checksum = encode_in_place(&mut buf, key_word).expect("ofuscação válida");
             assert_eq!(buf[3], checksum);
-            assert_ne!(&buf[HEADER_SIZE..], &plain_body[..], "payload precisa ser ofuscado");
+            assert_ne!(
+                &buf[HEADER_SIZE..],
+                &plain_body[..],
+                "payload precisa ser ofuscado"
+            );
 
             let computed = decode_in_place(&mut buf).expect("desofuscação válida");
             assert_eq!(computed, checksum);
@@ -191,19 +195,34 @@ mod tests {
     }
 
     #[test]
-    fn header_bytes_stay_in_clear() {
+    fn size_field_stays_in_clear_and_payload_is_transformed() {
         let mut buf = packet(&[1, 2, 3, 4], 9);
-        let header_before = buf[..KEYWORD_OFFSET].to_vec();
+        let size_before = buf[..2].to_vec();
         encode_in_place(&mut buf, 9).expect("ofuscação");
-        assert_eq!(&buf[..KEYWORD_OFFSET], &header_before[..]);
+        assert_eq!(&buf[..2], &size_before[..], "Size nunca é transformado");
+        assert_eq!(buf[2], 9, "KeyWord é gravado no cabeçalho");
+        assert_ne!(
+            &buf[HEADER_SIZE..],
+            &[1, 2, 3, 4],
+            "corpo precisa ser ofuscado"
+        );
     }
 
     #[test]
-    fn header_only_packet_has_zero_checksum() {
+    fn header_only_packet_round_trips_and_keeps_checksum() {
+        // O loop do CPSock vai de 4 até Size, então um pacote só de HEADER também
+        // passa pela transformação (Type/ID/ClientTick) — e precisa voltar igual.
         let mut buf = packet(&[], 5);
+        let plain = buf.clone();
         let checksum = encode_in_place(&mut buf, 5).expect("pacote só com header");
-        assert_eq!(checksum, 0);
-        assert_eq!(decode_in_place(&mut buf).expect("decode"), 0);
+        assert_eq!(buf[3], checksum);
+        assert_eq!(decode_in_place(&mut buf).expect("decode"), checksum);
+        assert_eq!(&buf[..2], &plain[..2], "Size inalterado");
+        assert_eq!(
+            &buf[KEYWORD_OFFSET..],
+            &plain[KEYWORD_OFFSET..],
+            "encode seguido de decode devolve o corpo original"
+        );
     }
 
     #[test]

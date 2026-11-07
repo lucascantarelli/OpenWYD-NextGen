@@ -1,12 +1,22 @@
-//! Launcher/patcher (esqueleto).
+//! Launcher/patcher do OpenWYD: manifesto de integridade, patch atômico e
+//! bootstrap do jogo.
+//!
+//! Estratégia em `docs/arquitetura/adr/0003-estrategia-patch-cliente.md`;
+//! especificação em `docs/cliente/customizacao.md`.
+
+pub mod bootstrap;
+pub mod distribuicao;
+pub mod manifest;
+pub mod patch;
+pub mod sha256;
 
 /// Nome do binario do launcher.
 pub const LAUNCHER_NAME: &str = "wyd-launcher";
 
-#[must_use]
 /// Mensagem de bootstrap exibida pelo binario minimo.
+#[must_use]
 pub fn bootstrap_message() -> &'static str {
-    "wyd-launcher: esqueleto OK (hash/patch virao nas issues FASE 8)"
+    "wyd-launcher: manifesto, patch e bootstrap (FASE-08-7)"
 }
 
 #[cfg(test)]

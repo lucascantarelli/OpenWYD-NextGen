@@ -27,7 +27,10 @@ impl fmt::Display for PayloadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::BadLength { expected, got } => {
-                write!(f, "tamanho de pacote inválido: esperado {expected}, recebido {got}")
+                write!(
+                    f,
+                    "tamanho de pacote inválido: esperado {expected}, recebido {got}"
+                )
             }
         }
     }
@@ -274,11 +277,7 @@ wire_payload!(
     Sell,
     Sell,
     18,
-    [
-        (12, target_id, u16),
-        (14, my_type, i16),
-        (16, my_pos, i16),
-    ]
+    [(12, target_id, u16), (14, my_type, i16), (16, my_pos, i16),]
 );
 
 wire_payload!(
@@ -303,12 +302,7 @@ wire_payload!(
     ]
 );
 
-wire_payload!(
-    MessagePanel,
-    MessagePanel,
-    140,
-    [(12, text, [u8; 128])]
-);
+wire_payload!(MessagePanel, MessagePanel, 140, [(12, text, [u8; 128])]);
 
 impl MessagePanel {
     /// Texto do painel até o primeiro `NUL`.
@@ -491,7 +485,9 @@ mod tests {
         T: WirePayload + PartialEq + core::fmt::Debug,
     {
         let mut buf = vec![0u8; T::WIRE_LEN];
-        value.encode_into(&mut buf).expect("encode com tamanho correto");
+        value
+            .encode_into(&mut buf)
+            .expect("encode com tamanho correto");
         T::decode(&buf).expect("decode do que acabou de ser codificado")
     }
 
@@ -639,16 +635,14 @@ mod tests {
         assert_eq!(decoded.text_bytes(), b"hello");
         assert_eq!(MessagePanel::WIRE_LEN, 140);
 
-        let weather = UpdateWeather {
-            current_weather: 3,
-        };
+        let weather = UpdateWeather { current_weather: 3 };
         assert_eq!(UpdateWeather::WIRE_LEN, 16);
         assert_eq!(round_trip(weather), weather);
     }
 
     macro_rules! attack {
-        ($ty:ty, $dam:expr) => {
-            <$ty> {
+        ($ty:ident, $dam:expr) => {
+            $ty {
                 unk_1: [1, 2, 3, 4],
                 current_hp: 500,
                 unk_2: [5, 6, 7, 8],

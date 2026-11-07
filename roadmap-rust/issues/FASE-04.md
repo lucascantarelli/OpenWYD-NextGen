@@ -30,8 +30,10 @@ O legado persistia `.dat` instáveis em disco (`dbServer`); a fase Go usava
 
 ## Arquivos
 
-- Criados: `crates/wyd-db/migrations/*.sql`, `crates/wyd-db/src/*.rs`,
-  testes de integração, doc do modelo em `docs/arquitetura/`.
+- Criados (árvore normativa em `estrutura-e-padroes.md` §12):
+  `migrations/NNNN_descricao.sql`, `src/error.rs`, `src/model/*.rs`,
+  `src/repo/*.rs`, `src/pool/config.rs`, `src/transfer/delivery_queue.rs`,
+  `tests/constraints.rs`, doc do modelo em `docs/arquitetura/`.
 - Alterados: `crates/wyd-db/Cargo.toml` (sqlx + refinery via ADR).
 - Proibido tocar: `crates/wyd-core/src/` (engine não conhece SQL),
   `.deprecated-go/`, `client/`, segredos (nunca versionar DSN real).

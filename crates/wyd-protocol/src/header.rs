@@ -45,9 +45,15 @@ impl fmt::Display for HeaderError {
                 write!(f, "buffer curto: precisa de {needed} bytes, recebeu {got}")
             }
             Self::SizeOutOfRange { size } => {
-                write!(f, "Size {size} fora da faixa [{MIN_MESSAGE_SIZE}, {MAX_MESSAGE_SIZE}]")
+                write!(
+                    f,
+                    "Size {size} fora da faixa [{MIN_MESSAGE_SIZE}, {MAX_MESSAGE_SIZE}]"
+                )
             }
-            Self::FrameIncomplete { declared, available } => write!(
+            Self::FrameIncomplete {
+                declared,
+                available,
+            } => write!(
                 f,
                 "frame incompleto: declarado {declared} bytes, disponível {available}"
             ),
@@ -187,7 +193,10 @@ mod tests {
         assert_eq!(validate_size(8192), Ok(8192));
         assert!(validate_size(11).is_err());
         assert!(validate_size(8193).is_err());
-        assert_eq!(validate_size(0), Err(HeaderError::SizeOutOfRange { size: 0 }));
+        assert_eq!(
+            validate_size(0),
+            Err(HeaderError::SizeOutOfRange { size: 0 })
+        );
     }
 
     #[test]

@@ -1,0 +1,277 @@
+{
+  "wyt": [
+    {
+      "file": "client/NUI/ServerList.wyt",
+      "size": 321470,
+      "sha256": "efc428065bbe8a95",
+      "entropia": 4.0623,
+      "headHex": "57 54 31 30 00 00 02 00 00 00 00 00 00 00 00 00 1f 01 18 01 20 08 0d 21 2e ff 14 2c 3b ff 12 29 36 ff 14 2b 39 ff 12 29 36 ff 10 27 34 ff 10 27 34 ff 12 29 36 ff 14 2b 39 ff 14 2b 39 ff 14 2b",
+      "headAscii": "WT10................ ..!...,;..)6..+9..)6..'4..'",
+      "magic": "WT10",
+      "recognised": true,
+      "version": 131072,
+      "candidateWidth": 287,
+      "candidateHeight": 280,
+      "field20": 554502176,
+      "notes": [
+        "magic \"WT10\" confirmado em todas as amostras (0..3)",
+        "versão 0x00020000 constante em todas as amostras (@4)",
+        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
+        "@20 varia (24 ou 2080) — sem significado comprovado",
+        "layout de controles permanece opaco"
+      ]
+    },
+    {
+      "file": "client/NUI/ccmode.wyt",
+      "size": 12318,
+      "sha256": "122fa82ca3f2fa2e",
+      "entropia": 0.0258,
+      "headHex": "57 54 31 30 00 00 02 00 00 00 00 00 00 00 00 00 40 00 40 00 18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "headAscii": "WT10............@.@.............................",
+      "magic": "WT10",
+      "recognised": true,
+      "version": 131072,
+      "candidateWidth": 64,
+      "candidateHeight": 64,
+      "field20": 24,
+      "notes": [
+        "magic \"WT10\" confirmado em todas as amostras (0..3)",
+        "versão 0x00020000 constante em todas as amostras (@4)",
+        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
+        "@20 varia (24 ou 2080) — sem significado comprovado",
+        "layout de controles permanece opaco"
+      ]
+    },
+    {
+      "file": "client/UI/AutoTrade.wyt",
+      "size": 131370,
+      "sha256": "82fcc503408131c3",
+      "entropia": 0.0263,
+      "headHex": "57 54 31 30 00 00 02 00 00 00 00 00 00 00 00 00 dc 00 c7 00 18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "headAscii": "WT10............................................",
+      "magic": "WT10",
+      "recognised": true,
+      "version": 131072,
+      "candidateWidth": 220,
+      "candidateHeight": 199,
+      "field20": 24,
+      "notes": [
+        "magic \"WT10\" confirmado em todas as amostras (0..3)",
+        "versão 0x00020000 constante em todas as amostras (@4)",
+        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
+        "@20 varia (24 ou 2080) — sem significado comprovado",
+        "layout de controles permanece opaco"
+      ]
+    },
+    {
+      "file": "client/UI/Combine102.wyt",
+      "size": 285486,
+      "sha256": "5f582722fb34c678",
+      "entropia": 0.8408,
+      "headHex": "57 54 31 30 00 00 02 00 00 00 00 00 00 00 00 00 e4 00 39 01 20 08 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00 00 ff 00 00",
+      "headAscii": "WT10..............9. ...........................",
+      "magic": "WT10",
+      "recognised": true,
+      "version": 131072,
+      "candidateWidth": 228,
+      "candidateHeight": 313,
+      "field20": 2080,
+      "notes": [
+        "magic \"WT10\" confirmado em todas as amostras (0..3)",
+        "versão 0x00020000 constante em todas as amostras (@4)",
+        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
+        "@20 varia (24 ou 2080) — sem significado comprovado",
+        "layout de controles permanece opaco"
+      ]
+    }
+  ],
+  "msa": [
+    {
+      "file": "client/Mesh/Bownew1.msa",
+      "size": 13839,
+      "sha256": "4f0f7f5e15562718",
+      "entropia": 6.2908,
+      "headHex": "12 01 00 00 20 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 ba 01 00 00 00 00 00 00 5c 01 00 00 b0 20 63 6f 70 79 2e 74 67 61 00 5c 0a 00 00 00 00 01 00 02 00 03 00 01 00 00 00 01 00 03 00 04",
+      "headAscii": ".... .......................\\.... copy.tga.\\....",
+      "recognised": false,
+      "version": 274,
+      "field4": 32,
+      "field8": 1,
+      "field20": 442,
+      "field28": 348,
+      "texturePathOffset": 34,
+      "texturePath": "copy.tga",
+      "notes": [
+        "u32 @0 = 0x112 (274) idêntico nas duas amostras — candidato a versão do formato",
+        "u32 @4 = 0x20 (32) e u32 @8 = 1 idênticos nas duas amostras",
+        "nome de textura ASCII terminado em NUL no offset 34 nas duas amostras (\"copy.tga\", \"\\ori.psd\")",
+        "geometria, esqueleto e animação permanecem opacos"
+      ]
+    },
+    {
+      "file": "client/Mesh/CharmPowder.msa",
+      "size": 1435,
+      "sha256": "e864427968431949",
+      "entropia": 6.008,
+      "headHex": "12 01 00 00 20 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 3c 00 00 00 00 00 00 00 20 00 00 00 c4 dc 5c 6f 72 69 2e 70 73 64 00 68 01 00 00 00 00 01 00 02 00 01 00 00 00 03 00 03 00 04 00 01",
+      "headAscii": ".... ...............<....... .....\\ori.psd.h....",
+      "recognised": false,
+      "version": 274,
+      "field4": 32,
+      "field8": 1,
+      "field20": 60,
+      "field28": 32,
+      "texturePathOffset": 34,
+      "texturePath": "\\ori.psd",
+      "notes": [
+        "u32 @0 = 0x112 (274) idêntico nas duas amostras — candidato a versão do formato",
+        "u32 @4 = 0x20 (32) e u32 @8 = 1 idênticos nas duas amostras",
+        "nome de textura ASCII terminado em NUL no offset 34 nas duas amostras (\"copy.tga\", \"\\ori.psd\")",
+        "geometria, esqueleto e animação permanecem opacos"
+      ]
+    }
+  ],
+  "snBin": {
+    "file": "client/sn.bin",
+    "size": 143,
+    "sha256": "d3a77d512aab9eb2",
+    "entropia": 2.8981,
+    "headHex": "d6 65 73 65 72 76 65 64 00 4e 65 78 74 47 65 6e 00 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e",
+    "headAscii": ".eserved.NextGen..NextGen2.NextGen2.NextGen2.Nex",
+    "firstByte": "0xd6",
+    "namesCount": 13,
+    "names": [
+      ".eserved",
+      "NextGen",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "NextGen2",
+      "."
+    ],
+    "notes": [
+      "nomes em texto claro separados por NUL a partir do offset 1",
+      "a partir do offset 1 lê-se \"eserved\", coerente com \"Reserved\" com o primeiro caractere sobrescrito",
+      "o primeiro byte (0xd6) não foi explicado por nenhum padrão testado — permanece UNVERIFIED"
+    ]
+  },
+  "serverlist": {
+    "file": "client/serverlist.bin",
+    "size": 7040,
+    "sha256": "b0aafae959128a86",
+    "entropia": 3.9424,
+    "headHex": "41 28 1e 23 db df fb d5 00 d6 01 d5 fa dc ed d5 03 d4 ff d7 ff 17 31 16 41 d4 f7 d2 2d 18 30 a4 c1 a4 bf a4 be a4 bd a4 bc a4 bb a4 ba a4 b8 a4 b7 a4 b5 a4 b2 a4 b1 a4 a9 a4 a7 a4 a4 a4 a1 a4",
+    "headAscii": "A(.#..................1.A...-.0.................",
+    "best": {
+      "method": "cpsock-decode",
+      "keyWord": 0,
+      "from": 4,
+      "score": {
+        "printable": 0.0953,
+        "alnum": 0.0729,
+        "hasToken": false,
+        "score": 0.1099,
+        "meaningful": false
+      },
+      "preview": "A(.#..w.6.......A...='..E....4@.....P.......p.............7.......F.....g.?...3.............e..."
+    },
+    "top5": [
+      {
+        "method": "cpsock-decode",
+        "keyWord": 0,
+        "from": 4,
+        "score": {
+          "printable": 0.0953,
+          "alnum": 0.0729,
+          "hasToken": false,
+          "score": 0.1099,
+          "meaningful": false
+        },
+        "preview": "A(.#..w.6.......A...='..E....4@.....P.......p.............7.......F.....g.?...3.............e..."
+      },
+      {
+        "method": "cpsock-decode",
+        "keyWord": 0,
+        "from": 0,
+        "score": {
+          "printable": 0.1031,
+          "alnum": 0.075,
+          "hasToken": false,
+          "score": 0.1181,
+          "meaningful": false
+        },
+        "preview": "G7.*........8...A....'.......%D.S.......r.............A.......=.....A.8...G.............k......."
+      },
+      {
+        "method": "cpsock-decode",
+        "keyWord": 1,
+        "from": 4,
+        "score": {
+          "printable": 0.1026,
+          "alnum": 0.0541,
+          "hasToken": false,
+          "score": 0.1134,
+          "meaningful": false
+        },
+        "preview": "A(.#..g..............&=.G...3.<...+.L.............a...........]................................."
+      },
+      {
+        "method": "cpsock-decode",
+        "keyWord": 1,
+        "from": 0,
+        "score": {
+          "printable": 0.075,
+          "alnum": 0.0511,
+          "hasToken": false,
+          "score": 0.0852,
+          "meaningful": false
+        },
+        "preview": "O;.'.................,=.G....'..O.............d...........c....................................."
+      },
+      {
+        "method": "cpsock-decode",
+        "keyWord": 2,
+        "from": 4,
+        "score": {
+          "printable": 0.0962,
+          "alnum": 0.0523,
+          "hasToken": false,
+          "score": 0.1066,
+          "meaningful": false
+        },
+        "preview": "A(.#................)%e.....;'................0...................................e......._....."
+      }
+    ],
+    "interpreted": false,
+    "notes": [
+      "tentativas: CPSock (256 keywords, a partir de 4 e de 0), XOR de 1 byte e XOR com a tabela",
+      "nenhuma tentativa produziu texto estruturalmente coerente — arquivo permanece opaco",
+      "layout (grupo/índice/IP/porta) não foi comprovado nesta passada"
+    ]
+  },
+  "serverlistTxt": {
+    "file": "client/serverlist.txt",
+    "size": 70,
+    "sha256": "b197b46dc6f0476d",
+    "entropia": 3.8569,
+    "headHex": "68 74 74 70 3a 2f 2f 31 39 32 2e 31 36 38 2e 31 30 30 2e 33 2f 73 65 72 76 30 30 2e 68 74 6d 0a 31 39 32 2e 31 36 38 2e 31 30 30 2e 33 3a 38 32 38 31 0a 31 39 32 2e 31 36 38 2e 31 30 30 2e 34",
+    "headAscii": "http://192.168.100.3/serv00.htm.192.168.100.3:82",
+    "conteudo": [
+      "http://192.168.100.3/serv00.htm",
+      "192.168.100.3:8281",
+      "192.168.100.4:8281"
+    ]
+  },
+  "resumo": {
+    "wytAmostras": 4,
+    "wytReconhecidas": 4,
+    "msaAmostras": 2,
+    "msaComVersao": 2,
+    "serverlistInterpretado": false
+  }
+}

@@ -55,12 +55,20 @@ mod tests {
 
     #[test]
     fn opcode_catalog_covers_every_legacy_constant() {
-        assert_eq!(Opcode::ALL.len(), 198, "Basedef.h tem 198 constantes _MSG_*");
+        assert_eq!(
+            Opcode::ALL.len(),
+            198,
+            "Basedef.h tem 198 constantes _MSG_*"
+        );
 
         let mut wires: Vec<u16> = Opcode::ALL.iter().map(|op| op.wire()).collect();
         wires.sort_unstable();
         wires.dedup();
-        assert_eq!(wires.len(), Opcode::ALL.len(), "nenhum valor de fio duplicado na tabela");
+        assert_eq!(
+            wires.len(),
+            Opcode::ALL.len(),
+            "nenhum valor de fio duplicado na tabela"
+        );
     }
 
     #[test]
@@ -74,8 +82,8 @@ mod tests {
         assert_eq!(Opcode::MessagePanel.wire(), 257);
         assert_eq!(Opcode::Ping.wire(), 928);
         assert_eq!(Opcode::AccountSecure.wire(), 4062); // 0x0FDE
-        assert_eq!(Opcode::DbAccountLogin.wire(), 2051); // 0x0803
-        assert_eq!(Opcode::NpReqIdPass.wire(), 4097); // 0x1001
+        assert_eq!(Opcode::DBAccountLogin.wire(), 2051); // 0x0803
+        assert_eq!(Opcode::NPReqIDPASS.wire(), 4097); // 0x1001
         assert_eq!(
             Opcode::from_wire(0x020D).map(Opcode::const_name),
             Some("_MSG_AccountLogin")
@@ -100,7 +108,7 @@ mod tests {
     fn flows_reflect_direction_flags() {
         assert!(Opcode::AccountLogin.flows().contains(&Flow::Client2Game));
         assert!(Opcode::MessagePanel.flows().contains(&Flow::Game2Client));
-        assert!(Opcode::DbAccountLogin.flows().contains(&Flow::Game2Db));
+        assert!(Opcode::DBAccountLogin.flows().contains(&Flow::Game2Db));
         assert!(Opcode::ExpMsgPanel.flows().is_empty());
     }
 

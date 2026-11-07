@@ -31,8 +31,10 @@ diferenciar fato (código/observado) de relato de fórum e de **hipótese**.
 
 ## Arquivos
 
-- Criados: cenários em `crates/wyd-sim/src/` ou `tests/`, doc das equações em
-  `docs/` (manual técnico), tabelas de atributos.
+- Criados (árvore normativa em `estrutura-e-padroes.md` §14):
+  `src/formula/*.rs`, `src/scenario/*.rs`, `src/report/table.rs`,
+  `tests/goldens.rs`, doc das equações em `docs/` (manual técnico),
+  tabelas de atributos.
 - Alterados: `crates/wyd-sim/src/lib.rs`, `crates/wyd-sim/Cargo.toml`
   (deps numéricas via ADR).
 - Proibido tocar: `crates/wyd-core/src/` (engine só consome fórmula aprovada),

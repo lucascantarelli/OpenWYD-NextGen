@@ -55,6 +55,8 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-02-1-ciclo-execucao.md` | 2 | `docs/rust/02-execucao.md` (ciclo obrigatório) | ✅ |
 | `issues/FASE-02-2-revisao-consolidada.md` | 2 | Checklist de revisão a cada 10 issues | ✅ |
 | `issues/FASE-02-3-ordem-priorizacao.md` | 2 | Grafo de dependências e caminho crítico | ✅ |
+| `issues/FASE-02-4-estrutura-e-padroes.md` | 2 | Estrutura de módulos, nomenclatura e padrões (gate de código) | ✅ |
+| `issues/FASE-02-5-visao-pastas.md` | 2 | Visão de pastas + mapa do cliente (gate de arquitetura) | ✅ |
 | `issues/FASE-03-1-tick.md` | 3 | Tick determinístico 20–50 Hz | ⬜ |
 | `issues/FASE-03-2-ecs.md` | 3 | ECS: componentes contíguos + ADR | ⬜ |
 | `issues/FASE-03-3-spatial-grid.md` | 3 | Spatial grid e interest management O(1) | ⬜ |
@@ -71,9 +73,13 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-07-2-painel-usuario.md` | 7 | Painel do jogador | ⬜ |
 | `issues/FASE-07-3-painel-admin.md` | 7 | Painel de staff auditável | ⬜ |
 | `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, loja, painel) | ⬜ |
-| `issues/FASE-08-1-tabela-protocolo.md` | 8 | Tabela do protocolo com UNVERIFIED | ⬜ |
+| `issues/FASE-08-1-tabela-protocolo.md` | 8 | Tabela do protocolo com UNVERIFIED | 🚧 |
 | `issues/FASE-08-2-parsers.md` | 8 | `wyd-protocol` zero-copy + golden | ⬜ |
-| `issues/FASE-08-3-launcher.md` | 8 | Launcher (hash, patch, bootstrap) | ⬜ |
+| `issues/FASE-08-3-launcher.md` | 8 | Distribuição do launcher/patch (updater substituto) | ✅ |
+| `issues/FASE-08-4-cliente-dossie.md` | 8 | Dossiê, inventário e baseline do cliente | ✅ |
+| `issues/FASE-08-5-cliente-reverso-estatico.md` | 8 | RE estático profundo (`WYD.exe` 7662) | ✅ |
+| `issues/FASE-08-6-cliente-reverso-dinamico.md` | 8 | Trace dinâmico e correlação de pacotes | 🚧 |
+| `issues/FASE-08-7-cliente-customizacao.md` | 8 | Customização sustentável + manifesto do launcher | ✅ |
 | `issues/FASE-09-1-auditoria-skills.md` | 9 | Auditoria das skills Go restantes | ⬜ |
 | `issues/FASE-09-2-criar-skills.md` | 9 | Skills sucessoras Rust | ⬜ |
 | `issues/FASE-10-1-equacoes.md` | 10 | Equações exatas de combate | ⬜ |

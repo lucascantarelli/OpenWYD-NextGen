@@ -1,0 +1,50 @@
+{
+  "source": "fixtures/cliente/*.json",
+  "results": [
+    {
+      "id": "account_login",
+      "origin": "generated",
+      "typeHex": "0x020d",
+      "size": 116,
+      "checksumHex": "0xf8",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "action",
+      "origin": "generated",
+      "typeHex": "0x036c",
+      "size": 52,
+      "checksumHex": "0xbd",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "character_login",
+      "origin": "generated",
+      "typeHex": "0x0213",
+      "size": 20,
+      "checksumHex": "0xb2",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "create_character",
+      "origin": "generated",
+      "typeHex": "0x020f",
+      "size": 36,
+      "checksumHex": "0x11",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "id": "header_only",
+      "origin": "generated",
+      "typeHex": "0x0333",
+      "size": 12,
+      "checksumHex": "0xcc",
+      "ok": true,
+      "errors": []
+    }
+  ]
+}
