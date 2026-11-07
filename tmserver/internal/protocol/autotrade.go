@@ -2,34 +2,34 @@ package protocol
 
 import "fmt"
 
-// Personal shop / autotrade wire codecs (issue #115), byte-exact against the
+// Codecs de wire da loja pessoal / autotrade (issue #115), byte a byte contra o
 // compiler-verified capture (captura-wyd-autotrade.md, MSVC x86 natural align).
 //
-//   MSG_SendAutoTrade (0x0397, 196B, C↔S): the shop contents — Title + 12 item
-//     slots (STRUCT_ITEM + source Cargo slot + price) + city tax. Sent C→S to open
-//     a shop, and S→C (SendAutoTrade) to list a shop to a browser.
-//   MSG_ReqBuy        (0x0398, 36B,  C→S): buy one slot. Note the 2-byte MSVC pad
-//     after TargetID (Price sits at packet offset 20, not 18).
-//   MSG_CreateMobTrade(0x0363, 252B, S→C): the shop-owner "stall" pose — a
-//     MSG_CreateMob (232B) plus Tab[26] + Desc[24] (the shop title).
+//   MSG_SendAutoTrade (0x0397, 196B, C↔S): o conteúdo da loja — Title + 12
+//     slots (STRUCT_ITEM + slot de Cargo de origem + preço) + imposto da cidade. Enviado C→S para abrir
+//     uma loja, e S→C (SendAutoTrade) para listar uma loja a quem navega.
+//   MSG_ReqBuy        (0x0398, 36B,  C→S): compra um slot. Note o padding MSVC de 2
+//     bytes depois de TargetID (Price fica no offset 20 do pacote, não 18).
+//   MSG_CreateMobTrade(0x0363, 252B, S→C): a pose de "banca" do dono da loja — um
+//     MSG_CreateMob (232B) mais Tab[26] + Desc[24] (o título da loja).
 
-// MaxAutoTradeWire is MAX_AUTOTRADE (Basedef.h:140): shop item slots.
+// MaxAutoTradeWire é MAX_AUTOTRADE (Basedef.h:140): slots de item da loja.
 const MaxAutoTradeWire = 12
 
-// autoTradeTitleLen is MAX_AUTOTRADETITLE (Basedef.h:141): the shop-title buffer.
+// autoTradeTitleLen é MAX_AUTOTRADETITLE (Basedef.h:141): o buffer do título da loja.
 const autoTradeTitleLen = 24
 
-// AutoTradeWireItem is one shop slot: the offered item, its source slot in the
-// seller's account Cargo (-1 = empty), and its price.
+// AutoTradeWireItem é um slot da loja: o item ofertado, seu slot de origem no
+// Cargo da conta do vendedor (-1 = vazio) e seu preço.
 type AutoTradeWireItem struct {
 	Item     WireItem
 	CarryPos int8
 	Coin     int32
 }
 
-// MsgSendAutoTradeBody is MSG_SendAutoTrade (Basedef.h:2293). Byte layout (body,
-// after the 12-byte header): Title[24]@0, Item[12]×8@24, CarryPos[12]@120,
-// Coin[12]×4@132, Tax@180, Index@182 — 184 bytes total (196 on the wire).
+// MsgSendAutoTradeBody é MSG_SendAutoTrade (Basedef.h:2293). Layout de bytes (corpo,
+// depois do cabeçalho de 12 bytes): Title[24]@0, Item[12]×8@24, CarryPos[12]@120,
+// Coin[12]×4@132, Tax@180, Index@182 — 184 bytes no total (196 no wire).
 type MsgSendAutoTradeBody struct {
 	Title string
 	Slots [MaxAutoTradeWire]AutoTradeWireItem
@@ -37,17 +37,17 @@ type MsgSendAutoTradeBody struct {
 	Index int16
 }
 
-// MsgSendAutoTradeBodySize is the meaningful body length (196 − 12).
+// MsgSendAutoTradeBodySize é o tamanho significativo do corpo (196 − 12).
 const MsgSendAutoTradeBodySize = autoTradeTitleLen + MaxAutoTradeWire*ItemSize + MaxAutoTradeWire + MaxAutoTradeWire*4 + 2 + 2
 
-// sendAutoTradeListWireSize is the on-wire body length SendAutoTrade actually
-// emits: the legacy passes sizeof(MSG_UpdateCarry)=528 to AddMessage
-// (SendFunc.cpp:635), so the S→C list packet carries 528 total bytes — the 184
-// meaningful bytes followed by 332 trailing zeros. Replicated for wire parity; the
-// client reads only the leading MSG_SendAutoTrade and ignores the tail.
+// sendAutoTradeListWireSize é o tamanho de corpo no wire que SendAutoTrade
+// realmente emite: o legado passa sizeof(MSG_UpdateCarry)=528 para AddMessage
+// (SendFunc.cpp:635), então o pacote de lista S→C leva 528 bytes no total — os 184
+// bytes significativos seguidos de 332 zeros ao final. Replicado para paridade de wire;
+// o cliente lê só o MSG_SendAutoTrade inicial e ignora a cauda.
 const sendAutoTradeListWireSize = 528 - HeaderSize // 516
 
-// Decode parses a client MSG_SendAutoTrade (open-shop request).
+// Decode lê um MSG_SendAutoTrade do cliente (pedido de abrir loja).
 func (m *MsgSendAutoTradeBody) Decode(b []byte) error {
 	if len(b) < MsgSendAutoTradeBodySize {
 		return fmt.Errorf("protocol: MsgSendAutoTradeBody.Decode: have %d, need %d", len(b), MsgSendAutoTradeBodySize)
@@ -67,8 +67,8 @@ func (m *MsgSendAutoTradeBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the 184-byte meaningful MSG_SendAutoTrade body (used by tests and
-// as the basis for the S→C list). Send with EncodeList for the wire-parity padding.
+// Encode escreve o corpo significativo de 184 bytes do MSG_SendAutoTrade (usado nos
+// testes e como base da lista S→C). Use EncodeList para o padding de paridade de wire.
 func (m *MsgSendAutoTradeBody) Encode() []byte {
 	b := make([]byte, MsgSendAutoTradeBodySize)
 	copy(b[0:autoTradeTitleLen], m.Title)
@@ -86,17 +86,17 @@ func (m *MsgSendAutoTradeBody) Encode() []byte {
 	return b
 }
 
-// EncodeList builds the S→C shop-list body: the meaningful struct padded with
-// trailing zeros to the 516-byte body the legacy SendAutoTrade emits (the Size=528
-// quirk). Send with HEADER.ID = IDScene and Index = the seller's conn.
+// EncodeList monta o corpo da lista de lojas S→C: a struct significativa com padding
+// de zeros até os 516 bytes de corpo que o SendAutoTrade legado emite (a
+// peculiaridade Size=528). Envie com HEADER.ID = IDScene e Index = a conn do vendedor.
 func (m *MsgSendAutoTradeBody) EncodeList() []byte {
 	b := make([]byte, sendAutoTradeListWireSize)
 	copy(b, m.Encode())
 	return b
 }
 
-// MsgReqBuyBody is MSG_ReqBuy (Basedef.h:2310). Body layout: Pos@0, TargetID@4,
-// (2-byte pad @6), Price@8, Tax@12, item@16 — 24 bytes (36 on the wire).
+// MsgReqBuyBody é MSG_ReqBuy (Basedef.h:2310). Layout do corpo: Pos@0, TargetID@4,
+// (pad de 2 bytes @6), Price@8, Tax@12, item@16 — 24 bytes (36 no wire).
 type MsgReqBuyBody struct {
 	Pos      int32
 	TargetID uint16
@@ -105,11 +105,11 @@ type MsgReqBuyBody struct {
 	Item     WireItem
 }
 
-// MsgReqBuyBodySize is the body length (36 − 12).
+// MsgReqBuyBodySize é o tamanho do corpo (36 − 12).
 const MsgReqBuyBodySize = 24
 
-// Decode parses a client MSG_ReqBuy. It honours the 2-byte MSVC padding after the
-// uint16 TargetID (Price is naturally aligned at body offset 8).
+// Decode lê um MSG_ReqBuy do cliente. Respeita o padding MSVC de 2 bytes depois do
+// uint16 TargetID (Price fica alinhado naturalmente no offset 8 do corpo).
 func (m *MsgReqBuyBody) Decode(b []byte) error {
 	if len(b) < MsgReqBuyBodySize {
 		return fmt.Errorf("protocol: MsgReqBuyBody.Decode: have %d, need %d", len(b), MsgReqBuyBodySize)
@@ -123,7 +123,7 @@ func (m *MsgReqBuyBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes an MSG_ReqBuy body (round-trip / tests).
+// Encode escreve um corpo MSG_ReqBuy (round-trip / testes).
 func (m *MsgReqBuyBody) Encode() []byte {
 	b := make([]byte, MsgReqBuyBodySize)
 	le.PutUint32(b[0:4], uint32(m.Pos))
@@ -134,20 +134,20 @@ func (m *MsgReqBuyBody) Encode() []byte {
 	return b
 }
 
-// createMobTradeSize is MSG_CreateMobTrade (Basedef.h:1890): MSG_CreateMob (232) +
+// createMobTradeSize é MSG_CreateMobTrade (Basedef.h:1890): MSG_CreateMob (232) +
 // Tab[26] + Desc[24].
 const createMobTradeSize = 252
 
-// EncodeCreateMobTradeBody builds the body of MSG_CreateMobTrade (0x0363): the
-// shop-owner stall pose. It reuses the MSG_CreateMob field layout (shared offsets)
-// and appends Tab[26]@190 and Desc[24]@216 (the shop title). The pose is selected
-// by the message Type, not by CreateType (which stays 0 + guild bits, as in
-// GetCreateMobTrade). Send with HEADER.ID = IDScene; the entity id is MobID. The
-// caller zeroes Score.Con (d.Con) for parity with _MSG_SendAutoTrade.cpp:118.
+// EncodeCreateMobTradeBody monta o corpo de MSG_CreateMobTrade (0x0363): a pose de
+// banca do dono da loja. Reusa o layout de campos de MSG_CreateMob (offsets
+// compartilhados) e anexa Tab[26]@190 e Desc[24]@216 (o título da loja). A pose é
+// escolhida pelo Type da mensagem, não por CreateType (que fica 0 + bits de guild,
+// como em GetCreateMobTrade). Envie com HEADER.ID = IDScene; o id da entidade é
+// MobID. Quem chama zera Score.Con (d.Con) para paridade com _MSG_SendAutoTrade.cpp:118.
 func EncodeCreateMobTradeBody(d CreateMobData, tab []byte, desc string) []byte {
 	b := make([]byte, createMobTradeSize-HeaderSize) // 240
-	// MSG_CreateMob shares its first 202 bytes (up to AnctCode) with the trade
-	// variant; reuse that encoder and copy its result into the wider body.
+	// MSG_CreateMob compartilha seus primeiros 202 bytes (até AnctCode) com a
+	// variante de troca; reuse aquele encoder e copie o resultado para o corpo maior.
 	copy(b, EncodeCreateMobBody(d))
 	copy(b[190:190+26], tab)                 // Tab[26] @abs202 → body190
 	copy(b[216:216+autoTradeTitleLen], desc) // Desc[24] @abs228 → body216

@@ -19,7 +19,7 @@ const (
 	defaultCapeCost     = 8
 )
 
-// QuoteKingdomCape returns the durable price snapshot used for optimistic purchases.
+// QuoteKingdomCape devolve o snapshot de preço durável usado para compras otimistas.
 func (s *Store) QuoteKingdomCape(ctx context.Context) (domain.KingdomCapeQuote, error) {
 	var q domain.KingdomCapeQuote
 	err := s.pool.QueryRow(ctx, `SELECT version, hekalotia_cost, akelonia_cost FROM sapphire_balance WHERE singleton`).Scan(
@@ -43,7 +43,7 @@ func defaultKingdomCapeQuote() domain.KingdomCapeQuote {
 	}
 }
 
-// PurchaseKingdomCape atomically persists payment/cape state and advances prices.
+// PurchaseKingdomCape persiste atomicamente o estado de pagamento/capa e avança os preços.
 func (s *Store) PurchaseKingdomCape(ctx context.Context, accountID, expectedRevision int64, kingdom uint8, ch domain.Character) (domain.KingdomCapeQuote, bool, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 	"openwyd-nextgen/internal/ratetables"
 )
 
-// The refine ceilings left the code on QA 05/11: the file sets them, an
-// out-of-range line is skipped and a dust ceiling never exceeds the hard cap.
+// Os tetos de refino saíram do código no QA 05/11: o arquivo os define, uma
+// linha fora da faixa é pulada e um teto de pó nunca excede o limite absoluto.
 func TestParseRefinePolicy(t *testing.T) {
 	p, err := ParseRefinePolicy(strings.NewReader(
 		"# comentario\nPOLICY PO_MAX 4\nPOLICY HARD_CAP 12\nlixo\nPOLICY PL_MAX 99\nPOLICY GEM_LEVEL 8\n"))

@@ -10,7 +10,7 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// LoadKefraState returns revision zero when the event has never been saved.
+// LoadKefraState devolve revisão zero quando o evento nunca foi salvo.
 func (s *Store) LoadKefraState(ctx context.Context) (domain.KefraState, error) {
 	var st domain.KefraState
 	err := s.pool.QueryRow(ctx, `SELECT defeated, next_spawn_unix, last_spawn_unix, revision FROM kefra_state WHERE id = 1`).Scan(&st.Defeated, &st.NextSpawnUnix, &st.LastSpawnUnix, &st.Revision)
@@ -23,8 +23,9 @@ func (s *Store) LoadKefraState(ctx context.Context) (domain.KefraState, error) {
 	return st, nil
 }
 
-// SaveKefraState ignores older or repeated revisions, making retries safe even
-// when a timed-out RPC commits after the following update or shutdown save.
+// SaveKefraState ignora revisões mais antigas ou repetidas, tornando as
+// retentativas seguras mesmo quando uma RPC que estourou o prazo confirma depois da
+// atualização seguinte ou do save de shutdown.
 func (s *Store) SaveKefraState(ctx context.Context, st domain.KefraState) error {
 	_, err := s.pool.Exec(ctx, `INSERT INTO kefra_state (id, defeated, next_spawn_unix, last_spawn_unix, revision)
 		VALUES (1, $1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET

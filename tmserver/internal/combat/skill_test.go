@@ -37,14 +37,14 @@ func TestSkillBaseDamage(t *testing.T) {
 		want     int
 	}{
 		// TK tree 1 (skill 0, skind=0): special+base+weapon+level+Int/4+Int/40,
-		// then magic multiplier and 5/4.
+		// depois multiplicador mágico e 5/4.
 		{"tk tree1 elemental", 0, elem,
 			SkillCaster{Class: 0, Level: 100, Str: 50, Int: 80, Magic: 10, Special: 20},
 			0, 30,
 			// dam = 20+5+30+100+20+2 = 177; *(4*10+100)/100 = 247; *5/4 = 308
 			308},
 		// TK tree 2 (skill 8, skind=1): 3*weapon+3*Str+level+special+base, NO
-		// magic multiplier, then 5/4.
+		// multiplicador mágico, depois 5/4.
 		{"tk tree2 weapon-scaled", 8, SkillSpell{InstanceType: 1, InstanceValue: 10},
 			SkillCaster{Class: 0, Level: 50, Str: 40, Magic: 99, Special: 15},
 			0, 20,
@@ -62,25 +62,25 @@ func TestSkillBaseDamage(t *testing.T) {
 			0, 25,
 			// dam = 75+210+40+30+12 = 367; 5/4 = 458
 			458},
-		// Weather 1 nerfs InstanceType 2 to 90%.
+		// Weather 1 reduz o InstanceType 2 para 90%.
 		{"weather rain nerfs water", 90, SkillSpell{InstanceType: 2, InstanceValue: 12},
 			SkillCaster{Class: 3, Level: 81, Str: 70, Magic: 50, Special: 30},
 			1, 25,
 			// 367 → 90% = 330; 5/4 = 412
 			412},
-		// Weather 2 buffs InstanceType 3 to 120%.
+		// Weather 2 aumenta o InstanceType 3 para 120%.
 		{"weather buffs type3", 30, SkillSpell{InstanceType: 3, InstanceValue: 8},
 			SkillCaster{Class: 1, Level: 60, Int: 300, Magic: 5, Special: 25},
 			2, 0,
 			// 228 → 120% = 273; *120/100 = 327; 5/4 = 408
 			408},
-		// Skill 97: 15*level+base regardless of class.
+		// Skill 97: 15*level+base independente de classe.
 		{"cannon 97", 97, SkillSpell{InstanceType: 5, InstanceValue: 100},
 			SkillCaster{Class: 2, Level: 40, Magic: 0},
 			0, 0,
-			// dam = 700; 5/4 of (700*(100)/100)=875
+			// dam = 700; 5/4 de (700*(100)/100)=875
 			875},
-		// Skill 79 overrides with 180% of current Damage.
+		// Skill 79 substitui com 180% do Damage atual.
 		{"tempestade 79", 79, SkillSpell{InstanceType: 1, InstanceValue: 50},
 			SkillCaster{Class: 3, Level: 200, Str: 100, Damage: 500, Special: 50},
 			0, 60,
@@ -144,15 +144,15 @@ func TestSkillResistScale(t *testing.T) {
 		})
 	}
 
-	// Affect-boosted resist: the handler feeds resolveSkillHit's resolved array
-	// (handler.effectiveResist = base + affect, clamped 0..100) into this
-	// function, so a resist buff must raise mitigation. Build the array from base
-	// + affect components rather than a literal to lock that contract (combat.go
-	// resolveSkillHit). The 0..100 ceiling belongs to the caller, not here.
+	// Resist turbinado por affect: o handler alimenta o array resolvido de resolveSkillHit
+	// (handler.effectiveResist = base + affect, limitado a 0..100) nesta
+	// função, então um buff de resist precisa aumentar a mitigação. Monte o array a
+	// partir de base + componentes de affect em vez de um literal para travar esse
+	// contrato (combat.go resolveSkillHit). O teto 0..100 pertence a quem chama, não aqui.
 	t.Run("resist raised by affect mitigates more", func(t *testing.T) {
 		const base, affResist = int16(40), int16(30)
 		boosted := [4]int16{0, base + affResist, 0, 0} // type 3 → index 1
-		// (150-70)*100/100 = 80, vs 110 with base 40 alone.
+		// (150-70)*100/100 = 80, contra 110 com base 40 sozinha.
 		if got := SkillResistScale(100, 3, boosted, true); got != 80 {
 			t.Errorf("boosted resist scale = %d, want 80", got)
 		}

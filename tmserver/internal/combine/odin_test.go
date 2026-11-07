@@ -6,7 +6,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// items8 builds an 8-slot input from a list of sIndex values (0 = empty slot).
+// items8 monta uma entrada de 8 slots a partir de uma lista de sIndex (0 = slot vazio).
 func items8(idx ...int16) []world.Item {
 	var out [8]world.Item
 	for i, v := range idx {
@@ -108,7 +108,7 @@ func TestMatchOdinItemCelestial(t *testing.T) {
 		t.Fatalf("MatchOdin() = %d, want OdinItemCelestial", got)
 	}
 
-	// Dropping Item[0]'s sanc below 9 must break the match.
+	// Baixar o sanc de Item[0] para menos de 9 precisa quebrar o casamento.
 	items[0].Effects[0] = world.Effect{Effect: efSanc, Value: 8}
 	if got := MatchOdin(cat, items); got == OdinItemCelestial {
 		t.Errorf("MatchOdin() matched Item-celestial with Item[0] sanc 8 < 9")
@@ -124,16 +124,16 @@ func TestMatchOdinPlus12(t *testing.T) {
 		t.Fatalf("MatchOdin() = %d, want OdinPlus12", got)
 	}
 
-	// Target at +10 falls outside the match's own (10,15] window. Level 15
-	// DOES still match here — GetMatchCombineOdin's own gate is level<=15;
-	// the level>=15 reject is a SEPARATE pre-check Exec applies after the
-	// match (_MSG_CombineItemOdin.cpp:74), not part of MatchOdin itself.
+	// Alvo em +10 fica fora da janela (10,15] do próprio casamento. Nível 15
+	// AINDA casa aqui — o gate do GetMatchCombineOdin é level<=15;
+	// a recusa de level>=15 é uma pré-checagem SEPARADA que o Exec aplica depois do
+	// casamento (_MSG_CombineItemOdin.cpp:74), não faz parte do MatchOdin.
 	items[2].Effects[0] = world.Effect{Effect: efSanc, Value: 230} // level 10
 	if got := MatchOdin(cat, items); got == OdinPlus12 {
 		t.Errorf("MatchOdin() matched +12+ at level 10")
 	}
 
-	// A disallowed nPos (not in the {2,4,8,16,32,64,128,192} set) also breaks it.
+	// Um nPos não permitido (fora do conjunto {2,4,8,16,32,64,128,192}) também quebra.
 	items[2].Effects[0] = world.Effect{Effect: efSanc, Value: 234}
 	cat.Pos[3140] = 1
 	if got := MatchOdin(cat, items); got == OdinPlus12 {
@@ -143,12 +143,12 @@ func TestMatchOdinPlus12(t *testing.T) {
 
 func TestPlus12Rate(t *testing.T) {
 	items := items8(4043, 4043, 3140, 5334, 5335, 3338, 5337)
-	items[5].Effects[0] = world.Effect{Effect: efSanc, Value: 3}   // stone 3338 at level 3
-	items[2].Effects[0] = world.Effect{Effect: efSanc, Value: 234} // target level 11 (no penalty)
+	items[5].Effects[0] = world.Effect{Effect: efSanc, Value: 3}   // pedra 3338 no nível 3
+	items[2].Effects[0] = world.Effect{Effect: efSanc, Value: 234} // alvo nível 11 (sem penalidade)
 
 	rate, protect := Plus12Rate(100, items)
-	// +1 per rune (5334, 5335, 5337 = 3 runes) * itemSancRate12[0]=1, plus the
-	// 3338 stone's own level-3 bonus itemSancRate12[3+1]=5, no REF_12+ penalty.
+	// +1 por runa (5334, 5335, 5337 = 3 runas) * itemSancRate12[0]=1, mais o
+	// bônus de nível 3 da pedra 3338 itemSancRate12[3+1]=5, sem penalidade REF_12+.
 	want := 100 + 3*itemSancRate12[0] + itemSancRate12[3+1]
 	if rate != want {
 		t.Errorf("rate = %d, want %d", rate, want)

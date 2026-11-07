@@ -37,8 +37,8 @@ func TestWaterExpReward(t *testing.T) {
 }
 
 func TestWaterDivisorBands(t *testing.T) {
-	// Fixed inputs isolate the literal-width/truncation rules from ExpApply
-	// and the killer cap. Both edges of each legacy band are covered.
+	// Entradas fixas isolam as regras de largura de literal/truncamento do ExpApply
+	// e do teto do matador. As duas bordas de cada faixa legada são cobertas.
 	for _, tt := range []struct {
 		tier   WaterTier
 		class  uint8

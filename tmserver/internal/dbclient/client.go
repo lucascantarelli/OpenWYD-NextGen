@@ -1,7 +1,7 @@
-// Package dbclient adapts the dbServer gRPC AccountService (api/db/v1) to the
-// world.Persistence port. tmServer's loop/handlers depend only on the port; this
-// adapter does the blocking gRPC calls (off the loop via World.Go, or inline at
-// shutdown) and maps proto messages to/from the world's types
+// Package dbclient adapta o AccountService gRPC do dbServer (api/db/v1) à
+// porta world.Persistence. O loop e os handlers do tmServer dependem só da porta;
+// este adaptador faz as chamadas gRPC bloqueantes (fora do loop via World.Go, ou
+// dentro dele no shutdown) e mapeia mensagens proto de/para os tipos do mundo
 // (migration-plan.md §3.5).
 package dbclient
 
@@ -17,20 +17,20 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Client is a world.Persistence backed by the dbServer.
+// Client é um world.Persistence apoiado no dbServer.
 type Client struct {
 	api dbv1.AccountServiceClient
 }
 
-// New wraps a gRPC connection as a Persistence backend.
+// New embrulha uma conexão gRPC como backend de Persistence.
 func New(conn grpc.ClientConnInterface) *Client {
 	return &Client{api: dbv1.NewAccountServiceClient(conn)}
 }
 
 var _ world.Persistence = (*Client)(nil)
 
-// AccountLogin authenticates and, on success, fetches the character-selection
-// list so the world can present it immediately.
+// AccountLogin autentica e, em caso de sucesso, busca a lista de
+// seleção de personagens para o mundo apresentá-la na hora.
 func (c *Client) AccountLogin(ctx context.Context, name, password string) (world.LoginOutcome, error) {
 	resp, err := c.api.AccountLogin(ctx, &dbv1.AccountLoginRequest{
 		AccountName:   name,
@@ -52,22 +52,22 @@ func (c *Client) AccountLogin(ctx context.Context, name, password string) (world
 	if err != nil {
 		return world.LoginOutcome{}, err
 	}
-	// Load the account-shared cargo in the same off-loop round-trip as the
-	// character list — it is account-scoped, so it is fetched once per login.
+	// Carrega o cargo compartilhado da conta na mesma ida e volta fora do loop da
+	// lista de personagens — é escopo de conta, então é buscado uma vez por login.
 	out.Cargo, err = c.LoadCargo(ctx, out.AccountID)
 	if err != nil {
 		return world.LoginOutcome{}, err
 	}
-	// Fetch the donate web-shop mailbox (issue #34) in the same round-trip too,
-	// rather than a second loop re-entry after login completes. A fetch failure
-	// here is non-fatal to the login — the mailbox is simply retried next login.
+	// Busca também a caixa da loja de donate web (issue #34) na mesma ida e volta,
+	// em vez de uma segunda entrada no loop depois do login. Uma falha de busca
+	// aqui não é fatal ao login — a caixa é simplesmente tentada de novo no próximo.
 	if pending, err := c.ListPendingDeliveries(ctx, out.AccountID); err == nil {
 		out.PendingDeliveries = pending
 	}
 	return out, nil
 }
 
-// ListCharacters fetches the character-selection projection for an account.
+// ListCharacters busca a projeção da seleção de personagens de uma conta.
 func (c *Client) ListCharacters(ctx context.Context, accountID int64) ([]world.CharSummary, error) {
 	list, err := c.api.ListCharacters(ctx, &dbv1.ListCharactersRequest{AccountId: accountID})
 	if err != nil {
@@ -104,7 +104,7 @@ func (c *Client) ListCharacters(ctx context.Context, accountID int64) ([]world.C
 	return out, nil
 }
 
-// CreateCharacter creates a character in a free slot.
+// CreateCharacter cria um personagem num slot livre.
 func (c *Client) CreateCharacter(ctx context.Context, accountID int64, slot int, name string, class int) (bool, error) {
 	resp, err := c.api.CreateCharacter(ctx, &dbv1.CreateCharacterRequest{
 		AccountId: accountID,
@@ -118,7 +118,7 @@ func (c *Client) CreateCharacter(ctx context.Context, accountID int64, slot int,
 	return resp.GetOk(), nil
 }
 
-// CreateArchCharacter creates an ARCH twin in the first free account slot.
+// CreateArchCharacter cria o gêmeo ARCH no primeiro slot livre da conta.
 func (c *Client) CreateArchCharacter(ctx context.Context, accountID int64, name string, class, mortalFace, mortalSlot, mortalLevel int) (int, bool, error) {
 	resp, err := c.api.CreateArchCharacter(ctx, &dbv1.CreateArchCharacterRequest{
 		AccountId:   accountID,
@@ -134,7 +134,7 @@ func (c *Client) CreateArchCharacter(ctx context.Context, accountID int64, name 
 	return int(resp.GetSlot()), resp.GetOk(), nil
 }
 
-// DeleteCharacter deletes a character after password confirmation.
+// DeleteCharacter apaga um personagem depois de confirmar a senha.
 func (c *Client) DeleteCharacter(ctx context.Context, accountID int64, slot int, _, password string) (bool, error) {
 	resp, err := c.api.DeleteCharacter(ctx, &dbv1.DeleteCharacterRequest{
 		AccountId: accountID,
@@ -147,7 +147,7 @@ func (c *Client) DeleteCharacter(ctx context.Context, accountID int64, slot int,
 	return resp.GetOk(), nil
 }
 
-// SetPin sets/changes the account's numeric PIN (hashed argon2id on the dbServer).
+// SetPin define/troca o PIN numérico da conta (com hash argon2id no dbServer).
 func (c *Client) SetPin(ctx context.Context, accountID int64, pin string) (bool, error) {
 	resp, err := c.api.SetPin(ctx, &dbv1.SetPinRequest{AccountId: accountID, Pin: pin})
 	if err != nil {
@@ -156,7 +156,7 @@ func (c *Client) SetPin(ctx context.Context, accountID int64, pin string) (bool,
 	return resp.GetOk(), nil
 }
 
-// VerifyPin checks a numeric PIN against the account's stored hash.
+// VerifyPin confere um PIN numérico contra o hash guardado da conta.
 func (c *Client) VerifyPin(ctx context.Context, accountID int64, pin string) (world.PinResult, error) {
 	resp, err := c.api.VerifyPin(ctx, &dbv1.VerifyPinRequest{AccountId: accountID, Pin: pin})
 	if err != nil {
@@ -178,7 +178,7 @@ func pinResultFromProto(r dbv1.PinResult) world.PinResult {
 	}
 }
 
-// LoadCharacter loads a character's state for world injection.
+// LoadCharacter carrega o estado de um personagem para injeção no mundo.
 func (c *Client) LoadCharacter(ctx context.Context, accountID int64, slot int) (world.CharacterState, error) {
 	resp, err := c.api.LoadCharacter(ctx, &dbv1.LoadCharacterRequest{
 		AccountId: accountID,
@@ -194,7 +194,7 @@ func (c *Client) LoadCharacter(ctx context.Context, accountID int64, slot int) (
 	return st, nil
 }
 
-// SaveOnShutdown persists the world's snapshot of a character.
+// SaveOnShutdown persiste o snapshot do personagem que o mundo tem.
 func (c *Client) SaveOnShutdown(ctx context.Context, save world.CharacterSave) error {
 	_, err := c.api.SaveCharacter(ctx, &dbv1.SaveCharacterRequest{
 		AccountId: save.AccountID,
@@ -206,7 +206,7 @@ func (c *Client) SaveOnShutdown(ctx context.Context, save world.CharacterSave) e
 	return nil
 }
 
-// QuoteKingdomCape fetches the database-owned sapphire prices.
+// QuoteKingdomCape busca os preços de safira que pertencem ao banco.
 func (c *Client) QuoteKingdomCape(ctx context.Context) (world.KingdomCapeQuote, error) {
 	resp, err := c.api.QuoteKingdomCape(ctx, &dbv1.QuoteKingdomCapeRequest{})
 	if err != nil {
@@ -215,7 +215,7 @@ func (c *Client) QuoteKingdomCape(ctx context.Context) (world.KingdomCapeQuote, 
 	return world.KingdomCapeQuote{Revision: resp.GetRevision(), HekalotiaCost: int(resp.GetHekalotiaCost()), AkeloniaCost: int(resp.GetAkeloniaCost())}, nil
 }
 
-// PurchaseKingdomCape commits a staged payment and cape at an expected revision.
+// PurchaseKingdomCape confirma um pagamento e capa preparados numa revisão esperada.
 func (c *Client) PurchaseKingdomCape(ctx context.Context, expectedRevision int64, kingdom uint8, save world.CharacterSave) (world.KingdomCapeQuote, bool, error) {
 	resp, err := c.api.PurchaseKingdomCape(ctx, &dbv1.PurchaseKingdomCapeRequest{AccountId: save.AccountID, ExpectedRevision: expectedRevision, Kingdom: int32(kingdom), Character: characterSaveToProto(save)})
 	if err != nil {
@@ -225,8 +225,8 @@ func (c *Client) PurchaseKingdomCape(ctx context.Context, expectedRevision int64
 	return world.KingdomCapeQuote{Revision: q.GetRevision(), HekalotiaCost: int(q.GetHekalotiaCost()), AkeloniaCost: int(q.GetAkeloniaCost())}, resp.GetOk(), nil
 }
 
-// LoadCargo loads the account-shared warehouse (gold + items) for world
-// injection. Items are placed positionally into the fixed Cargo array.
+// LoadCargo carrega o armazém compartilhado da conta (ouro + itens) para
+// injeção no mundo. Os itens entram posicionalmente no vetor fixo Cargo.
 func (c *Client) LoadCargo(ctx context.Context, accountID int64) (world.CargoState, error) {
 	resp, err := c.api.LoadCargo(ctx, &dbv1.LoadCargoRequest{AccountId: accountID})
 	if err != nil {
@@ -250,7 +250,7 @@ func (c *Client) LoadCargo(ctx context.Context, accountID int64) (world.CargoSta
 	return st, nil
 }
 
-// SaveCargo persists the account-shared warehouse (replace-all on the dbServer).
+// SaveCargo persiste o armazém compartilhado da conta (substitui tudo no dbServer).
 func (c *Client) SaveCargo(ctx context.Context, save world.CargoSave) error {
 	_, err := c.api.SaveCargo(ctx, &dbv1.SaveCargoRequest{
 		AccountId: save.AccountID,
@@ -263,8 +263,8 @@ func (c *Client) SaveCargo(ctx context.Context, save world.CargoSave) error {
 	return nil
 }
 
-// ListPendingDeliveries fetches the account's pending item grants from the
-// delivery_queue mailbox (donate web shop, issue #34).
+// ListPendingDeliveries busca as concessões de item pendentes da conta na
+// caixa delivery_queue (loja de donate web, issue #34).
 func (c *Client) ListPendingDeliveries(ctx context.Context, accountID int64) ([]world.Delivery, error) {
 	resp, err := c.api.ListPendingDeliveries(ctx, &dbv1.ListPendingDeliveriesRequest{AccountId: accountID})
 	if err != nil {
@@ -277,8 +277,8 @@ func (c *Client) ListPendingDeliveries(ctx context.Context, accountID int64) ([]
 	return out, nil
 }
 
-// SaveCargoWithDeliveries persists the cargo and acks the drained mailbox rows in
-// one dbServer transaction (the anti-dup boundary for the drain).
+// SaveCargoWithDeliveries persiste o cargo e confirma as linhas drenadas da caixa em
+// uma transação do dbServer (a fronteira anti-duplicação da drenagem).
 func (c *Client) SaveCargoWithDeliveries(ctx context.Context, save world.CargoSave, deliveredIDs, lostIDs []int64) error {
 	_, err := c.api.SaveCargoWithDeliveries(ctx, &dbv1.SaveCargoWithDeliveriesRequest{
 		AccountId:    save.AccountID,
@@ -293,7 +293,7 @@ func (c *Client) SaveCargoWithDeliveries(ctx context.Context, save world.CargoSa
 	return nil
 }
 
-// SetAccountBlocked flips account.is_blocked by name (GM ban/unban, issue #122).
+// SetAccountBlocked inverte account.is_blocked por nome (ban/unban de GM, issue #122).
 func (c *Client) SetAccountBlocked(ctx context.Context, name string, blocked bool) error {
 	if _, err := c.api.SetAccountBlocked(ctx, &dbv1.SetAccountBlockedRequest{
 		AccountName: name,
@@ -304,8 +304,8 @@ func (c *Client) SetAccountBlocked(ctx context.Context, name string, blocked boo
 	return nil
 }
 
-// RecordDuelResult persists a 1v1 duel outcome (issue #118): winnerName's wins
-// and loserName's losses are each incremented by one.
+// RecordDuelResult persiste o resultado de um duelo 1v1 (issue #118): as vitórias de
+// winnerName e as derrotas de loserName sobem de um em um.
 func (c *Client) RecordDuelResult(ctx context.Context, winnerName, loserName string) error {
 	resp, err := c.api.RecordDuelResult(ctx, &dbv1.RecordDuelResultRequest{
 		WinnerName: winnerName,
@@ -320,8 +320,8 @@ func (c *Client) RecordDuelResult(ctx context.Context, winnerName, loserName str
 	return nil
 }
 
-// CreateGuild allocates a persistent legacy guild id, charges the creation cost,
-// and makes the character leader.
+// CreateGuild aloca um id legado persistente de guild, cobra o custo de criação
+// e torna o personagem líder.
 func (c *Client) CreateGuild(ctx context.Context, accountID int64, slot int, characterName, guildName string, clan, citizen uint8, serverIndex int, cost int32) (world.GuildRecord, bool, error) {
 	resp, err := c.api.CreateGuild(ctx, &dbv1.CreateGuildRequest{
 		AccountId:     accountID,
@@ -339,7 +339,7 @@ func (c *Client) CreateGuild(ctx context.Context, accountID int64, slot int, cha
 	return guildFromProto(resp.GetGuild()), resp.GetOk(), nil
 }
 
-// SetGuildMember persists one character's guild membership/rank.
+// SetGuildMember persiste a filiação/posto de um personagem na guild.
 func (c *Client) SetGuildMember(ctx context.Context, accountID int64, slot int, characterName string, guildID uint16, guildLevel uint8) error {
 	resp, err := c.api.SetGuildMember(ctx, &dbv1.SetGuildMemberRequest{
 		AccountId:     accountID,
@@ -357,7 +357,7 @@ func (c *Client) SetGuildMember(ctx context.Context, accountID int64, slot int, 
 	return nil
 }
 
-// LeaveGuild clears one character's persistent guild membership.
+// LeaveGuild limpa a filiação persistente de um personagem à guild.
 func (c *Client) LeaveGuild(ctx context.Context, accountID int64, slot int) error {
 	resp, err := c.api.LeaveGuild(ctx, &dbv1.LeaveGuildRequest{AccountId: accountID, Slot: int32(slot)})
 	if err != nil {
@@ -369,8 +369,8 @@ func (c *Client) LeaveGuild(ctx context.Context, accountID int64, slot int) erro
 	return nil
 }
 
-// PromoteGuildMember assigns the first available sub-leader rank and charges the
-// leader in the same dbServer transaction.
+// PromoteGuildMember atribui o primeiro posto de sub-líder livre e cobra do
+// líder na mesma transação do dbServer.
 func (c *Client) PromoteGuildMember(ctx context.Context, guildID uint16, leaderAccountID int64, leaderSlot int, accountID int64, slot int, cost int32) (uint8, bool, error) {
 	resp, err := c.api.PromoteGuildMember(ctx, &dbv1.PromoteGuildMemberRequest{
 		GuildId:         uint32(guildID),
@@ -386,7 +386,7 @@ func (c *Client) PromoteGuildMember(ctx context.Context, guildID uint16, leaderA
 	return uint8(resp.GetGuildLevel()), resp.GetOk(), nil
 }
 
-// TransferGuildLeader persists a guild leadership transfer.
+// TransferGuildLeader persiste a transferência de liderança da guild.
 func (c *Client) TransferGuildLeader(ctx context.Context, guildID uint16, oldAccountID int64, oldSlot int, newAccountID int64, newSlot int) error {
 	resp, err := c.api.TransferGuildLeader(ctx, &dbv1.TransferGuildLeaderRequest{
 		GuildId:      uint32(guildID),
@@ -404,7 +404,7 @@ func (c *Client) TransferGuildLeader(ctx context.Context, guildID uint16, oldAcc
 	return nil
 }
 
-// SetGuildRelation persists a directed guild ally/war relation.
+// SetGuildRelation persiste uma relação direcionada de aliança/guerra entre guilds.
 func (c *Client) SetGuildRelation(ctx context.Context, guildID, targetGuildID uint16, kind world.GuildRelationKind) error {
 	resp, err := c.api.SetGuildRelation(ctx, &dbv1.SetGuildRelationRequest{
 		GuildId:       uint32(guildID),
@@ -420,7 +420,7 @@ func (c *Client) SetGuildRelation(ctx context.Context, guildID, targetGuildID ui
 	return nil
 }
 
-// ListGuilds loads the guild registry snapshot.
+// ListGuilds carrega o snapshot do registro de guilds.
 func (c *Client) ListGuilds(ctx context.Context) ([]world.GuildRecord, error) {
 	resp, err := c.api.ListGuilds(ctx, &dbv1.ListGuildsRequest{})
 	if err != nil {
@@ -433,7 +433,7 @@ func (c *Client) ListGuilds(ctx context.Context) ([]world.GuildRecord, error) {
 	return out, nil
 }
 
-// ListGuildRelations loads every directed guild relation.
+// ListGuildRelations carrega toda relação direcionada entre guilds.
 func (c *Client) ListGuildRelations(ctx context.Context) ([]world.GuildRelation, error) {
 	resp, err := c.api.ListGuildRelations(ctx, &dbv1.ListGuildRelationsRequest{})
 	if err != nil {
@@ -446,7 +446,7 @@ func (c *Client) ListGuildRelations(ctx context.Context) ([]world.GuildRelation,
 	return out, nil
 }
 
-// LoadGuildZones loads city/guild-zone state.
+// LoadGuildZones carrega o estado das zonas de cidade/guild.
 func (c *Client) LoadGuildZones(ctx context.Context) ([]world.GuildZone, error) {
 	resp, err := c.api.LoadGuildZones(ctx, &dbv1.LoadGuildZonesRequest{})
 	if err != nil {
@@ -459,7 +459,7 @@ func (c *Client) LoadGuildZones(ctx context.Context) ([]world.GuildZone, error) 
 	return out, nil
 }
 
-// SaveGuildZone persists one city/guild-zone row.
+// SaveGuildZone persiste uma linha de zona de cidade/guild.
 func (c *Client) SaveGuildZone(ctx context.Context, zone world.GuildZone) error {
 	resp, err := c.api.SaveGuildZone(ctx, &dbv1.SaveGuildZoneRequest{Zone: zoneToProto(zone)})
 	if err != nil {
@@ -471,7 +471,7 @@ func (c *Client) SaveGuildZone(ctx context.Context, zone world.GuildZone) error 
 	return nil
 }
 
-// LoadGuildTowerState loads the current GTorre owner.
+// LoadGuildTowerState carrega o dono atual da GTorre.
 func (c *Client) LoadGuildTowerState(ctx context.Context) (world.GuildTowerState, error) {
 	resp, err := c.api.LoadGuildTowerState(ctx, &dbv1.LoadGuildTowerStateRequest{})
 	if err != nil {
@@ -480,7 +480,7 @@ func (c *Client) LoadGuildTowerState(ctx context.Context) (world.GuildTowerState
 	return towerStateFromProto(resp.GetState()), nil
 }
 
-// SaveGuildTowerState persists the current GTorre owner.
+// SaveGuildTowerState persiste o dono atual da GTorre.
 func (c *Client) SaveGuildTowerState(ctx context.Context, state world.GuildTowerState) error {
 	resp, err := c.api.SaveGuildTowerState(ctx, &dbv1.SaveGuildTowerStateRequest{State: towerStateToProto(state)})
 	if err != nil {
@@ -492,7 +492,7 @@ func (c *Client) SaveGuildTowerState(ctx context.Context, state world.GuildTower
 	return nil
 }
 
-// LoadCastleQuestState loads the current Castle/Zakum quest state.
+// LoadCastleQuestState carrega o estado atual da quest de Castelo/Zakum.
 func (c *Client) LoadCastleQuestState(ctx context.Context) (world.CastleQuestState, error) {
 	resp, err := c.api.LoadCastleQuestState(ctx, &dbv1.LoadCastleQuestStateRequest{})
 	if err != nil {
@@ -501,7 +501,7 @@ func (c *Client) LoadCastleQuestState(ctx context.Context) (world.CastleQuestSta
 	return castleQuestStateFromProto(resp.GetState()), nil
 }
 
-// SaveCastleQuestState persists the current Castle/Zakum quest state.
+// SaveCastleQuestState persiste o estado atual da quest de Castelo/Zakum.
 func (c *Client) SaveCastleQuestState(ctx context.Context, state world.CastleQuestState) error {
 	resp, err := c.api.SaveCastleQuestState(ctx, &dbv1.SaveCastleQuestStateRequest{State: castleQuestStateToProto(state)})
 	if err != nil {
@@ -625,19 +625,19 @@ func castleQuestStateFromProto(st *dbv1.CastleQuestState) world.CastleQuestState
 	return world.CastleQuestState{Level: st.GetLevel(), TimeLeft: st.GetTimeLeft(), Clear: st.GetClear(), LeaderName: st.GetLeaderName()}
 }
 
-// characterStateFromProto maps the loaded character to the world injection shape.
+// characterStateFromProto mapeia o personagem carregado para o formato de injeção no mundo.
 //
-// UNVERIFIED: the contract (api/db/v1 Character) does not carry the world-entry
-// spawn tile (CharacterState.X/Y, distinct from the Gema Estelar SaveX/SaveY
-// below) or Master, so those stay zero until the full STRUCT_MOB snapshot is
-// captured (PROGRESS Fase 4). Damage and AC are also absent from the contract,
-// but the tmServer no longer depends on them: handler.deriveBaseScore rebuilds
-// their BaseScore from the legacy creation/level-up rules instead of subtracting
-// the equipment from a score that was never stored (issue #232).
+// UNVERIFIED: o contrato (Character de api/db/v1) não carrega a coordenada de
+// spawn de entrada no mundo (CharacterState.X/Y, distinta do SaveX/SaveY da Gema
+// Estelar abaixo) nem Master, então esses ficam zero até o snapshot completo de
+// STRUCT_MOB ser capturado (PROGRESS Fase 4). Dano e AC também faltam no contrato,
+// mas o tmServer não depende mais deles: handler.deriveBaseScore reconstrói
+// o BaseScore deles pelas regras legadas de criação/level-up em vez de subtrair
+// o equipamento de um score que nunca foi guardado (issue #232).
 //
-// The only error is an undecodable save_celestial blob: loading the character
-// with blank parked sheets would let the next save overwrite the real ones, so
-// the login fails instead (issue #410).
+// O único erro é um blob save_celestial indecifrável: carregar o personagem
+// com fichas guardadas em branco deixaria o próximo save sobrescrever as reais,
+// então o login falha (issue #410).
 func characterStateFromProto(c *dbv1.Character) (world.CharacterState, error) {
 	st := world.CharacterState{
 		Slot:               int(c.GetSlot()),
@@ -723,9 +723,9 @@ func characterStateFromProto(c *dbv1.Character) (world.CharacterState, error) {
 		}
 		st.ShortSkill[i] = uint8(v)
 	}
-	// The Divine buff persists as an affect row whose Time holds the absolute Unix
-	// deadline (DivineEnd); reconstruct it so login can re-apply (captura §B).
-	// Every other row is a live buff slot (Time in 8s affect ticks).
+	// O buff Divino persiste como linha de affect cujo Time guarda o prazo absoluto
+	// Unix (DivineEnd); reconstruído para o login reaplicá-lo (captura §B).
+	// Toda outra linha é um slot de buff vivo (Time em ticks de affect de 8 s).
 	for _, a := range c.GetAffects() {
 		if a.GetType() == world.AffectDivine {
 			st.DivineEnd = int64(a.GetTime())
@@ -760,7 +760,7 @@ func characterStateFromProto(c *dbv1.Character) (world.CharacterState, error) {
 	return st, nil
 }
 
-// itemFromProto maps one persisted item to the in-world STRUCT_ITEM shape.
+// itemFromProto mapeia um item persistido para o formato STRUCT_ITEM em jogo.
 func itemFromProto(it *dbv1.Item) world.Item {
 	return world.Item{
 		Index: int16(it.GetIndex()),
@@ -806,9 +806,9 @@ func characterSaveToProto(s world.CharacterSave) *dbv1.Character {
 		KefraTicket:      s.KefraTicket,
 		NightmareEntries: s.NightmareEntries,
 		LastNightmareUse: s.LastNightmareUse,
-		// Tier state: class_master (transformations) + the celestial quest gates.
-		// The load side never trusted class_master=0 (defaults to MORTAL); saving it
-		// here is what makes a tier change survive relog.
+		// Estado de tier: class_master (transformações) + os gates de quest celestial.
+		// O lado da carga nunca confiou em class_master=0 (cai em MORTAL); salvá-lo
+		// aqui é o que faz uma troca de tier sobreviver ao relog.
 		ClassMaster:        int32(s.ClassMaster),
 		CelestialLv40:      int32(s.CelLv40),
 		ArchLv355:          int32(s.ArchLv355),
@@ -818,8 +818,8 @@ func characterSaveToProto(s world.CharacterSave) *dbv1.Character {
 		ArchCrystalStage:   int32(s.ArchCrystalStage),
 		CelestialLv90:      int32(s.CelLv90),
 		CelestialCircle:    int32(s.CelCircle),
-		// The legacy SaveUser ships the whole STRUCT_MOBEXTRA (Server.cpp:7875), so
-		// the AMU_MISTICO flag is saved like every other QuestInfo gate (#401).
+		// O SaveUser legado manda o STRUCT_MOBEXTRA inteiro (Server.cpp:7875), então
+		// a flag AMU_MISTICO é salva como todo outro gate de QuestInfo (#401).
 		MortalTerraMistica: int32(s.TerraMistica),
 		MortalNewbie:       int32(s.NewbieQuest),
 		MortalMolarGargula: int32(s.MolarGargula),
@@ -836,7 +836,7 @@ func characterSaveToProto(s world.CharacterSave) *dbv1.Character {
 		Guilty:             int32(s.Guilty),
 		CurKill:            int32(s.CurKill),
 		TotKill:            uint32(s.TotKill),
-		HasBaseScore:       true, // the world always knows the base it simulates
+		HasBaseScore:       true, // o mundo sempre conhece a base que simula
 		BaseStr:            int32(s.BaseStr),
 		BaseInt:            int32(s.BaseInt),
 		BaseDex:            int32(s.BaseDex),
@@ -856,9 +856,9 @@ func characterSaveToProto(s world.CharacterSave) *dbv1.Character {
 	for i, v := range s.ShortSkill {
 		c.ShortSkill[i] = uint32(v)
 	}
-	// Persist the Divine buff (only while still active) as one affect row carrying the
-	// absolute deadline in Time, so it survives relog (captura §B). The other live
-	// buff slots persist as raw rows (Time in 8s affect ticks).
+	// Persiste o buff Divino (só enquanto ativo) como uma linha de affect que carrega o
+	// prazo absoluto em Time, para sobreviver ao relog (captura §B). Os outros slots
+	// de buff vivos persistem como linhas cruas (Time em ticks de affect de 8 s).
 	if s.DivineEnd > time.Now().Unix() {
 		c.Affects = append(c.Affects, &dbv1.Affect{Type: int32(world.AffectDivine), Level: 1, Time: uint32(s.DivineEnd)})
 	}

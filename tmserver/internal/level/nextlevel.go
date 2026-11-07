@@ -1,13 +1,13 @@
 package level
 
-// nextLevel is g_pNextLevel[] (Basedef.cpp:625): a hardcoded experience curve
-// indexed by level. nextLevel[0]=0; a character at level cur advances when its
-// Exp reaches nextLevel[cur+1]. Indices 0..400 (nextLevel[400]=MaxExp is the cap);
-// levels above MaxLevel are never reached in play.
+// nextLevel é g_pNextLevel[] (Basedef.cpp:625): uma curva de experiência fixa
+// indexada por nível. nextLevel[0]=0; um personagem no nível cur avança quando
+// sua Exp alcança nextLevel[cur+1]. Índices 0..400 (nextLevel[400]=MaxExp é o teto);
+// níveis acima de MaxLevel nunca são alcançados em jogo.
 //
-// Transcribed from captura-wyd-levelup.md and verified by TestNextLevelTable
-// (anchors + strict monotonicity). The client ships this same source table, so the
-// thresholds match what its exp bar expects.
+// Copiado de captura-wyd-levelup.md e verificado por TestNextLevelTable
+// (âncoras + monotonicidade estrita). O cliente entrega esta mesma tabela, então as
+// limiares casam com o que a barra de exp dele espera.
 var nextLevel = [...]int64{
 	0, 500, 1124, 1826, 2610, 3480, 4440, 5494, 6646,
 	7900, 9260, 10893, 12817, 15050, 17610, 20515, 23783, 27432,
@@ -56,24 +56,24 @@ var nextLevel = [...]int64{
 	3731000000, 3774000000, 3817000000, 4000000000, 4100000000,
 }
 
-// nextLevel2 is g_pNextLevel_2[] (Basedef.h:2865): the CELESTIAL experience curve,
-// indexed by celestial level, selected by CheckGetLevel when ClassMaster is
+// nextLevel2 é g_pNextLevel_2[] (Basedef.h:2865): a curva de experiência CELESTIAL,
+// indexada por nível celestial, escolhida por CheckGetLevel quando ClassMaster
 // CELESTIAL/CELESTIALCS/SCELESTIAL (CMob.cpp:1092-1093). Celestial levels run
 // 0..MaxCLevel (199).
 //
-// PLACEHOLDER — the real long-long values are NOT in the local source (Basedef.cpp
-// ships the array literal and is absent here, exactly like the Mortal curve, which
-// was transcribed from captura-wyd-levelup.md). Until the Windows-agent capture lands
-// (see docs/migration/prompts/captura-celestial-curve.md) this is a synthetic,
-// strictly increasing ramp so the tier level-up logic and its 39→40 / 89→90 gates can
-// be exercised end-to-end. These are NOT parity-correct thresholds — do not ship a
-// live Celestial against them. Replace with the captured array + a golden anchor test
-// (like TestNextLevelTable) when available.
+// SUBSTITUTO — os valores long-long reais NÃO estão no fonte local (Basedef.cpp
+// traz o literal do vetor e está ausente aqui, igual à curva Mortal, que
+// foi transcrita de captura-wyd-levelup.md). Até a captura do agente Windows chegar
+// (ver docs/migration/prompts/captura-celestial-curve.md) isto é uma rampa
+// sintética estritamente crescente para a lógica de level-up da tier e seus gates
+// 39→40 / 89→90 poderem ser exercitados ponta a ponta. NÃO são limiares corretos
+// de paridade — não coloque um Celestial ao vivo contra eles. Substitua pelo vetor
+// capturado + um teste âncora golden (como TestNextLevelTable) quando estiver disponível.
 var nextLevel2 = celestialPlaceholderCurve()
 
-// celestialPlaceholderCurve builds the synthetic stand-in for g_pNextLevel_2: a
-// strictly increasing ramp over 0..MaxCLevel+1. Deliberately obvious (not real
-// capture data) so it can never be mistaken for parity-correct thresholds.
+// celestialPlaceholderCurve monta o substituto sintético de g_pNextLevel_2: uma
+// rampa estritamente crescente em 0..MaxCLevel+1. Deliberadamente óbvia (não
+// dados capturados) para nunca ser confundida com limiares corretos de paridade.
 func celestialPlaceholderCurve() [MaxCLevel + 2]int64 {
 	var c [MaxCLevel + 2]int64
 	for i := 1; i < len(c); i++ {

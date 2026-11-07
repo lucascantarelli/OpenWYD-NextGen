@@ -12,26 +12,26 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Daily reward persistence (issue #35). Postgres owns the reward catalog
-// (daily_reward_item) and the once-per-account-per-UTC-day claim gate
-// (daily_reward_claim); claiming enqueues the item into delivery_queue in one
-// transaction, reusing the exact mailbox donate_shop writes into (0008). The
-// tmServer never reads the catalog or the claim table — it only drains
-// delivery_queue, identically for donate and daily-reward grants.
+// Persistência da recompensa diária (issue #35). O Postgres é dono do catálogo de
+// recompensas (daily_reward_item) e do gate de resgate uma vez por conta por dia
+// UTC (daily_reward_claim); resgatar enfileira o item em delivery_queue numa
+// transação, reusando exatamente a caixa em que donate_shop escreve (0008). O
+// tmServer nunca lê o catálogo nem a tabela de resgate — só drena
+// delivery_queue, de forma idêntica para concessões de donate e de recompensa diária.
 
-// ErrAlreadyClaimedToday is returned by ClaimDailyReward when the account
-// already has a daily_reward_claim row for today's UTC calendar day.
+// ErrAlreadyClaimedToday é devolvido por ClaimDailyReward quando a conta
+// já tem uma linha em daily_reward_claim para o dia UTC corrente.
 var ErrAlreadyClaimedToday = errors.New("store: daily reward already claimed today")
 
 const dailyRewardItemCols = `id, item_index, eff1, effv1, eff2, effv2, eff3, effv3, title, description, enabled, expires_days`
 
-// ListDailyRewardItems returns every reward offer (enabled or not) — the
-// moderation table. ListEnabledDailyRewardItems is the player-facing vitrine.
+// ListDailyRewardItems devolve toda oferta de recompensa (habilitada ou não) — a
+// tabela de moderação. ListEnabledDailyRewardItems é a vitrine do jogador.
 func (s *Store) ListDailyRewardItems(ctx context.Context) ([]domain.DailyRewardItem, error) {
 	return s.queryDailyRewardItems(ctx, `SELECT `+dailyRewardItemCols+` FROM daily_reward_item ORDER BY id`)
 }
 
-// ListEnabledDailyRewardItems returns only the offers claimable today (the web vitrine).
+// ListEnabledDailyRewardItems devolve só as ofertas resgatáveis hoje (a vitrine web).
 func (s *Store) ListEnabledDailyRewardItems(ctx context.Context) ([]domain.DailyRewardItem, error) {
 	return s.queryDailyRewardItems(ctx, `SELECT `+dailyRewardItemCols+` FROM daily_reward_item WHERE enabled = TRUE ORDER BY id`)
 }
@@ -53,7 +53,7 @@ func (s *Store) queryDailyRewardItems(ctx context.Context, sql string) ([]domain
 	return out, rows.Err()
 }
 
-// GetDailyRewardItem loads one offer by id. Returns ErrNotFound when absent.
+// GetDailyRewardItem carrega uma oferta por id. Devolve ErrNotFound quando ausente.
 func (s *Store) GetDailyRewardItem(ctx context.Context, id int64) (domain.DailyRewardItem, error) {
 	row := s.pool.QueryRow(ctx, `SELECT `+dailyRewardItemCols+` FROM daily_reward_item WHERE id = $1`, id)
 	d, err := scanDailyRewardItem(row)
@@ -73,9 +73,9 @@ func scanDailyRewardItem(row scanRow) (domain.DailyRewardItem, error) {
 	return d, err
 }
 
-// UpsertDailyRewardItem inserts a new offer (d.ID == 0) or updates the
-// existing one by id, writing an audit row in the same transaction. Returns
-// the offer id; updating a missing id returns ErrNotFound.
+// UpsertDailyRewardItem insere oferta nova (d.ID == 0) ou atualiza a
+// existente por id, gravando auditoria na mesma transação. Devolve
+// o id da oferta; atualizar um id inexistente devolve ErrNotFound.
 func (s *Store) UpsertDailyRewardItem(ctx context.Context, d domain.DailyRewardItem, moderatorID int64) (int64, error) {
 	var id int64
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -116,8 +116,8 @@ func (s *Store) UpsertDailyRewardItem(ctx context.Context, d domain.DailyRewardI
 	return id, err
 }
 
-// SetDailyRewardItemEnabled toggles whether an offer is claimable. Returns
-// ErrNotFound if the offer does not exist.
+// SetDailyRewardItemEnabled alterna se uma oferta é resgatável. Devolve
+// ErrNotFound se a oferta não existir.
 func (s *Store) SetDailyRewardItemEnabled(ctx context.Context, id int64, enabled bool, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, _ := fetchDailyRewardItemJSON(ctx, tx, id)
@@ -148,10 +148,10 @@ func (s *Store) DeleteDailyRewardItem(ctx context.Context, id int64, moderatorID
 	})
 }
 
-// DailyRewardClaimedToday reports whether the account has already claimed a
-// daily reward for today's UTC calendar day, and if so which item (and its
-// title, for the UI) they picked. claimed is false with zero/empty
-// itemID/title when there is no claim yet today.
+// DailyRewardClaimedToday informa se a conta já resgatou uma
+// recompensa diária para o dia UTC corrente e, em caso positivo, qual item (e seu
+// título, para a UI) ela escolheu. claimed é falso com itemID/title
+// zero/vazio quando ainda não há resgate hoje.
 func (s *Store) DailyRewardClaimedToday(ctx context.Context, accountID int64) (claimed bool, itemID int64, title string, err error) {
 	var rewardItemID *int64
 	err = s.pool.QueryRow(ctx, `
@@ -172,21 +172,21 @@ func (s *Store) DailyRewardClaimedToday(ctx context.Context, accountID int64) (c
 	return true, itemID, title, nil
 }
 
-// ClaimDailyReward redeems one reward for the account today: verifies the
-// offer exists and is enabled, inserts the claim row (racing on the
-// (account_id, claim_date) UNIQUE constraint rather than an explicit
-// SELECT ... FOR UPDATE — see the doc comment below), and enqueues the item
-// into delivery_queue, all in one transaction. Returns ErrNotFound (unknown
-// offer or account), ErrShopItemDisabled (offer not enabled), or
+// ClaimDailyReward resgata uma recompensa para a conta hoje: verifica que a
+// oferta existe e está habilitada, insere a linha de resgate (disputando na
+// restrição UNIQUE (account_id, claim_date) em vez de um
+// SELECT ... FOR UPDATE explícito — ver o comentário de doc abaixo), e enfileira o item
+// em delivery_queue, tudo numa transação. Devolve ErrNotFound (oferta ou
+// oferta ou conta), ErrShopItemDisabled (oferta desabilitada), ou
 // ErrAlreadyClaimedToday.
 //
-// Design note: donate's BuyDonateItem needs SELECT ... FOR UPDATE because it
-// performs a genuine read-modify-write on a mutable balance (two concurrent
-// buys must not both see the pre-debit balance). A daily claim has no mutable
-// counter to race on — "has this account already claimed today" IS the
-// question the UNIQUE(account_id, claim_date) index answers atomically.
-// Catching the resulting unique_violation is therefore race-safe under
-// concurrent double-submits without taking any row lock.
+// Nota de projeto: o BuyDonateItem do donate precisa de SELECT ... FOR UPDATE porque
+// faz um read-modify-write genuíno num saldo mutável (dois
+// compras não podem ver ambas o saldo pré-débito). Um resgate diário não tem
+// contador mutável para disputar — "esta conta já resgatou hoje" É a
+// pergunta que o índice UNIQUE(account_id, claim_date) responde atomicamente.
+// Capturar o unique_violation resultante é, portanto, seguro sob corrida
+// envios duplos concorrentes sem tomar nenhum lock de linha.
 func (s *Store) ClaimDailyReward(ctx context.Context, accountID, rewardItemID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		it, err := scanDailyRewardItem(tx.QueryRow(ctx,
@@ -229,10 +229,10 @@ func (s *Store) ClaimDailyReward(ctx context.Context, accountID, rewardItemID in
 	})
 }
 
-// classifyClaimInsertErr maps the daily_reward_claim INSERT's constraint
-// violations to sentinel errors: unique_violation (23505) means the account
-// already claimed today; foreign_key_violation (23503) means the account_id
-// does not exist.
+// classifyClaimInsertErr mapeia as violações de restrição do INSERT em
+// daily_reward_claim para erros sentinela: unique_violation (23505) significa que a conta
+// já resgatou hoje; foreign_key_violation (23503) significa que o account_id
+// não existe.
 func classifyClaimInsertErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {

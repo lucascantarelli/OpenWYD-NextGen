@@ -11,23 +11,23 @@ import (
 	"openwyd-nextgen/tmserver/internal/npccfg"
 )
 
-// TemplateLoader resolves an NPC template name to its raw 816-byte STRUCT_MOB.
-// The dbServer stores only the template NAME (not the bytes), so the tmServer
-// resolves it against its local content tree at snapshot time.
+// TemplateLoader resolve um nome de template de NPC para seu STRUCT_MOB cru de 816 bytes.
+// O dbServer guarda só o NOME do template (não os bytes), então o tmServer
+// o resolve contra sua árvore de conteúdo local no momento do snapshot.
 type TemplateLoader func(name string) ([]byte, error)
 
-// NpcConfig adapts the dbServer NpcConfigService to the npccfg.Source port. It
-// fetches the moderator-edited definitions over gRPC and resolves each template
-// name to bytes so the loop can materialize the NPC directly.
+// NpcConfig adapta o NpcConfigService do dbServer à porta npccfg.Source. Ele
+// busca as definições editadas pelo moderador por gRPC e resolve cada nome de
+// template para bytes, para o loop materializar o NPC direto.
 type NpcConfig struct {
 	api      dbv1.NpcConfigServiceClient
 	template TemplateLoader
 	log      *slog.Logger
 }
 
-// NewNpcConfig wraps a gRPC connection + template loader as an npccfg.Source. log
-// receives a warning whenever a template fails to resolve (nil defaults to the
-// slog default), so a missing/corrupt NPC file is never silently dropped.
+// NewNpcConfig embrulha uma conexão gRPC + carregador de template como npccfg.Source. log
+// recebe um aviso sempre que um template não resolve (nil cai no log padrão do
+// slog), para um arquivo de NPC ausente/corrompido nunca sumir em silêncio.
 func NewNpcConfig(conn grpc.ClientConnInterface, loader TemplateLoader, log *slog.Logger) *NpcConfig {
 	if log == nil {
 		log = slog.Default()
@@ -37,7 +37,7 @@ func NewNpcConfig(conn grpc.ClientConnInterface, loader TemplateLoader, log *slo
 
 var _ npccfg.Source = (*NpcConfig)(nil)
 
-// Version returns the current config version (cheap poll).
+// Version devolve a versão atual da config (poll barato).
 func (c *NpcConfig) Version(ctx context.Context) (int64, error) {
 	resp, err := c.api.NpcConfigVersion(ctx, &dbv1.NpcConfigVersionRequest{})
 	if err != nil {
@@ -46,9 +46,9 @@ func (c *NpcConfig) Version(ctx context.Context) (int64, error) {
 	return resp.GetVersion(), nil
 }
 
-// Snapshot fetches the full definition set + price overrides and resolves each
-// definition's template bytes. A template that fails to load leaves Template nil
-// (the applier skips it) rather than failing the whole reload.
+// Snapshot busca o conjunto completo de definições + sobreposições de preço e resolve
+// os bytes de template de cada definição. Template que falha ao carregar fica nil
+// (o aplicador o pula) em vez de derrubar o reload inteiro.
 func (c *NpcConfig) Snapshot(ctx context.Context) (npccfg.Snapshot, error) {
 	resp, err := c.api.ListNpcDefinitions(ctx, &dbv1.ListNpcDefinitionsRequest{})
 	if err != nil {
@@ -61,8 +61,8 @@ func (c *NpcConfig) Snapshot(ctx context.Context) (npccfg.Snapshot, error) {
 		if !ok {
 			b, lerr := c.template(d.GetTemplateName())
 			if lerr != nil {
-				// Don't fail the whole reload for one bad template; leave it nil (the
-				// applier skips + warns) but surface why here.
+				// Não derruba o reload inteiro por um template ruim; deixa nil (o
+				// aplicador pula e avisa), mas mostra o motivo aqui.
 				c.log.Warn("npc template resolve failed", "template", d.GetTemplateName(), "slug", d.GetSlug(), "err", lerr)
 			} else {
 				tmpl = b

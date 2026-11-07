@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestEncodeUpdateWeather pins the MSG_UpdateWeather layout: one little-endian
-// int32 at body offset 0, 16 bytes total with the header (Basedef.h:2167-2173).
+// TestEncodeUpdateWeather fixa o layout de MSG_UpdateWeather: um int32
+// little-endian no offset 0 do corpo, 16 bytes no total com o cabeçalho
 func TestEncodeUpdateWeather(t *testing.T) {
 	for _, weather := range []int32{0, 1, 2} {
 		body := EncodeUpdateWeather(weather)

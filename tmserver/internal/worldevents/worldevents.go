@@ -1,24 +1,24 @@
-// Package worldevents holds the pure decision logic for the world events the
-// legacy server drives from its second/minute timers (ProcessSecMinTimer.cpp):
-// weather rolls, the Guild War / Tower window, the kingdom (RvR) clear-area
-// delay and the Castle/Zakum countdown.
+// Package worldevents guarda a lógica pura de decisão dos eventos de mundo que o
+// servidor legado conduz por seus timers de segundo/minuto (ProcessSecMinTimer.cpp):
+// sorteios de clima, a janela de Guerra de Guild/Torre, o atraso de limpeza de
+// área do reino (RvR) e a contagem de Castelo/Zakum.
 //
-// Everything here is deliberately free of world/protocol/session types: these
-// are table-driven state machines that take the clock and the RNG as arguments
-// and return a decision. The Dispatcher owns the instances and performs the
-// effects (packets, damage, spawns) — see tmserver/internal/handler.
+// Tudo aqui é de propósito livre de tipos de world/protocol/session: são
+// máquinas de estado guiadas por tabela que recebem o relógio e o RNG como
+// parâmetros e devolvem uma decisão. O Dispatcher é dono das instâncias e executa
+// os efeitos (pacotes, dano, spawns) — ver tmserver/internal/handler.
 //
-// Clock discipline: no type in this package stores a clock. Callers pass
-// `now time.Time` (the Dispatcher passes d.now()), which is what makes every
-// calendar gate testable without waiting for a real Tuesday at 20:00.
+// Disciplina de relógio: nenhum tipo deste pacote guarda relógio. Quem chama passa
+// `now time.Time` (o Dispatcher passa d.now()), e é isso que torna todo
+// gate de calendário testável sem esperar uma terça real às 20:00.
 package worldevents
 
-// Rand is the minimal RNG these timers need. *rng.MSVC satisfies it.
+// Rand é o RNG mínimo de que estes timers precisam. *rng.MSVC o satisfaz.
 //
-// The world-event timers draw from a DEDICATED stream, not the world's parity
-// stream: the legacy rolls off the single global rand(), but our drop/refine/
-// critical golden tests pin the exact call order of that stream, and adding a
-// per-minute draw to it would invalidate them (issue #116).
+// Os timers de evento de mundo sorteiam de um fluxo DEDICADO, não do fluxo de
+// paridade do mundo: o legado sorteia do rand() global único, mas nossos testes
+// golden de drop/refino/crítico fixam a ordem exata de chamadas daquele fluxo, e
+// acrescentar um sorteio por minuto o invalidaria (issue #116).
 type Rand interface {
 	Intn(n int) int
 }

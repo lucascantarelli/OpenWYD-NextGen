@@ -2,8 +2,8 @@ package refine
 
 import "openwyd-nextgen/tmserver/internal/world"
 
-// BonusItem is the slice of STRUCT_ITEMLIST that SetItemBonus reads for the
-// item being rolled: nUnique, ReqLvl, nPos and the static stEffect pairs.
+// BonusItem é a fatia de STRUCT_ITEMLIST que SetItemBonus lê para o
+// item sorteado: nUnique, ReqLvl, nPos e os pares estáticos de stEffect.
 type BonusItem struct {
 	Unique int
 	ReqLvl int
@@ -11,29 +11,29 @@ type BonusItem struct {
 	Static []StaticEffect
 }
 
-// StaticEffect is one STRUCT_ITEMLIST.stEffect pair (sEffect, sValue).
+// StaticEffect é um par STRUCT_ITEMLIST.stEffect (sEffect, sValue).
 type StaticEffect struct {
 	Effect uint8
 	Value  int16
 }
 
-// Effect ids SetItemBonus writes (ItemEffect.h).
+// Ids de efeito que SetItemBonus grava (ItemEffect.h).
 const (
 	efGrade0   = 100 // EF_GRADE0
 	efGrade5   = 105 // EF_GRADE5
-	efUnknown  = 59  // the "random noise" pair the client ignores
+	efUnknown  = 59  // o par de "ruído aleatório" que o cliente ignora
 	efIncubate = 78  // EF_INCUBATE
 )
 
-// bonusTypes is g_pBonusType (Basedef.cpp:585).
+// bonusTypes é g_pBonusType (Basedef.cpp:585).
 var bonusTypes = [10]int{10, 30, 2, 5, 3, 10, 2, 8, 2, 8}
 
-// bonusValues is g_pBonusValue[10][2][2] (Basedef.cpp:532) flattened, followed
-// by g_pBonusType. SetItemBonus indexes it as [v20][lvdif][k] with lvdif up to
-// 3 (2 on the quest path), past the declared [2]: the read lands on the next
-// row and, for row 9, on g_pBonusType, which the compiler emits right after it.
-// UNVERIFIED: that layout is MSVC's .data order for the two adjacent
-// definitions; it is reproduced instead of clamping so the rolled ranges match.
+// bonusValues é g_pBonusValue[10][2][2] (Basedef.cpp:532) achatado, seguido
+// por g_pBonusType. SetItemBonus o indexa como [v20][lvdif][k] com lvdif até
+// 3 (2 no caminho de quest), além do [2] declarado: a leitura cai na linha
+// seguinte e, na linha 9, em g_pBonusType, que o compilador emite logo depois.
+// UNVERIFIED: esse layout é a ordem de .data do MSVC para as duas
+// definições adjacentes; é reproduzido em vez de limitar para as faixas sorteadas baterem.
 var bonusValues = [...]int{
 	10, 30, 2, 5,
 	3, 10, 2, 8,
@@ -45,15 +45,15 @@ var bonusValues = [...]int{
 	5, 14, 5, 14,
 	4, 12, 4, 12,
 	4, 12, 4, 12,
-	// g_pBonusType, read by the out-of-bounds [9][2..3] rows.
+	// g_pBonusType, lido pelas linhas fora dos limites [9][2..3].
 	10, 30, 2, 5, 3, 10, 2, 8, 2, 8,
 }
 
-// ItemBonus is SetItemBonus (Server.cpp:1777-2717): it rolls dest's three
-// effect slots from its level band. level is the reference level, quest is the
-// legacy a3 flag (the quest/NPC path, which softens every roll) and dropBonus
-// is the drop-rate bonus. rnd must be the MSVC rand() (0..32767); the calls run
-// in the original order so a captured sequence reproduces byte-for-byte.
+// ItemBonus é SetItemBonus (Server.cpp:1777-2717): sorteia os três
+// slots de efeito de dest a partir da faixa de nível. level é o nível de referência, quest é a
+// flag a3 legada (o caminho de quest/NPC, que suaviza todo sorteio) e dropBonus
+// é o bônus de taxa de drop. rnd precisa ser o rand() do MSVC (0..32767); as chamadas rodam
+// na ordem original para uma sequência capturada reproduzir byte a byte.
 func ItemBonus(dest *world.Item, level int, quest bool, dropBonus int, info BonusItem, rnd func() int) {
 	addDropBonus := dropBonus / 8
 	if addDropBonus < 0 {
@@ -108,7 +108,7 @@ func ItemBonus(dest *world.Item, level int, quest bool, dropBonus int, info Bonu
 		}
 	}
 
-	// Items whose three slots must never be empty get noise pairs.
+	// Itens cujos três slots nunca podem ficar vazios recebem pares de ruído.
 	switch {
 	case dest.Index == 412 || dest.Index == 413 || dest.Index == 419 || dest.Index == 420 || dest.Index == 753,
 		dest.Index >= 447 && dest.Index <= 450, dest.Index >= 692 && dest.Index <= 695:
@@ -120,11 +120,11 @@ func ItemBonus(dest *world.Item, level int, quest bool, dropBonus int, info Bonu
 	}
 }
 
-// rollItemBonus is the body of SetItemBonus guarded by the equip-slot check.
+// rollItemBonus é o corpo de SetItemBonus protegido pela checagem de slot de equip.
 func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus, add2, nPos, nUnique int, rnd func() int) {
 	special := nUnique == 44 || nUnique == 47
 
-	// First bonus kind (slot 1).
+	// Primeiro tipo de bônus (slot 1).
 	v38, v36, v37 := efUnknown, 0, 0
 	v35 := rnd() % 101
 	var v34 int
@@ -172,7 +172,7 @@ func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus,
 		}
 	}
 
-	// Second bonus kind (slot 2).
+	// Segundo tipo de bônus (slot 2).
 	v33 := rnd() % 100
 	if quest {
 		v33 = 2 * v33 / 3
@@ -244,7 +244,7 @@ func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus,
 		}
 	}
 
-	// Slot 1 magnitude.
+	// Magnitude do slot 1.
 	v35 = rnd() % 100
 	v28 := bonusTier(lvdif, v35)
 	if lvdif == 0 {
@@ -277,13 +277,13 @@ func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus,
 		dest.Effects[1] = world.Effect{Effect: efUnknown, Value: uint8(rnd() & 0x7F)}
 	}
 
-	// Slot 2 magnitude.
+	// Magnitude do slot 2.
 	v33 = rnd() % 100
 	v27 := bonusTier(lvdif, v33)
 	if lvdif == 0 {
-		// Parity quirk: the level-0 branch tests the slot-1 roll (v35) and, when
-		// it is below 2, writes the slot-1 tier instead of its own
-		// (Server.cpp:2433-2450), leaving v27 at 0.
+		// Peculiaridade de paridade: o ramo de nível 0 testa o sorteio do slot 1 (v35) e, quando
+		// ele é menor que 2, grava a tier do slot 1 em vez da própria
+		// (Server.cpp:2433-2450), deixando v27 em 0.
 		v27 = 0
 		if v35 >= 2 {
 			switch {
@@ -319,7 +319,7 @@ func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus,
 	if dest.Effects[0].Effect != 0 {
 		return
 	}
-	// Slot 0: the refine level (or an occasional extra stat).
+	// Slot 0: o nível de refino (ou um atributo extra eventual).
 	v26 := rnd() % 100
 	if quest {
 		v26 /= 2
@@ -351,9 +351,9 @@ func rollItemBonus(dest *world.Item, lvdif int, pForc, quest bool, addDropBonus,
 	}
 }
 
-// bonusTier maps a 0..99 roll to a bonus multiplier for lvdif 1..3 (and the
-// unreachable >=4 band, kept for parity). lvdif 0 is handled by the caller,
-// whose two slots differ.
+// bonusTier mapeia um sorteio 0..99 para um multiplicador de bônus em lvdif 1..3 (e a
+// faixa >=4 inalcançável, mantida por paridade). lvdif 0 é tratado por quem chama,
+// cujos dois slots diferem.
 func bonusTier(lvdif, r int) int {
 	switch lvdif {
 	case 1:
@@ -407,10 +407,10 @@ func bonusTier(lvdif, r int) int {
 	return 0
 }
 
-// gradeSanc is the EF_GRADE upgrade of a +2 roll (Server.cpp:2558-2652): the
-// grade carried in add2 may lift the refine to 3..7. 0 keeps the +2.
+// gradeSanc é o upgrade de EF_GRADE de um sorteio +2 (Server.cpp:2558-2652): a
+// grade em add2 pode elevar o refino para 3..7. 0 mantém o +2.
 func gradeSanc(add2, r int) int {
-	// Each row lists, from the best outcome down, the roll ceiling for it.
+	// Cada linha lista, do melhor resultado para baixo, o teto de sorteio para ele.
 	var cuts []struct{ below, sanc int }
 	switch add2 {
 	case 3:

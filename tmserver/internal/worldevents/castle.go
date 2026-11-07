@@ -1,6 +1,6 @@
 package worldevents
 
-// Castle is the pure Castle/Zakum countdown and delayed-clear state.
+// Castle é o estado puro de contagem regressiva e limpeza atrasada de Castelo/Zakum.
 type Castle struct {
 	active    bool
 	level     int
@@ -9,12 +9,12 @@ type Castle struct {
 	secondOdd bool
 }
 
-// Open starts a quest. questTime is counted in two-second legacy units.
+// Open inicia uma quest. questTime é contado em unidades legadas de dois segundos.
 func (c *Castle) Open(level int, questTime int32) {
 	c.active, c.level, c.timeLeft, c.clear, c.secondOdd = true, level, questTime-1, 0, false
 }
 
-// Restore rehydrates a persisted active quest snapshot.
+// Restore reidrata um snapshot persistido de quest ativa.
 func (c *Castle) Restore(level int, timeLeft int32, cleared bool) {
 	c.active, c.level, c.timeLeft, c.secondOdd = true, level, timeLeft, false
 	if cleared {
@@ -24,7 +24,7 @@ func (c *Castle) Restore(level int, timeLeft int32, cleared bool) {
 	}
 }
 
-// TickSecond advances the two-second countdown and reports expiry.
+// TickSecond avança a contagem de dois segundos e reporta a expiração.
 func (c *Castle) TickSecond() bool {
 	if !c.active || c.timeLeft < 0 {
 		return false
@@ -41,10 +41,10 @@ func (c *Castle) TickSecond() bool {
 	return false
 }
 
-// MarkClear begins the legacy 1-to-2-to-0 minute-delayed cleanup.
+// MarkClear inicia a limpeza legada com atraso de 1→2→0 minuto.
 func (c *Castle) MarkClear() { c.clear = 1 }
 
-// TickMinute advances clear state and reports when cleanup is due.
+// TickMinute avança o estado de limpeza e reporta quando a limpeza venceu.
 func (c *Castle) TickMinute() bool {
 	switch c.clear {
 	case 1:
@@ -56,7 +56,7 @@ func (c *Castle) TickMinute() bool {
 	return false
 }
 
-// State returns the active level, remaining two-second units and clear phase.
+// State devolve o nível ativo, as unidades de dois segundos restantes e a fase de limpeza.
 func (c *Castle) State() (int, int32, uint8) {
 	if !c.active {
 		return -1, -1, c.clear

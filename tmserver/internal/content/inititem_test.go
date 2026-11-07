@@ -16,7 +16,7 @@ func writeTemp(t *testing.T, body string) string {
 }
 
 func TestLoadInitItems(t *testing.T) {
-	// Index,PosX,PosY,Rotate[,ignored]; blank lines, comments and Index==-1 skipped.
+	// Index,PosX,PosY,Rotate[,ignorado]; linhas em branco, comentários e Index==-1 pulados.
 	p := writeTemp(t, "471,217,215,1,0\n\n458,2075,2015,2,0\n// comment\n-1,9,9,9\n472,2603,1717,1\n")
 	items, err := LoadInitItems(p)
 	if err != nil {

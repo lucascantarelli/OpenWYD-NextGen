@@ -13,7 +13,7 @@ type seqRand struct {
 
 func (s *seqRand) Intn(int) int { v := s.vals[s.i]; s.i++; return v }
 
-// TestDropRateTable locks the real Basedef.cpp:222 g_pDropRate values.
+// TestDropRateTable trava os valores reais de g_pDropRate de Basedef.cpp:222.
 func TestDropRateTable(t *testing.T) {
 	checks := map[int]int{
 		0: 900, 7: 900, 8: 4, 11: 4, 12: 900, 16: 20000, 23: 20000,
@@ -32,15 +32,15 @@ func TestDropRateTable(t *testing.T) {
 }
 
 func TestEffectiveDropRate(t *testing.T) {
-	// Level >= 60 on the first three groups receives the legacy 99% scaling.
+	// Nível >= 60 nos três primeiros grupos recebe a escala legada de 99%.
 	if got := EffectiveDropRate(0, 0, 100); got != 891 {
 		t.Errorf("slot 0 = %d, want 891", got)
 	}
-	// Level < 10 on a low slot (pos 0) ⇒ 4*rate/100.
+	// Nível < 10 num slot baixo (pos 0) ⇒ 4*rate/100.
 	if got := EffectiveDropRate(0, 0, 5); got != 4*900/100 {
 		t.Errorf("slot 0 low level = %d, want %d", got, 4*900/100)
 	}
-	// Killer bonus changes the divisor: dropbonus=10000/(100+50+1) ⇒ rate scaled.
+	// O bônus do matador muda o divisor: dropbonus=10000/(100+50+1) ⇒ taxa escalada.
 	want := 99 * ((10000 / 151) * 900 / 100) / 100
 	if got := EffectiveDropRate(0, 50, 100); got != want {
 		t.Errorf("slot 0 with bonus = %d, want %d", got, want)
@@ -99,13 +99,13 @@ func TestGoldDrop(t *testing.T) {
 	if got := GoldDrop(&seqRand{vals: []int{0, 0}}, 100, 5000); got != 2000 {
 		t.Errorf("GoldDrop cap = %d, want 2000", got)
 	}
-	// Zero coin never drops.
+	// Moeda zero nunca dropa.
 	if got := GoldDrop(&seqRand{vals: []int{0}}, 100, 0); got != 0 {
 		t.Errorf("GoldDrop zero coin = %d, want 0", got)
 	}
 }
 
-// TestGoldDropMSVC ties to the real LCG: first rand 41, 41%19 = 3 ≠ 0 ⇒ no drop.
+// TestGoldDropMSVC se amarra ao LCG real: primeiro rand 41, 41%19 = 3 ≠ 0 ⇒ sem drop.
 func TestGoldDropMSVC(t *testing.T) {
 	if got := GoldDrop(rng.New(), 100, 100); got != 0 {
 		t.Errorf("GoldDrop(LCG) = %d, want 0 (41%%19 != 0)", got)

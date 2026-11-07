@@ -7,8 +7,9 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// ListExpRanking returns the persisted character Top EXP projection in ranking
-// order. Level >= 1000 entries are skipped, matching the legacy CRanking load.
+// ListExpRanking devolve a projeção persistida de Top EXP de personagem em ordem
+// de ranking. Entradas com level >= 1000 são ignoradas, igual à carga do CRanking
+// legado.
 func (s *Store) ListExpRanking(ctx context.Context, limit, offset int) ([]domain.RankingEntry, int, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT name, class, clan, guild_id, level, exp, class_master, count(*) OVER()
@@ -53,9 +54,9 @@ func (s *Store) countExpRanking(ctx context.Context) (int, error) {
 }
 
 // fallbackTotal covers a `count(*) OVER()` window function's blind spot: it
-// only appears on returned rows, so a page past the last row (empty result,
-// non-zero offset) would otherwise report total=0. In that case only, run a
-// plain COUNT(*) instead.
+// só aparece em linhas devolvidas, então uma página além da última linha (resultado
+// vazio, offset não zero) informaria total=0. Só nesse caso, rode um
+// COUNT(*) simples em vez disso.
 func fallbackTotal(ctx context.Context, rowsReturned, offset, windowTotal int, count func(context.Context) (int, error)) (int, error) {
 	if rowsReturned != 0 || offset == 0 {
 		return windowTotal, nil

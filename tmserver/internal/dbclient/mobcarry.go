@@ -10,20 +10,20 @@ import (
 	"openwyd-nextgen/tmserver/internal/mobcarry"
 )
 
-// MobCarrySource fetches the moderator-edited Carry[] overlays (issue 34, fatia
-// 3) from the dbServer's DropConfigService. Fetched once at boot — no version
-// poll, no hot-reload: the table is baked into the template bytes the world
-// spawns from.
+// MobCarrySource busca os overlays de Carry[] editados pelo moderador (issue 34,
+// fatia 3) do DropConfigService do dbServer. Buscado uma vez no boot — sem poll
+// de versão, sem hot-reload: a tabela é embutida nos bytes de template de que o
+// mundo nasce.
 type MobCarrySource struct {
 	api dbv1.DropConfigServiceClient
 }
 
-// NewMobCarrySource wraps a gRPC connection as a carry overlay source.
+// NewMobCarrySource embrulha uma conexão gRPC como fonte de overlay de carry.
 func NewMobCarrySource(conn grpc.ClientConnInterface) *MobCarrySource {
 	return &MobCarrySource{api: dbv1.NewDropConfigServiceClient(conn)}
 }
 
-// Fetch returns every template's carry override, keyed by template_name.
+// Fetch devolve o override de carry de cada template, com chave template_name.
 func (c *MobCarrySource) Fetch(ctx context.Context) (map[string]mobcarry.Override, error) {
 	resp, err := c.api.ListMobCarryOverrides(ctx, &dbv1.ListMobCarryOverridesRequest{})
 	if err != nil {

@@ -28,8 +28,8 @@ func TestNightmareBalancePersistence(t *testing.T) {
 		t.Fatalf("imported balance=%d, want 37", ch.NightmareEntries)
 	}
 
-	// A failure after the character UPDATE must roll back the balance and
-	// inventory together. Slot is SMALLINT in PostgreSQL; this cannot be saved.
+	// Uma falha depois do UPDATE do personagem precisa reverter saldo e
+	// inventário juntos. Slot é SMALLINT no PostgreSQL; este não pode ser salvo.
 	ch.NightmareEntries = 137
 	ch.LastNightmareUse = 5000000001
 	ch.Carry = []domain.Item{{Slot: 40000, Index: 1100}}

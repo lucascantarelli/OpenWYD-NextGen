@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the duel ranking store (issue #118). Require a real
-// database; excluded from the default build.
+// Testes de integração do store de ranking de duelo (issue #118). Exigem um banco
+// real; fora do build padrão.
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -30,8 +30,8 @@ func TestRecordDuelResult(t *testing.T) {
 	if err := s.RecordDuelResult(ctx, "Winner", "Loser"); err != nil {
 		t.Fatalf("RecordDuelResult: %v", err)
 	}
-	// Second result, reversed: exercises the increment (not overwrite) path,
-	// and that the same character can accumulate both wins and losses.
+	// Segundo resultado, invertido: exercita o caminho de incremento (não sobrescrita),
+	// e que o mesmo personagem pode acumular vitórias e derrotas.
 	if err := s.RecordDuelResult(ctx, "Loser", "Winner"); err != nil {
 		t.Fatalf("RecordDuelResult (2): %v", err)
 	}

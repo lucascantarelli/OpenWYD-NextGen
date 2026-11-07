@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// release returns a path under the repo's tmserver/content/ tree, skipping the test when
-// the file is not there: the catalogs moved into Postgres and out of the
-// repository (issue 58, fase 5), so these fixtures need an external copy.
+// release devolve um caminho na árvore tmserver/content/ do repositório, pulando o teste
+// quando o arquivo não está lá: os catálogos migraram para o Postgres e saíram do
+// repositório (issue 58, fase 5), então estas fixtures precisam de cópia externa.
 func release(t *testing.T, parts ...string) string {
 	t.Helper()
 	p := filepath.Join(append([]string{"..", "..", "..", "tmserver", "content"}, parts...)...)
@@ -86,16 +86,16 @@ func TestLoadSancRate(t *testing.T) {
 		{"PL 6 from file", sancAnvilLac, 6, 80},
 		{"PL 9 from file", sancAnvilLac, 9, 10},
 
-		// The file lists only PO 0..5, so the tail keeps the Basedef.cpp defaults.
-		// Index 6 = 100 makes the +5→+6 Ori refine free; an operator who wants it
-		// gated adds a "PO 6 <rate>" line (issue #103).
+		// O arquivo lista só PO 0..5, então a cauda mantém os defaults de Basedef.cpp.
+		// Índice 6 = 100 torna o refino Ori +5→+6 grátis; um operador que queira isso
+		// controlado adiciona uma linha "PO 6 <rate>" (issue #103).
 		{"PO 6 falls back to the compiled default", sancAnvilOri, 6, 100},
 		{"PO 7 falls back to the compiled default", sancAnvilOri, 7, 0},
 		{"PL 10 falls back to the compiled default", sancAnvilLac, 10, 0},
 
-		// The Âmago lines land on row 2. In the legacy they aliased onto row 0 and
-		// clobbered every PO rate above (CReadFiles.cpp:157); issue #103 fixed that,
-		// so PO 1 must still be the file's 100 and NOT Âmago's 80.
+		// As linhas de Âmago caem na linha 2. No legado elas se sobrepunham à linha 0 e
+		// destruíam toda taxa PO acima (CReadFiles.cpp:157); a issue #103 corrigiu isso,
+		// então PO 1 continua sendo o 100 do arquivo e NÃO o 80 do Âmago.
 		{"Amago 1 on its own row", sancAnvilAma, 1, 80},
 		{"Amago 11 on its own row", sancAnvilAma, 11, 5},
 		{"PO 1 not clobbered by Amago", sancAnvilOri, 1, 100},
@@ -171,7 +171,7 @@ func TestSancRateOutOfRange(t *testing.T) {
 	}
 }
 
-// The anvil token is matched on raw cp1252 bytes, the way _strupr+strcmp does.
+// O token de bigorna é comparado em bytes cp1252 crus, como _strupr+strcmp faz.
 func TestSancAnvilRow(t *testing.T) {
 	cases := []struct {
 		token string
@@ -209,7 +209,7 @@ func TestLoadItemList(t *testing.T) {
 }
 
 func TestBaseEffects(t *testing.T) {
-	// A boot row (real format) carrying EF_AC and EF_DAMAGE among ignored effects.
+	// Uma linha de boot (formato real) com EF_AC e EF_DAMAGE entre efeitos ignorados.
 	const row = "168,Botas_de_Guarda(Az),17.0,0.0.0.0.0,0,0,32,0,0," +
 		"EF_CLASS,1,EF_GRID,0,EF_AC,96,EF_RUNSPEED,2,EF_REGENMP,40,EF_DAMAGE,24,EF_ITEMLEVEL,5"
 	l, err := parseItemList(strings.NewReader(row))
@@ -221,8 +221,8 @@ func TestBaseEffects(t *testing.T) {
 	for _, e := range eff {
 		got[e.Eff] = e.Val
 	}
-	// Score-relevant effects plus EF_ITEMLEVEL (used by combine matching) and
-	// EF_RUNSPEED (issue #64: boots' move-speed bonus).
+	// Efeitos relevantes ao score mais EF_ITEMLEVEL (usado pelo casamento de combine) e
+	// EF_RUNSPEED (issue #64: bônus de velocidade de movimento das botas).
 	if len(got) != 4 || got[3] != 96 || got[2] != 24 || got[87] != 5 || got[29] != 2 {
 		t.Errorf("BaseEffects = %v, want AC(3):96, DAMAGE(2):24, ITEMLEVEL(87):5, RUNSPEED(29):2", got)
 	}
@@ -246,12 +246,12 @@ func TestBaseEffectsSpecialAll(t *testing.T) {
 	}
 }
 
-// TestBaseEffectsCritical: EF_CRITICAL/EF_CRITICAL2 are score stats (Basedef.cpp:3209
-// derives MOB.Critical from them), not the visual effects they were once filed as —
-// dropping them here is what left crit gear worth nothing (issue #102). Most crit in the
-// catalog rides on set pieces and the class body items.
+// TestBaseEffectsCritical: EF_CRITICAL/EF_CRITICAL2 são stats de score (Basedef.cpp:3209
+// deriva MOB.Critical deles), não os efeitos visuais em que já foram arquivados —
+// descartá-los aqui é o que deixou equipamento de crit valendo nada (issue #102).
+// A maior parte do crit no catálogo vem das peças de conjunto e dos itens de corpo de classe.
 func TestBaseEffectsCritical(t *testing.T) {
-	// Real rows: an armor set piece (ItemList.csv:225) and a class body item (:1).
+	// Linhas reais: uma peça de conjunto de armadura (ItemList.csv:225) e um item de corpo de classe (:1).
 	const rows = "165,Armadura_de_Guarda(Az),17.0,0.0.0.0.0,0,0,4,0,0," +
 		"EF_CLASS,1,EF_GRID,0,EF_AC,138,EF_CRITICAL,50,EF_HPADD,9,EF_ITEMLEVEL,5\n" +
 		"1,TransKnight,0.0,0.0.0.0.0,0,0,1,0,0," +
@@ -276,8 +276,8 @@ func TestBaseEffectsCritical(t *testing.T) {
 		}
 	}
 
-	// The real catalog must actually carry crit — the parser silently dropping it is
-	// what issue #102 was. Guards against the effect disappearing from efName again.
+	// O catálogo real precisa de fato carregar crit — o parser descartá-lo em silêncio é
+	// o que era a issue #102. Protege contra o efeito sumir do efName de novo.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
@@ -294,18 +294,18 @@ func TestBaseEffectsCritical(t *testing.T) {
 	if withCrit < 100 {
 		t.Errorf("real catalog items carrying EF_CRITICAL = %d, want >= 100", withCrit)
 	}
-	// Pedra_Amunra (the issue's amulet) equips into the four accessory slots: its nPos
-	// 0xF00 is what triggers the +9 x2 refine promotion in handler.itemCritical.
+	// Pedra_Amunra (o amuleto da issue) equipa nos quatro slots de acessório: seu nPos
+	// 0xF00 é o que dispara a promoção de refino +9 x2 em handler.itemCritical.
 	if pos := full.Positions()[3464]; pos&0xF00 == 0 {
 		t.Errorf("Pedra_Amunra nPos = %d, want the accessory mask 0xF00 set", pos)
 	}
 }
 
-// TestBaseEffectsResist: EF_RESIST1..4/EF_RESISTALL are score stats too (CMob.cpp:640-643
-// derives MOB.Resist[0..3] from them), not ignored ones — missing from efName is what left
-// every immunity/resist item granting nothing (issue #211).
+// TestBaseEffectsResist: EF_RESIST1..4/EF_RESISTALL também são stats de score (CMob.cpp:640-643
+// deriva MOB.Resist[0..3] deles), não ignorados — faltar no efName é o que deixou
+// todo item de imunidade/resist sem conceder nada (issue #211).
 func TestBaseEffectsResist(t *testing.T) {
-	// Real rows: Bolsa_Perfumada (ItemList.csv:1009, EF_RESISTALL) and Orb_de_Fogo
+	// Linhas reais: Bolsa_Perfumada (ItemList.csv:1009, EF_RESISTALL) e Orb_de_Fogo
 	// (ItemList.csv:1013, EF_RESIST1).
 	const rows = "599,Bolsa_Perfumada,319.0,0.0.0.0.0,0,50000,1024,0,0,EF_CLASS,255,EF_RESISTALL,5\n" +
 		"601,Orb_de_Fogo,63.0,37.0.0.0.0,0,30000,1024,0,0,EF_CLASS,255,EF_RESIST1,3,EF_RESIST2,0,EF_RESIST3,0,EF_RESIST4,0,EF_ITEMLEVEL,1\n"
@@ -331,8 +331,8 @@ func TestBaseEffectsResist(t *testing.T) {
 		}
 	}
 
-	// The real catalog must actually carry resist — the parser silently dropping it is
-	// what issue #211 was. Guards against the effects disappearing from efName again.
+	// O catálogo real precisa de fato carregar resist — o parser descartá-lo em silêncio é
+	// o que era a issue #211. Protege contra os efeitos sumirem do efName de novo.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
@@ -351,12 +351,12 @@ func TestBaseEffectsResist(t *testing.T) {
 	}
 }
 
-// TestBaseEffectsMagic: EF_MAGIC/EF_MAGICADD are score stats too (Basedef.cpp:3194-3195
-// derives the caster's Magic from BASE_GetMobAbility(EF_MAGIC)+BASE_GetMobAbility(EF_MAGICADD)),
-// not ignored ones — missing from efName is what left every "Ataque Mágico" item granting
-// nothing (issue #223).
+// TestBaseEffectsMagic: EF_MAGIC/EF_MAGICADD também são stats de score (Basedef.cpp:3194-3195
+// deriva o Magic do conjurador de BASE_GetMobAbility(EF_MAGIC)+BASE_GetMobAbility(EF_MAGICADD)),
+// não ignorados — faltar no efName é o que deixou todo item "Ataque Mágico" sem conceder
+// nada (issue #223).
 func TestBaseEffectsMagic(t *testing.T) {
-	// Real rows: Bracelete_de_Hecate (ItemList.csv:871, EF_MAGIC,6) and Colar_Mágico
+	// Linhas reais: Bracelete_de_Hecate (ItemList.csv:871, EF_MAGIC,6) e Colar_Mágico
 	// (ItemList.csv:1075, EF_MAGIC,22).
 	const rows = "514,Bracelete_de_Hecate,96.0,132.0.0.0.0,0,73000,256,0,0,EF_CLASS,255,EF_MAGIC,6,EF_ITEMLEVEL,2\n" +
 		"642,Colar_Magico,2.6,306.0.0.0.0,0,125000,256,0,0,EF_CLASS,255,EF_MAGIC,22,EF_ITEMLEVEL,5\n"
@@ -382,8 +382,8 @@ func TestBaseEffectsMagic(t *testing.T) {
 		}
 	}
 
-	// The real catalog must actually carry magic — the parser silently dropping it is
-	// what issue #223 was. Guards against the effect disappearing from efName again.
+	// O catálogo real precisa de fato carregar magic — o parser descartá-lo em silêncio é
+	// o que era a issue #223. Protege contra o efeito sumir do efName de novo.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
@@ -421,11 +421,11 @@ func TestBaseEffectsMagic(t *testing.T) {
 	}
 }
 
-// TestBaseEffectsNoSanc: quest/trophy stones (Almas, Pedras, Sephirot) are
-// equippable but carry no EF_VOLATILE, so nothing stopped the dust-refine
-// handler from planting an EF_SANC pair into them (issue #133). ItemList.csv
-// now tags them EF_NOSANC so handler.refineItem's
-// itemAbility(dst, efNoSanc) != 0 gate rejects them.
+// TestBaseEffectsNoSanc: pedras de quest/troféu (Almas, Pedras, Sephirot) são
+// equipáveis mas não carregam EF_VOLATILE, então nada impedia o handler de refino
+// com pó de plantar um par EF_SANC nelas (issue #133). O ItemList.csv
+// agora as marca com EF_NOSANC, então o gate
+// itemAbility(dst, efNoSanc) != 0 de handler.refineItem as rejeita.
 func TestBaseEffectsNoSanc(t *testing.T) {
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
@@ -445,9 +445,9 @@ func TestBaseEffectsNoSanc(t *testing.T) {
 }
 
 func TestRanges(t *testing.T) {
-	// Mob-model rows (real format): the archer's body item carries EF_RANGE,4 —
-	// the source of a mob's ranged reach (BASE_GetMobAbility). A row without
-	// EF_RANGE must be absent from the map.
+	// Linhas de modelo de mob (formato real): o item de corpo do arqueiro carrega
+	// EF_RANGE,4 — a origem do alcance à distância de um mob (BASE_GetMobAbility).
+	// Uma linha sem EF_RANGE precisa ficar ausente do mapa.
 	const rows = "242,Ciclope_Arqueiro,6.0,0.0.0.0.0,0,0,1,0,0,EF_CLASS,21,EF_RANGE,4\n" +
 		"168,Botas_de_Guarda(Az),17.0,0.0.0.0.0,0,0,32,0,0,EF_CLASS,1,EF_AC,96\n"
 	l, err := parseItemList(strings.NewReader(rows))
@@ -462,7 +462,7 @@ func TestRanges(t *testing.T) {
 		t.Errorf("Ranges()[168] = %d, want absent (no EF_RANGE)", v)
 	}
 
-	// The real catalog (when mounted) must agree on the archer model.
+	// O catálogo real (quando montado) precisa concordar no modelo do arqueiro.
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — ItemList.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
@@ -473,8 +473,8 @@ func TestRanges(t *testing.T) {
 }
 
 func TestRequirements(t *testing.T) {
-	// A sword needing level 100 + STR 50 (col 4 = ReqLvl.Str.Int.Dex.Con); plus a
-	// no-requirement item that must be omitted.
+	// Uma espada exigindo nível 100 + STR 50 (col 4 = ReqLvl.Str.Int.Dex.Con); mais uma
+	// item sem requisito que precisa ser omitido.
 	const rows = "900,Espada,0.0,100.50.0.0.0,0,0,0,0,0,EF_DAMAGE,80\n" +
 		"901,Adaga,0.0,0.0.0.0.0,0,0,0,0,0,EF_DAMAGE,20"
 	l, err := parseItemList(strings.NewReader(rows))
@@ -490,12 +490,12 @@ func TestRequirements(t *testing.T) {
 	}
 }
 
-// TestRequirementsClasseD is the issue #278 regression. Class D gear
-// (EF_ITEMLEVEL 4) demanded up to level 254 while its own class D siblings
-// (Conjuradora/Aeon/Natureza) sat at 128-174, so every row in 185..260 had its
-// level cut by 80 and its attributes scaled by the same ratio. Anchored on the
-// real catalog: a synthetic fixture would not catch the .csv being regenerated
-// from a stale source.
+// TestRequirementsClasseD é a regressão da issue #278. Equipamento de classe D
+// (EF_ITEMLEVEL 4) exigia até nível 254 enquanto seus próprios irmãos de classe D
+// (Conjuradora/Aeon/Natureza) ficavam em 128-174, então toda linha em 185..260 teve seu
+// nível cortado em 80 e seus atributos escalados na mesma razão. Ancorado no
+// catálogo real: uma fixture sintética não pegaria o .csv sendo regerado
+// a partir de uma fonte obsoleta.
 func TestRequirementsClasseD(t *testing.T) {
 	full, err := LoadItemList(release(t, "Common", "ItemList.csv"))
 	if err != nil {
@@ -511,13 +511,13 @@ func TestRequirementsClasseD(t *testing.T) {
 		{911, "Solaris", ItemReq{Lvl: 174, Str: 464, Dex: 140}},
 		{1191, "Elmo_Anao(N)", ItemReq{Lvl: 115, Str: 146, Con: 98}},
 		{1892, "Tunica_Conjuradora(A), the EF_BONUS variant", ItemReq{Lvl: 132, Str: 90, Int: 157}},
-		// Issue #308: the client displays ReqLvl one-based, so raw 160 is level 161.
+		// Issue #308: o cliente exibe ReqLvl com base 1, então 160 cru é nível 161.
 		{661, "Ankh_da_Justica", ItemReq{Lvl: 160}},
 		{662, "Ankh_da_Eternidade", ItemReq{Lvl: 160}},
 		{663, "Ankh_da_Gloria", ItemReq{Lvl: 160}},
-		// Issue #307: raw 100 allows the emblem at displayed level 101.
+		// Issue #307: 100 cru permite o emblema no nível exibido 101.
 		{4080, "Emblema_da_Aprendizagem", ItemReq{Lvl: 100}},
-		// Untouched: below the rescaled band, and above it (the special capes).
+		// Intocado: abaixo da faixa reescalada, e acima dela (as capas especiais).
 		{1331, "Tunica_Conjuradora(A), base set", ItemReq{Lvl: 174, Str: 119, Int: 208}},
 		{1720, "Capa_da_Escuridao", ItemReq{Lvl: 399}},
 	} {
@@ -526,8 +526,8 @@ func TestRequirementsClasseD(t *testing.T) {
 		}
 	}
 
-	// The band itself must stay empty: no class D item may demand 181..260
-	// again. Above 260 only the preserved specials survive (capes, Pedra Amunra).
+	// A faixa em si precisa ficar vazia: nenhum item de classe D pode exigir 181..260
+	// de novo. Acima de 260 só sobrevivem os especiais preservados (capas, Pedra Amunra).
 	effects := full.BaseEffects()
 	for idx, req := range reqs {
 		classeD := false
@@ -548,7 +548,7 @@ func TestLoadSkillData(t *testing.T) {
 	if err != nil {
 		t.Skipf("motivo: conteúdo ausente — SkillData.csv saiu do repositório (o catálogo vive no banco): o importador só roda sobre árvore externa: %v", err)
 	}
-	// Golden rows straight from the CSV (sscanf order, AffectTime already ÷4).
+	// Linhas golden direto do CSV (ordem do sscanf, AffectTime já ÷4).
 	tests := []struct {
 		index int
 		want  Spell
@@ -558,10 +558,10 @@ func TestLoadSkillData(t *testing.T) {
 			Aggressive: 1, MaxTarget: 13, AffectResist: 3, Name: "Giro_da_F\xfaria"}},
 		{5, Spell{Index: 5, SkillPoint: 81, ManaSpent: 53, TickType: 17, TickValue: 75,
 			AffectTime: 150, MaxTarget: 1, Name: "Aura_da_Vida"}},
-		// Escudo Dourado (affect 31): the short tail of the table, raw AffectTime
-		// 30. Pinned here because the issue #92 ÷8 truncated it to 3 (issue #236);
-		// the loader is legacy-faithful again and the tuning moved to
-		// world.AffectDuration, which floors short friendly buffs instead.
+		// Escudo Dourado (affect 31): a cauda curta da tabela, AffectTime cru
+		// 30. Fixado aqui porque o ÷8 da issue #92 truncava para 3 (issue #236);
+		// o loader voltou a ser fiel ao legado e o ajuste migrou para
+		// world.AffectDuration, que aplica piso aos buffs amistosos curtos.
 		{85, Spell{Index: 85, SkillPoint: 90, ManaSpent: 120, Delay: 5, AffectType: 31,
 			AffectValue: 150, AffectTime: 7, MaxTarget: 1, Name: "Explos\xe3o_Et\xe9rea"}},
 	}
@@ -575,8 +575,8 @@ func TestLoadSkillData(t *testing.T) {
 			t.Errorf("Get(%d) = %+v, want %+v", tt.index, got, tt.want)
 		}
 	}
-	// Indexes are sparse past the row count: the legacy loader keys on column 0.
-	// Names keep the file's Latin-1 bytes (the client charset) — no re-encode.
+	// Os índices são esparsos além da contagem de linhas: o loader legado usa a coluna 0 como chave.
+	// Os nomes mantêm os bytes Latin-1 do arquivo (o charset do cliente) — sem reencodar.
 	if e, ok := s.Get(200); !ok || e.Name != "Prote\xe7\xe3o_Divina" {
 		t.Errorf("Get(200) = %+v, %v, want Proteção_Divina (Latin-1)", e, ok)
 	}
@@ -585,9 +585,9 @@ func TestLoadSkillData(t *testing.T) {
 	}
 }
 
-// TestParseSkillDataDividesAffectTime pins the loader's AffectTime ÷4 rule on a
-// synthetic row (no dependency on the Release CSV): 13 ints, the 2 dotted Act
-// strings, 7 ints, then the name. Column 12 is the raw AffectTime.
+// TestParseSkillDataDividesAffectTime fixa a regra AffectTime ÷4 do loader numa
+// linha sintética (sem depender do CSV do Release): 13 ints, as 2 strings Act
+// pontuadas, 7 ints, depois o nome. A coluna 12 é o AffectTime cru.
 func TestParseSkillDataDividesAffectTime(t *testing.T) {
 	const row = "2,3,0,10,4,0,1,10,0,0,11,5,600,anim.a,anim.b,0,0,1,2,0,0,0,MySkill"
 	s, err := parseSkillData(strings.NewReader(row))
@@ -609,9 +609,9 @@ func TestParseSkillDataDividesAffectTime(t *testing.T) {
 	}
 }
 
-// TestParseSkillDataUsesLegacyAffectTimeDivisor pins the uniform legacy loader
-// behavior. Duration tuning belongs to world.AffectDuration at cast time, so
-// both the short shield row and an otherwise identical row load with ÷4.
+// TestParseSkillDataUsesLegacyAffectTimeDivisor fixa o divisor uniforme do loader
+// legado. O ajuste de duração pertence a world.AffectDuration no momento da
+// conjuração, então tanto a linha curta do escudo quanto uma linha idêntica carregam com ÷4.
 func TestParseSkillDataUsesLegacyAffectTimeDivisor(t *testing.T) {
 	const (
 		shield = "85,90,0,120,5,0,0,0,0,0,31,150,30,anim.a,anim.b,0,0,0,1,0,0,0,Explosao_Eterea"

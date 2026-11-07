@@ -1,26 +1,26 @@
-// Package loot holds the mob-death drop formulas as pure functions
-// (game-rules.md §2, MobKilled.cpp). Like package combat, the rand() calls go
-// through an injected Rand in the original order, so the MSVC LCG reproduces the
-// drops exactly (parity-tests.md §4.0).
+// Package loot guarda as fórmulas de drop de morte de mob como funções puras
+// (game-rules.md §2, MobKilled.cpp). Como o pacote combat, as chamadas de rand()
+// passam por um Rand injetado na ordem original, para o LCG da MSVC reproduzir os
+// drops exatamente (parity-tests.md §4.0).
 package loot
 
 import "openwyd-nextgen/internal/droprate"
 
-// Rand is the minimal RNG; *rng.MSVC satisfies it. Intn(n) == C rand()%n.
+// Rand é o RNG mínimo; *rng.MSVC o satisfaz. Intn(n) == rand()%n em C.
 type Rand interface {
 	Intn(n int) int
 }
 
-// DropRate is g_pDropRate[64] — the base drop odds PER Carry slot of the mob
-// (NOT per item): the larger the value, the rarer the drop (it is a divisor).
-// Real values from Basedef.cpp:222 (game-rules.md §2.2).
+// DropRate é g_pDropRate[64] — a chance base de drop POR slot de Carry do mob
+// (NÃO por item): quanto maior o valor, mais raro o drop (é um divisor).
+// Valores reais de Basedef.cpp:222 (game-rules.md §2.2).
 //
-// It is initialized as a COPY of internal/droprate.Rate: the moderator overlay
-// (dropcfg) rewrites this table at boot, and the web editor keeps reading the
-// pristine base values from the shared package.
+// É inicializada como CÓPIA de internal/droprate.Rate: a sobreposição do moderador
+// (dropcfg) reescreve esta tabela no boot, e o editor web continua lendo os
+// valores base originais do pacote compartilhado.
 var DropRate = droprate.Rate
 
-// DropBonus is g_pDropBonus[64] — all 100 (neutral) by default (Basedef.cpp).
+// DropBonus é g_pDropBonus[64] — todos 100 (neutro) por default (Basedef.cpp).
 var DropBonus [64]int
 
 func init() {
@@ -29,9 +29,9 @@ func init() {
 	}
 }
 
-// EffectiveDropRate computes the per-slot drop odds after the killer's drop
-// bonus and the target-level adjustment (game-rules.md §2.2). A larger result is
-// rarer. killerBonus is the killer's DropBonus (0 = none).
+// EffectiveDropRate calcula a chance de drop por slot depois do bônus de drop do
+// matador e do ajuste pelo nível do alvo (game-rules.md §2.2). Resultado maior é
+// mais raro. killerBonus é o DropBonus do matador (0 = nenhum).
 func EffectiveDropRate(slot, killerBonus, mobLevel int) int {
 	droprate := DropRate[slot]
 	dropbonus := DropBonus[slot] + killerBonus
@@ -74,8 +74,8 @@ func EffectiveDropRate(slot, killerBonus, mobLevel int) int {
 		}
 	}
 
-	// These four Carry positions are hard overrides applied after every level
-	// adjustment in MobKilled.cpp. Slot 11 is therefore guaranteed.
+	// Essas quatro posições de Carry são sobreposições duras aplicadas depois de todo
+	// ajuste de nível em MobKilled.cpp. O slot 11 é, portanto, garantido.
 	switch slot {
 	case 8, 9, 10:
 		droprate = 4
@@ -88,12 +88,12 @@ func EffectiveDropRate(slot, killerBonus, mobLevel int) int {
 	return droprate
 }
 
-// Drops rolls a single drop against an effective rate: drop iff rand()%rate == 0
-// (the odds-as-divisor pattern, like the gold gate).
+// Drops rola um único drop contra uma taxa efetiva: dropa sse rand()%rate == 0
+// (o padrão de chance-como-divisor, como o gate de ouro).
 //
-// UNVERIFIED: the exact final comparison is truncated in the source
-// (MobKilled.cpp after :2800); this is the conventional pattern and should be
-// confirmed by capture.
+// UNVERIFIED: a comparação final exata está truncada no fonte
+// (MobKilled.cpp após :2800); este é o padrão convencional e deve ser
+// confirmado por captura.
 func Drops(r Rand, rate int) bool {
 	if rate <= 0 {
 		return true // rate 0 ⇒ always (slot 56 = 1 still rolls 0)
@@ -101,9 +101,9 @@ func Drops(r Rand, rate int) bool {
 	return r.Intn(rate) == 0
 }
 
-// GoldDrop returns the gold dropped by a dying mob (game-rules.md §2.1,
-// MobKilled.cpp:2693). It consumes two rand() values: a drop gate, then (if it
-// drops) the amount. Capped at 2000 per kill. 0 means no gold.
+// GoldDrop devolve o ouro dropado por um mob que morre (game-rules.md §2.1,
+// MobKilled.cpp:2693). Consome dois valores de rand(): um gate de drop e, se
+// dropar, a quantidade. Limitado a 2000 por kill. 0 significa sem ouro.
 func GoldDrop(r Rand, mobLevel, mobCoin int) int {
 	unkGold := 18
 	switch {

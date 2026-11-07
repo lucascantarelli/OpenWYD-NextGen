@@ -10,20 +10,20 @@ import (
 	"openwyd-nextgen/tmserver/internal/worldcfg"
 )
 
-// WorldEventConfig adapts dbServer's WorldEventConfigService to the tmServer
-// worldcfg.Source port.
+// WorldEventConfig adapta o WorldEventConfigService do dbServer à porta
+// worldcfg.Source do tmServer.
 type WorldEventConfig struct {
 	api dbv1.WorldEventConfigServiceClient
 }
 
-// NewWorldEventConfig wraps a gRPC connection as a world-event config source.
+// NewWorldEventConfig embrulha uma conexão gRPC como fonte de config de evento de mundo.
 func NewWorldEventConfig(conn grpc.ClientConnInterface) *WorldEventConfig {
 	return &WorldEventConfig{api: dbv1.NewWorldEventConfigServiceClient(conn)}
 }
 
 var _ worldcfg.Source = (*WorldEventConfig)(nil)
 
-// Version returns the current portal-managed world-event config version.
+// Version devolve a versão atual da config de evento de mundo gerida pelo portal.
 func (c *WorldEventConfig) Version(ctx context.Context) (int64, error) {
 	resp, err := c.api.WorldEventConfigVersion(ctx, &dbv1.WorldEventConfigVersionRequest{})
 	if err != nil {
@@ -32,7 +32,7 @@ func (c *WorldEventConfig) Version(ctx context.Context) (int64, error) {
 	return resp.GetVersion(), nil
 }
 
-// Snapshot fetches the full event config snapshot.
+// Snapshot busca o snapshot completo da config de evento.
 func (c *WorldEventConfig) Snapshot(ctx context.Context) (worldcfg.Snapshot, error) {
 	resp, err := c.api.GetWorldEventConfig(ctx, &dbv1.GetWorldEventConfigRequest{})
 	if err != nil {
@@ -41,7 +41,7 @@ func (c *WorldEventConfig) Snapshot(ctx context.Context) (worldcfg.Snapshot, err
 	return worldcfg.Snapshot{Version: resp.GetVersion(), Event: dbWorldEventToConfig(resp.GetConfig())}, nil
 }
 
-// UpdateProgress persists the current event counter without bumping config version.
+// UpdateProgress persiste o contador atual do evento sem subir a versão da config.
 func (c *WorldEventConfig) UpdateProgress(ctx context.Context, expectedVersion int64, currentIndex int32) (bool, error) {
 	resp, err := c.api.UpdateWorldEventProgress(ctx, &dbv1.UpdateWorldEventProgressRequest{
 		ExpectedVersion: expectedVersion,

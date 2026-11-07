@@ -7,19 +7,19 @@ import (
 	"io"
 )
 
-// ErrBadInitCode is returned when a connection's first 4 bytes are not InitCode.
-// The legacy server drops such connections (protocol-spec.md §1.2).
+// ErrBadInitCode é devolvido quando os 4 primeiros bytes de uma conexão não são InitCode.
+// O servidor legado descarta essas conexões (protocol-spec.md §1.2).
 var ErrBadInitCode = errors.New("protocol: bad INITCODE")
 
-// ErrBadSize is returned when a frame's header Size is out of the accepted range
+// ErrBadSize é devolvido quando o Size do cabeçalho de um frame está fora da faixa aceita
 // [HeaderSize, MaxMessageSize] (protocol-spec.md §1.3, ErrorCode=2).
 var ErrBadSize = errors.New("protocol: frame size out of range")
 
-// Framer de-frames the CPSock byte stream from a connection (CPSock::ReadMessage,
-// protocol-spec.md §1.3). It consumes and validates the 4-byte INITCODE once,
-// then yields Size-delimited frames. Size is validated BEFORE any per-frame
-// allocation (guidelines §18.3). A Framer is not safe for concurrent use; use
-// one per connection (one I/O goroutine per connection, migration-plan.md §3.5).
+// Framer desmonta o fluxo de bytes CPSock de uma conexão (CPSock::ReadMessage,
+// protocol-spec.md §1.3). Consome e valida o INITCODE de 4 bytes uma vez,
+// depois entrega frames delimitados por Size. O Size é validado ANTES de qualquer
+// alocação por frame (guidelines §18.3). Um Framer não é seguro para uso concorrente;
+// uma por conexão (uma goroutine de I/O por conexão, migration-plan.md §3.5).
 type Framer struct {
 	r        io.Reader
 	buf      []byte
@@ -27,14 +27,14 @@ type Framer struct {
 	initDone bool
 }
 
-// NewFramer returns a Framer reading from r.
+// NewFramer devolve um Framer lendo de r.
 func NewFramer(r io.Reader) *Framer {
 	return &Framer{r: r, scratch: make([]byte, 4096)}
 }
 
-// fill reads from the underlying reader until at least n bytes are buffered.
-// It returns io.EOF only when the stream ends exactly on a frame boundary with
-// nothing buffered, and io.ErrUnexpectedEOF when it ends mid-frame.
+// fill lê do reader subjacente até pelo menos n bytes estarem no buffer.
+// Devolve io.EOF só quando o fluxo termina exatamente numa fronteira de frame sem
+// nada no buffer, e io.ErrUnexpectedEOF quando termina no meio de um frame.
 func (f *Framer) fill(n int) error {
 	for len(f.buf) < n {
 		m, err := f.r.Read(f.scratch)
@@ -57,18 +57,18 @@ func (f *Framer) fill(n int) error {
 	return nil
 }
 
-// ReadFrame returns the next complete obfuscated wire frame (exactly Size bytes).
-// On the first call it consumes the INITCODE. It returns io.EOF when the stream
-// ends cleanly between frames. The returned slice is owned by the caller (it is
-// not retained by the Framer); pass it to Decode.
+// ReadFrame devolve o próximo frame de wire ofuscado completo (exatamente Size bytes).
+// Na primeira chamada consome o INITCODE. Devolve io.EOF quando o fluxo
+// termina limpo entre frames. O slice devolvido pertence a quem chama (não é
+// retido pelo Framer); passe-o ao Decode.
 func (f *Framer) ReadFrame() ([]byte, error) {
 	if !f.initDone {
 		if err := f.fill(4); err != nil {
 			return nil, err
 		}
 		if binary.LittleEndian.Uint32(f.buf[0:4]) != InitCode {
-			// Surface the actual leading bytes so a real client's handshake can be
-			// identified (diagnostic; the buffer holds the first TCP segment).
+			// Mostre os bytes iniciais reais para o handshake de um cliente de verdade ser
+			// identificado (diagnóstico; o buffer contém o primeiro segmento TCP).
 			n := len(f.buf)
 			if n > 64 {
 				n = 64

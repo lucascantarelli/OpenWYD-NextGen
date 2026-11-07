@@ -1,16 +1,16 @@
 package level
 
-// MobExpForLevel is the balanced template reward (STRUCT_MOB.Exp) for a
-// monster of the given level — the design curve behind cmd/exptool, which
-// restamps the Release npc templates (issue #43: the shipped data mixed
-// Exp=0 with absurd values, so kills gave nothing or dozens of levels).
+// MobExpForLevel é a recompensa de template balanceada (STRUCT_MOB.Exp) de um
+// monstro do nível informado — a curva de projeto por trás do cmd/exptool, que
+// regrava os templates de NPC do Release (issue #43: os dados entregues misturavam
+// Exp=0 com valores absurdos, então abates não davam nada ou davam dezenas de níveis).
 //
-// The target is the classic pacing in kills-per-level for a solo MORTAL
-// killing mobs of its own level (killsPerLevel below), inverted through the
-// general-field reward pipeline (SoloExpReward) under the default event flags:
-// KefraLive=false (÷2) and no newbie event (−15%), i.e. gain = 0.425·E·min(A,1)
-// with A = 0.6·450/((30+L)·div). Running with -kefra-live doubles the gain and
-// therefore halves the kills-per-level — acceptable event drift, like the
+// O alvo é o ritmo clássico em abates-por-nível para um MORTAL solo
+// matando mobs do próprio nível (killsPerLevel abaixo), invertido pelo
+// pipeline de recompensa de campo geral (SoloExpReward) sob as flags padrão de evento:
+// KefraLive=false (÷2) e sem evento de newbie (−15%), ou seja, ganho = 0.425·E·min(A,1)
+// com A = 0.6·450/((30+L)·div). Rodar com -kefra-live dobra o ganho e
+// portanto reduz pela metade os abates-por-nível — desvio aceitável de evento, como a
 // legacy globals.
 func MobExpForLevel(lvl int32) int64 {
 	if lvl < 1 {
@@ -19,7 +19,7 @@ func MobExpForLevel(lvl int32) int64 {
 	if lvl > MaxLevel {
 		lvl = MaxLevel
 	}
-	// Total exp from this level to the next (nextLevel is cumulative).
+	// EXP total deste nível até o próximo (nextLevel é cumulativo).
 	delta := float64(NextLevelExp(lvl) - NextLevelExp(lvl-1))
 	a := 0.6 * 450 / (float64(30+lvl) * mortalDivisor(lvl))
 	if a > 1 {
@@ -32,12 +32,12 @@ func MobExpForLevel(lvl int32) int64 {
 	return int64(e)
 }
 
-// killsPerLevel is the pacing target: same-level kills needed to gain one
-// level. Classic WYD feel — fast on the training grounds (≤35), slowing
-// through the mid game and grinding at the cap. Linear within each band and
-// continuous across the seams. The training grounds' actual pace also carries
-// the field multiplier (TrainingFieldExpReward, issue #383), which this curve
-// deliberately does not bake in so the same templates stay sane elsewhere.
+// killsPerLevel é o alvo de ritmo: abates de mesmo nível necessários para ganhar
+// um nível. Sensação clássica do WYD — rápido no Campo de Treino (≤35), desacelerando
+// no meio do jogo e com grind no teto. Linear dentro de cada faixa e
+// contínuo nas emendas. O ritmo real do Campo de Treino também carrega
+// o multiplicador do campo (TrainingFieldExpReward, issue #383), que esta curva
+// de propósito não embute, para os mesmos templates continuarem sãos em outros lugares.
 func killsPerLevel(lvl int32) float64 {
 	lerp := func(from, to float64, at, span int32) float64 {
 		return from + (to-from)*float64(at)/float64(span)
@@ -56,8 +56,8 @@ func killsPerLevel(lvl int32) float64 {
 	}
 }
 
-// mortalDivisor mirrors applyTierDivisors' MORTAL bands as floats, for the
-// analytic inversion above (the design curve needs the ratio, not the legacy
+// mortalDivisor espelha as faixas MORTAL de applyTierDivisors como floats, para a
+// inversão analítica acima (a curva de projeto precisa da razão, não dos
 // int-truncation semantics).
 func mortalDivisor(lvl int32) float64 {
 	switch {

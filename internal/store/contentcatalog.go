@@ -10,15 +10,15 @@ import (
 
 // Content catalog persistence (issue 58, fase 1).
 //
-// These tables replace four files the tmServer used to read at boot
-// (ItemList.csv, SkillData.csv, npc/*, InitItem.csv). Postgres is the source of
-// truth from the moment the importer runs; the files become importer input and
-// are deleted once the runtime reads the tables (fase 2). Upserts are keyed by
-// the natural key of each catalog so re-running the importer is idempotent.
-
-// UpsertItemCatalog inserts or updates every item, returning how many rows the
-// statement pair touched. Runs in one transaction: a partial catalog would make
-// item names/prices disagree with the file for players mid-session.
+// Estas tabelas substituem quatro arquivos que o tmServer lia no boot
+// (ItemList.csv, SkillData.csv, npc/*, InitItem.csv). O Postgres é a fonte da
+// verdade a partir do momento em que o importador roda; os arquivos viram entrada
+// do importador e são apagados quando o runtime lê as tabelas (fase 2). Os upserts
+// usam como chave a chave natural de cada catálogo, então rodar o importador de
+// novo é idempotente.
+// UpsertItemCatalog insere ou atualiza todos os itens, devolvendo quantas linhas o
+// comando afetou. Roda numa transação só: um catálogo parcial faria
+// nomes/preços de item divergirem do arquivo para jogadores em sessão.
 func (s *Store) UpsertItemCatalog(ctx context.Context, items []domain.ItemCatalogEntry) (int, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -64,7 +64,7 @@ func (s *Store) UpsertItemCatalog(ctx context.Context, items []domain.ItemCatalo
 	return len(items), nil
 }
 
-// UpsertSkillCatalog inserts or updates every skill.
+// UpsertSkillCatalog insere ou atualiza todas as skills.
 func (s *Store) UpsertSkillCatalog(ctx context.Context, skills []domain.SkillCatalogEntry) (int, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *Store) UpsertSkillCatalog(ctx context.Context, skills []domain.SkillCat
 	return len(skills), nil
 }
 
-// UpsertNPCTemplates inserts or updates every template blob.
+// UpsertNPCTemplates insere ou atualiza todo blob de template.
 func (s *Store) UpsertNPCTemplates(ctx context.Context, tpls []domain.NPCTemplateEntry) (int, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -134,9 +134,9 @@ func (s *Store) UpsertNPCTemplates(ctx context.Context, tpls []domain.NPCTemplat
 	return len(tpls), nil
 }
 
-// UpsertWorldItemSeeds inserts or updates the static world objects. The natural
-// key (item_index, pos_x, pos_y) is what keeps a reimport from planting the same
-// gate twice.
+// UpsertWorldItemSeeds insere ou atualiza os objetos estáticos do mundo. A chave
+// natural (item_index, pos_x, pos_y) é o que impede uma reimportação de plantar o
+// mesmo
 func (s *Store) UpsertWorldItemSeeds(ctx context.Context, seeds []domain.WorldItemSeedEntry) (int, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -163,7 +163,7 @@ func (s *Store) UpsertWorldItemSeeds(ctx context.Context, seeds []domain.WorldIt
 
 // --- leitura (fase 2 do runtime e verificação do importador) ---
 
-// ListItemCatalog returns the whole catalog ordered by item index.
+// ListItemCatalog devolve o catálogo inteiro ordenado por índice de item.
 func (s *Store) ListItemCatalog(ctx context.Context) ([]domain.ItemCatalogEntry, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT item_index, name, price, grade, unique_id, extra, pos,
@@ -198,7 +198,7 @@ func (s *Store) ListItemCatalog(ctx context.Context) ([]domain.ItemCatalogEntry,
 	return out, nil
 }
 
-// ListSkillCatalog returns every skill ordered by index.
+// ListSkillCatalog devolve toda skill ordenada por índice.
 func (s *Store) ListSkillCatalog(ctx context.Context) ([]domain.SkillCatalogEntry, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT skill_index, name, skill_point, target_type, mana_spent, delay_ticks, range_tiles,
@@ -228,7 +228,7 @@ func (s *Store) ListSkillCatalog(ctx context.Context) ([]domain.SkillCatalogEntr
 	return out, nil
 }
 
-// ListNPCTemplates returns every template ordered by name.
+// ListNPCTemplates devolve todo template ordenado por nome.
 func (s *Store) ListNPCTemplates(ctx context.Context) ([]domain.NPCTemplateEntry, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT template_name, file_name, source_size, sha256, blob
@@ -252,7 +252,7 @@ func (s *Store) ListNPCTemplates(ctx context.Context) ([]domain.NPCTemplateEntry
 	return out, nil
 }
 
-// ListWorldItemSeeds returns every static world object, ordered for a
+// ListWorldItemSeeds devolve todo objeto estático do mundo, ordenado para um
 // deterministic boot.
 func (s *Store) ListWorldItemSeeds(ctx context.Context) ([]domain.WorldItemSeedEntry, error) {
 	rows, err := s.pool.Query(ctx, `
@@ -277,8 +277,8 @@ func (s *Store) ListWorldItemSeeds(ctx context.Context) ([]domain.WorldItemSeedE
 	return out, nil
 }
 
-// ContentCatalogCounts reports how many rows each catalog holds — the importer's
-// --check compares these against what the content files declare.
+// ContentCatalogCounts informa quantas linhas cada catálogo tem — o
+// --check do importador as compara com o que os arquivos de conteúdo declaram.
 type ContentCatalogCounts struct {
 	Items        int
 	Skills       int
@@ -286,7 +286,7 @@ type ContentCatalogCounts struct {
 	WorldItems   int
 }
 
-// CountContentCatalog returns the row count of each content catalog.
+// CountContentCatalog devolve a contagem de linhas de cada catálogo de conteúdo.
 func (s *Store) CountContentCatalog(ctx context.Context) (ContentCatalogCounts, error) {
 	var c ContentCatalogCounts
 	for _, q := range []struct {

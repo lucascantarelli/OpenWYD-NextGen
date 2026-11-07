@@ -1,8 +1,8 @@
 package level
 
-// NightmareExpReward implements the three map branches of MobKilled.cpp:443-875.
-// Each living party member in the killer's map gets its own GetExpApply result;
-// it is not divided by party size and the item bonus belongs to the killer.
+// NightmareExpReward implementa os três ramos de mapa de MobKilled.cpp:443-875.
+// Cada membro vivo da party no mapa do matador recebe seu próprio resultado de
+// GetExpApply; não é dividido pelo tamanho da party e o bônus de item é do matador.
 func NightmareExpReward(kind int, mobExp int64, memberLevel, mobLevel int32, class uint8, killerBonus int32, ev ExpEvents) int64 {
 	exp := ExpApply(mobExp, memberLevel, mobLevel)
 	if exp <= 0 || exp > soloExpGate {
@@ -14,8 +14,8 @@ func NightmareExpReward(kind int, mobExp int64, memberLevel, mobLevel int32, cla
 	}
 	if class != classMortal && class != classArch {
 		exp = applyTierDivisors(exp, myLevel, class)
-		// The Normal branch repeats this celestial block verbatim. Keeping
-		// both divisions matters even though normal admission is mortal-only.
+		// O ramo Normal repete este bloco celestial literalmente. Manter
+		// as duas divisões importa mesmo a entrada normal sendo só mortal.
 		if kind == 0 {
 			exp = applyTierDivisors(exp, myLevel, class)
 		}

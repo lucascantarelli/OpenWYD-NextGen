@@ -1,23 +1,23 @@
-// Package combat holds the WYD damage formulas as pure functions
-// (game-rules.md §4, Basedef.cpp). They are separated from all I/O so they can
-// be golden-tested exactly: the rand() calls go through an injected Rand, and
-// the call ORDER is preserved, so feeding the MSVC LCG (tmserver/internal/rng)
-// reproduces the original numbers byte-for-byte (parity-tests.md §4.0).
+// Package combat guarda as fórmulas de dano do WYD como funções puras
+// (game-rules.md §4, Basedef.cpp). Elas ficam separadas de toda I/O para poderem
+// ser testadas golden exatamente: as chamadas de rand() passam por um Rand injetado, e
+// a ORDEM das chamadas é preservada, então alimentar o LCG da MSVC (tmserver/internal/rng)
+// reproduz os números originais byte a byte (parity-tests.md §4.0).
 package combat
 
-// Rand is the minimal RNG these formulas need; *rng.MSVC satisfies it. Intn(n)
-// must behave like the C `rand() % n`.
+// Rand é o RNG mínimo que estas fórmulas precisam; *rng.MSVC o satisfaz. Intn(n)
+// precisa se comportar como o `rand() % n` do C.
 type Rand interface {
 	Intn(n int) int
 }
 
-// ResurrectSkill is the magic SkillIndex (99) that lets a dead player act
+// ResurrectSkill é o SkillIndex mágico (99) que permite a um jogador morto agir
 // (handlers/_MSG_Attack.md).
 const ResurrectSkill = 99
 
-// Damage is BASE_GetDamage (melee), game-rules.md §4.1 (Basedef.cpp:1265). AC
-// mitigates half its value; weapon mastery (combat) narrows the variance and
-// raises the floor. Always returns at least 1.
+// Damage é BASE_GetDamage (corpo a corpo), game-rules.md §4.1 (Basedef.cpp:1265). O AC
+// mitiga metade do seu valor; a maestria de arma (combat) estreita a variância e
+// eleva o piso. Sempre devolve ao menos 1.
 func Damage(r Rand, dam, ac, combat int) int {
 	tdam := dam - ac/2
 
@@ -43,8 +43,8 @@ func Damage(r Rand, dam, ac, combat int) int {
 	return tdam
 }
 
-// SkillDamage is BASE_GetSkillDamage, game-rules.md §4.2 (Basedef.cpp:1486).
-// Skills use more mastery (cap 15) than melee. Always returns at least 1.
+// SkillDamage é BASE_GetSkillDamage, game-rules.md §4.2 (Basedef.cpp:1486).
+// Skills usam mais maestria (cap 15) que o corpo a corpo. Sempre devolve ao menos 1.
 func SkillDamage(r Rand, dam, ac, combat int) int {
 	tdam := dam - ac/2
 
@@ -70,12 +70,12 @@ func SkillDamage(r Rand, dam, ac, combat int) int {
 	return tdam
 }
 
-// HitInput is one attacker→target strike (game-rules.md §4.3-4.5,
-// _MSG_Attack.cpp). Server-authoritative: the client's claimed damage is ignored.
+// HitInput é um golpe atacante→alvo (game-rules.md §4.3-4.5,
+// _MSG_Attack.cpp). Autoritativo no servidor: o dano alegado pelo cliente é ignorado.
 //
-// ParryRate is the GetParryRate result (its internal tree is UNVERIFIED,
-// game-rules.md §4.4) supplied by the caller. MaxDamage clamps the result (0 =
-// no clamp; the original's MAX_DAMAGE value is UNVERIFIED).
+// ParryRate é o resultado de GetParryRate (sua árvore interna é UNVERIFIED,
+// game-rules.md §4.4) fornecido por quem chama. MaxDamage limita o resultado (0 =
+// sem limite; o valor MAX_DAMAGE do original é UNVERIFIED).
 type HitInput struct {
 	AttackerDamage int
 	TargetAC       int
@@ -92,11 +92,11 @@ type HitInput struct {
 	MaxDamage      int
 }
 
-// ResolveHit runs the per-target strike pipeline (§4.3): partial critical → AC
+// ResolveHit roda o pipeline de golpe por alvo (§4.3): crítico parcial → AC
 // (×3 vs players) → BASE_GetDamage/SkillDamage → total critical → parry → reflect
-// → force/clamp. A negative result is the "miss/block" code (-3, or -4 on a
-// blocked low roll) propagated to the client. The rand() calls happen in the
-// original order so the LCG stream lines up.
+// → forçar/limitar. Um resultado negativo é o código de "erro/bloqueio" (-3, ou -4 num
+// roll baixo bloqueado) propagado ao cliente. As chamadas de rand() acontecem na
+// ordem original para o fluxo do LCG casar.
 func ResolveHit(r Rand, in HitInput) int {
 	dam := in.AttackerDamage
 
@@ -124,12 +124,12 @@ func ResolveHit(r Rand, in HitInput) int {
 		dam *= 2
 	}
 
-	// Parry/dodge: a roll in 1000 vs ParryRate. Always rolled (consumes a rand).
+	// Parry/dodge: um roll em 1000 contra ParryRate. Sempre rolado (consome um rand).
 	if miss := ResolveParry(r, in.SkillIndex, in.ParryRate, in.TargetRsvBlock); miss != 0 {
 		return miss
 	}
 
-	// Reflect/absorb (PvP only), each step floored at 1.
+	// Reflexão/absorção (só PvP), cada passo com piso 1.
 	if in.TargetIsPlayer && dam > 0 {
 		dam -= in.ReflectDamage
 		if dam < 1 {

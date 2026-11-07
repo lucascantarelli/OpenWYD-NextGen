@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the NPC-editing store (npc-editing-plan.md). They require
-// a real database and are excluded from the default build. Run with:
+// Testes de integração do store de edição de NPC (npc-editing-plan.md). Eles exigem
+// um banco real e ficam fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -15,16 +15,16 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TestNPCConfigCRUD exercises the full moderator write path: upsert a definition,
-// set its shop, toggle visibility, override a price, and delete — asserting the
-// config version bumps on every write and reads reflect the writes.
+// TestNPCConfigCRUD percorre o caminho de escrita completo do moderador: upsert de
+// definição, definir sua loja, alternar visibilidade, sobrepor preço e apagar — verificando que a
+// versão de config sobe a cada escrita e que as leituras refletem as escritas.
 func TestNPCConfigCRUD(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
 	if err := Migrate(ctx, pool); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	// Clean slate for the NPC tables (leave account schema alone).
+	// Estado limpo para as tabelas de NPC (deixe o esquema de conta em paz).
 	_, _ = pool.Exec(ctx, `DELETE FROM npc_audit; DELETE FROM npc_shop_item; DELETE FROM npc_definition; DELETE FROM item_price; UPDATE npc_config_meta SET version = 0 WHERE id = TRUE`)
 
 	s := New(pool)
@@ -34,7 +34,7 @@ func TestNPCConfigCRUD(t *testing.T) {
 		t.Fatalf("version: %v", err)
 	}
 
-	// A moderator account to satisfy the updated_by FK / audit account_id.
+	// Uma conta de moderador para satisfazer a FK de updated_by / account_id da auditoria.
 	var modID int64
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO account (name, pass_hash, role) VALUES ('mod_npc_test','x','moderator') RETURNING id`).
@@ -63,7 +63,7 @@ func TestNPCConfigCRUD(t *testing.T) {
 		t.Fatalf("set item price: %v", err)
 	}
 
-	// Read back the full snapshot.
+	// Relê o snapshot completo.
 	defs, err := s.ListNPCDefinitions(ctx)
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -87,7 +87,7 @@ func TestNPCConfigCRUD(t *testing.T) {
 		t.Errorf("price override mismatch: %+v", prices)
 	}
 
-	// Version must have advanced by the four writes.
+	// A versão precisa ter avançado com as quatro escritas.
 	vN, err := s.NPCConfigVersion(ctx)
 	if err != nil {
 		t.Fatalf("version: %v", err)
@@ -96,7 +96,7 @@ func TestNPCConfigCRUD(t *testing.T) {
 		t.Errorf("version = %d, want %d (4 writes)", vN, v0+4)
 	}
 
-	// Delete cascades the shop rows.
+	// O delete cascateia as linhas de loja.
 	if err := s.DeleteNPCDefinition(ctx, id, modID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -106,8 +106,8 @@ func TestNPCConfigCRUD(t *testing.T) {
 	}
 }
 
-// TestSeedNPCDefinitionsIdempotent checks the bulk import inserts once and skips
-// existing slugs on a re-run.
+// TestSeedNPCDefinitionsIdempotent confere que a importação em massa insere uma vez e pula
+// slugs existentes numa re-execução.
 func TestSeedNPCDefinitionsIdempotent(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -136,9 +136,9 @@ func TestSeedNPCDefinitionsIdempotent(t *testing.T) {
 	if n != 0 {
 		t.Errorf("second seed inserted %d, want 0 (idempotent)", n)
 	}
-	// The shop items are re-queued on every pass and deduped by
-	// ON CONFLICT (npc_id, slot) DO NOTHING — assert the second pass did not
-	// double them, which the pipelined seed could otherwise hide.
+	// Os itens de loja são reenfileirados a cada passada e deduplicados por
+	// ON CONFLICT (npc_id, slot) DO NOTHING — verifique que a segunda passada não os
+	// duplicou, o que o seed enfileirado poderia esconder.
 	var shopRows int
 	if err := pool.QueryRow(ctx, `
 		SELECT count(*) FROM npc_shop_item si
@@ -151,15 +151,15 @@ func TestSeedNPCDefinitionsIdempotent(t *testing.T) {
 	}
 }
 
-// contentGenIndex keeps TestDeleteNPCDefinitionContentOwned's generator index
-// clear of the ones the other tests in this package use (generator_index is
+// contentGenIndex mantém o generator index de TestDeleteNPCDefinitionContentOwned
+// longe dos que os outros testes deste pacote usam (generator_index é
 // globally unique).
 const contentGenIndex = 200000
 
-// TestDeleteNPCDefinitionContentOwned checks a definition imported from
-// NPCGener.txt (origin = 'content', written by SeedNPCDefinitions) is refused
-// rather than deleted, and that the refusal leaves nothing behind: no audit row
-// and no config-version bump, since it returns before auditAndBump.
+// TestDeleteNPCDefinitionContentOwned confere que uma definição importada de
+// NPCGener.txt (origin = 'content', escrita por SeedNPCDefinitions) é recusada
+// em vez de apagada, e que a recusa não deixa nada para trás: nenhuma linha de
+// auditoria e nenhum incremento de versão, já que retorna antes de auditAndBump.
 func TestDeleteNPCDefinitionContentOwned(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -223,20 +223,20 @@ func TestDeleteNPCDefinitionContentOwned(t *testing.T) {
 		t.Errorf("version = %d, want %d (refused write must not bump)", vN, v0)
 	}
 
-	// Hiding it is the supported alternative and must still work.
+	// Escondê-la é a alternativa suportada e precisa continuar funcionando.
 	if err := s.SetNPCVisibility(ctx, npcID, false, modID); err != nil {
 		t.Errorf("set visibility on content NPC: %v", err)
 	}
 }
 
-// chunkGenBase keeps TestSeedNPCDefinitionsSpansBatchChunks' generator indices
-// clear of the ones the other tests in this package use.
+// chunkGenBase mantém os generator indices de TestSeedNPCDefinitionsSpansBatchChunks
+// longe dos que os outros testes deste pacote usam.
 const chunkGenBase = 100000
 
-// TestSeedNPCDefinitionsSpansBatchChunks covers the chunk boundary of the
-// pipelined seed. Definition ids come back positionally per chunk and the shop
-// items are keyed off them, so an off-by-one at a chunk split would silently
-// attach a merchant's stock to the wrong NPC.
+// TestSeedNPCDefinitionsSpansBatchChunks cobre a fronteira de fatia do
+// seed enfileirado. Os ids de definição voltam posicionalmente por fatia e os itens
+// de loja têm chave neles, então um off-by-one numa quebra de fatia anexaria
+// silenciosamente o estoque de um mercador ao NPC errado.
 func TestSeedNPCDefinitionsSpansBatchChunks(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -251,10 +251,10 @@ func TestSeedNPCDefinitionsSpansBatchChunks(t *testing.T) {
 	for i := range defs {
 		defs[i] = domain.NPCDefinition{
 			Slug: fmt.Sprintf("seed-chunk-%d", i), TemplateName: "A", Enabled: true,
-			// generator_index is globally unique, so offset well clear of any
-			// rows the other tests in this package leave behind.
+			// generator_index é globalmente único, então fique bem longe de qualquer
+			// linha que os outros testes deste pacote deixam para trás.
 			Merchant: 1, GeneratorIndex: int32(chunkGenBase + i),
-			// item_index encodes the slug's ordinal so the pairing is checkable.
+			// item_index codifica o ordinal do slug para o pareamento ser verificável.
 			Shop: []domain.NPCShopItem{{Slot: 0, ItemIndex: int32(1000 + i), Quantity: 1}},
 		}
 	}

@@ -1,11 +1,11 @@
 package combat
 
-// maxLevel is MAX_LEVEL (Basedef.h:177); BASE_GetSkillDamage clamps the
-// caster level into [0, maxLevel].
+// maxLevel é MAX_LEVEL (Basedef.h:177); BASE_GetSkillDamage limita o
+// nível do conjurador em [0, maxLevel].
 const maxLevel = 399
 
-// SkillSpell is the slice of STRUCT_SPELL that the skill-damage formula reads
-// (the caller resolves the full row via content.SkillData; combat stays
+// SkillSpell é a fatia de STRUCT_SPELL que a fórmula de dano de skill lê
+// (quem chama resolve a linha completa via content.SkillData; combat fica
 // catalog-free).
 type SkillSpell struct {
 	InstanceType  int
@@ -13,9 +13,9 @@ type SkillSpell struct {
 	AffectValue   int
 }
 
-// SkillCaster mirrors the attacker fields BASE_GetSkillDamage reads from
-// STRUCT_MOB. Special is CurrentScore.Special[content.SkillKind(skillnum)] —
-// the caller selects the tree, exactly like the original indexes with `kind`.
+// SkillCaster espelha os campos de atacante que BASE_GetSkillDamage lê de
+// STRUCT_MOB. Special é CurrentScore.Special[content.SkillKind(skillnum)] —
+// quem chama seleciona a árvore, exatamente como o original indexa com `kind`.
 type SkillCaster struct {
 	Class   int
 	Level   int
@@ -26,17 +26,17 @@ type SkillCaster struct {
 	Special int
 }
 
-// ManaSpent is BASE_GetManaSpent (Basedef.cpp:6071): the spell's base cost
-// scaled up by the tree's Special and down by SaveMana. Integer order matters.
+// ManaSpent é BASE_GetManaSpent (Basedef.cpp:6071): o custo base da spell
+// escalado pela Special da árvore e reduzido por SaveMana. A ordem inteira importa.
 func ManaSpent(baseMana, saveMana, special int) int {
 	spent := baseMana * (special/2 + 100) / 100
 	return (100 - saveMana) * spent / 100
 }
 
-// SkillBaseDamage is the raw-power half of the legacy's overloaded
+// SkillBaseDamage é a metade de poder bruto da função "dam" sobrecarregada do
 // BASE_GetSkillDamage(skillnum, mob, weather, weapondamage) (Basedef.cpp:6998):
-// the pre-mitigation skill output. The result then goes through SkillDamage
-// (the dam/def/master overload) and SkillResistScale, as _MSG_Attack.cpp does.
+// a saída de skill antes da mitigação. O resultado então passa por SkillDamage
+// (a sobrecarga dam/def/master) e SkillResistScale, como o _MSG_Attack.cpp faz.
 func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weaponDamage int) int {
 	level := c.Level
 	if level < 0 {
@@ -52,7 +52,7 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 	dam := 0
 	switch {
 	case sp.InstanceType == 0:
-		// Buff skills: "dam" is the affect level, per-skill formulas.
+		// Skills de buff: "dam" é o nível do affect, fórmulas por skill.
 		switch skillnum {
 		case 11, 45:
 			dam = special/10 + affectbase
@@ -67,8 +67,8 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 		}
 
 	case sp.InstanceType >= 1 && sp.InstanceType <= 5:
-		// Note: this tree keys on skillnum/8 (NOT %24/8) — only TK's second
-		// tree (skills 8-15) hits the weapon-scaling branch.
+		// Nota: esta árvore usa skillnum/8 (NÃO %24/8) — só a segunda
+		// árvore do TK (skills 8-15) cai no ramo de escala por arma.
 		skind := skillnum / 8
 		switch {
 		case skillnum == 97: // Canhão Guardião
@@ -92,8 +92,8 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 		} else if weather == 2 && sp.InstanceType == 3 {
 			dam = 120 * dam / 100
 		}
-		// Magic multiplier for casters; TK tree 2 and Huntress skip it, but
-		// everyone gets the flat 5/4.
+		// Multiplicador mágico para conjuradores; TK árvore 2 e Huntress pulam, mas
+		// todos recebem o 5/4 fixo.
 		if (c.Class != 0 || skind != 1) && c.Class != 3 {
 			dam = (4*c.Magic + 100) * dam / 100
 		}
@@ -115,8 +115,8 @@ func SkillBaseDamage(skillnum int, sp SkillSpell, c SkillCaster, weather, weapon
 	return dam
 }
 
-// SkillResistScale applies the target's elemental resist after mitigation
-// (_MSG_Attack.cpp:569): dam = (150-resist)*dam/100. InstanceType 1 reads
+// SkillResistScale aplica o resist elemental do alvo após a mitigação
+// (_MSG_Attack.cpp:569): dam = (150-resist)*dam/100. O InstanceType 1 lê
 // Resist[0]; types 2-5 read Resist[InstanceType-2]. A mob's resist counts
 // half. Other InstanceTypes pass through unchanged.
 func SkillResistScale(dam, instanceType int, resist [4]int16, targetIsPlayer bool) int {

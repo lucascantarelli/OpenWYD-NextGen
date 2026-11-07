@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 )
 
-// BaseMobSize is sizeof(STRUCT_MOB): the per-class new-character template is a
-// raw 816-byte STRUCT_MOB dump (stats, starter equipment, skills, spawn).
+// BaseMobSize é sizeof(STRUCT_MOB): o template de personagem novo por classe é um
+// dump cru de 816 bytes de STRUCT_MOB (stats, equipamento inicial, skills, spawn).
 const BaseMobSize = 816
 
-// baseMobFiles maps the class index to its BaseMob template file name
-// (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); confirmed by each template's
-// Class byte @20: TK=0, FM=1, BM=2, HT=3.
+// baseMobFiles mapeia o índice de classe para o nome do arquivo de template BaseMob
+// (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); confirmado pelo byte
+// Class @20 de cada template: TK=0, FM=1, BM=2, HT=3.
 var baseMobFiles = map[int]string{0: "TK", 1: "FM", 2: "BM", 3: "HT"}
 
-// LoadBaseMobs loads the per-class STRUCT_MOB templates used to render and spawn
-// a newly created character. Returns class index → raw 816-byte STRUCT_MOB.
+// LoadBaseMobs carrega os templates STRUCT_MOB por classe usados para renderizar e
+// gerar um personagem recém-criado. Devolve índice de classe → STRUCT_MOB cru de 816 bytes.
 func LoadBaseMobs(dir string) (map[int][]byte, error) {
 	out := make(map[int][]byte, len(baseMobFiles))
 	for class, name := range baseMobFiles {

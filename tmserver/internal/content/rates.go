@@ -1,6 +1,6 @@
-// Package content loads the read-only game-content files (data-formats.md §2-3)
-// from tmserver/content/: combine/refine rate tables, the item/skill catalogs and the
-// terrain maps. The loaders are validated against the real files (content_test).
+// Package content carrega os arquivos de conteúdo de jogo somente leitura (data-formats.md §2-3)
+// de tmserver/content/: tabelas de taxa de combine/refino, os catálogos de item/skill e os
+// mapas de terreno. Os loaders são validados contra os arquivos reais (content_test).
 package content
 
 import (
@@ -14,15 +14,15 @@ import (
 
 const questTierCount = 5
 
-// QuestTierRate is one QuestsRate.txt row. Level minima are inclusive and
-// maxima exclusive, matching _MSG_UseItem.cpp's Vol-191 gate.
+// QuestTierRate é uma linha do QuestsRate.txt. Os níveis mínimos são inclusivos e os
+// fora dela, casando com o gate Vol-191 do _MSG_UseItem.cpp.
 type QuestTierRate struct {
 	MortalExp, ArchExp                     int64
 	Coin                                   int32
 	MortalMin, MortalMax, ArchMin, ArchMax int32
 }
 
-// QuestRates holds the five quest-item reward tiers (item 4117 + tier).
+// QuestRates guarda os cinco tiers de recompensa de item de quest (item 4117 + tier).
 type QuestRates struct {
 	tiers [questTierCount]QuestTierRate
 }
@@ -35,10 +35,10 @@ var questRateDefaults = [questTierCount]QuestTierRate{
 	{MortalExp: 5000, ArchExp: 2500, Coin: 10000, MortalMin: 320, MortalMax: 350, ArchMin: 320, ArchMax: 350},
 }
 
-// DefaultQuestRates returns the CReadFiles.cpp defaults used without -content.
+// DefaultQuestRates devolve os defaults de CReadFiles.cpp usados sem -content.
 func DefaultQuestRates() *QuestRates { return &QuestRates{tiers: questRateDefaults} }
 
-// Tier returns a quest tier and whether the index is valid.
+// Tier devolve um tier de quest e se o índice é válido.
 func (q *QuestRates) Tier(tier int) (QuestTierRate, bool) {
 	if q == nil || tier < 0 || tier >= len(q.tiers) {
 		return QuestTierRate{}, false
@@ -46,7 +46,7 @@ func (q *QuestRates) Tier(tier int) (QuestTierRate, bool) {
 	return q.tiers[tier], true
 }
 
-// LoadQuestRates reads Common/Settings/QuestsRate.txt over legacy defaults.
+// LoadQuestRates lê Common/Settings/QuestsRate.txt sobre os defaults legados.
 func LoadQuestRates(path string) (*QuestRates, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -122,13 +122,13 @@ func parseQuestRates(r io.Reader) (*QuestRates, error) {
 	return q, nil
 }
 
-// CompRate holds the combine-recipe success rates (Common/Settings/CompRate.txt,
-// CReadFiles::ReadCompRate, game-rules.md §3.2). Lines are "Family Key Rate".
+// CompRate guarda as taxas de sucesso das receitas de combine (Common/Settings/CompRate.txt,
+// CReadFiles::ReadCompRate, game-rules.md §3.2). As linhas são "Family Key Rate".
 type CompRate struct {
 	rates map[string]map[string]int // family → key → rate(0..100)
 }
 
-// Rate returns the rate for a family/key, and whether it was found.
+// Rate devolve a taxa de uma família/chave, e se ela foi encontrada.
 func (c *CompRate) Rate(family, key string) (int, bool) {
 	if m, ok := c.rates[family]; ok {
 		r, ok := m[key]
@@ -137,12 +137,12 @@ func (c *CompRate) Rate(family, key string) (int, bool) {
 	return 0, false
 }
 
-// Families returns the loaded family count (for diagnostics/tests).
+// Families devolve a contagem de famílias carregadas (para diagnóstico/testes).
 func (c *CompRate) Families() int { return len(c.rates) }
 
-// AnctChance returns the Compositor ITEM_+7/+8/+9 sacrifice bonuses added to the
-// base Anct rate (g_pAnctChance, Basedef.cpp:113 defaults {2,4,10}). Keys are
-// matched case-insensitively because CompRate.txt uses mixed case.
+// AnctChance devolve os bônus de sacrifício ITEM_+7/+8/+9 do Compositor somados à
+// taxa base do Anct (g_pAnctChance, Basedef.cpp:113, defaults {2,4,10}). As chaves
+// são comparadas sem diferenciar caixa porque o CompRate.txt usa caixa mista.
 func (c *CompRate) AnctChance() [3]int {
 	def := [3]int{2, 4, 10}
 	if c == nil {
@@ -157,15 +157,15 @@ func (c *CompRate) AnctChance() [3]int {
 	return def
 }
 
-// ehreRateDefaults is g_pEhreRate (Basedef.cpp:84), indexed by the recipe id
-// GetMatchCombineEhre returns. Index 0 is unused (0 = "no recipe") and index 5
-// (Refinação abençoada purificada) has NO CompRate key — the handler recomputes
-// that one from the character's level, so the compiled default just sits there.
+// ehreRateDefaults é g_pEhreRate (Basedef.cpp:84), indexado pelo id de receita
+// que GetMatchCombineEhre devolve. O índice 0 não é usado (0 = "sem receita") e
+// o índice 5 (Refinação abençoada purificada) NÃO tem chave no CompRate — o handler
+// recalcula aquela a partir do nível do personagem, então o default compilado só fica ali.
 var ehreRateDefaults = [10]int{0, 100, 100, 40, 10, 10, 100, 100, 100, 100}
 
-// ehreRateKeys maps the CompRate.txt "Ehre <key>" tokens to their g_pEhreRate
-// slot (CReadFiles.cpp:414-434). The file only OVERRIDES what it lists, so the
-// defaults above are the starting point — same contract as SancRate.
+// ehreRateKeys mapeia os tokens "Ehre <key>" do CompRate.txt para seu slot em
+// g_pEhreRate (CReadFiles.cpp:414-434). O arquivo só SOBRESCREVE o que lista, então os
+// defaults acima são o ponto de partida — mesmo contrato do SancRate.
 var ehreRateKeys = map[string]int{
 	"PACOTE_ORI":             1,
 	"MISTERIOSA":             2,
@@ -176,8 +176,8 @@ var ehreRateKeys = map[string]int{
 	"SOUL":                   8,
 }
 
-// EhreRates returns the Ehre family's per-recipe success rates, indexed by the
-// recipe id (1..8) that combine.MatchEhre returns.
+// EhreRates devolve as taxas de sucesso por receita da família Ehre, indexadas pelo
+// id de receita (1..8) que combine.MatchEhre devolve.
 func (c *CompRate) EhreRates() [10]int {
 	out := ehreRateDefaults
 	if c == nil {
@@ -191,9 +191,9 @@ func (c *CompRate) EhreRates() [10]int {
 	return out
 }
 
-// chanceBaseDefaults are g_pTinyBase/g_pShanyBase/g_pAilynBase/g_pAgathaBase
-// (Basedef.cpp:108-111), the single "ChanceBase" rate each of those families
-// carries in CompRate.txt.
+// chanceBaseDefaults são g_pTinyBase/g_pShanyBase/g_pAilynBase/g_pAgathaBase
+// (Basedef.cpp:108-111), a única taxa "ChanceBase" que cada uma dessas famílias
+// carrega no CompRate.txt.
 var chanceBaseDefaults = map[string]int{
 	"TINY":   15,
 	"SHANY":  35,
@@ -201,9 +201,9 @@ var chanceBaseDefaults = map[string]int{
 	"AGATHA": 15,
 }
 
-// ChanceBase returns a family's "ChanceBase" rate from CompRate.txt, falling
-// back to the compiled Basedef default. An unknown family returns 0, which
-// makes its recipes always fail rather than silently succeed.
+// ChanceBase devolve a taxa "ChanceBase" de uma família do CompRate.txt, caindo
+// para o default compilado de Basedef. Uma família desconhecida devolve 0, o que
+// faz suas receitas sempre falharem em vez de passarem em silêncio.
 func (c *CompRate) ChanceBase(family string) int {
 	def := chanceBaseDefaults[asciiUpper(family)]
 	if c == nil {
@@ -234,7 +234,7 @@ func (c *CompRate) rateCI(family, key string) (int, bool) {
 	return 0, false
 }
 
-// LoadCompRate reads CompRate.txt.
+// LoadCompRate lê CompRate.txt.
 func LoadCompRate(path string) (*CompRate, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -265,37 +265,37 @@ func parseCompRate(r io.Reader) (*CompRate, error) {
 	return c, sc.Err()
 }
 
-// SancRate holds the dust-refine success rates by anvil and table index
-// (Common/Settings/SancRate.txt, ReadSancRate, game-rules.md §3.3). Lines are
+// SancRate guarda as taxas de sucesso do refino com pó por bigorna e índice de tabela
+// (Common/Settings/SancRate.txt, ReadSancRate, game-rules.md §3.3). As linhas são
 // "Anvil Index Rate".
 //
-// The table is a fixed [3][12]: row 0 = Ori (PO), 1 = Lac (PL), 2 = Âmago, and
-// BASE_GetSuccessRate indexes it at level+1 (slot 0 is unused). The file only
-// OVERRIDES the indices it lists — ReadSancRate never clears the table — so the
-// compiled-in defaults of Basedef.cpp:68 are the starting point.
+// A tabela é fixa [3][12]: linha 0 = Ori (PO), 1 = Lac (PL), 2 = Âmago, e
+// BASE_GetSuccessRate a indexa em level+1 (o slot 0 não é usado). O arquivo só
+// SOBRESCREVE os índices que lista — ReadSancRate nunca limpa a tabela — então os
+// defaults compilados de Basedef.cpp:68 são o ponto de partida.
 type SancRate struct {
 	rates [3][12]int
 }
 
-// sancRateDefaults is g_pSancRate (Basedef.cpp:68), the table before
-// SancRate.txt is applied over it.
+// sancRateDefaults é g_pSancRate (Basedef.cpp:68), a tabela antes de
+// SancRate.txt ser aplicado sobre ela.
 var sancRateDefaults = [3][12]int{
 	{100, 100, 100, 100, 100, 100, 100, 0, 0, 0, 0, 0},         // PO  (Ori)
 	{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0},   // PL  (Lac)
 	{100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 80, 80}, // Âmago
 }
 
-// Anvil rows, mirroring refine.Ori/Lac/Amago (kept as plain ints to avoid a
-// content→refine import).
+// Linhas de bigorna, espelhando refine.Ori/Lac/Amago (mantidas como ints simples para
+// evitar um import content→refine).
 const (
 	sancAnvilOri = 0
 	sancAnvilLac = 1
 	sancAnvilAma = 2
 )
 
-// Rate returns the success rate for an anvil row at a table index. Out-of-range
-// lookups and a nil table return 0 (always fails) rather than panicking in the
-// game loop.
+// Rate devolve a taxa de sucesso de uma linha de bigorna num índice de tabela. Buscas
+// fora da faixa e tabela nil devolvem 0 (sempre falha) em vez de dar panic no
+// laço do jogo.
 func (s *SancRate) Rate(anvil, idx int) int {
 	if s == nil {
 		return 0
@@ -306,11 +306,11 @@ func (s *SancRate) Rate(anvil, idx int) int {
 	return s.rates[anvil][idx]
 }
 
-// DefaultSancRate returns the table with only the Basedef.cpp defaults — what
-// the refine path uses when no -content tree is mounted.
+// DefaultSancRate devolve a tabela só com os defaults de Basedef.cpp — o que
+// o caminho de refino usa quando nenhuma árvore -content está montada.
 func DefaultSancRate() *SancRate { return &SancRate{rates: sancRateDefaults} }
 
-// LoadSancRate reads SancRate.txt.
+// LoadSancRate lê SancRate.txt.
 func LoadSancRate(path string) (*SancRate, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -320,13 +320,13 @@ func LoadSancRate(path string) (*SancRate, error) {
 	return parseSancRate(f)
 }
 
-// sancAnvilRow maps a SancRate.txt anvil token to its table row.
+// sancAnvilRow mapeia um token de bigorna do SancRate.txt para sua linha na tabela.
 //
-// The file is cp1252, not UTF-8: "Âmago" is the bytes C2 6D 61 67 6F. The legacy
-// never decodes it either — ReadFiles _strupr's the token (ASCII-only in the C
-// locale, so the 0xC2 survives) and strcmp's it against the cp1252 literal
-// "ÂMAGO". Matching raw bytes the same way is exact and needs no decoder; the
-// UTF-8 spelling is also accepted in case the file is ever re-saved.
+// O arquivo é cp1252, não UTF-8: "Âmago" são os bytes C2 6D 61 67 6F. O legado
+// também nunca o decodifica — ReadFiles aplica _strupr no token (só ASCII no
+// locale C, então o 0xC2 sobrevive) e o compara com strcmp contra o literal cp1252
+// "ÂMAGO". Comparar bytes crus do mesmo jeito é exato e dispensa decodificador; a
+// grafia UTF-8 também é aceita caso o arquivo seja regravado.
 func sancAnvilRow(token string) (int, bool) {
 	switch asciiUpper(token) {
 	case "PO":
@@ -334,20 +334,20 @@ func sancAnvilRow(token string) (int, bool) {
 	case "PL":
 		return sancAnvilLac, true
 	case "\xC2MAGO", "\xC3\x82MAGO": // cp1252 / UTF-8 "ÂMAGO"
-		// Deliberate divergence from the legacy: CReadFiles.cpp:157 writes the
-		// Âmago lines into g_pSancRate[0] — the PO row (:123) — a copy-paste bug.
-		// Since Âmago is listed last in the file, it silently overwrote every Ori
-		// rate. Issue #103 resolved this as "fix", so the file's PO lines are the
-		// ones that take effect and Âmago lands on its own row.
+		// Divergência deliberada do legado: CReadFiles.cpp:157 escreve as
+		// linhas de Âmago em g_pSancRate[0] — a linha PO (:123) — um bug de copiar-colar.
+		// Como Âmago é listado por último no arquivo, ele sobrescrevia em silêncio toda
+		// taxa Ori. A issue #103 resolveu isso como "corrigir", então as linhas PO do
+		// arquivo são as que valem e Âmago cai na própria linha.
 		return sancAnvilAma, true
 	}
 	return 0, false
 }
 
-// asciiUpper uppercases a-z byte-wise, leaving every other byte untouched — the
-// C runtime's _strupr in the "C" locale. strings.ToUpper cannot be used: it
-// decodes runes, and the cp1252 0xC2 is invalid UTF-8, so it would be rewritten
-// as the 3-byte U+FFFD.
+// asciiUpper põe a-z em maiúscula byte a byte, deixando todo outro byte intocado — o
+// _strupr do runtime C no locale "C". strings.ToUpper não pode ser usado: ele
+// decodifica runes, e o 0xC2 cp1252 é UTF-8 inválido, então seria reescrito
+// como 3 bytes U+FFFD.
 func asciiUpper(s string) string {
 	b := []byte(s)
 	for i, c := range b {

@@ -1,29 +1,29 @@
 package protocol
 
-// S→C character-screen structs. Sizes and offsets are byte-exact against the
-// original Basedef.h, verified by a compiler sizeof/offsetof probe on the source
-// (MSVC x86 natural alignment, NOT pack(1)). See the migration capture notes.
+// Structs da tela de personagem S→C. Tamanhos e offsets são byte a byte contra o
+// Basedef.h original, verificados por sonda de sizeof/offsetof do compilador no
+// código-fonte (alinhamento natural MSVC x86, NÃO pack(1)). Ver as notas de captura da migração.
 //
-// Wire framing: Encode prepends the 12-byte HEADER and obfuscates [4:Size); the
-// builders below return the BODY (everything after the header), so their offsets
-// are the absolute struct offset minus HeaderSize.
+// Framing de wire: Encode prefixa o HEADER de 12 bytes e ofusca [4:Size); os
+// construtores abaixo devolvem o CORPO (tudo depois do cabeçalho), então seus
+// offsets são o offset absoluto da struct menos HeaderSize.
 
 const (
 	structSelCharSize = 840 // STRUCT_SELCHAR
 
-	// cnfAccountLoginSize is MSG_DBCNFAccountLogin (0x010A): SELCHAR + account cargo.
+	// cnfAccountLoginSize é MSG_DBCNFAccountLogin (0x010A): SELCHAR + cargo da conta.
 	cnfAccountLoginSize = 2008
-	// cnfNewCharacterSize is MSG_CNFNewCharacter (0x0110): resends the SELCHAR list.
+	// cnfNewCharacterSize é MSG_CNFNewCharacter (0x0110): reenvia a lista SELCHAR.
 	cnfNewCharacterSize = 856
 
-	// Header IDs the original sets for these packets (ESCENE_FIELD = 30000).
+	// IDs de Header que o original define para estes pacotes (ESCENE_FIELD = 30000).
 	IDSelChar      = 30002 // CNFAccountLogin
 	IDNewCharacter = 30001 // CNFNewCharacter
 	IDScene        = 30000 // CNFCharacterLogin / AccountSecure ack
 )
 
-// SelChar is the per-slot data the character-selection screen needs from one
-// character (a STRUCT_SELCHAR row). Unset fields stay zero on the wire.
+// SelChar são os dados por slot que a tela de seleção precisa de um
+// personagem (uma linha STRUCT_SELCHAR). Campos não definidos ficam zero no wire.
 type SelChar struct {
 	Slot                 int
 	Name                 string
@@ -38,7 +38,7 @@ type SelChar struct {
 	Equip                [16]SelItem
 }
 
-// SelItem is one STRUCT_ITEM (8 bytes): sIndex + 3×{effect,value}.
+// SelItem é um STRUCT_ITEM (8 bytes): sIndex + 3×{effect,value}.
 type SelItem struct {
 	Index uint16
 	Eff   [3][2]uint8
@@ -52,7 +52,7 @@ func writeSelItem(b []byte, it SelItem) {
 	}
 }
 
-// writeStructScore writes a 48-byte STRUCT_SCORE preview (Level/HP/MP/stats).
+// writeStructScore escreve uma prévia de 48 bytes de STRUCT_SCORE (nível/HP/MP/stats).
 func writeStructScore(b []byte, c SelChar) {
 	le.PutUint32(b[0:], uint32(c.Level))  // Level @0
 	b[14] = c.Direction                   // Direction @14
@@ -66,7 +66,7 @@ func writeStructScore(b []byte, c SelChar) {
 	le.PutUint16(b[38:], uint16(c.Con))   // Con @38
 }
 
-// writeSelChar fills a 840-byte STRUCT_SELCHAR (4 slots) from chars (by Slot).
+// writeSelChar preenche um STRUCT_SELCHAR de 840 bytes (4 slots) a partir de chars (por Slot).
 func writeSelChar(b []byte, chars []SelChar) {
 	for _, c := range chars {
 		s := c.Slot
@@ -88,9 +88,9 @@ func writeSelChar(b []byte, chars []SelChar) {
 	}
 }
 
-// MobEquip parses the 16 equipment slots (STRUCT_ITEM[16] @140) of a raw
-// STRUCT_MOB template into SelItems, so the selection screen can preview a
-// character's class with its starter equipment (otherwise the client draws the
+// MobEquip lê os 16 slots de equipamento (STRUCT_ITEM[16] @140) de um
+// template STRUCT_MOB cru em SelItems, para a tela de seleção pré-visualizar a
+// classe de um personagem com seu equipamento inicial (senão o cliente desenha o
 // default TransKnight model).
 func MobEquip(mob816 []byte) [16]SelItem {
 	var eq [16]SelItem
@@ -111,10 +111,10 @@ const (
 	cnfNameBodyOff  = 1888 // AccountName @ abs1900
 )
 
-// EncodeCNFAccountLoginBody builds the body of MSG_CNFAccountLogin (0x010A):
+// EncodeCNFAccountLoginBody monta o corpo de MSG_CNFAccountLogin (0x010A):
 // SELCHAR + account Cargo[128] + Coin + AccountName (Basedef.h MSG_DBCNFAccountLogin,
-// forwarded to the client as-is). The client caches this cargo for the vault UI;
-// omitting it leaves the warehouse empty even when the server has items. Send with
+// repassado ao cliente como está). O cliente cacheia este cargo para a UI do cofre;
+// omiti-lo deixa o armazém vazio mesmo quando o servidor tem itens. Envie com
 // HEADER.ID = IDSelChar (30002).
 func EncodeCNFAccountLoginBody(accountName string, chars []SelChar, coin int32, cargo [cnfCargoSlots]SelItem) []byte {
 	b := make([]byte, cnfAccountLoginSize-HeaderSize) // 1996
@@ -128,9 +128,9 @@ func EncodeCNFAccountLoginBody(accountName string, chars []SelChar, coin int32, 
 	return b
 }
 
-// EncodeCNFNewCharacterBody builds the body of MSG_CNFNewCharacter (0x0110): it
-// resends the full SELCHAR list (now including the new char). sel sits at abs
-// offset 16 (4 bytes of padding follow the header). Send with ID = IDNewCharacter.
+// EncodeCNFNewCharacterBody monta o corpo de MSG_CNFNewCharacter (0x0110): ele
+// reenvia a lista SELCHAR completa (agora com o personagem novo). sel fica no
+// offset absoluto 16 (4 bytes de padding seguem o cabeçalho). Envie com ID = IDNewCharacter.
 func EncodeCNFNewCharacterBody(chars []SelChar) []byte {
 	b := make([]byte, cnfNewCharacterSize-HeaderSize) // 844
 	writeSelChar(b[4:4+structSelCharSize], chars)     // sel @ abs16 → body4

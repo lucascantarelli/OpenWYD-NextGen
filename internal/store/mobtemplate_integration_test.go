@@ -1,8 +1,8 @@
 //go:build integration
 
-// Integration tests for the mob template stat store
-// (mob-template-editing-plan.md). They require a real database and are
-// excluded from the default build. Run with:
+// Testes de integração do store de stats de template de mob
+// (mob-template-editing-plan.md). Eles exigem um banco real e ficam
+// fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -16,9 +16,9 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TestMobTemplateStatCRUD exercises the full moderator write path: upsert a
-// stat override, set its equip slots, read it back, delete it, and confirm
-// the audit/version bump happens on every write.
+// TestMobTemplateStatCRUD percorre o caminho de escrita completo do moderador:
+// upsert de sobreposição de stats, definir seus slots de equip, reler, apagar e
+// confirmar que a auditoria/versão sobe a cada escrita.
 func TestMobTemplateStatCRUD(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -88,7 +88,7 @@ func TestMobTemplateStatCRUD(t *testing.T) {
 		t.Fatalf("equip = %+v, want 2 items", got2.Equip)
 	}
 
-	// SetMobTemplateEquip on a template with no stat row yet must fail.
+	// SetMobTemplateEquip num template sem linha de stats ainda precisa falhar.
 	if err := s.SetMobTemplateEquip(ctx, "NoSuchTemplate", nil, modID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("set equip on missing template err = %v, want ErrNotFound", err)
 	}

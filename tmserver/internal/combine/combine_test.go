@@ -18,10 +18,10 @@ func TestRollExact(t *testing.T) {
 	}{
 		{41, 50, 41, true},   // 41 <= 50
 		{41, 30, 41, false},  // 41 > 30
-		{99, 99, 99, true},   // no flatten
-		{100, 85, 85, true},  // flattened to 85
-		{114, 99, 99, true},  // flattened to 99
-		{114, 98, 99, false}, // flattened 99 > 98
+		{99, 99, 99, true},   // sem achatamento
+		{100, 85, 85, true},  // achatado para 85
+		{114, 99, 99, true},  // achatado para 99
+		{114, 98, 99, false}, // achatado 99 > 98
 	}
 	for _, tt := range tests {
 		v, ok := Roll(fixedRand{tt.roll}, tt.rate)
@@ -31,21 +31,21 @@ func TestRollExact(t *testing.T) {
 	}
 }
 
-// TestRollWithLCG ties to the real stream: first rand 41 ⇒ value 41.
+// TestRollWithLCG amarra ao fluxo real: primeiro rand 41 ⇒ valor 41.
 func TestRollWithLCG(t *testing.T) {
 	if v, ok := Roll(rng.New(), 50); v != 41 || !ok {
 		t.Errorf("Roll(LCG, 50) = (%d,%v), want (41,true)", v, ok)
 	}
 }
 
-// TestRollDistribution validates the flattening: over many samples, values 85..99
-// occur ~2x as often per value as 0..84, and nothing lands in 100..114.
+// TestRollDistribution valida o achatamento: em muitas amostras, valores 85..99
+// ocorrem ~2x mais vezes por valor que 0..84, e nada cai em 100..114.
 func TestRollDistribution(t *testing.T) {
 	const n = 300000
 	r := rng.New()
 	var counts [RollModulo]int
 	for i := 0; i < n; i++ {
-		v, _ := Roll(r, 0) // rate irrelevant; we only inspect the value
+		v, _ := Roll(r, 0) // taxa irrelevante; só inspecionamos o valor
 		if v >= 100 {
 			t.Fatalf("value %d landed in the flattened range [100,114]", v)
 		}

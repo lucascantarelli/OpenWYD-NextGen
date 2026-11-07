@@ -7,14 +7,14 @@ import (
 	"openwyd-nextgen/internal/ratetables"
 )
 
-// ApplyRateOverrides folds the moderator overlay (issue 36) into the tables
-// loaded from tmserver/content/Common/Settings.
+// ApplyRateOverrides aplica a sobreposição do moderador (issue 36) nas tabelas
+// carregadas de tmserver/content/Common/Settings.
 //
-// The identity of a cell is (file, family, name) — the same key the web editor
-// and content_rate_override use — never a numeric position: CompRate has several
-// keys per family, and a positional key would make them collide. Rows that do not
-// fit the typed tables are counted as ignored instead of being invented: the
-// world only ever runs a table shape the client understands.
+// A identidade de uma célula é (arquivo, família, nome) — a mesma chave que o editor
+// web e content_rate_override usam — nunca uma posição numérica: CompRate tem várias
+// chaves por família, e uma chave posicional as faria colidir. Linhas que não
+// cabem nas tabelas tipadas são contadas como ignoradas em vez de inventadas: o
+// mundo só roda formato de tabela que o cliente entende.
 func ApplyRateOverrides(sanc *SancRate, comp *CompRate, quests *QuestRates, overrides []ratetables.Override) (applied, ignored int) {
 	for _, o := range overrides {
 		switch o.File {
@@ -59,8 +59,8 @@ func ApplyRateOverrides(sanc *SancRate, comp *CompRate, quests *QuestRates, over
 	return applied, ignored
 }
 
-// sancCell resolves "<anvil>/<index>" against the table the file produced. The
-// family names are the canonical ones ratetables emits (PO, PL, AMAGO).
+// sancCell resolve "<anvil>/<index>" contra a tabela que o arquivo produziu. Os
+// nomes de família são os canônicos que ratetables emite (PO, PL, AMAGO).
 func sancCell(family, name string, sanc *SancRate) (int, int, bool) {
 	if sanc == nil {
 		return 0, 0, false
@@ -83,8 +83,8 @@ func sancCell(family, name string, sanc *SancRate) (int, int, bool) {
 	return anvil, idx, true
 }
 
-// applyQuestOverride writes one QuestsRate cell: EXP "<tier>.0|1" (mortal/arch),
-// COIN "<tier>.0" and LEVEL "<tier>.<0..3>" (mortal min/max, arch min/max).
+// applyQuestOverride escreve uma célula de QuestsRate: EXP "<tier>.0|1" (mortal/arch),
+// COIN "<tier>.0" e LEVEL "<tier>.<0..3>" (mortal mín/máx, arch mín/máx).
 func applyQuestOverride(quests *QuestRates, family, name string, value int32) bool {
 	if value < 0 {
 		return false

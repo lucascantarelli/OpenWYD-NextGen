@@ -6,10 +6,10 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Every STRUCT_MOBEXTRA.QuestInfo flag the world models must survive the
-// save→proto→load trip: the legacy SaveUser ships the whole extra
-// (Server.cpp:7875), so a gate missing on either side silently resets to 0 on
-// relog (issue #401: terra_mistica was loaded but never saved).
+// Todo gate de STRUCT_MOBEXTRA.QuestInfo que o mundo modela precisa sobreviver
+// à ida save→proto→load: o SaveUser legado manda o extra inteiro
+// (Server.cpp:7875), então um gate faltando em qualquer lado volta a 0 em silêncio
+// no relog (issue #401: terra_mistica era carregado mas nunca salvo).
 func TestQuestInfoRoundTrip(t *testing.T) {
 	tests := []struct {
 		name  string

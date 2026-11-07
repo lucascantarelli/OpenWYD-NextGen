@@ -11,27 +11,27 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Account administration (issue 32): list/get plus the three audited writes.
+// Administração de contas (issue 32): listar/obter mais as três escritas auditadas.
 //
-// The BUSINESS RULES live here, inside the transaction, not only in the gRPC
+// As REGRAS DE NEGÓCIO vivem aqui, dentro da transação, não só no
 // layer: a second caller (a script, a future RPC) cannot bypass "admin can't
-// demote themselves" or "the last active admin is protected". Each write locks
-// the target row (and, when an admin is leaving, the admin set) and writes
-// account_admin_audit in the same transaction.
+// "um admin se rebaixa" nem "o último admin ativo é protegido". Cada escrita trava
+// a linha alvo (e, quando um admin está saindo, o conjunto de admins) e grava
+// account_admin_audit na mesma transação.
 var (
-	// ErrInvalidRole means the role is not player/moderator/admin.
+	// ErrInvalidRole significa que o papel não é player/moderator/admin.
 	ErrInvalidRole = errors.New("store: invalid account role")
-	// ErrNotAdminActor means the caller is not an admin.
+	// ErrNotAdminActor significa que quem chama não é admin.
 	ErrNotAdminActor = errors.New("store: actor is not an admin")
-	// ErrSelfChange means the caller tried to change their own role/block.
+	// ErrSelfChange significa que quem chama tentou mudar o próprio papel/bloqueio.
 	ErrSelfChange = errors.New("store: actor cannot change own account")
-	// ErrLastAdmin means the change would leave no active admin.
+	// ErrLastAdmin significa que a mudança deixaria nenhum admin ativo.
 	ErrLastAdmin = errors.New("store: last active admin")
-	// ErrModeratorScope means a moderator targeted a non-player account.
+	// ErrModeratorScope significa que um moderador mirou uma conta que não é de jogador.
 	ErrModeratorScope = errors.New("store: moderator can only manage players")
 )
 
-// ValidRole reports whether role is one of the three stored values.
+// ValidRole informa se role é um dos três valores guardados.
 func ValidRole(role string) bool {
 	return role == "player" || role == "moderator" || role == "admin"
 }
@@ -43,8 +43,8 @@ const accountRowCols = `
 
 const accountRowFrom = ` FROM account a`
 
-// ListAccounts returns one keyset page ordered by id. The filter is built from
-// fixed SQL fragments with bound parameters — never from string interpolation of
+// ListAccounts devolve uma página por keyset ordenada por id. O filtro é montado com
+// fragmentos SQL fixos e parâmetros vinculados — nunca com interpolação de strings
 // caller data.
 func (s *Store) ListAccounts(ctx context.Context, f domain.AccountFilter) ([]domain.AccountRow, error) {
 	where, args := accountFilterSQL(f)
@@ -76,7 +76,7 @@ func (s *Store) ListAccounts(ctx context.Context, f domain.AccountFilter) ([]dom
 	return out, rows.Err()
 }
 
-// CountAccounts counts the accounts matching the filter (the page footer).
+// CountAccounts conta as contas que casam com o filtro (o rodapé da página).
 func (s *Store) CountAccounts(ctx context.Context, f domain.AccountFilter) (int, error) {
 	where, args := accountFilterSQL(f)
 	var total int
@@ -86,7 +86,7 @@ func (s *Store) CountAccounts(ctx context.Context, f domain.AccountFilter) (int,
 	return total, nil
 }
 
-// AccountAdminRow loads one account for the detail page.
+// AccountAdminRow carrega uma conta para a página de detalhe.
 func (s *Store) AccountAdminRow(ctx context.Context, id int64) (domain.AccountRow, error) {
 	row, err := scanAccountRow(s.pool.QueryRow(ctx, `SELECT `+accountRowCols+accountRowFrom+` WHERE a.id = $1`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -137,14 +137,14 @@ func scanAccountRow(row scanRow) (domain.AccountRow, error) {
 	return a, err
 }
 
-// SetAccountRole changes an account's role, enforcing the admin rules inside the
+// SetAccountRole muda o papel de uma conta, aplicando as regras de admin dentro da
 // transaction:
 //
-//   - the actor must be an admin (re-read here, not trusted from the caller);
-//   - nobody changes their own role;
-//   - demoting an admin is refused when it would leave no active admin.
+//   - quem chama precisa ser admin (relido aqui, não confiado de fora);
+//   - ninguém muda o próprio papel;
+//   - rebaixar um admin é recusado quando deixaria nenhum admin ativo.
 //
-// Returns the refreshed row. A no-op (same role) writes no audit.
+// Devolve a linha atualizada. Uma operação sem efeito (mesmo papel) não grava auditoria.
 func (s *Store) SetAccountRole(ctx context.Context, targetID, actorID int64, role, reason string) (domain.AccountRow, error) {
 	if !ValidRole(role) {
 		return domain.AccountRow{}, ErrInvalidRole
@@ -194,9 +194,9 @@ func (s *Store) SetAccountRole(ctx context.Context, targetID, actorID int64, rol
 	return s.AccountAdminRow(ctx, targetID)
 }
 
-// SetAccountBlocked blocks or unblocks an account. A moderator may only target
+// SetAccountBlocked bloqueia ou desbloqueia uma conta. Um moderador só pode mirar
 // players; nobody blocks themselves; blocking an admin requires another active
-// admin to remain. Audited in the same transaction.
+// admin restante. Auditado na mesma transação.
 func (s *Store) SetAccountBlocked(ctx context.Context, targetID, actorID int64, blocked bool, reason string) (domain.AccountRow, error) {
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
 		actorRole, err := actorRoleForUpdate(ctx, tx, actorID)
@@ -236,8 +236,8 @@ func (s *Store) SetAccountBlocked(ctx context.Context, targetID, actorID int64, 
 			}
 		}
 
-		// blocked_reason keeps the last reason while blocked and is cleared on
-		// unblock, so the login error can explain the ban without the audit table.
+		// blocked_reason mantém o último motivo enquanto bloqueada e é limpo no
+		// desbloqueio, para o erro de login explicar o ban sem a tabela de auditoria.
 		if _, err := tx.Exec(ctx,
 			`UPDATE account SET is_blocked = $2, blocked_reason = CASE WHEN $2 THEN $3 ELSE '' END WHERE id = $1`,
 			targetID, blocked, reason); err != nil {
@@ -258,9 +258,9 @@ func (s *Store) SetAccountBlocked(ctx context.Context, targetID, actorID int64, 
 	return s.AccountAdminRow(ctx, targetID)
 }
 
-// CreateAccountAdmin inserts an account with an explicit role and audits the
-// creation in the same transaction. passHash must already be argon2id. A unique
-// violation on name is returned wrapped (the service maps it to NAME_TAKEN).
+// CreateAccountAdmin insere uma conta com papel explícito e audita a
+// criação na mesma transação. passHash já precisa ser argon2id. Uma violação
+// de unicidade em name é devolvida embrulhada (o serviço a mapeia para NAME_TAKEN).
 func (s *Store) CreateAccountAdmin(ctx context.Context, name, passHash, email, role string, actorID int64, reason string) (int64, error) {
 	if !ValidRole(role) {
 		return 0, ErrInvalidRole
@@ -283,7 +283,7 @@ func (s *Store) CreateAccountAdmin(ctx context.Context, name, passHash, email, r
 	return id, nil
 }
 
-// ListAccountAudit returns the newest audit rows for one account.
+// ListAccountAudit devolve as linhas de auditoria mais novas de uma conta.
 func (s *Store) ListAccountAudit(ctx context.Context, accountID int64, limit int) ([]domain.AccountAudit, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 50
@@ -308,7 +308,7 @@ func (s *Store) ListAccountAudit(ctx context.Context, accountID int64, limit int
 
 // --- helpers ---
 
-// requireAdmin re-reads the actor's role inside the transaction (TOCTOU-safe).
+// requireAdmin relê o papel de quem chama dentro da transação (à prova de TOCTOU).
 func requireAdmin(ctx context.Context, tx pgx.Tx, actorID int64) error {
 	role, err := actorRoleForUpdate(ctx, tx, actorID)
 	if err != nil {
@@ -332,9 +332,9 @@ func actorRoleForUpdate(ctx context.Context, tx pgx.Tx, actorID int64) (string, 
 	return role, nil
 }
 
-// lockActiveAdmins locks every active admin row and returns how many there are.
-// Locking the set (not just counting) makes two concurrent demotions serialize:
-// the second transaction sees the first one's result.
+// lockActiveAdmins trava toda linha de admin ativo e devolve quantas são.
+// Travar o conjunto (não só contar) faz dois rebaixamentos concorrentes serializarem:
+// a segunda transação vê o resultado da primeira.
 func lockActiveAdmins(ctx context.Context, tx pgx.Tx) (int, error) {
 	rows, err := tx.Query(ctx, `SELECT id FROM account WHERE role = 'admin' AND NOT is_blocked ORDER BY id FOR UPDATE`)
 	if err != nil {

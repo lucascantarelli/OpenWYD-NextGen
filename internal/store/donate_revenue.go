@@ -9,89 +9,89 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Donate revenue read models for the painel de faturamento
-// (web.v1.DonateRevenueAdminService). Everything here is READ-ONLY and spans
-// donate_topup_order (real money), donate_shop_audit (wallet movements),
-// account (buyer identity) and donate_payer_profile. The write lifecycle lives
-// in donate_topup.go and donate.go; this file deliberately adds nothing to it.
+// Modelos de leitura da receita de donate para o painel de faturamento
+// (web.v1.DonateRevenueAdminService). Tudo aqui é SOMENTE LEITURA e abrange
+// donate_topup_order (dinheiro real), donate_shop_audit (movimentos de carteira),
+// account (identidade do comprador) e donate_payer_profile. O ciclo de escrita
+// mora em donate_topup.go e donate.go; este arquivo de propósito não acrescenta nada a ele.
 //
-// Revenue recognition: money is recognized on confirmed_at, never created_at —
-// an order is only revenue once the gateway settled it and ConfirmTopupOrder
-// flipped it to PAID. created_at is used ONLY for the funnel counters
-// (created/pending), which measure volume, not revenue.
+// Reconhecimento de receita: o dinheiro é reconhecido em confirmed_at, nunca em created_at —
+// um pedido só é receita depois que o gateway liquidou e o ConfirmTopupOrder
+// o virou PAID. created_at é usado SÓ para os contadores de funil
+// (criados/pendentes), que medem volume, não receita.
 //
-// The indexes these queries depend on are in
+// Os índices de que estas consultas dependem estão em
 // internal/migrations/0017_donate_revenue_indexes.up.sql.
 
-// RevenueWindow is the half-open [From, To) instant range every revenue read is
-// scoped to. The caller always resolves it to a concrete bounded range before
-// calling in, so no query here needs a NULL-guarded date predicate and every
-// range scan stays sargable on an indexed column.
+// RevenueWindow é o intervalo semiaberto [From, To) a que toda leitura de receita
+// se limita. Quem chama sempre o resolve para um intervalo concreto e limitado
+// antes de entrar, então nenhuma consulta aqui precisa de predicado de data com
+// guarda de NULL e toda varredura de faixa continua sargable numa coluna indexada.
 type RevenueWindow struct {
 	From time.Time
 	To   time.Time
 }
 
-// TopupOrderFilter narrows ListTopupOrders. Zero means "any" on every dimension.
+// TopupOrderFilter restringe ListTopupOrders. Zero significa "qualquer" em cada dimensão.
 type TopupOrderFilter struct {
 	Status        int16 // 0 = any; 1 = PENDING; 2 = PAID
 	PaymentMethod int16 // 0 = any
 	AccountID     int64 // 0 = any
 }
 
-// Series bucket keywords. Passed to date_trunc as a BIND PARAMETER (never string
-// concatenation) and always one of these server-owned constants — a caller's
-// enum is mapped to them, never forwarded as free text.
+// Palavras de balde da série. Passadas a date_trunc como PARÂMETRO DE BIND (nunca
+// concatenação de string) e sempre uma destas constantes do servidor — o enum de
+// quem chama é mapeado para elas, nunca repassado como texto livre.
 const (
 	BucketDay   = "day"
 	BucketWeek  = "week"
 	BucketMonth = "month"
 )
 
-// Donate ledger actions that move a wallet. The catalog CRUD actions written by
-// UpsertDonateShopItem/SetDonateShopItemEnabled/DeleteDonateShopItem are
-// deliberately excluded — they change config, not balances.
+// Ações do livro de donate que movem carteira. As ações de CRUD de catálogo escritas
+// por UpsertDonateShopItem/SetDonateShopItemEnabled/DeleteDonateShopItem são
+// excluídas de propósito — elas mudam config, não saldo.
 const (
 	LedgerActionPurchase = "purchase"
 	LedgerActionCredit   = "credit_balance"
 )
 
-// The status discriminators below are written as SQL literals (1 = PENDING,
-// 2 = PAID, matching TopupStatusPending/TopupStatusPaid) rather than bind
-// parameters on purpose: donate_topup_order_confirmed_idx (migration 0017) is a
-// PARTIAL index on `status = 2`, and Postgres can only prove a query implies a
-// partial index predicate when the value is a literal. A `$n` would defeat the
-// index under a generic plan.
+// Os discriminadores de status abaixo são escritos como literais SQL (1 = PENDING,
+// 2 = PAID, iguais a TopupStatusPending/TopupStatusPaid) em vez de parâmetros
+// de bind, de propósito: donate_topup_order_confirmed_idx (migration 0017) é um
+// índice PARCIAL em `status = 2`, e o Postgres só consegue provar que uma consulta
+// implica o predicado de índice parcial quando o valor é literal. Um `$n` derrotaria
+// o índice sob plano genérico.
 
-// revenueZone is the timezone the day/week/month buckets close in. The panel is
-// read against Brazilian bank statements, so "hoje" and "este mês" must end at
-// midnight in Brasília — NOT at midnight UTC, which would shift every boundary
-// three hours and make month-end totals disagree with the statement. This is a
-// deliberate divergence from the rest of the server (the daily-reward day rule
-// is UTC); do not "fix" it to UTC.
+// revenueZone é o fuso em que os baldes de dia/semana/mês fecham. O painel é
+// lido contra extratos bancários brasileiros, então "hoje" e "este mês" precisam
+// terminar à meia-noite de Brasília — NÃO à meia-noite UTC, o que deslocaria toda
+// borda em três horas e faria o fechamento do mês discordar do extrato. É uma
+// divergência consciente do resto do servidor (a regra de dia da recompensa
+// diária é UTC); não "corrija" isto para UTC.
 //
-// It is always passed to the three-argument date_trunc, which pins the boundary
-// regardless of the session TimeZone. The two-argument form would silently
-// follow the session and make results environment-dependent.
+// Ele é sempre passado ao date_trunc de três parâmetros, que fixa a borda
+// independente do TimeZone da sessão. A forma de dois parâmetros seguiria o
+// fuso da sessão em silêncio e tornaria os resultados dependentes do ambiente.
 //
-// Brazil has had no DST since 2019, so the generate_series steps below do not
-// currently cross a DST discontinuity.
+// O Brasil não tem horário de verão desde 2019, então os passos de generate_series
+// abaixo hoje não cruzam descontinuidade de horário de verão.
 const revenueZone = "America/Sao_Paulo"
 
-// ledgerSubjectExpr is the canonical "whose wallet moved" expression over
-// donate_shop_audit. It exists because that table is asymmetric: for
-// action='purchase' the account_id column IS the buyer, but for
-// action='credit_balance' the column is the MODERATOR who granted the credit and
-// the credited account exists only in after->>'account_id' (donate.go:207). A
-// naive "GROUP BY account_id" spend report would therefore attribute every
-// courtesy credit to whichever moderator granted it.
+// ledgerSubjectExpr é a expressão canônica de "de quem a carteira se moveu" sobre
+// donate_shop_audit. Existe porque essa tabela é assimétrica: para
+// action='purchase' a coluna account_id É o comprador, mas para
+// action='credit_balance' a coluna é o MODERADOR que concedeu o crédito e
+// a conta creditada aparece só no campo account_id do snapshot JSON (donate.go:207). Um
+// relatório de gasto ingênuo com "GROUP BY account_id" atribuiria, portanto, todo
+// crédito de cortesia ao moderador que o concedeu.
 //
-// The expression index donate_shop_audit_subject_idx (migration 0017) matches
-// this text. If you edit one, edit the other, or the planner quietly stops using
-// the index.
+// O índice de expressão donate_shop_audit_subject_idx (migration 0017) casa com
+// este texto. Se editar um, edite o outro, ou o planejador para de usar o
+// índice em silêncio.
 const ledgerSubjectExpr = `COALESCE(NULLIF(au.after->>'account_id', '')::bigint, au.account_id)`
 
-// bucketStep maps a validated bucket keyword to its generate_series step.
+// bucketStep mapeia uma palavra de balde validada para seu passo de generate_series.
 func bucketStep(bucket string) (string, error) {
 	switch bucket {
 	case BucketDay:
@@ -105,29 +105,29 @@ func bucketStep(bucket string) (string, error) {
 	}
 }
 
-// escapeLike neutralizes the LIKE metacharacters in a user-typed prefix so a
-// literal '%' cannot turn a prefix search into a full-table wildcard scan. The
-// default ESCAPE '\' applies.
+// escapeLike neutraliza os metacaracteres de LIKE num prefixo digitado pelo usuário
+// para um '%' literal não transformar a busca de prefixo em varredura curinga da
+// tabela inteira. O ESCAPE '\' padrão se aplica.
 func escapeLike(s string) string {
 	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 	return r.Replace(s)
 }
 
-// RevenueTotals is the KPI header over donate_topup_order. PAID figures are
-// scoped by confirmed_at (revenue recognition); created/pending figures by
-// created_at (funnel volume). accountID 0 means all accounts.
+// RevenueTotals é o cabeçalho de KPI sobre donate_topup_order. Os números PAID são
+// limitados por confirmed_at (reconhecimento de receita); os de criados/pendentes
+// por created_at (volume do funil). accountID 0 significa todas as contas.
 func (s *Store) RevenueTotals(ctx context.Context, w RevenueWindow, accountID int64) (domain.RevenueTotals, error) {
 	var t domain.RevenueTotals
-	// The outer WHERE ORs the two date ranges so the planner can BitmapOr the
-	// confirmed_at and created_at indexes; the FILTERs then split the row set.
+	// O WHERE externo faz OR das duas faixas de data para o planejador poder BitmapOr
+	// dos índices de confirmed_at e created_at; os FILTERs então separam o conjunto.
 	//
-	// `status = 2` has to appear in the OUTER WHERE, not only inside the FILTERs:
-	// FILTER clauses are applied after the scan and contribute no index quals, so
-	// without it the planner cannot prove the query implies
-	// donate_topup_order_confirmed_idx's partial predicate and the whole query
-	// degrades to a seq scan. It costs nothing semantically — confirmed_at is
-	// only ever set when an order flips to PAID, so a non-PAID row can never
-	// satisfy the first branch anyway.
+	// `status = 2` precisa aparecer no WHERE EXTERNO, não só dentro dos FILTERs:
+	// cláusulas FILTER são aplicadas depois da varredura e não entram como quals de
+	// índice; sem ele o planejador não prova que a consulta implica o
+	// predicado parcial de donate_topup_order_confirmed_idx e a consulta inteira
+	// degrada para seq scan. Não custa nada semanticamente — confirmed_at só é
+	// definido quando um pedido vira PAID, então uma linha não PAID nunca pode
+	// satisfazer o primeiro ramo de qualquer forma.
 	err := s.pool.QueryRow(ctx, `
 		SELECT
 			count(*)                   FILTER (WHERE status = 2 AND confirmed_at >= $1 AND confirmed_at < $2),
@@ -150,7 +150,7 @@ func (s *Store) RevenueTotals(ctx context.Context, w RevenueWindow, accountID in
 	return t, nil
 }
 
-// RevenueByMethod splits recognized revenue by payment gateway.
+// RevenueByMethod separa a receita reconhecida por gateway de pagamento.
 func (s *Store) RevenueByMethod(ctx context.Context, w RevenueWindow, accountID int64) ([]domain.RevenueByMethod, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT payment_method, count(*), COALESCE(sum(amount_cents), 0)
@@ -179,17 +179,17 @@ func (s *Store) RevenueByMethod(ctx context.Context, w RevenueWindow, accountID 
 	return out, nil
 }
 
-// RevenueSeries buckets recognized revenue by day/week/month in revenueZone.
-// bucket must be one of BucketDay/BucketWeek/BucketMonth. Buckets with no orders
-// are returned with zeroed counters (generate_series LEFT JOIN aggregate), so
-// callers never gap-fill. Note date_trunc('week') starts on MONDAY.
+// RevenueSeries agrupa a receita reconhecida por dia/semana/mês em revenueZone.
+// bucket precisa ser BucketDay/BucketWeek/BucketMonth. Baldes sem pedidos
+// voltam com contadores zerados (generate_series LEFT JOIN agregado), então
+// quem chama nunca preenche lacunas. Note que date_trunc('week') começa na SEGUNDA.
 func (s *Store) RevenueSeries(ctx context.Context, w RevenueWindow, bucket string, accountID int64) ([]domain.RevenuePoint, error) {
 	step, err := bucketStep(bucket)
 	if err != nil {
 		return nil, err
 	}
-	// The first bucket is aligned to its own boundary, so it may open slightly
-	// before w.From — that is a genuine partial bucket, not an off-by-one.
+	// O primeiro balde é alinhado à própria borda, então pode abrir um pouco
+	// antes de w.From — é um balde parcial de verdade, não um erro de um.
 	rows, err := s.pool.Query(ctx, `
 		WITH buckets AS (
 			SELECT gs AS bucket_start
@@ -236,48 +236,48 @@ func (s *Store) RevenueSeries(ctx context.Context, w RevenueWindow, bucket strin
 	return out, nil
 }
 
-// topupOrderRowCols is the column list shared by both ListTopupOrders variants,
-// matched positionally by the scan below. count(*) OVER() rides along as the
-// last column so the pager needs no second round trip.
+// topupOrderRowCols é a lista de colunas compartilhada pelas duas variantes de
+// ListTopupOrders, casada posicionalmente pelo scan abaixo. count(*) OVER() vai
+// junto como última coluna para o paginador não precisar de segunda ida e volta.
 const topupOrderRowCols = `
 	o.id, o.external_reference, o.account_id, a.name, a.email,
 	COALESCE(p.name, ''), COALESCE(p.cpf, ''),
 	o.credits, o.amount_cents, o.payment_method, COALESCE(o.provider, ''),
 	o.status, o.created_at, o.confirmed_at, count(*) OVER()`
 
-// topupOrderFrom joins the buyer identity in one query. Both joins are on a
-// primary key, which is why this is a JOIN and not up to `limit` extra lookups
-// per rendered page. donate_payer_profile is LEFT — a buyer who never filled the
-// PIX payer form still has orders.
+// topupOrderFrom junta a identidade do comprador numa consulta. Os dois joins são
+// em chave primária, e é por isso que isto é um JOIN e não até `limit` buscas
+// extras por página. donate_payer_profile é LEFT — um comprador que nunca preencheu
+// o formulário de pagador PIX ainda tem pedidos.
 const topupOrderFrom = `
 	FROM donate_topup_order o
 	JOIN account a ON a.id = o.account_id
 	LEFT JOIN donate_payer_profile p ON p.account_id = o.account_id`
 
-// topupOrderPaidWhere scopes the window to confirmed_at — the revenue basis. The
-// literal `status = 2` is what lets the partial index apply; see the status note
-// at the top of this file. Shared verbatim between the page and count queries so
-// the two can never drift.
+// topupOrderPaidWhere limita a janela a confirmed_at — a base da receita. O
+// literal `status = 2` é o que permite o índice parcial aplicar; ver a nota de
+// status no topo deste arquivo. Compartilhado literalmente entre a consulta da
+// página e a de contagem, para as duas nunca divergirem.
 const topupOrderPaidWhere = `
 	WHERE o.status = 2 AND o.confirmed_at >= $1 AND o.confirmed_at < $2
 	  AND ($3 = 0 OR o.payment_method = $3)
 	  AND ($4 = 0 OR o.account_id = $4)`
 
-// topupOrderAnyWhere is the funnel basis: created_at, any status. A PENDING order
-// has no confirmed_at at all, so it is invisible to the predicate above.
+// topupOrderAnyWhere é a base do funil: created_at, qualquer status. Um pedido
+// PENDING não tem confirmed_at, então é invisível ao predicado acima.
 const topupOrderAnyWhere = `
 	WHERE o.created_at >= $1 AND o.created_at < $2
 	  AND ($3 = 0 OR o.status = $3)
 	  AND ($4 = 0 OR o.payment_method = $4)
 	  AND ($5 = 0 OR o.account_id = $5)`
 
-// ListTopupOrders returns one page of the order table plus the total row count.
+// ListTopupOrders devolve uma página da tabela de pedidos mais a contagem total.
 //
-// The status filter also picks which date column the window applies to: PAID
-// filters and orders by confirmed_at (the revenue basis, matching the partial
-// index), anything else by created_at. The two variants are separate constant
-// predicates rather than one query with a conditional date column so each gets a
-// clean sargable predicate.
+// O filtro de status também escolhe a coluna de data da janela: PAID filtra e
+// ordena por confirmed_at (a base da receita, casando com o índice parcial),
+// qualquer outro por created_at. As duas variantes são predicados constantes
+// separados em vez de uma consulta com coluna de data variável, para cada uma
+// ter um predicado sargable limpo.
 func (s *Store) ListTopupOrders(ctx context.Context, w RevenueWindow, f TopupOrderFilter, limit, offset int) ([]domain.TopupOrderRow, int, error) {
 	var (
 		where string
@@ -297,8 +297,8 @@ func (s *Store) ListTopupOrders(ctx context.Context, w RevenueWindow, f TopupOrd
 			LIMIT $6 OFFSET $7`
 		args = []any{w.From, w.To, f.Status, f.PaymentMethod, f.AccountID, limit, offset}
 	}
-	// The count reuses the same predicate minus the two pagination binds, and
-	// drops the identity joins — it counts orders, which the joins cannot change.
+	// A contagem reusa o mesmo predicado menos os dois binds de paginação, e
+	// descarta os joins de identidade — conta pedidos, que os joins não mudam.
 	countQ := `SELECT count(*) FROM donate_topup_order o` + where
 	cArgs := args[:len(args)-2]
 
@@ -339,10 +339,10 @@ func (s *Store) ListTopupOrders(ctx context.Context, w RevenueWindow, f TopupOrd
 	return out, total, nil
 }
 
-// listTopBuyersBody is shared between the page query and its count closure so
-// the two can never drift. The outer WHERE is status-only with NO date bound —
-// that is what makes the lifetime_* aggregates a true LTV; the window is applied
-// inside the FILTERs and the HAVING.
+// listTopBuyersBody é compartilhado entre a consulta da página e sua closure de
+// contagem, para as duas nunca divergirem. O WHERE externo é só status, SEM
+// data — é isso que torna os agregados lifetime_* um LTV verdadeiro; a janela é
+// aplicada dentro dos FILTERs e do HAVING.
 const listTopBuyersBody = `
 	FROM donate_topup_order o
 	JOIN account a ON a.id = o.account_id
@@ -350,12 +350,12 @@ const listTopBuyersBody = `
 	GROUP BY o.account_id, a.name, a.email, a.donate_balance
 	HAVING count(*) FILTER (WHERE o.confirmed_at >= $1 AND o.confirmed_at < $2) > 0`
 
-// ListTopBuyers ranks accounts by revenue inside the window and carries the
-// all-time aggregate alongside. Only accounts that paid inside the window are
-// returned (the HAVING); total is the number of such accounts.
+// ListTopBuyers ordena contas por receita dentro da janela e carrega o agregado
+// de todos os tempos junto. Só contas que pagaram dentro da janela são
+// devolvidas (o HAVING); total é o número dessas contas.
 func (s *Store) ListTopBuyers(ctx context.Context, w RevenueWindow, limit, offset int) ([]domain.TopBuyer, int, error) {
-	// count(*) OVER() runs AFTER grouping, so it counts GROUPS — exactly the
-	// distinct-buyer total the pager needs, not the underlying order count.
+	// count(*) OVER() roda DEPOIS do agrupamento, então conta GRUPOS — exatamente o
+	// total de compradores distintos que o paginador precisa, não a contagem de pedidos.
 	rows, err := s.pool.Query(ctx, `
 		SELECT o.account_id, a.name, a.email,
 		       count(*)                     FILTER (WHERE o.confirmed_at >= $1 AND o.confirmed_at < $2) AS window_orders,
@@ -400,8 +400,8 @@ func (s *Store) ListTopBuyers(ctx context.Context, w RevenueWindow, limit, offse
 	}
 
 	total, err = fallbackTotal(ctx, len(out), offset, total, func(ctx context.Context) (int, error) {
-		// Must count GROUPS, mirroring count(*) OVER() above — a plain count(*)
-		// over the table would report orders instead of buyers.
+		// Precisa contar GRUPOS, espelhando o count(*) OVER() acima — um count(*) simples
+		// sobre a tabela reportaria pedidos em vez de compradores.
 		var n int
 		if err := s.pool.QueryRow(ctx,
 			`SELECT count(*) FROM (SELECT 1`+listTopBuyersBody+`) t`, w.From, w.To).Scan(&n); err != nil {
@@ -415,18 +415,18 @@ func (s *Store) ListTopBuyers(ctx context.Context, w RevenueWindow, limit, offse
 	return out, total, nil
 }
 
-// ListDonateLedger reads donate_shop_audit as a signed wallet ledger. actions
-// must be a subset of {LedgerActionPurchase, LedgerActionCredit}; empty means
-// both. accountID 0 means all accounts and is matched against the SUBJECT (see
-// ledgerSubjectExpr), never the raw audit column.
+// ListDonateLedger lê donate_shop_audit como livro de carteira com sinal. actions
+// precisa ser subconjunto de {LedgerActionPurchase, LedgerActionCredit}; vazio
+// significa os dois. accountID 0 significa todas as contas e é comparado ao SUJEITO
+// (ver ledgerSubjectExpr), nunca à coluna crua de auditoria.
 func (s *Store) ListDonateLedger(ctx context.Context, w RevenueWindow, actions []string, accountID int64, limit, offset int) ([]domain.DonateLedgerEntry, int, error) {
 	if len(actions) == 0 {
 		actions = []string{LedgerActionPurchase, LedgerActionCredit}
 	}
-	// The account and donate_shop_item joins are LEFT on purpose:
-	// donate_shop_audit.shop_item_id is deliberately not an FK so history
-	// survives offer deletion (0008_donate_shop), and an audit row can outlive
-	// the account. Inner joins would silently erase that history.
+	// Os joins de account e donate_shop_item são LEFT de propósito:
+	// donate_shop_audit.shop_item_id de propósito não é FK, para o histórico
+	// sobreviver à exclusão da oferta (0008_donate_shop), e uma linha de auditoria pode
+	// sobreviver à conta. Joins internos apagariam esse histórico em silêncio.
 	const body = `
 		FROM donate_shop_audit au
 		WHERE au.action = ANY($3::text[])
@@ -495,8 +495,8 @@ func (s *Store) ListDonateLedger(ctx context.Context, w RevenueWindow, actions [
 	return out, total, nil
 }
 
-// DonateLedgerTotals aggregates the wallet movements in the window, in credits.
-// accountID 0 means all accounts; otherwise it matches the SUBJECT.
+// DonateLedgerTotals agrega os movimentos de carteira na janela, em créditos.
+// accountID 0 significa todas as contas; senão compara com o SUJEITO.
 func (s *Store) DonateLedgerTotals(ctx context.Context, w RevenueWindow, accountID int64) (domain.DonateLedgerTotals, error) {
 	var t domain.DonateLedgerTotals
 	err := s.pool.QueryRow(ctx, `
@@ -517,9 +517,9 @@ func (s *Store) DonateLedgerTotals(ctx context.Context, w RevenueWindow, account
 	return t, nil
 }
 
-// SearchAccountsByNamePrefix resolves a canonical (lowercase) login prefix so the
-// panel can turn a typed name into an account_id filter. The caller lowercases
-// and length-checks the prefix; this escapes the LIKE metacharacters.
+// SearchAccountsByNamePrefix resolve um prefixo canônico (minúsculo) de login para o
+// painel transformar um nome digitado em filtro de account_id. Quem chama passa
+// para minúsculas e confere o tamanho do prefixo; aqui escapamos os metacaracteres de LIKE.
 func (s *Store) SearchAccountsByNamePrefix(ctx context.Context, prefix string, limit int) ([]domain.AccountSummary, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, name, email, donate_balance, role, is_blocked

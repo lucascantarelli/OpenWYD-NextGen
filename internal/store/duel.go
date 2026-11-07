@@ -9,13 +9,13 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// RecordDuelResult increments the winner's wins and the loser's losses in
-// character_pvp_stats, upserting a row if the character has never dueled
-// before (issue #118). Keyed by character name (already UNIQUE), so tmServer
-// never needs to thread a DB character_id through Session/Entity. Both
-// increments happen in one transaction; if either character name is unknown
-// the whole result is dropped (ErrNotFound) rather than recording a lopsided
-// half-result.
+// RecordDuelResult incrementa as vitórias do vencedor e as derrotas do perdedor em
+// character_pvp_stats, fazendo upsert de uma linha se o personagem nunca duelou
+// antes (issue #118). Com chave pelo nome do personagem (já UNIQUE), então o
+// tmServer nunca precisa carregar um character_id do banco por Session/Entity.
+// Os dois incrementos acontecem numa transação; se qualquer nome de personagem
+// desconhecido, o resultado inteiro é descartado (ErrNotFound) em vez de
+// registrar um duelo desequilibrado.
 func (s *Store) RecordDuelResult(ctx context.Context, winnerName, loserName string) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := bumpDuelWins(ctx, tx, winnerName); err != nil {
@@ -57,8 +57,8 @@ func bumpDuelLosses(ctx context.Context, tx pgx.Tx, name string) error {
 	return nil
 }
 
-// ListDuelRanking returns the persisted duel win/loss leaderboard in ranking
-// order (most wins first), mirroring ListExpRanking.
+// ListDuelRanking devolve o placar persistido de vitórias/derrotas de duelo em
+// ordem de ranking
 func (s *Store) ListDuelRanking(ctx context.Context, limit, offset int) ([]domain.DuelRankingEntry, int, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT c.name, c.class, c.clan, c.guild_id, p.wins, p.losses, count(*) OVER()

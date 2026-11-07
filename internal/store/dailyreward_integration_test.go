@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the daily-reward store (issue #35). They require a
-// real database and are excluded from the default build. Run with:
+// Testes de integração do store de recompensa diária (issue #35). Eles exigem um
+// banco real e ficam fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -15,7 +15,7 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TestDailyRewardCRUD exercises the moderator catalog write path: create,
+// TestDailyRewardCRUD percorre o caminho de escrita do catálogo de moderação: criar,
 // update, toggle enabled, list, get, delete.
 func TestDailyRewardCRUD(t *testing.T) {
 	ctx := context.Background()
@@ -50,7 +50,7 @@ func TestDailyRewardCRUD(t *testing.T) {
 		t.Errorf("offer mismatch: %+v", got)
 	}
 
-	// Update in place (same id).
+	// Atualiza no lugar (mesmo id).
 	got.Title = "Set Celestial +11"
 	if _, err := s.UpsertDailyRewardItem(ctx, got, modID); err != nil {
 		t.Fatalf("upsert update: %v", err)
@@ -59,7 +59,7 @@ func TestDailyRewardCRUD(t *testing.T) {
 		t.Errorf("update not applied: %+v", updated)
 	}
 
-	// Updating a missing id is NotFound.
+	// Atualizar um id inexistente é NotFound.
 	if _, err := s.UpsertDailyRewardItem(ctx, domain.DailyRewardItem{ID: 999999, ItemIndex: 1}, modID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("upsert missing id err = %v, want ErrNotFound", err)
 	}
@@ -83,8 +83,8 @@ func TestDailyRewardCRUD(t *testing.T) {
 	}
 }
 
-// TestDailyRewardClaimFlow exercises the once-per-account-per-UTC-day claim
-// gate and the delivery_queue enqueue it drives.
+// TestDailyRewardClaimFlow percorre o gate de resgate uma vez por conta por dia UTC
+// e o enfileiramento em delivery_queue que ele dispara.
 func TestDailyRewardClaimFlow(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -126,8 +126,8 @@ func TestDailyRewardClaimFlow(t *testing.T) {
 		t.Fatalf("DailyRewardClaimedToday(before) = (%v, err %v), want (false, nil)", claimed, err)
 	}
 
-	// First claim succeeds and enqueues exactly one pending item delivery with
-	// the expected source provenance.
+	// O primeiro resgate funciona e enfileira exatamente uma entrega de item pendente com
+	// a proveniência de origem esperada.
 	if err := s.ClaimDailyReward(ctx, accID, item1); err != nil {
 		t.Fatalf("claim item1: %v", err)
 	}
@@ -146,18 +146,18 @@ func TestDailyRewardClaimFlow(t *testing.T) {
 		t.Errorf("delivery source = %q, want %q", source, want)
 	}
 
-	// A second claim the same UTC day, even for a different item, is blocked.
+	// Um segundo resgate no mesmo dia UTC, mesmo para um item diferente, é bloqueado.
 	if err := s.ClaimDailyReward(ctx, accID, item2); !errors.Is(err, ErrAlreadyClaimedToday) {
 		t.Errorf("claim item2 same day err = %v, want ErrAlreadyClaimedToday", err)
 	}
 
-	// The claim-status read now reflects the redeemed offer.
+	// A leitura de status do resgate agora reflete a oferta resgatada.
 	claimed, claimedItemID, title, err := s.DailyRewardClaimedToday(ctx, accID)
 	if err != nil || !claimed || claimedItemID != item1 || title != "Reward One" {
 		t.Fatalf("DailyRewardClaimedToday(after) = (%v, %d, %q, err %v), want (true, %d, \"Reward One\", nil)", claimed, claimedItemID, title, err, item1)
 	}
 
-	// A disabled offer rejects the claim, for a fresh account (no prior claim).
+	// Uma oferta desabilitada rejeita o resgate, para uma conta nova (sem resgate anterior).
 	var acc2 int64
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO account (name, pass_hash) VALUES ('claimer2_dailyreward_test','x') RETURNING id`).
@@ -169,13 +169,13 @@ func TestDailyRewardClaimFlow(t *testing.T) {
 		t.Errorf("claim disabled err = %v, want ErrShopItemDisabled", err)
 	}
 
-	// An unknown offer is NotFound.
+	// Uma oferta desconhecida é NotFound.
 	if err := s.ClaimDailyReward(ctx, acc2, 987654); !errors.Is(err, ErrNotFound) {
 		t.Errorf("claim unknown err = %v, want ErrNotFound", err)
 	}
 
-	// A claim recorded for yesterday does not block today's claim (the UNIQUE
-	// constraint is per UTC calendar day, not permanent).
+	// Um resgate registrado para ontem não bloqueia o resgate de hoje (a restrição
+	// UNIQUE é por dia de calendário UTC, não permanente).
 	var acc3 int64
 	if err := pool.QueryRow(ctx,
 		`INSERT INTO account (name, pass_hash) VALUES ('claimer3_dailyreward_test','x') RETURNING id`).

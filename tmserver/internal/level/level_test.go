@@ -2,10 +2,10 @@ package level
 
 import "testing"
 
-// TestNextLevelTable guards the transcribed g_pNextLevel[] against silent
-// corruption: the documented anchor values and — most importantly — strict
-// monotonicity, which catches any single mistyped/dropped/duplicated entry (it
-// would break the increasing order).
+// TestNextLevelTable protege o g_pNextLevel[] copiado do original contra corrupção
+// silenciosa: os valores âncora documentados e — principalmente — a monotonicidade
+// estrita, que pega qualquer entrada digitada errada, perdida ou duplicada (ela
+// quebraria a ordem crescente).
 func TestNextLevelTable(t *testing.T) {
 	if len(nextLevel) != 401 {
 		t.Fatalf("nextLevel has %d entries, want 401 (indices 0..400)", len(nextLevel))
@@ -60,18 +60,18 @@ func TestExpApply(t *testing.T) {
 }
 
 func TestScoreBonus(t *testing.T) {
-	// A TK at the class base stats (8,4,7,6) spends 0 points → level*5 free points.
+	// Um TK nos atributos base da classe (8,4,7,6) gasta 0 pontos → nível*5 pontos livres.
 	if got := ScoreBonus(0, 10, 8, 4, 7, 6); got != 50 {
 		t.Errorf("ScoreBonus(TK, lvl10, base stats) = %d, want 50", got)
 	}
-	// Spending 5 Str (8→13) reduces the free pool by 5.
+	// Gastar 5 de Str (8→13) reduz o bolo livre em 5.
 	if got := ScoreBonus(0, 10, 13, 4, 7, 6); got != 45 {
 		t.Errorf("ScoreBonus(TK, lvl10, +5 str) = %d, want 45", got)
 	}
 }
 
-// TestScoreBonusCelestial pins BASE_GetBonusScorePoint for CELESTIAL
-// (Basedef.cpp:980-1041), computed by hand from the legacy branch.
+// TestScoreBonusCelestial fixa BASE_GetBonusScorePoint para CELESTIAL
+// (Basedef.cpp:980-1041), calculados à mão a partir do ramo legado.
 func TestScoreBonusCelestial(t *testing.T) {
 	tests := []struct {
 		name                    string
@@ -89,7 +89,7 @@ func TestScoreBonusCelestial(t *testing.T) {
 		{"level 199 no reset", 199, 8, 4, 7, 6, 0, 0, 0, 0, 2895},
 		{"level 199 three resets", 199, 8, 4, 7, 6, 0, 3, 0, 0, 2895 + 600},
 		{"over-spent clamps to 0", 0, 3000, 4, 7, 6, 0, 0, 0, 0, 0},
-		// The parked tier (issue #410): lvl*6/2, plus the full 120+ bonuses.
+		// A tier estacionada (issue #410): nível*6/2, mais todos os bônus de 120+.
 		{"parked level 10", 0, 8, 4, 7, 6, 0, 0, 0, 10, 1001 + 30},
 		{"parked level 120", 0, 8, 4, 7, 6, 0, 0, 0, 120, 1001 + 360 + 6},
 		// 199*6/2 + 80*6 + (50+30+20+10)*2 = 597 + 480 + 220.

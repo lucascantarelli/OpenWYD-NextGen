@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ContentRateOverride is one moderator-edited rate cell (issue 36): the value
-// replaces the one in tmserver/content/Common/Settings for that (file, family, name).
-// Name is textual because CompRate has several keys per family.
+// ContentRateOverride é uma célula de taxa editada por moderador (issue 36): o valor
+// substitui o de tmserver/content/Common/Settings para aquele (file, family, name).
+// Name é textual porque o CompRate tem várias chaves por família.
 type ContentRateOverride struct {
 	File      string
 	Family    string
@@ -21,7 +21,8 @@ type ContentRateOverride struct {
 	UpdatedAt time.Time
 }
 
-// ListContentRateOverrides returns every overlay row, ordered by file/family/name.
+// ListContentRateOverrides devolve toda linha de sobreposição, ordenada por
+// file/family/name.
 func (s *Store) ListContentRateOverrides(ctx context.Context) ([]ContentRateOverride, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT file, family, name, value, COALESCE(updated_by, 0), updated_at
@@ -43,9 +44,9 @@ func (s *Store) ListContentRateOverrides(ctx context.Context) ([]ContentRateOver
 	return out, rows.Err()
 }
 
-// UpsertContentRateOverride stores one edited cell and its audit row in the same
-// transaction. The after snapshot is read back from the table so the trail shows
-// what was stored, not what the caller believed it was writing.
+// UpsertContentRateOverride guarda uma célula editada e sua linha de auditoria na
+// mesma transação. O snapshot posterior é relido da tabela para a trilha mostrar
+// o que foi guardado, não o que quem chamava acreditava estar escrevendo.
 func (s *Store) UpsertContentRateOverride(ctx context.Context, o ContentRateOverride, moderatorID int64, reason string) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, err := contentRateJSON(ctx, tx, o.File, o.Family, o.Name)
@@ -70,8 +71,8 @@ func (s *Store) UpsertContentRateOverride(ctx context.Context, o ContentRateOver
 	})
 }
 
-// DeleteContentRateOverride drops the cell, restoring the file value. applied is
-// false when there was no row.
+// DeleteContentRateOverride descarta a célula, restaurando o valor do arquivo.
+// applied é falso quando não havia linha.
 func (s *Store) DeleteContentRateOverride(ctx context.Context, file, family, name string, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {

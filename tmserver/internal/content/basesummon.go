@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 )
 
-// baseSummonFiles is the CNPCSummon::Initialize template order (CNPCGene.cpp:
-// 686-960): mSummon.Mob[i] is loaded from tmserver/content/TMsrv/run/BaseSummon/<name>.
-// Indices 0..7 are the BM evocation creatures (skills 56-63, InstanceValue-1);
-// 8+ are item/mount/event summons. Index 13 is "Dragao_menor" in the C++ but
-// the content file is "Dragao_Menor" — Windows opened it case-insensitively,
-// Linux does not, so the corrected case lives here.
+// baseSummonFiles é a ordem de templates de CNPCSummon::Initialize (CNPCGene.cpp:
+// 686-960): mSummon.Mob[i] é carregado de tmserver/content/TMsrv/run/BaseSummon/<name>.
+// Os índices 0..7 são as criaturas de evocação do BM (skills 56-63, InstanceValue-1);
+// 8+ são invocações de item/montaria/evento. O índice 13 é "Dragao_menor" no C++, mas
+// o arquivo de conteúdo é "Dragao_Menor" — o Windows abria sem diferenciar caixa,
+// o Linux não, então a caixa corrigida vive aqui.
 var baseSummonFiles = [40]string{
 	"Condor", "Javali", "Lobo", "Urso", "Tigre", "Gorila", "Dragao_Negro", "Succubus",
 	"Porco", "Javali_", "Porco", "Javali", "Lobo", "Dragao_Menor", "Urso", "Dente_de_Sabre",
@@ -22,15 +22,15 @@ var baseSummonFiles = [40]string{
 	"Svadilfire", "Sleipnir", "Pantera_Negra",
 }
 
-// bmSummonCount is how many leading templates the BM evocations need: those are
-// mandatory at boot; the mount/event tail (8..39) is tolerated missing (nil
-// slot + caller warning) since nothing spawns them yet.
+// bmSummonCount é quantos templates iniciais as evocações do BM precisam: esses são
+// obrigatórios no boot; a cauda de montaria/evento (8..39) tolera ausência (slot
+// nil + aviso ao chamador), já que nada os invoca ainda.
 const bmSummonCount = 8
 
-// LoadBaseSummons loads the summon STRUCT_MOB templates (816 bytes each, same
-// raw shape as the BaseMob class templates). The returned slice is indexed by
-// summon id (GenerateSummon's SummonID = spell InstanceValue-1); missing
-// optional templates leave a nil slot and their names are returned in missing.
+// LoadBaseSummons carrega os templates STRUCT_MOB de invocação (816 bytes cada, mesmo
+// formato cru dos templates de classe BaseMob). O slice devolvido é indexado por
+// id de invocação (SummonID de GenerateSummon = InstanceValue-1 da spell); templates
+// opcionais ausentes deixam um slot nil e seus nomes voltam em missing.
 func LoadBaseSummons(dir string) (templates [][]byte, missing []string, err error) {
 	templates = make([][]byte, len(baseSummonFiles))
 	for i, name := range baseSummonFiles {

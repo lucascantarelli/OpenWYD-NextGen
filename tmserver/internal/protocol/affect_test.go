@@ -24,7 +24,7 @@ func TestEncodeSendAffect(t *testing.T) {
 	if b[o] != 35 || b[o+1] != 2 || le.Uint16(b[o+2:]) != 3 || le.Uint32(b[o+4:]) != 450 {
 		t.Errorf("slot 5 = {%d,%d,%d,%d}", b[o], b[o+1], le.Uint16(b[o+2:]), le.Uint32(b[o+4:]))
 	}
-	// An untouched slot stays zero.
+	// Um slot intocado continua zero.
 	if b[8] != 0 || le.Uint32(b[12:]) != 0 {
 		t.Errorf("slot 1 should be zero")
 	}

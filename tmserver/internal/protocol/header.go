@@ -1,10 +1,10 @@
-// Package protocol implements the CPSock wire codec used between the
-// unmodified WYD.exe 7662 client and the game server (tmServer).
+// Package protocol implementa o codec de wire CPSock usado entre o
+// cliente WYD.exe 7662 sem modificação e o servidor de jogo (tmServer).
 //
-// Everything here follows protocol-spec.md (Phase 1). All wire layout is read
-// and written by explicit offset, little-endian, via encoding/binary — never by
-// relying on Go struct layout (NF2/NF8, migration-plan.md §5). The four-stage
-// pipeline is: INITCODE gate → framing by Size → keyword transform → checksum.
+// Tudo aqui segue protocol-spec.md (Fase 1). Todo layout de wire é lido
+// e escrito por offset explícito, little-endian, via encoding/binary — nunca por
+// depender do layout de struct do Go (NF2/NF8, migration-plan.md §5). O
+// pipeline é: gate INITCODE → framing por Size → transform de keyword → checksum.
 package protocol
 
 import (
@@ -14,44 +14,44 @@ import (
 
 // Transport constants (protocol-spec.md §4.5; Source/Code/CPSock.h, Basedef.h).
 const (
-	// HeaderSize is sizeof(HEADER) — a fixed 12-byte prefix on every packet
-	// except the handshake and the billing link (protocol-spec.md §1.1).
+	// HeaderSize é sizeof(HEADER) — um prefixo fixo de 12 bytes em todo pacote
+	// exceto o handshake e o link de billing (protocol-spec.md §1.1).
 	HeaderSize = 12
 
-	// InitCode is the 4-byte handshake every new TCP connection must send first
-	// (CPSock.h:40, §1.2). Little-endian on the wire: 11 F3 11 1F.
+	// InitCode é o handshake de 4 bytes que toda conexão TCP nova precisa enviar
+	// primeiro (CPSock.h:40, §1.2). Little-endian no wire: 11 F3 11 1F.
 	InitCode uint32 = 0x1F11F311
 
-	// MaxMessageSize is the maximum accepted packet Size (CPSock.h:38, §1.3).
+	// MaxMessageSize é o Size máximo de pacote aceito (CPSock.h:38, §1.3).
 	MaxMessageSize = 8192
 
-	// AppVersion is the protocol version the client trafficks in
-	// MSG_AccountLogin.ClientVersion (Basedef.h:102, §4.1). It is 7640, NOT 7662
-	// (7662 is the executable/patch build name).
+	// AppVersion é a versão de protocolo que o cliente trafega em
+	// MSG_AccountLogin.ClientVersion (Basedef.h:102, §4.1). É 7640, NÃO 7662
+	// (7662 é o nome do build do executável/patch).
 	AppVersion = 7640
 
-	// SkipCheckTick is an internal tick value the client must never send; the
+	// SkipCheckTick é um valor de tick interno que o cliente nunca deve enviar; o
 	// dispatcher drops client packets carrying it (Basedef.h:232, §2).
 	SkipCheckTick uint32 = 235543242
 
-	// MaxUser is the per-channel connection/player slot count; HEADER.ID must be
-	// in [0, MaxUser) (Basedef.h:116, §2).
+	// MaxUser é a contagem de slots de conexão/jogador por canal; HEADER.ID precisa
+	// estar em [0, MaxUser) (Basedef.h:116, §2).
 	MaxUser = 1000
 
-	// transformStart is the offset at which obfuscation and checksum begin; the
-	// first four bytes (Size, KeyWord, CheckSum) travel in clear (§1.1, §1.4).
+	// transformStart é o offset onde a obfuscação e o checksum começam; o
+	// primeiros quatro bytes (Size, KeyWord, CheckSum) viajam em claro (§1.1, §1.4).
 	transformStart = 4
 )
 
-// Header is the 12-byte CPSock packet header (protocol-spec.md §1.1,
+// Header é o cabeçalho de pacote CPSock de 12 bytes (protocol-spec.md §1.1,
 // CPSock.h:42-50). Little-endian.
 //
 //	Offset  Field        Type     Bytes
-//	0       Size         uint16   2   total packet size incl. header
-//	2       KeyWord      uint8    1   random index (0..255) into keyWord seeds
-//	3       CheckSum     uint8    1   additive checksum of the payload (§1.5)
-//	4       Type         uint16   2   message id incl. direction flags (§2)
-//	6       ID           uint16   2   connection/player slot in pUser[]
+//	0       Size         uint16   2   tamanho total do pacote, incluindo o cabeçalho
+//	2       KeyWord      uint8    1   índice aleatório (0..255) nas sementes keyWord
+//	3       CheckSum     uint8    1   checksum aditivo do payload (§1.5)
+//	4       Type         uint16   2   id da mensagem, incluindo as flags de direção (§2)
+//	6       ID           uint16   2   slot de conexão/jogador em pUser[]
 //	8       ClientTick   uint32   4   timestamp/tick
 type Header struct {
 	Size       uint16
@@ -62,8 +62,8 @@ type Header struct {
 	ClientTick uint32
 }
 
-// EncodeHeader writes h into the first HeaderSize bytes of dst by explicit
-// offset. dst must be at least HeaderSize bytes long.
+// EncodeHeader escreve h nos primeiros HeaderSize bytes de dst por
+// offset explícito. dst precisa ter ao menos HeaderSize bytes.
 func EncodeHeader(dst []byte, h Header) error {
 	if len(dst) < HeaderSize {
 		return fmt.Errorf("protocol: EncodeHeader: dst too small: have %d, need %d", len(dst), HeaderSize)
@@ -77,8 +77,8 @@ func EncodeHeader(dst []byte, h Header) error {
 	return nil
 }
 
-// DecodeHeader reads a Header from the first HeaderSize bytes of src by explicit
-// offset. src must be at least HeaderSize bytes long.
+// DecodeHeader lê um Header dos primeiros HeaderSize bytes de src por
+// offset explícito. src precisa ter ao menos HeaderSize bytes.
 func DecodeHeader(src []byte) (Header, error) {
 	if len(src) < HeaderSize {
 		return Header{}, fmt.Errorf("protocol: DecodeHeader: src too small: have %d, need %d", len(src), HeaderSize)

@@ -10,7 +10,7 @@ import (
 )
 
 type fakeMobStatAPI struct {
-	dbv1.NpcConfigServiceClient // embed so we only need to implement what we use
+	dbv1.NpcConfigServiceClient // embutido para só precisarmos implementar o que usamos
 	resp                        *dbv1.ListMobTemplateStatsResponse
 }
 

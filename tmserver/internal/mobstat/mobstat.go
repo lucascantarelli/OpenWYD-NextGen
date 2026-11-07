@@ -1,13 +1,13 @@
 // Package mobstat applies moderator-edited stat overrides onto raw STRUCT_MOB
-// mob/NPC template bytes (mob-template-editing-plan.md) — the equivalent-tool
-// successor to the legacy Win32 EDITAPPMOB. It is the sibling of npccfg: that
-// package carries NPC placement/shop overrides materialized by
-// handler/npcconfig.go; this one carries combat/attribute stat overrides
-// applied to ANY npc/<template_name> template at load time (boot only — no
-// hot-reload for this feature, matching EDITAPPMOB's own restart-to-apply
-// behavior). Override is its own type, not domain.MobTemplateStat, so only
-// tmserver/internal/dbclient depends on the wire shape — npccfg.Definition
-// follows the same decoupling for NPC placement/shop.
+// bytes do template de mob/NPC (mob-template-editing-plan.md) — o sucessor
+// equivalente da ferramenta legada EDITAPPMOB. É irmão de npccfg: aquele
+// pacote carrega sobreposições de posicionamento/loja de NPC materializadas por
+// handler/npcconfig.go; este carrega sobreposições de stats de combate/atributo
+// aplicadas a QUALQUER template npc/<template_name> no carregamento (só no boot —
+// sem hot-reload para este recurso, igual ao comportamento de reiniciar-para-aplicar
+// do EDITAPPMOB). Override é tipo próprio, não domain.MobTemplateStat, para que só
+// tmserver/internal/dbclient dependa do formato de wire — npccfg.Definition
+// segue o mesmo desacoplamento para posicionamento/loja de NPC.
 package mobstat
 
 import (
@@ -16,17 +16,17 @@ import (
 	"openwyd-nextgen/internal/savefmt"
 )
 
-// EquipItem is one Equip[] slot override (0..15, MAX_EQUIP).
+// EquipItem é a sobreposição de um slot de Equip[] (0..15, MAX_EQUIP).
 type EquipItem struct {
 	Slot  int
 	Index uint16
 	Eff   [3][2]uint8
 }
 
-// Override is a moderator-edited stat override for a raw STRUCT_MOB template,
-// resolved from the dbServer's ListMobTemplateStats snapshot. Mirrors the
+// Override é uma sobreposição de stats editada por moderador para um template
+// STRUCT_MOB cru, resolvida do snapshot de ListMobTemplateStats do dbServer. Espelha o
 // EDITAPPMOB-editable field surface, minus Carry[] (npccfg.ShopItem's job)
-// and DB-managed spawn position (npccfg.Definition's job).
+// e a posição de spawn gerenciada pelo banco (trabalho de npccfg.Definition).
 type Override struct {
 	DisplayName                     string // "" keeps the template file's own name
 	Clan, Merchant, Class           uint8
@@ -46,16 +46,16 @@ type Override struct {
 	Equip                           []EquipItem
 }
 
-// Apply returns a copy of template with ov's fields patched in. The edited
-// score is mirrored into BOTH BaseScore and CurrentScore, replicating
-// EDITAPPMOB's own `mob->CurrentScore = mob->BaseScore` on save. Equip is
-// authoritative like npccfg's shop overlay: slots not listed in ov.Equip are
-// cleared, not left at the template's original values — a moderator emptying
-// the equip editor means "no equipment", not "keep whatever was there".
-// template is normally already a canonical MobSize blob (npctemplate.Load
-// widens the legacy layouts at content-load time), but the legacy 756/920-byte
-// forms are accepted here too so an override never silently degrades to a
-// no-op; the result is always MobSize. A corrupt template is returned unchanged.
+// Apply devolve uma cópia de template com os campos de ov aplicados. O score
+// editado é espelhado em BaseScore E CurrentScore, replicando o
+// `mob->CurrentScore = mob->BaseScore` do próprio EDITAPPMOB ao salvar. Equip é
+// autoritativo como a sobreposição de loja do npccfg: slots não listados em ov.Equip são
+// limpos, não deixados nos valores originais do template — um moderador esvaziando
+// o editor de equipamento significa "sem equipamento", não "mantém o que estava lá".
+// O template normalmente já é um blob canônico MobSize (npctemplate.Load
+// alarga os layouts legados no carregamento do conteúdo), mas as formas legadas de
+// 756/920 bytes são aceitas aqui também para uma sobreposição nunca degradar em
+// silêncio para no-op; o resultado é sempre MobSize. Um template corrompido volta inalterado.
 func Apply(template []byte, ov Override) []byte {
 	mob, _, err := savefmt.DecodeMobAny(template)
 	if err != nil {
@@ -109,10 +109,10 @@ func Apply(template []byte, ov Override) []byte {
 	return savefmt.EncodeMob(mob)
 }
 
-// ApplyOverride applies overrides[name] to template if present, returning
-// template unchanged otherwise. Shared by the two places that resolve a
-// template by name at boot (spawnNPCs and dbclient.NewNpcConfig's
-// TemplateLoader) so the lookup-and-patch step isn't repeated at each call site.
+// ApplyOverride aplica overrides[name] a template se presente, devolvendo
+// o template inalterado caso contrário. Compartilhado pelos dois lugares que resolvem
+// um template por nome no boot (spawnNPCs e o TemplateLoader do
+// dbclient.NewNpcConfig) para o passo de buscar-e-aplicar não se repetir em cada ponto.
 func ApplyOverride(template []byte, name string, overrides map[string]Override) []byte {
 	if ov, ok := overrides[name]; ok {
 		return Apply(template, ov)

@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// InitItem is one static world object from InitItem.csv (STRUCT_INITITEM): a
-// gate/door/decoration the server spawns at boot. Columns are Index,PosX,PosY,Rotate
-// (BASE_ReadInitItem, Basedef.cpp:6641); a trailing 5th column is ignored, and a
-// row whose Index is -1 is skipped, mirroring the legacy sscanf loop.
+// InitItem é um objeto estático do mundo vindo de InitItem.csv (STRUCT_INITITEM): um
+// portão/porta/decoração que o servidor gera no boot. As colunas são Index,PosX,PosY,Rotate
+// (BASE_ReadInitItem, Basedef.cpp:6641); uma 5ª coluna final é ignorada, e uma
+// linha cujo Index é -1 é pulada, espelhando o laço sscanf legado.
 type InitItem struct {
 	Index  int16
 	PosX   int16
@@ -19,10 +19,10 @@ type InitItem struct {
 	Rotate int16
 }
 
-// LoadInitItems parses TMsrv/run/InitItem.csv into the static world-object list the
-// world seeds at boot (gates/doors). Rows are comma-separated
-// "Index,PosX,PosY,Rotate[,ignored]"; blank lines and Index==-1 rows are skipped.
-// A malformed numeric field is a hard error (the file is small and hand-authored).
+// LoadInitItems lê TMsrv/run/InitItem.csv para a lista estática de objetos do mundo que o
+// mundo semeia no boot (portões/portas). As linhas são separadas por vírgula
+// "Index,PosX,PosY,Rotate[,ignorado]"; linhas em branco e linhas com Index==-1 são puladas.
+// Um campo numérico malformado é erro fatal (o arquivo é pequeno e escrito à mão).
 func LoadInitItems(path string) ([]InitItem, error) {
 	f, err := os.Open(path)
 	if err != nil {

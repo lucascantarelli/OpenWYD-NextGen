@@ -10,8 +10,8 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// WorldEventConfigVersion returns the monotonically increasing moderator config
-// version. Event progress updates do not bump this value.
+// WorldEventConfigVersion devolve a versão monotônica da config de moderador
+// de eventos. Atualizações de progresso do evento não sobem este valor.
 func (s *Store) WorldEventConfigVersion(ctx context.Context) (int64, error) {
 	var v int64
 	err := s.pool.QueryRow(ctx, `SELECT version FROM world_event_meta WHERE id = TRUE`).Scan(&v)
@@ -24,7 +24,7 @@ func (s *Store) WorldEventConfigVersion(ctx context.Context) (int64, error) {
 	return v, nil
 }
 
-// WorldEventConfig returns the single global world-event configuration row.
+// WorldEventConfig devolve a única linha global de configuração de evento de mundo.
 func (s *Store) WorldEventConfig(ctx context.Context) (domain.WorldEventConfig, error) {
 	cfg, err := scanWorldEventConfig(s.pool.QueryRow(ctx, worldEventConfigSelect))
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -36,8 +36,8 @@ func (s *Store) WorldEventConfig(ctx context.Context) (domain.WorldEventConfig, 
 	return cfg, nil
 }
 
-// UpsertWorldEventConfig replaces the moderator-managed global event config,
-// writing an audit row and bumping the config version in the same transaction.
+// UpsertWorldEventConfig substitui a config global de evento gerida pelo moderador,
+// gravando auditoria e subindo a versão da config na mesma transação.
 func (s *Store) UpsertWorldEventConfig(ctx context.Context, cfg domain.WorldEventConfig, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := lockWorldEventMeta(ctx, tx); err != nil {
@@ -74,9 +74,9 @@ func (s *Store) UpsertWorldEventConfig(ctx context.Context, cfg domain.WorldEven
 	})
 }
 
-// UpdateWorldEventProgress persists tmServer's event counter without bumping the
+// UpdateWorldEventProgress persiste o contador de evento do tmServer sem subir a
 // moderator config version. expectedVersion prevents a stale tmServer snapshot
-// from overwriting a newer portal edit; applied is false when the version changed.
+// de sobrescrever uma edição mais nova do portal; applied é falso quando a versão mudou.
 func (s *Store) UpdateWorldEventProgress(ctx context.Context, expectedVersion int64, currentIndex int32) (applied bool, err error) {
 	err = s.inTx(ctx, func(tx pgx.Tx) error {
 		ct, err := tx.Exec(ctx, `
@@ -126,8 +126,9 @@ func fetchWorldEventConfigJSON(ctx context.Context, tx pgx.Tx) ([]byte, error) {
 }
 
 func lockWorldEventMeta(ctx context.Context, tx pgx.Tx) error {
-	// Portal edits and tmServer progress both take this lock before touching the
-	// config row, so expectedVersion cannot pass while a moderator edit is pending.
+	// Edições do portal e progresso do tmServer tomam este lock antes de tocar na
+	// linha de config, então expectedVersion não pode passar enquanto uma edição de
+	// moderador está pendente.
 	var version int64
 	if err := tx.QueryRow(ctx, `SELECT version FROM world_event_meta WHERE id = TRUE FOR UPDATE`).Scan(&version); err != nil {
 		return fmt.Errorf("store: lock world event meta: %w", err)

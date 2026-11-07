@@ -10,23 +10,23 @@ import (
 	"openwyd-nextgen/tmserver/internal/mobstat"
 )
 
-// MobStatSource fetches the moderator-edited mob/NPC template stat overrides
-// (mob-template-editing-plan.md) from the dbServer's NpcConfigService. It is
-// deliberately independent of NpcConfig/npccfg: a stat override applies to ANY
-// npc/<template_name> file, not just the DB-managed merchant subset NpcConfig
-// materializes, and is fetched once at boot (no version poll — no hot-reload
-// for this feature, matching EDITAPPMOB's own restart-to-apply behavior).
+// MobStatSource busca as sobreposições de stat de template de mob/NPC editadas
+// pelo moderador (mob-template-editing-plan.md) no NpcConfigService do dbServer.
+// É de propósito independente de NpcConfig/npccfg: um override de stat vale para
+// QUALQUER arquivo npc/<template_name>, não só o subconjunto de mercadores que
+// NpcConfig materializa, e é buscado uma vez no boot (sem poll de versão — sem
+// hot-reload para este recurso, igual ao comportamento de reiniciar do EDITAPPMOB).
 type MobStatSource struct {
 	api dbv1.NpcConfigServiceClient
 }
 
-// NewMobStatSource wraps a gRPC connection as a MobStatSource.
+// NewMobStatSource embrulha uma conexão gRPC como MobStatSource.
 func NewMobStatSource(conn grpc.ClientConnInterface) *MobStatSource {
 	return &MobStatSource{api: dbv1.NewNpcConfigServiceClient(conn)}
 }
 
-// Fetch returns every template stat override, keyed by template_name, ready
-// to apply over raw template bytes via mobstat.Apply.
+// Fetch devolve todo override de stat de template, com chave template_name, pronto
+// para ser aplicado sobre os bytes crus do template via mobstat.Apply.
 func (c *MobStatSource) Fetch(ctx context.Context) (map[string]mobstat.Override, error) {
 	resp, err := c.api.ListMobTemplateStats(ctx, &dbv1.ListMobTemplateStatsRequest{})
 	if err != nil {

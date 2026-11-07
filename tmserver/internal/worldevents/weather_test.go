@@ -2,8 +2,8 @@ package worldevents
 
 import "testing"
 
-// fixedRand replays a scripted sequence of Intn results and counts the draws,
-// so tests can pin both the outcome and the number of RNG calls.
+// fixedRand reproduz uma sequência roteirizada de resultados de Intn e conta os
+// sorteios, para os testes fixarem o resultado e o número de chamadas ao RNG.
 type fixedRand struct {
 	vals  []int
 	next  int
@@ -20,16 +20,16 @@ func (r *fixedRand) Intn(n int) int {
 	return v % n
 }
 
-// TestRollWeatherBands sweeps every value the legacy roll can produce and pins
-// the band boundaries, including the regression this port exists to fix:
-// weather 1 and 2 must be REACHABLE (the legacy else-if order made them dead).
+// TestRollWeatherBands varre todo valor que o sorteio legado pode produzir e fixa
+// as bordas das faixas, inclusive a regressão que este porte existe para corrigir:
+// os climas 1 e 2 precisam ser ALCANÇÁVEIS (a ordem else-if legada os matava).
 func TestRollWeatherBands(t *testing.T) {
 	counts := map[int32]int{}
 	none := 0
 	for roll := 0; roll < weatherRollMod; roll++ {
 		r := &fixedRand{vals: []int{roll}}
-		// current = -1 is not a real weather value, so every band that matches
-		// reports changed and we observe the raw band mapping.
+		// current = -1 não é um valor real de clima, então toda faixa que casa
+		// reporta mudança e observamos o mapeamento cru das faixas.
 		next, changed := RollWeather(r, -1)
 		if r.draws != 1 {
 			t.Fatalf("roll %d: draws = %d, want 1", roll, r.draws)
@@ -58,8 +58,8 @@ func TestRollWeatherBands(t *testing.T) {
 	}
 }
 
-// TestRollWeatherBoundaries pins the individual band edges, so a reordering
-// that happens to preserve the totals still fails.
+// TestRollWeatherBoundaries fixa as bordas de cada faixa, então um reordenamento
+// que por acaso preserve os totais ainda reprova.
 func TestRollWeatherBoundaries(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -92,9 +92,9 @@ func TestRollWeatherBoundaries(t *testing.T) {
 	}
 }
 
-// TestRollWeatherSuppressesNoOp ports the legacy `CurrentWeather != N` guard:
-// a band that picks the value already in effect must not report a change, so
-// the server does not broadcast an identical weather packet every minute.
+// TestRollWeatherSuppressesNoOp porta a guarda legada `CurrentWeather != N`:
+// faixa que escolhe o valor já em vigor não pode reportar mudança, para
+// o servidor não transmitir um pacote de clima idêntico a cada minuto.
 func TestRollWeatherSuppressesNoOp(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -120,9 +120,9 @@ func TestRollWeatherSuppressesNoOp(t *testing.T) {
 	}
 }
 
-// TestRollWeatherAlwaysConsumesOneDraw guards the parity property that matters
-// for the dedicated stream: the legacy rolls every minute regardless of state,
-// so the stream must advance at the same rate no matter what the roll decides.
+// TestRollWeatherAlwaysConsumesOneDraw protege a propriedade de paridade que importa
+// para o fluxo dedicado: o legado sorteia todo minuto independente do estado,
+// então o fluxo precisa avançar no mesmo ritmo, não importa o que o sorteio decida.
 func TestRollWeatherAlwaysConsumesOneDraw(t *testing.T) {
 	r := &fixedRand{vals: []int{0, 35, 57, 700, 1199}}
 	current := WeatherClear

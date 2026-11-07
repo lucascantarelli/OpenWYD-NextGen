@@ -1,14 +1,14 @@
-// Package npccfg carries the moderator-edited NPC configuration into the
-// tmServer (npc-editing-plan.md). It is a leaf type package: the dbclient
-// implements Source (fetching over gRPC + resolving templates), and the handler
-// applies a Snapshot inside the single-owner loop. The world never writes this
-// back — the flow is one-way (web → Postgres → dbServer → tmServer).
+// Package npccfg carrega a configuração de NPC editada por moderador para o
+// tmServer (npc-editing-plan.md). É um pacote de tipos folha: o dbclient
+// implementa Source (buscando por gRPC + resolvendo templates), e o handler
+// aplica um Snapshot dentro do laço de dono único. O mundo nunca escreve isto
+// de volta — o fluxo é de mão única (web → Postgres → dbServer → tmServer).
 package npccfg
 
 import "context"
 
-// ShopItem is one merchant shop slot (overlays the template Carry[]). Slot is the
-// positional MSG_ShopList index (0..26). Prices are NOT here — they are global
+// ShopItem é um slot da loja de um mercador (sobrepõe o Carry[] do template). Slot é o
+// índice posicional de MSG_ShopList (0..26). Preços NÃO estão aqui — eles são globais
 // (Snapshot.PriceOverrides).
 type ShopItem struct {
 	Slot     int
@@ -17,10 +17,10 @@ type ShopItem struct {
 	Eff      [3][2]uint8
 }
 
-// Definition is a fully resolved NPC ready to materialize: the raw 816-byte
-// STRUCT_MOB template plus the moderator's overrides (visibility, position, shop).
-// Template is nil when the referenced file could not be loaded — such a
-// definition is skipped by the applier.
+// Definition é um NPC totalmente resolvido, pronto para materializar: o template
+// STRUCT_MOB cru de 816 bytes mais as sobreposições do moderador (visibilidade,
+// posição, loja). Template é nil quando o arquivo referenciado não pôde ser
+// carregado — tal definição é pulada pelo aplicador.
 type Definition struct {
 	Slug                                                     string
 	Template                                                 []byte
@@ -38,16 +38,16 @@ type Definition struct {
 	Shop                                                     []ShopItem // nil = use the template's own Carry[] as the shop
 }
 
-// Snapshot is the full config at a given version: the definition set plus the
-// global per-item price overrides (item index → price).
+// Snapshot é a configuração completa numa dada versão: o conjunto de definições
+// mais as sobreposições globais de preço por item (índice do item → preço).
 type Snapshot struct {
 	Version        int64
 	Defs           []Definition
 	PriceOverrides map[int]int32
 }
 
-// Source is the tmServer's read side of the NPC config. Version is a cheap poll;
-// Snapshot fetches the full set (only called when the version changed).
+// Source é o lado de leitura do tmServer para a configuração de NPC. Version é um
+// poll barato; Snapshot busca o conjunto completo (chamado só quando a versão mudou).
 type Source interface {
 	Version(ctx context.Context) (int64, error)
 	Snapshot(ctx context.Context) (Snapshot, error)

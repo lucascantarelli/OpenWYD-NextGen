@@ -11,8 +11,8 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// CharacterSearchHit is one row of the moderator character search (issue 43):
-// cold storage only, no live state.
+// CharacterSearchHit é uma linha da busca de personagem do moderador (issue 43):
+// só armazenamento frio, sem estado vivo.
 type CharacterSearchHit struct {
 	ID          int64
 	Name        string
@@ -25,9 +25,9 @@ type CharacterSearchHit struct {
 	AccountName string
 }
 
-// SearchCharacters finds characters by character name or account name
-// (case-insensitive substring), highest level first. An empty query returns
-// nothing instead of the whole table.
+// SearchCharacters acha personagens por nome de personagem ou nome de conta
+// (substring sem diferenciar caixa), nível mais alto primeiro. Uma busca vazia devolve
+// nada em vez da tabela inteira.
 func (s *Store) SearchCharacters(ctx context.Context, query string, limit int) ([]CharacterSearchHit, error) {
 	q := strings.TrimSpace(query)
 	if q == "" {
@@ -63,12 +63,12 @@ func (s *Store) SearchCharacters(ctx context.Context, query string, limit int) (
 	return out, nil
 }
 
-// LoadCharacterByID loads one character's full cold state (stats, equip, cargo,
-// affects) by character id, together with its account id and name.
+// LoadCharacterByID carrega o estado frio completo de um personagem (stats, equip, cargo,
+// affects) por id de personagem, junto com o id e o nome da conta.
 //
-// It resolves (account_id, slot) first and reuses LoadCharacter: the 60-column
-// load already exists and duplicating it here would be the classic way to drift
-// from the save format.
+// Ele resolve (account_id, slot) primeiro e reusa LoadCharacter: a carga de 60
+// colunas já existe e duplicá-la aqui seria o jeito clássico de divergir
+// do formato de save.
 func (s *Store) LoadCharacterByID(ctx context.Context, id int64) (domain.Character, int64, string, error) {
 	var accountID int64
 	var slot int

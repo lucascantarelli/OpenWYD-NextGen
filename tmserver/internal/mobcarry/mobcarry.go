@@ -1,43 +1,43 @@
-// Package mobcarry applies moderator-edited Carry[] tables onto raw STRUCT_MOB
-// template bytes (issue 34, fatia 3) — the drop half of the same editing
-// surface mobstat covers for stats.
+// Package mobcarry aplica tabelas Carry[] editadas por moderador sobre os bytes
+// crus do template STRUCT_MOB (issue 34, fatia 3) — a metade de drop da mesma
+// superfície de edição que mobstat cobre para as stats.
 //
-// The Carry[] table is a mob's drop table: the SLOT decides the item's rarity
-// (DropRate[slot] is the divisor) and the item in it is what falls. Editing it
-// from the web is an overlay row in mob_carry_override; the file in tmserver/content/ is
-// never written. The overlay is applied at template load, once at boot, behind
-// -mob-carry-editing (OFF = files exactly as they are).
+// A tabela Carry[] é a tabela de drop de um mob: o SLOT decide a raridade do item
+// (DropRate[slot] é o divisor) e o item nela é o que cai. Editá-la pela web é uma
+// linha de sobreposição em mob_carry_override; o arquivo em tmserver/content/ nunca
+// é escrito. A sobreposição é aplicada no carregamento do template, uma vez no boot,
+// atrás de -mob-carry-editing (OFF = arquivos exatamente como estão).
 //
-// Semantics are authoritative per template, like the Equip[] overlay: a slot
-// not present in the override is empty, not "keep the file's item". The web-api
-// always sends the whole table, so "not present" only happens when a moderator
-// cleared the slot.
+// A semântica é autoritativa por template, como na sobreposição de Equip[]: um slot
+// ausente na sobreposição fica vazio, não "mantém o item do arquivo". A web-api
+// sempre envia a tabela inteira, então "ausente" só acontece quando um moderador
+// limpou o slot.
 //
-// RNG parity: this package only changes item values. It adds, removes and
-// reorders no rand() call, so the drop sequence still matches the legacy server
-// for the same table.
+// Paridade de RNG: este pacote só muda valores de item. Ele não adiciona, remove
+// nem reordena chamada de rand(), então a sequência de drop continua igual à do
+// servidor legado para a mesma tabela.
 package mobcarry
 
 import (
 	"openwyd-nextgen/internal/savefmt"
 )
 
-// Slot is one Carry[] position override (0..63, savefmt.MaxCarry).
+// Slot é a sobreposição de uma posição de Carry[] (0..63, savefmt.MaxCarry).
 type Slot struct {
 	Slot      int
 	ItemIndex uint16
 	Eff       [3][2]uint8
 }
 
-// Override is a template's whole Carry[] table.
+// Override é a tabela Carry[] inteira de um template.
 type Override struct {
 	Slots []Slot
 }
 
-// Apply returns template with its Carry[] replaced by ov, encoded as the
-// canonical 816-byte layout. A corrupt template is returned unchanged; a slot
-// out of range is ignored rather than panicking (the web validates first, so an
-// ignored slot means the table was edited out of band).
+// Apply devolve template com seu Carry[] substituído por ov, codificado no
+// layout canônico de 816 bytes. Um template corrompido volta inalterado; um slot
+// fora da faixa é ignorado em vez de dar panic (a web valida antes, então um
+// slot ignorado significa que a tabela foi editada fora de banda).
 func Apply(template []byte, ov Override) []byte {
 	mob, _, err := savefmt.DecodeMobAny(template)
 	if err != nil {
@@ -61,10 +61,10 @@ func Apply(template []byte, ov Override) []byte {
 	return savefmt.EncodeMob(mob)
 }
 
-// ApplyOverride applies overrides[name] to template if present, returning the
-// template unchanged otherwise. Called from both template-resolution points in
-// the tmServer (NPCGener spawn and the DB-managed NPC config loader), same as
-// mobstat.ApplyOverride.
+// ApplyOverride aplica overrides[name] a template se presente, devolvendo o
+// template inalterado caso contrário. Chamado dos dois pontos de resolução de
+// template do tmServer (spawn do NPCGener e o loader de config de NPC gerenciado
+// pelo banco), igual a mobstat.ApplyOverride.
 func ApplyOverride(template []byte, name string, overrides map[string]Override) []byte {
 	if ov, ok := overrides[name]; ok {
 		return Apply(template, ov)

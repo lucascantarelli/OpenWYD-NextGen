@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the donate top-up store. They require a real database
-// and are excluded from the default build. Run with:
+// Testes de integração do store de recarga de donate. Eles exigem um banco real
+// e ficam fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -14,8 +14,8 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TestTopupCreateConfirmHappyPath: create PENDING, confirm once -> CONFIRMED and
-// the balance rises by credits.
+// TestTopupCreateConfirmHappyPath: cria PENDING, confirma uma vez -> CONFIRMED e
+// o saldo sobe pelos créditos.
 func TestTopupCreateConfirmHappyPath(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -50,14 +50,14 @@ func TestTopupCreateConfirmHappyPath(t *testing.T) {
 		t.Fatalf("confirm = (%v,%d,%v), want (Confirmed,130,nil)", out, newBal, err)
 	}
 
-	// Paid: GetTopupOrder reports status 2 with the current balance.
+	// Pago: GetTopupOrder informa status 2 com o saldo corrente.
 	st, _, bal, err = s.GetTopupOrder(ctx, "ref-happy", accID)
 	if err != nil || st != TopupStatusPaid || bal != 130 {
 		t.Errorf("get paid = (%d,bal=%d,%v), want (2,130,nil)", st, bal, err)
 	}
 }
 
-// TestTopupConfirmIdempotent is the critical test: confirming twice credits once.
+// TestTopupConfirmIdempotent é o teste crítico: confirmar duas vezes credita uma vez.
 func TestTopupConfirmIdempotent(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -84,7 +84,7 @@ func TestTopupConfirmIdempotent(t *testing.T) {
 	if err != nil || out != TopupConfirmed || bal != 50 {
 		t.Fatalf("first confirm = (%v,%d,%v), want (Confirmed,50,nil)", out, bal, err)
 	}
-	// Second confirm: ALREADY_CONFIRMED, balance unchanged, no re-credit.
+	// Segunda confirmação: ALREADY_CONFIRMED, saldo inalterado, sem recreditar.
 	out, bal, err = s.ConfirmTopupOrder(ctx, "ref-idem")
 	if err != nil || out != TopupAlreadyConfirmed || bal != 50 {
 		t.Fatalf("second confirm = (%v,%d,%v), want (AlreadyConfirmed,50,nil)", out, bal, err)
@@ -99,7 +99,7 @@ func TestTopupConfirmIdempotent(t *testing.T) {
 	}
 }
 
-// TestTopupConfirmUnknownRef: confirming a nonexistent reference is NOT_FOUND and
+// TestTopupConfirmUnknownRef: confirmar uma referência inexistente é NOT_FOUND e
 // credits nothing.
 func TestTopupConfirmUnknownRef(t *testing.T) {
 	ctx := context.Background()
@@ -115,7 +115,7 @@ func TestTopupConfirmUnknownRef(t *testing.T) {
 	}
 }
 
-// TestTopupDuplicateExternalRef: a reused external_reference is rejected.
+// TestTopupDuplicateExternalRef: uma external_reference reusada é rejeitada.
 func TestTopupDuplicateExternalRef(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -141,7 +141,7 @@ func TestTopupDuplicateExternalRef(t *testing.T) {
 	}
 }
 
-// TestTopupCreateMissingAccount: an unknown account_id is ErrNotFound.
+// TestTopupCreateMissingAccount: um account_id desconhecido é ErrNotFound.
 func TestTopupCreateMissingAccount(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -158,7 +158,7 @@ func TestTopupCreateMissingAccount(t *testing.T) {
 	}
 }
 
-// TestTopupPayerProfileUpsert: save then get; a second save overwrites.
+// TestTopupPayerProfileUpsert: salva e depois lê; um segundo save sobrescreve.
 func TestTopupPayerProfileUpsert(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -222,7 +222,7 @@ func TestTopupGetOrderOwnership(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	// The owner reads it; the other account gets ErrNotFound.
+	// O dono a lê; a outra conta recebe ErrNotFound.
 	if _, _, _, err := s.GetTopupOrder(ctx, "ref-own", owner); err != nil {
 		t.Errorf("owner get err = %v, want nil", err)
 	}
@@ -231,8 +231,8 @@ func TestTopupGetOrderOwnership(t *testing.T) {
 	}
 }
 
-// TestTopupCreditCardSmoke: an order with PaymentMethod=CREDIT_CARD persists and
-// confirms identically — the method is just a column.
+// TestTopupCreditCardSmoke: um pedido com PaymentMethod=CREDIT_CARD persiste e
+// confirma de forma idêntica — o meio de pagamento é só uma coluna.
 func TestTopupCreditCardSmoke(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)

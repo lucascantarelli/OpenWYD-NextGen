@@ -11,31 +11,31 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// ErrNotFound is returned when a queried account or character does not exist.
+// ErrNotFound é devolvido quando a conta ou o personagem consultado não existe.
 var ErrNotFound = errors.New("store: not found")
 
-// ErrContentOwned prevents deleting versioned world content; moderators hide it instead.
+// ErrContentOwned impede apagar conteúdo de mundo versionado; o moderador o esconde.
 var ErrContentOwned = errors.New("store: content-owned definition")
 
-// ErrNoFreeSlot is returned when an account already has all character slots in use.
+// ErrNoFreeSlot é devolvido quando a conta já tem todos os slots de personagem em uso.
 var ErrNoFreeSlot = errors.New("store: no free character slot")
 
-// ErrConflict is returned when a write is validly shaped but violates current
-// guild/account state, such as creating a guild while already in one.
+// ErrConflict é devolvido quando uma escrita tem forma válida mas viola o estado
+// atual de guild/conta, como criar uma guild já estando em uma.
 var ErrConflict = errors.New("store: conflict")
 
-// AccountAuth is the minimum account data needed to authenticate a login: the
-// id, the stored argon2id password hash and the blocked flag. The caller
-// verifies the password (store never sees plaintext beyond the hash).
+// AccountAuth é o mínimo de dados de conta para autenticar um login: o
+// id, o hash argon2id da senha guardado e a flag de bloqueio. Quem chama
+// verifica a senha (o store nunca vê texto plano além do hash).
 type AccountAuth struct {
 	ID        int64
 	PassHash  string
 	IsBlocked bool
-	Role      string // account.role ('player'/'moderator'/'admin'); web-only UI gate
+	Role      string // account.role ('player'/'moderator'/'admin'); gate de UI só da web
 }
 
-// AccountByName fetches the auth row for a canonical (lowercase) account name.
-// Returns ErrNotFound when no such account exists.
+// AccountByName busca a linha de autenticação de um nome canônico (minúsculo).
+// Devolve ErrNotFound quando essa conta não existe.
 func (s *Store) AccountByName(ctx context.Context, name string) (AccountAuth, error) {
 	var a AccountAuth
 	err := s.pool.QueryRow(ctx,
@@ -50,8 +50,8 @@ func (s *Store) AccountByName(ctx context.Context, name string) (AccountAuth, er
 	return a, nil
 }
 
-// AccountAuthByID fetches the auth row for an account id (used to confirm a
-// password before a destructive operation). Returns ErrNotFound if absent.
+// AccountAuthByID busca a linha de autenticação por id de conta (usado para confirmar
+// a senha antes de uma operação destrutiva). Devolve ErrNotFound se ausente.
 func (s *Store) AccountAuthByID(ctx context.Context, id int64) (AccountAuth, error) {
 	a := AccountAuth{ID: id}
 	err := s.pool.QueryRow(ctx,
@@ -66,9 +66,9 @@ func (s *Store) AccountAuthByID(ctx context.Context, id int64) (AccountAuth, err
 	return a, nil
 }
 
-// PinHashByID returns the account's stored argon2id PIN hash. An empty string
-// means no PIN has been set yet (the column default). Returns ErrNotFound when the
-// account does not exist.
+// PinHashByID devolve o hash argon2id do PIN guardado da conta. String vazia
+// significa que ainda não há PIN (o padrão da coluna). Devolve ErrNotFound quando a
+// conta não existe.
 func (s *Store) PinHashByID(ctx context.Context, id int64) (string, error) {
 	var hash string
 	err := s.pool.QueryRow(ctx, `SELECT pin_hash FROM account WHERE id = $1`, id).Scan(&hash)
@@ -81,8 +81,8 @@ func (s *Store) PinHashByID(ctx context.Context, id int64) (string, error) {
 	return hash, nil
 }
 
-// SetPinHash stores the account's argon2id PIN hash (the numeric PIN is hashed by
-// the caller; store never sees plaintext). Returns ErrNotFound if no such account.
+// SetPinHash guarda o hash argon2id do PIN da conta (o PIN numérico vai para hash
+// por quem chama; o store nunca vê texto plano). Devolve ErrNotFound se não houver conta.
 func (s *Store) SetPinHash(ctx context.Context, id int64, hash string) error {
 	tag, err := s.pool.Exec(ctx, `UPDATE account SET pin_hash = $2 WHERE id = $1`, id, hash)
 	if err != nil {
@@ -94,10 +94,10 @@ func (s *Store) SetPinHash(ctx context.Context, id int64, hash string) error {
 	return nil
 }
 
-// SetBlockedByName flips account.is_blocked for a canonical (lowercase) account
-// name — the write side of the in-game GM ban/unban command (issue #122). Login
-// gates on this flag (AccountByName → LOGIN_RESULT_BLOCKED), so a ban denies
-// re-login immediately. Returns ErrNotFound when no account matched the name.
+// SetBlockedByName inverte account.is_blocked para um nome de conta canônico
+// (minúsculo) — o lado de escrita do comando in-game de ban/unban de GM (issue #122). O login
+// bloqueia por esta flag (AccountByName → LOGIN_RESULT_BLOCKED), então um ban nega
+// o relog imediatamente. Devolve ErrNotFound quando nenhuma conta casou o nome.
 func (s *Store) SetBlockedByName(ctx context.Context, name string, blocked bool) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE account SET is_blocked = $2 WHERE name = $1`, name, blocked)
@@ -110,8 +110,8 @@ func (s *Store) SetBlockedByName(ctx context.Context, name string, blocked bool)
 	return nil
 }
 
-// ListCharacters returns the character-selection projection (slot, name, class,
-// score preview and equipped gear) for an account, ordered by slot.
+// ListCharacters devolve a projeção da seleção de personagens (slot, nome, classe,
+// prévia de score e equipamento) de uma conta, ordenada por slot.
 func (s *Store) ListCharacters(ctx context.Context, accountID int64) ([]domain.Character, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, slot, name, class, guild_id, level, exp, coin,
@@ -149,8 +149,8 @@ func (s *Store) ListCharacters(ctx context.Context, accountID int64) ([]domain.C
 	return out, nil
 }
 
-// LoadCharacter loads one character's full state (stats + equip + carry +
-// affects) by account and slot. Returns ErrNotFound when the slot is empty.
+// LoadCharacter carrega o estado completo de um personagem (stats + equip + carry +
+// affects) por conta e slot. Devolve ErrNotFound quando o slot está vazio.
 func (s *Store) LoadCharacter(ctx context.Context, accountID int64, slot int) (domain.Character, error) {
 	var ch domain.Character
 	var charID int64
@@ -190,8 +190,8 @@ func (s *Store) LoadCharacter(ctx context.Context, accountID int64, slot int) (d
 	for i := 0; i < len(special) && i < len(ch.Special); i++ {
 		ch.Special[i] = special[i]
 	}
-	// All six base columns are written together; any NULL means a row saved
-	// before migration 0027, whose base the tmServer still has to derive once.
+	// As seis colunas de base são escritas juntas; qualquer NULL indica linha salva
+	// antes da migration 0027, cuja base o tmServer ainda precisa derivar uma vez.
 	if baseStr != nil && baseInt != nil && baseDex != nil && baseCon != nil && baseMaxHp != nil && baseMaxMp != nil {
 		ch.HasBase = true
 		ch.BaseStr, ch.BaseInt, ch.BaseDex, ch.BaseCon = *baseStr, *baseInt, *baseDex, *baseCon
@@ -249,9 +249,9 @@ func (s *Store) loadAffects(ctx context.Context, charID int64) ([]domain.Affect,
 	return out, rows.Err()
 }
 
-// CreateCharacter inserts a new character into a free slot and returns its id.
-// The caller is responsible for validating the slot is free (the UNIQUE
-// (account_id, slot) and name constraints also enforce it).
+// CreateCharacter insere um personagem novo num slot livre e devolve seu id.
+// Quem chama é responsável por validar que o slot está livre (as restrições
+// UNIQUE de (account_id, slot) e de nome também o impõem).
 func (s *Store) CreateCharacter(ctx context.Context, accountID int64, ch domain.Character) (int64, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -269,10 +269,10 @@ func (s *Store) CreateCharacter(ctx context.Context, accountID int64, ch domain.
 	return id, nil
 }
 
-// CreateArchCharacter inserts an ARCH character in the first free account slot.
-// The legacy _MSG_DBCreateArchCharacter is not client-slot driven: DBSrv scans
-// MOB_PER_ACCOUNT and chooses the first empty slot while preserving the Mortal's
-// name for the new Arch twin.
+// CreateArchCharacter insere um personagem ARCH no primeiro slot livre da conta.
+// O _MSG_DBCreateArchCharacter legado não é guiado pelo slot do cliente: o DBSrv varre
+// MOB_PER_ACCOUNT e escolhe o primeiro slot vazio, preservando o nome do
+// Mortal para o novo gêmeo Arch.
 func (s *Store) CreateArchCharacter(ctx context.Context, accountID int64, ch domain.Character) (int64, int, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -342,8 +342,8 @@ func (s *Store) CreateArchCharacter(ctx context.Context, accountID int64, ch dom
 	return id, slot, nil
 }
 
-// DeleteCharacter removes a character (and its items/affects via ON DELETE
-// CASCADE) by account and slot. Returns ErrNotFound when the slot is empty.
+// DeleteCharacter remove um personagem (e seus itens/affects via ON DELETE
+// CASCADE) por conta e slot. Devolve ErrNotFound quando o slot está vazio.
 func (s *Store) DeleteCharacter(ctx context.Context, accountID int64, slot int) error {
 	tag, err := s.pool.Exec(ctx,
 		`DELETE FROM characters WHERE account_id = $1 AND slot = $2`, accountID, slot)
@@ -356,35 +356,35 @@ func (s *Store) DeleteCharacter(ctx context.Context, accountID int64, slot int) 
 	return nil
 }
 
-// SaveCharacter persists a character's live state for in-game saves
-// (_MSG_DBSaveMob / SavingQuit). The character must already exist (matched by
-// account_id + slot); equip, carry and affects are replaced atomically.
+// SaveCharacter persiste o estado vivo de um personagem nos saves do jogo
+// (_MSG_DBSaveMob / SavingQuit). O personagem precisa já existir (casado por
+// account_id + slot); equip, carry e affects são substituídos atomicamente.
 //
-// This is a PARTIAL update on purpose: it touches only the columns the in-world
-// Entity authoritatively tracks (world.CharacterSave) — clan, guild_id, level,
-// guild_level, exp, coin, str/int/dex/con, hp/max_hp, mp/max_mp, last_city, the
-// Gema Estelar warp save-point (save_x/y), the skill state the world now
-// simulates (score_bonus, special_bonus, learned_skill, sec_learned_skill, soul,
-// fame, special, skill_bar, short_skill), and the tier state (class_master + the
-// celestial quest gates celestial_lv40/90/circle + the terra_mistica gate), and
-// the PK/karma state (pk_point, guilty, cur_kill, tot_kill — issue #210),
-// the newbie quest step (newbie_quest, migration 0028 — issue #395),
-// the Molar de Gargula gate (molar_gargula, migration 0029 — issue #398),
-// the Pilula do Poder Magico gate (pilula_orc, migration 0030 — issue #404),
-// the Celestial reset counter (celestial_reset, migration 0031 — issue #408),
-// the Sub-Celestial diadem add flags (celestial_add120..200, migration 0032 — issue #409),
-// the parked Celestial/Sub-Celestial sheets and levels (save_celestial,
+// É uma atualização PARCIAL de propósito: toca só as colunas que a Entity
+// do mundo rastreia com autoridade (world.CharacterSave) — clan, guild_id, level,
+// guild_level, exp, coin, str/int/dex/con, hp/max_hp, mp/max_mp, last_city, o
+// ponto de save do warp da Gema Estelar (save_x/y), o estado de skill que o mundo
+// agora simula (score_bonus, special_bonus, learned_skill, sec_learned_skill, soul,
+// fame, special, skill_bar, short_skill) e o estado de tier (class_master + os
+// gates de quest celestial celestial_lv40/90/circle + o gate terra_mistica), e
+// o estado de PK/karma (pk_point, guilty, cur_kill, tot_kill — issue #210),
+// o passo da quest de newbie (newbie_quest, migration 0028 — issue #395),
+// o gate do Molar de Gargula (molar_gargula, migration 0029 — issue #398),
+// o gate da Pilula do Poder Magico (pilula_orc, migration 0030 — issue #404),
+// o contador de reset Celestial (celestial_reset, migration 0031 — issue #408),
+// as flags de add do diadema Sub-Celestial (celestial_add120..200, migration 0032 — issue #409),
+// as fichas e níveis guardados de Celestial/Sub-Celestial (save_celestial,
 // celestial_level, sub_celestial_level, migration 0033 — issue #410),
-// and the equipment-free base (base_str..base_max_mp, migration 0027). A caller
-// that does not send the base (HasBase false, e.g. a tmServer older than 0027)
-// clears it, so the next login derives it from the CurrentScore just saved
-// instead of trusting a base that no longer matches it.
-// class is saved too: the Pedra Misteriosa (4148) swaps the active sheet's
-// class, and the legacy SaveUser writes the whole STRUCT_MOB (Server.cpp:7845).
-// Everything else (regen/resist, magic, citizen) is left UNTOUCHED so an in-game save never wipes
-// imported data the world does not simulate.
-// skill_bonus is also untouched: the tmServer re-derives it at login
-// (BASE_GetBonusSkillPoint) instead of trusting the stored value.
+// e a base sem equipamento (base_str..base_max_mp, migration 0027). Quem chama
+// que não manda a base (HasBase falso, por exemplo um tmServer anterior a 0027)
+// a limpa, então o próximo login a deriva do CurrentScore recém-salvo
+// em vez de confiar numa base que já não casa com ele.
+// class também é salva: a Pedra Misteriosa (4148) troca a classe da ficha ativa,
+// e o SaveUser legado escreve o STRUCT_MOB inteiro (Server.cpp:7845).
+// Todo o resto (regen/resist, magia, cidadania) fica INTOCADO para um save in-game nunca apagar
+// dados importados que o mundo não simula.
+// skill_bonus também fica intocado: o tmServer o rederiva no login
+// (BASE_GetBonusSkillPoint) em vez de confiar no valor guardado.
 func (s *Store) SaveCharacter(ctx context.Context, accountID int64, ch domain.Character) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -474,11 +474,11 @@ func (s *Store) SaveCharacter(ctx context.Context, accountID int64, ch domain.Ch
 	return nil
 }
 
-// LoadCargo loads the account-shared cargo: the gold (account.cargo_coin) and the
-// stored items (item rows with owner_kind='account_cargo'). The cargo is keyed by
-// account — every character of the account shares the same vault — so it is read
-// once per session, independent of the character slot. A missing account returns
-// ErrNotFound; an account with no stored items returns (coin, nil).
+// LoadCargo carrega o cargo compartilhado da conta: o ouro (account.cargo_coin) e os
+// itens guardados (linhas de item com owner_kind='account_cargo'). O cargo tem chave
+// por conta — todo personagem da conta compartilha o mesmo cofre — então é lido
+// uma vez por sessão, independente do slot do personagem. Conta inexistente devolve
+// ErrNotFound; conta sem itens guardados devolve (coin, nil).
 func (s *Store) LoadCargo(ctx context.Context, accountID int64) (int32, []domain.Item, error) {
 	var coin int32
 	err := s.pool.QueryRow(ctx,
@@ -496,8 +496,8 @@ func (s *Store) LoadCargo(ctx context.Context, accountID int64) (int32, []domain
 	return coin, items, nil
 }
 
-// loadAccountItems mirrors loadItems but keys on account_id (cargo is account-,
-// not character-scoped).
+// loadAccountItems espelha loadItems mas usa account_id como chave (o cargo é escopo
+// de conta, não de personagem).
 func (s *Store) loadAccountItems(ctx context.Context, accountID int64, kind string) ([]domain.Item, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3, expires_at
@@ -519,9 +519,9 @@ func (s *Store) loadAccountItems(ctx context.Context, accountID int64, kind stri
 	return out, rows.Err()
 }
 
-// SaveCargo persists the account-shared cargo gold + items as a replace-all,
-// mirroring SaveCharacter's atomic item swap (anti-dup: the old set is deleted
-// and the new set re-inserted in one transaction). A missing account returns
+// SaveCargo persiste ouro + itens do cargo compartilhado como substituição total,
+// espelhando a troca atômica de itens do SaveCharacter (anti-duplicação: o conjunto
+// antigo é apagado e o novo reinserido numa transação). Conta inexistente devolve
 // ErrNotFound.
 func (s *Store) SaveCargo(ctx context.Context, accountID int64, coin int32, items []domain.Item) error {
 	tx, err := s.pool.Begin(ctx)
@@ -552,8 +552,8 @@ func (s *Store) SaveCargo(ctx context.Context, accountID int64, coin int32, item
 	return nil
 }
 
-// int16ArrToByteArr narrows a smallint[] column back into a fixed byte array,
-// the inverse of byteArrToInt16. Extra elements are ignored; missing ones stay
+// int16ArrToByteArr estreita uma coluna smallint[] de volta para um vetor fixo de bytes,
+// o inverso de byteArrToInt16. Elementos extras são ignorados; os ausentes ficam
 // zero.
 func int16ArrToByteArr(src []int16, dst []uint8) {
 	for i := range dst {
@@ -563,7 +563,7 @@ func int16ArrToByteArr(src []int16, dst []uint8) {
 	}
 }
 
-// byteArrToInt16Arr widens a fixed byte array into the smallint[] column shape.
+// byteArrToInt16Arr alarga um vetor fixo de bytes para o formato da coluna smallint[].
 func byteArrToInt16Arr(src []uint8) []int16 {
 	out := make([]int16, len(src))
 	for i, v := range src {

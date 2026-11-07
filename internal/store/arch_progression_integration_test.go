@@ -57,8 +57,8 @@ func TestArchCrystalProgressionPersistence(t *testing.T) {
 	if err != nil || loaded.ArchLv355 != 1 || loaded.ArchLv370 != 1 || loaded.ArchCrystalStage != 4 || loaded.Level != 399 || len(loaded.Equip) != 1 || loaded.Equip[0].Index != 3191 {
 		t.Fatalf("late unlock/relog failed: %+v err=%v", loaded, err)
 	}
-	// A failed character transaction must not consume the Ideal Stone or
-	// replace the cape while its crystal stage remains uncommitted.
+	// Uma transação de personagem que falha não pode consumir a Ideal Stone nem
+	// substituir a capa enquanto o estágio de cristal dela continua sem commit.
 	invalid := loaded
 	invalid.ArchCrystalStage = 5
 	invalid.Carry, invalid.Equip = nil, nil

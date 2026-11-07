@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// DropRateOverride is one moderator-edited Carry slot drop divisor (issue 34).
-// The slot is the key: it is the Carry position that decides rarity, not the
-// item, and the value is a divisor (1 = always drops, 20000 = ultra rare).
+// DropRateOverride é um divisor de drop de slot Carry editado por moderador (issue 34).
+// O slot é a chave: é a posição no Carry que decide a raridade, não o
+// item, e o valor é um divisor (1 = sempre cai, 20000 = ultra raro).
 type DropRateOverride struct {
 	Slot      int
 	Value     int64
@@ -19,7 +19,7 @@ type DropRateOverride struct {
 	UpdatedAt time.Time
 }
 
-// ListDropRateOverrides returns every overlay row, ordered by slot.
+// ListDropRateOverrides devolve toda linha de sobreposição, ordenada por slot.
 func (s *Store) ListDropRateOverrides(ctx context.Context) ([]DropRateOverride, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT slot, value, COALESCE(updated_by, 0), updated_at
@@ -41,9 +41,9 @@ func (s *Store) ListDropRateOverrides(ctx context.Context) ([]DropRateOverride, 
 	return out, rows.Err()
 }
 
-// UpsertDropRateOverride stores one slot and its audit row in the same
-// transaction. The after snapshot is read back from the table, so the trail
-// shows what was stored rather than what the caller believed it was writing.
+// UpsertDropRateOverride guarda um slot e sua linha de auditoria na mesma
+// transação. O snapshot posterior é relido da tabela, então a trilha
+// mostra o que foi guardado em vez do que quem chamou acreditava estar escrevendo.
 func (s *Store) UpsertDropRateOverride(ctx context.Context, slot int, value int64, moderatorID int64, reason string) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, err := dropRateJSON(ctx, tx, slot)
@@ -68,8 +68,8 @@ func (s *Store) UpsertDropRateOverride(ctx context.Context, slot int, value int6
 	})
 }
 
-// DeleteDropRateOverride drops the slot, restoring the code value. applied is
-// false when there was no row.
+// DeleteDropRateOverride descarta o slot, restaurando o valor do código. applied é
+// falso quando não havia linha.
 func (s *Store) DeleteDropRateOverride(ctx context.Context, slot int, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {

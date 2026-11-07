@@ -7,8 +7,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// The equipment-free base (migration 0027) crosses the wire both ways; a save
-// always carries it, and a row without it loads with HasBase false.
+// A base sem equipamento (migration 0027) atravessa o wire nos dois sentidos; um save
+// sempre a carrega, e uma linha sem ela carrega com HasBase falso.
 func TestBaseScoreMapping(t *testing.T) {
 	c := characterSaveToProto(world.CharacterSave{Str: 212, BaseStr: 12, BaseInt: 13, BaseDex: 2512, BaseCon: 860,
 		BaseMaxHP: 2000, BaseMaxMP: 500})
@@ -29,8 +29,8 @@ func TestBaseScoreMapping(t *testing.T) {
 	}
 }
 
-// An undecodable save_celestial must fail the load (issue #410): loading blank
-// parked sheets would let the next save overwrite the real ones.
+// Um save_celestial indecifrável precisa falhar o load (issue #410): carregar
+// fichas guardadas em branco deixaria o próximo save sobrescrever as reais.
 func TestLoadRejectsBadSaveCelestial(t *testing.T) {
 	if _, err := characterStateFromProto(&dbv1.Character{SaveCelestial: []byte{9, 9, 9}}); err == nil {
 		t.Fatal("a malformed save_celestial blob loaded")

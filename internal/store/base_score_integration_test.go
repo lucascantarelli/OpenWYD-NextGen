@@ -8,10 +8,10 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Migration 0027: the equipment-free base round-trips through SaveCharacter /
-// LoadCharacter; a row saved before it loads with HasBase false (the tmServer
-// derives once); and a save that does not carry the base (a tmServer older than
-// 0027, e.g. after a rollback) clears it, so a stale base is never trusted.
+// Migration 0027: a base sem equipamento faz ida e volta por SaveCharacter /
+// LoadCharacter; uma linha salva antes dela carrega com HasBase falso (o tmServer
+// deriva uma vez); e um save que não carrega a base (um tmServer anterior a
+// 0027, por exemplo após um rollback) a limpa, então uma base obsoleta nunca é confiada.
 func TestBaseScoreColumns(t *testing.T) {
 	s, ctx := freshStore(t)
 	accID, err := s.SaveAccount(ctx, domain.Account{Name: "basescore", PassHash: "$argon2id$hash",
@@ -43,8 +43,8 @@ func TestBaseScoreColumns(t *testing.T) {
 		t.Fatalf("base round trip: %+v", got)
 	}
 
-	// A save without the base (an older writer) invalidates the stored one: the
-	// CurrentScore it wrote may carry allocations the old base does not have.
+	// Um save sem a base (um escritor mais antigo) invalida a guardada: o
+	// CurrentScore que ele escreveu pode carregar alocações que a base antiga não tem.
 	got.HasBase = false
 	got.Str = 213
 	if err := s.SaveCharacter(ctx, accID, got); err != nil {

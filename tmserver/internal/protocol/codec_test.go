@@ -9,7 +9,7 @@ func TestKeyTable(t *testing.T) {
 	if len(keyWord) != 512 {
 		t.Fatalf("keyWord length = %d, want 512", len(keyWord))
 	}
-	// Spot-check against protocol-spec.md §4.4 (first/last bytes) to catch a
+	// Conferência pontual contra protocol-spec.md §4.4 (primeiros/últimos bytes) para pegar um
 	// transcription error.
 	if keyWord[0] != 0x84 || keyWord[1] != 0x87 {
 		t.Errorf("keyWord[0:2] = %#x %#x, want 0x84 0x87", keyWord[0], keyWord[1])
@@ -39,7 +39,7 @@ func TestHeaderRoundTrip(t *testing.T) {
 	if got != want {
 		t.Errorf("header round-trip = %+v, want %+v", got, want)
 	}
-	// Size/KeyWord/CheckSum must be in clear at the documented offsets (§1.1).
+	// Size/KeyWord/CheckSum precisam estar em claro nos offsets documentados (§1.1).
 	if buf[0] != 116 || buf[1] != 0 || buf[2] != 42 || buf[3] != 200 {
 		t.Errorf("header clear bytes = % x, want 74 00 2a c8", buf[0:4])
 	}
@@ -107,9 +107,9 @@ func TestCodecDoesNotMutateInput(t *testing.T) {
 }
 
 func TestChecksumMismatchDetected(t *testing.T) {
-	// The checksum validates the key/transform, not the data bytes (it reduces to
-	// the sum of transform offsets), so tampering with a payload byte is NOT
-	// detectable. Corrupting the stored CheckSum field (byte 3) is.
+	// O checksum valida a chave/transform, não os bytes de dados (reduz-se à
+	// soma dos offsets do transform), então adulterar um byte de payload NÃO é
+	// detectável. Corromper o campo CheckSum guardado (byte 3) é.
 	h := Header{Type: MsgAction, ID: 1, ClientTick: 9}
 	wire, err := Encode(h, []byte{10, 20, 30, 40}, 99)
 	if err != nil {

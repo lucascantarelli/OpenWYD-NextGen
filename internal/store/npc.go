@@ -11,19 +11,19 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// NPC editing persistence (npc-editing-plan.md). Postgres owns the NPC
-// *definition*; the tmServer only ever reads it (via dbServer). Every mutation
-// runs in a transaction that also writes an audit row and bumps
-// npc_config_meta.version so the tmServer's cheap version poll detects the
-// change.
+// Persistência da edição de NPC (npc-editing-plan.md). O Postgres é dono da
+// *definição*; o tmServer só a lê (via dbServer). Toda mutação
+// roda numa transação que também grava linha de auditoria e sobe
+// npc_config_meta.version para o poll barato de versão do tmServer detectar a
+// mudança.
 
-// NPCConfigVersion returns the monotonically increasing config version. The
-// tmServer polls this to decide whether to reload the full definition set.
+// NPCConfigVersion devolve a versão monotônica da config. O
+// tmServer a consulta para decidir se recarrega o conjunto completo de definições.
 func (s *Store) NPCConfigVersion(ctx context.Context) (int64, error) {
 	var v int64
 	err := s.pool.QueryRow(ctx, `SELECT version FROM npc_config_meta WHERE id = TRUE`).Scan(&v)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, nil // meta row not seeded yet (pre-0005 or empty) — treat as version 0
+		return 0, nil // linha de meta ainda não semeada (pré-0005 ou vazia) — trata como versão 0
 	}
 	if err != nil {
 		return 0, fmt.Errorf("store: npc config version: %w", err)
@@ -31,8 +31,8 @@ func (s *Store) NPCConfigVersion(ctx context.Context) (int64, error) {
 	return v, nil
 }
 
-// ListNPCDefinitions returns every NPC definition with its shop items, ordered by
-// id. This is the full snapshot the tmServer materializes into live entities.
+// ListNPCDefinitions devolve toda definição de NPC com seus itens de loja, ordenada por
+// id. É o snapshot completo que o tmServer materializa em entidades vivas.
 func (s *Store) ListNPCDefinitions(ctx context.Context) ([]domain.NPCDefinition, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, slug, template_name, display_name, enabled, map_id, pos_x, pos_y, route_type, merchant,
@@ -44,7 +44,7 @@ func (s *Store) ListNPCDefinitions(ctx context.Context) ([]domain.NPCDefinition,
 	}
 	defer rows.Close()
 
-	byID := make(map[int64]int) // id → index in out (to attach shop items)
+	byID := make(map[int64]int) // id → índice em out (para anexar itens de loja)
 	var out []domain.NPCDefinition
 	for rows.Next() {
 		var d domain.NPCDefinition
@@ -95,8 +95,8 @@ func (s *Store) ListNPCDefinitions(ctx context.Context) ([]domain.NPCDefinition,
 	return out, nil
 }
 
-// GetNPCDefinition loads one definition (with shop items) by id. Returns
-// ErrNotFound when absent.
+// GetNPCDefinition carrega uma definição (com itens de loja) por id. Devolve
+// ErrNotFound quando ausente.
 func (s *Store) GetNPCDefinition(ctx context.Context, id int64) (domain.NPCDefinition, error) {
 	var d domain.NPCDefinition
 	err := s.pool.QueryRow(ctx, `
@@ -119,8 +119,8 @@ func (s *Store) GetNPCDefinition(ctx context.Context, id int64) (domain.NPCDefin
 	return d, nil
 }
 
-// ItemPriceOverrides returns every global price override. The tmServer merges
-// these over its content-catalog base prices.
+// ItemPriceOverrides devolve toda sobreposição global de preço. O tmServer as junta
+// sobre os preços base do catálogo de conteúdo.
 func (s *Store) ItemPriceOverrides(ctx context.Context) ([]domain.ItemPriceOverride, error) {
 	rows, err := s.pool.Query(ctx, `SELECT item_index, price FROM item_price ORDER BY item_index`)
 	if err != nil {
@@ -138,8 +138,8 @@ func (s *Store) ItemPriceOverrides(ctx context.Context) ([]domain.ItemPriceOverr
 	return out, rows.Err()
 }
 
-// AccountRole returns the account's role ('player'/'moderator'/'admin'). The
-// web-api uses it to authorize NPC-admin RPCs. Returns ErrNotFound if absent.
+// AccountRole devolve o papel da conta ('player'/'moderator'/'admin'). O
+// web-api o usa para autorizar RPCs de admin de NPC. Devolve ErrNotFound se ausente.
 func (s *Store) AccountRole(ctx context.Context, id int64) (string, error) {
 	var role string
 	err := s.pool.QueryRow(ctx, `SELECT role FROM account WHERE id = $1`, id).Scan(&role)
@@ -152,10 +152,10 @@ func (s *Store) AccountRole(ctx context.Context, id int64) (string, error) {
 	return role, nil
 }
 
-// UpsertNPCDefinition inserts a new definition or updates the existing one with
-// the same slug (position, visibility, template, merchant type). Shop items are
-// managed separately via SetNPCShop. Returns the definition id. Bumps the config
-// version and writes an audit row, all in one transaction.
+// UpsertNPCDefinition insere uma definição nova ou atualiza a existente com
+// o mesmo slug (posição, visibilidade, template, tipo de mercador). Os itens de loja
+// são geridos à parte por SetNPCShop. Devolve o id da definição. Sobe a
+// versão da config e grava auditoria, tudo numa transação.
 func (s *Store) UpsertNPCDefinition(ctx context.Context, d domain.NPCDefinition, moderatorID int64) (int64, error) {
 	var id int64
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -195,8 +195,8 @@ func (s *Store) UpsertNPCDefinition(ctx context.Context, d domain.NPCDefinition,
 	return id, err
 }
 
-// SetNPCShop replaces a merchant NPC's shop stock. Returns ErrNotFound if the
-// definition does not exist.
+// SetNPCShop substitui o estoque da loja de um NPC mercador. Devolve ErrNotFound se
+// a definição não existir.
 func (s *Store) SetNPCShop(ctx context.Context, npcID int64, items []domain.NPCShopItem, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := ensureDefExists(ctx, tx, npcID); err != nil {
@@ -222,8 +222,8 @@ func (s *Store) SetNPCShop(ctx context.Context, npcID int64, items []domain.NPCS
 	})
 }
 
-// SetNPCVisibility toggles whether an NPC appears in the world. Returns
-// ErrNotFound if the definition does not exist.
+// SetNPCVisibility alterna se um NPC aparece no mundo. Devolve
+// ErrNotFound se a definição não existir.
 func (s *Store) SetNPCVisibility(ctx context.Context, npcID int64, enabled bool, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if err := ensureDefExists(ctx, tx, npcID); err != nil {
@@ -240,8 +240,8 @@ func (s *Store) SetNPCVisibility(ctx context.Context, npcID int64, enabled bool,
 	})
 }
 
-// SetItemPrice sets (or clears, when price < 0) the global override price for an
-// item index.
+// SetItemPrice define (ou limpa, quando price < 0) o preço global sobreposto de um
+// índice de item.
 func (s *Store) SetItemPrice(ctx context.Context, itemIndex int32, price int64, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		if price < 0 {
@@ -260,8 +260,8 @@ func (s *Store) SetItemPrice(ctx context.Context, itemIndex int32, price int64, 
 	})
 }
 
-// DeleteNPCDefinition removes a definition (its shop items cascade). Returns
-// ErrNotFound if absent.
+// DeleteNPCDefinition remove uma definição (seus itens de loja cascateiam). Devolve
+// ErrNotFound se ausente.
 func (s *Store) DeleteNPCDefinition(ctx context.Context, npcID int64, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		var origin string
@@ -289,11 +289,11 @@ func (s *Store) DeleteNPCDefinition(ctx context.Context, npcID int64, moderatorI
 	})
 }
 
-// SeedNPCDefinitions bulk-imports definitions (with shop items) in one
-// transaction, skipping any slug that already exists (idempotent — safe to
-// re-run). It bumps the config version once at the end and writes no per-row
-// audit (this is a system import, not moderator activity). Returns the number of
-// definitions actually inserted.
+// SeedNPCDefinitions importa definições em massa (com itens de loja) numa
+// transação, pulando slug que já existe (idempotente — seguro para
+// rodar de novo). Sobe a versão da config uma vez no fim e não grava auditoria
+// por linha (é import de sistema, não atividade de moderador). Devolve quantas
+// definições foram realmente inseridas.
 func (s *Store) SeedNPCDefinitions(ctx context.Context, defs []domain.NPCDefinition) (int, error) {
 	indices := make(map[int32]string, len(defs))
 	for _, d := range defs {
@@ -332,17 +332,17 @@ func (s *Store) SeedNPCDefinitions(ctx context.Context, defs []domain.NPCDefinit
 	return inserted, nil
 }
 
-// retireShadowedDefinitions hides the rows an older, hand-curated seed left
-// behind at the same template and position as an NPCGener block this import now
-// owns. They carry no generator_index (so nothing replaces their block) and no
-// generator_data, and their display name is still the template name — the shape
-// of a pre-0018 curated row, not of a moderator-created NPC.
+// retireShadowedDefinitions esconde as linhas que um seed curado à mão mais antigo
+// deixou no mesmo template e posição de um bloco NPCGener que este import agora
+// possui. Elas não têm generator_index (então nada substitui seu bloco) nem
+// generator_data, e o nome exibido ainda é o nome do template — a forma
+// de uma linha curada pré-0018, não de um NPC criado por moderador.
 //
-// Without this, both materialize: the tmServer skips the merchant block and the
-// overlay spawns BOTH the content definition and the stale custom one on the same
-// tile, so every affected NPC appears twice in town (in-game report, Armia,
-// 2026-11-04 — 20 duplicates). Disabled rather than deleted: it is reversible and
-// the row stays visible in the web editor.
+// Sem isto, as duas se materializam: o tmServer pula o bloco de mercador e o
+// overlay nasce com a definição de conteúdo E a customizada obsoleta no mesmo
+// tile, então todo NPC afetado aparece duas vezes na cidade (relato in-game, Armia,
+// 04/11/2026 — 20 duplicatas). Desativadas em vez de apagadas: é reversível e
+// a linha continua visível no editor web.
 const retireShadowedDefinitions = `
 	UPDATE npc_definition x SET enabled = FALSE, updated_at = now()
 	 WHERE x.generator_index IS NULL AND x.enabled AND x.generator_data = '{}'
@@ -352,21 +352,21 @@ const retireShadowedDefinitions = `
 	                  AND c.template_name = x.template_name
 	                  AND c.pos_x = x.pos_x AND c.pos_y = x.pos_y)`
 
-// seedBatchChunk bounds how many statements are pipelined per round trip. The
-// content catalog is ~550 definitions plus several thousand shop items, so
-// chunking keeps the client-side buffer bounded without giving up the
-// pipelining. See seedNPCRows for why the pipelining matters.
+// seedBatchChunk limita quantos comandos são enfileirados por ida e volta. O
+// catálogo de conteúdo tem ~550 definições mais alguns milhares de itens de loja,
+// então o fatiamento mantém o buffer do cliente limitado sem abrir mão do
+// enfileiramento. Ver seedNPCRows para por que ele importa.
 const seedBatchChunk = 1000
 
-// seedNPCRows upserts every definition and returns, positionally, each row's id
-// and whether THIS call created it (`xmax = 0` distinguishes a fresh insert from
-// a conflict update — that is what SeedNPCDefinitions counts).
+// seedNPCRows faz upsert de toda definição e devolve, posicionalmente, o id de cada
+// linha e se ESTA chamada a criou (`xmax = 0` separa inserção nova de
+// atualização por conflito — é isso que SeedNPCDefinitions conta).
 //
-// The statements are pipelined with pgx.Batch rather than issued one at a time.
-// A round trip per row cost ~56s against the production database, and because
-// dbServer reconciles the catalog BEFORE it listens (dbserver/cmd/dbserver/main.go),
-// that time was spent with port 7514 closed — long enough for the tmServer to
-// exhaust its restart budget and crash-loop the deploy.
+// Os comandos são enfileirados com pgx.Batch em vez de um por vez.
+// Uma ida e volta por linha custava ~56 s no banco de produção, e como
+// o dbServer reconcilia o catálogo ANTES de escutar (dbserver/cmd/dbserver/main.go),
+// esse tempo era gasto com a porta 7514 fechada — o bastante para o tmServer
+// esgotar o orçamento de reinício e entrar em crash-loop no deploy.
 func seedNPCRows(ctx context.Context, tx pgx.Tx, defs []domain.NPCDefinition) ([]int64, []bool, error) {
 	ids := make([]int64, len(defs))
 	created := make([]bool, len(defs))
@@ -395,8 +395,8 @@ func seedNPCRows(ctx context.Context, tx pgx.Tx, defs []domain.NPCDefinition) ([
 				d.GeneratorIndex, d.FollowerTemplate, d.MinuteGenerate, d.MinGroup, d.MaxGroup, d.MaxNumMob, d.Formation, gd,
 			)
 		}
-		// Every queued result must be consumed and the batch closed before the
-		// next statement runs on this tx, so keep only the first error and drain.
+		// Todo resultado enfileirado precisa ser consumido e o lote fechado antes do
+		// próximo comando rodar nesta tx, então guarde só o primeiro erro e drene.
 		res := tx.SendBatch(ctx, batch)
 		var batchErr error
 		for i := start; i < end; i++ {
@@ -414,11 +414,11 @@ func seedNPCRows(ctx context.Context, tx pgx.Tx, defs []domain.NPCDefinition) ([
 	return ids, created, nil
 }
 
-// seedNPCShopRows inserts the shop items of every definition, pipelined the same
-// way as seedNPCRows. ids is positional against defs (from seedNPCRows).
+// seedNPCShopRows insere os itens de loja de cada definição, enfileirados do mesmo
+// jeito que seedNPCRows. ids é posicional contra defs (vindo de seedNPCRows).
 func seedNPCShopRows(ctx context.Context, tx pgx.Tx, defs []domain.NPCDefinition, ids []int64) error {
-	// Flatten first so the chunking is over shop items, not over definitions —
-	// a merchant carries up to 27 slots, so the row count is several thousand.
+	// Achata primeiro para o fatiamento ser sobre itens de loja, não sobre definições —
+	// um mercador carrega até 27 slots, então a contagem chega a alguns milhares.
 	type shopRow struct {
 		npcID int64
 		slug  string
@@ -471,7 +471,7 @@ type generatorJSON struct {
 
 // --- helpers ---
 
-// inTx runs fn in a transaction, rolling back on error.
+// inTx roda fn numa transação, com rollback em erro.
 func (s *Store) inTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -537,13 +537,13 @@ func normalizeShopQuantity(it *domain.NPCShopItem) {
 	}
 }
 
-// pgxQuerier is the read surface shared by *pgxpool.Pool and pgx.Tx.
+// pgxQuerier é a superfície de leitura compartilhada por *pgxpool.Pool e pgx.Tx.
 type pgxQuerier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
-// auditAndBump writes the audit row and increments the config version. Called at
-// the end of every mutating transaction.
+// auditAndBump grava a linha de auditoria e incrementa a versão da config. Chamado no
+// fim de toda transação que muta.
 func auditAndBump(ctx context.Context, tx pgx.Tx, npcID *int64, moderatorID int64, action string, before, after []byte) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO npc_audit (npc_id, account_id, action, before, after)
@@ -568,8 +568,8 @@ func ensureDefExists(ctx context.Context, tx pgx.Tx, npcID int64) error {
 	return nil
 }
 
-// fetchDefJSON returns the definition row as JSON keyed by slug (nil if absent),
-// used to snapshot the "before" state for the audit trail.
+// fetchDefJSON devolve a linha da definição como JSON com chave slug (nil se ausente),
+// usado para fotografar o estado "antes" da trilha de auditoria.
 func fetchDefJSON(ctx context.Context, tx pgx.Tx, slug string) ([]byte, error) {
 	var js []byte
 	err := tx.QueryRow(ctx, `SELECT to_jsonb(d) FROM npc_definition d WHERE slug = $1`, slug).Scan(&js)
@@ -599,7 +599,7 @@ func fetchShopJSON(ctx context.Context, tx pgx.Tx, npcID int64) ([]byte, error) 
 	return js, err
 }
 
-// nullableID renders a zero moderator id as SQL NULL (system/seed writes).
+// nullableID renderiza id de moderador zero como SQL NULL (escritas de sistema/seed).
 func nullableID(id int64) any {
 	if id == 0 {
 		return nil
@@ -607,7 +607,7 @@ func nullableID(id int64) any {
 	return id
 }
 
-// nullableJSON renders empty JSON bytes as SQL NULL.
+// nullableJSON renderiza bytes JSON vazios como SQL NULL.
 func nullableJSON(b []byte) any {
 	if len(b) == 0 {
 		return nil

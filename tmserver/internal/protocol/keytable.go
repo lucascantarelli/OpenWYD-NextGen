@@ -1,16 +1,16 @@
 package protocol
 
-// keyWord is the 512-byte static obfuscation table used by the CPSock keyword
-// transform. It is transcribed verbatim from protocol-spec.md §4.4
+// keyWord é a tabela estática de obfuscação de 512 bytes usada pelo transform de
+// keyword do CPSock. É transcrita tal e qual de protocol-spec.md §4.4
 // (Source/Code/CPSock.cpp:29-46, labelled "7.xx keys").
 //
-// Even-indexed bytes are "KeyWord seeds" (used to seed the transform position
-// from HEADER.KeyWord), odd-indexed bytes are "Trans" values (used to transform
-// each payload byte). See transform.go and protocol-spec.md §1.4.
+// Bytes de índice par são "sementes KeyWord" (usadas para semear a posição do
+// transform a partir de HEADER.KeyWord); bytes de índice ímpar são valores "Trans"
+// (usados para transformar cada byte do payload). Ver transform.go e protocol-spec.md §1.4.
 //
-// This is obfuscation, not encryption: the key is public and the transform is
-// reversible (protocol-spec.md §1.4 note). Reproduce it identically for wire
-// compatibility with the unmodified client.
+// Isto é obfuscação, não criptografia: a chave é pública e o transform é
+// reversível (nota de protocol-spec.md §1.4). Reproduzi-lo de forma idêntica é o que dá
+// compatibilidade com o cliente sem modificação.
 var keyWord = [512]byte{
 	0x84, 0x87, 0x37, 0xd7, 0xea, 0x79, 0x91, 0x7d, 0x4b, 0x4b, 0x85, 0x7d, 0x87, 0x81, 0x91, 0x7c, 0x0f, 0x73, 0x91, 0x91, 0x87, 0x7d, 0x0d, 0x7d, 0x86, 0x8f, 0x73, 0x0f, 0xe1, 0xdd, 0x85, 0x7d,
 	0x05, 0x7d, 0x85, 0x83, 0x87, 0x9c, 0x85, 0x33, 0x0d, 0xe2, 0x87, 0x19, 0x0f, 0x79, 0x85, 0x86, 0x37, 0x7d, 0xd7, 0xdd, 0xe9, 0x7d, 0xd7, 0x7d, 0x85, 0x79, 0x05, 0x7d, 0x0f, 0xe1, 0x87, 0x7e,

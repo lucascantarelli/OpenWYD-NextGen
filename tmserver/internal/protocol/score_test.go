@@ -34,7 +34,7 @@ func TestEncodeUpdateScore(t *testing.T) {
 			t.Errorf("Special[%d] = %d, want %d", i, got, want)
 		}
 	}
-	// Status bars duplicated near the tail.
+	// Barras de status duplicadas perto da cauda.
 	if le.Uint32(b[124:]) != 1490 || le.Uint32(b[128:]) != 390 {
 		t.Errorf("CurrHp/CurrMp = %d/%d", le.Uint32(b[124:]), le.Uint32(b[128:]))
 	}
@@ -53,7 +53,7 @@ func TestEncodeUpdateScoreTail(t *testing.T) {
 	if b[48] != 3 || b[49] != 10 {
 		t.Errorf("Critical/SaveMana @48/49 = %d/%d", b[48], b[49])
 	}
-	// Affect icon = (Type<<8) | (Time&0xFF); Time clamps at 2550000 first.
+	// Ícone de affect = (Type<<8) | (Time&0xFF); Time é limitado a 2550000 antes.
 	if got := le.Uint16(b[50:]); got != (11<<8)|0x34 {
 		t.Errorf("Affect[0] @50 = %#x, want %#x", got, (11<<8)|0x34)
 	}
@@ -69,7 +69,7 @@ func TestEncodeUpdateScoreTail(t *testing.T) {
 	if le.Uint32(b[132:]) != 42 {
 		t.Errorf("Magic @132 = %d, want 42", le.Uint32(b[132:]))
 	}
-	// The legacy sends the trailing Special[4] bytes as its 0xCC stack quirk.
+	// O legado envia os bytes Special[4] do final como sua peculiaridade 0xCC de pilha.
 	if b[136] != 0xCC || b[139] != 0xCC {
 		t.Errorf("tail Special quirk = %#x %#x, want 0xCC", b[136], b[139])
 	}

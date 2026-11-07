@@ -12,25 +12,25 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Donate web shop persistence (issue #34). Postgres owns the shop catalog
-// (donate_shop_item) and the donate wallet (account.donate_balance); a purchase
-// debits the wallet and enqueues the item into delivery_queue in one transaction.
-// The tmServer never reads the catalog — it only drains delivery_queue into the
-// account cargo inside its single-owner loop. Crediting/debiting donate_balance
-// is a PARTIAL account update, so no tmServer save clobbers it (SaveCharacter
-// never touches account; SaveCargo writes only cargo_coin).
+// Persistência da loja de donate web (issue #34). O Postgres é dono do catálogo
+// (donate_shop_item) e da carteira de donate (account.donate_balance); uma compra
+// debita a carteira e enfileira o item em delivery_queue numa transação.
+// O tmServer nunca lê o catálogo — só drena delivery_queue para o
+// cargo da conta dentro do seu loop de dono único. Creditar/debitar donate_balance
+// é atualização PARCIAL de conta, então nenhum save do tmServer a sobrescreve (SaveCharacter
+// nunca toca account; SaveCargo escreve só cargo_coin).
 
-// ErrInsufficientDonate is returned by BuyDonateItem when the account's donate
-// balance is below the item price.
+// ErrInsufficientDonate é devolvido por BuyDonateItem quando o saldo de donate
+// da conta está abaixo do preço do item.
 var ErrInsufficientDonate = errors.New("store: insufficient donate balance")
 
-// ErrShopItemDisabled is returned by BuyDonateItem when the target offer exists
-// but is not enabled for sale.
+// ErrShopItemDisabled é devolvido por BuyDonateItem quando a oferta existe
+// mas não está habilitada para venda.
 var ErrShopItemDisabled = errors.New("store: donate shop item disabled")
 
-// itemPayload is the delivery_queue.payload shape for kind='item': everything the
-// tmServer drain needs to materialize a STRUCT_ITEM into the account cargo.
-// ExpiresAt is absolute Unix-seconds (0 = permanent).
+// itemPayload é o formato de delivery_queue.payload para kind='item': tudo que a
+// drenagem do tmServer precisa para materializar um STRUCT_ITEM no cargo da conta.
+// ExpiresAt é Unix-segundos absoluto (0 = permanente).
 type itemPayload struct {
 	ItemIndex int32 `json:"item_index"`
 	Eff1      uint8 `json:"eff1"`
@@ -42,17 +42,17 @@ type itemPayload struct {
 	ExpiresAt int64 `json:"expires_at"`
 }
 
-// donateShopItemCols is the column list shared by every donate_shop_item read,
-// matched positionally by scanDonateShopItem.
+// donateShopItemCols é a lista de colunas compartilhada por toda leitura de
+// donate_shop_item, casada posicionalmente por scanDonateShopItem.
 const donateShopItemCols = `id, item_index, eff1, effv1, eff2, effv2, eff3, effv3, price, title, description, enabled, expires_days`
 
-// ListDonateShopItems returns every shop offer (enabled or not), ordered by id —
-// the moderation table. ListEnabledDonateShopItems is the player-facing vitrine.
+// ListDonateShopItems devolve toda oferta da loja (habilitada ou não), por id —
+// a tabela de moderação. ListEnabledDonateShopItems é a vitrine do jogador.
 func (s *Store) ListDonateShopItems(ctx context.Context) ([]domain.DonateShopItem, error) {
 	return s.queryDonateShopItems(ctx, `SELECT `+donateShopItemCols+` FROM donate_shop_item ORDER BY id`)
 }
 
-// ListEnabledDonateShopItems returns only the offers on sale (the web vitrine).
+// ListEnabledDonateShopItems devolve só as ofertas à venda (a vitrine web).
 func (s *Store) ListEnabledDonateShopItems(ctx context.Context) ([]domain.DonateShopItem, error) {
 	return s.queryDonateShopItems(ctx, `SELECT `+donateShopItemCols+` FROM donate_shop_item WHERE enabled = TRUE ORDER BY id`)
 }
@@ -74,7 +74,7 @@ func (s *Store) queryDonateShopItems(ctx context.Context, sql string) ([]domain.
 	return out, rows.Err()
 }
 
-// GetDonateShopItem loads one offer by id. Returns ErrNotFound when absent.
+// GetDonateShopItem carrega uma oferta por id. Devolve ErrNotFound quando ausente.
 func (s *Store) GetDonateShopItem(ctx context.Context, id int64) (domain.DonateShopItem, error) {
 	row := s.pool.QueryRow(ctx, `SELECT `+donateShopItemCols+` FROM donate_shop_item WHERE id = $1`, id)
 	d, err := scanDonateShopItem(row)
@@ -87,7 +87,7 @@ func (s *Store) GetDonateShopItem(ctx context.Context, id int64) (domain.DonateS
 	return d, nil
 }
 
-// scanRow is the read surface shared by pgx.Row and pgx.Rows (both have Scan).
+// scanRow é a superfície de leitura compartilhada por pgx.Row e pgx.Rows (ambos têm Scan).
 type scanRow interface {
 	Scan(dest ...any) error
 }
@@ -99,9 +99,9 @@ func scanDonateShopItem(row scanRow) (domain.DonateShopItem, error) {
 	return d, err
 }
 
-// UpsertDonateShopItem inserts a new offer (d.ID == 0) or updates the existing
-// one by id, writing an audit row in the same transaction. Returns the offer id;
-// updating a missing id returns ErrNotFound.
+// UpsertDonateShopItem insere oferta nova (d.ID == 0) ou atualiza a existente
+// por id, gravando auditoria na mesma transação. Devolve o id da oferta;
+// atualizar um id inexistente devolve ErrNotFound.
 func (s *Store) UpsertDonateShopItem(ctx context.Context, d domain.DonateShopItem, moderatorID int64) (int64, error) {
 	var id int64
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -142,8 +142,8 @@ func (s *Store) UpsertDonateShopItem(ctx context.Context, d domain.DonateShopIte
 	return id, err
 }
 
-// SetDonateShopItemEnabled toggles whether an offer is on sale. Returns
-// ErrNotFound if the offer does not exist.
+// SetDonateShopItemEnabled alterna se uma oferta está à venda. Devolve
+// ErrNotFound se a oferta não existir.
 func (s *Store) SetDonateShopItemEnabled(ctx context.Context, id int64, enabled bool, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, _ := fetchDonateItemJSON(ctx, tx, id)
@@ -160,7 +160,7 @@ func (s *Store) SetDonateShopItemEnabled(ctx context.Context, id int64, enabled 
 	})
 }
 
-// DeleteDonateShopItem removes an offer. Returns ErrNotFound if absent.
+// DeleteDonateShopItem remove uma oferta. Devolve ErrNotFound se ausente.
 func (s *Store) DeleteDonateShopItem(ctx context.Context, id int64, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, _ := fetchDonateItemJSON(ctx, tx, id)
@@ -174,8 +174,8 @@ func (s *Store) DeleteDonateShopItem(ctx context.Context, id int64, moderatorID 
 	})
 }
 
-// DonateBalance returns an account's donate wallet balance. Returns ErrNotFound
-// when the account does not exist.
+// DonateBalance devolve o saldo da carteira de donate de uma conta. Devolve ErrNotFound
+// quando a conta não existe.
 func (s *Store) DonateBalance(ctx context.Context, accountID int64) (int32, error) {
 	var bal int32
 	err := s.pool.QueryRow(ctx, `SELECT donate_balance FROM account WHERE id = $1`, accountID).Scan(&bal)
@@ -188,10 +188,10 @@ func (s *Store) DonateBalance(ctx context.Context, accountID int64) (int32, erro
 	return bal, nil
 }
 
-// CreditDonateBalance adds amount to an account's donate wallet (the manual/admin
-// credit path the future payment webhook reuses) and returns the new balance. It
-// is a partial UPDATE — never a full-row write — so it is safe against tmServer
-// saves. Returns ErrNotFound if the account is absent.
+// CreditDonateBalance soma amount à carteira de donate de uma conta (o caminho de
+// crédito manual/admin que o webhook de pagamento futuro reusa) e devolve o novo saldo. É
+// um UPDATE parcial — nunca escrita da linha inteira — então é seguro contra saves do
+// tmServer. Devolve ErrNotFound se a conta está ausente.
 func (s *Store) CreditDonateBalance(ctx context.Context, accountID int64, amount int32, moderatorID int64, reason string) (int32, error) {
 	var newBal int32
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -212,11 +212,11 @@ func (s *Store) CreditDonateBalance(ctx context.Context, accountID int64, amount
 	return newBal, err
 }
 
-// BuyDonateItem debits the account's donate balance by the offer price and
-// enqueues the item into delivery_queue, transactionally, returning the new
-// balance. The tmServer delivers the queued item into the account cargo on the
-// next login (web-platform-plan.md §mailbox). Returns ErrNotFound (unknown offer
-// or account), ErrShopItemDisabled (offer not on sale), or ErrInsufficientDonate.
+// BuyDonateItem debita o preço da oferta do saldo de donate da conta e
+// enfileira o item em delivery_queue, transacionalmente, devolvendo o novo
+// saldo. O tmServer entrega o item enfileirado no cargo da conta no
+// próximo login (web-platform-plan.md §mailbox). Devolve ErrNotFound (oferta ou
+// conta desconhecida), ErrShopItemDisabled (oferta fora de venda) ou ErrInsufficientDonate.
 func (s *Store) BuyDonateItem(ctx context.Context, accountID, shopItemID int64) (int32, error) {
 	var newBal int32
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -232,8 +232,8 @@ func (s *Store) BuyDonateItem(ctx context.Context, accountID, shopItemID int64) 
 			return ErrShopItemDisabled
 		}
 
-		// Lock the wallet row, then check funds before debiting so the outcome is
-		// unambiguous (insufficient vs missing account).
+		// Trava a linha da carteira e confere o saldo antes de debitar, para o resultado
+		// ser inequívoco (saldo insuficiente vs conta inexistente).
 		var bal int32
 		err = tx.QueryRow(ctx, `SELECT donate_balance FROM account WHERE id = $1 FOR UPDATE`, accountID).Scan(&bal)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -273,9 +273,9 @@ func (s *Store) BuyDonateItem(ctx context.Context, accountID, shopItemID int64) 
 	return newBal, err
 }
 
-// PendingItemDeliveries returns the account's pending item grants from the
-// mailbox, oldest first. The tmServer calls it inside its loop at login, applies
-// each to the account cargo, then acks via SaveCargoWithDeliveries.
+// PendingItemDeliveries devolve as concessões de item pendentes da conta na
+// caixa, das mais antigas para as mais novas. O tmServer a chama no loop no login,
+// aplica cada uma ao cargo da conta e confirma via SaveCargoWithDeliveries.
 func (s *Store) PendingItemDeliveries(ctx context.Context, accountID int64) ([]domain.Delivery, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, payload FROM delivery_queue
@@ -308,12 +308,12 @@ func (s *Store) PendingItemDeliveries(ctx context.Context, accountID int64) ([]d
 	return out, rows.Err()
 }
 
-// SaveCargoWithDeliveries persists the account cargo (gold + items, replace-all
-// like SaveCargo) AND marks the drained mailbox rows delivered/lost, all in one
-// transaction. Committing both together is the anti-dup boundary: a crash before
-// commit leaves the rows 'pending' and the cargo unchanged, so the next login
-// re-drains cleanly with no duplication. Returns ErrNotFound if the account is
-// absent.
+// SaveCargoWithDeliveries persiste o cargo da conta (ouro + itens, substituição
+// total como SaveCargo) E marca as linhas drenadas da caixa como entregues/perdidas,
+// tudo numa transação. Confirmar as duas juntas é a fronteira anti-duplicação: uma
+// queda antes do commit deixa as linhas 'pending' e o cargo intacto, então o próximo
+// login drena de novo limpo, sem duplicação. Devolve ErrNotFound se a conta estiver
+// ausente.
 func (s *Store) SaveCargoWithDeliveries(ctx context.Context, accountID int64, coin int32, items []domain.Item, deliveredIDs, lostIDs []int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `UPDATE account SET cargo_coin = $2 WHERE id = $1`, accountID, coin)
@@ -352,8 +352,8 @@ func markDeliveries(ctx context.Context, tx pgx.Tx, status string, ids []int64) 
 
 // --- helpers ---
 
-// expiresDaysToUnix converts a shop offer's expires_days into an absolute expiry
-// timestamp (Unix seconds); 0 days = permanent (0).
+// expiresDaysToUnix converte expires_days de uma oferta em timestamp absoluto de
+// expiração (Unix segundos); 0 dias = permanente (0).
 func expiresDaysToUnix(days int32) int64 {
 	if days <= 0 {
 		return 0
@@ -361,8 +361,8 @@ func expiresDaysToUnix(days int32) int64 {
 	return time.Now().Add(time.Duration(days) * 24 * time.Hour).Unix()
 }
 
-// donateAudit writes one row to donate_shop_audit. Unlike auditAndBump there is
-// no config version to bump — the tmServer never reads the donate catalog.
+// donateAudit grava uma linha em donate_shop_audit. Diferente de auditAndBump, não há
+// versão de config a subir — o tmServer nunca lê o catálogo de donate.
 func donateAudit(ctx context.Context, tx pgx.Tx, shopItemID *int64, accountID int64, action string, before, after []byte) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO donate_shop_audit (shop_item_id, account_id, action, before, after)

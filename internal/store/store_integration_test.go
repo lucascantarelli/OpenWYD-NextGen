@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the PostgreSQL store. They require a real database and
-// are excluded from the default build (guidelines §13.2). Run with:
+// Testes de integração do store PostgreSQL. Eles exigem um banco real e
+// ficam fora do build padrão (guidelines §13.2). Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store

@@ -2,20 +2,20 @@ package protocol
 
 import "fmt"
 
-// Frame is a fully decoded CPSock packet: its plain header and the plain message
-// body (bytes [HeaderSize:Size)).
+// Frame é um pacote CPSock totalmente decodificado: seu cabeçalho plano e a
+// corpo (bytes [HeaderSize:Size)).
 type Frame struct {
 	Header  Header
 	Payload []byte
 }
 
-// Encode builds the complete obfuscated wire bytes for a packet whose plain body
-// is payload. h supplies Type, ID and ClientTick; Size, KeyWord and CheckSum are
-// computed here. iKeyWord seeds the keyword transform — it is injectable so
-// tests are deterministic; in production it is rand()%256 (CPSock.cpp:535).
+// Encode monta os bytes de wire ofuscados completos de um pacote cujo corpo plano
+// é payload. h fornece Type, ID e ClientTick; Size, KeyWord e CheckSum são
+// calculados aqui. iKeyWord semeia o transform de keyword — é injetável para
+// os testes serem determinísticos; em produção é rand()%256 (CPSock.cpp:535).
 //
 // The obfuscation/checksum cover bytes [4:Size), i.e. Type, ID, ClientTick AND
-// the body; only Size, KeyWord and CheckSum (bytes 0..3) stay in clear
+// o corpo; só Size, KeyWord e CheckSum (bytes 0..3) ficam em claro
 // (protocol-spec.md §1.1, §1.4).
 func Encode(h Header, payload []byte, iKeyWord uint8) ([]byte, error) {
 	size := HeaderSize + len(payload)
@@ -24,7 +24,7 @@ func Encode(h Header, payload []byte, iKeyWord uint8) ([]byte, error) {
 	}
 
 	buf := make([]byte, size)
-	// Lay down the full plain header (CheckSum filled after the transform).
+	// Escreve o cabeçalho plano completo (CheckSum preenchido depois do transform).
 	h.Size = uint16(size)
 	h.KeyWord = iKeyWord
 	h.CheckSum = 0
@@ -38,10 +38,10 @@ func Encode(h Header, payload []byte, iKeyWord uint8) ([]byte, error) {
 	return buf, nil
 }
 
-// Decode parses one complete wire frame (exactly Size bytes, as produced by the
-// framer) into its plain header and body. mismatch reports a checksum mismatch;
-// per the legacy semantics this layer does NOT reject on mismatch (§1.5) — the
-// caller decides. Decode does not modify wire.
+// Decode lê um frame de wire completo (exatamente Size bytes, como produzido pelo
+// framer) em seu cabeçalho plano e corpo. mismatch informa divergência de checksum;
+// pela semântica legada esta camada NÃO rejeita em divergência (§1.5) — quem
+// chama decide. Decode não modifica wire.
 func Decode(wire []byte) (h Header, payload []byte, mismatch bool, err error) {
 	if len(wire) < HeaderSize {
 		return Header{}, nil, false, fmt.Errorf("protocol: Decode: frame too small: %d < %d", len(wire), HeaderSize)

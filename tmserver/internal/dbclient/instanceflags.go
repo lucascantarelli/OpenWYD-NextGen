@@ -10,8 +10,8 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// InstanceFlag is one process flag as the portal shows it (issue 36). The JSON
-// shape is the contract with the portal, so the tags are part of the API.
+// InstanceFlag é uma flag de processo como o portal a mostra (issue 36). O formato
+// JSON é o contrato com o portal, então as tags fazem parte da API.
 type InstanceFlag struct {
 	Name            string `json:"name"`
 	Value           string `json:"value"`
@@ -19,18 +19,18 @@ type InstanceFlag struct {
 	Hint            string `json:"hint"`
 }
 
-// InstanceFlags records the boot snapshot of tmServer's process flags.
+// InstanceFlags registra o snapshot de boot das flags de processo do tmServer.
 type InstanceFlags struct {
 	api dbv1.InstanceFlagsServiceClient
 }
 
-// NewInstanceFlags wraps a gRPC connection as a flags recorder.
+// NewInstanceFlags embrulha uma conexão gRPC como gravador de flags.
 func NewInstanceFlags(conn grpc.ClientConnInterface) *InstanceFlags {
 	return &InstanceFlags{api: dbv1.NewInstanceFlagsServiceClient(conn)}
 }
 
-// Record stores one snapshot. Marshalling lives here so callers pass typed flags
-// and cannot send malformed JSON.
+// Record guarda um snapshot. A serialização mora aqui para quem chama passar flags
+// tipadas e não poder enviar JSON malformado.
 func (c *InstanceFlags) Record(ctx context.Context, server string, flags []InstanceFlag) error {
 	raw, err := json.Marshal(flags)
 	if err != nil {

@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestTransformInverse verifies encodePayload and decodePayload are exact
-// inverses over bytes [4:len), across seeds and across all four i&0x3 shift
-// branches (a body of ≥4 bytes already cycles 4..7 → mod 0,1,2,3), including
+// TestTransformInverse verifica que encodePayload e decodePayload são
+// inversos exatos sobre os bytes [4:len), entre sementes e entre os quatro casos
+// de deslocamento i&0x3.
 // 8-bit wrap (0x00/0xFF bytes).
 func TestTransformInverse(t *testing.T) {
 	payloads := [][]byte{
@@ -24,7 +24,7 @@ func TestTransformInverse(t *testing.T) {
 	}
 	for _, k := range []uint8{0, 1, 17, 200, 255} {
 		for _, body := range payloads {
-			// Build a full buffer: 4 clear bytes + (Type/ID/Tick + body) under transform.
+			// Monta um buffer completo: 4 bytes em claro + (Type/ID/Tick + corpo) sob transform.
 			buf := make([]byte, HeaderSize+len(body))
 			for i := range buf {
 				buf[i] = byte(i*3 + 1)
@@ -36,7 +36,7 @@ func TestTransformInverse(t *testing.T) {
 			if bytes.Equal(buf[transformStart:], orig[transformStart:]) && len(body) > 0 {
 				t.Errorf("encodePayload did not change bytes (k=%d)", k)
 			}
-			// Bytes 0..3 must be untouched by the transform (§1.4).
+			// Os bytes 0..3 precisam ficar intocados pelo transform (§1.4).
 			if !bytes.Equal(buf[:transformStart], orig[:transformStart]) {
 				t.Errorf("transform touched clear header bytes 0..3")
 			}
@@ -48,9 +48,9 @@ func TestTransformInverse(t *testing.T) {
 	}
 }
 
-// TestChecksumIsTransformOnly documents that CheckSum = Sum2 - Sum1 depends only
-// on the key/transform offsets, not on the data — encoding two different bodies
-// with the same key yields the same checksum.
+// TestChecksumIsTransformOnly documenta que CheckSum = Sum2 - Sum1 depende só
+// dos offsets da chave/transform, não dos dados — codificar dois corpos
+// diferentes com a mesma chave dá o mesmo checksum.
 func TestChecksumIsTransformOnly(t *testing.T) {
 	a, _ := Encode(Header{Type: MsgAction}, bytes.Repeat([]byte{0x00}, 16), 50)
 	b, _ := Encode(Header{Type: MsgAction}, bytes.Repeat([]byte{0xAB}, 16), 50)

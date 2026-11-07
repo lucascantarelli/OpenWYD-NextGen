@@ -6,9 +6,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/loot"
 )
 
-// TestApplyChangesOnlyTheEditedSlot is the golden rule of this feature: with no
-// overrides the table is exactly loot's code defaults, and one override changes
-// one divisor and nothing else.
+// TestApplyChangesOnlyTheEditedSlot é a regra de ouro deste recurso: sem
+// sobreposições a tabela é exatamente os defaults de código do loot, e uma
+// sobreposição muda um divisor e nada mais.
 func TestApplyChangesOnlyTheEditedSlot(t *testing.T) {
 	before := Snapshot()
 	t.Cleanup(func() { loot.DropRate = before })
@@ -37,8 +37,8 @@ func TestApplyChangesOnlyTheEditedSlot(t *testing.T) {
 	}
 }
 
-// TestApplyRejectsOutOfRange makes the validation explicit: the portal's range
-// and this one have to agree, and a bad row must not silently become a divisor.
+// TestApplyRejectsOutOfRange torna a validação explícita: a faixa do portal e
+// esta precisam concordar, e uma linha ruim não pode virar divisor em silêncio.
 func TestApplyRejectsOutOfRange(t *testing.T) {
 	before := Snapshot()
 	t.Cleanup(func() { loot.DropRate = before })
@@ -58,8 +58,8 @@ func TestApplyRejectsOutOfRange(t *testing.T) {
 	}
 }
 
-// TestEffectiveRateFollowsTheOverride proves the change reaches the formula the
-// world uses (EffectiveDropRate), which is why the overlay is useful at all.
+// TestEffectiveRateFollowsTheOverride prova que a mudança alcança a fórmula que o
+// mundo usa (EffectiveDropRate), que é o motivo de a sobreposição ser útil.
 func TestEffectiveRateFollowsTheOverride(t *testing.T) {
 	before := Snapshot()
 	t.Cleanup(func() { loot.DropRate = before })
@@ -71,7 +71,7 @@ func TestEffectiveRateFollowsTheOverride(t *testing.T) {
 	if half >= base {
 		t.Fatalf("EffectiveDropRate(12) after halving the divisor = %d, want < %d", half, base)
 	}
-	// Slot 11 is a hard override (always drops) and must not be affected by slot 12.
+	// O slot 11 é sobreposição dura (sempre dropa) e não pode ser afetado pelo slot 12.
 	if got := loot.EffectiveDropRate(11, 0, 50); got != 1 {
 		t.Errorf("EffectiveDropRate(11) = %d, want 1 (hard override)", got)
 	}

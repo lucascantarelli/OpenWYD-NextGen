@@ -9,18 +9,18 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Guild admin writes (issue 45, slice 2). Every one of them runs in a single
-// transaction with its guild_admin_audit row: a leadership transfer that commits
-// without the audit trail is precisely what a moderation log cannot allow, and a
-// half-applied transfer (new master promoted, old one still level 9) would make
-// the guild unusable in the world.
+// Escritas de admin de guild (issue 45, fatia 2). Todas rodam numa única
+// transação com sua linha em guild_admin_audit: uma transferência de liderança que
+// confirma sem a trilha de auditoria é precisamente o que um log de moderação não
+// transferência pela metade (novo master promovido, antigo ainda nível 9) deixaria
+// pode permitir, e um
 //
-// applied=false means "nothing to do" (character is not a member, already master,
-// relation absent); it is not an error.
+// applied=false significa "nada a fazer" (o personagem não é membro, já é master,
+// relação ausente); não é erro.
 
-// SetGuildMasterByCharacter promotes one member to level 9 and demotes the
-// previous leader to level 0, mirroring both in `character` so the next boot and
-// the save path agree with guild_member.
+// SetGuildMasterByCharacter promove um membro a nível 9 e rebaixa o
+// líder anterior a nível 0, espelhando ambos em `character` para o próximo boot e
+// o caminho de save concordarem com guild_member.
 func (s *Store) SetGuildMasterByCharacter(ctx context.Context, guildID int32, characterID int64, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -53,7 +53,7 @@ func (s *Store) SetGuildMasterByCharacter(ctx context.Context, guildID int32, ch
 			guildID, characterID); err != nil {
 			return fmt.Errorf("store: promote guild %d member %d: %w", guildID, characterID, err)
 		}
-		// Mirror in `character`: the login/save path reads guild_level from there.
+		// Espelha em `character`: o caminho de login/save lê guild_level de lá.
 		if _, err := tx.Exec(ctx,
 			`UPDATE characters SET guild_level = 0 WHERE guild_id = $1 AND guild_level = 9`, guildID); err != nil {
 			return fmt.Errorf("store: demote character guild level for %d: %w", guildID, err)
@@ -75,9 +75,9 @@ func (s *Store) SetGuildMasterByCharacter(ctx context.Context, guildID int32, ch
 	return applied, err
 }
 
-// RemoveGuildMemberByCharacter drops one membership and clears the character's
-// guild fields. The leader is refused one layer up: removing the level-9 row
-// would leave a guild with no one able to hand it over.
+// RemoveGuildMemberByCharacter descarta uma associação e limpa os campos de guild
+// do personagem. O líder é recusado uma camada acima: remover a linha de nível 9
+// deixaria uma guild sem ninguém capaz de passá-la adiante.
 func (s *Store) RemoveGuildMemberByCharacter(ctx context.Context, guildID int32, characterID int64, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -118,9 +118,9 @@ func (s *Store) RemoveGuildMemberByCharacter(ctx context.Context, guildID int32,
 	return applied, err
 }
 
-// SetGuildRelationAudited upserts one directed ally/war relation or removes it
-// (kind 0). The pair is validated one layer up; the table's own CHECKs (kind 1/2,
-// guild_id <> target_guild_id) remain the last line of defence.
+// SetGuildRelationAudited insere uma relação direcionada de aliado/guerra ou a remove
+// (kind 0). O par é validado uma camada acima; os CHECKs da própria tabela (kind 1/2,
+// guild_id <> target_guild_id) continuam a última linha de defesa.
 func (s *Store) SetGuildRelationAudited(ctx context.Context, guildID, targetGuildID int32, kind int, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -165,8 +165,8 @@ func (s *Store) SetGuildRelationAudited(ctx context.Context, guildID, targetGuil
 	return applied, err
 }
 
-// guildMemberSnapshot is the audit's before/after: the guild's membership as the
-// table has it, read back inside the transaction.
+// guildMemberSnapshot é o antes/depois da auditoria: a associação da guild como a
+// tabela a tem, relida dentro da transação.
 func guildMemberSnapshot(ctx context.Context, tx pgx.Tx, guildID int32) ([]byte, error) {
 	var js []byte
 	if err := tx.QueryRow(ctx, `
@@ -177,7 +177,7 @@ func guildMemberSnapshot(ctx context.Context, tx pgx.Tx, guildID int32) ([]byte,
 	return js, nil
 }
 
-// guildRelationSnapshot is the same idea for the directed relations of a guild.
+// guildRelationSnapshot é a mesma ideia para as relações direcionadas de uma guild.
 func guildRelationSnapshot(ctx context.Context, tx pgx.Tx, guildID int32) ([]byte, error) {
 	var js []byte
 	if err := tx.QueryRow(ctx, `
@@ -188,9 +188,9 @@ func guildRelationSnapshot(ctx context.Context, tx pgx.Tx, guildID int32) ([]byt
 	return js, nil
 }
 
-// auditGuild appends one row to guild_admin_audit. target/before/after are JSONB;
-// before/after come from the table, so the trail shows the state that was really
-// stored rather than the request that was sent.
+// auditGuild anexa uma linha a guild_admin_audit. target e os snapshots de antes/depois são JSONB;
+// os snapshots vêm da tabela, então a trilha mostra o estado que foi realmente
+// guardado em vez do pedido que foi enviado.
 func auditGuild(ctx context.Context, tx pgx.Tx, moderatorID int64, guildID int32, action string, target map[string]any, before, after []byte, reason string) error {
 	rawTarget, err := json.Marshal(target)
 	if err != nil {
