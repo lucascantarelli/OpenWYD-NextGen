@@ -4,6 +4,35 @@ Instruções para agentes de IA que trabalham neste repositório. Leia antes de 
 define o que é o projeto, como subir a stack, quais invariantes não podem ser quebradas e onde
 está o conhecimento já produzido.
 
+## 0. Transição Rust (leia primeiro enquanto o Go ainda está no repo)
+
+O projeto está migrando de Go para Rust (`start-rust.md`, `pre-release-rust.md`).
+Regras desta fase de transição:
+
+- **Go está arquivado em `.deprecated-go/`** (ordem do dono executada; histórico
+  preservado via rename). Referência de engenharia reversa vive em
+  `.deprecated-go/docs/migration/` e `.deprecated-go/Source/`. Nada sai do
+  arquivo de volta ao build sem ADR.
+- **Trabalho Rust novo vive em:** `crates/wyd-{protocol,core,net,db,admin,sim,launcher}/`,
+  `Cargo.toml` (workspace), `rust-toolchain.toml`, `docs/rust/`, `roadmap-rust/`,
+  `portal/` (Cold Path, mantido fora do arquivo).
+- **Skills Rust vigentes** (use estas, não as Go, para código Rust): `wyd-rust-core`
+  (engine/Hot Path), `wyd-rust-net` (transporte/protocolo), `wyd-rust-db`
+  (persistência), `wyd-rust-sim` (laboratório matemático), `wyd-rust-obs`
+  (observabilidade/segurança), `wyd-rust-toolchain` (build/CI).
+- **Boas práticas vigentes** (valem para todo código novo): `rust-code-quality`
+  (ownership, erros tipados, clippy/fmt, testes), `software-architecture`
+  (Hot/Cold, DOD/ECS, fronteiras, ADRs), `solid-design-patterns`
+  (SOLID e patterns idiomáticos em Rust).
+- **Invariantes do núcleo Rust:** Hot Path monolítico no mesmo espaço de memória
+  (sem gRPC/HTTP no tick, sem GC, sem mutex global); DOD/ECS com dados contíguos;
+  `unsafe` só em interop comprovada; erros tipados; servidor é autoridade
+  (física, dano, skills, inventário); `ESCENE_FIELD` (30000) segue como pacote
+  autoritativo de cena; `clippy -D warnings` e `rustfmt` limpos.
+- **Qualidade/planejamento:** `roadmap-rust/` documenta as 15 fases; código Rust
+  novo nasce com teste (`cargo test --workspace`). Preservação de conhecimento
+  antes de qualquer desativação (`pre-release.md` §1.2).
+
 ## 1. O que é este projeto
 
 Servidor local do WYD2 (With Your Destiny) escrito em Go, o portal administrativo em Next.js e o

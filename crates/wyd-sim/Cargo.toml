@@ -1,0 +1,9 @@
+[package]
+name = "wyd-sim"
+version = "0.1.0"
+edition = "2021"
+description = "Laboratorio matematico do OpenWYD (simulacao de combate/balanceamento)"
+
+[lib]
+name = "wyd_sim"
+path = "src/lib.rs"

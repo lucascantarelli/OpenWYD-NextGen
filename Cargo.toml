@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/wyd-protocol",
+  "crates/wyd-core",
+  "crates/wyd-net",
+  "crates/wyd-db",
+  "crates/wyd-admin",
+  "crates/wyd-sim",
+  "crates/wyd-launcher",
+]
