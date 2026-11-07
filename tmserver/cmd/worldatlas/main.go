@@ -1,11 +1,11 @@
-// Command worldatlas publishes the world layout the server actually uses: the
-// fixed city table and teleport routes (from tmserver/internal/world), the named
-// regions of the `region` table, the static objects of world_item_seed, the NPC
-// spawn generators of npc_definition and a downsampled PNG of AttributeMap.dat.
+// O comando worldatlas publica o layout do mundo que o servidor realmente usa: a
+// tabela fixa de cidades e as rotas de teleporte (de tmserver/internal/world), as
+// regiões nomeadas da tabela `region`, os objetos estáticos de world_item_seed, os
+// geradores de spawn de npc_definition e um PNG reduzido do AttributeMap.dat.
 //
-// It lives under tmserver/cmd (not webserver/cmd) because it reads
-// tmserver/internal/content and tmserver/internal/world, which Go only allows
-// inside the tmserver tree. It reads content, never writes to tmserver/content/.
+// Mora em tmserver/cmd (não em webserver/cmd) porque lê
+// tmserver/internal/content e tmserver/internal/world, que o Go só permite
+// dentro da árvore do tmserver. Ele lê conteúdo e nunca escreve em tmserver/content/.
 package main
 
 import (
@@ -34,7 +34,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// bounds is a world-space rectangle (0..4096 blocks).
+// bounds é um retângulo no espaço do mundo (0..4096 blocos).
 type bounds struct {
 	X1 int `json:"x1"`
 	Y1 int `json:"y1"`
@@ -48,19 +48,19 @@ type region struct {
 	Y1   int    `json:"y1"`
 	X2   int    `json:"x2"`
 	Y2   int    `json:"y2"`
-	// Fit is the tight box around the walkable cells inside the Regions.txt
-	// rectangle. Nil when the region covers nothing the AttributeMap lets a mob
-	// walk on; the UI then falls back to the raw rectangle.
+	// Fit é a caixa justa em volta das células caminháveis dentro do retângulo do
+	// Regions.txt. Nil quando a região não cobre nada por onde o AttributeMap deixa um
+	// mob andar; a UI então cai no retângulo cru.
 	Fit *bounds `json:"fit,omitempty"`
-	// Color tints the region in `region-map.png` and in the table swatch.
+	// Color tinge a região em `region-map.png` e na amostra da tabela.
 	Color  string `json:"color,omitempty"`
 	Source string `json:"source"`
 }
 
-// regionRGB tints a region by walking the hue wheel with the golden angle — 52
-// named regions need 52 distinguishable hues, and a fixed 12-colour palette
-// would give four regions the same tint. Saturation/lightness stay moderate so
-// the terrain still reads through the mask.
+// regionRGB tinge uma região percorrendo o círculo de matiz com o ângulo áureo — 52
+// regiões nomeadas precisam de 52 matizes distinguíveis, e uma paleta fixa de 12
+// cores daria a mesma tonalidade a quatro regiões. Saturação/luminosidade ficam
+// moderadas para o terreno continuar legível através da máscara.
 func regionRGB(index int) (uint8, uint8, uint8) {
 	hue := math.Mod(float64(index)*137.508, 360)
 	return hslToRGB(hue, 0.55, 0.62)
@@ -112,8 +112,8 @@ type spawn struct {
 	RouteType int    `json:"route_type"`
 }
 
-// heat is a coarse density grid of the spawn generators. The map reads "where
-// the mobs are" from it instead of drawing 6k points, which at 1× is an
+// heat é uma grade grosseira de densidade dos geradores de spawn. O mapa lê "onde
+// estão os mobs" dela em vez de desenhar 6k pontos, que em 1× é uma
 // unreadable dust of dots.
 type heat struct {
 	Cols int   `json:"cols"`
@@ -132,8 +132,8 @@ type atlas struct {
 	StaticItems []staticItem          `json:"static_items"`
 	Spawns      []spawn               `json:"spawns"`
 	SpawnHeat   heat                  `json:"spawn_heat"`
-	// Bounds is the tight box around everything walkable: the map opens framed on
-	// it instead of showing 4096² of void around a handful of islands.
+	// Bounds é a caixa justa em volta de tudo que é caminhável: o mapa abre emoldurado
+	// nela em vez de mostrar 4096² de vazio em volta de meia dúzia de ilhas.
 	Bounds *bounds        `json:"bounds,omitempty"`
 	Counts map[string]int `json:"counts"`
 }
@@ -198,12 +198,12 @@ func main() {
 	if err := renderRegions(heights, attrs, regions, filepath.Join(*outDir, "region-map.png")); err != nil {
 		log.Fatalf("worldatlas: region map: %v", err)
 	}
-	// Overview: what the page loads first (small, whole world).
+	// Visão geral: o que a página carrega primeiro (pequeno, mundo inteiro).
 	if err := renderTerrain(heightPath, mapPath, filepath.Join(*outDir, "world-map.png"), content.AttributeMapDim); err != nil {
 		log.Fatalf("worldatlas: map overview: %v", err)
 	}
-	// Detail: native 4096², requested only when the moderator zooms in. Written
-	// only if it stays under a sane size for a local asset.
+	// Detalhe: 4096² nativo, pedido só quando o moderador dá zoom. Gravado
+	// apenas se ficar num tamanho razoável para um asset local.
 	detailPath := filepath.Join(*outDir, "world-map-hd.png")
 	if err := renderTerrain(heightPath, mapPath, detailPath, content.HeightMapDim); err != nil {
 		log.Fatalf("worldatlas: map detail: %v", err)
@@ -254,10 +254,10 @@ func main() {
 		len(cities), len(teleports), len(regions), len(staticItems), len(spawns), payload.SourceHash)
 }
 
-// loadRegionsFromDB reads the named regions from the `region` table — the one
-// issue 59 created and `importcontent` fills from Regions.txt. Ordering by name
-// keeps the JSON and the palette stable between runs; the file parser below is
-// kept for the parity test that proves both sides agree.
+// loadRegionsFromDB lê as regiões nomeadas da tabela `region` — a que
+// a issue 59 criou e o `importcontent` preenche a partir do Regions.txt. Ordenar
+// por nome mantém o JSON e a paleta estáveis entre execuções; o parser de arquivo
+// abaixo fica para o teste de paridade que prova que os dois lados concordam.
 func loadRegionsFromDB(ctx context.Context, pool *pgxpool.Pool) ([]region, error) {
 	rows, err := pool.Query(ctx, `SELECT name, x1, y1, x2, y2 FROM region ORDER BY name`)
 	if err != nil {
@@ -282,8 +282,8 @@ func loadRegionsFromDB(ctx context.Context, pool *pgxpool.Pool) ([]region, error
 	return regionsFromEntries(entries), nil
 }
 
-// regionsFromEntries maps database rows to the atlas payload. Pure so the parity
-// test can exercise the mapping without a connection.
+// regionsFromEntries mapeia linhas do banco para o payload do atlas. Puro para o
+// teste de paridade exercitar o mapeamento sem conexão.
 func regionsFromEntries(entries []domain.RegionEntry) []region {
 	out := make([]region, 0, len(entries))
 	for _, e := range entries {
@@ -295,9 +295,9 @@ func regionsFromEntries(entries []domain.RegionEntry) []region {
 	return out
 }
 
-// loadRegionsFile parses Regions.txt. The atlas no longer reads it in runtime;
-// this exists so the parity test can compare the file the importer consumed with
-// the rows the atlas reads.
+// loadRegionsFile interpreta o Regions.txt. O atlas não o lê mais em runtime;
+// isto existe para o teste de paridade comparar o arquivo que o importador consumiu
+// com as linhas que o atlas lê.
 func loadRegionsFile(path string) ([]region, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -325,15 +325,15 @@ func loadRegionsFile(path string) ([]region, error) {
 	return out, nil
 }
 
-// renderTerrain draws the world from the grids the server itself uses:
-// HeightMap.dat (4096², one byte per block — the same grid route.Bake walks) for
-// the relief, and AttributeMap.dat (1024²) to darken what the server treats as
+// renderTerrain desenha o mundo a partir das grades que o próprio servidor usa:
+// HeightMap.dat (4096², um byte por bloco — a mesma grade que o route.Bake percorre)
+// para o relevo, e AttributeMap.dat (1024²) para escurecer o que o servidor trata
 // blocked.
 //
-// The client's map art (*.til / texture packs) is not part of this repository and
-// is not redistributable, so nothing here derives from it: the image comes from
-// content the server has to load anyway. That also keeps it truthful — change the
-// AttributeMap and the shaded pixels move with collision.
+// A arte de mapa do cliente (*.til / pacotes de textura) não faz parte deste
+// repositório e não é redistribuível, então nada aqui deriva dela: a imagem vem de
+// conteúdo que o servidor precisa carregar de qualquer forma. Isso também a mantém
+// fiel — mexa no AttributeMap e os pixels sombreados andam junto com a colisão.
 func renderTerrain(heightPath, attrPath, out string, size int) error {
 	heights, err := content.LoadHeightMap(heightPath)
 	if err != nil {
@@ -344,9 +344,9 @@ func renderTerrain(heightPath, attrPath, out string, size int) error {
 		return fmt.Errorf("attribute map: %w", err)
 	}
 
-	// size == AttributeMapDim gives the 1024² overview (4×4 blocks per pixel);
-	// size == HeightMapDim gives the native 4096² detail, one pixel per block —
-	// that is what the UI swaps in when the moderator zooms past 2×.
+	// size == AttributeMapDim dá a visão geral 1024² (4×4 blocos por pixel);
+	// size == HeightMapDim dá o detalhe nativo 4096², um pixel por bloco —
+	// é isso que a UI troca quando o moderador passa do zoom 2×.
 	step := content.HeightMapDim / size
 	if step < 1 {
 		step = 1
@@ -379,9 +379,9 @@ func renderTerrain(heightPath, attrPath, out string, size int) error {
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
 			r, g, b := terrainColor(int(relief[y*size+x]))
-			// Hillshade from the north-west, the convention relief maps use: the
-			// slope decides brightness, so ridges and valleys read as volume
-			// instead of a flat silhouette.
+			// Sombreado de relevo vindo do noroeste, a convenção dos mapas de relevo: a
+			// inclinação decide o brilho, para cristas e vales lerem como volume
+			// em vez de uma silhueta chapada.
 			slope := float64(int(relief[max(y-1, 0)*size+max(x-1, 0)]) - int(relief[min(y+1, size-1)*size+min(x+1, size-1)]))
 			light := 1 + slope/90
 			if light < 0.72 {
@@ -391,8 +391,8 @@ func renderTerrain(heightPath, attrPath, out string, size int) error {
 				light = 1.32
 			}
 			if attrAt(x, y) >= 120 {
-				// Blocked reads as structure, not as a hole: a cool, light plaster tone
-				// that is never mistaken for the darker walkable ground underneath.
+				// O bloqueado lê como estrutura, não como buraco: um tom de reboco claro e frio
+				// que nunca se confunde com o chão caminhável mais escuro por baixo.
 				r, g, b = r*0.45+46, g*0.45+50, b*0.45+58
 				light = 1
 			}
@@ -413,8 +413,8 @@ func renderTerrain(heightPath, attrPath, out string, size int) error {
 	return png.Encode(file, img)
 }
 
-// terrainColor is the hypsometric ramp: void, lowland, field, hill, mountain,
-// peak — desaturated on purpose so the gold overlay stays the UI accent.
+// terrainColor é a rampa hipsométrica: vazio, planície, campo, colina, montanha,
+// pico — dessaturada de propósito para o overlay dourado continuar sendo o destaque da UI.
 func terrainColor(h int) (float64, float64, float64) {
 	stops := [...]struct {
 		h       int
@@ -452,13 +452,13 @@ func clampByte(v float64) uint8 {
 	return uint8(v)
 }
 
-// renderRegions paints every named region onto the cells that are walkable AND
-// have relief. The result is a raster mask, not the loose rectangles of
-// Regions.txt: the outline follows the ground exactly, which is what the
-// rectangle overlay could never do. Cells outside every region stay transparent.
+// renderRegions pinta cada região nomeada nas células que são caminháveis E
+// têm relevo. O resultado é uma máscara raster, não os retângulos soltos do
+// Regions.txt: o contorno segue o chão exatamente, o que a sobreposição de
+// retângulos nunca conseguiria. Células fora de toda região ficam transparentes.
 //
-// A raster was chosen over traced polylines on purpose: marching squares would
-// add a few hundred lines of fiddly geometry for a picture the browser can just
+// O raster foi escolhido em vez de polilinhas traçadas de propósito: marching
+// squares somaria algumas centenas de linhas de geometria chata para uma imagem
 // composite.
 func renderRegions(heights, attrs *content.Grid, regions []region, out string) error {
 	size := attrs.Dim
@@ -508,33 +508,33 @@ func renderRegions(heights, attrs *content.Grid, regions []region, out string) e
 	return png.Encode(file, img)
 }
 
-// spawnHeat buckets the generators into a cols×cols grid over the world. Each
-// cell of 64² blocks is a square the UI can paint with one translucent rect.
+// spawnHeat agrupa os geradores numa grade cols×cols sobre o mundo. Cada
+// célula de 64² blocos é um quadrado que a UI pinta com um retângulo translúcido.
 func spawnHeat(spawns []spawn, cols int) heat {
 	const world = 4096
 	cell := world / cols
 	data := make([]int, cols*cols)
-	max := 0
+	maxVal := 0
 	for _, s := range spawns {
 		if s.X < 0 || s.Y < 0 || s.X >= world || s.Y >= world {
 			continue
 		}
 		index := (s.Y/cell)*cols + s.X/cell
 		data[index]++
-		if data[index] > max {
-			max = data[index]
+		if data[index] > maxVal {
+			maxVal = data[index]
 		}
 	}
-	return heat{Cols: cols, Rows: cols, Max: max, Data: data}
+	return heat{Cols: cols, Rows: cols, Max: maxVal, Data: data}
 }
 
-// playableBounds returns the tight world box around the world's real ground,
-// optionally clipped to a rectangle. A cell counts only when the AttributeMap
-// lets a mob through AND the HeightMap has relief there (height > 0).
+// playableBounds devolve a caixa justa do mundo em volta do chão real,
+// opcionalmente recortada por um retângulo. Uma célula só conta quando o
+// AttributeMap deixa o mob passar E o HeightMap tem relevo ali (altura > 0).
 //
-// The height check is not cosmetic: outside the islands the AttributeMap reads 0
-// — "free" — so an attribute-only box wraps the whole 4096² and the map opens
-// showing the same void it was supposed to crop away.
+// A checagem de altura não é cosmética: fora das ilhas o AttributeMap lê 0
+// — "livre" — então uma caixa só por atributo abraça os 4096² inteiros e o mapa abre
+// mostrando o mesmo vazio que deveria ter cortado.
 func playableBounds(heights, attrs *content.Grid, clip *bounds) *bounds {
 	cell := heights.Dim / attrs.Dim
 	if cell < 1 {
@@ -590,8 +590,8 @@ func fileSize(path string) int64 {
 	return st.Size()
 }
 
-// hashSources fingerprints every atlas input: the files that stay on disk plus
-// the database payload already serialized.
+// hashSources gera a impressão digital de toda entrada do atlas: os arquivos que
+// continuam em disco mais o payload do banco já serializado.
 func hashSources(paths []string, dbPayload []byte) string {
 	h := sha256.New()
 	for _, p := range paths {
@@ -605,8 +605,8 @@ func hashSources(paths []string, dbPayload []byte) string {
 	return hex.EncodeToString(h.Sum(nil))[:16]
 }
 
-// loadStaticItems reads the static world objects (gates/doors) from
-// world_item_seed — the table that replaced InitItem.csv (issue 58).
+// loadStaticItems lê os objetos estáticos do mundo (portões/portas) de
+// world_item_seed — a tabela que substituiu o InitItem.csv (issue 58).
 func loadStaticItems(ctx context.Context, pool *pgxpool.Pool) ([]staticItem, error) {
 	rows, err := pool.Query(ctx,
 		`SELECT item_index, pos_x, pos_y, rotate FROM world_item_seed ORDER BY item_index, pos_x, pos_y`)
@@ -625,8 +625,8 @@ func loadStaticItems(ctx context.Context, pool *pgxpool.Pool) ([]staticItem, err
 	return out, rows.Err()
 }
 
-// loadSpawns reads the spawn generators from npc_definition — the table that
-// replaced NPCGener.txt (issues 57/58). StartRange is not modelled in the table
+// loadSpawns lê os geradores de spawn de npc_definition — a tabela que
+// substituiu o NPCGener.txt (issues 57/58). StartRange não é modelado na tabela
 // yet, so Range stays 0.
 func loadSpawns(ctx context.Context, pool *pgxpool.Pool) ([]spawn, error) {
 	rows, err := pool.Query(ctx, `

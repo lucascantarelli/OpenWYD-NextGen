@@ -33,6 +33,21 @@ export interface AdminCallAudit {
 type WithoutModerator<Req> = Omit<Req, "moderator_id" | "moderatorId">;
 
 /**
+ * Remove as duas grafias do id do corpo, em runtime.
+ *
+ * O tipo `WithoutModerator` só protege quem compila: a Server Action recebe
+ * JSON do browser, e um `moderator_id`/`moderatorId` plantado ali sobreviveria ao
+ * spread e chegaria à RPC. O web-api usa `keepCase`, mas quem garante a autoria
+ * é este ponto — o corpo do browser nunca escolhe o moderador.
+ */
+function withoutModerator(req: object): Record<string, unknown> {
+  const { moderator_id: _snake, moderatorId: _camel, ...rest } = req as Record<string, unknown>;
+  void _snake;
+  void _camel;
+  return rest;
+}
+
+/**
  * Resposta admin vista pelo `adminCall`. Alguns serviços (contas, issue 32)
  * devolvem `message` com a recusa de negócio ("última conta admin ativa");
  * quando ela existe, é mais útil que o texto genérico do `AdminResult`.
@@ -79,7 +94,7 @@ export async function adminCall<Req extends object, Res extends AdminResponse>(
 
   const res = await promisify(fn)(
     {
-      ...(req as Record<string, unknown>),
+      ...withoutModerator(req),
       moderator_id: session.accountId,
     } as Req,
     traceId,

@@ -5,7 +5,7 @@ import type { Session } from "@/server/session";
 /**
  * Fronteira de autorização de verdade do portal: o `route.ts` de uma API admin.
  *
- * O middleware só olha a assinatura do cookie (roda no edge, sem sessão de
+ * O proxy só olha a assinatura do cookie (roda no edge, sem sessão de
  * banco): quem sabe se o papel pode ler dado de conta é o handler. Escolhemos
  * `/api/search/accounts` porque é o caso mais sensível que **já existe** — busca
  * de contas para combobox e faturamento. Não inventamos endpoint para o teste.

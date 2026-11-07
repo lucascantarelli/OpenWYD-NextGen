@@ -3,7 +3,7 @@
 build:
 	go build ./...
 
-# Build each service binary into bin/.
+# Compila cada binário de serviço em bin/.
 binaries:
 	go build -o bin/tmserver ./tmserver/cmd/tmserver
 	go build -o bin/dbserver ./dbserver/cmd/dbserver
@@ -11,7 +11,7 @@ binaries:
 	go build -o bin/webserver ./webserver/cmd/webserver
 	go build -o bin/exptool ./tmserver/cmd/exptool
 
-# Restamp the monster templates' Exp field with the balanced curve (issue #43).
+# Regrava o campo Exp dos templates de monstro com a curva balanceada.
 # Os templates vivem em npc_template (Postgres, issue 58); este alvo reprocessa
 # uma árvore legada antes de reimportar. Use -dry-run primeiro.
 exp-data:
@@ -33,15 +33,15 @@ content-check:
 content-sync:
 	W2PP_CONTENT_SOURCE="$(W2PP_CONTENT_SOURCE)" bash scripts/sync-content.sh --sync
 
-# Extract proprietary client icons into ignored deployment artifacts. Usage:
-#   make item-icons CLIENT_DIR=/path/to/WYD-7662
+# Extrai os ícones proprietários do cliente para artefatos ignorados pelo git.
+# Uso: make item-icons CLIENT_DIR=/caminho/para/WYD-7662
 item-icons:
 	test -n "$(CLIENT_DIR)" || (echo "CLIENT_DIR is required" >&2; exit 1)
 	go run ./webserver/cmd/itemiconpack -client "$(CLIENT_DIR)" -content tmserver/content -out "$${OUTPUT_DIR:-dist/item-icons}"
 
-# Publish through Jean1dev/storage-manager-server. The command is resumable and
-# writes every returned URL to dist/item-icons/item-icons-upload-<version>.json
-# (ao lado do pack, fora de docs/: auditoria de execução não é conteúdo de site).
+# Publica pelo Jean1dev/storage-manager-server. O comando é retomável e grava
+# cada URL devolvida em dist/item-icons/item-icons-upload-<version>.json (ao lado
+# do pack, fora de docs/: auditoria de execução não é conteúdo de site).
 item-icons-publish:
 	sh ./scripts/upload-item-icons-storage-manager.sh
 
@@ -88,7 +88,7 @@ test:
 vet:
 	go vet ./...
 
-# Requires golangci-lint (see README / run inside the golang:1.26 container).
+# Requer golangci-lint (ver README / rodar no container golang:1.26).
 lint:
 	golangci-lint run
 
@@ -96,7 +96,7 @@ fmt:
 	gofmt -w .
 	goimports -w . 2>/dev/null || true
 
-# Requires govulncheck (go install golang.org/x/vuln/cmd/govulncheck@latest).
+# Requer govulncheck (go install golang.org/x/vuln/cmd/govulncheck@latest).
 vuln:
 	govulncheck ./...
 
@@ -158,8 +158,8 @@ test-channel:
 run:
 	go run ./tmserver/cmd/tmserver
 
-# Bring up the full stack locally, seed a test account, and print the address to
-# point a real client at. Override account with W2PP_LOCAL_ACCOUNT/_PASSWORD.
+# Sobe a stack completa localmente, semeia a conta de teste e imprime o endereço
+# para apontar um cliente real. Sobrescreve a conta com W2PP_LOCAL_ACCOUNT/_PASSWORD.
 run-local:
 	./scripts/run-local.sh
 
@@ -198,16 +198,17 @@ portal-image:
 	docker compose build openwyd-portal openwyd-logpipe
 	docker compose up -d openwyd-portal openwyd-logpipe
 
-# Generate gRPC code from api/ (requires protoc + protoc-gen-go / protoc-gen-go-grpc
-# on PATH; install with `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest`
-# and `.../grpc/cmd/protoc-gen-go-grpc@latest`).
+# Gera o código gRPC a partir de api/ (requer protoc + protoc-gen-go /
+# protoc-gen-go-grpc no PATH; instale com
+# `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest` e
+# `.../grpc/cmd/protoc-gen-go-grpc@latest`).
 proto:
 	protoc --go_out=. --go_opt=module=openwyd-nextgen \
 	       --go-grpc_out=. --go-grpc_opt=module=openwyd-nextgen \
 	       api/db/v1/db.proto api/db/v1/content.proto api/bin/v1/bin.proto api/web/v1/web.proto
 
-# Generate dev mTLS certs into ./certs (gitignored). Apply with the mTLS overlay:
-#   make certs && docker compose -f docker-compose.yaml -f docker-compose.mtls.yaml up --build
+# Gera os certificados mTLS de dev em ./certs (ignorado pelo git). Aplique com o
+# overlay: make certs && docker compose -f docker-compose.yaml -f docker-compose.mtls.yaml up --build
 certs:
 	./scripts/gen-certs.sh
 

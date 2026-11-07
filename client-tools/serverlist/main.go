@@ -32,18 +32,18 @@ import (
 )
 
 const (
-	// GroupCount is MAX_SERVERGROUP (Basedef.h:109): how many "servers" (groups
-	// of channels) the client can list.
+	// GroupCount é MAX_SERVERGROUP (Basedef.h:109): quantos "servidores" (grupos
+	// de canais) o cliente consegue listar.
 	GroupCount = 10
-	// ChannelCount is MAX_SERVERNUMBER = MAX_SERVER+1 (Basedef.h:108-110).
+	// ChannelCount é MAX_SERVERNUMBER = MAX_SERVER+1 (Basedef.h:108-110).
 	ChannelCount = 11
-	// AddrLen is the fixed width of one entry (g_pServerList[..][..][64]).
+	// AddrLen é a largura fixa de uma entrada (g_pServerList[..][..][64]).
 	AddrLen = 64
-	// BinSize is sizeof(g_pServerList) and the exact size of the generated file.
+	// BinSize é sizeof(g_pServerList) e o tamanho exato do arquivo gerado.
 	BinSize = GroupCount * ChannelCount * AddrLen
 )
 
-// obfuscationKey is the static table the legacy adds to every byte, reversed
+// obfuscationKey é a tabela estática que o legado soma a cada byte, invertida
 // (Basedef.cpp:6927: g_pServerList[k][j][i] += szList[63-i]).
 var obfuscationKey = [AddrLen]byte{
 	0xA4, 0xA1, 0xA4, 0xA4, 0xA4, 0xA7, 0xA4, 0xA9, 0xA4, 0xB1, 0xA4, 0xB2, 0xA4, 0xB5, 0xA4, 0xB7,
@@ -52,15 +52,15 @@ var obfuscationKey = [AddrLen]byte{
 	0xA4, 0xBF, 0xA4, 0xC4, 0xA4, 0xD3, 0xA4, 0xC7, 0xA4, 0xCC, 0xB0, 0xA1, 0xB3, 0xAA, 0xB4, 0xD9,
 }
 
-// Entry is one line of serverlist.txt: "<grupo> <canal> <endereço>".
+// Entry é uma linha do serverlist.txt: "<grupo> <canal> <endereço>".
 type Entry struct {
 	Group   int
 	Channel int
 	Addr    string
 }
 
-// ParseList reads the text serverlist. Blank lines and '#' comments are ignored;
-// an address may carry a port ("host:8282") since the field is a free string.
+// ParseList lê o serverlist em texto. Linhas vazias e comentários com '#' são
+// ignorados; o endereço pode trazer porta ("host:8282"), já que o campo é texto livre.
 func ParseList(r io.Reader) ([]Entry, error) {
 	var out []Entry
 	sc := bufio.NewScanner(r)
@@ -98,8 +98,8 @@ func ParseList(r io.Reader) ([]Entry, error) {
 	return out, nil
 }
 
-// Build lays the entries out in the fixed 10×11×64 grid and obfuscates every
-// byte. Later entries win, like the sequential strcpy in the legacy loader.
+// Build distribui as entradas na grade fixa 10×11×64 e ofusca cada byte. A
+// entrada posterior vence, como o strcpy sequencial do carregador legado.
 func Build(entries []Entry) ([]byte, error) {
 	b := make([]byte, BinSize)
 	if len(entries) == 0 {
@@ -123,8 +123,8 @@ func Build(entries []Entry) ([]byte, error) {
 	return b, nil
 }
 
-// Decode reverses Build, so a generated file can be inspected (and the writer
-// tested end-to-end).
+// Decode desfaz o Build, para inspecionar um arquivo gerado (e testar o
+// escritor ponta a ponta).
 func Decode(b []byte) ([][]string, error) {
 	if len(b) != BinSize {
 		return nil, fmt.Errorf("tamanho %d, esperado %d", len(b), BinSize)
@@ -150,11 +150,11 @@ func Decode(b []byte) ([][]string, error) {
 func main() {
 	in := flag.String("in", "client-tools/serverlist/servers.txt", "servers.txt de entrada")
 	out := flag.String("out", "serverlist.bin", "arquivo .bin a gerar")
-	print := flag.String("print", "", "imprime o conteúdo de um .bin existente")
+	printPath := flag.String("print", "", "imprime o conteúdo de um .bin existente")
 	flag.Parse()
 
-	if *print != "" {
-		raw, err := os.ReadFile(*print)
+	if *printPath != "" {
+		raw, err := os.ReadFile(*printPath)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "erro:", err)
 			os.Exit(1)

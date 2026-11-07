@@ -162,7 +162,7 @@ func (r *Runner) Run(ctx context.Context) (Report, error) {
 	tick := time.Duration(r.scen.TickMillis) * time.Millisecond
 	for i, spec := range r.scen.Bots {
 		wg.Add(1)
-		go func(i int, spec BotSpec) {
+		go func(i int, spec Spec) {
 			defer wg.Done()
 			seed := r.scen.Seed + int64(i)*7919
 			st, err := r.runBot(runCtx, spec, seed, transitions, tick)
@@ -238,7 +238,7 @@ func (r *Runner) Run(ctx context.Context) (Report, error) {
 }
 
 // runBot executa um bot do começo ao fim e devolve a máquina com o histórico.
-func (r *Runner) runBot(ctx context.Context, spec BotSpec, seed int64, transitions []Transition, tick time.Duration) (*Machine, error) {
+func (r *Runner) runBot(ctx context.Context, spec Spec, seed int64, transitions []Transition, tick time.Duration) (*Machine, error) {
 	profile, err := LookupProfile(spec.Profile)
 	if err != nil {
 		return nil, err
