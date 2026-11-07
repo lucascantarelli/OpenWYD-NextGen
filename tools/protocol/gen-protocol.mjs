@@ -4,8 +4,10 @@
 //   - .deprecated-go/Source/Code/Basedef.h  (198 constantes `_MSG_*` + FLAG_*)
 //   - .deprecated-go/Source/Code/CPSock.cpp (tabela `pKeyWord[512]`)
 //
-// Uso: node tools/protocol/gen-protocol.mjs
+// Uso: node tools/protocol/gen-protocol.mjs && cargo fmt --all
 // Regenerar só quando a fonte canônica mudar; o resultado é versionado.
+// O gerador NÃO formata a saída: `cargo fmt --all` é obrigatório depois, senão
+// `cargo fmt --check` do gate falha.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -28,11 +30,12 @@ const flagName = new Map(FLAGS.map(([n, c]) => [c, n]));
 
 function parseOpcodes() {
   const source = fs.readFileSync(BASEDEF, 'utf8');
-  const re = /const\s+(?:short|int)\s+(_MSG_\w+)\s*=\s*\(([^)]*)\)\s*;/g;
+  const re = /const\s+(?:short|int)\s+(_MSG_\w+)\s*=\s*([^;]+);/g;
   const entries = [];
   let match;
   while ((match = re.exec(source)) !== null) {
-    const [, constName, expr] = match;
+    const [, constName, rawExpr] = match;
+    const expr = rawExpr.trim().replace(/^\(/, '').replace(/\)$/, '');
     let value = 0;
     const flows = new Set();
     for (const raw of expr.split('|')) {

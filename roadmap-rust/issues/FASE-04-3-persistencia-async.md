@@ -25,7 +25,7 @@ bloqueante no tick. Regra Hot/Cold (`AGENTS.md`): banco é Cold Path.
 
 - Criados: pool, fila e testes em `crates/wyd-db/src/`.
 - Alterados: `crates/wyd-db/Cargo.toml` (sqlx via ADR).
-- Proibido tocar: `crates/wyd-core/src/tick.rs` (nenhum await de banco no
+- Proibido tocar: `crates/wyd-core/src/tick/` (nenhum await de banco no
   quente), segredos.
 
 ## Testes / verificação

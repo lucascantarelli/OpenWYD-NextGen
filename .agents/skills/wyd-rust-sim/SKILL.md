@@ -24,6 +24,7 @@ Referências: `pre-release-rust.md` FASE 10, `roadmap-rust/issues/FASE-10.md`.
 
 ## Antes de mudar
 
+Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §14.
 Diferencie fato de hipótese (código confirmado × observado × relato × hipótese).
 Cenários reproduzíveis primeiro (`cargo test -p wyd-sim`); integração com o jogo
 real depois, nunca como substituto.

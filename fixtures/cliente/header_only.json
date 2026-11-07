@@ -1,0 +1,20 @@
+{
+  "id": "header_only",
+  "origin": "generated",
+  "warning": "bytes sintéticos para teste de codec; NÃO são captura de rede",
+  "builtBy": "node tools/client/captura.mjs --gen",
+  "algorithm": "mesmas regras de crates/wyd-protocol/src/obfuscation.rs",
+  "header": {
+    "size": 12,
+    "type": 819,
+    "typeHex": "0x0333",
+    "connId": 1,
+    "tick": 1005,
+    "keyword": 5,
+    "checksum": 204,
+    "checksumHex": "0xcc"
+  },
+  "fields": [],
+  "payloadHex": "0c00050033030100ed030000",
+  "wireHex": "0c0005cc2de785fdf9f474fc"
+}

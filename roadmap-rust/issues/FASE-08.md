@@ -8,6 +8,9 @@ Cristalizar o contrato binário exato em `wyd-protocol` (`#[repr(C)]`, validaç�
 limites, zero-copy) com transporte em `wyd-net`, e entregar o launcher mínimo
 (`wyd-launcher`) com verificação de integridade.
 
+O outro lado desse contrato é o cliente fechado (`client/`, build 7662): inventário,
+superfície conhecida e plano de desassemble vivem em `docs/cliente/` (FASE-08-4 a 08-7).
+
 ## Contexto / evidência
 
 Toda a verdade do wire vive em `.deprecated-go/docs/migration/` (`protocol-spec.md`,
@@ -33,7 +36,9 @@ bootstrap; falta hash/patch (`pre-release-rust.md` FASE 8).
 ## Arquivos
 
 - Criados: `crates/wyd-protocol/src/header.rs`, `opcodes.rs`,
-  `crates/wyd-net/src/*.rs`, testes golden, doc do contrato em `docs/arquitetura/`.
+  `crates/wyd-net/src/error.rs` + `session/`, `transport/`, `dispatch/`,
+  `limits/`, `telemetry/` (árvore normativa em `estrutura-e-padroes.md` §11),
+  testes golden, doc do contrato em `docs/arquitetura/`.
 - Alterados: `crates/wyd-protocol/src/lib.rs`, `crates/wyd-net/src/lib.rs`,
   `Cargo.toml` das crates (deps `zerocopy`/`nom` via ADR).
 - Proibido tocar: `.deprecated-go/` (leitura apenas), `client/` (binários),

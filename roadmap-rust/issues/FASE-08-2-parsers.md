@@ -1,6 +1,6 @@
 # Issue 08-2 — `wyd-protocol` zero-copy + validação de limites + golden
 
-**Fase:** 8 · **Depende de:** 08-1 · **Bloqueia:** FASE-03 · **Esforço:** L
+**Fase:** 8 · **Depende de:** 08-1, 02-4 · **Bloqueia:** FASE-03 · **Esforço:** L
 
 ## Objetivo
 
@@ -15,8 +15,10 @@ qualquer parse, com testes golden byte-exatos.
 
 ## Passos
 
-1. Implementar `header.rs` (`#[repr(C)]`, `zerocopy`) e `opcodes.rs` a partir da
-   tabela 08-1 (somente linhas confirmadas).
+0. Respeitar a árvore de `docs/arquitetura/estrutura-e-padroes.md` §3 (ADR-0002):
+   nenhum arquivo de domínio na raiz de `src/`.
+1. Implementar `wire/header.rs` (`#[repr(C)]`, `zerocopy`) e `wire/opcode.rs` a
+   partir da tabela 08-1 (somente linhas confirmadas).
 2. Implementar validação tamanho→opcode→payload com erro tipado antes do parse.
 3. Golden tests byte-exatos (pacote real → struct → bytes idênticos).
 4. Teste: truncado/desconhecido rejeitado; `make check`.

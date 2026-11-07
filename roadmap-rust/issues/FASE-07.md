@@ -29,7 +29,9 @@ gRPC/REST de controle (`ADMIN_SCOPE` já existe em `crates/wyd-admin/src/lib.rs`
 
 ## Arquivos
 
-- Criados: handlers em `crates/wyd-admin/src/`, testes, specs E2E no portal.
+- Criados (árvore normativa em `estrutura-e-padroes.md` §13): `src/error.rs`,
+  `src/api/*.rs`, `src/auth/*.rs`, `src/audit/log.rs`,
+  `src/service/grant_service.rs`, `tests/unauthorized.rs`, specs E2E no portal.
 - Alterados: `crates/wyd-admin/Cargo.toml` (deps via ADR), `portal/src/**`
   (somente adaptação ao novo backend, sem mudar regras de negócio).
 - Proibido tocar: estado de personagem vivo, `.deprecated-go/`, segredos,

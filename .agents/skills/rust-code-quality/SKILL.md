@@ -23,6 +23,9 @@ Vale para todas as `crates/wyd-*`. Referências: `rust-toolchain.toml`,
 5. **Teste onde nasce o comportamento.** Toda regra nova (fórmula, parser,
    transição de estado) nasce com teste unitário na crate; golden tests para
    byte-exato de protocolo e regressões matemáticas (`wyd-sim`).
+6. **Estrutura antes de escrever.** Antes de criar arquivo, confira a árvore de
+   `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002) e a issue: arquivo fora
+   do domínio planejado não é aceito, mesmo que "funcione".
 
 ## Checklist de revisão
 
@@ -32,3 +35,5 @@ Vale para todas as `crates/wyd-*`. Referências: `rust-toolchain.toml`,
 - [ ] Teste cobre o caminho feliz, o limite e o erro.
 - [ ] Sem dependência nova sem justificativa e lockfile consistente
       (ver `docs/rust/01-dependencias.md`).
+- [ ] Arquivos criados/alterados são exatamente os listados na árvore planejada e
+      na issue; gerados isolados em `generated/`.

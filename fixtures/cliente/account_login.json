@@ -1,0 +1,63 @@
+{
+  "id": "account_login",
+  "origin": "generated",
+  "warning": "bytes sintéticos para teste de codec; NÃO são captura de rede",
+  "builtBy": "node tools/client/captura.mjs --gen",
+  "algorithm": "mesmas regras de crates/wyd-protocol/src/obfuscation.rs",
+  "header": {
+    "size": 116,
+    "type": 525,
+    "typeHex": "0x020d",
+    "connId": 1,
+    "tick": 1001,
+    "keyword": 9,
+    "checksum": 248,
+    "checksumHex": "0xf8"
+  },
+  "fields": [
+    {
+      "offset": 12,
+      "name": "account_password",
+      "kind": "ascii",
+      "len": 12,
+      "value": "SYNTHETIC"
+    },
+    {
+      "offset": 24,
+      "name": "account_name",
+      "kind": "ascii",
+      "len": 16,
+      "value": "GOLDEN"
+    },
+    {
+      "offset": 40,
+      "name": "zero",
+      "kind": "bytes",
+      "len": 52,
+      "value": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "offset": 92,
+      "name": "client_version",
+      "kind": "i32",
+      "len": 4,
+      "value": 12000
+    },
+    {
+      "offset": 96,
+      "name": "db_need_save",
+      "kind": "i32",
+      "len": 4,
+      "value": 0
+    },
+    {
+      "offset": 100,
+      "name": "adapter_name",
+      "kind": "bytes",
+      "len": 16,
+      "value": "00000000000000000000000000000000"
+    }
+  ],
+  "payloadHex": "740009000d020100e903000053594e544845544943000000474f4c44454e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e02e00000000000000000000000000000000000000000000",
+  "wireHex": "740009f809f3e5f9ef02ecfd534636540a36844915f130fb3b40e040b73764fb00f0f0fd22f05cfdbaf16cfd06edccfd1ef1f4fdfafdd4fafae8e8fbfaecf0fd0cfc40fa4af18cfd30f1f4fdfaf1f4fb6ef1e4fde6f1f4fdfcf1b4fdd21f6800f6f1f4fcfafaf4fcf8f0e4fa4af3d0fd2efa64fc"
+}

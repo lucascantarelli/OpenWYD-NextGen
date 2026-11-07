@@ -1,0 +1,269 @@
+# Âncoras herdadas — build 7662 — sha256 04c9d2a1235cba57f7b588347fae935a2466824ddf9d7d92e541e0cc8a27ddf8
+# gerado por tools/client/analyse.mjs (objdump para o desassemble)
+
+## ReadMessage @0x4252d6 — CONFIRMADO
+# fronteira de instrução confirmada; o endereço é um desvio interno que o hook reescreve, não a entrada da função
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+004252c6 <.text+0x242c6>:
+  4252c6:	c2 01 89             	ret    0x8901
+  4252c9:	55                   	push   ebp
+  4252ca:	d4 8b                	aam    0x8b
+  4252cc:	45                   	inc    ebp
+  4252cd:	f8                   	clc
+  4252ce:	25 ff ff 00 00       	and    eax,0xffff
+  4252d3:	39 45 dc             	cmp    DWORD PTR [ebp-0x24],eax
+  4252d6:	0f 8d f0 00 00 00    	jge    0x4253cc
+  4252dc:	8b 4d d4             	mov    ecx,DWORD PTR [ebp-0x2c]
+  4252df:	81 e1 ff 00 00 80    	and    ecx,0x800000ff
+  4252e5:	79 08                	jns    0x4252ef
+  4252e7:	49                   	dec    ecx
+  4252e8:	81 c9 00 ff ff ff    	or     ecx,0xffffff00
+  4252ee:	41                   	inc    ecx
+  4252ef:	89 4d b4             	mov    DWORD PTR [ebp-0x4c],ecx
+  4252f2:	8b 55 fc             	mov    edx,DWORD PTR [ebp-0x4]
+  4252f5:	81 e2 ff 00 00 00    	and    edx,0xff
+  4252fb:	8b 45 e8             	mov    eax,DWORD PTR [ebp-0x18]
+  4252fe:	03 45 dc             	add    eax,DWORD PTR [ebp-0x24]
+  425301:	0f be 08             	movsx  ecx,BYTE PTR [eax]
+  425304:	03 d1                	add    edx,ecx
+
+## SendChat @0x4676c5 — CONFIRMADO
+# fronteira de instrução confirmada; o endereço é um desvio interno que o hook reescreve, não a entrada da função
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+004676b5 <.text+0x666b5>:
+  4676b5:	92                   	xchg   edx,eax
+  4676b6:	88 00                	mov    BYTE PTR [eax],al
+  4676b8:	00 00                	add    BYTE PTR [eax],al
+  4676ba:	50                   	push   eax
+  4676bb:	e8 e0 e3 15 00       	call   0x5c5aa0
+  4676c0:	83 c4 08             	add    esp,0x8
+  4676c3:	85 c0                	test   eax,eax
+  4676c5:	75 79                	jne    0x467740
+  4676c7:	a1 48 6e 63 00       	mov    eax,ds:0x636e48
+  4676cc:	33 c9                	xor    ecx,ecx
+  4676ce:	83 b8 8c 13 00 00 00 	cmp    DWORD PTR [eax+0x138c],0x0
+  4676d5:	0f 94 c1             	sete   cl
+  4676d8:	8b 15 48 6e 63 00    	mov    edx,DWORD PTR ds:0x636e48
+  4676de:	89 8a 8c 13 00 00    	mov    DWORD PTR [edx+0x138c],ecx
+  4676e4:	68 08 a3 63 00       	push   0x63a308
+  4676e9:	8b 85 68 ff ff ff    	mov    eax,DWORD PTR [ebp-0x98]
+  4676ef:	8b 10                	mov    edx,DWORD PTR [eax]
+  4676f1:	8b                   	.byte 0x8b
+  4676f2:	8d 68 ff             	lea    ebp,[eax-0x1]
+
+## SendPack @0x40126a — CONFIRMADO
+# fronteira de instrução confirmada; instrução interna (ponto de patch/hook)
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0040125a <.text+0x25a>:
+  40125a:	fc                   	cld
+  40125b:	8b 55 f4             	mov    edx,DWORD PTR [ebp-0xc]
+  40125e:	d9 5a 50             	fstp   DWORD PTR [edx+0x50]
+  401261:	8b e5                	mov    esp,ebp
+  401263:	5d                   	pop    ebp
+  401264:	c2 08 00             	ret    0x8
+  401267:	55                   	push   ebp
+  401268:	8b ec                	mov    ebp,esp
+  40126a:	51                   	push   ecx
+  40126b:	89 4d fc             	mov    DWORD PTR [ebp-0x4],ecx
+  40126e:	8b 45 fc             	mov    eax,DWORD PTR [ebp-0x4]
+  401271:	8b 4d 08             	mov    ecx,DWORD PTR [ebp+0x8]
+  401274:	89 48 54             	mov    DWORD PTR [eax+0x54],ecx
+  401277:	8b 55 fc             	mov    edx,DWORD PTR [ebp-0x4]
+  40127a:	8b 45 0c             	mov    eax,DWORD PTR [ebp+0xc]
+  40127d:	89 42 58             	mov    DWORD PTR [edx+0x58],eax
+  401280:	8b e5                	mov    esp,ebp
+  401282:	5d                   	pop    ebp
+  401283:	c2 08 00             	ret    0x8
+  401286:	55                   	push   ebp
+  401287:	8b ec                	mov    ebp,esp
+  401289:	51                   	push   ecx
+  40128a:	89 4d fc             	mov    DWORD PTR [ebp-0x4],ecx
+  40128d:	8b 45 fc             	mov    eax,DWORD PTR [ebp-0x4]
+  401290:	8b 4d 08             	mov    ecx,DWORD PTR [ebp+0x8]
+  401293:	89 48 4c             	mov    DWORD PTR [eax+0x4c],ecx
+  401296:	8b 55 fc             	mov    edx,DWORD PTR [ebp-0x4]
+  401299:	8b                   	.byte 0x8b
+
+## SendPacket @0x54da23 — CONFIRMADO
+# fronteira de instrução confirmada; prólogo de função
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0054da13 <.text+0x14ca13>:
+  54da13:	89 85 60 ff ff ff    	mov    DWORD PTR [ebp-0xa0],eax
+  54da19:	eb ab                	jmp    0x54d9c6
+  54da1b:	33 c0                	xor    eax,eax
+  54da1d:	8b e5                	mov    esp,ebp
+  54da1f:	5d                   	pop    ebp
+  54da20:	c2 0c 00             	ret    0xc
+  54da23:	55                   	push   ebp
+  54da24:	8b ec                	mov    ebp,esp
+  54da26:	83 ec 08             	sub    esp,0x8
+  54da29:	83 7d 08 00          	cmp    DWORD PTR [ebp+0x8],0x0
+  54da2d:	75 05                	jne    0x54da34
+  54da2f:	e9 e4 00 00 00       	jmp    0x54db18
+  54da34:	8b 45 08             	mov    eax,DWORD PTR [ebp+0x8]
+  54da37:	89 45 f8             	mov    DWORD PTR [ebp-0x8],eax
+  54da3a:	8b 0d d4 21 9a 00    	mov    ecx,DWORD PTR ds:0x9a21d4
+  54da40:	81 c1 e8 03 00 00    	add    ecx,0x3e8
+  54da46:	89 4d fc             	mov    DWORD PTR [ebp-0x4],ecx
+  54da49:	8b 55 fc             	mov    edx,DWORD PTR [ebp-0x4]
+  54da4c:	3b 15 d0 21 9a 00    	cmp    edx,DWORD PTR ds:0x9a21d0
+  54da52:	72                   	.byte 0x72
+
+## AddVolatileMessageItem @0x422007 — CONFIRMADO
+# fronteira de instrução confirmada; instrução interna (ponto de patch/hook)
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+00421ff7 <.text+0x20ff7>:
+  421ff7:	81 7d 0c 33 13 00 00 	cmp    DWORD PTR [ebp+0xc],0x1333
+  421ffe:	7f 07                	jg     0x422007
+  422000:	b8 01 00 00 00       	mov    eax,0x1
+  422005:	eb 12                	jmp    0x422019
+  422007:	81 7d 0c e2 15 00 00 	cmp    DWORD PTR [ebp+0xc],0x15e2
+  42200e:	75 07                	jne    0x422017
+  422010:	b8 01 00 00 00       	mov    eax,0x1
+  422015:	eb 02                	jmp    0x422019
+  422017:	33 c0                	xor    eax,eax
+  422019:	8b e5                	mov    esp,ebp
+  42201b:	5d                   	pop    ebp
+  42201c:	c2 08 00             	ret    0x8
+  42201f:	55                   	push   ebp
+  422020:	8b ec                	mov    ebp,esp
+  422022:	e8 69 9e fe ff       	call   0x40be90
+  422027:	e8 02 00 00 00       	call   0x42202e
+  42202c:	5d                   	pop    ebp
+  42202d:	c3                   	ret
+  42202e:	55                   	push   ebp
+  42202f:	8b ec                	mov    ebp,esp
+  422031:	68 c0 be 40 00       	push   0x40bec0
+  422036:	e8                   	.byte 0xe8
+
+## SetVolatileMessageBoxText @0x41fb30 — CONFIRMADO
+# fronteira de instrução confirmada; instrução interna (ponto de patch/hook)
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0041fb20 <.text+0x1eb20>:
+  41fb20:	8b 82 cc 00 00 00    	mov    eax,DWORD PTR [edx+0xcc]
+  41fb26:	8b 10                	mov    edx,DWORD PTR [eax]
+  41fb28:	ff 52 60             	call   DWORD PTR [edx+0x60]
+  41fb2b:	e9 cc 01 00 00       	jmp    0x41fcfc
+  41fb30:	81 bd 54 fe ff ff d3 	cmp    DWORD PTR [ebp-0x1ac],0xd3
+  41fb37:	00 00 00 
+  41fb3a:	75 76                	jne    0x41fbb2
+  41fb3c:	a1 b0 0a 6f 00       	mov    eax,ds:0x6f0ab0
+  41fb41:	89 85 78 fc ff ff    	mov    DWORD PTR [ebp-0x388],eax
+  41fb47:	6a 00                	push   0x0
+  41fb49:	68 73 03 00 00       	push   0x373
+  41fb4e:	68 b8 56 0a 01       	push   0x10a56b8
+  41fb53:	8b 8d 78 fc ff ff    	mov    ecx,DWORD PTR [ebp-0x388]
+  41fb59:	8b 89 cc 00 00 00    	mov    ecx,DWORD PTR [ecx+0xcc]
+  41fb5f:	8b                   	.byte 0x8b
+
+## Patches de checksum
+### @0x53ac6a — CONFIRMADO (jmp rel8 (EB))
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0053ac5a <.text+0x139c5a>:
+  53ac5a:	f9                   	stc
+  53ac5b:	ff                   	(bad)
+  53ac5c:	ff 83 c4 08 89 45    	inc    DWORD PTR [ebx+0x458908c4]
+  53ac62:	fc                   	cld
+  53ac63:	81 7d fc 01 3e 18 00 	cmp    DWORD PTR [ebp-0x4],0x183e01
+  53ac6a:	eb 04                	jmp    0x53ac70
+  53ac6c:	33 c0                	xor    eax,eax
+  53ac6e:	eb 35                	jmp    0x53aca5
+  53ac70:	c7 45 f0 00 00 00 00 	mov    DWORD PTR [ebp-0x10],0x0
+  53ac77:	eb 09                	jmp    0x53ac82
+  53ac79:	8b 45 f0             	mov    eax,DWORD PTR [ebp-0x10]
+  53ac7c:	83 c0 01             	add    eax,0x1
+  53ac7f:	89 45 f0             	mov    DWORD PTR [ebp-0x10],eax
+  53ac82:	8b 4d f0             	mov    ecx,DWORD PTR [ebp-0x10]
+  53ac85:	3b 4d f8             	cmp    ecx,DWORD PTR [ebp-0x8]
+  53ac88:	7d 16                	jge    0x53aca0
+  53ac8a:	8b 55 f4             	mov    edx,DWORD PTR [ebp-0xc]
+  53ac8d:	03 55 f0             	add    edx,DWORD PTR [ebp-0x10]
+  53ac90:	0f be 02             	movsx  eax,BYTE PTR [edx]
+  53ac93:	83 f0 5a             	xor    eax,0x5a
+  53ac96:	8b 4d f4             	mov    ecx,DWORD PTR [ebp-0xc]
+  53ac99:	03                   	.byte 0x3
+
+### @0x53ad52 — CONFIRMADO (jmp rel8 (EB))
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0053ad42 <.text+0x139d42>:
+  53ad42:	f9                   	stc
+  53ad43:	ff                   	(bad)
+  53ad44:	ff 83 c4 08 89 45    	inc    DWORD PTR [ebx+0x458908c4]
+  53ad4a:	f8                   	clc
+  53ad4b:	81 7d f8 0c 15 81 03 	cmp    DWORD PTR [ebp-0x8],0x381150c
+  53ad52:	eb 07                	jmp    0x53ad5b
+  53ad54:	33 c0                	xor    eax,eax
+  53ad56:	e9 5e 01 00 00       	jmp    0x53aeb9
+  53ad5b:	c7 45 ec 00 00 00 00 	mov    DWORD PTR [ebp-0x14],0x0
+  53ad62:	eb 09                	jmp    0x53ad6d
+  53ad64:	8b 55 ec             	mov    edx,DWORD PTR [ebp-0x14]
+  53ad67:	83 c2 01             	add    edx,0x1
+  53ad6a:	89 55 ec             	mov    DWORD PTR [ebp-0x14],edx
+  53ad6d:	8b 45 ec             	mov    eax,DWORD PTR [ebp-0x14]
+  53ad70:	3b 45 f4             	cmp    eax,DWORD PTR [ebp-0xc]
+  53ad73:	7d 16                	jge    0x53ad8b
+  53ad75:	8b 4d f0             	mov    ecx,DWORD PTR [ebp-0x10]
+  53ad78:	03 4d ec             	add    ecx,DWORD PTR [ebp-0x14]
+  53ad7b:	0f be 11             	movsx  edx,BYTE PTR [ecx]
+  53ad7e:	83 f2 5a             	xor    edx,0x5a
+  53ad81:	8b                   	.byte 0x8b
+
+### @0x53ae7e — CONFIRMADO (jmp rel8 (EB))
+client/WYD.exe:     file format pei-i386
+
+
+Disassembly of section .text:
+
+0053ae72 <.text+0x139e72>:
+  53ae72:	c4 08                	les    ecx,FWORD PTR [eax]
+  53ae74:	89 45 e0             	mov    DWORD PTR [ebp-0x20],eax
+  53ae77:	81 7d e0 0c 15 81 03 	cmp    DWORD PTR [ebp-0x20],0x381150c
+  53ae7e:	eb 04                	jmp    0x53ae84
+  53ae80:	33 c0                	xor    eax,eax
+  53ae82:	eb 35                	jmp    0x53aeb9
+  53ae84:	c7 45 dc 00 00 00 00 	mov    DWORD PTR [ebp-0x24],0x0
+  53ae8b:	eb 09                	jmp    0x53ae96
+  53ae8d:	8b 45 dc             	mov    eax,DWORD PTR [ebp-0x24]
+  53ae90:	83 c0 01             	add    eax,0x1
+  53ae93:	89 45 dc             	mov    DWORD PTR [ebp-0x24],eax
+  53ae96:	8b 4d dc             	mov    ecx,DWORD PTR [ebp-0x24]
+  53ae99:	3b 4d f4             	cmp    ecx,DWORD PTR [ebp-0xc]
+  53ae9c:	7d 16                	jge    0x53aeb4
+  53ae9e:	8b 55 f0             	mov    edx,DWORD PTR [ebp-0x10]
+  53aea1:	03 55 dc             	add    edx,DWORD PTR [ebp-0x24]
+  53aea4:	0f be 02             	movsx  eax,BYTE PTR [edx]
+  53aea7:	83 f0 5a             	xor    eax,0x5a
+  53aeaa:	8b 4d f0             	mov    ecx,DWORD PTR [ebp-0x10]
+  53aead:	03                   	.byte 0x3

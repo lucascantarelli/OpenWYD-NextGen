@@ -15,7 +15,7 @@ Modelar Players, NPCs, Monsters e Items no chão como dados contíguos
 
 ## Passos
 
-1. Definir componentes em `crates/wyd-core/src/components.rs` (posição, stats,
+1. Definir componentes em `crates/wyd-core/src/ecs/components.rs` (árvore §10; posição, stats,
    inventário, flags) — dados, sem lógica.
 2. Escolher o ECS via ADR (hecs vs bevy_ecs) e registrar em
    `docs/arquitetura/adr/`.
@@ -25,7 +25,7 @@ Modelar Players, NPCs, Monsters e Items no chão como dados contíguos
 
 ## Arquivos
 
-- Criados: `crates/wyd-core/src/components.rs`, sistemas, testes.
+- Criados: `crates/wyd-core/src/ecs/components.rs`, `src/systems/` (spawn, despawn, movimento), testes.
 - Alterados: `crates/wyd-core/src/lib.rs`, `Cargo.toml` (ECS via ADR).
 - Proibido tocar: lógica de fórmulas (FASE-10), `.deprecated-go/`, OOP no core.
 

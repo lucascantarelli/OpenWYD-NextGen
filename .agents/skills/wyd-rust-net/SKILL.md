@@ -19,7 +19,16 @@ Sucessora parcial da `wyd-server-dev` para rede. Referências:
 4. **DoS/rate-limit desde o handshake.** Backpressure e filas observáveis
    (ver FASE-06); sem `println!` como telemetria.
 
+## Estrutura do crate (obrigatória)
+
+`wyd-protocol` segue `docs/arquitetura/estrutura-e-padroes.md` §3 (ADR-0002) e
+`wyd-net` segue o §11 do mesmo documento:
+`wire/{header,frame,opcode}`, `codec/{keyword,checksum}`, `payload/<domínio>`,
+`error.rs` único, tabelas em `generated/` e integração em `tests/`. `wyd-net`
+segue: `session/`, `transport/`, `dispatch/`, `limits/`, `telemetry/`. Arquivo
+novo fora dessa árvore exige ADR.
+
 ## Antes de mudar
 
-Mapeie opcode/tamanho em `docs/migration/handlers/` e espelhe com teste byte-exato
-(`cargo test -p wyd-net -p wyd-protocol`).
+Mapeie opcode/tamanho em `.deprecated-go/docs/migration/handlers/` e espelhe com
+teste byte-exato (`cargo test -p wyd-net -p wyd-protocol`).

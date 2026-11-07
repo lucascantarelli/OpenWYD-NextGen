@@ -16,7 +16,7 @@ globais (ver `.deprecated-go/Source/`).
 
 ## Passos
 
-1. Implementar `crates/wyd-core/src/tick.rs`: acumulador de tempo, intervalo
+1. Implementar `crates/wyd-core/src/tick/scheduler.rs` (árvore §10): acumulador de tempo, intervalo
    fixo, ordem de sistemas documentada em comentário.
 2. Proibir alocação no quente (arena/`bumpalo` via ADR ou estruturas estáticas).
 3. Teste de determinismo: mesmo seed + mesma sequência de inputs = mesmo estado
@@ -25,7 +25,7 @@ globais (ver `.deprecated-go/Source/`).
 
 ## Arquivos
 
-- Criados: `crates/wyd-core/src/tick.rs`, testes de determinismo.
+- Criados: `crates/wyd-core/src/tick/scheduler.rs`, `tests/determinism.rs`.
 - Alterados: `crates/wyd-core/src/lib.rs`, `crates/wyd-core/Cargo.toml`
   (deps via ADR).
 - Proibido tocar: `crates/wyd-protocol/src/`, `.deprecated-go/`, I/O ou lock

@@ -19,10 +19,10 @@ com `cargo test -p wyd-core`.
 ## Passos
 
 1. Modelar componentes contíguos (`Position`, `Stats`, `Inventory`) em
-   `crates/wyd-core/src/components.rs` (estrutura de dados, sem lógica).
-2. Implementar o tick em `crates/wyd-core/src/tick.rs`: intervalo fixo
+   `crates/wyd-core/src/ecs/components.rs` (estrutura de dados, sem lógica).
+2. Implementar o tick em `crates/wyd-core/src/tick/scheduler.rs`: intervalo fixo
    (`tick_interval_ms`), ordem de sistemas documentada, sem alocação no quente.
-3. Implementar a grade espacial em `crates/wyd-core/src/grid.rs` (visibilidade e
+3. Implementar a grade espacial em `crates/wyd-core/src/spatial/grid.rs` (visibilidade e
    interest management O(1)).
 4. Validação de schema/dados estáticos no boot com erro claro (falha explícita,
    nunca default silencioso).
@@ -31,8 +31,9 @@ com `cargo test -p wyd-core`.
 
 ## Arquivos
 
-- Criados: `crates/wyd-core/src/components.rs`, `crates/wyd-core/src/tick.rs`,
-  `crates/wyd-core/src/grid.rs`, testes em `crates/wyd-core/src/` ou `tests/`.
+- Criados (árvore normativa em `estrutura-e-padroes.md` §10): `src/error.rs`,
+  `src/ecs/components.rs`, `src/tick/scheduler.rs`, `src/spatial/grid.rs`,
+  `src/ports/clock.rs`, testes em `tests/determinism.rs`.
 - Alterados: `crates/wyd-core/src/lib.rs`, `crates/wyd-core/Cargo.toml`
   (somente deps aprovadas via ADR — ver `docs/rust/01-dependencias.md`).
 - Proibido tocar: `crates/wyd-protocol/src/` (contrato é da FASE-08),

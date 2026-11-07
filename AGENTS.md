@@ -19,7 +19,8 @@ Regras desta fase de transição:
 - **Skills Rust vigentes** (use estas, não as Go, para código Rust): `wyd-rust-core`
   (engine/Hot Path), `wyd-rust-net` (transporte/protocolo), `wyd-rust-db`
   (persistência), `wyd-rust-sim` (laboratório matemático), `wyd-rust-obs`
-  (observabilidade/segurança), `wyd-rust-toolchain` (build/CI).
+  (observabilidade/segurança), `wyd-rust-toolchain` (build/CI). Para o cliente
+  fechado, use `wyd-client-reverso` (inventário, RE, manifesto do launcher).
 - **Boas práticas vigentes** (valem para todo código novo): `rust-code-quality`
   (ownership, erros tipados, clippy/fmt, testes), `software-architecture`
   (Hot/Cold, DOD/ECS, fronteiras, ADRs), `solid-design-patterns`
@@ -29,6 +30,12 @@ Regras desta fase de transição:
   `unsafe` só em interop comprovada; erros tipados; servidor é autoridade
   (física, dano, skills, inventário); `ESCENE_FIELD` (30000) segue como pacote
   autoritativo de cena; `clippy -D warnings` e `rustfmt` limpos.
+- **Estrutura antes de código:** a árvore de módulos, a nomenclatura e os padrões
+  estão em `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002) — árvores
+  arquivo-a-arquivo por crate nos §3 (protocol) e §9–§15 (demais + `tools/`).
+  Nenhum arquivo
+  novo nas `crates/` fora dessa árvore; mudança de árvore exige ADR. O protótipo
+  de `wyd-protocol` está congelado até a reorganização prevista na FASE-08-1.
 - **Qualidade/planejamento:** `roadmap-rust/` documenta as 15 fases; código Rust
   novo nasce com teste (`cargo test --workspace`). Preservação de conhecimento
   antes de qualquer desativação (`pre-release.md` §1.2).
@@ -44,7 +51,7 @@ cliente Windows usado para conectar — tudo num único repositório.
 | `dbserver/` `binserver/` `webserver/` | Persistência, billing e web-api por gRPC | Go 1.26, gRPC |
 | `internal/` | Store, migrations, domínio, argon2id — compartilhados | Go, pgx v5 |
 | `portal/` | UI de administração: BFF puro sobre o web-api, sem tocar estado vivo | Next.js 15, TypeScript |
-| `client/` | Cliente Windows modificado (WYD.exe, proteções, assets) — **ignorado no git** | Binários fechados |
+| `client/` | Cliente Windows 7662 (PE32/i386) — usuário do `wyd-launcher`; dossiê em `docs/cliente/`, **ignorado no git** | Binários fechados |
 | `roadmap/` | Planejamento: o que está feito, pendente e em que ordem | Markdown |
 | `tmserver/content/` | Conteúdo do servidor: taxas, mapas, BaseMob/BaseSummon (LEGACY-02) | Dados |
 | `Source/` | Fontes C++ legados, referência de wire/format/gameplay | C++ |
@@ -203,6 +210,8 @@ humano terminar, e só então mexa.
 |-------------|------|
 | Topologia, portas, configs, hardcodes | `docs/migration/config-ops.md` |
 | Protocolo CPSock, Types, structs | `docs/migration/protocol-spec.md` |
+| Cliente do jogo: inventário, hooks, planos de RE | `docs/cliente/` + skill `wyd-client-reverso` |
+| Organização de pastas: responsabilidade, padrões, SOLID | `docs/arquitetura/visao-pastas.md` |
 | Formatos de save, alinhamento | `docs/migration/data-formats.md` |
 | Fórmulas (dano, exp, drop, refino) | `docs/migration/game-rules.md` |
 | Contrato de um `_MSG_*` | `docs/migration/handlers/` (58/58) |
@@ -227,6 +236,7 @@ essa marcação em vez de tratá-la como fato.
 | `wyd-server-ops` | subir/parar/inspecionar a stack local, portas, logs, banco, backup, migrations |
 | `wyd-database` | auditar/migrar/backup do Postgres, escrever migration, squash de migrations, seeds de referência |
 | `wyd-client-connect` | gerar `serverlist.bin`, alinhar versão de protocolo, diagnosticar cliente que não loga |
+| `wyd-client-reverso` | inspecionar/desassemblar o `client/`, confirmar offsets e structs, planejar hooks e patch |
 | `wyd-game-admin` | GM commands, contas, papéis, bans, dar item/gold/nível, auditoria |
 | `wyd-economy` | preços, drops, refino, combines, curva de EXP, balanceamento e ferramentas de dados |
 | `wyd-server-dev` | escrever/alterar código Go do servidor (handlers, protocolo, persistência) |

@@ -21,6 +21,7 @@ Boas práticas transversais: `rust-code-quality`, `software-architecture`,
 | `wyd-server-ops` | **suceder** → `wyd-rust-ops` (09-2) | operar stack, portas, logs, migrations, backup continua necessário, mas sobre Compose Rust | comandos `docker compose` de serviços Go, `make run-local` |
 | `wyd-database` | **suceder** → `wyd-rust-db` + apêndice Postgres | schema/migrations/backup seguem válidos; ferramenta passa a `sqlx`/`refinery` | migrations em `internal/migrations/` (Go) |
 | `wyd-client-connect` | **atualizar** (mesmo nome) | serverlist, versão de protocolo e diagnóstico do cliente seguem reais; muda o servidor alvo | descreve handshake do tmserver Go |
+| `wyd-client-reverso` (nova) | **criada na 08-4** | RE do cliente fechado: PE/hashes, hooks por endereço, structs, Ghidra/x64dbg, evidência presa ao build | não existia no legado Go |
 | `wyd-testing-bots` | **suceder** → `wyd-rust-testing` (09-2) | harness de protocolo e bots seguem necessários, em Rust | referencia `-tags=e2e`, Go test |
 | `wyd-game-admin` | **atualizar** | comandos GM e papéis são regra de jogo; backend passa a `wyd-admin` | assume binServer/webserver Go |
 | `wyd-economy` | **atualizar** | preços, drops, refino e curva de EXP são domínio atemporal; ferramenta passa a `wyd-sim` | scripts/consultas no Postgres antigo |

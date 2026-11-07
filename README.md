@@ -62,7 +62,7 @@ esses quatro gates em todo push/PR que toque no workspace.
 Fonte autoritativa para agentes: [`AGENTS.md`](AGENTS.md) §0. Skills vigentes:
 `wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`, `wyd-rust-sim`, `wyd-rust-obs`,
 `wyd-rust-toolchain` (+ boas práticas: `rust-code-quality`, `software-architecture`,
-`solid-design-patterns`).
+`solid-design-patterns`; domínio do cliente: `wyd-client-reverso`).
 
 ## 📚 Documentação
 
@@ -73,10 +73,15 @@ Fonte autoritativa para agentes: [`AGENTS.md`](AGENTS.md) §0. Skills vigentes:
 | 📊 Painel de progresso da execução | [`docs/rust/03-progresso.md`](docs/rust/03-progresso.md) |
 | 📦 Dependências Rust (catálogo e decisão offline) | [`docs/rust/01-dependencias.md`](docs/rust/01-dependencias.md) |
 | 🏛️ Decisões de arquitetura (ADRs) | [`docs/arquitetura/adr/`](docs/arquitetura/adr/) |
+| 🧱 Estrutura de módulos, nomenclatura e padrões (normativo) | [`docs/arquitetura/estrutura-e-padroes.md`](docs/arquitetura/estrutura-e-padroes.md) |
+| 🗂️ Visão de pastas: inventário, responsabilidade e padrões | [`docs/arquitetura/visao-pastas.md`](docs/arquitetura/visao-pastas.md) |
 | 🗺️ Planejamento e issues das 15 fases | [`roadmap-rust/index.md`](roadmap-rust/index.md) |
 | 🕵️ Auditoria do planejamento legado (Go) | [`docs/manual-técnico/auditoria-roadmap.md`](docs/manual-técnico/auditoria-roadmap.md) |
 | 🤖 Mapa de skills Go → Rust | [`docs/manual-técnico/skills.md`](docs/manual-técnico/skills.md) |
 | 🔌 Protocolo CPSock e formatos (referência) | [`.deprecated-go/docs/migration/`](.deprecated-go/docs/migration/) |
+| 🕹️ Cliente do jogo (inventário, hooks, plano de RE) | [`docs/cliente/`](docs/cliente/) |
+| 🗺️ Mapa do cliente (usuário do launcher, lacunas, roadmap) | [`docs/cliente/mapa.md`](docs/cliente/mapa.md) |
+| 🧩 Customização e manifesto do launcher (ADR-0003) | [`docs/cliente/customizacao.md`](docs/cliente/customizacao.md) |
 | 🖥️ Portal (BFF, telas, sessão) | [`portal/README.md`](portal/README.md) |
 | 🤖 Convenções para agentes de IA | [`AGENTS.md`](AGENTS.md) |
 

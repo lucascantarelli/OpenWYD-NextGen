@@ -26,6 +26,11 @@ Referências: `start-rust.md` §§1–5, `pre-release-rust.md` §§0–1,
    consequências) antes do código.
 5. **Rastreabilidade.** Problema → issue (`roadmap-rust/`) → diagnóstico →
    solução → teste → docs. Sem implementação órfã de issue.
+6. **Estrutura antes de código.** A árvore de módulos e a nomenclatura vivem em
+   `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002). Nenhum arquivo novo nas
+   `crates/` fora dessa árvore; `mod.rs` sem lógica; tabela gerada em
+   `generated/`; teste de integração em `tests/`. Criar arquivo "soltinho" na
+   raiz de `src/` é violação, não atalho.
 
 ## Checklist de desenho
 
@@ -33,3 +38,6 @@ Referências: `start-rust.md` §§1–5, `pre-release-rust.md` §§0–1,
 - [ ] A fronteira nova é testável isolada (contrato + mocks/fakes)?
 - [ ] Existe ADR? O diagrama C4 (nível 3–4) foi atualizado?
 - [ ] O que é observável (métrica/log) para operar isso em produção?
+- [ ] Cada arquivo novo está na árvore planejada (domínio, não "tipo de arquivo")?
+- [ ] Nomenclatura segue `estrutura-e-padroes.md` §4 (arquivo por domínio, campo
+      de fio com nome do legado)?
