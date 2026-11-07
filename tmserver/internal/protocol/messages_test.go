@@ -23,7 +23,7 @@ func TestEncodeExpPanelBody(t *testing.T) {
 }
 
 func TestMessageBodySizes(t *testing.T) {
-	// Body size + HeaderSize must equal the documented total packet size
+	// Tamanho do corpo + HeaderSize precisa igualar o tamanho total documentado do pacote
 	// (protocol-spec.md §3.5).
 	tests := []struct {
 		name      string
@@ -65,7 +65,7 @@ func TestAccountLoginRoundTrip(t *testing.T) {
 	if len(b) != MsgAccountLoginBodySize {
 		t.Fatalf("Encode len = %d, want %d", len(b), MsgAccountLoginBodySize)
 	}
-	// ClientVersion sits at body offset 80 (doc offset 92 − HeaderSize 12).
+	// ClientVersion fica no offset 80 do corpo (offset 92 do doc − HeaderSize 12).
 	if got := int(b[80]) | int(b[81])<<8 | int(b[82])<<16 | int(b[83])<<24; got != AppVersion {
 		t.Errorf("ClientVersion at offset 80 = %d, want %d", got, AppVersion)
 	}
@@ -79,9 +79,9 @@ func TestAccountLoginRoundTrip(t *testing.T) {
 	}
 }
 
-// TestMsgCombineItemBodyRoundTrip locks in MaxCombine=8 (MAX_COMBINE,
-// Basedef.h:173): the Odin "+12+" recipe needs all 7 of Item[0..6], one more
-// than the base Anct recipe ever used.
+// TestMsgCombineItemBodyRoundTrip fixa MaxCombine=8 (MAX_COMBINE,
+// Basedef.h:173): a receita "+12+" Odin precisa dos 7 de Item[0..6], um a mais
+// do que a receita base Anct jamais usou.
 func TestMsgCombineItemBodyRoundTrip(t *testing.T) {
 	if MaxCombine != 8 {
 		t.Fatalf("MaxCombine = %d, want 8 (Basedef.h:173 MAX_COMBINE)", MaxCombine)
@@ -242,8 +242,8 @@ func TestCTrimNUL(t *testing.T) {
 	}
 }
 
-// TestAuthGameLayout is a pending stub: the _AUTH_GAME 196-byte billing layout is
-// UNVERIFIED and must be captured before it can be decoded (protocol-spec.md
+// TestAuthGameLayout é um stub pendente: o layout de 196 bytes do billing
+// _AUTH_GAME é UNVERIFIED e precisa ser capturado antes de ser decodificado
 // §4.3, Phase 6).
 func TestAuthGameLayout(t *testing.T) {
 	if AuthGameSize != 196 {
@@ -272,9 +272,9 @@ func TestEncodeStandardParm(t *testing.T) {
 	}
 }
 
-// TestEncodeMagicTrumpetBody pins the MSG_MagicTrumpet body (Basedef.h:1739):
-// String[96] + int Color, with the legacy marker byte at String[94] and the text
-// always NUL-terminated before it.
+// TestEncodeMagicTrumpetBody fixa o corpo do MSG_MagicTrumpet (Basedef.h:1739):
+// String[96] + int Color, com o byte marcador legado em String[94] e o texto
+// sempre terminado em NUL antes dele.
 func TestEncodeMagicTrumpetBody(t *testing.T) {
 	tests := []struct {
 		name string

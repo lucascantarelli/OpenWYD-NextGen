@@ -11,12 +11,12 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// spawnNPCsForTest reproduces the pre-issue-57 boot for the tests that assert the
-// spawn wiring: it parses NPCGener.txt into the definitions the importer would
-// build, registers the slots and fires one GenerateMob per boot-spawnable block.
-// Production no longer reads the file (the database is the catalogue), so this
-// helper keeps those tests exercising registerNPCGenerators + GenerateMob without
-// dragging the legacy loader back into cmd/tmserver.
+// spawnNPCsForTest reproduz o boot anterior à issue 57 para os testes que verificam a
+// ligação de spawn: ele lê NPCGener.txt para as definições que o importador
+// construiria, registra os slots e dispara um GenerateMob por bloco spawnável no boot.
+// Produção não lê mais o arquivo (o banco é o catálogo), então este
+// helper mantém esses testes exercitando registerNPCGenerators + GenerateMob sem
+// arrastar o loader legado de volta para cmd/tmserver.
 func spawnNPCsForTest(w *world.World, dir string, attrs *content.Grid, log *slog.Logger) {
 	blocks, err := content.LoadNPCGenerators(filepath.Join(dir, "TMsrv", "run", "NPCGener.txt"))
 	if err != nil {

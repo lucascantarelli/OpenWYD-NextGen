@@ -7,8 +7,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// efSanc is EF_SANC (ItemEffect.h:100). The package itself reads levels through
-// refine.Level; the tests still need the raw id to plant pairs.
+// efSanc é EF_SANC (ItemEffect.h:100). O pacote lê níveis através de
+// refine.Level; os testes ainda precisam do id cru para plantar pares.
 const efSanc = 43
 
 func TestMatchAnctBaseRecipe(t *testing.T) {
@@ -17,7 +17,7 @@ func TestMatchAnctBaseRecipe(t *testing.T) {
 		Extra:      map[int]int{801: 2451},
 		AnctChance: [3]int{2, 4, 10},
 	}
-	// The base carries a sanc pair, so the result's +7 has a slot to land in.
+	// A base carrega um par de sanc, então o +7 do resultado tem slot onde cair.
 	items := []world.Item{
 		{Index: 801, Effects: [3]world.Effect{{Effect: efSanc, Value: 0}}},
 		{Index: 2442},
@@ -34,9 +34,9 @@ func TestMatchAnctBaseRecipe(t *testing.T) {
 	}
 }
 
-// BASE_SetItemSanc allocates nothing: a base item with no sanc pair produces a
-// result with no sanc at all (Basedef.cpp:2312 returns FALSE). The combine path
-// does not bootstrap a slot — only the dust-refine path does.
+// BASE_SetItemSanc não aloca nada: item base sem par de sanc produz
+// resultado sem sanc nenhum (Basedef.cpp:2312 devolve FALSE). O caminho de combinação
+// não cria slot — só o caminho de refino com pó cria.
 func TestAnctResultWithoutSancSlot(t *testing.T) {
 	cat := Catalog{
 		Unique: map[int]int{801: 41},
@@ -53,7 +53,7 @@ func TestAnctResultWithoutSancSlot(t *testing.T) {
 	if lvl := refine.Level(got); lvl != 0 {
 		t.Errorf("result sanc = %d, want 0 (no slot to write into)", lvl)
 	}
-	// And the existing effects must survive untouched.
+	// E os efeitos existentes precisam sobreviver intocados.
 	if got.Effects[2] != (world.Effect{Effect: efMobType, Value: 1}) {
 		t.Errorf("Effects[2] = %+v, want the original EF_MOBTYPE pair", got.Effects[2])
 	}
@@ -63,7 +63,7 @@ func TestMatchAnctSacrificeBonus(t *testing.T) {
 	cat := Catalog{
 		Unique: map[int]int{801: 41},
 		Extra:  map[int]int{801: 2451},
-		// EF_POS lives in nPos, never in a BaseEffect pair (see itemAbility).
+		// EF_POS mora em nPos, nunca num par de BaseEffect (ver itemAbility).
 		Pos:        map[int]int{900: 4},
 		AnctChance: [3]int{2, 4, 10},
 	}

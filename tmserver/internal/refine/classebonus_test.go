@@ -6,9 +6,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// scriptedRoll returns a roll func that hands back vals in order (repeating the
-// last one if it runs out) and records the modulus of every call, so a test can
-// assert both the values consumed and the ORDER they were drawn in.
+// scriptedRoll devolve uma função de sorteio que entrega vals em ordem (repetindo o
+// último se acabar) e registra o módulo de cada chamada, para um teste poder
+// verificar os valores consumidos e a ORDEM em que foram sorteados.
 func scriptedRoll(vals ...int) (func(int) int, *[]int) {
 	var mods []int
 	i := 0
@@ -23,14 +23,14 @@ func scriptedRoll(vals ...int) (func(int) int, *[]int) {
 	}, &mods
 }
 
-// noAbility stands in for BASE_GetItemAbility on the non-boot paths, where
-// ClasseBonus never consults it.
+// noAbility substitui BASE_GetItemAbility nos caminhos que não são de boot, onde
+// ClasseBonus nunca o consulta.
 func noAbility(world.Item, uint8) int { return 0 }
 
-// TestClasseBonusDrawsTableIndexFirst pins the legacy RNG call order: every
-// branch of SetItemBonus2 opens with `int _rand = rand()%N;` and only then rolls
-// the sanc (Server.cpp:2723-2726). Swapping the two would silently desync a
-// captured rand() sequence.
+// TestClasseBonusDrawsTableIndexFirst fixa a ordem de chamadas do RNG legado: todo
+// ramo de SetItemBonus2 abre com `int _rand = rand()%N;` e só então sorteia
+// o sanc (Server.cpp:2723-2726). Trocar os dois dessincronizaria em silêncio uma
+// sequência de rand() capturada.
 func TestClasseBonusDrawsTableIndexFirst(t *testing.T) {
 	dest := world.Item{Index: 100, Effects: [3]world.Effect{{Effect: efSanc, Value: 0}}}
 	roll, mods := scriptedRoll(3, 1)
@@ -82,7 +82,7 @@ func TestClasseBonusSanc(t *testing.T) {
 	cases := []struct {
 		name      string
 		effect0   world.Effect
-		roll      int // value fed to the sanc roll(2)
+		roll      int // valor entregue ao sorteio de sanc(2)
 		wantLevel int
 		wantRolls int
 	}{
@@ -142,10 +142,10 @@ func TestClasseBonusSanc(t *testing.T) {
 	}
 }
 
-// TestClasseBonusUncoveredSlot: SetItemBonus2 has no branch for weapons, capes
-// or accessories, so the item must come back untouched — the caller
-// (useClasseItem) relies on the false return to refuse instead of consuming the
-// Classe item (Lista de bugs.txt:6).
+// TestClasseBonusUncoveredSlot: SetItemBonus2 não tem ramo para armas, capas
+// ou acessórios, então o item precisa voltar intocado — o chamador
+// (useClasseItem) conta com o retorno falso para recusar em vez de consumir o
+// item Classe (Lista de bugs.txt:6).
 func TestClasseBonusUncoveredSlot(t *testing.T) {
 	for _, nPos := range []int{1, 64, 128, 192, 512, 2048, -32768} {
 		before := world.Item{Index: 100, Effects: [3]world.Effect{{Effect: efSanc, Value: 3}}}
@@ -164,9 +164,9 @@ func TestClasseBonusUncoveredSlot(t *testing.T) {
 	}
 }
 
-// TestClasseBonusBootDamageClamp: a rolled EF_DAMAGE bonus is trimmed so the
-// item's total damage ability stays at 30 (Server.cpp:2845-2861). Row 0 of
-// bonusValue5 rolls {EF_DAMAGE 30}, which on top of a base 20 lands at 50.
+// TestClasseBonusBootDamageClamp: um bônus EF_DAMAGE sorteado é aparado para o
+// dano total do item ficar em 30 (Server.cpp:2845-2861). A linha 0 de
+// bonusValue5 sorteia {EF_DAMAGE 30}, que sobre uma base 20 chega a 50.
 func TestClasseBonusBootDamageClamp(t *testing.T) {
 	const catalogDamage = 20
 	ability := func(it world.Item, id uint8) int {

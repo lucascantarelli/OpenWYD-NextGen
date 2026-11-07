@@ -2,7 +2,7 @@ package worldevents
 
 import "time"
 
-// TowerPhase mirrors GTorreState.
+// TowerPhase espelha GTorreState.
 type TowerPhase uint8
 
 const (
@@ -11,7 +11,7 @@ const (
 	TowerOpen
 )
 
-// TowerAction is one timer-driven transition emitted by Tower.Step.
+// TowerAction é uma transição disparada por timer, emitida por Tower.Step.
 type TowerAction uint8
 
 const (
@@ -21,21 +21,21 @@ const (
 	TowerEnd
 )
 
-// Tower is the legacy weekday tower-capture calendar state machine.
+// Tower é a máquina de estados legada de calendário de captura da torre por dia da semana.
 type Tower struct {
 	Hour  int
 	phase TowerPhase
 }
 
-// NewTower returns a tower event scheduled for hour.
+// NewTower devolve um evento de torre agendado para a hora informada.
 func NewTower(hour int) Tower { return Tower{Hour: hour} }
 
-// Phase reports the current GTorreState-compatible phase.
+// Phase reporta a fase atual compatível com GTorreState.
 func (t *Tower) Phase() TowerPhase { return t.phase }
 
-// Step advances at most one transition per minute tick. The ordered chain is a
-// deliberate reading of CWarTower.cpp:203/211/224; independent-if behavior at
-// minute 30 from an Announced state is UNVERIFIED.
+// Step avança no máximo uma transição por tick de minuto. A cadeia ordenada é
+// leitura consciente de CWarTower.cpp:203/211/224; comportamento de ifs
+// independentes no minuto 30 a partir de Announced é UNVERIFIED.
 func (t *Tower) Step(now time.Time, enabled bool) TowerAction {
 	if !enabled || now.Weekday() == time.Saturday || now.Weekday() == time.Sunday || now.Hour() != t.Hour {
 		return TowerNone

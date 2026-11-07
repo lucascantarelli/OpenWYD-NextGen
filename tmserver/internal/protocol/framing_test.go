@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// dripReader returns at most one byte per Read, to exercise partial framing.
+// dripReader devolve no máximo um byte por Read, para exercitar framing parcial.
 type dripReader struct{ data []byte }
 
 func (d *dripReader) Read(p []byte) (int, error) {
@@ -64,7 +64,7 @@ func TestFramerSingleFrame(t *testing.T) {
 func TestFramerPartialAndGlued(t *testing.T) {
 	f1 := mustEncode(t, MsgAction, []byte{1, 2, 3}, 7)
 	f2 := mustEncode(t, MsgGetItem, bytes.Repeat([]byte{9}, 30), 200)
-	// Two frames glued together, delivered one byte at a time.
+	// Dois frames colados, entregues um byte por vez.
 	stream := withInitCode(f1, f2)
 	f := NewFramer(&dripReader{data: stream})
 
@@ -116,10 +116,10 @@ func TestFramerTruncatedFrame(t *testing.T) {
 	}
 }
 
-// TestFramerEndToEnd is the in-process sanity check from the plan: build a real
-// MSG_AccountLogin frame, push the whole stream (INITCODE + frame) through the
-// Framer one byte at a time, then Decode — exercising
-// initcode→framing→decode→transform→checksum end to end.
+// TestFramerEndToEnd é a checagem de sanidade em processo do plano: monta um
+// frame MSG_AccountLogin real, empurra o fluxo inteiro (INITCODE + frame) pelo
+// Framer um byte por vez, depois Decode — exercitando
+// initcode→framing→decode→transform→checksum ponta a ponta.
 func TestFramerEndToEnd(t *testing.T) {
 	body := MsgAccountLoginBody{ClientVersion: AppVersion}
 	copy(body.AccountName[:], "tester")

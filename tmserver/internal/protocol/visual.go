@@ -1,7 +1,7 @@
 package protocol
 
-// Item effect ids used by the legacy visual-overlay helpers. These are wire
-// item-effect bytes from ItemEffect.h, not score model constants.
+// Ids de efeito de item usados pelos auxiliares legados de sobreposição visual. São
+// bytes de efeito de item de ItemEffect.h no wire, não constantes do modelo de score.
 const (
 	visualEfSanc      = 43
 	visualAncientLo   = 116
@@ -14,8 +14,8 @@ const (
 	visualAncientGlow = 12
 )
 
-// VisualEquip returns the two legacy visual codes for one equipped STRUCT_ITEM:
-// MSG_CreateMob/MSG_UpdateEquip.Equip[] and AnctCode[].
+// VisualEquip devolve os dois códigos visuais legados de um STRUCT_ITEM equipado:
+// MSG_CreateMob/MSG_UpdateEquip.Equip[] e AnctCode[].
 func VisualEquip(it SelItem, slot int) (uint16, uint8) {
 	code := VisualItemCode(it, slot)
 	anct := VisualAnctCode(it)
@@ -37,8 +37,8 @@ func VisualEquip(it SelItem, slot int) (uint16, uint8) {
 	return code, anct
 }
 
-// VisualItemCode mirrors BASE_VisualItemCode: the item id plus the high-nibble
-// refine/ancient overlay that selects the rendered model variant.
+// VisualItemCode espelha BASE_VisualItemCode: o id do item mais a sobreposição de
+// refine/ancient do nibble alto que seleciona a variante de modelo renderizada.
 func VisualItemCode(it SelItem, slot int) uint16 {
 	if it.Index == 0 {
 		return 0
@@ -79,8 +79,8 @@ func VisualItemCode(it SelItem, slot int) uint16 {
 	return it.Index | uint16(value*0x1000)
 }
 
-// VisualAnctCode mirrors BASE_VisualAnctCode: the one-byte glow/effect overlay
-// the 7662 client reads beside the visual item id.
+// VisualAnctCode espelha BASE_VisualAnctCode: a sobreposição de brilho/efeito de
+// um byte que o cliente 7662 lê junto do id visual do item.
 func VisualAnctCode(it SelItem) uint8 {
 	if it.Index == 0 {
 		return 0

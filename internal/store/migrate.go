@@ -1,5 +1,5 @@
-// Package store is the PostgreSQL persistence layer for the dbServer (pgx,
-// guidelines §22). It applies the embedded migrations and writes converted
+// Package store é a camada de persistência PostgreSQL do dbServer (pgx,
+// guidelines §22). Ele aplica as migrations embutidas e grava dados convertidos
 // accounts transactionally.
 package store
 
@@ -16,15 +16,16 @@ import (
 	"openwyd-nextgen/internal/migrations"
 )
 
-// migrationLockKey serializes Migrate across dbserver, webserver, and one-off
-// seed/convert containers that all call store.Migrate on parallel docker compose
-// boots; without it two processes can race the same *.up.sql (e.g. ADD COLUMN
-// already exists while schema_migrations is still empty for that version).
+// migrationLockKey serializa Migrate entre dbserver, webserver e containers
+// avulsos de seed/convert que todos chamam store.Migrate em boots paralelos do
+// docker compose; sem isso dois processos podem correr no mesmo *.up.sql (por
+// exemplo ADD COLUMN já existe enquanto schema_migrations ainda está vazio para
+// aquela versão).
 const migrationLockKey int64 = 0x77327070
 
-// Migrate applies every not-yet-applied *.up.sql migration in lexical order,
-// each in its own transaction, recording applied versions in schema_migrations.
-// It is idempotent and safe to run on every boot.
+// Migrate aplica toda migration *.up.sql ainda não aplicada em ordem lexical,
+// cada uma em sua própria transação, registrando as versões aplicadas em
+// schema_migrations. É idempotente e seguro de rodar a cada boot.
 // MigrateWithEnv aplica as migrations com o DSN privilegiado quando o deploy
 // separa DDL do papel da aplicação (DB-01): W2PP_DB_MIGRATE_DSN pertence ao
 // openwyd_migrator, dono dos objetos, enquanto W2PP_DB_DSN é a role de DML.

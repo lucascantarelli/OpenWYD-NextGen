@@ -1,25 +1,26 @@
 package level
 
-// WaterTier selects the region-specific EXP branch in MobKilled.cpp:851-1270.
+// WaterTier seleciona o ramo de EXP específico da região em MobKilled.cpp:851-1270.
 type WaterTier uint8
 
 const (
-	// WaterNormal is the N region (8,27) in 128-cell map coordinates.
+	// WaterNormal é a região N (8,27) em coordenadas de mapa de 128 células.
 	WaterNormal WaterTier = iota
-	// WaterMystic is the M region (9,28).
+	// WaterMystic é a região M (9,28).
 	WaterMystic
-	// WaterArcane is the A region (10,27).
+	// WaterArcane é a região A (10,27).
 	WaterArcane
 )
 
-// WaterExpReward computes one living party member's reward. The source resets
-// isExp for each member but retains the killer's cap and bonus. No party-size
-// divisor survives in these three branches. Hold/DayLog are separate systems.
+// WaterExpReward  calcula a recompensa de EXP de um abate de mob na dungeon da água. É o mesmo que
+// SoloExpReward, mas com divisores de tier e bônus de evento. O legado aplica a razão.
+// isExp para cada membro, mas retém o teto e o bônus do matador. Nenhum divisor
+// de tamanho de party sobrevive nestes três ramos. Hold/DayLog são sistemas separados.
 func WaterExpReward(tier WaterTier, mobExp int64, memberLevel, mobLevel int32, classMaster uint8, killerCap int64, killerBonus int32, ev ExpEvents) int64 {
 	if tier > WaterArcane || killerCap <= 0 {
 		return 0
 	}
-	// GetExpApply has class-specific adjustments before its common level ratio.
+	// GetExpApply tem ajustes por classe antes da razão comum de nível.
 	// Arch earns half base EXP; celestial tiers compare at MAX_LEVEL.
 	baseExp := mobExp
 	applyLevel := memberLevel
@@ -62,8 +63,8 @@ func WaterExpReward(tier WaterTier, mobExp int64, memberLevel, mobLevel int32, c
 	return max(exp, 0)
 }
 
-// WaterExpKillerCap returns GetExpApply for the killer before the dungeon
-// multiplier. This is the eMob cap the legacy carries into each party branch.
+// WaterExpKillerCap devolve o GetExpApply do matador antes do multiplicador
+// da dungeon. É o teto eMob que o legado leva para cada ramo de party.
 func WaterExpKillerCap(mobExp int64, killerLevel, mobLevel int32, classMaster uint8) int64 {
 	if classMaster == classArch {
 		mobExp = int64(float64(mobExp) * 0.50)
@@ -78,8 +79,8 @@ func waterTierDivisors(tier WaterTier, exp, lv int64, class uint8) int64 {
 		return applyTierDivisors(exp, lv, class)
 	}
 	if class == classMortal {
-		// N's first divisor is a double literal; all other fractional values
-		// below are float literals. Preserve the conversion before truncation.
+		// O primeiro divisor do N é um literal double; todos os outros valores
+		// fracionários abaixo são literais float. Preserve a conversão antes do truncamento.
 		if lv <= 200 {
 			if tier == WaterNormal {
 				return int64(float64(exp) / 1.28)
@@ -102,7 +103,7 @@ func waterTierDivisors(tier WaterTier, exp, lv int64, class uint8) int64 {
 		}
 		return exp
 	}
-	// The N branch intentionally has no ARCH divisor table.
+	// O ramo N de propósito não tem tabela de divisores ARCH.
 	if tier == WaterNormal || lv <= 200 {
 		return exp
 	}

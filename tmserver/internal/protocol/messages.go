@@ -5,25 +5,25 @@ import (
 	"fmt"
 )
 
-// This file holds explicit, offset-by-offset codecs for the critical message
-// bodies from protocol-spec.md §3.5. Bodies are the bytes AFTER the 12-byte
-// header (Frame.Payload), so the offsets below are doc-offset minus HeaderSize.
+// Este arquivo mantém codecs explícitos, offset por offset, das mensagens
+// críticas de protocol-spec.md §3.5. Os corpos são os bytes DEPOIS do cabeçalho
+// de 12 bytes (Frame.Payload), então os offsets abaixo são o do doc menos HeaderSize.
 //
-// Network messages are pack(1) (no padding) — unlike the save structs of Phase 2
-// (natural alignment). Every field is read/written by explicit offset,
+// Mensagens de rede são pack(1) (sem padding) — diferente das structs de save da Fase 2
+// (alinhamento natural). Todo campo é lido/escrito por offset explícito,
 // little-endian (general-rule 4). Variable-length bodies (Attack Dam[13], Trade)
-// and the billing _AUTH_GAME (196 B, UNVERIFIED) are deferred — see the bottom
-// of this file.
+// e o _AUTH_GAME de billing (196 B, UNVERIFIED) fica adiado — ver o fim
+// deste arquivo.
 
-// le is the wire byte order for all CPSock messages (little-endian, x86).
+// le é a ordem de bytes do wire para todas as mensagens CPSock (little-endian, x86).
 var le = binary.LittleEndian
 
-// MsgAccountLoginBody is the body of MSG_AccountLogin (C→S, Type 0x020D),
+// MsgAccountLoginBody é o corpo de MSG_AccountLogin (C→S, Type 0x020D),
 // protocol-spec.md §3.5 / Basedef.h:1545-1561, pack(1). Total packet 116 bytes.
 //
-// AccountPassword is plaintext on the wire — a security debt hashed at import
-// (Phase 2/7). ClientVersion must equal AppVersion (7640); that check is handler
-// logic (Phase 4), not codec.
+// AccountPassword é texto plano no wire — uma dívida de segurança resolvida com hash no
+// import (Fase 2/7). ClientVersion precisa ser igual a AppVersion (7640); essa checagem fica no
+// lógica (Fase 4), não codec.
 type MsgAccountLoginBody struct {
 	AccountPassword [12]byte
 	AccountName     [16]byte
@@ -33,10 +33,10 @@ type MsgAccountLoginBody struct {
 	AdapterName     [4]int32
 }
 
-// MsgAccountLoginBodySize is the body length; the full packet is HeaderSize+this.
+// MsgAccountLoginBodySize é o tamanho do corpo; o pacote completo é HeaderSize+isto.
 const MsgAccountLoginBodySize = 104
 
-// Decode parses an MSG_AccountLogin body from b (length MsgAccountLoginBodySize).
+// Decode lê um corpo MSG_AccountLogin de b (tamanho MsgAccountLoginBodySize).
 func (m *MsgAccountLoginBody) Decode(b []byte) error {
 	if len(b) < MsgAccountLoginBodySize {
 		return fmt.Errorf("protocol: MsgAccountLoginBody.Decode: have %d, need %d", len(b), MsgAccountLoginBodySize)
@@ -52,7 +52,7 @@ func (m *MsgAccountLoginBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_AccountLogin body into a new MsgAccountLoginBodySize slice.
+// Encode escreve o corpo MSG_AccountLogin num novo slice MsgAccountLoginBodySize.
 func (m *MsgAccountLoginBody) Encode() []byte {
 	b := make([]byte, MsgAccountLoginBodySize)
 	copy(b[0:12], m.AccountPassword[:])
@@ -74,10 +74,10 @@ type MsgCreateCharacterBody struct {
 	MobClass int32
 }
 
-// MsgCreateCharacterBodySize is the body length.
+// MsgCreateCharacterBodySize é o tamanho do corpo.
 const MsgCreateCharacterBodySize = 24
 
-// Decode parses an MSG_CreateCharacter body from b.
+// Decode lê um corpo MSG_CreateCharacter de b.
 func (m *MsgCreateCharacterBody) Decode(b []byte) error {
 	if len(b) < MsgCreateCharacterBodySize {
 		return fmt.Errorf("protocol: MsgCreateCharacterBody.Decode: have %d, need %d", len(b), MsgCreateCharacterBodySize)
@@ -88,7 +88,7 @@ func (m *MsgCreateCharacterBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_CreateCharacter body into a new slice.
+// Encode escreve o corpo MSG_CreateCharacter num novo slice.
 func (m *MsgCreateCharacterBody) Encode() []byte {
 	b := make([]byte, MsgCreateCharacterBodySize)
 	le.PutUint32(b[0:4], uint32(m.Slot))
@@ -98,17 +98,17 @@ func (m *MsgCreateCharacterBody) Encode() []byte {
 }
 
 // MsgDeleteCharacterBody — MSG_DeleteCharacter (C→S, 0x0211), Basedef.h:1608-1616.
-// Total packet 44 bytes. Password confirms the deletion.
+// Pacote total de 44 bytes. A senha confirma a exclusão.
 type MsgDeleteCharacterBody struct {
 	Slot     int32
 	MobName  [16]byte
 	Password [12]byte
 }
 
-// MsgDeleteCharacterBodySize is the body length.
+// MsgDeleteCharacterBodySize é o tamanho do corpo.
 const MsgDeleteCharacterBodySize = 32
 
-// Decode parses an MSG_DeleteCharacter body from b.
+// Decode lê um corpo MSG_DeleteCharacter de b.
 func (m *MsgDeleteCharacterBody) Decode(b []byte) error {
 	if len(b) < MsgDeleteCharacterBodySize {
 		return fmt.Errorf("protocol: MsgDeleteCharacterBody.Decode: have %d, need %d", len(b), MsgDeleteCharacterBodySize)
@@ -119,7 +119,7 @@ func (m *MsgDeleteCharacterBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_DeleteCharacter body into a new slice.
+// Encode escreve o corpo MSG_DeleteCharacter num novo slice.
 func (m *MsgDeleteCharacterBody) Encode() []byte {
 	b := make([]byte, MsgDeleteCharacterBodySize)
 	le.PutUint32(b[0:4], uint32(m.Slot))
@@ -135,10 +135,10 @@ type MsgCharacterLoginBody struct {
 	Force int32
 }
 
-// MsgCharacterLoginBodySize is the body length.
+// MsgCharacterLoginBodySize é o tamanho do corpo.
 const MsgCharacterLoginBodySize = 8
 
-// Decode parses an MSG_CharacterLogin body from b.
+// Decode lê um corpo MSG_CharacterLogin de b.
 func (m *MsgCharacterLoginBody) Decode(b []byte) error {
 	if len(b) < MsgCharacterLoginBodySize {
 		return fmt.Errorf("protocol: MsgCharacterLoginBody.Decode: have %d, need %d", len(b), MsgCharacterLoginBodySize)
@@ -148,7 +148,7 @@ func (m *MsgCharacterLoginBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_CharacterLogin body into a new slice.
+// Encode escreve o corpo MSG_CharacterLogin num novo slice.
 func (m *MsgCharacterLoginBody) Encode() []byte {
 	b := make([]byte, MsgCharacterLoginBodySize)
 	le.PutUint32(b[0:4], uint32(m.Slot))
@@ -168,10 +168,10 @@ type MsgActionBody struct {
 	TargetY int16
 }
 
-// MsgActionBodySize is the body length.
+// MsgActionBodySize é o tamanho do corpo.
 const MsgActionBodySize = 40
 
-// Decode parses an MSG_Action body from b.
+// Decode lê um corpo MSG_Action de b.
 func (m *MsgActionBody) Decode(b []byte) error {
 	if len(b) < MsgActionBodySize {
 		return fmt.Errorf("protocol: MsgActionBody.Decode: have %d, need %d", len(b), MsgActionBodySize)
@@ -186,7 +186,7 @@ func (m *MsgActionBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_Action body into a new slice.
+// Encode escreve o corpo MSG_Action num novo slice.
 func (m *MsgActionBody) Encode() []byte {
 	b := make([]byte, MsgActionBodySize)
 	le.PutUint16(b[0:2], uint16(m.PosX))
@@ -201,8 +201,8 @@ func (m *MsgActionBody) Encode() []byte {
 
 // MsgDropItemBody — MSG_DropItem (C→S, 0x0272), handlers/_MSG_DropItem.md.
 //
-// UNVERIFIED: the exact field offsets are not in protocol-spec.md §3.5; this is a
-// best-effort layout (self-consistent for the codec). Pin by capture.
+// UNVERIFIED: os offsets exatos dos campos não estão em protocol-spec.md §3.5; este é um
+// layout de melhor esforço (autoconsistente para o codec). Fixe por captura.
 type MsgDropItemBody struct {
 	SourType int32
 	SourPos  int32
@@ -211,10 +211,10 @@ type MsgDropItemBody struct {
 	GridY    uint16
 }
 
-// MsgDropItemBodySize is the body length.
+// MsgDropItemBodySize é o tamanho do corpo.
 const MsgDropItemBodySize = 16
 
-// Decode parses an MSG_DropItem body.
+// Decode lê um corpo MSG_DropItem.
 func (m *MsgDropItemBody) Decode(b []byte) error {
 	if len(b) < MsgDropItemBodySize {
 		return fmt.Errorf("protocol: MsgDropItemBody.Decode: have %d, need %d", len(b), MsgDropItemBodySize)
@@ -227,7 +227,7 @@ func (m *MsgDropItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_DropItem body into a new slice.
+// Encode escreve o corpo MSG_DropItem num novo slice.
 func (m *MsgDropItemBody) Encode() []byte {
 	b := make([]byte, MsgDropItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.SourType))
@@ -238,20 +238,20 @@ func (m *MsgDropItemBody) Encode() []byte {
 	return b
 }
 
-// MsgGetItemBody — MSG_GetItem (C→S, 0x0270), handlers/_MSG_GetItem.md. ItemID is
-// the ground id + GroundItemIDOffset (10000).
+// MsgGetItemBody — MSG_GetItem (C→S, 0x0270), handlers/_MSG_GetItem.md. ItemID é
+// o id no chão + GroundItemIDOffset (10000).
 //
-// UNVERIFIED: exact field offsets not in §3.5; best-effort self-consistent layout.
+// UNVERIFIED: offsets exatos dos campos não estão em §3.5; layout de melhor esforço autoconsistente.
 type MsgGetItemBody struct {
 	ItemID   int32
 	DestType int32
 	DestPos  int32
 }
 
-// MsgGetItemBodySize is the body length.
+// MsgGetItemBodySize é o tamanho do corpo.
 const MsgGetItemBodySize = 12
 
-// Decode parses an MSG_GetItem body.
+// Decode lê um corpo MSG_GetItem.
 func (m *MsgGetItemBody) Decode(b []byte) error {
 	if len(b) < MsgGetItemBodySize {
 		return fmt.Errorf("protocol: MsgGetItemBody.Decode: have %d, need %d", len(b), MsgGetItemBodySize)
@@ -262,7 +262,7 @@ func (m *MsgGetItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_GetItem body into a new slice.
+// Encode escreve o corpo MSG_GetItem num novo slice.
 func (m *MsgGetItemBody) Encode() []byte {
 	b := make([]byte, MsgGetItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.ItemID))
@@ -283,10 +283,10 @@ type MsgUseItemBody struct {
 	WarpID   uint16
 }
 
-// MsgUseItemBodySize is the body length (doc total 34 − HeaderSize 12).
+// MsgUseItemBodySize é o tamanho do corpo (total 34 no doc − HeaderSize 12).
 const MsgUseItemBodySize = 22
 
-// Decode parses an MSG_UseItem body.
+// Decode lê um corpo MSG_UseItem.
 func (m *MsgUseItemBody) Decode(b []byte) error {
 	if len(b) < MsgUseItemBodySize {
 		return fmt.Errorf("protocol: MsgUseItemBody.Decode: have %d, need %d", len(b), MsgUseItemBodySize)
@@ -301,7 +301,7 @@ func (m *MsgUseItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_UseItem body into a new slice.
+// Encode escreve o corpo MSG_UseItem num novo slice.
 func (m *MsgUseItemBody) Encode() []byte {
 	b := make([]byte, MsgUseItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.SourType))
@@ -314,14 +314,14 @@ func (m *MsgUseItemBody) Encode() []byte {
 	return b
 }
 
-// WireEffect is one effect/value pair of a wire STRUCT_ITEM.
+// WireEffect é um par efeito/valor de um STRUCT_ITEM do wire.
 type WireEffect struct {
 	Effect uint8
 	Value  uint8
 }
 
-// WireItem is a STRUCT_ITEM as it appears in messages (8 bytes): sIndex + 3
-// effect pairs (Basedef.h:500-522). Index==0 is an empty slot.
+// WireItem é um STRUCT_ITEM como aparece nas mensagens (8 bytes): sIndex + 3
+// pares de efeito (Basedef.h:500-522). Index==0 é um slot vazio.
 type WireItem struct {
 	Index   int16
 	Effects [3]WireEffect
@@ -344,11 +344,11 @@ func encodeWireItem(b []byte, it WireItem) {
 	}
 }
 
-// MaxTrade is MAX_TRADE (Basedef.h:139): max items offered in one trade.
+// MaxTrade é MAX_TRADE (Basedef.h:139): máximo de itens ofertados numa troca.
 const MaxTrade = 15
 
 // MsgTradingItemBody — MSG_TradingItem (C→S, 0x0376), protocol-spec.md §3.5
-// (Basedef.h:2103-2113): move an item into/out of the trade window. WarpID is the
+// (Basedef.h:2103-2113): move um item para dentro/fora da janela de troca. WarpID é o
 // opponent's id.
 type MsgTradingItemBody struct {
 	DestPlace uint8
@@ -358,10 +358,10 @@ type MsgTradingItemBody struct {
 	WarpID    int32
 }
 
-// MsgTradingItemBodySize is the body length.
+// MsgTradingItemBodySize é o tamanho do corpo.
 const MsgTradingItemBodySize = 8
 
-// Decode parses an MSG_TradingItem body.
+// Decode lê um corpo MSG_TradingItem.
 func (m *MsgTradingItemBody) Decode(b []byte) error {
 	if len(b) < MsgTradingItemBodySize {
 		return fmt.Errorf("protocol: MsgTradingItemBody.Decode: have %d, need %d", len(b), MsgTradingItemBodySize)
@@ -371,7 +371,7 @@ func (m *MsgTradingItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_TradingItem body into a new slice.
+// Encode escreve o corpo MSG_TradingItem num novo slice.
 func (m *MsgTradingItemBody) Encode() []byte {
 	b := make([]byte, MsgTradingItemBodySize)
 	b[0], b[1], b[2], b[3] = m.DestPlace, m.DestSlot, m.SrcPlace, m.SrcSlot
@@ -380,8 +380,8 @@ func (m *MsgTradingItemBody) Encode() []byte {
 }
 
 // MsgTradeBody — MSG_Trade (C↔S, 0x0383), protocol-spec.md §3.5
-// (Basedef.h:2435-2445): the trade confirmation, carrying the full offer. An
-// offer entry i is active when Item[i].Index != 0; InvenPos[i] is its carry slot.
+// (Basedef.h:2435-2445): a confirmação da troca, carregando a oferta inteira. Uma
+// entrada de oferta i está ativa quando Item[i].Index != 0; InvenPos[i] é seu slot no carry.
 type MsgTradeBody struct {
 	Item       [MaxTrade]WireItem
 	InvenPos   [MaxTrade]uint8
@@ -397,10 +397,10 @@ type MsgTradeBody struct {
 // short) e toda troca caía em "oponente fora de jogo".
 const MsgTradeBodySize = MaxTrade*ItemSize + MaxTrade + 1 + 4 + 1 + 1 + 2
 
-// ItemSize is the wire STRUCT_ITEM size (8 bytes).
+// ItemSize é o tamanho do STRUCT_ITEM no wire (8 bytes).
 const ItemSize = 8
 
-// Decode parses an MSG_Trade body.
+// Decode lê um corpo MSG_Trade.
 func (m *MsgTradeBody) Decode(b []byte) error {
 	if len(b) < MsgTradeBodySize {
 		return fmt.Errorf("protocol: MsgTradeBody.Decode: have %d, need %d", len(b), MsgTradeBodySize)
@@ -417,7 +417,7 @@ func (m *MsgTradeBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_Trade body into a new slice.
+// Encode escreve o corpo MSG_Trade num novo slice.
 func (m *MsgTradeBody) Encode() []byte {
 	b := make([]byte, MsgTradeBodySize)
 	for i := 0; i < MaxTrade; i++ {
@@ -432,7 +432,7 @@ func (m *MsgTradeBody) Encode() []byte {
 	return b
 }
 
-// Bonus types and details for MSG_ApplyBonus (protocol-spec.md §3.5).
+// Tipos e detalhes de bônus para MSG_ApplyBonus (protocol-spec.md §3.5).
 const (
 	BonusScore   = 0 // distribute a stat point
 	BonusSpecial = 1
@@ -452,10 +452,10 @@ type MsgApplyBonusBody struct {
 	TargetID  uint16
 }
 
-// MsgApplyBonusBodySize is the body length.
+// MsgApplyBonusBodySize é o tamanho do corpo.
 const MsgApplyBonusBodySize = 6
 
-// Decode parses an MSG_ApplyBonus body.
+// Decode lê um corpo MSG_ApplyBonus.
 func (m *MsgApplyBonusBody) Decode(b []byte) error {
 	if len(b) < MsgApplyBonusBodySize {
 		return fmt.Errorf("protocol: MsgApplyBonusBody.Decode: have %d, need %d", len(b), MsgApplyBonusBodySize)
@@ -466,7 +466,7 @@ func (m *MsgApplyBonusBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_ApplyBonus body into a new slice.
+// Encode escreve o corpo MSG_ApplyBonus num novo slice.
 func (m *MsgApplyBonusBody) Encode() []byte {
 	b := make([]byte, MsgApplyBonusBodySize)
 	le.PutUint16(b[0:2], uint16(m.BonusType))
@@ -475,15 +475,15 @@ func (m *MsgApplyBonusBody) Encode() []byte {
 	return b
 }
 
-// MsgWhisperBody — MSG_MessageWhisper (C→S, 0x0334): MobName is the destination
-// player (or a command keyword); String is the message text (NUL-terminated, the
-// remainder of the body).
+// MsgWhisperBody — MSG_MessageWhisper (C→S, 0x0334): MobName é o jogador de
+// destino (ou uma palavra-chave de comando); String é o texto da mensagem (terminado
+// em NUL, o resto do corpo).
 type MsgWhisperBody struct {
 	MobName [16]byte
 	String  []byte
 }
 
-// Decode parses an MSG_MessageWhisper body (MobName + trailing string).
+// Decode lê um corpo MSG_MessageWhisper (MobName + string final).
 func (m *MsgWhisperBody) Decode(b []byte) error {
 	if len(b) < 16 {
 		return fmt.Errorf("protocol: MsgWhisperBody.Decode: have %d, need >= 16", len(b))
@@ -493,7 +493,7 @@ func (m *MsgWhisperBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_MessageWhisper body into a new slice.
+// Encode escreve o corpo MSG_MessageWhisper num novo slice.
 func (m *MsgWhisperBody) Encode() []byte {
 	b := make([]byte, 16+len(m.String))
 	copy(b[0:16], m.MobName[:])
@@ -501,24 +501,24 @@ func (m *MsgWhisperBody) Encode() []byte {
 	return b
 }
 
-// MagicTrumpetBodySize is MSG_MagicTrumpet minus the header (Basedef.h:1739-1745):
-// char String[MESSAGE_LENGTH] followed by int Color — 100 bytes, so the frame on
-// the wire is 112.
+// MagicTrumpetBodySize é MSG_MagicTrumpet menos o cabeçalho (Basedef.h:1739-1745):
+// char String[MESSAGE_LENGTH] seguido de int Color — 100 bytes, então o frame no
+// wire é 112.
 const MagicTrumpetBodySize = MessageLength + 4
 
-// magicTrumpetMarker is the offset of the byte the legacy stamps to 1 right after
-// copying the text (_MSG_MessageWhisper.cpp:154, "sm_mt.String[94] = 1").
+// magicTrumpetMarker é o offset do byte que o legado marca como 1 logo após
+// copiar o texto (_MSG_MessageWhisper.cpp:154, "sm_mt.String[94] = 1").
 const magicTrumpetMarker = 94
 
-// EncodeMagicTrumpetBody returns the MSG_MagicTrumpet body carrying text (already
-// formatted as "[Nome]> mensagem" by the caller).
+// EncodeMagicTrumpetBody devolve o corpo MSG_MagicTrumpet carregando text (já
+// formatado como "[Nome]> mensagem" por quem chama).
 //
-// Parity notes: text is truncated to magicTrumpetMarker-1 bytes so the C string
-// always terminates before the marker byte — the legacy strncpy(String, temp, 96)
-// could ship an unterminated string and then overwrite byte 94 mid-text. Color
-// stays 0: the legacy only memset the first sizeof(MSG_STANDARDPARM) bytes of the
-// struct, so it shipped uninitialized stack garbage there, and the patched client
-// picks the colour itself (ClientPatch_v7662/Functions.cpp:51).
+// Notas de paridade: o texto é truncado em magicTrumpetMarker-1 bytes para a string C
+// sempre terminar antes do byte marcador — o strncpy(String, temp, 96) legado
+// podia enviar uma string sem terminador e depois sobrescrever o byte 94 no meio do texto. Color
+// fica 0: o legado só fez memset dos primeiros sizeof(MSG_STANDARDPARM) bytes da
+// struct, então enviava lixo de pilha não inicializado ali, e o cliente corrigido
+// escolhe a cor sozinho (ClientPatch_v7662/Functions.cpp:51).
 func EncodeMagicTrumpetBody(text string) []byte {
 	b := make([]byte, MagicTrumpetBodySize)
 	copy(b[:magicTrumpetMarker-1], text)
@@ -526,10 +526,10 @@ func EncodeMagicTrumpetBody(text string) []byte {
 	return b
 }
 
-// MsgSendReqPartyBody is MSG_SendReqParty (C↔S, 0x037F): PartyID is the leader
-// and Unk carries the invited player on the client request. This struct is
-// outside the legacy pack(1) blocks, so the int field keeps the MSVC x86 padding
-// after MobName (Basedef.h:2261-2279).
+// MsgSendReqPartyBody é MSG_SendReqParty (C↔S, 0x037F): PartyID é o líder
+// e Unk carrega o jogador convidado no pedido do cliente. Esta struct está
+// fora dos blocos pack(1) legados, então o campo int mantém o padding do MSVC x86
+// depois de MobName (Basedef.h:2261-2279).
 type MsgSendReqPartyBody struct {
 	Class    uint8
 	PartyPos uint8
@@ -550,7 +550,7 @@ type MsgSendReqPartyBody struct {
 // padding — daí a resposta "jogador não conectado".
 const MsgSendReqPartyBodySize = 36
 
-// Decode parses an MSG_SendReqParty body.
+// Decode lê um corpo MSG_SendReqParty.
 func (m *MsgSendReqPartyBody) Decode(b []byte) error {
 	if len(b) < MsgSendReqPartyBodySize {
 		return fmt.Errorf("protocol: MsgSendReqPartyBody.Decode: have %d, need %d", len(b), MsgSendReqPartyBodySize)
@@ -567,7 +567,7 @@ func (m *MsgSendReqPartyBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_SendReqParty body into a new slice.
+// Encode escreve o corpo MSG_SendReqParty num novo slice.
 func (m *MsgSendReqPartyBody) Encode() []byte {
 	b := make([]byte, MsgSendReqPartyBodySize)
 	b[0] = m.Class
@@ -582,18 +582,18 @@ func (m *MsgSendReqPartyBody) Encode() []byte {
 	return b
 }
 
-// MsgAcceptPartyBody is MSG_AcceptParty (C↔S, 0x03AB): LeaderID is who invited
-// me. pack(1): sizeof 30, body 18 — the natural-alignment size the port assumed
-// (20) made Decode reject every accept, so a party could never form.
+// MsgAcceptPartyBody é MSG_AcceptParty (C↔S, 0x03AB): LeaderID é quem convidou
+// o jogador. pack(1): sizeof 30, corpo 18 — o tamanho por alinhamento natural que o port
+// assumiu (20) fazia o Decode recusar todo accept, então a party nunca se formava.
 type MsgAcceptPartyBody struct {
 	LeaderID int16
 	MobName  [16]byte
 }
 
-// MsgAcceptPartyBodySize is the body length.
+// MsgAcceptPartyBodySize é o tamanho do corpo.
 const MsgAcceptPartyBodySize = 18
 
-// Decode parses an MSG_AcceptParty body.
+// Decode lê um corpo MSG_AcceptParty.
 func (m *MsgAcceptPartyBody) Decode(b []byte) error {
 	if len(b) < MsgAcceptPartyBodySize {
 		return fmt.Errorf("protocol: MsgAcceptPartyBody.Decode: have %d, need %d", len(b), MsgAcceptPartyBodySize)
@@ -603,7 +603,7 @@ func (m *MsgAcceptPartyBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_AcceptParty body into a new slice.
+// Encode escreve o corpo MSG_AcceptParty num novo slice.
 func (m *MsgAcceptPartyBody) Encode() []byte {
 	b := make([]byte, MsgAcceptPartyBodySize)
 	le.PutUint16(b[0:2], uint16(m.LeaderID))
@@ -611,18 +611,18 @@ func (m *MsgAcceptPartyBody) Encode() []byte {
 	return b
 }
 
-// MsgRemovePartyBody is MSG_RemoveParty (S→C, 0x037E), sent by legacy
-// SendRemoveParty. LeaderConn is 0 when clearing the recipient's whole party UI,
-// or the conn that left/was kicked when notifying remaining members.
+// MsgRemovePartyBody é MSG_RemoveParty (S→C, 0x037E), enviado pelo
+// SendRemoveParty legado. LeaderConn é 0 ao limpar toda a UI de party do
+// destinatário, ou a conn de quem saiu/foi expulso ao notificar os membros restantes.
 type MsgRemovePartyBody struct {
 	LeaderConn int16
 	Unk        int16
 }
 
-// MsgRemovePartyBodySize is sizeof(MSG_RemoveParty) minus the common header.
+// MsgRemovePartyBodySize é sizeof(MSG_RemoveParty) menos o cabeçalho comum.
 const MsgRemovePartyBodySize = 4
 
-// Encode writes the MSG_RemoveParty body into a new slice.
+// Encode escreve o corpo MSG_RemoveParty num novo slice.
 func (m *MsgRemovePartyBody) Encode() []byte {
 	b := make([]byte, MsgRemovePartyBodySize)
 	le.PutUint16(b[0:2], uint16(m.LeaderConn))
@@ -630,10 +630,10 @@ func (m *MsgRemovePartyBody) Encode() []byte {
 	return b
 }
 
-// MsgCNFAddPartyBody is MSG_CNFAddParty (S→C, 0x037D), emitted by SendAddParty
-// to synchronize one party UI slot. For PartyPos 0 the legacy writes LeaderConn
-// as the displayed entity id; for non-zero slots it writes 30000 and carries the
-// entity id in PartyID.
+// MsgCNFAddPartyBody é MSG_CNFAddParty (S→C, 0x037D), emitido por SendAddParty
+// para sincronizar um slot da UI de party. Para PartyPos 0 o legado escreve LeaderConn
+// como id de entidade exibido; para slots não zero escreve 30000 e carrega o
+// id de entidade em PartyID.
 type MsgCNFAddPartyBody struct {
 	LeaderConn uint16
 	Level      uint16
@@ -644,10 +644,10 @@ type MsgCNFAddPartyBody struct {
 	Target     uint16
 }
 
-// MsgCNFAddPartyBodySize is the body length after the common 12-byte header.
+// MsgCNFAddPartyBodySize é o tamanho do corpo após o cabeçalho comum de 12 bytes.
 const MsgCNFAddPartyBodySize = 28
 
-// Encode writes the MSG_CNFAddParty body into a new slice.
+// Encode escreve o corpo MSG_CNFAddParty num novo slice.
 func (m *MsgCNFAddPartyBody) Encode() []byte {
 	b := make([]byte, MsgCNFAddPartyBodySize)
 	le.PutUint16(b[0:2], m.LeaderConn)
@@ -660,8 +660,8 @@ func (m *MsgCNFAddPartyBody) Encode() []byte {
 	return b
 }
 
-// StandardParm reads the single leading int32 field (Parm) of a MSG_STANDARDPARM
-// body (used by Deposit/Withdraw: Parm = the gold amount).
+// StandardParm lê o único campo int32 inicial (Parm) de um corpo
+// MSG_STANDARDPARM (usado por Deposit/Withdraw: Parm = a quantidade de ouro).
 func StandardParm(b []byte) (parm int32, ok bool) {
 	if len(b) < 4 {
 		return 0, false
@@ -669,8 +669,8 @@ func StandardParm(b []byte) (parm int32, ok bool) {
 	return int32(le.Uint32(b[0:4])), true
 }
 
-// StandardParm2 reads the two leading int32 fields (Parm1, Parm2) of a
-// MSG_STANDARDPARM2 body (used by InviteGuild, War, ChallangeConfirm).
+// StandardParm2 lê os dois campos int32 iniciais (Parm1, Parm2) de um
+// corpo MSG_STANDARDPARM2 (usado por InviteGuild, War, ChallangeConfirm).
 func StandardParm2(b []byte) (parm1, parm2 int32, ok bool) {
 	if len(b) < 8 {
 		return 0, 0, false
@@ -678,7 +678,7 @@ func StandardParm2(b []byte) (parm1, parm2 int32, ok bool) {
 	return int32(le.Uint32(b[0:4])), int32(le.Uint32(b[4:8])), true
 }
 
-// EncodeStandardParm builds a MSG_STANDARDPARM body (single int32 Parm), e.g.
+// EncodeStandardParm monta um corpo MSG_STANDARDPARM (Parm int32 único), ex.:
 // MSG_PKInfo (SendPKInfo, SendFunc.cpp:1869).
 func EncodeStandardParm(parm int32) []byte {
 	b := make([]byte, 4)
@@ -686,16 +686,16 @@ func EncodeStandardParm(parm int32) []byte {
 	return b
 }
 
-// EncodeSetShortSkill builds the MSG_SetShortSkill body (Basedef.h:2115):
-// Skill1[4] (MOB.SkillBar) then Skill2[16] (CUser.CharShortSkill), the same
-// 20 bytes the client sends when it edits its hotbar.
+// EncodeSetShortSkill monta o corpo MSG_SetShortSkill (Basedef.h:2115):
+// Skill1[4] (MOB.SkillBar) depois Skill2[16] (CUser.CharShortSkill), os mesmos
+// 20 bytes que o cliente envia ao editar a hotbar.
 func EncodeSetShortSkill(skill1 [4]uint8, skill2 [16]uint8) []byte {
 	b := make([]byte, 0, len(skill1)+len(skill2))
 	b = append(b, skill1[:]...)
 	return append(b, skill2[:]...)
 }
 
-// EncodeStandardParm2 builds a MSG_STANDARDPARM2 body.
+// EncodeStandardParm2 monta um corpo MSG_STANDARDPARM2.
 func EncodeStandardParm2(parm1, parm2 int32) []byte {
 	b := make([]byte, 8)
 	le.PutUint32(b[0:4], uint32(parm1))
@@ -703,8 +703,8 @@ func EncodeStandardParm2(parm1, parm2 int32) []byte {
 	return b
 }
 
-// EncodeEnvEffect builds a MSG_EnvEffect body (x1,y1,x2,y2,Effect,EffectParm —
-// six int16 fields, Basedef.h:2529), used for the duel arena's closing-wall
+// EncodeEnvEffect monta um corpo MSG_EnvEffect (x1,y1,x2,y2,Effect,EffectParm —
+// seis campos int16, Basedef.h:2529), usado para o muro de fechamento da arena de duelo
 // visual (SendEnvEffect, SendFunc.cpp:456).
 func EncodeEnvEffect(x1, y1, x2, y2, effect, effectParm int16) []byte {
 	b := make([]byte, 12)
@@ -717,24 +717,24 @@ func EncodeEnvEffect(x1, y1, x2, y2, effect, effectParm int16) []byte {
 	return b
 }
 
-// MsgUpdateWeatherBodySize is the MSG_UpdateWeather payload: a single int32
-// CurrentWeather (Basedef.h:2167-2173), so 16 bytes on the wire with the header.
+// MsgUpdateWeatherBodySize é o payload do MSG_UpdateWeather: um único int32
+// CurrentWeather (Basedef.h:2167-2173), então 16 bytes no wire com o cabeçalho.
 const MsgUpdateWeatherBodySize = 4
 
-// EncodeUpdateWeather builds a MSG_UpdateWeather body. The legacy broadcasts it
-// to every USER_PLAY connection with HEADER.ID = ESCENE_FIELD, not per grid
+// EncodeUpdateWeather monta um corpo MSG_UpdateWeather. O legado o transmite
+// para toda conexão USER_PLAY com HEADER.ID = ESCENE_FIELD, não por célula de
 // (SendWeather, SendFunc.cpp:1669-1696).
 //
-// Note the width mismatch is legacy, not a bug here: this packet carries an
-// int32, while the same value rides MSG_CNFCharacterLogin as an unsigned short
-// (Basedef.h:1682-1695). Only 0/1/2 are ever sent, so both are equivalent.
+// Note que a divergência de largura é legado, não bug aqui: este pacote carrega um
+// int32, enquanto o mesmo valor vai em MSG_CNFCharacterLogin como unsigned short
+// (Basedef.h:1682-1695). Só 0/1/2 são enviados, então ambos são equivalentes.
 func EncodeUpdateWeather(weather int32) []byte {
 	b := make([]byte, MsgUpdateWeatherBodySize)
 	le.PutUint32(b, uint32(weather))
 	return b
 }
 
-// EncodeStandardParm3 builds a three-int32 signal body, used by SendWarInfo
+// EncodeStandardParm3 monta um corpo de sinal de três int32, usado por SendWarInfo
 // (Guild, castle clan, ally/war target).
 func EncodeStandardParm3(parm1, parm2, parm3 int32) []byte {
 	b := make([]byte, 12)
@@ -744,30 +744,30 @@ func EncodeStandardParm3(parm1, parm2, parm3 int32) []byte {
 	return b
 }
 
-// MaxCombine is the number of input slots in a combine packet: MAX_COMBINE
-// (Basedef.h:173). The base Anct recipe only uses Item[0]/Item[1], but the
-// Odin family's "+12+" recipe (GetMatchCombineOdin, GetFunc.cpp:551) reads up
-// to Item[6] — 7 of the 8 slots — so the full size is required for parity.
+// MaxCombine é o número de slots de entrada num pacote de combine: MAX_COMBINE
+// (Basedef.h:173). A receita base Anct só usa Item[0]/Item[1], mas a
+// receita "+12+" da família Odin (GetMatchCombineOdin, GetFunc.cpp:551) lê até
+// Item[6] — 7 dos 8 slots — então o tamanho completo é exigido para paridade.
 const MaxCombine = 8
 
-// MsgCombineItemBody — MSG_CombineItem (C→S, 0x03A6 and the Item[]-based
-// variants), game-rules.md §3.1. An input i is active when Item[i].Index != 0;
-// InvenPos[i] is its carry slot.
+// MsgCombineItemBody — MSG_CombineItem (C→S, 0x03A6 e as
+// variantes baseadas em Item[]), game-rules.md §3.1. Uma entrada i fica ativa quando
+// Item[i].Index != 0; InvenPos[i] é seu slot no carry.
 //
-// The layout is the C struct verbatim (Basedef.h:2344-2351):
+// O layout é a struct C literal (Basedef.h:2344-2351):
 //
 //	struct MSG_CombineItem { _MSG; STRUCT_ITEM Item[MAX_COMBINE]; char InvenPos[MAX_COMBINE]; };
 //
-// so the body is 8*8 + 8 = 72 bytes and the frame 84.
+// então o corpo é 8*8 + 8 = 72 bytes e o frame 84.
 type MsgCombineItemBody struct {
 	Item     [MaxCombine]WireItem
 	InvenPos [MaxCombine]uint8
 }
 
-// MsgCombineItemBodySize is the body length.
+// MsgCombineItemBodySize é o tamanho do corpo.
 const MsgCombineItemBodySize = MaxCombine*ItemSize + MaxCombine
 
-// Decode parses an MSG_CombineItem body.
+// Decode lê um corpo MSG_CombineItem.
 func (m *MsgCombineItemBody) Decode(b []byte) error {
 	if len(b) < MsgCombineItemBodySize {
 		return fmt.Errorf("protocol: MsgCombineItemBody.Decode: have %d, need %d", len(b), MsgCombineItemBodySize)
@@ -779,7 +779,7 @@ func (m *MsgCombineItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_CombineItem body into a new slice.
+// Encode escreve o corpo MSG_CombineItem num novo slice.
 func (m *MsgCombineItemBody) Encode() []byte {
 	b := make([]byte, MsgCombineItemBodySize)
 	for i := 0; i < MaxCombine; i++ {
@@ -789,27 +789,27 @@ func (m *MsgCombineItemBody) Encode() []byte {
 	return b
 }
 
-// MaxTarget is MAX_TARGET (Basedef.h:233): the max number of targets per attack.
+// MaxTarget é MAX_TARGET (Basedef.h:233): o número máximo de alvos por ataque.
 const MaxTarget = 13
 
-// Attack Dam[] layout within the body: each STRUCT_DAM is {int32 TargetID; int32
+// Layout de Dam[] do Attack no corpo: cada STRUCT_DAM é {int32 TargetID; int32
 // Damage} at MsgAttackDamOffset + i*MsgAttackDamStride (protocol-spec.md §3.5).
 const (
 	MsgAttackDamOffset = 48 // doc offset 60 − HeaderSize 12
 	MsgAttackDamStride = 8
 )
 
-// DamEntry is one STRUCT_DAM (target + resolved damage). Damage is
-// server-authoritative; negative values are miss/block codes.
+// DamEntry é um STRUCT_DAM (alvo + dano resolvido). O dano é
+// autoritativo do servidor; valores negativos são códigos de erro de acerto/bloqueio.
 type DamEntry struct {
 	TargetID int32
 	Damage   int32
 }
 
-// MsgAttackBody decodes the fields of MSG_Attack / MSG_AttackOne / MSG_AttackTwo
-// the server needs (protocol-spec.md §3.5, Basedef.h:2400-2432). The number of
-// Dam entries is derived from the body length (the variants differ only in how
-// many targets they carry).
+// MsgAttackBody decodifica os campos de MSG_Attack / MSG_AttackOne / MSG_AttackTwo
+// que o servidor precisa (protocol-spec.md §3.5, Basedef.h:2400-2432). O número de
+// entradas Dam é derivado do tamanho do corpo (as variantes diferem só em como
+// quantos alvos eles carregam).
 type MsgAttackBody struct {
 	CurrentHp      int32
 	CurrentExp     int64
@@ -827,7 +827,7 @@ type MsgAttackBody struct {
 	Dam            []DamEntry
 }
 
-// Decode parses an attack body. b must be at least MsgAttackDamOffset bytes.
+// Decode lê um corpo de ataque. b precisa ter ao menos MsgAttackDamOffset bytes.
 func (m *MsgAttackBody) Decode(b []byte) error {
 	if len(b) < MsgAttackDamOffset {
 		return fmt.Errorf("protocol: MsgAttackBody.Decode: have %d, need >= %d", len(b), MsgAttackDamOffset)
@@ -861,8 +861,8 @@ func (m *MsgAttackBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode serializes an attack body (fixed fields + Dam entries). Reserved/unknown
-// bytes are zero.
+// Encode serializa um corpo de ataque (campos fixos + entradas Dam). Reservado/desconhecido
+// bytes são zero.
 func (m *MsgAttackBody) Encode() []byte {
 	b := make([]byte, MsgAttackDamOffset+len(m.Dam)*MsgAttackDamStride)
 	le.PutUint32(b[4:8], uint32(m.CurrentHp))
@@ -886,28 +886,28 @@ func (m *MsgAttackBody) Encode() []byte {
 	return b
 }
 
-// AuthGameSize is sizeof(_AUTH_GAME), the fixed 196-byte TMSrv↔BISrv billing
+// AuthGameSize é sizeof(_AUTH_GAME), o pacote fixo de 196 bytes de billing TMSrv↔BISrv
 // packet (CPSock.h:132, protocol-spec.md §1.6).
 //
-// UNVERIFIED: the internal field layout of _AUTH_GAME is unconfirmed — the live
-// struct is char Unk[196] and the "FROM TANTRA" reference layout has not been
-// matched to this server (protocol-spec.md §4.3, README pendência). It must be
-// captured from real TMSrv↔BISrv traffic before being decoded; implemented in
-// Phase 6. See the skipped test in messages_test.go.
+// UNVERIFIED: o layout interno de campos do _AUTH_GAME não está confirmado — a
+// struct viva é char Unk[196] e o layout de referência "FROM TANTRA" não foi
+// casado com este servidor (protocol-spec.md §4.3, README pendência). Ele precisa ser
+// capturado do tráfego real TMSrv↔BISrv antes de ser decodificado; implementado na
+// Fase 6. Ver o teste ignorado em messages_test.go.
 const AuthGameSize = 196
 
 // MsgDeleteItemBody — MSG_DeleteItem (C→S, 0x02E4), Basedef.h:2371-2378: destroy a
-// carry item. Slot is the carry index; SIndex is the item template id (client sends
-// it for validation, but the legacy handler clears the slot unconditionally).
+// item de carry. Slot é o índice no carry; SIndex é o id do template do item (o
+// cliente envia para validação, mas o handler legado limpa o slot incondicionalmente).
 type MsgDeleteItemBody struct {
 	Slot   int32
 	SIndex int32
 }
 
-// MsgDeleteItemBodySize is the body length.
+// MsgDeleteItemBodySize é o tamanho do corpo.
 const MsgDeleteItemBodySize = 8
 
-// Decode parses an MSG_DeleteItem body.
+// Decode lê um corpo MSG_DeleteItem.
 func (m *MsgDeleteItemBody) Decode(b []byte) error {
 	if len(b) < MsgDeleteItemBodySize {
 		return fmt.Errorf("protocol: MsgDeleteItemBody.Decode: have %d, need %d", len(b), MsgDeleteItemBodySize)
@@ -917,7 +917,7 @@ func (m *MsgDeleteItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_DeleteItem body into a new slice.
+// Encode escreve o corpo MSG_DeleteItem num novo slice.
 func (m *MsgDeleteItemBody) Encode() []byte {
 	b := make([]byte, MsgDeleteItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.Slot))
@@ -926,18 +926,18 @@ func (m *MsgDeleteItemBody) Encode() []byte {
 }
 
 // MsgSplitItemBody — MSG_SplitItem (C→S, 0x02E5), Basedef.h:2381-2390: peel Num
-// units off the stack in carry Slot into a new stack. SIndex is the item template
-// id (validated against a splittable whitelist in the handler).
+// unidades da pilha no Slot do carry para uma pilha nova. SIndex é o id do template
+// do item (validado contra uma lista de dividíveis no handler).
 type MsgSplitItemBody struct {
 	Slot   int32
 	SIndex int32
 	Num    int32
 }
 
-// MsgSplitItemBodySize is the body length.
+// MsgSplitItemBodySize é o tamanho do corpo.
 const MsgSplitItemBodySize = 12
 
-// Decode parses an MSG_SplitItem body.
+// Decode lê um corpo MSG_SplitItem.
 func (m *MsgSplitItemBody) Decode(b []byte) error {
 	if len(b) < MsgSplitItemBodySize {
 		return fmt.Errorf("protocol: MsgSplitItemBody.Decode: have %d, need %d", len(b), MsgSplitItemBodySize)
@@ -948,7 +948,7 @@ func (m *MsgSplitItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_SplitItem body into a new slice.
+// Encode escreve o corpo MSG_SplitItem num novo slice.
 func (m *MsgSplitItemBody) Encode() []byte {
 	b := make([]byte, MsgSplitItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.Slot))
@@ -958,18 +958,18 @@ func (m *MsgSplitItemBody) Encode() []byte {
 }
 
 // MsgUpdateItemBody — MSG_UpdateItem (C↔S, 0x0374), Basedef.h:2214-2221: gate/door
-// interaction. ItemID is the world-item id (ground id + GroundItemIDOffset); State
-// is the requested gate state. Inbound it is an open request; the server echoes the
-// same body to nearby clients to reflect the new gate state (GridMulticast).
+// interação. ItemID é o id do item no mundo (id no chão + GroundItemIDOffset); State
+// é o estado de gate pedido. Na entrada é um pedido de abertura; o servidor ecoa o
+// mesmo corpo aos clientes próximos para refletir o novo estado (GridMulticast).
 type MsgUpdateItemBody struct {
 	ItemID int32
 	State  int32
 }
 
-// MsgUpdateItemBodySize is the body length.
+// MsgUpdateItemBodySize é o tamanho do corpo.
 const MsgUpdateItemBodySize = 8
 
-// Decode parses an MSG_UpdateItem body.
+// Decode lê um corpo MSG_UpdateItem.
 func (m *MsgUpdateItemBody) Decode(b []byte) error {
 	if len(b) < MsgUpdateItemBodySize {
 		return fmt.Errorf("protocol: MsgUpdateItemBody.Decode: have %d, need %d", len(b), MsgUpdateItemBodySize)
@@ -979,7 +979,7 @@ func (m *MsgUpdateItemBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_UpdateItem body into a new slice.
+// Encode escreve o corpo MSG_UpdateItem num novo slice.
 func (m *MsgUpdateItemBody) Encode() []byte {
 	b := make([]byte, MsgUpdateItemBodySize)
 	le.PutUint32(b[0:4], uint32(m.ItemID))
@@ -987,20 +987,20 @@ func (m *MsgUpdateItemBody) Encode() []byte {
 	return b
 }
 
-// MsgAccountSecureBody — MSG_AccountSecure (C↔S, 0x0FDE), Basedef.h:1588-1595: the
-// numeric PIN. NumericToken is the (legacy-plaintext) 6-char PIN; ChangeNumeric is
-// 0 to verify, 1 to set/change. The PIN is never persisted in plaintext — the
-// dbServer hashes it with argon2id (issue #120).
+// MsgAccountSecureBody — MSG_AccountSecure (C↔S, 0x0FDE), Basedef.h:1588-1595: o
+// PIN numérico. NumericToken é o PIN de 6 caracteres (texto plano legado);
+// ChangeNumeric é 0 para verificar, 1 para definir/trocar. O PIN nunca é gravado em
+// texto plano — o dbServer o transforma em hash com argon2id (issue #120).
 type MsgAccountSecureBody struct {
 	NumericToken  [6]byte
 	Unknown       [10]byte
 	ChangeNumeric int32
 }
 
-// MsgAccountSecureBodySize is the body length.
+// MsgAccountSecureBodySize é o tamanho do corpo.
 const MsgAccountSecureBodySize = 20
 
-// Decode parses an MSG_AccountSecure body.
+// Decode lê um corpo MSG_AccountSecure.
 func (m *MsgAccountSecureBody) Decode(b []byte) error {
 	if len(b) < MsgAccountSecureBodySize {
 		return fmt.Errorf("protocol: MsgAccountSecureBody.Decode: have %d, need %d", len(b), MsgAccountSecureBodySize)
@@ -1011,7 +1011,7 @@ func (m *MsgAccountSecureBody) Decode(b []byte) error {
 	return nil
 }
 
-// Encode writes the MSG_AccountSecure body into a new slice.
+// Encode escreve o corpo MSG_AccountSecure num novo slice.
 func (m *MsgAccountSecureBody) Encode() []byte {
 	b := make([]byte, MsgAccountSecureBodySize)
 	copy(b[0:6], m.NumericToken[:])
@@ -1020,14 +1020,14 @@ func (m *MsgAccountSecureBody) Encode() []byte {
 	return b
 }
 
-// PIN returns the numeric token as a string, trimmed at the first NUL. The PIN is
-// verify/set input for the dbServer; it is never logged or persisted in plaintext.
+// PIN devolve o token numérico como string, cortado no primeiro NUL. O PIN é
+// entrada de verificação/definição para o dbServer; nunca é logado nem gravado em texto plano.
 func (m *MsgAccountSecureBody) PIN() string {
 	return cTrimNUL(m.NumericToken[:])
 }
 
-// cTrimNUL returns the prefix of b up to the first NUL — a helper for turning
-// fixed-size, NUL-padded char arrays (names, passwords) into Go strings at the
+// cTrimNUL devolve o prefixo de b até o primeiro NUL — um auxiliar para virar
+// vetores char de tamanho fixo preenchidos com NUL (nomes, senhas) em strings Go na
 // handler boundary (Phase 4).
 func cTrimNUL(b []byte) string {
 	for i, c := range b {

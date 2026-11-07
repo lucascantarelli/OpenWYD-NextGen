@@ -11,41 +11,40 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Donate top-up persistence (payment-method-agnostic). Postgres owns the payer
-// profile (donate_payer_profile) and the top-up orders (donate_topup_order); the
-// portal has no database of its own. The credit of a paid order happens inside
-// ConfirmTopupOrder, in the same transaction that flips the order to PAID, with
-// no moderator id — unlike CreditDonateBalance. UNIQUE(external_reference) plus
-// the FOR UPDATE + status check make the credit idempotent: a replayed gateway
-// webhook credits exactly once. Crediting account.donate_balance is a partial
-// UPDATE, so no tmServer save clobbers it (same as CreditDonateBalance, donate.go).
-
+// Persistência de recarga de donate (agnóstica de meio de pagamento). O Postgres é
+// dono do perfil do pagador (donate_payer_profile) e dos pedidos de recarga
+// (donate_topup_order); o portal não tem banco próprio. O crédito de um pedido pago
+// acontece dentro de ConfirmTopupOrder, na mesma transação que vira o pedido para
+// PAID; o UNIQUE(external_reference) mais o FOR UPDATE e a checagem de status
+// tornam o crédito idempotente: um webhook de gateway reenviado credita exatamente
+// uma vez. Creditar account.donate_balance é um UPDATE parcial, então nenhum save
+// do tmServer o sobrescreve (igual a CreditDonateBalance, donate.go).
 // Top-up order status values, matching webv1.TopupStatus.
 const (
 	TopupStatusPending int16 = 1
 	TopupStatusPaid    int16 = 2
 )
 
-// ErrDuplicateExternalRef is returned by CreateTopupOrder when external_reference
-// already exists — the portal reused a UUID.
+// ErrDuplicateExternalRef é devolvido por CreateTopupOrder quando external_reference
+// já existe — o portal reusou um UUID.
 var ErrDuplicateExternalRef = errors.New("store: duplicate topup external_reference")
 
-// TopupConfirmOutcome is the result of ConfirmTopupOrder, mirroring
-// webv1.TopupResult without the wire dependency.
+// TopupConfirmOutcome é o resultado de ConfirmTopupOrder, espelhando
+// webv1.TopupResult sem a dependência de wire.
 type TopupConfirmOutcome int
 
 const (
-	// TopupConfirmed means the order was PENDING and was credited now.
+	// TopupConfirmed significa que o pedido era PENDING e foi creditado agora.
 	TopupConfirmed TopupConfirmOutcome = iota
-	// TopupAlreadyConfirmed means the order was already PAID — not re-credited.
+	// TopupAlreadyConfirmed significa que o pedido já era PAID — não foi recreditado.
 	TopupAlreadyConfirmed
-	// TopupNotFound means no order has that external_reference.
+	// TopupNotFound significa que nenhum pedido tem essa external_reference.
 	TopupNotFound
 )
 
-// SavePayerProfile upserts the payer's name + CPF by account id. cpf is expected
-// pre-normalized to 11 digits by the caller. A missing account (FK violation)
-// returns ErrNotFound.
+// SavePayerProfile faz upsert do nome + CPF do pagador por id de conta. Espera-se que
+// o cpf já venha normalizado para 11 dígitos por quem chama. Uma conta ausente (violação de FK)
+// devolve ErrNotFound.
 func (s *Store) SavePayerProfile(ctx context.Context, accountID int64, name, cpf string) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO donate_payer_profile (account_id, name, cpf, updated_at)
@@ -63,8 +62,8 @@ func (s *Store) SavePayerProfile(ctx context.Context, accountID int64, name, cpf
 	return nil
 }
 
-// GetPayerProfile returns the payer's name + CPF. found is false (no error) when
-// the account has no profile yet.
+// GetPayerProfile devolve nome + CPF do pagador. found é falso (sem erro) quando
+// a conta ainda não tem perfil.
 func (s *Store) GetPayerProfile(ctx context.Context, accountID int64) (name, cpf string, found bool, err error) {
 	err = s.pool.QueryRow(ctx,
 		`SELECT name, cpf FROM donate_payer_profile WHERE account_id = $1`, accountID).Scan(&name, &cpf)
@@ -77,9 +76,9 @@ func (s *Store) GetPayerProfile(ctx context.Context, accountID int64) (name, cpf
 	return name, cpf, true, nil
 }
 
-// CreateTopupOrder inserts a PENDING order and returns its id. A reused
-// external_reference (unique_violation) returns ErrDuplicateExternalRef; a
-// missing account (FK violation) returns ErrNotFound.
+// CreateTopupOrder insere um pedido PENDING e devolve seu id. Uma
+// external_reference (unique_violation) devolve ErrDuplicateExternalRef; uma
+// conta ausente (violação de FK) devolve ErrNotFound.
 func (s *Store) CreateTopupOrder(ctx context.Context, o domain.TopupOrder) (int64, error) {
 	var id int64
 	err := s.pool.QueryRow(ctx, `
@@ -104,11 +103,11 @@ func (s *Store) CreateTopupOrder(ctx context.Context, o domain.TopupOrder) (int6
 	return id, nil
 }
 
-// ConfirmTopupOrder is the idempotency core: it locks the order by
-// external_reference, and only if it is still PENDING credits the account's
-// donate balance and flips the order to PAID — all in one transaction. A missing
-// order returns (TopupNotFound, 0); an already-PAID order returns
-// (TopupAlreadyConfirmed, currentBalance) WITHOUT crediting again.
+// ConfirmTopupOrder é o núcleo da idempotência: trava o pedido por
+// external_reference, e só se ele ainda estiver PENDING credita o
+// saldo de donate da conta e vira o pedido para PAID — tudo numa transação. Um
+// pedido inexistente devolve (TopupNotFound, 0); um pedido já PAID devolve
+// (TopupAlreadyConfirmed, currentBalance) SEM creditar de novo.
 func (s *Store) ConfirmTopupOrder(ctx context.Context, externalRef string) (TopupConfirmOutcome, int32, error) {
 	var outcome TopupConfirmOutcome
 	var balance int32
@@ -129,7 +128,7 @@ func (s *Store) ConfirmTopupOrder(ctx context.Context, externalRef string) (Topu
 		}
 
 		if status == TopupStatusPaid {
-			// Already settled: report the current balance, never re-credit.
+			// Já liquidado: informa o saldo corrente, nunca recredita.
 			if err := tx.QueryRow(ctx,
 				`SELECT donate_balance FROM account WHERE id = $1`, accountID).Scan(&balance); err != nil {
 				return fmt.Errorf("store: confirm topup: read balance a=%d: %w", accountID, err)
@@ -158,10 +157,10 @@ func (s *Store) ConfirmTopupOrder(ctx context.Context, externalRef string) (Topu
 	return outcome, balance, nil
 }
 
-// GetTopupOrder returns an order's status and credits, scoped to its owner: an
-// order belonging to another account (or absent) returns ErrNotFound so no
-// order leaks across accounts. When the order is PAID, newBalance carries the
-// account's current donate balance; otherwise it is 0.
+// GetTopupOrder devolve o status e os créditos de um pedido, limitado ao dono: um
+// pedido de outra conta (ou ausente) devolve ErrNotFound para nenhum
+// pedido não vaze entre contas. Quando o pedido é PAID, newBalance carrega o
+// saldo de donate corrente da conta; caso contrário é 0.
 func (s *Store) GetTopupOrder(ctx context.Context, externalRef string, accountID int64) (status int16, credits int32, newBalance int32, err error) {
 	err = s.pool.QueryRow(ctx, `
 		SELECT status, credits FROM donate_topup_order

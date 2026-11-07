@@ -5,22 +5,22 @@ import (
 	"os"
 )
 
-// Map dimensions (data-formats.md §2). HeightMap.dat is 4096×4096 (16 MiB, 1
-// byte/cell); AttributeMap.dat is 1024×1024 (1 MiB) — one attribute per 4×4
-// block of height cells.
+// Dimensões dos mapas (data-formats.md §2). HeightMap.dat é 4096×4096 (16 MiB, 1
+// byte/célula); AttributeMap.dat é 1024×1024 (1 MiB) — um atributo por bloco 4×4
+// de células de altura.
 const (
 	HeightMapDim    = 4096
 	AttributeMapDim = 1024
 )
 
-// Grid is a dense square byte map (HeightMap/AttributeMap), row-major: index
+// Grid é um mapa de bytes quadrado e denso (HeightMap/AttributeMap), row-major: índice
 // y*Dim + x (pHeightGrid[y][x]).
 type Grid struct {
 	Dim  int
 	Data []byte
 }
 
-// At returns the cell value at (x,y), or 0 if out of bounds.
+// At devolve o valor da célula em (x,y), ou 0 se fora dos limites.
 func (g *Grid) At(x, y int) byte {
 	if x < 0 || y < 0 || x >= g.Dim || y >= g.Dim {
 		return 0
@@ -28,8 +28,8 @@ func (g *Grid) At(x, y int) byte {
 	return g.Data[y*g.Dim+x]
 }
 
-// LoadGrid reads a dense dim×dim byte map and verifies its exact size (the file
-// is an asset, kept binary — data-formats.md §2).
+// LoadGrid lê um mapa de bytes denso dim×dim e verifica seu tamanho exato (o arquivo
+// é um asset, mantido binário — data-formats.md §2).
 func LoadGrid(path string, dim int) (*Grid, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -41,7 +41,7 @@ func LoadGrid(path string, dim int) (*Grid, error) {
 	return &Grid{Dim: dim, Data: data}, nil
 }
 
-// LoadHeightMap reads HeightMap.dat (4096²). AttributeMap.dat (1024²) is loaded
-// with LoadGrid(path, AttributeMapDim); its per-byte bit semantics are UNVERIFIED
+// LoadHeightMap lê HeightMap.dat (4096²). AttributeMap.dat (1024²) é carregado
+// com LoadGrid(path, AttributeMapDim); a semântica de bits por byte é UNVERIFIED
 // (data-formats.md §2).
 func LoadHeightMap(path string) (*Grid, error) { return LoadGrid(path, HeightMapDim) }

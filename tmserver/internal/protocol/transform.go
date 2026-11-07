@@ -1,22 +1,22 @@
 package protocol
 
-// The keyword transform obfuscates the payload (bytes [4:Size)); the header
-// bytes 0..3 always travel in clear (protocol-spec.md §1.4,
+// O transform de keyword ofusca o payload (bytes [4:Size)); o cabeçalho
+// bytes 0..3 sempre viajam em claro (protocol-spec.md §1.4,
 // Source/Code/CPSock.cpp:428-453 decode / :556-581 encode).
 //
-// Parity notes (must match byte-for-byte):
-//   - All arithmetic is uint8 with wrap mod 256. In C the shifted Trans is
-//     promoted to int, then truncated to char on store; computing the whole
-//     expression in uint8 reproduces that truncation exactly.
-//   - pos seeds from keyWord[iKeyWord*2] and increments by 1 per byte. Using a
-//     uint8 pos makes "pos % 256" implicit (rst == pos for a uint8).
-//   - The shift case is selected by the byte's absolute index i & 0x3, so the
-//     loop must run over absolute packet offsets starting at transformStart.
+// Notas de paridade (precisa casar byte a byte):
+//   - Toda aritmética é uint8 com wrap mod 256. Em C o Trans deslocado é
+//     promovido para int e truncado para char ao guardar; computar a
+//     expressão inteira em uint8 reproduz essa truncagem exatamente.
+//   - pos nasce de keyWord[iKeyWord*2] e incrementa 1 por byte. Usar
+//     um pos uint8 torna "pos % 256" implícito (rst == pos para um uint8).
+//   - O caso de deslocamento é escolhido pelo índice absoluto i & 0x3 do byte,
+//     então o laço precisa rodar sobre offsets absolutos do pacote a partir de
 
-// decodePayload deobfuscates buf[transformStart:] in place, where iKeyWord is
-// HEADER.KeyWord. It returns the two checksum accumulators: sum1 over the plain
-// bytes (after transform) and sum2 over the ciphered bytes (before transform).
-// See checksum.go for how they combine.
+// decodePayload desofusca buf[transformStart:] no lugar, onde iKeyWord é
+// HEADER.KeyWord. Devolve os dois acumuladores de checksum: sum1 sobre os
+// bytes planos (depois do transform) e sum2 sobre os cifrados (antes do transform).
+// Ver checksum.go para como eles se combinam.
 func decodePayload(buf []byte, iKeyWord uint8) (sum1, sum2 uint8) {
 	pos := keyWord[uint16(iKeyWord)*2]
 	for i := transformStart; i < len(buf); i++ {
@@ -40,9 +40,9 @@ func decodePayload(buf []byte, iKeyWord uint8) (sum1, sum2 uint8) {
 	return sum1, sum2
 }
 
-// encodePayload obfuscates buf[transformStart:] in place — the exact inverse of
-// decodePayload — using iKeyWord as the seed. It returns sum1 over the plain
-// bytes (before transform) and sum2 over the ciphered bytes (after transform).
+// encodePayload ofusca buf[transformStart:] no lugar — o inverso exato de
+// decodePayload — usando iKeyWord como semente. Devolve sum1 sobre os bytes
+// planos (antes do transform) e sum2 sobre os cifrados (depois do transform).
 func encodePayload(buf []byte, iKeyWord uint8) (sum1, sum2 uint8) {
 	pos := keyWord[uint16(iKeyWord)*2]
 	for i := transformStart; i < len(buf); i++ {

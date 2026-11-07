@@ -1,6 +1,6 @@
 //go:build integration
 
-// Integration tests for the one-time play codes (web client ADR 017).
+// Testes de integração dos códigos de jogar de uso único (web client ADR 017).
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -41,7 +41,7 @@ func TestPlayCodeIssueAndConsume(t *testing.T) {
 		t.Fatalf("second ConsumePlayCode = %v, %v; want false", ok, err)
 	}
 
-	// An expired code does not log in.
+	// Um código expirado não loga.
 	if _, err := s.IssuePlayCode(ctx, alice, []byte("old"), time.Now().Add(-time.Second)); err != nil {
 		t.Fatalf("IssuePlayCode(expired): %v", err)
 	}
@@ -69,7 +69,7 @@ func TestPlayCodeCapAndBlocked(t *testing.T) {
 		}
 		time.Sleep(2 * time.Millisecond) // distinct created_at for the ordering
 	}
-	// Only the newest maxActivePlayCodes survive: the first one is gone.
+	// Só os maxActivePlayCodes mais novos sobrevivem: o primeiro se foi.
 	if ok, _ := s.ConsumePlayCode(ctx, id, []byte("c1")); ok {
 		t.Fatal("oldest code survived the cap")
 	}

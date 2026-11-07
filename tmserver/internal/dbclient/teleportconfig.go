@@ -9,7 +9,7 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// RemoteRoute is one teleport_route row as tmServer consumes it (issue 42).
+// RemoteRoute é uma linha de teleport_route como o tmServer a consome (issue 42).
 type RemoteRoute struct {
 	SrcX, SrcY  int16
 	DstX, DstY  int16
@@ -18,20 +18,20 @@ type RemoteRoute struct {
 	Enabled     bool
 }
 
-// TeleportConfig adapts the dbServer TeleportConfigService: tmServer polls the
-// overlay rows and publishes them into the world's read-only snapshot. Writes go
-// through the web-api only — this client never mutates config.
+// TeleportConfig adapta o TeleportConfigService do dbServer: o tmServer consulta as
+// linhas do overlay e as publica no snapshot somente leitura do mundo. As escritas
+// só pelo web-api — este cliente nunca altera config.
 type TeleportConfig struct {
 	api dbv1.TeleportConfigServiceClient
 }
 
-// NewTeleportConfig wraps a gRPC connection as an overlay source.
+// NewTeleportConfig embrulha uma conexão gRPC como fonte de overlay.
 func NewTeleportConfig(conn grpc.ClientConnInterface) *TeleportConfig {
 	return &TeleportConfig{api: dbv1.NewTeleportConfigServiceClient(conn)}
 }
 
-// Routes fetches every overlay row (compiled-only routes are not listed here —
-// tmServer already has them compiled in).
+// Routes busca toda linha do overlay (rotas só compiladas não aparecem aqui —
+// o tmServer já as tem compiladas).
 func (c *TeleportConfig) Routes(ctx context.Context) ([]RemoteRoute, error) {
 	resp, err := c.api.ListTeleportRoutes(ctx, &dbv1.ListTeleportRoutesRequest{})
 	if err != nil {

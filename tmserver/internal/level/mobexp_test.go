@@ -2,10 +2,10 @@ package level
 
 import "testing"
 
-// TestMobExpPacing feeds the design curve back through the real reward
-// pipeline (default event flags, solo mortal, same-level kill) and checks the
-// kills-per-level lands on the classic-pacing target. The tolerance absorbs
-// the pipeline's integer truncations.
+// TestMobExpPacing alimenta a curva de projeto de volta pelo pipeline real de
+// recompensa (flags padrão de evento, mortal solo, abate de mesmo nível) e confere
+// que os abates-por-nível caem no alvo de ritmo clássico. A tolerância absorve
+// os truncamentos inteiros do pipeline.
 func TestMobExpPacing(t *testing.T) {
 	for _, lvl := range []int32{1, 5, 10, 20, 35, 50, 75, 99, 100, 150, 199, 200, 250, 299, 300, 350, 380, 399} {
 		e := MobExpForLevel(lvl)
@@ -26,7 +26,7 @@ func TestMobExpPacing(t *testing.T) {
 	}
 }
 
-// TestMobExpForLevelClamps: out-of-range mob levels use the curve endpoints.
+// TestMobExpForLevelClamps: níveis de mob fora da faixa usam os extremos da curva.
 func TestMobExpForLevelClamps(t *testing.T) {
 	if got, want := MobExpForLevel(0), MobExpForLevel(1); got != want {
 		t.Errorf("MobExpForLevel(0) = %d, want %d", got, want)
@@ -36,8 +36,8 @@ func TestMobExpForLevelClamps(t *testing.T) {
 	}
 }
 
-// The 10M gate must never swallow a same-level kill anywhere on the curve —
-// that would recreate the "no EXP" symptom the curve exists to fix.
+// O gate de 10M nunca pode engolir um abate de mesmo nível em ponto algum da curva —
+// isso recriaria o sintoma de "sem EXP" que a curva existe para corrigir.
 func TestMobExpNeverGated(t *testing.T) {
 	for lvl := int32(1); lvl <= MaxLevel; lvl++ {
 		if gain := SoloExpReward(MobExpForLevel(lvl), lvl, lvl, classMortal, 0, ExpEvents{}); gain <= 0 {

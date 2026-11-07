@@ -1,11 +1,11 @@
-// Package worldcfg carries portal-managed world configuration into the tmServer.
-// The flow is one-way for moderator edits (web -> Postgres -> dbServer ->
-// tmServer); tmServer only writes back event progress.
+// Package worldcfg carrega a configuração de mundo gerenciada pelo portal para o
+// tmServer. O fluxo é de mão única para edições de moderador (web -> Postgres ->
+// dbServer -> tmServer); o tmServer só escreve de volta o progresso de evento.
 package worldcfg
 
 import "context"
 
-// EventConfig is the global event snapshot used by tmServer's loop.
+// EventConfig é o snapshot global de eventos usado pelo laço do tmServer.
 type EventConfig struct {
 	Enabled            bool
 	ItemIndex          int32
@@ -19,13 +19,14 @@ type EventConfig struct {
 	NewbieEventEnabled bool
 }
 
-// Snapshot is the full world config at a given version.
+// Snapshot é a configuração completa do mundo numa dada versão.
 type Snapshot struct {
 	Version int64
 	Event   EventConfig
 }
 
-// Source is tmServer's read/progress side of portal-managed world config.
+// Source é o lado de leitura/progresso do tmServer para a configuração de mundo
+// gerenciada pelo portal.
 type Source interface {
 	Version(ctx context.Context) (int64, error)
 	Snapshot(ctx context.Context) (Snapshot, error)

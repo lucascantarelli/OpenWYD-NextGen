@@ -8,7 +8,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// LoadKefraState loads the event independently of any player session.
+// LoadKefraState carrega o evento independentemente de sessão de jogador.
 func (c *Client) LoadKefraState(ctx context.Context) (world.KefraState, error) {
 	resp, err := c.api.LoadKefraState(ctx, &dbv1.LoadKefraStateRequest{})
 	if err != nil {
@@ -18,7 +18,7 @@ func (c *Client) LoadKefraState(ctx context.Context) (world.KefraState, error) {
 	return world.KefraState{Defeated: p.GetDefeated(), NextSpawnUnix: p.GetNextSpawnUnix(), LastSpawnUnix: p.GetLastSpawnUnix(), Revision: p.GetRevision()}, nil
 }
 
-// SaveKefraState persists a value snapshot of the weekly cycle.
+// SaveKefraState persiste um snapshot de valores do ciclo semanal.
 func (c *Client) SaveKefraState(ctx context.Context, st world.KefraState) error {
 	resp, err := c.api.SaveKefraState(ctx, &dbv1.SaveKefraStateRequest{State: &dbv1.KefraState{Defeated: st.Defeated, NextSpawnUnix: st.NextSpawnUnix, LastSpawnUnix: st.LastSpawnUnix, Revision: st.Revision}})
 	if err != nil {

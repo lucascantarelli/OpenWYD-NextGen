@@ -147,8 +147,8 @@ func TestLoadGameConfigParsesPairsListMatrixAndRaw(t *testing.T) {
 	}
 }
 
-// TestContentSettingsParityWithRealFiles is the golden check the importer relies
-// on: the parsers must read the shipped tree without dropping or inventing rows.
+// TestContentSettingsParityWithRealFiles é a checagem golden em que o importador
+// depende: os parsers precisam ler a árvore distribuída sem perder nem inventar linhas.
 func TestContentSettingsParityWithRealFiles(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "tmserver", "content")
 	if _, err := os.Stat(root); err != nil {

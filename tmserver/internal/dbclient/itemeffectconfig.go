@@ -9,27 +9,27 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// RemoteItemEffect is one item_effect_override row as tmServer consumes it
-// (issue 44): a value that replaces that effect code on that item index.
+// RemoteItemEffect é uma linha de item_effect_override como o tmServer a consome
+// (issue 44): um valor que substitui aquele código de efeito naquele índice de item.
 type RemoteItemEffect struct {
 	ItemIndex int
 	Effect    uint8
 	Value     int16
 }
 
-// ItemEffectConfig adapts the dbServer ItemEffectConfigService. Writes go through
-// the web-api only — this client never mutates config.
+// ItemEffectConfig adapta o ItemEffectConfigService do dbServer. As escritas vão
+// só pelo web-api — este cliente nunca altera config.
 type ItemEffectConfig struct {
 	api dbv1.ItemEffectConfigServiceClient
 }
 
-// NewItemEffectConfig wraps a gRPC connection as an overlay source.
+// NewItemEffectConfig embrulha uma conexão gRPC como fonte de overlay.
 func NewItemEffectConfig(conn grpc.ClientConnInterface) *ItemEffectConfig {
 	return &ItemEffectConfig{api: dbv1.NewItemEffectConfigServiceClient(conn)}
 }
 
-// Effects fetches every overlay row (effects the content already declares are not
-// listed here — tmServer already parsed them from ItemList.csv).
+// Effects busca toda linha do overlay (efeitos que o conteúdo já declara não
+// aparecem aqui — o tmServer já os leu de ItemList.csv).
 func (c *ItemEffectConfig) Effects(ctx context.Context) ([]RemoteItemEffect, error) {
 	resp, err := c.api.ListItemEffectOverrides(ctx, &dbv1.ListItemEffectOverridesRequest{})
 	if err != nil {

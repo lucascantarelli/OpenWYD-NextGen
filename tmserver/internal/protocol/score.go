@@ -1,12 +1,12 @@
 package protocol
 
-// _MSG_UpdateScore (0x0336): the character's CurrentScore (attributes after
-// equipment) plus current HP/MP, sent so the client's status window reflects gear
+// _MSG_UpdateScore (0x0336): o CurrentScore do personagem (atributos depois do
+// equipamento) mais HP/MP atuais, enviado para a janela de status do cliente refletir o equip
 // (SendFunc.cpp:SendScore). MSG_UpdateScore = HEADER + STRUCT_SCORE(48) + tail
 // fields, pack(1) (Basedef.h:1823) → 152 bytes total.
 const updateScoreSize = 152
 
-// ScoreData is the subset of STRUCT_SCORE/MSG_UpdateScore the world fills.
+// ScoreData é o subconjunto de STRUCT_SCORE/MSG_UpdateScore que o mundo preenche.
 type ScoreData struct {
 	Level     int32
 	Ac        int32
@@ -22,7 +22,7 @@ type ScoreData struct {
 	Con       int16
 	Special   [4]int16 // STRUCT_SCORE.Special[4] — live mastery (allocated+gear+buffs)
 
-	// Tail fields after the score (MSG_UpdateScore, Basedef.h:1825).
+	// Campos de cauda depois do score (MSG_UpdateScore, Basedef.h:1825).
 	Critical   uint8
 	SaveMana   uint8
 	Affect     [MaxAffect]uint16 // buff icon array: (Type<<8) | (Time&0xFF) — PackAffect
@@ -32,9 +32,9 @@ type ScoreData struct {
 	Magic      int32
 }
 
-// PackAffect packs one live affect slot into the MSG_UpdateScore icon format
-// (GetFunc.cpp:1300 GetAffect): high byte = Type, low byte = the timer clamped
-// at 2550000 and truncated to 8 bits.
+// PackAffect empacota um slot de affect vivo no formato de ícone do MSG_UpdateScore
+// (GetFunc.cpp:1300 GetAffect): byte alto = Type, byte baixo = o timer limitado
+// em 2550000 e truncado para 8 bits.
 func PackAffect(a AffectData) uint16 {
 	t := a.Time
 	if t > 2550000 {
@@ -43,11 +43,11 @@ func PackAffect(a AffectData) uint16 {
 	return uint16(a.Type)<<8 | uint16(t&0xFF)
 }
 
-// EncodeUpdateScore builds _MSG_UpdateScore (0x0336). The STRUCT_SCORE sits at the
-// start of the body; CurrHp/CurrMp are duplicated near the tail (CurrHp @body124,
-// CurrMp @body128) as the original does. The trailing Special[4] byte array is
-// 0xCC on the wire — the legacy sends its uninitialized-stack quirk verbatim
-// (SendFunc.cpp:1274). Send with HEADER.ID = the entity id.
+// EncodeUpdateScore monta _MSG_UpdateScore (0x0336). O STRUCT_SCORE fica no
+// início do corpo; CurrHp/CurrMp são duplicados perto da cauda (CurrHp @corpo124,
+// CurrMp @corpo128) como o original faz. O vetor Special[4] do final é
+// 0xCC no wire — o legado envia sua peculiaridade de pilha não inicializada tal e qual
+// (SendFunc.cpp:1274). Envie com HEADER.ID = o id da entidade.
 func EncodeUpdateScore(s ScoreData) []byte {
 	b := make([]byte, updateScoreSize-HeaderSize) // 140
 	// STRUCT_SCORE @body0 (48 bytes).
@@ -67,7 +67,7 @@ func EncodeUpdateScore(s ScoreData) []byte {
 	for i, sp := range s.Special {
 		le.PutUint16(b[40+i*2:], uint16(sp))
 	}
-	// Tail (pack(1) offsets from Basedef.h:1825).
+	// Cauda (offsets pack(1) de Basedef.h:1825).
 	b[48] = s.Critical // Critical @48
 	b[49] = s.SaveMana // SaveMana @49
 	for i, a := range s.Affect {
@@ -81,17 +81,17 @@ func EncodeUpdateScore(s ScoreData) []byte {
 	le.PutUint32(b[124:], uint32(s.Hp))    // CurrHp @124 (status bar)
 	le.PutUint32(b[128:], uint32(s.Mp))    // CurrMp @128
 	le.PutUint32(b[132:], uint32(s.Magic)) // Magic @132
-	// Special[4] u8 tail @136: the legacy's 0xCC quirk, byte-exact.
+	// Cauda u8 Special[4] @136: a peculiaridade 0xCC do legado, byte a byte.
 	b[136], b[137], b[138], b[139] = 0xCC, 0xCC, 0xCC, 0xCC
 	return b
 }
 
-// setHpDamSize is MSG_SetHpDam (0x018A, G2C): HEADER + int Hp + int Dam = 20
-// bytes (Basedef.h:2049). Broadcast by the affect tick (HoT/DoT) so clients
-// float the heal/damage number and update the target's HP bar.
+// setHpDamSize é MSG_SetHpDam (0x018A, G2C): HEADER + int Hp + int Dam = 20
+// bytes (Basedef.h:2049). Transmitido pelo tick de affect (HoT/DoT) para os clientes
+// exibirem o número de cura/dano e atualizarem a barra de HP do alvo.
 const setHpDamSize = 20
 
-// EncodeSetHpDam builds the MSG_SetHpDam body. Send with HEADER.ID = the
+// EncodeSetHpDam monta o corpo MSG_SetHpDam. Envie com HEADER.ID = o
 // affected entity.
 func EncodeSetHpDam(hp, dam int32) []byte {
 	b := make([]byte, setHpDamSize-HeaderSize)
@@ -100,12 +100,12 @@ func EncodeSetHpDam(hp, dam int32) []byte {
 	return b
 }
 
-// setHpMpSize is MSG_SetHpMp (0x0181, G2C): HEADER + Hp + Mp + ReqHp + ReqMp =
-// 28 bytes (Basedef.h:2024). SendSetHpMp emits the player's current bars and
-// the server-owned request targets used by regen/potions.
+// setHpMpSize é MSG_SetHpMp (0x0181, G2C): HEADER + Hp + Mp + ReqHp + ReqMp =
+// 28 bytes (Basedef.h:2024). SendSetHpMp emite as barras atuais do jogador e
+// os alvos de pedido do servidor usados por regen/poções.
 const setHpMpSize = 28
 
-// EncodeSetHpMp builds the MSG_SetHpMp body. Send with HEADER.ID = the player
+// EncodeSetHpMp monta o corpo MSG_SetHpMp. Envie com HEADER.ID = o jogador
 // conn.
 func EncodeSetHpMp(hp, mp, reqHp, reqMp int32) []byte {
 	b := make([]byte, setHpMpSize-HeaderSize)

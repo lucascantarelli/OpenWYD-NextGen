@@ -10,31 +10,31 @@ import (
 	"strings"
 )
 
-// ItemEntry is one row of ItemList.csv (data-formats.md §3.1).
+// ItemEntry é uma linha do ItemList.csv (data-formats.md §3.1).
 //
-// UNVERIFIED: only Index and Name are reliably mapped; the full column→
-// STRUCT_ITEMLIST mapping (Price/Grade/Extra/nPos and the EF_* effect pairs) is
-// not confirmed from the CSV and is kept raw for later (the .bin is the compiled
-// form). Fields holds the raw comma-separated columns.
+// UNVERIFIED: só Index e Name estão mapeados com confiança; o mapeamento completo
+// de coluna→STRUCT_ITEMLIST (Price/Grade/Extra/nPos e os pares de efeito EF_*)
+// não está confirmado pelo CSV e fica cru para depois (o .bin é a forma
+// compilada). Fields guarda as colunas cruas separadas por vírgula.
 type ItemEntry struct {
 	Index  int
 	Name   string
 	Fields []string
 }
 
-// ItemList is the item catalog indexed by item index (g_pItemList).
+// ItemList é o catálogo de itens indexado pelo índice do item (g_pItemList).
 type ItemList struct {
 	items map[int]ItemEntry
 }
 
-// Get returns the entry for an item index.
+// Get devolve a entrada de um índice de item.
 func (l *ItemList) Get(index int) (ItemEntry, bool) { e, ok := l.items[index]; return e, ok }
 
-// Len returns the number of loaded items.
+// Len devolve o número de itens carregados.
 func (l *ItemList) Len() int { return len(l.items) }
 
-// Prices returns a map of item index → base Price (STRUCT_ITEMLIST.Price). In the
-// CSV that is the 6th column (0-based index 5):
+// Prices devolve um mapa de índice de item → Price base (STRUCT_ITEMLIST.Price). No
+// CSV essa é a 6ª coluna (índice 5, base 0):
 // "831,Garra,837.0,4.10.0.0.11,43,530,..." → 530 (BASE_ReadItemListFile, Basedef.cpp).
 func (l *ItemList) Prices() map[int]int32 {
 	out := make(map[int]int32, len(l.items))
@@ -48,38 +48,38 @@ func (l *ItemList) Prices() map[int]int32 {
 	return out
 }
 
-// BaseEffect is one static item effect (STRUCT_ITEMLIST.stEffect): an EF_* effect
-// id and its value — the item's inherent stats (weapon damage, armor AC, attribute
-// bonuses). These come from the catalog by item index, distinct from the per-item
-// instance refines stored on STRUCT_ITEM.
+// BaseEffect é um efeito estático de item (STRUCT_ITEMLIST.stEffect): um id de efeito
+// EF_* e seu valor — as stats inerentes do item (dano da arma, AC da armadura, bônus
+// de atributo). Vêm do catálogo por índice de item, distintos dos refinos por
+// instância guardados no STRUCT_ITEM.
 type BaseEffect struct {
 	Eff uint8
 	Val int16
 }
 
-// efName maps the ItemList.csv EF_<name> tokens to their STRUCT_EFFECT.cEffect ids
-// (the same ids the instance refines use). Only effects the score model can represent
-// are mapped. EF_WTYPE is included because some Huntress affects key off the
-// equipped weapon type, but it still does not fold into CurrentScore. The purely
-// visual/requirement ones (EF_CLASS/EF_GRID/EF_RANGE/EF_REGEN*/…) are ignored. The ids
-// match ItemEffect.h. EF_SANC carries an item's refine level (the joias), consumed as a
-// multiplier by the handler rather than a flat stat.
+// efName mapeia os tokens EF_<name> do ItemList.csv para seus ids STRUCT_EFFECT.cEffect
+// (os mesmos ids que os refinos de instância usam). Só entram efeitos que o modelo de
+// score consegue representar. EF_WTYPE entra porque alguns affects de Huntress
+// dependem do tipo de arma equipada, mas ele ainda não entra no CurrentScore. Os
+// puramente visuais/de requisito (EF_CLASS/EF_GRID/EF_RANGE/EF_REGEN*/…) são ignorados. Os
+// ids batem com ItemEffect.h. EF_SANC carrega o nível de refino do item (as joias), consumido
+// como multiplicador pelo handler, não como stat fixa.
 //
-// EF_CRITICAL/EF_CRITICAL2 ARE score stats (Basedef.cpp:3209 derives MOB.Critical from
-// them) — they were misfiled as visual here, which is why crit gear granted nothing
-// (issue #102). Most crit lives in the catalog: the class body items and the armor sets
-// carry EF_CRITICAL directly.
+// EF_CRITICAL/EF_CRITICAL2 SÃO stats de score (Basedef.cpp:3209 deriva MOB.Critical
+// deles) — foram arquivados como visuais aqui, e é por isso que equipamento de crit não
+// dava nada (issue #102). A maior parte do crit vive no catálogo: os itens de corpo de
+// classe e os conjuntos de armadura carregam EF_CRITICAL direto.
 //
-// EF_RESIST1..4/EF_RESISTALL (ItemEffect.h:106-111) are the same bug class (issue #211):
-// they ARE score stats too (CMob.cpp:640-643 derives MOB.Resist[0..3] from them via
-// BASE_GetMobAbility), so leaving them off this whitelist silently dropped every
-// immunity/resist item's effect at parse time — the items looked correct in the catalog
-// but granted nothing on the character.
+// EF_RESIST1..4/EF_RESISTALL (ItemEffect.h:106-111) são a mesma classe de bug (issue #211):
+// eles TAMBÉM são stats de score (CMob.cpp:640-643 deriva MOB.Resist[0..3] deles via
+// BASE_GetMobAbility), então deixá-los fora desta whitelist descartava em silêncio
+// o efeito de todo item de imunidade/resist no parse — os itens pareciam certos no
+// catálogo mas não davam nada no personagem.
 //
-// EF_MAGIC/EF_MAGICADD (ItemEffect.h:117,124-125) are the same bug class again (issue #223):
-// Basedef.cpp:3194-3195 derives the caster's Magic score from BASE_GetMobAbility(EF_MAGIC)+
-// BASE_GetMobAbility(EF_MAGICADD), so an "Ataque Mágico" item's bonus was silently dropped at
-// parse time — the item looked correct in the catalog but granted no extra magic damage.
+// EF_MAGIC/EF_MAGICADD (ItemEffect.h:117,124-125) são a mesma classe de bug de novo (issue #223):
+// Basedef.cpp:3194-3195 deriva o score de Magic do conjurador de BASE_GetMobAbility(EF_MAGIC)+
+// BASE_GetMobAbility(EF_MAGICADD), então o bônus de um item "Ataque Mágico" era descartado
+// em silêncio no parse — o item parecia certo no catálogo mas não dava dano mágico extra.
 var efName = map[string]uint8{
 	"EF_DAMAGE": 2, "EF_AC": 3, "EF_HP": 4, "EF_MP": 5,
 	"EF_STR": 7, "EF_INT": 8, "EF_DEX": 9, "EF_CON": 10,
@@ -91,20 +91,20 @@ var efName = map[string]uint8{
 	"EF_MAGIC":     60,
 	"EF_DAMAGEADD": 67, "EF_MAGICADD": 68, "EF_HPADD2": 69, "EF_MPADD2": 70, "EF_CRITICAL2": 71,
 	"EF_ITEMLEVEL": 87, "EF_MOBTYPE": 112, "EF_RUNSPEED": 29,
-	// EF_ITEMTYPE is not a score stat either: it is read only by the combine
-	// matchers (GetFunc.cpp:487 Agatha) as a recipe gate, exactly like EF_NOSANC
-	// gates the refine path. Without it in this whitelist those gates read 0 for
-	// every item and silently pass/fail the wrong way.
+	// EF_ITEMTYPE também não é stat de score: ele é lido só pelos casadores de
+	// combine (GetFunc.cpp:487 Agatha) como gate de receita, exatamente como EF_NOSANC
+	// controla o caminho de refino. Sem ele nesta whitelist esses gates leem 0 para
+	// todo item e passam/falham em silêncio do jeito errado.
 	"EF_ITEMTYPE": 113,
-	// Refine gates (_MSG_UseItem.cpp dust path): EF_NOSANC marks an item that can
-	// never be refined; the two incubation effects drive the mount-egg branch.
+	// Gates de refino (caminho de pó do _MSG_UseItem.cpp): EF_NOSANC marca um item que
+	// nunca pode ser refinado; os dois efeitos de incubação dirigem o ramo do ovo de montaria.
 	"EF_NOSANC": 126, "EF_INCUBATE": 78, "EF_INCUDELAY": 84,
 }
 
-// BaseEffects returns item index → its score-relevant static effects, parsed from
-// the trailing "EF_<name>,value" pairs of each ItemList row (the row's stEffect
-// array). It scans for EF_ tokens anywhere in the row (robust to the exact column
-// count) and reads the following column as the value.
+// BaseEffects devolve índice de item → seus efeitos estáticos relevantes ao score, lidos dos
+// pares "EF_<name>,value" finais de cada linha do ItemList (o array stEffect da
+// linha). Procura tokens EF_ em qualquer ponto da linha (robusto à contagem exata de
+// colunas) e lê a coluna seguinte como valor.
 func (l *ItemList) BaseEffects() map[int][]BaseEffect {
 	out := make(map[int][]BaseEffect, len(l.items))
 	for idx, e := range l.items {
@@ -127,10 +127,10 @@ func (l *ItemList) BaseEffects() map[int][]BaseEffect {
 	return out
 }
 
-// Volatiles returns item index → its EF_VOLATILE value (the cValue of the EF_VOLATILE
-// pair). On _MSG_UseItem the server classifies the action by this value: 0 = equippable,
-// 64/65/66 = Divine 7/15/30d, 58 = Vigor, 1 = HP/MP potion, etc.
-// (captura-wyd-affect-divina.md §B; note EF_VOLATILE the *id* is 38).
+// Volatiles devolve índice de item → seu valor EF_VOLATILE (o cValue do par
+// EF_VOLATILE). No _MSG_UseItem o servidor classifica a ação por esse valor: 0 = equipável,
+// 64/65/66 = Divina 7/15/30d, 58 = Vigor, 1 = poção de HP/MP, etc.
+// (captura-wyd-affect-divina.md §B; note que o *id* de EF_VOLATILE é 38).
 func (l *ItemList) Volatiles() map[int]int {
 	out := make(map[int]int)
 	for idx, e := range l.items {
@@ -146,11 +146,11 @@ func (l *ItemList) Volatiles() map[int]int {
 	return out
 }
 
-// Ranges returns item index → its EF_RANGE value (the attack reach an equipped
-// item grants). A mob's reach is the max EF_RANGE over its template's 16 equips
-// (BASE_GetMobAbility → BASE_GetMaxAbility, Basedef.cpp:2415/2523); EF_RANGE is
-// deliberately NOT in efName/BaseEffects — it isn't a score stat and must not
-// fold into CurrentScore. Note EF_RANGE is exempt from the refine multiplier
+// Ranges devolve índice de item → seu valor EF_RANGE (o alcance de ataque que um
+// item equipado concede). O alcance de um mob é o máximo de EF_RANGE sobre os 16 equips
+// do template dele (BASE_GetMobAbility → BASE_GetMaxAbility, Basedef.cpp:2415/2523);
+// EF_RANGE fica de propósito FORA de efName/BaseEffects — não é stat de score e não
+// pode entrar no CurrentScore. Note que EF_RANGE é isento do multiplicador de refino
 // (Basedef.cpp:1854).
 func (l *ItemList) Ranges() map[int]int16 {
 	out := make(map[int]int16)
@@ -167,9 +167,9 @@ func (l *ItemList) Ranges() map[int]int16 {
 	return out
 }
 
-// Grades returns item index → Grade (STRUCT_ITEMLIST.Grade — CSV column 8 per
-// BASE_ReadItemListFile sscanf in Basedef.cpp:5718). UNVERIFIED against every row
-// until content_test pins samples; used for grade-7 ExpBonus (+2 per piece).
+// Grades devolve índice de item → Grade (STRUCT_ITEMLIST.Grade — coluna 8 do CSV
+// pelo sscanf de BASE_ReadItemListFile em Basedef.cpp:5718). UNVERIFIED contra toda linha
+// até o content_test fixar amostras; usado para o ExpBonus de grade 7 (+2 por peça).
 func (l *ItemList) Grades() map[int]int {
 	out := make(map[int]int)
 	for idx, e := range l.items {
@@ -182,10 +182,10 @@ func (l *ItemList) Grades() map[int]int {
 	return out
 }
 
-// Positions returns item index → nPos (STRUCT_ITEMLIST.nPos, the equip-slot class —
-// CSV column 6). nPos drives the refine (+9) threshold bonuses: weapons 64/192 add
-// +40 weapon damage, defense pieces 4/8/128 add +25 AC (captura §E). Confirmed by
-// Garra (weapon) nPos=64 and potions nPos=0.
+// Positions devolve índice de item → nPos (STRUCT_ITEMLIST.nPos, a classe de slot de
+// equipamento — coluna 6 do CSV). nPos dirige os bônus de limiar do refino (+9): armas
+// 64/192 somam +40 de dano de arma, peças de defesa 4/8/128 somam +25 de AC (captura §E).
+// Confirmado por Garra (arma) nPos=64 e poções nPos=0.
 func (l *ItemList) Positions() map[int]int {
 	out := make(map[int]int)
 	for idx, e := range l.items {
@@ -198,10 +198,10 @@ func (l *ItemList) Positions() map[int]int {
 	return out
 }
 
-// Uniques returns item index → nUnique (STRUCT_ITEMLIST.nUnique — CSV column 4,
-// sscanf field `unique` in BASE_ReadItemListFile). nUnique in [41,50] marks the
-// damage-jewel items whose EF_DAMAGEADD counts in the score (captura §B/E) and
-// gates the base Anct combine recipe (GetMatchCombine, GetFunc.cpp:94).
+// Uniques devolve índice de item → nUnique (STRUCT_ITEMLIST.nUnique — coluna 4 do CSV,
+// campo `unique` do sscanf em BASE_ReadItemListFile). nUnique em [41,50] marca os
+// itens de joia de dano cujo EF_DAMAGEADD conta no score (captura §B/E) e
+// controla a receita base do combine Anct (GetMatchCombine, GetFunc.cpp:94).
 func (l *ItemList) Uniques() map[int]int {
 	out := make(map[int]int)
 	for idx, e := range l.items {
@@ -214,8 +214,8 @@ func (l *ItemList) Uniques() map[int]int {
 	return out
 }
 
-// Extras returns item index → Extra (STRUCT_ITEMLIST.Extra — CSV column 7).
-// Extra is the result-item base index used by the Anct combine (joia + Extra).
+// Extras devolve índice de item → Extra (STRUCT_ITEMLIST.Extra — coluna 7 do CSV).
+// Extra é o índice base do item resultante usado pelo combine Anct (joia + Extra).
 func (l *ItemList) Extras() map[int]int {
 	out := make(map[int]int)
 	for idx, e := range l.items {
@@ -228,17 +228,17 @@ func (l *ItemList) Extras() map[int]int {
 	return out
 }
 
-// ItemReq is an item's equip requirement (STRUCT_ITEMLIST ReqLvl/Str/Int/Dex/Con).
-// A zero value means no requirement.
+// ItemReq é o requisito de equipar de um item (STRUCT_ITEMLIST ReqLvl/Str/Int/Dex/Con).
+// Um valor zero significa sem requisito.
 type ItemReq struct {
 	Lvl, Str, Int, Dex, Con int16
 }
 
-// Requirements returns item index → its equip requirement, parsed from the
-// dot-separated 4th CSV column "ReqLvl.ReqStr.ReqInt.ReqDex.ReqCon" (the column
-// order matches STRUCT_ITEMLIST, confirmed against warrior weapons: axes/swords
-// put their STR requirement in the 2nd value). Items with no requirement are
-// omitted.
+// Requirements devolve índice de item → seu requisito de equipar, lido da
+// 4ª coluna do CSV separada por pontos "ReqLvl.ReqStr.ReqInt.ReqDex.ReqCon" (a ordem
+// das colunas casa com STRUCT_ITEMLIST, confirmado contra armas de guerreiro:
+// machados/espadas põem o requisito de STR no 2º valor). Itens sem requisito são
+// omitidos.
 func (l *ItemList) Requirements() map[int]ItemReq {
 	out := make(map[int]ItemReq, len(l.items))
 	for idx, e := range l.items {
@@ -267,9 +267,9 @@ func (l *ItemList) Requirements() map[int]ItemReq {
 	return out
 }
 
-// NewItemList builds a catalog from explicit entries. It is the entry point for
-// the database-backed catalog (issue 58, fase 2) and for tests, which must not
-// depend on tmserver/content/ being present.
+// NewItemList monta um catálogo a partir de entradas explícitas. É o ponto de entrada do
+// catálogo vindo do banco (issue 58, fase 2) e dos testes, que não podem
+// depender de tmserver/content/ existir.
 func NewItemList(entries []ItemEntry) *ItemList {
 	l := &ItemList{items: make(map[int]ItemEntry, len(entries))}
 	for _, e := range entries {
@@ -278,7 +278,7 @@ func NewItemList(entries []ItemEntry) *ItemList {
 	return l
 }
 
-// Entries returns every entry ordered by item index.
+// Entries devolve toda entrada ordenada por índice de item.
 func (l *ItemList) Entries() []ItemEntry {
 	out := make([]ItemEntry, 0, len(l.items))
 	for _, e := range l.items {
@@ -288,7 +288,7 @@ func (l *ItemList) Entries() []ItemEntry {
 	return out
 }
 
-// LoadItemList reads ItemList.csv (index,Name,...).
+// LoadItemList lê ItemList.csv (índice,Name,...).
 func LoadItemList(path string) (*ItemList, error) {
 	f, err := os.Open(path)
 	if err != nil {

@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-// transportVector mirrors the fixture schema in parity-tests.md §7a. wire_hex is
-// captured byte-for-byte from the LIVE server, so these vectors prove parity that
-// a round-trip cannot. plain_hex/wire_hex include the 12-byte header; spaces are
+// transportVector espelha o esquema de fixture de parity-tests.md §7a. wire_hex é
+// capturado byte a byte do servidor AO VIVO, então estes vetores provam paridade
+// que um round-trip não prova. plain_hex/wire_hex incluem o cabeçalho de 12 bytes;
 // ignored.
 type transportVector struct {
 	Kind     string `json:"kind"`
@@ -31,10 +31,10 @@ func unhex(t *testing.T, s string) []byte {
 	return b
 }
 
-// TestTransportVectors validates the codec against real captured frames
-// (parity-tests.md §3/§7a). Until a capture exists, the only committed fixture is
-// a schema example with empty hex, which the test skips. Drop real captures into
-// test/fixtures/transport/ to make this assertive — no code change needed.
+// TestTransportVectors valida o codec contra frames reais capturados
+// (parity-tests.md §3/§7a). Até existir uma captura, a única fixture versionada é
+// um exemplo de esquema com hex vazio, que o teste pula. Coloque capturas reais em
+// test/fixtures/transport/ para torná-lo assertivo — nenhuma mudança de código é necessária.
 func TestTransportVectors(t *testing.T) {
 	dir := filepath.Join("..", "..", "test", "fixtures", "transport")
 	entries, err := os.ReadDir(dir)
@@ -85,8 +85,8 @@ func TestTransportVectors(t *testing.T) {
 			gotPlain := make([]byte, HeaderSize+len(gotBody))
 			_ = EncodeHeader(gotPlain, gotH)
 			copy(gotPlain[HeaderSize:], gotBody)
-			// Header checksum/keyword bytes differ by construction; compare from
-			// the Type field onward plus the body.
+			// Os bytes de checksum/keyword do cabeçalho diferem por construção; compare a partir
+			// do campo Type em diante, mais o corpo.
 			if string(gotPlain[4:]) != string(plain[4:]) {
 				t.Errorf("decode mismatch:\n got % x\nwant % x", gotPlain[4:], plain[4:])
 			}

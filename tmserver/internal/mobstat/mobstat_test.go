@@ -12,10 +12,10 @@ func blankTemplate(name string) []byte {
 	return b
 }
 
-// TestApplyMirrorsBaseAndCurrentScore checks the edited score lands at both
-// STRUCT_SCORE offsets (44 and 92), matching EDITAPPMOB's own
-// `CurrentScore = BaseScore` on save, and that a decode of the result reads
-// back exactly what was set.
+// TestApplyMirrorsBaseAndCurrentScore verifica que o score editado cai nos dois
+// offsets de STRUCT_SCORE (44 e 92), casando com o próprio
+// `CurrentScore = BaseScore` do EDITAPPMOB ao salvar, e que uma decodificação do
+// resultado lê de volta exatamente o que foi definido.
 func TestApplyMirrorsBaseAndCurrentScore(t *testing.T) {
 	tmpl := blankTemplate("Karkarian")
 	ov := Override{
@@ -85,8 +85,8 @@ func TestApplyMirrorsBaseAndCurrentScore(t *testing.T) {
 	}
 }
 
-// TestApplyPreservesNameWhenDisplayNameEmpty checks that an empty
-// DisplayName leaves the template's own name untouched.
+// TestApplyPreservesNameWhenDisplayNameEmpty verifica que um
+// DisplayName vazio deixa o nome do próprio template intocado.
 func TestApplyPreservesNameWhenDisplayNameEmpty(t *testing.T) {
 	tmpl := blankTemplate("Karkarian")
 	out := Apply(tmpl, Override{})
@@ -100,8 +100,8 @@ func TestApplyPreservesNameWhenDisplayNameEmpty(t *testing.T) {
 	}
 }
 
-// TestApplyOverwritesDisplayName checks a non-empty DisplayName replaces the
-// template's own name and clears any trailing bytes from a longer old name.
+// TestApplyOverwritesDisplayName verifica que um DisplayName não vazio substitui
+// o nome do próprio template e limpa bytes finais de um nome antigo mais longo.
 func TestApplyOverwritesDisplayName(t *testing.T) {
 	tmpl := blankTemplate("VeryLongOldName") // 15 bytes, fills most of the 16-byte field
 	out := Apply(tmpl, Override{DisplayName: "Short"})
@@ -109,8 +109,8 @@ func TestApplyOverwritesDisplayName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeMob: %v", err)
 	}
-	// Name is a fixed [16]byte; bytes after "Short" must be zeroed, not leftover
-	// from "VeryLongOldName".
+	// Name é [16]byte fixo; os bytes depois de "Short" precisam ser zerados, não
+	// sobra de "VeryLongOldName".
 	for i := 5; i < 16; i++ {
 		if mob.Name[i] != 0 {
 			t.Fatalf("Name[%d] = %d, want 0 (leftover from old name not cleared): %+v", i, mob.Name[i], mob.Name)
@@ -121,9 +121,9 @@ func TestApplyOverwritesDisplayName(t *testing.T) {
 	}
 }
 
-// TestApplyReturnsInputUnchangedForCorruptTemplate checks a template that
-// fails to decode (not a STRUCT_MOB in any layout) is returned as-is rather
-// than panicking.
+// TestApplyReturnsInputUnchangedForCorruptTemplate verifica que um template que
+// falha ao decodificar (não é STRUCT_MOB em nenhum layout) volta como está em vez
+// de dar panic.
 func TestApplyReturnsInputUnchangedForCorruptTemplate(t *testing.T) {
 	bad := []byte{1, 2, 3}
 	out := Apply(bad, Override{Level: 99})
@@ -133,14 +133,14 @@ func TestApplyReturnsInputUnchangedForCorruptTemplate(t *testing.T) {
 }
 
 // TestApplyUpgradesLegacyTemplates covers issue #244's silent-no-op: a legacy
-// 756/920-byte template used to fail DecodeMob and be returned untouched, so a
-// moderator's override simply did nothing. It must now come back as a
-// canonical MobSize blob with the override applied.
+// template de 756/920 bytes falhava no DecodeMob e voltava intocado, então a
+// sobreposição do moderador simplesmente não fazia nada. Agora precisa voltar como
+// blob MobSize canônico com a sobreposição aplicada.
 func TestApplyUpgradesLegacyTemplates(t *testing.T) {
 	for _, size := range []int{savefmt.MobSizeLegacy756, savefmt.MobSizeLegacy756Padded} {
 		tmpl := make([]byte, size)
 		copy(tmpl[0:16], "Legacy")
-		// CurrentScore.Level in the legacy layout: score at 64, Level at +0.
+		// CurrentScore.Level no layout legado: score em 64, Level em +0.
 		tmpl[64] = 50
 
 		out := Apply(tmpl, Override{Level: 99, MaxHp: 1234, Hp: 1234, Merchant: 1})
@@ -159,7 +159,7 @@ func TestApplyUpgradesLegacyTemplates(t *testing.T) {
 			t.Errorf("size %d: MaxHp/Merchant = %d/%d, want 1234/1",
 				size, mob.CurrentScore.MaxHp, mob.Merchant)
 		}
-		// The template's own name survives when the override does not set one.
+		// O nome do próprio template sobrevive quando a sobreposição não define um.
 		if got := string(mob.Name[:6]); got != "Legacy" {
 			t.Errorf("size %d: Name = %q, want Legacy", size, got)
 		}

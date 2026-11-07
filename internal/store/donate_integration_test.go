@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the donate web-shop store (issue #34). They require a
-// real database and are excluded from the default build. Run with:
+// Testes de integração do store da loja de donate (issue #34). Eles exigem um
+// banco real e ficam fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -14,8 +14,8 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TestDonateShopCRUD exercises the moderator catalog write path: create, update,
-// toggle enabled, list, get, delete.
+// TestDonateShopCRUD percorre o caminho de escrita do catálogo de moderação: criar,
+// atualizar,
 func TestDonateShopCRUD(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -49,7 +49,7 @@ func TestDonateShopCRUD(t *testing.T) {
 		t.Errorf("offer mismatch: %+v", got)
 	}
 
-	// Update in place (same id).
+	// Atualiza no lugar (mesmo id).
 	got.Price = 250
 	got.Title = "Set Celestial +11"
 	if _, err := s.UpsertDonateShopItem(ctx, got, modID); err != nil {
@@ -59,7 +59,7 @@ func TestDonateShopCRUD(t *testing.T) {
 		t.Errorf("update not applied: %+v", updated)
 	}
 
-	// Updating a missing id is NotFound.
+	// Atualizar um id inexistente é NotFound.
 	if _, err := s.UpsertDonateShopItem(ctx, domain.DonateShopItem{ID: 999999, ItemIndex: 1, Price: 1}, modID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("upsert missing id err = %v, want ErrNotFound", err)
 	}
@@ -83,7 +83,7 @@ func TestDonateShopCRUD(t *testing.T) {
 	}
 }
 
-// TestDonateCreditAndBuy exercises the wallet credit + purchase + drain path.
+// TestDonateCreditAndBuy percorre o caminho de crédito da carteira + compra + drenagem.
 func TestDonateCreditAndBuy(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
@@ -101,12 +101,12 @@ func TestDonateCreditAndBuy(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM account WHERE id = $1`, accID) })
 
-	// Credit the wallet.
+	// Credita a carteira.
 	if bal, err := s.CreditDonateBalance(ctx, accID, 300, 0, "manual grant"); err != nil || bal != 300 {
 		t.Fatalf("credit = (%d, %v), want (300, nil)", bal, err)
 	}
 
-	// One enabled offer at price 100 (with an effect + 7-day expiry).
+	// Uma oferta habilitada a preço 100 (com um efeito + validade de 7 dias).
 	itemID, err := s.UpsertDonateShopItem(ctx, domain.DonateShopItem{
 		ItemIndex: 1234, Eff1: 2, EffV1: 5, Price: 100, Enabled: true, ExpiresDays: 7,
 	}, 0)
@@ -114,7 +114,7 @@ func TestDonateCreditAndBuy(t *testing.T) {
 		t.Fatalf("upsert offer: %v", err)
 	}
 
-	// Buy it: balance drops to 200 and a pending item delivery appears.
+	// Compra: o saldo cai para 200 e uma entrega de item pendente aparece.
 	bal, err := s.BuyDonateItem(ctx, accID, itemID)
 	if err != nil || bal != 200 {
 		t.Fatalf("buy = (%d, %v), want (200, nil)", bal, err)
@@ -128,7 +128,7 @@ func TestDonateCreditAndBuy(t *testing.T) {
 		t.Errorf("delivery payload mismatch: %+v", d.Item)
 	}
 
-	// Buying again with only 200 left works twice more, then goes insufficient.
+	// Comprar de novo com só 200 restantes funciona mais duas vezes, depois fica insuficiente.
 	if _, err := s.BuyDonateItem(ctx, accID, itemID); err != nil {
 		t.Fatalf("buy 2: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestDonateCreditAndBuy(t *testing.T) {
 		t.Errorf("buy 4 err = %v, want ErrInsufficientDonate", err)
 	}
 
-	// A disabled offer rejects the purchase.
+	// Uma oferta desabilitada rejeita a compra.
 	disabledID, _ := s.UpsertDonateShopItem(ctx, domain.DonateShopItem{ItemIndex: 5, Price: 1, Enabled: false}, 0)
 	if _, err := s.CreditDonateBalance(ctx, accID, 10, 0, "topup"); err != nil {
 		t.Fatalf("topup: %v", err)
@@ -148,13 +148,13 @@ func TestDonateCreditAndBuy(t *testing.T) {
 		t.Errorf("buy disabled err = %v, want ErrShopItemDisabled", err)
 	}
 
-	// An unknown offer is NotFound.
+	// Uma oferta desconhecida é NotFound.
 	if _, err := s.BuyDonateItem(ctx, accID, 987654); !errors.Is(err, ErrNotFound) {
 		t.Errorf("buy unknown err = %v, want ErrNotFound", err)
 	}
 
-	// Drain: mark the first pending delivery delivered, a fake one lost, and write
-	// the cargo — all in one transaction. The delivered row leaves the pending set.
+	// Drenagem: marca a primeira entrega pendente como entregue, uma falsa como perdida, e
+	// grava o cargo — tudo numa transação. A linha entregue sai do conjunto pendente.
 	all, _ := s.PendingItemDeliveries(ctx, accID)
 	if len(all) != 3 {
 		t.Fatalf("pending before drain = %d, want 3", len(all))
@@ -168,7 +168,7 @@ func TestDonateCreditAndBuy(t *testing.T) {
 	if remaining, _ := s.PendingItemDeliveries(ctx, accID); len(remaining) != 0 {
 		t.Errorf("pending after drain = %d, want 0", len(remaining))
 	}
-	// The cargo now holds the delivered item.
+	// O cargo agora contém o item entregue.
 	_, items, err := s.LoadCargo(ctx, accID)
 	if err != nil || len(items) != 1 || items[0].Index != 1234 {
 		t.Errorf("cargo after drain = %+v (err %v), want 1 item index 1234", items, err)

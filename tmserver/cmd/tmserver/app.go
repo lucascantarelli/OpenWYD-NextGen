@@ -119,28 +119,28 @@ func parseConfig(args []string) (config, error) {
 	fs.IntVar(&cfg.maxNightmare, "max-nightmare", envInt("W2PP_MAX_NIGHTMARE", 3), "counted Nightmare admissions per map and cycle")
 	fs.IntVar(&cfg.kefraEntriesPerScroll, "kefra-entries-per-scroll", envInt("W2PP_KEFRA_ENTRIES_PER_SCROLL", 100), "Hall of Kefra entries one sealed scroll grants at the Sobrevivente (legacy 100; servers commonly use 50 or 100)")
 	fs.IntVar(&cfg.clientVersion, "client-version", envInt("W2PP_CLIENT_VERSION", 7640), "MSG_AccountLogin.ClientVersion the client must send (protocol-spec says 7640; this 7662 'Cavaleiros de Kersef' build sends 12000)")
-	// Channel identity. The legacy indexes everything per "ServerIndex": the
-	// citizen of a channel is ServerIndex+1 (_MSG_Quest.cpp:2436) and guild ids
-	// carry it in their high bits (serverIndex*4096). One instance per channel, so
-	// 0 is the default (channel 1) and each extra container gets its own value.
+	// Identidade de canal. O legado indexa tudo por "ServerIndex": o
+	// cidadão de um canal é ServerIndex+1 (_MSG_Quest.cpp:2436) e os ids de guilda
+	// o carregam nos bits altos (serverIndex*4096). Uma instância por canal, então
+	// 0 é o default (canal 1) e cada container extra pega o próprio valor.
 	fs.IntVar(&cfg.serverIndex, "server-index", envInt("W2PP_SERVER_INDEX", 0), "zero-based channel index this instance serves; citizenship is stamped as server-index+1")
-	// Crossover key for the in-game channel switch (/srv): both channels and the
-	// dbServer must share it (canais.md §8.1.2). Empty disables the command.
+	// Chave de crossover para a troca de canal in-game (/srv): os dois canais e o
+	// dbServer precisam compartilhá-la (canais.md §8.1.2). Vazia desliga o comando.
 	fs.StringVar(&cfg.crossoverKey, "crossover-key", os.Getenv("W2PP_CROSSOVER_KEY"), "chave HMAC compartilhada com o dbServer para o token de troca de canal (/srv); vazia desativa a troca in-game")
 	fs.BoolVar(&cfg.doubleExp, "double-exp", envBool("W2PP_DOUBLE_EXP", false), "DOUBLEMODE: double PvE experience (gameconfig double)")
 	fs.BoolVar(&cfg.newbieEvent, "newbie-event", envBool("W2PP_NEWBIE_EVENT", false), "NewbieEventServer: +15% exp and newbie under-100 bonus (gameconfig)")
 	fs.IntVar(&cfg.noviceChannel, "novice-channel", envInt("W2PP_NOVICE_CHANNEL", 0), "número do canal verde (novato), 1-based e fixo como em produção: nele esta instância roda o evento newbie e recusa dano PvP. 0 = nenhum canal verde (o evento segue -newbie-event em todos os canais)")
 	fs.BoolVar(&cfg.kefraLive, "kefra-live", envBool("W2PP_KEFRA_LIVE", false), "initial Kefra defeated state (true opens city); persisted cycle takes precedence; false halves PvE exp")
-	// Issue #383: a fresh character must reach displayed level 35 in ~15 min on
-	// the training grounds. The measured pace with the plain reward was ~1k exp/min
-	// (×0.425 from Kefra/newbie included) against the ~11.7k needed; dropping
-	// those reducers gives ~2.35×, and 6 closes the rest with headroom.
+	// Issue #383: um personagem novo precisa chegar ao nível exibido 35 em ~15 min no
+	// campo de treino. O ritmo medido com a recompensa pura era ~1k exp/min
+	// (×0,425 de Kefra/newbie incluído) contra os ~11,7k necessários; retirar
+	// esses redutores dá ~2,35×, e 6 fecha o resto com folga.
 	fs.IntVar(&cfg.trainingFieldExp, "training-field-exp", envInt("W2PP_TRAINING_FIELD_EXP", 6), "EXP multiplier for training-grounds kills (AttributeMap 0x80 generators) by mortals below stored level 35; replaces the global event modifiers there. 0 = legacy reward")
 	fs.BoolVar(&cfg.logSends, "log-sends", envBool("W2PP_LOG_SENDS", false), "log every S→C frame (conn/type/id/len) — client-freeze diagnostics (investigacao-freeze-cliente.md); high volume, enable only while reproducing an incident")
-	// Cast-buff duration tuning (issue #229). The legacy formula is
-	// (AffectTime+1)*(100+Special)/100 ticks of 8s, which puts an endgame character
-	// at 30-100 min per buff — reported as far too long three times over (#92, #202,
-	// #229). 100/0/0 restores the legacy durations exactly.
+	// Ajuste de duração de buff de conjuração (issue #229). A fórmula legada é
+	// (AffectTime+1)*(100+Special)/100 ticks de 8s, o que põe um personagem de
+	// endgame em 30-100 min por buff — relatado como longo demais três vezes
+	// (#92, #202, #229). 100/0/0 restaura as durações legadas exatamente.
 	fs.IntVar(&cfg.affectScalePct, "affect-scale-pct", envInt("W2PP_AFFECT_SCALE_PCT", 15), "percent of the legacy cast-affect duration to keep, applied only OUTSIDE the target band: a non-aggressive affect whose BASE (unmastered) duration is already under -affect-max-minutes keeps its legacy mastery curve (issue #236). 100 = legacy")
 	fs.IntVar(&cfg.affectMinSeconds, "affect-min-seconds", envInt("W2PP_AFFECT_MIN_SECONDS", 60), "floor for NON-aggressive cast affects, in seconds; keeps the shortest buffs usable (0 = no floor)")
 	fs.IntVar(&cfg.affectMaxMinutes, "affect-max-minutes", envInt("W2PP_AFFECT_MAX_MINUTES", 10), "cap for cast affects, in minutes; cuts the mastery tail (0 = no cap)")
@@ -161,9 +161,9 @@ type app struct {
 	closers    []func()
 }
 
-// envInt reads an integer flag default from the environment so container
-// deployments (Railway) can set it as a variable like the other W2PP_* knobs;
-// a missing or malformed value falls back to def.
+// envInt lê um default de flag inteira do ambiente para que deploys em
+// container (Railway) possam defini-la como variável, como os outros botões W2PP_*;
+// um valor ausente ou malformado cai para def.
 func envInt(key string, def int) int {
 	v := os.Getenv(key)
 	if v == "" {
@@ -176,9 +176,9 @@ func envInt(key string, def int) int {
 	return n
 }
 
-// envBool reads a boolean flag default from the environment (Railway-style knob),
-// accepting the usual truthy spellings; a missing or malformed value falls back to
-// def.
+// envBool lê um default de flag booleana do ambiente (botão estilo Railway),
+// aceitando as grafias verdadeiras usuais; um valor ausente ou malformado cai
+// para def.
 func envBool(key string, def bool) bool {
 	v := os.Getenv(key)
 	if v == "" {
@@ -191,8 +191,8 @@ func envBool(key string, def bool) bool {
 	return b
 }
 
-// addrOrNone renders an empty flag value as "(none)" so the boot log reads
-// clearly when an optional address (dbServer/binServer/content) is unset.
+// addrOrNone renderiza um valor de flag vazio como "(none)" para o log de boot
+// ficar claro quando um endereço opcional (dbServer/binServer/content) não está definido.
 func addrOrNone(v string) string {
 	if v == "" {
 		return "(none)"
@@ -210,10 +210,10 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		}
 	}()
 
-	// Echo the effective wiring at boot: the client-version and the resolved
-	// dbServer/binServer addresses are the knobs most often misconfigured in a
-	// container deploy (version-mismatch drops, or "produced zero addresses" when
-	// an internal hostname is wrong), so surface them before anything connects.
+	// Ecoa a ligação efetiva no boot: a versão de cliente e os endereços
+	// resolvidos de dbServer/binServer são os botões mais frequentemente mal
+	// configurados num deploy em container (drops por version-mismatch, ou
+	// "produced zero addresses" quando um hostname interno está errado), então
 	logger.Info("tmserver config",
 		"client_version", cfg.clientVersion,
 		"dbserver", addrOrNone(cfg.dbAddr),
@@ -225,11 +225,11 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		"rates_editing", cfg.ratesEditing,
 		"mob_carry_editing", cfg.mobCarryEditing)
 
-	// When -content is set, load and validate the content tree up front so a
-	// missing/corrupt mount fails fast instead of surfacing mid-session. The
-	// recipe→combine-family and AttributeMap-bit semantics remain UNVERIFIED
-	// (PROGRESS Fase 5), so this validates and exposes the data; it does not
-	// rewire gameplay on unverified mappings.
+	// Com -content definido, carregue e valide a árvore de conteúdo de antemão para
+	// que um mount ausente/corrompido falhe rápido em vez de aparecer no meio da
+	// sessão. As semânticas receita→família de combine e dos bits do AttributeMap
+	// seguem UNVERIFIED (PROGRESS Fase 5), então isto valida e expõe os dados; não
+	// religa gameplay sobre mapeamentos não verificados.
 	var itemPrices map[int]int32
 	var itemEffects map[int][]content.BaseEffect
 	var itemReqs map[int]content.ItemReq
@@ -244,10 +244,10 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 	var worldItems []content.InitItem
 	var heights *content.Grid
 	var attrs *content.Grid
-	// Dust-refine ceilings (QA 05/11): moved out of the code into
-	// Common/Settings/RefineRate.txt so a moderator decides how far each dust goes.
-	// A missing/broken file is not fatal — the file is a tuning surface, and the
-	// world keeps the legacy 6/9/10/11 instead of refusing to boot.
+	// Tetos do refino com pó (QA 05/11): saíram do código para
+	// Common/Settings/RefineRate.txt, para um moderador decidir até onde cada pó vai.
+	// Um arquivo ausente/quebrado não é fatal — o arquivo é superfície de ajuste e o
+	// mundo mantém o legado 6/9/10/11 em vez de recusar o boot.
 	refinePolicy := content.DefaultRefinePolicy()
 	if cfg.contentDir != "" {
 		if p, perr := content.LoadRefinePolicy(cfg.contentDir + "/Common/Settings/RefineRate.txt"); perr != nil {
@@ -288,8 +288,8 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		return nil, err
 	}
 
-	// Persistence: real dbServer adapter when -dbserver is set, else no-op. The
-	// connection is retained (dbConn) so the NPC-config overlay can share it.
+	// Persistência: adaptador real de dbServer quando -dbserver está definido, senão no-op.
+	// A conexão é mantida (dbConn) para a sobreposição de config de NPC compartilhá-la.
 	var persist world.Persistence = world.NopPersistence{}
 	var dbConn *grpc.ClientConn
 	var worldEvents worldcfg.Source
@@ -343,8 +343,8 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 			"templates", len(catalogTemplates), "world_items", len(worldItems))
 	}
 
-	// The client fetches a channel-status page over HTTP before the CPSock
-	// connect; serve it from the content tree when available.
+	// O cliente busca uma página de status de canal por HTTP antes do
+	// connect CPSock; sirva-a da árvore de conteúdo quando disponível.
 	var statusFile string
 	var baseMobs map[int][]byte
 	var summonMobs [][]byte
@@ -367,8 +367,8 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 			}
 			logger.Info("base summon templates loaded", "count", len(summonMobs)-len(missing))
 		}
-		// Muro de Espinhos is CreateMob("Vinha", ..., "Boss", 3) in the C++,
-		// but the shipped Linux content tree carries the wall template as npc/Vine.
+		// Muro de Espinhos é CreateMob("Vinha", ..., "Boss", 3) no C++,
+		// mas a árvore de conteúdo Linux distribuída traz o template do muro como npc/Vine.
 		if vm, ok := catalogTemplates["Vine"]; ok {
 			vineMob = vm
 			logger.Info("vine template loaded", "source", "database")
@@ -384,16 +384,16 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		}
 	}
 
-	// Moderator mob/NPC template stat overlay (mob-template-editing-plan.md, the
-	// equivalent-tool successor to the legacy EDITAPPMOB): the single switch is
-	// -mob-stat-editing (W2PP_MOB_STAT_EDITING), off by default. Unlike
-	// The carry overlay applies to ANY npc/<template_name> file — monsters
-	// included, the tool's primary rebalancing use case — not just the
-	// DB-managed merchant subset, so it is deliberately independent of
-	// the NPC catalogue (its own source, its own dependency check). Fetched ONCE here,
-	// synchronously, before any template gets loaded below: there is no
-	// hot-reload for this feature, matching EDITAPPMOB's own restart-to-apply
-	// behavior (it wrote the file; the server only read it at boot too).
+	// Sobreposição de stats de template de mob/NPC do moderador (mob-template-editing-plan.md, o
+	// sucessor equivalente da ferramenta legada EDITAPPMOB): o único interruptor é
+	// -mob-stat-editing (W2PP_MOB_STAT_EDITING), desligado por default. A
+	// sobreposição de stats se aplica a QUALQUER arquivo npc/<template_name> — monstros
+	// incluídos, o caso de uso principal de rebalanceamento da ferramenta — não só ao
+	// subconjunto de mercadores gerenciado pelo banco, então é de propósito independente do
+	// catálogo de NPCs (fonte própria, checagem de dependência própria). Buscada UMA vez
+	// aqui, de forma síncrona, antes de qualquer template ser carregado abaixo: não há
+	// hot-reload para este recurso, igual ao comportamento de reiniciar-para-aplicar
+	// do EDITAPPMOB (ele escrevia o arquivo; o servidor também só o lia no boot).
 	var mobStatOverrides map[string]mobstat.Override
 	if cfg.mobStatEditing {
 		if dbConn == nil {
@@ -409,11 +409,11 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		logger.Info("mob template stat overlay enabled (moderator editing)", "overrides", len(mobStatOverrides))
 	}
 
-	// Moderator Carry[] overlay (issue 34, fatia 3): the drop table of each mob
-	// template. Same shape as the stat overlay — fetched once, before any template
-	// is loaded, because the table is baked into the bytes the world spawns from
-	// and there is no hot-reload. -mob-carry-editing (W2PP_MOB_CARRY_EDITING), off
-	// by default so an unseeded DB never changes a single drop.
+	// Sobreposição de Carry[] do moderador (issue 34, fatia 3): a tabela de drop de cada
+	// template de mob. Mesma forma da sobreposição de stats — buscada uma vez, antes de
+	// qualquer template ser carregado, porque a tabela está gravada nos bytes de onde o
+	// mundo gera as entidades e não há hot-reload. -mob-carry-editing
+	// (W2PP_MOB_CARRY_EDITING), desligado por default para que um banco não semeado nunca mude um drop.
 	var mobCarryOverrides map[string]mobcarry.Override
 	if cfg.mobCarryEditing {
 		if dbConn == nil {
@@ -429,12 +429,12 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		logger.Info("mob carry overlay enabled (moderator editing)", "templates", len(mobCarryOverrides))
 	}
 
-	// NPC spawn catalogue (issue 57): npc_definition in Postgres is the SINGLE
-	// source of spawn blocks AND of the templates (npc_template), so -dbserver is
-	// the only dependency — NPCGener.txt e npc/ saíram do conteúdo na fase 5.
-	// The tmServer registers one generator slot per content block and
-	// materializes the entities. Without -dbserver the world boots with no NPCs,
-	// which the dev topology relies on — hence a loud warning, not a fatal error.
+	// Catálogo de spawn de NPCs (issue 57): npc_definition no Postgres é a ÚNICA
+	// fonte de blocos de spawn E dos templates (npc_template), então -dbserver é
+	// a única dependência — NPCGener.txt e npc/ saíram do conteúdo na fase 5.
+	// O tmServer registra um slot de gerador por bloco de conteúdo e
+	// materializa as entidades. Sem -dbserver o mundo sobe sem NPCs,
+	// o que a topologia de dev pressupõe — daí um aviso alto, não um erro fatal.
 	var npcConfig npccfg.Source
 	if dbConn == nil {
 		logger.Warn("no NPC catalogue: -dbserver is required, the world will boot with no monsters",
@@ -451,11 +451,11 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		}, logger)
 	}
 
-	// Moderator teleport overlay (issue 42): the single switch is
-	// -teleport-editing (W2PP_TELEPORT_EDITING). Unlike the NPC overlay this one
-	// does not spawn or materialize anything — route resolution already happens in
-	// world.teleportDest, so the overlay is just a read-only snapshot swapped
-	// atomically. A 15s poll keeps a running world in sync with the web.
+	// Sobreposição de teleporte do moderador (issue 42): o único interruptor é
+	// -teleport-editing (W2PP_TELEPORT_EDITING). Diferente da sobreposição de NPC, esta
+	// não gera nem materializa nada — a resolução de rota já acontece em
+	// world.teleportDest, então a sobreposição é só um snapshot somente leitura trocado
+	// atomicamente. Um poll de 15s mantém um mundo rodando em sincronia com a web.
 	if cfg.teleportEditing {
 		if dbConn == nil {
 			return nil, fmt.Errorf("-teleport-editing requires -dbserver (config source)")
@@ -506,17 +506,17 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		logger.Info("teleport config overlay enabled (moderator editing)", "poll", "15s")
 	}
 
-	// Seed the world-event RNG from the wall clock so the weather sequence differs
-	// between boots (handler.worldEventRNGSeed explains why the fixed seed is only
-	// for tests). Zero means "use the fixed seed", so keep it out of range.
+	// Semeia o RNG de eventos do mundo a partir do relógio de parede para a sequência
+	// de clima diferir entre boots (handler.worldEventRNGSeed explica por que a semente
+	// fixa é só para testes). Zero significa "usa a semente fixa", então mantenha fora da faixa.
 	eventSeed := uint32(time.Now().UnixNano())
 	if eventSeed == 0 {
 		eventSeed = 1
 	}
-	// Moderator content-rate overlay (issue 36): the read-through side of
-	// /config. Same shape as the item-effect overlay — one flag, applied once at
-	// boot, because SancRate/CompRate/QuestRates are read-only snapshots from the
-	// moment the world starts (an edit takes effect on the next restart).
+	// Sobreposição de taxas de conteúdo do moderador (issue 36): o lado de leitura
+	// de /config. Mesma forma da sobreposição de efeito de item — uma flag, aplicada uma
+	// vez no boot, porque SancRate/CompRate/QuestRates são snapshots somente leitura
+	// do momento em que o mundo começa (uma edição vale no próximo restart).
 	if cfg.ratesEditing {
 		if dbConn == nil || cfg.contentDir == "" {
 			return nil, fmt.Errorf("-rates-editing requires both -dbserver (overlay source) and -content (rate files)")
@@ -541,18 +541,18 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 			"gem_level", refinePolicy.GemLevel, "hard_cap", refinePolicy.HardCap)
 		logger.Info("content rate overlay applied",
 			"rate_overrides_applied", applied, "rate_overrides_ignored", ignored, "rows", len(rows))
-		// "content loaded" runs before this block, so the effective Ori row is
-		// logged here: the operator needs to see the number the world will use,
-		// not only how many rows were fetched.
+		// "content loaded" roda antes deste bloco, então a linha Ori efetiva é
+		// registrada aqui: o operador precisa ver o número que o mundo vai usar,
+		// não só quantas linhas foram buscadas.
 		if sancRate != nil {
 			logger.Info("content rate overlay effective", "sancrate_ori", sancRow(sancRate, 0))
 		}
 	}
 
-	// Moderator drop-rate overlay (issue 34): /drops/editar writes
-	// drop_rate_override; the world reads DropRate[64] from the moment it starts,
-	// so this is applied ONCE here. Values only — no rand() call is added, so RNG
-	// parity is untouched.
+	// Sobreposição de taxa de drop do moderador (issue 34): /drops/editar escreve
+	// drop_rate_override; o mundo lê DropRate[64] do momento em que começa,
+	// então isto é aplicado UMA vez aqui. Só valores — nenhuma chamada de rand() é
+	// adicionada, então a paridade de RNG fica intocada.
 	if cfg.dropConfigEditing {
 		if dbConn == nil {
 			return nil, fmt.Errorf("-drop-config-editing requires -dbserver (overlay source)")
@@ -573,13 +573,13 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 			"slot_12", loot.DropRate[12])
 	}
 
-	// Moderator item base-effect overlay (issue 44): the read-through side of the
-	// web editor at /itens/[index]. The single switch is -item-effect-editing
-	// (W2PP_ITEM_EFFECT_EDITING), off by default, and — like -mob-stat-editing —
-	// it is applied ONCE here, right before the handler is built: ItemEffects is an
-	// immutable snapshot folded into the score, so a running world keeps what it
-	// booted with. Precedence is unchanged: an item instance's own stEffect/stValue
-	// still beats the catalog (here, content + overlay) at score time.
+	// Sobreposição de efeito base de item do moderador (issue 44): o lado de leitura
+	// do editor web em /itens/[index]. O único interruptor é -item-effect-editing
+	// (W2PP_ITEM_EFFECT_EDITING), desligado por default e — como -mob-stat-editing —
+	// aplicado UMA vez aqui, logo antes do handler ser construído: ItemEffects é um
+	// snapshot imutável dobrado no score, então um mundo rodando mantém o que
+	// carregou no boot. A precedência não muda: o stEffect/stValue da instância do
+	// item ainda vence o catálogo (aqui, conteúdo + sobreposição) na hora do score.
 	if cfg.itemEffectEditing {
 		if dbConn == nil {
 			return nil, fmt.Errorf("-item-effect-editing requires -dbserver (catalog and overlay source)")
@@ -602,11 +602,11 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 			"rows", len(rows), "replaced", stats.Replaced, "added", stats.Added, "ignored", stats.Ignored)
 	}
 
-	// Process flags snapshot (issue 36, aba "Flags"): the portal shows what this
-	// process booted with, read-only. These flags live in the compose command and
-	// the W2PP_* environment; the web never edits them, so a restart is the only
-	// way to change one. A failure here must not stop the server — the snapshot is
-	// observability, not gameplay.
+	// Snapshot das flags de processo (issue 36, aba "Flags"): o portal mostra com o que
+	// este processo subiu, somente leitura. Essas flags vivem no comando do compose e
+	// no ambiente W2PP_*; a web nunca as edita, então um restart é o único
+	// jeito de mudar uma. Uma falha aqui não pode parar o servidor — o snapshot é
+	// observabilidade, não gameplay.
 	if dbConn != nil {
 		snapshot := []dbclient.InstanceFlag{
 			{Name: "addr", Value: cfg.addr, RestartRequired: true, Hint: "porta CPSock do cliente (docker-compose command)"},
@@ -672,18 +672,18 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		LogSends:       cfg.logSends,
 		Metrics:        metricsReg,
 	}, logger, persist, dispatch.Handle)
-	// Mob-AI pulse: monsters acquire/chase/melee nearby players each tick (mobai.go).
+	// Pulso da IA de mobs: monstros adquirem/perseguem/atacam corpo a corpo jogadores próximos a cada tick (mobai.go).
 	w.SetTickHandler(world.DefaultMobTick, dispatch.Tick)
-	// Party teardown on disconnect: unlink the party bond and reap the summons
-	// before the slot is freed (party.go SessionEnd).
+	// Desmontagem de party ao desconectar: desvincula o laço de party e remove as
+	// invocações antes do slot ser liberado (party.go SessionEnd).
 	w.SetSessionEndHandler(dispatch.SessionEnd)
-	// The newbie flag has two owners: the dispatcher's ExpEvents (the EXP bonus)
-	// and the world (the sub-120 spawn HP handicap). Set here, BEFORE the boot
-	// population below, so the spawns are handicapped too — the portal config may
-	// override it later via ApplyWorldEventConfigBoot.
+	// A flag de newbie tem dois donos: os ExpEvents do dispatcher (o bônus de EXP)
+	// e o world (o handicap de HP dos spawns abaixo de 120). Definido aqui, ANTES da
+	// população de boot abaixo, para que os spawns também sofram o handicap — a config
+	// do portal pode sobrescrevê-la depois via ApplyWorldEventConfigBoot.
 	w.SetNewbieEvent(cfg.newbieEvent)
 
-	// Billing gate: real binServer adapter when -binserver is set, else allow-all.
+	// Gate de billing: adaptador real de binServer quando -binserver está definido, senão allow-all.
 	if cfg.binAddr != "" {
 		conn, err := grpc.NewClient(cfg.binAddr,
 			grpc.WithTransportCredentials(clientCreds),
@@ -699,8 +699,8 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 		seedWorldItems(w, worldItems, logger)
 	}
 	if npcConfig != nil {
-		// Retries while the dbServer is still coming up; ctx aborts the wait on
-		// SIGTERM instead of holding the process for the whole retry budget.
+		// Repete enquanto o dbServer ainda está subindo; ctx aborta a espera em
+		// SIGTERM em vez de segurar o processo por todo o orçamento de retentativas.
 		snap, err := dispatch.FetchNPCConfig(ctx)
 		if err != nil {
 			return nil, err
@@ -729,11 +729,11 @@ func newApp(ctx context.Context, cfg config, logger *slog.Logger) (a *app, err e
 // run abre o servidor de status e o listener CPSock e serve até o ctx ser
 // cancelado. As conexões gRPC abertas no `newApp` são fechadas na saída.
 func (a *app) run(ctx context.Context, logger *slog.Logger) error {
-	// Channel-status HTTP server on its own port (real WYD serves serv00.htm on
-	// :80, separate from the game's :8281 — general-config.h of the snalmir
-	// reference). The client probes status here, then opens the CPSock game
-	// connection to the game port; keeping them apart avoids the client seeing an
-	// HTTP server on the game port. Fica em `run` para que montar o app não escute.
+	// Servidor HTTP de status de canal em porta própria (o WYD real serve serv00.htm
+	// na :80, separado do :8281 do jogo — general-config.h da referência
+	// snalmir). O cliente sonda o status aqui e então abre a conexão
+	// CPSock do jogo na porta do jogo; mantê-las separadas evita o cliente ver um
+	// servidor HTTP na porta do jogo. Fica em `run` para que montar o app não escute.
 	if a.statusAddr != "" {
 		go serveStatusHTTP(ctx, a.statusAddr, a.statusFile, logger)
 	}
@@ -756,15 +756,15 @@ func closeAll(closers []func()) {
 	}
 }
 
-// seedWorldItems spawns the static world objects (gates/doors) from
-// world_item_seed before Serve starts the loop, so id assignment is
-// single-threaded and follows import order (matching the legacy CreateItem
-// sequence the client expects). An empty catalogue seeds nothing.
+// seedWorldItems gera os objetos estáticos do mundo (portões/portas) a partir de
+// world_item_seed antes de Serve iniciar o loop, para a atribuição de id ser
+// single-threaded e seguir a ordem de importação (casando com a sequência
+// CreateItem legada que o cliente espera). Um catálogo vazio não semeia nada.
 func seedWorldItems(w *world.World, items []content.InitItem, logger *slog.Logger) {
 	seeded := 0
 	for _, it := range items {
-		// Gates seed open (parity with CreateItem); locking arrives with the deferred
-		// event/timer systems. SeedWorldItem returns -1 only when the id table is full.
+		// Portões nascem abertos (paridade com CreateItem); o trancamento chega com os
+		// sistemas de evento/timer adiados. SeedWorldItem devolve -1 só quando a tabela de ids está cheia.
 		if id := w.SeedWorldItem(world.Item{Index: it.Index}, it.PosX, it.PosY, world.StateOpen); id >= 0 {
 			seeded++
 		}
@@ -772,12 +772,12 @@ func seedWorldItems(w *world.World, items []content.InitItem, logger *slog.Logge
 	logger.Info("world items seeded", "count", seeded)
 }
 
-// registerNPCGenerators builds the world's generator slots from the spawn
-// catalogue (issue 57) instead of parsing NPCGener.txt at boot. Slot i is content
-// block i, exactly the file order the legacy server used, so the index ranges that
+// registerNPCGenerators monta os slots de gerador do mundo a partir do catálogo
+// de spawn (issue 57) em vez de ler NPCGener.txt no boot. O slot i é o bloco de
+// conteúdo i, exatamente a ordem de arquivo que o servidor legado usava, para as faixas de índice que o cliente já conhece continuarem
 // classify event blocks (IsWaterGenerator, NightmareGenerator, rune quest) keep
-// working. A block the importer skipped (missing/undecodable template) leaves its
-// slot nil, and event-owned blocks are registered but left to their event code.
+// funcionando. Um bloco que o importador pulou (template ausente/indecodificável) deixa seu
+// slot nil, e blocos de propriedade de evento são registrados mas ficam para o código do evento.
 func registerNPCGenerators(w *world.World, defs []npccfg.Definition, attrs *content.Grid, logger *slog.Logger) {
 	slots := 0
 	for _, def := range defs {
@@ -820,10 +820,10 @@ func registerNPCGenerators(w *world.World, defs []npccfg.Definition, attrs *cont
 		"event_owned", eventOwned, "training_grounds", training)
 }
 
-// auditMobTemplates warns once per template whose kill reward is zero or beyond the
-// legacy award gate (10M, MobKilled.cpp:1284): the content tree must be restamped
-// with cmd/exptool or players gain nothing from those kills (issue #43). The check
-// came from the NPCGener.txt boot loader, which no longer exists (issue 57).
+// auditMobTemplates avisa uma vez por template cuja recompensa de kill é zero ou além
+// do gate legado de premiação (10M, MobKilled.cpp:1284): a árvore de conteúdo precisa ser
+// restampada com cmd/exptool ou os jogadores não ganham nada nessas kills (issue #43).
+// A checagem veio do loader de boot do NPCGener.txt, que não existe mais (issue #57).
 func auditMobTemplates(defs []npccfg.Definition, logger *slog.Logger) {
 	const maxSaneMobExp = 10_000_000
 	seen := make(map[string]struct{}, len(defs))
@@ -844,9 +844,9 @@ func auditMobTemplates(defs []npccfg.Definition, logger *slog.Logger) {
 	}
 }
 
-// serveStatusHTTP runs the channel-status web server (serv00.htm). It answers any
-// path with the status page so the client's GET succeeds regardless of the exact
-// file it asks for. The body is read per request so it can be edited live.
+// serveStatusHTTP roda o servidor web de status de canal (serv00.htm). Ele responde
+// qualquer caminho com a página de status para o GET do cliente passar independente do
+// arquivo exato pedido. O corpo é lido por requisição para poder ser editado ao vivo.
 func serveStatusHTTP(ctx context.Context, addr, statusFile string, logger *slog.Logger) {
 	defaultBody := []byte("4\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n-1\r\n")
 	mux := http.NewServeMux()
@@ -869,10 +869,10 @@ func serveStatusHTTP(ctx context.Context, addr, statusFile string, logger *slog.
 	}
 }
 
-// loadContent loads and validates the tmserver/content/ content tree (Fase 5 loaders).
-// The rates and catalogs are required (a broken mount is a hard error); the maps
-// are large and optional (a warning when absent). It logs what was loaded so the
-// operator can confirm the mount is correct.
+// loadContent carrega e valida a árvore de conteúdo tmserver/content/ (loaders da Fase 5).
+// As taxas e catálogos são obrigatórios (um mount quebrado é erro fatal); os mapas
+// são grandes e opcionais (aviso quando ausentes). Registra o que foi carregado para o
+// operador confirmar que o mount está correto.
 func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	comp, err := content.LoadCompRate(filepath.Join(dir, "Common", "Settings", "CompRate.txt"))
 	if err != nil {
@@ -886,17 +886,17 @@ func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	if err != nil {
 		return nil, err
 	}
-	// The Ori/Lac rates are worth logging outright: SancRate.txt only overrides the
-	// indices it lists, so a broken mount silently leaves the compiled defaults and
-	// the operator would otherwise not notice.
+	// As taxas Ori/Lac merecem ser registradas explicitamente: o SancRate.txt só
+	// sobrescreve os índices que lista, então um mount quebrado deixa os defaults
+	// compilados em silêncio e o operador não notaria.
 	logger.Info("content loaded",
 		"comprate_families", comp.Families(),
 		"sancrate_ori", sancRow(sanc, 0), "sancrate_lac", sancRow(sanc, 1))
 
-	// Maps are optional: 17 MiB HeightMap + 1 MiB AttributeMap aren't required to
-	// accept logins; warn rather than fail when they aren't mounted. When both
-	// load, bake the attribute blocks into the height grid once (the boot-time
-	// BASE_ApplyAttribute) — the result drives mob pathfinding (route.Next).
+	// Mapas são opcionais: 17 MiB de HeightMap + 1 MiB de AttributeMap não são
+	// necessários para aceitar logins; avise em vez de falhar quando não estiverem
+	// montados. Quando ambos carregam, grave os blocos de atributo no grid de altura
+	// uma vez (o BASE_ApplyAttribute de boot) — o resultado dirige o pathfinding dos
 	var heights *content.Grid
 	attr, err := content.LoadGrid(filepath.Join(dir, "TMsrv", "run", "AttributeMap.dat"), content.AttributeMapDim)
 	if err != nil {
@@ -916,8 +916,8 @@ func loadContent(dir string, logger *slog.Logger) (*loadedContent, error) {
 	return &loadedContent{comp: comp, sanc: sanc, quests: quests, heights: heights, attrs: attr}, nil
 }
 
-// loadedContent is what a mounted tmserver/content/ tree yields. It is a struct rather
-// than a return list only because the list had grown past readability.
+// loadedContent é o que uma árvore tmserver/content/ montada rende. É uma struct em
+// vez de uma lista de retorno só porque a lista tinha crescido além da legibilidade.
 type loadedContent struct {
 	comp    *content.CompRate
 	sanc    *content.SancRate
@@ -926,7 +926,7 @@ type loadedContent struct {
 	attrs   *content.Grid // raw AttributeMap (training-grounds bit); nil when not mounted
 }
 
-// sancRow renders one anvil's rate row for the boot log.
+// sancRow renderiza a linha de taxa de uma bigorna para o log de boot.
 func sancRow(s *content.SancRate, anvil int) []int {
 	row := make([]int, 0, 12)
 	for i := 0; i < 12; i++ {

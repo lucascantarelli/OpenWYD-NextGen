@@ -6,7 +6,7 @@ import (
 )
 
 func TestTowerSteps(t *testing.T) {
-	base := time.Date(2026, time.August, 3, 20, 0, 0, 0, time.Local) // Monday
+	base := time.Date(2026, time.August, 3, 20, 0, 0, 0, time.Local) // segunda-feira
 	tower := NewTower(20)
 	if got := tower.Step(base, true); got != TowerAnnounce {
 		t.Fatalf("minute 0 = %v, want announce", got)

@@ -2,9 +2,9 @@ package rng
 
 import "testing"
 
-// TestDefaultSeedSequence locks the canonical MSVC rand() output for the default
-// seed 1 (the first ten values are a well-known fixture). This is the parity
-// anchor for all RNG-driven golden cases (parity-tests.md §4.0).
+// TestDefaultSeedSequence trava a saída canônica do rand() da MSVC para a
+// semente default 1 (os dez primeiros valores são uma fixture conhecida). É a
+// âncora de paridade para todos os casos golden guiados por RNG (parity-tests.md §4.0).
 func TestDefaultSeedSequence(t *testing.T) {
 	want := []int{41, 18467, 6334, 26500, 19169, 15724, 11478, 29358, 26962, 24464}
 	r := New()

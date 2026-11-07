@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// These lock the byte-exact wire sizes/offsets of the entity-in-view and shop
-// packets against the original Basedef.h (compiler-verified by the Windows
-// layout probe). A regression here silently corrupts what the real client reads.
+// Estes travam os tamanhos/offsets de wire byte a byte do pacote de entidade em
+// vista e da loja contra o Basedef.h original (verificado pelo compilador pela
+// sonda de layout do Windows). Uma regressão aqui corrompe em silêncio o que o
 
 func TestCreateMobBodyLayout(t *testing.T) {
 	d := CreateMobData{
@@ -134,7 +134,7 @@ func TestShopListBodyLayout(t *testing.T) {
 }
 
 func TestShopSlotMapping(t *testing.T) {
-	// 3 tabs of 9: Carry[0..8], [27..35], [54..62].
+	// 3 abas de 9: Carry[0..8], [27..35], [54..62].
 	cases := map[int]int{0: 0, 8: 8, 9: 27, 17: 35, 18: 54, 26: 62}
 	for i, want := range cases {
 		if got := ShopSlot(i); got != want {
@@ -170,9 +170,9 @@ func TestUpdateEtcCoinLayout(t *testing.T) {
 	}
 }
 
-// TestUpdateEtcLayout pins the full MSG_UpdateEtc field offsets (Basedef.h SendEtc).
-// ScoreBonus@body20 is the field that carries the free attribute points to the
-// client on level-up — UpdateScore does NOT carry it.
+// TestUpdateEtcLayout fixa os offsets de campo completos de MSG_UpdateEtc
+// (Basedef.h SendEtc). ScoreBonus@corpo20 é o campo que carrega os pontos livres
+// de atributo para o cliente no level-up — o UpdateScore NÃO o carrega.
 func TestUpdateEtcLayout(t *testing.T) {
 	b := EncodeUpdateEtc(UpdateEtcData{
 		Hold: 1, Exp: 5_000_000_000, Learn: 0x0102030405060708,

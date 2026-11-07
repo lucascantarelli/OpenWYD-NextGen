@@ -10,15 +10,15 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Mob template stat persistence (mob-template-editing-plan.md), the
-// equivalent-tool successor to the legacy EDITAPPMOB. Postgres owns the
-// stat *override* for a raw npc/<template_name> STRUCT_MOB file; the
-// tmServer only ever reads it (via dbServer), once at boot — there is no
-// hot-reload for this feature (EDITAPPMOB itself required a server restart
-// too). Every mutation runs in a transaction that also writes an audit row,
-// reusing npc_audit/npc_config_meta (auditAndBump) rather than a parallel
-// trail — bumping npc_config_meta for a stat write is a harmless no-op for
-// the unrelated npc_definition poll.
+// Persistência de stats de template de mob (mob-template-editing-plan.md), o
+// equivalente em ferramenta ao EDITAPPMOB legado. O Postgres é dono da
+// *sobreposição* de stats para um arquivo STRUCT_MOB cru npc/<template_name>; o
+// tmServer só a lê (via dbServer), uma vez no boot — não há
+// hot-reload para este recurso (o próprio EDITAPPMOB exigia reiniciar o servidor
+// também). Toda mutação roda numa transação que também grava linha de auditoria,
+// reusando npc_audit/npc_config_meta (auditAndBump) em vez de uma trilha
+// paralela — subir npc_config_meta numa escrita de stats é um no-op inofensivo para
+// o poll não relacionado de npc_definition.
 
 const mobTemplateStatColumns = `
 	template_name, display_name, clan, merchant, class, coin, exp, spx, spy,
@@ -27,9 +27,9 @@ const mobTemplateStatColumns = `
 	learned_skill, score_bonus, skill_bar1, skill_bar2, skill_bar3, skill_bar4,
 	regen_hp, regen_mp, resist1, resist2, resist3, resist4`
 
-// ListMobTemplateStats returns every mob template stat override with its
-// equip slots, ordered by template_name. This is the full snapshot the
-// tmServer applies once at boot.
+// ListMobTemplateStats devolve toda sobreposição de stats de template de mob com seus
+// slots de equip, ordenada por template_name. É o snapshot completo que o
+// tmServer aplica no boot.
 func (s *Store) ListMobTemplateStats(ctx context.Context) ([]domain.MobTemplateStat, error) {
 	rows, err := s.pool.Query(ctx, `SELECT `+mobTemplateStatColumns+` FROM mob_template_stat ORDER BY template_name`)
 	if err != nil {
@@ -75,9 +75,9 @@ func (s *Store) ListMobTemplateStats(ctx context.Context) ([]domain.MobTemplateS
 	return out, nil
 }
 
-// GetMobTemplateStat loads one override (with its equip slots) by template
-// name. Returns ErrNotFound when absent — the caller falls back to reading
-// the raw template file's own current values.
+// GetMobTemplateStat carrega uma sobreposição (com seus slots de equip) pelo nome do
+// template. Devolve ErrNotFound quando ausente — quem chama cai para ler
+// os valores correntes do próprio arquivo cru do template.
 func (s *Store) GetMobTemplateStat(ctx context.Context, templateName string) (domain.MobTemplateStat, error) {
 	row := s.pool.QueryRow(ctx, `SELECT `+mobTemplateStatColumns+` FROM mob_template_stat WHERE template_name = $1`, templateName)
 	st, err := scanMobTemplateStat(row)
@@ -95,12 +95,12 @@ func (s *Store) GetMobTemplateStat(ctx context.Context, templateName string) (do
 	return st, nil
 }
 
-// UpsertMobTemplateStat inserts a new override or replaces the existing one
-// for the same template_name, including its Equip[] slots (st.Equip fully
-// replaces whatever was stored — same authoritative semantics as
-// SetMobTemplateEquip, which remains available for equip-only edits from the
-// dedicated equipment grid). Bumps the config version and writes an audit row
-// in one transaction.
+// UpsertMobTemplateStat insere uma sobreposição nova ou substitui a existente
+// para o mesmo template_name, incluindo seus slots Equip[] (st.Equip substitui
+// por inteiro o que estava guardado — mesma semântica autoritativa de
+// SetMobTemplateEquip, que continua disponível para edições só de equip da
+// grade de equipamento dedicada). Sobe a versão da config e grava uma linha
+// de auditoria
 func (s *Store) UpsertMobTemplateStat(ctx context.Context, st domain.MobTemplateStat, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, _ := fetchMobTemplateStatJSON(ctx, tx, st.TemplateName)
@@ -171,9 +171,9 @@ func (s *Store) UpsertMobTemplateStat(ctx context.Context, st domain.MobTemplate
 	})
 }
 
-// SetMobTemplateEquip replaces a template's Equip[] slot overrides. Returns
-// ErrNotFound if no mob_template_stat row exists yet for template_name (the
-// stat row must be upserted first, same dependency as npc_shop_item on
+// SetMobTemplateEquip substitui os slots Equip[] de um template, sem tocar nos stats. Devolve
+// ErrNotFound se ainda não existe linha mob_template_stat para template_name (a
+// linha de stats precisa ser inserida antes, mesma dependência de npc_shop_item em
 // npc_definition).
 func (s *Store) SetMobTemplateEquip(ctx context.Context, templateName string, items []domain.MobTemplateEquipItem, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
@@ -189,11 +189,11 @@ func (s *Store) SetMobTemplateEquip(ctx context.Context, templateName string, it
 	})
 }
 
-// replaceMobTemplateEquip deletes and reinserts a template's Equip[] slot
-// overrides in one go — shared by UpsertMobTemplateStat (whole-object save,
-// AdminMobTemplateStat.equip included) and SetMobTemplateEquip (the
-// equip-only grid editor), so both write paths persist the same way instead
-// of one of them silently dropping the field.
+// replaceMobTemplateEquip apaga e reinsere o slot Equip[] de um template
+// sobreposições de uma vez — compartilhado por UpsertMobTemplateStat (save do objeto inteiro,
+// AdminMobTemplateStat.equip incluído) e SetMobTemplateEquip (o
+// editor de grade só de equip), para os dois caminhos de escrita persistirem do
+// mesmo jeito em vez de um deles descartar o campo em silêncio.
 func replaceMobTemplateEquip(ctx context.Context, tx pgx.Tx, templateName string, items []domain.MobTemplateEquipItem) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM mob_template_equip WHERE template_name = $1`, templateName); err != nil {
 		return fmt.Errorf("store: clear mob template equip %q: %w", templateName, err)
@@ -210,8 +210,8 @@ func replaceMobTemplateEquip(ctx context.Context, tx pgx.Tx, templateName string
 	return nil
 }
 
-// DeleteMobTemplateStat removes an override (its equip slots cascade),
-// reverting the template to its raw file defaults. Returns ErrNotFound if
+// DeleteMobTemplateStat remove uma sobreposição (seus slots de equip cascateiam),
+// revertendo o template para os padrões do arquivo cru. Devolve ErrNotFound se
 // absent.
 func (s *Store) DeleteMobTemplateStat(ctx context.Context, templateName string, moderatorID int64) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
@@ -231,7 +231,7 @@ func (s *Store) DeleteMobTemplateStat(ctx context.Context, templateName string, 
 
 // --- helpers ---
 
-// mobTemplateStatRow is the read surface shared by *pgxpool.Pool.QueryRow and
+// mobTemplateStatRow é a superfície de leitura compartilhada por *pgxpool.Pool.QueryRow e
 // pgx.Rows (both expose Scan).
 type mobTemplateStatRow interface {
 	Scan(dest ...any) error

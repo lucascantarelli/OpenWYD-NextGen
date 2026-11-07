@@ -11,14 +11,14 @@ func TestStandardParm(t *testing.T) {
 	if !ok || parm != 1_500_000 {
 		t.Fatalf("StandardParm = %d ok=%v, want 1500000 true", parm, ok)
 	}
-	// A negative amount round-trips (the handler, not the codec, rejects it).
+	// Um valor negativo faz round-trip (o handler, não o codec, o rejeita).
 	var neg int32 = -7
 	nb := make([]byte, 4)
 	binary.LittleEndian.PutUint32(nb, uint32(neg))
 	if parm, ok := StandardParm(nb); !ok || parm != -7 {
 		t.Fatalf("StandardParm(neg) = %d ok=%v, want -7 true", parm, ok)
 	}
-	// Short body is rejected, not a panic.
+	// Corpo curto é rejeitado, não um panic.
 	if _, ok := StandardParm([]byte{1, 2, 3}); ok {
 		t.Fatalf("StandardParm(short) ok=true, want false")
 	}

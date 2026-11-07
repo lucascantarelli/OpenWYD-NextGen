@@ -1,13 +1,13 @@
-// Command tmserver is the WYD game server (TMSrv): it speaks the legacy CPSock
-// wire protocol to the unmodified WYD.exe 7662 client (tmserver/internal/protocol)
-// and owns the in-memory world state through a single game-loop goroutine
+// Command tmserver é o servidor de jogo do WYD (TMSrv): fala o protocolo de wire
+// CPSock legado com o cliente WYD.exe 7662 sem modificação (tmserver/internal/protocol)
+// e é dono do estado do mundo em memória por uma única goroutine de laço de jogo
 // (tmserver/internal/world).
 //
-// This entrypoint only does wiring (guidelines §3): flags, logging, the gRPC
-// client connections to dbServer/binServer, the listener and graceful shutdown.
-// Without -dbserver the persistence falls back to a no-op (local bring-up).
-// The wiring itself lives in app.go (REFACTOR-01), so a test can mount the world
-// without opening a port.
+// Este entrypoint só faz ligação (guidelines §3): flags, logging, as conexões
+// de cliente gRPC para dbServer/binServer, o listener e o shutdown gracioso.
+// Sem -dbserver a persistência cai para no-op (bring-up local).
+// A ligação em si vive em app.go (REFACTOR-01), para um teste poder montar o mundo
+// sem abrir uma porta.
 package main
 
 import (

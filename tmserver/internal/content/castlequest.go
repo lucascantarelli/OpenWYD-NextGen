@@ -11,13 +11,13 @@ import (
 
 const maxCastleQuests = 64
 
-// CastlePrize is one CastleQuest.txt Prize_N STRUCT_ITEM subset.
+// CastlePrize é um subconjunto Prize_N de STRUCT_ITEM do CastleQuest.txt.
 type CastlePrize struct {
 	Index   int16
 	Effects [3][2]uint8
 }
 
-// CastleQuest is one CastleQuest.txt dungeon definition.
+// CastleQuest é uma definição de dungeon do CastleQuest.txt.
 type CastleQuest struct {
 	MobInitial int
 	MobEnd     int
@@ -29,7 +29,7 @@ type CastleQuest struct {
 	QuestTime  int32
 }
 
-// LoadCastleQuests loads the optional Castle/Zakum quest table.
+// LoadCastleQuests carrega a tabela opcional de quests Castle/Zakum.
 func LoadCastleQuests(path string) ([]CastleQuest, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -82,7 +82,7 @@ func parseCastleQuests(r io.Reader) ([]CastleQuest, error) {
 		case "EXPPRIZE_CELESTIAL:":
 			q.ExpPrize[3], q.ExpPrize[4] = value, value
 		case "EXPPRIZE_SUBCELESTIAL:":
-			// This index-2 overwrite is the legacy parser's surprising behavior.
+			// Essa sobrescrita no índice 2 é o comportamento surpreendente do parser legado.
 			q.ExpPrize[2] = value
 		case "PARTYPRIZE:":
 			q.PartyPrize = asciiUpper(fields[1]) == "ON"

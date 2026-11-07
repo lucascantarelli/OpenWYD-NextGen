@@ -10,13 +10,13 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Carry[] persistence (issue 34, fatia 3). The slot is the drop-rarity key and
-// the table is authoritative per template: SetMobCarry replaces every slot of
-// the template, DeleteMobCarry returns it to the file. The tmServer reads this
+// Persistência de Carry[] (issue 34, fatia 3). O slot é a chave de raridade de drop
+// e a tabela é autorotativa por template: SetMobCarry substitui todo slot do
+// template, DeleteMobCarry o devolve ao arquivo. O tmServer lê isto
 // snapshot once at boot; nothing here touches live game state.
 
-// ListMobCarryOverrides returns every template's carry override, ordered by
-// template_name and slot — the snapshot the dbServer serves to the tmServer.
+// ListMobCarryOverrides devolve a sobreposição de carry de todo template, ordenada
+// por template_name e slot — o snapshot que o dbServer serve ao tmServer.
 func (s *Store) ListMobCarryOverrides(ctx context.Context) ([]domain.MobCarryOverride, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT template_name, slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3
@@ -47,7 +47,7 @@ func (s *Store) ListMobCarryOverrides(ctx context.Context) ([]domain.MobCarryOve
 	return out, rows.Err()
 }
 
-// GetMobCarryOverride loads one template's override. ErrNotFound when absent.
+// GetMobCarryOverride carrega a sobreposição de um template. ErrNotFound quando ausente.
 func (s *Store) GetMobCarryOverride(ctx context.Context, templateName string) (domain.MobCarryOverride, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT slot, item_index, eff1, effv1, eff2, effv2, eff3, effv3
@@ -75,9 +75,9 @@ func (s *Store) GetMobCarryOverride(ctx context.Context, templateName string) (d
 	return out, nil
 }
 
-// SetMobCarry replaces the template's whole Carry[] override and writes one
-// audit row, all in one transaction. Unlike the Equip[] writer this does not
-// require a stat override: carry is independent of the stat surface.
+// SetMobCarry substitui a sobreposição Carry[] inteira do template e escreve uma
+// linha de auditoria, tudo numa transação. Diferente do escritor de Equip[] isto não
+// exige sobreposição de stats: o carry é independente da superfície de stats.
 func (s *Store) SetMobCarry(ctx context.Context, templateName string, slots []domain.MobTemplateEquipItem, moderatorID int64, reason string) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, err := carryJSON(ctx, tx, templateName)
@@ -106,8 +106,8 @@ func (s *Store) SetMobCarry(ctx context.Context, templateName string, slots []do
 	})
 }
 
-// DeleteMobCarry removes the template's override, restoring the file's Carry[].
-// applied is false when the template had no override.
+// DeleteMobCarry remove a sobreposição do template, restaurando o Carry[] do arquivo.
+// applied é falso quando o template não tinha sobreposição.
 func (s *Store) DeleteMobCarry(ctx context.Context, templateName string, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -127,8 +127,8 @@ func (s *Store) DeleteMobCarry(ctx context.Context, templateName string, moderat
 	return applied, err
 }
 
-// carryJSON snapshots the template's rows for the audit trail; nil means no
-// override existed.
+// carryJSON fotografa as linhas do template para a trilha de auditoria; nil
+// significa que não
 func carryJSON(ctx context.Context, tx pgx.Tx, templateName string) ([]byte, error) {
 	var js []byte
 	err := tx.QueryRow(ctx,

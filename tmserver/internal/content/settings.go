@@ -27,9 +27,9 @@ var (
 	mercIdxRE  = regexp.MustCompile(`\[(\d+)\]`)
 )
 
-// readContentLines opens a legacy content file and yields its lines with CRLF
-// stripped. The files are ASCII/Windows-1252 config, so the text is kept
-// byte-for-byte apart from the line terminator.
+// readContentLines abre um arquivo de conteúdo legado e devolve suas linhas com CRLF
+// removido. Os arquivos são config ASCII/Windows-1252, então o texto é mantido
+// byte a byte, exceto pelo terminador de linha.
 func readContentLines(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -51,17 +51,17 @@ func readContentLines(path string) ([]string, error) {
 	return lines, nil
 }
 
-// isComment reports the two comment styles the legacy configs use: "#" and
+// isComment informa os dois estilos de comentário que as configs legadas usam: "#" e
 // "//".
 func isComment(line string) bool {
 	t := strings.TrimSpace(line)
 	return strings.HasPrefix(t, "#") || strings.HasPrefix(t, "//")
 }
 
-// LoadGuardSpawns parses Guard.txt. Each data line is
-// "<guard index>,<generator>[a,b,c,d,e,f,g,h][...]" — the bracketed groups are
-// kept as-is because the legacy header describes 13 fields and the file carries
-// 8, so typed columns would be a guess.
+// LoadGuardSpawns lê Guard.txt. Cada linha de dados é
+// "<guard index>,<generator>[a,b,c,d,e,f,g,h][...]" — os grupos entre colchetes são
+// mantidos como estão porque o cabeçalho legado descreve 13 campos e o arquivo traz
+// 8, então colunas tipadas seriam um chute.
 func LoadGuardSpawns(path string) ([]domain.GuardSpawnEntry, error) {
 	lines, err := readContentLines(path)
 	if err != nil {
@@ -114,9 +114,9 @@ func LoadGuardSpawns(path string) ([]domain.GuardSpawnEntry, error) {
 	return out, nil
 }
 
-// LoadLevelItems parses LevelItem.txt: "<seq> <level> <class> <type> <item>
-// [extras...]". Comment lines and the header are skipped; a line that is not
-// fully numeric is reported instead of silently dropped.
+// LoadLevelItems lê LevelItem.txt: "<seq> <level> <class> <type> <item>
+// [extras...]". Linhas de comentário e o cabeçalho são pulados; uma linha que não
+// é totalmente numérica é reportada em vez de descartada em silêncio.
 func LoadLevelItems(path string) ([]domain.LevelItemEntry, error) {
 	lines, err := readContentLines(path)
 	if err != nil {
@@ -159,10 +159,10 @@ func LoadLevelItems(path string) ([]domain.LevelItemEntry, error) {
 	return out, nil
 }
 
-// LoadMobMercs parses MobMerc.txt blocks: a "#<n>" header followed by
-// key:value lines (MobName, GenerateIndex, Item_<slot>, RenewTime, RebornTime).
-// Item values keep every numeric token after the item index; "-" is a literal
-// separator in the file, not a value.
+// LoadMobMercs lê os blocos de MobMerc.txt: um cabeçalho "#<n>" seguido de
+// linhas key:value (MobName, GenerateIndex, Item_<slot>, RenewTime, RebornTime).
+// Os valores de Item mantêm todo token numérico após o índice do item; "-" é um
+// separador literal no arquivo, não um valor.
 func LoadMobMercs(path string) ([]domain.MobMercEntry, error) {
 	lines, err := readContentLines(path)
 	if err != nil {
@@ -241,18 +241,18 @@ func LoadMobMercs(path string) ([]domain.MobMercEntry, error) {
 	return out, nil
 }
 
-// GameConfig is the parsed gameconfig.txt: settings, the drop-bonus matrix and
-// the sections kept verbatim.
+// GameConfig é o gameconfig.txt lido: configurações, a matriz de bônus de drop e
+// as seções mantidas tal e qual.
 type GameConfig struct {
 	Settings []domain.GameSetting
 	Matrix   []domain.GameDropBonus
 }
 
-// LoadGameConfig parses gameconfig.txt. The file is six labelled sections:
-// three of "key value..." pairs, one "Item Drop Bonus" matrix and one "Treasure"
-// block kept as raw text. The matrix measured 8 rows of 16 values, so it is
-// stored with explicit row/col indices instead of assuming the 8x8 the issue
-// predicted.
+// LoadGameConfig lê gameconfig.txt. O arquivo tem seis seções rotuladas:
+// três de pares "key value...", uma matriz "Item Drop Bonus" e um bloco
+// "Treasure" mantido como texto cru. A matriz mediu 8 linhas de 16 valores, então
+// ela é guardada com índices de linha/coluna explícitos em vez de assumir o 8x8
+// que a issue previa.
 func LoadGameConfig(path string) (GameConfig, error) {
 	lines, err := readContentLines(path)
 	if err != nil {
@@ -345,7 +345,7 @@ func LoadGameConfig(path string) (GameConfig, error) {
 	return cfg, nil
 }
 
-// LoadRegions parses Regions.txt: "x1, y1, x2, y2 = Nome".
+// LoadRegions lê Regions.txt: "x1, y1, x2, y2 = Nome".
 func LoadRegions(path string) ([]domain.RegionEntry, error) {
 	lines, err := readContentLines(path)
 	if err != nil {

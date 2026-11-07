@@ -1,7 +1,7 @@
-// Package exptool restamps the kill-reward Exp field of the Release npc
-// templates with the balanced level curve (level.MobExpForLevel) — the Go
-// heir of the legacy ExpTool (Source/Code/_legacy/ExpTool/main.cpp:128), built for
-// issue #43 (shipped templates mixed Exp=0 with garbage values).
+// Package exptool restampa o campo Exp de recompensa de kill dos templates de npc
+// do Release com a curva de nível balanceada (level.MobExpForLevel) — o herdeiro Go
+// da ferramenta legada ExpTool (Source/Code/_legacy/ExpTool/main.cpp:128), feita para
+// a issue #43 (templates distribuídos misturavam Exp=0 com valores lixo).
 package exptool
 
 import (
@@ -28,22 +28,22 @@ type Entry struct {
 type Result struct {
 	Stamped []Entry
 	Skipped int // directories, NPCs/merchants and level-0 templates
-	// StampedVariant counts how many of Stamped were in one of the legacy
+	// StampedVariant conta quantos dos Stamped estavam em um dos layouts
 	// 756/920-byte layouts (data-formats.md §1.4.1). Those store Exp as a 32-bit
-	// field at a different offset, so savefmt.PutMobExp routes the write; the
-	// record is patched in place and the file keeps its size.
+	// campo em offset diferente, então savefmt.PutMobExp roteia a escrita; o
+	// registro é corrigido no lugar e o arquivo mantém seu tamanho.
 	StampedVariant int
-	// SkippedNonTemplate counts files that are not a STRUCT_MOB in any layout.
+	// SkippedNonTemplate conta arquivos que não são STRUCT_MOB em nenhum layout.
 	SkippedNonTemplate int
 }
 
-// Stamp walks dir (one raw STRUCT_MOB per file) and rewrites the Exp field of
-// every real monster (Merchant==0, Level>=1) with level.MobExpForLevel,
-// leaving every other byte untouched. NPC/merchant and level-0 templates are
-// skipped. All three template layouts are restamped — the mixed content tree
-// would otherwise keep 222 monsters on their shipped Exp while the boot log
-// told operators to run this tool (issue #244).
-// With dryRun the report is produced but nothing is written.
+// Stamp percorre dir (um STRUCT_MOB cru por arquivo) e reescreve o campo Exp de
+// todo monstro real (Merchant==0, Level>=1) com level.MobExpForLevel,
+// deixando todo outro byte intocado. Templates de NPC/mercador e de nível 0 são
+// pulados. Os três layouts de template são restampados — a árvore de conteúdo mista
+// continuaria com 222 monstros no Exp distribuído enquanto o log de boot
+// dizia aos operadores para rodar esta ferramenta (issue #244).
+// Com dryRun o relatório é produzido mas nada é escrito.
 func Stamp(dir string, dryRun bool) (Result, error) {
 	var res Result
 	entries, err := os.ReadDir(dir)
@@ -60,15 +60,15 @@ func Stamp(dir string, dryRun bool) (Result, error) {
 		if err != nil {
 			return res, fmt.Errorf("reading %s: %w", de.Name(), err)
 		}
-		// DecodeMobAny (not protocol.ParseMobBasics) because that one indexes the
-		// canonical offsets and would read garbage out of a legacy record.
+		// DecodeMobAny (não protocol.ParseMobBasics) porque aquele indexa os
+		// offsets canônicos e leria lixo de um registro legado.
 		mob, version, derr := savefmt.DecodeMobAny(raw)
 		if derr != nil {
 			res.SkippedNonTemplate++
 			continue
 		}
-		// CurrentScore.Merchant is the flag the tmServer honours, not the
-		// top-level Mob.Merchant — same field the NPC importer reads.
+		// CurrentScore.Merchant é a flag que o tmServer respeita, não o
+		// Mob.Merchant de topo — o mesmo campo que o importador de NPC lê.
 		lvl := mob.CurrentScore.Level
 		if mob.CurrentScore.Merchant != 0 || lvl < 1 {
 			res.Skipped++
@@ -105,7 +105,7 @@ func Stamp(dir string, dryRun bool) (Result, error) {
 	return res, nil
 }
 
-// cstr trims a fixed-width name field at the first NUL.
+// cstr corta um campo de nome de largura fixa no primeiro NUL.
 func cstr(b []byte) string {
 	if i := bytes.IndexByte(b, 0); i >= 0 {
 		b = b[:i]

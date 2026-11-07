@@ -2,9 +2,9 @@ package level
 
 import "testing"
 
-// The expected values are hand-derived from the general-field branch of
-// MobKilled.cpp:1272-1425 (see SoloExpReward). kefraLive is spelled out per
-// case because the default (false) halves every reward.
+// Os valores esperados são derivados à mão do ramo de campo geral de
+// MobKilled.cpp:1272-1425 (ver SoloExpReward). kefraLive é escrito caso a caso
+// porque o padrão (false) reduz pela metade toda recompensa.
 func TestSoloExpReward(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -23,14 +23,14 @@ func TestSoloExpReward(t *testing.T) {
 			ev: ExpEvents{KefraLive: true}, want: 850,
 		},
 		{
-			// As above, then Kefra down ÷2 = 500 → −15% = 425 (the 0.425·E default).
+			// Como acima, então queda de Kefra ÷2 = 500 → −15% = 425 (o padrão 0.425·E).
 			name: "kefra down halves", mobExp: 1000,
 			killerLevel: 50, mobLevel: 50, classMaster: classMortal,
 			ev: ExpEvents{}, want: 425,
 		},
 		{
-			// 450*100000/380=118421 → ÷1.25f=94736 → ×0.6=56841 → under the
-			// 100000 cap → −15% = 48315: the 450/(30+L) factor stays visible.
+			// 450*100000/380=118421 → ÷1.25f=94736 → ×0.6=56841 → abaixo do
+			// teto de 100000 → −15% = 48315: o fator 450/(30+L) continua visível.
 			name: "level 350 uncapped with 1.25f divisor", mobExp: 100_000,
 			killerLevel: 350, mobLevel: 350, classMaster: classMortal,
 			ev: ExpEvents{KefraLive: true}, want: 48_315,
@@ -48,7 +48,7 @@ func TestSoloExpReward(t *testing.T) {
 			ev: ExpEvents{KefraLive: true}, want: 1700,
 		},
 		{
-			// 450*2M/80 = 11.25M > 10M gate → the legacy skips the award entirely.
+			// 450*2M/80 = 11.25M > gate de 10M → o legado pula a concessão por inteiro.
 			name: "10M gate skips instead of clamping", mobExp: 2_000_000,
 			killerLevel: 50, mobLevel: 50, classMaster: classMortal,
 			ev: ExpEvents{KefraLive: true}, want: 0,
@@ -61,7 +61,7 @@ func TestSoloExpReward(t *testing.T) {
 			ev: ExpEvents{}, want: 74,
 		},
 		{
-			// Cap 1000 → newbie +25% = 1250 → +15% (not −15%) = 1437.
+			// Cap 1000 → newbie +25% = 1250 → +15% (não −15%) = 1437.
 			name: "newbie event", mobExp: 1000,
 			killerLevel: 50, mobLevel: 50, classMaster: classMortal,
 			ev: ExpEvents{NewbieEvent: true, KefraLive: true}, want: 1437,
@@ -96,8 +96,8 @@ func TestSoloExpReward(t *testing.T) {
 	}
 }
 
-// A default character (mortal) must out-earn the celestial routing that the
-// unset ClassMaster=0 used to fall into (issue #43: near-zero EXP).
+// Um personagem padrão (mortal) precisa render mais que o roteamento celestial
+// em que ClassMaster=0 sem valor caía (issue #43: EXP quase zero).
 func TestSoloExpReward_mortalNotOnCelestialPath(t *testing.T) {
 	ev := ExpEvents{}
 	mortal := SoloExpReward(1000, 20, 20, classMortal, 0, ev)
@@ -110,8 +110,8 @@ func TestSoloExpReward_mortalNotOnCelestialPath(t *testing.T) {
 	}
 }
 
-// The training-field reward is the event-free base times the multiplier
-// (issue #383); the global events must not move it.
+// A recompensa do Campo de Treino é a base sem eventos vezes o multiplicador
+// (issue #383); os eventos globais não podem alterá-la.
 func TestTrainingFieldExpReward(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -122,15 +122,15 @@ func TestTrainingFieldExpReward(t *testing.T) {
 		mult        int64
 		want        int64
 	}{
-		// Same level, eMob cap 1000 → ×6, with no Kefra ÷2 nor −15%.
+		// Mesmo nível, teto eMob 1000 → ×6, sem o ÷2 do Kefra e sem −15%.
 		{name: "base times multiplier", mobExp: 1000, killerLevel: 20, mobLevel: 20, mult: 6, want: 6000},
 		// Cap 1000 → +50% item bonus = 1500 → ×6.
 		{name: "item bonus before multiplier", mobExp: 1000, killerLevel: 20, mobLevel: 20, expBonus: 50, mult: 6, want: 9000},
 		{name: "multiplier one is the raw base", mobExp: 1000, killerLevel: 20, mobLevel: 20, mult: 1, want: 1000},
 		{name: "multiplier zero gives nothing", mobExp: 1000, killerLevel: 20, mobLevel: 20, mult: 0, want: 0},
-		// ExpApply penalty zeroes the base, so the multiplier cannot revive it.
+		// A penalidade de ExpApply zera a base, então o multiplicador não a reanima.
 		{name: "overleveled killer gets zero", mobExp: 1000, killerLevel: 100, mobLevel: 30, mult: 6, want: 0},
-		// Base 1M (cap binds) ×20 = 20M → capped at the 10M gate.
+		// Base 1M (o teto morde) ×20 = 20M → limitado pelo gate de 10M.
 		{name: "capped at award gate", mobExp: 1_000_000, killerLevel: 200, mobLevel: 200, mult: 20, want: soloExpGate},
 	}
 	for _, tt := range tests {

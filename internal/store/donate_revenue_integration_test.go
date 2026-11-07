@@ -1,14 +1,14 @@
 //go:build integration
 
-// Integration tests for the donate revenue read models (painel de faturamento).
-// They require a real database and are excluded from the default build. Run with:
+// Testes de integração dos modelos de leitura do faturamento de donate (painel de faturamento).
+// Eles exigem um banco real e ficam fora do build padrão. Rode com:
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 //
-// Orders are seeded with raw INSERTs rather than CreateTopupOrder because the
-// write path can only produce now() for created_at and has no way to set
-// confirmed_at — and the whole point of these tests is which date column each
-// figure is scoped to.
+// Os pedidos são semeados com INSERTs crus em vez de CreateTopupOrder porque o
+// caminho de escrita só consegue produzir now() para created_at e não tem como definir
+// confirmed_at — e o ponto todo destes testes é a qual coluna de data cada
+// número está vinculado.
 package store
 
 import (
@@ -21,7 +21,7 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// revenueFixture is a freshly-migrated store with the donate tables emptied.
+// revenueFixture é um store recém-migrado com as tabelas de donate esvaziadas.
 func revenueFixture(t *testing.T) (context.Context, *pgxpool.Pool, *Store) {
 	t.Helper()
 	ctx := context.Background()
@@ -48,7 +48,7 @@ func seedAccount(t *testing.T, ctx context.Context, pool *pgxpool.Pool, name, em
 	return id
 }
 
-// seedOrder inserts one order with explicit timestamps. confirmedAt nil = PENDING.
+// seedOrder insere um pedido com timestamps explícitos. confirmedAt nil = PENDING.
 func seedOrder(t *testing.T, ctx context.Context, pool *pgxpool.Pool, ref string, accID int64,
 	credits int32, cents int64, method int16, createdAt time.Time, confirmedAt *time.Time,
 ) {
@@ -79,9 +79,9 @@ func window(from, to time.Time) RevenueWindow { return RevenueWindow{From: from,
 
 // --- revenue recognition ---
 
-// TestRevenueTotalsRecognizesOnConfirmedAt pins the core accounting rule: an
-// order created in January but settled in February is FEBRUARY revenue. January
-// still sees it as funnel volume (created_orders) but not as money.
+// TestRevenueTotalsRecognizesOnConfirmedAt fixa a regra contábil central: um
+// pedido criado em janeiro mas liquidado em fevereiro é receita de FEVEREIRO. Janeiro
+// ainda o vê como volume de funil (created_orders), mas não como dinheiro.
 func TestRevenueTotalsRecognizesOnConfirmedAt(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_recog", "a@b.c", "player", 0)
@@ -116,8 +116,8 @@ func TestRevenueTotalsRecognizesOnConfirmedAt(t *testing.T) {
 	}
 }
 
-// TestRevenueTotalsExcludesPendingFromGross: a PENDING order is funnel volume and
-// pending_cents, never revenue.
+// TestRevenueTotalsExcludesPendingFromGross: um pedido PENDING é volume de funil e
+// pending_cents, nunca receita.
 func TestRevenueTotalsExcludesPendingFromGross(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_pending", "a@b.c", "player", 0)
@@ -138,7 +138,7 @@ func TestRevenueTotalsExcludesPendingFromGross(t *testing.T) {
 	}
 }
 
-// TestRevenueByMethodSplitsGateways checks the per-gateway breakdown.
+// TestRevenueByMethodSplitsGateways confere a quebra por gateway.
 func TestRevenueByMethodSplitsGateways(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_method", "a@b.c", "player", 0)
@@ -166,10 +166,10 @@ func TestRevenueByMethodSplitsGateways(t *testing.T) {
 
 // --- series bucketing ---
 
-// TestRevenueSeriesMonthBoundaryBRT is the timezone test. Both orders settle on
-// 2026-02-01 in UTC, but in America/Sao_Paulo (UTC-3) the first is still
-// 2026-01-31T22:00 and belongs to JANUARY. It is run with the session forced to
-// UTC to prove the three-argument date_trunc ignores the session TimeZone.
+// TestRevenueSeriesMonthBoundaryBRT é o teste de fuso. Os dois pedidos liquidam em
+// 2026-02-01 em UTC, mas em America/Sao_Paulo (UTC-3) o primeiro ainda é
+// 2026-01-31T22:00 e pertence a JANEIRO. Roda com a sessão forçada para
+// UTC para provar que o date_trunc de três argumentos ignora o TimeZone da sessão.
 func TestRevenueSeriesMonthBoundaryBRT(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	if _, err := pool.Exec(ctx, `SET TIME ZONE 'UTC'`); err != nil {
@@ -203,7 +203,7 @@ func TestRevenueSeriesWeekStartsMonday(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_week", "a@b.c", "player", 0)
 
-	// 2026-03-08 is a Sunday, 2026-03-09 a Monday (both midday BRT).
+	// 2026-03-08 é um domingo, 2026-03-09 uma segunda (ambos meio-dia BRT).
 	sun := mustTime(t, "2026-03-08T15:00:00Z")
 	mon := mustTime(t, "2026-03-09T15:00:00Z")
 	seedOrder(t, ctx, pool, "wk-sun", acc, 10, 100, 1, sun, &sun)
@@ -223,8 +223,8 @@ func TestRevenueSeriesWeekStartsMonday(t *testing.T) {
 	}
 }
 
-// TestRevenueSeriesFillsEmptyBuckets: a 5-day window with orders only on days 1
-// and 5 still returns 5 rows, so the chart axis is continuous.
+// TestRevenueSeriesFillsEmptyBuckets: uma janela de 5 dias com pedidos só nos dias 1
+// e 5 ainda devolve 5 linhas, então o eixo do gráfico é contínuo.
 func TestRevenueSeriesFillsEmptyBuckets(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "rev_gaps", "a@b.c", "player", 0)
@@ -250,8 +250,8 @@ func TestRevenueSeriesFillsEmptyBuckets(t *testing.T) {
 	}
 }
 
-// TestRevenueSeriesEmptyWindowReturnsZeroedBuckets: no orders at all still yields
-// a continuous axis rather than an empty slice.
+// TestRevenueSeriesEmptyWindowReturnsZeroedBuckets: nenhum pedido ainda produz
+// um eixo contínuo em vez de uma fatia vazia.
 func TestRevenueSeriesEmptyWindowReturnsZeroedBuckets(t *testing.T) {
 	ctx, _, s := revenueFixture(t)
 	w := window(mustTime(t, "2026-06-01T03:00:00Z"), mustTime(t, "2026-06-04T03:00:00Z"))
@@ -269,7 +269,7 @@ func TestRevenueSeriesEmptyWindowReturnsZeroedBuckets(t *testing.T) {
 	}
 }
 
-// TestRevenueSeriesRejectsUnknownBucket guards the defense-in-depth check.
+// TestRevenueSeriesRejectsUnknownBucket protege a checagem de defesa em profundidade.
 func TestRevenueSeriesRejectsUnknownBucket(t *testing.T) {
 	ctx, _, s := revenueFixture(t)
 	w := window(mustTime(t, "2026-06-01T00:00:00Z"), mustTime(t, "2026-06-02T00:00:00Z"))
@@ -280,8 +280,8 @@ func TestRevenueSeriesRejectsUnknownBucket(t *testing.T) {
 
 // --- order table ---
 
-// TestListTopupOrdersPaidUsesConfirmedAtBasis: the PAID filter selects the
-// confirmed_at variant, so an order created before the window but settled inside
+// TestListTopupOrdersPaidUsesConfirmedAtBasis: o filtro PAID seleciona a
+// variante de confirmed_at, então um pedido criado antes da janela mas liquidado dentro dela
 // it IS returned.
 func TestListTopupOrdersPaidUsesConfirmedAtBasis(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
@@ -303,7 +303,7 @@ func TestListTopupOrdersPaidUsesConfirmedAtBasis(t *testing.T) {
 		t.Errorf("confirmed_at = %v, want %v", rows[0].ConfirmedAt, confirmed)
 	}
 
-	// The created_at basis (no status filter) must NOT see it in February.
+	// A base created_at (sem filtro de status) NÃO deve vê-lo em fevereiro.
 	rows, _, err = s.ListTopupOrders(ctx, feb, TopupOrderFilter{}, 50, 0)
 	if err != nil {
 		t.Fatalf("list any-status: %v", err)
@@ -313,8 +313,8 @@ func TestListTopupOrdersPaidUsesConfirmedAtBasis(t *testing.T) {
 	}
 }
 
-// TestListTopupOrdersJoinsBuyerAndPayerProfile: identity comes from the JOIN, and
-// a buyer with no payer profile still appears (LEFT JOIN) with empty payer fields.
+// TestListTopupOrdersJoinsBuyerAndPayerProfile: a identidade vem do JOIN, e
+// um comprador sem perfil de pagador ainda aparece (LEFT JOIN) com campos de pagador vazios.
 func TestListTopupOrdersJoinsBuyerAndPayerProfile(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	withProfile := seedAccount(t, ctx, pool, "ord_withprof", "wp@x.c", "player", 0)
@@ -359,8 +359,8 @@ func TestListTopupOrdersJoinsBuyerAndPayerProfile(t *testing.T) {
 	}
 }
 
-// TestListTopupOrdersPagination covers the pager, including the fallbackTotal
-// path where a page past the end must still report the true total.
+// TestListTopupOrdersPagination cobre o paginador, incluindo o caminho de
+// fallbackTotal onde uma página além do fim ainda precisa informar o total verdadeiro.
 func TestListTopupOrdersPagination(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "ord_page", "a@b.c", "player", 0)
@@ -381,7 +381,7 @@ func TestListTopupOrdersPagination(t *testing.T) {
 	if len(rows) != 2 || total != 5 {
 		t.Fatalf("page(limit=2,offset=2) = %d rows total=%d, want 2/5", len(rows), total)
 	}
-	// Ordered confirmed_at DESC: offset 2 is the 3rd newest = 300 cents.
+	// Ordenado por confirmed_at DESC: offset 2 é o 3º mais novo = 300 centavos.
 	if rows[0].AmountCents != 300 || rows[1].AmountCents != 200 {
 		t.Errorf("page contents = (%d,%d), want (300,200)", rows[0].AmountCents, rows[1].AmountCents)
 	}
@@ -398,7 +398,7 @@ func TestListTopupOrdersPagination(t *testing.T) {
 	}
 }
 
-// TestListTopupOrdersFiltersStatusAndMethod covers the non-PAID variant's filters.
+// TestListTopupOrdersFiltersStatusAndMethod cobre os filtros da variante não-PAID.
 func TestListTopupOrdersFiltersStatusAndMethod(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	acc := seedAccount(t, ctx, pool, "ord_filter", "a@b.c", "player", 0)
@@ -437,8 +437,8 @@ func TestListTopupOrdersFiltersStatusAndMethod(t *testing.T) {
 
 // --- top buyers ---
 
-// TestListTopBuyersLifetimeVsWindow: the ranking is window-scoped but the
-// lifetime aggregate is not, and a buyer with no in-window order is absent.
+// TestListTopBuyersLifetimeVsWindow: o ranking é limitado à janela, mas o
+// agregado vitalício não é, e um comprador sem pedido na janela fica ausente.
 func TestListTopBuyersLifetimeVsWindow(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	a := seedAccount(t, ctx, pool, "buyer_a", "a@x.c", "player", 7)
@@ -447,10 +447,10 @@ func TestListTopBuyersLifetimeVsWindow(t *testing.T) {
 	old := mustTime(t, "2025-01-15T12:00:00Z")
 	inWin := mustTime(t, "2026-10-15T12:00:00Z")
 
-	// A: one big old order + one small in-window order.
+	// A: um pedido grande antigo + um pedido pequeno dentro da janela.
 	seedOrder(t, ctx, pool, "tb-a-old", a, 100, 90000, 1, old, &old)
 	seedOrder(t, ctx, pool, "tb-a-new", a, 10, 500, 1, inWin, &inWin)
-	// B: only an old order -> must not appear.
+	// B: só um pedido antigo -> não deve aparecer.
 	seedOrder(t, ctx, pool, "tb-b-old", b, 10, 50000, 1, old, &old)
 
 	w := window(mustTime(t, "2026-10-01T00:00:00Z"), mustTime(t, "2026-11-01T00:00:00Z"))
@@ -479,7 +479,7 @@ func TestListTopBuyersLifetimeVsWindow(t *testing.T) {
 		t.Errorf("donate_balance = %d, want 7", got.DonateBalance)
 	}
 
-	// Past-the-end page must still report the group count, not the order count.
+	// Página além do fim ainda precisa informar a contagem de grupos, não a de pedidos.
 	rows, total, err = s.ListTopBuyers(ctx, w, 50, 10)
 	if err != nil {
 		t.Fatalf("past-end: %v", err)
@@ -491,10 +491,10 @@ func TestListTopBuyersLifetimeVsWindow(t *testing.T) {
 
 // --- donate ledger ---
 
-// TestListDonateLedgerCreditBalanceSubjectIsCreditedAccount is THE critical test.
-// donate_shop_audit.account_id holds the MODERATOR for a manual credit; the
-// credited account lives only in the JSON. A naive report would bill the
-// moderator for every courtesy credit.
+// TestListDonateLedgerCreditBalanceSubjectIsCreditedAccount é O teste crítico.
+// donate_shop_audit.account_id guarda o MODERADOR num crédito manual; a
+// conta creditada vive só no JSON. Um relatório ingênuo cobraria o
+// moderador por todo crédito de cortesia.
 func TestListDonateLedgerCreditBalanceSubjectIsCreditedAccount(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	player := seedAccount(t, ctx, pool, "led_player", "p@x.c", "player", 0)
@@ -532,7 +532,7 @@ func TestListDonateLedgerCreditBalanceSubjectIsCreditedAccount(t *testing.T) {
 		t.Errorf("shop_item_id = %d, want 0 for a manual credit", e.ShopItemID)
 	}
 
-	// The subject filter must find it by the credited account, not the moderator.
+	// O filtro de sujeito precisa achá-lo pela conta creditada, não pelo moderador.
 	rows, _, err = s.ListDonateLedger(ctx, w, nil, player, 50, 0)
 	if err != nil {
 		t.Fatalf("subject filter: %v", err)
@@ -549,8 +549,8 @@ func TestListDonateLedgerCreditBalanceSubjectIsCreditedAccount(t *testing.T) {
 	}
 }
 
-// TestListDonateLedgerPurchaseIsNegativeAndSubjectIsBuyer: on a purchase the
-// subject and actor are the same account and the delta is a debit.
+// TestListDonateLedgerPurchaseIsNegativeAndSubjectIsBuyer: numa compra o
+// sujeito e o ator são a mesma conta e o delta é um débito.
 func TestListDonateLedgerPurchaseIsNegativeAndSubjectIsBuyer(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	buyer := seedAccount(t, ctx, pool, "led_buyer", "b@x.c", "player", 500)
@@ -589,8 +589,8 @@ func TestListDonateLedgerPurchaseIsNegativeAndSubjectIsBuyer(t *testing.T) {
 	}
 }
 
-// TestListDonateLedgerSurvivesDeletedOffer: shop_item_id is deliberately not an
-// FK, so history outlives the offer — with an empty title, not a missing row.
+// TestListDonateLedgerSurvivesDeletedOffer: shop_item_id deliberadamente não é
+// uma FK, então o histórico sobrevive à oferta — com título vazio, não com linha ausente.
 func TestListDonateLedgerSurvivesDeletedOffer(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	buyer := seedAccount(t, ctx, pool, "led_del_buyer", "b@x.c", "player", 500)
@@ -625,8 +625,8 @@ func TestListDonateLedgerSurvivesDeletedOffer(t *testing.T) {
 	}
 }
 
-// TestListDonateLedgerExcludesCatalogActions: CRUD audit rows move no wallet and
-// must never reach the ledger.
+// TestListDonateLedgerExcludesCatalogActions: linhas de auditoria de CRUD não movem carteira e
+// nunca podem chegar ao extrato.
 func TestListDonateLedgerExcludesCatalogActions(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	mod := seedAccount(t, ctx, pool, "led_cat_mod", "m@x.c", "moderator", 0)
@@ -688,7 +688,7 @@ func TestDonateLedgerTotals(t *testing.T) {
 
 // --- account search ---
 
-// TestSearchAccountsByNamePrefix covers the prefix match and the LIKE escaping.
+// TestSearchAccountsByNamePrefix cobre o casamento por prefixo e o escape do LIKE.
 func TestSearchAccountsByNamePrefix(t *testing.T) {
 	ctx, pool, s := revenueFixture(t)
 	seedAccount(t, ctx, pool, "zarco_one", "1@x.c", "player", 5)
@@ -709,7 +709,7 @@ func TestSearchAccountsByNamePrefix(t *testing.T) {
 		t.Errorf("second role = %q, want admin", got[1].Role)
 	}
 
-	// A literal '%' must be escaped, not treated as a wildcard.
+	// Um '%' literal precisa ser escapado, não tratado como curinga.
 	got, err = s.SearchAccountsByNamePrefix(ctx, "%", 20)
 	if err != nil {
 		t.Fatalf("wildcard search: %v", err)

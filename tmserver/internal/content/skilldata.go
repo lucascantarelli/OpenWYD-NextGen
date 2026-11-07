@@ -9,30 +9,30 @@ import (
 	"strings"
 )
 
-// Skill-table dimensions (Basedef.h:171/200). MaxSkill is the per-class skill
-// count: skill index / MaxSkill is the owning class, and the index space runs
-// to MaxSkillIndex (Sephira skills live at 96+).
+// Dimensões da tabela de skills (Basedef.h:171/200). MaxSkill é a contagem de skills
+// por classe: índice de skill / MaxSkill é a classe dona, e o espaço de índices vai
+// até MaxSkillIndex (as skills de Sephira vivem em 96+).
 const (
 	MaxSkill      = 24
 	MaxSkillIndex = 248
 )
 
-// affectTimeDivisor scales the raw column-12 AffectTime at load, exactly as the
-// legacy loader does (Basedef.cpp:6708).
+// affectTimeDivisor escala o AffectTime cru da coluna 12 no carregamento, exatamente
+// como o loader legado faz (Basedef.cpp:6708).
 //
-// This used to be 8 — the issue #92 attempt at shortening buff durations. That
-// knob sat in the wrong place: the division is INTEGER, so it cost the short tail
-// of the table far more than the intended half (raw 30 went 30/4=7 → 30/8=3,
-// −57%, which is what issue #236 reported), and it never touched the term that
-// actually dominates the duration, the (100+Special)/100 mastery multiplier. The
-// tuning now lives in one place, world.AffectDuration, applied when a CAST
-// installs the affect — see issue #229 and world/affect.go.
+// Isto já foi 8 — a tentativa da issue #92 de encurtar durações de buff. Esse
+// botão estava no lugar errado: a divisão é INTEIRA, então custava à cauda curta
+// da tabela muito mais que a metade pretendida (30 cru ia de 30/4=7 → 30/8=3,
+// −57%, que é o que a issue #236 relatou), e nunca tocava o termo que
+// de fato domina a duração, o multiplicador de maestria (100+Special)/100. O
+// ajuste agora vive num lugar só, world.AffectDuration, aplicado quando uma
+// CONJURAÇÃO instala o affect — ver issue #229 e world/affect.go.
 const affectTimeDivisor = 4
 
-// Spell is one STRUCT_SPELL row of SkillData.csv (Basedef.h, loaded by
-// BASE_InitializeSkill, Basedef.cpp:6657). Field names match the struct; the
-// Act[] animation bytes are dropped (client-side only). Name is the trailing
-// CSV column, which the legacy server never parses — kept here for logs.
+// Spell é uma linha STRUCT_SPELL do SkillData.csv (Basedef.h, carregada por
+// BASE_InitializeSkill, Basedef.cpp:6657). Os nomes de campo seguem a struct; os
+// bytes de animação de Act[] são descartados (só do lado do cliente). Name é a
+// coluna final do CSV, que o servidor legado nunca lia — mantida aqui para logs.
 type Spell struct {
 	Index             int
 	SkillPoint        int // learn cost in skill points
@@ -57,20 +57,20 @@ type Spell struct {
 	Name              string
 }
 
-// SkillKind selects which CurrentScore.Special[1..3] drives a skill:
+// SkillKind seleciona qual CurrentScore.Special[1..3] conduz uma skill:
 // (index % MaxSkill) / 8 + 1 (_MSG_Attack.cpp).
 func SkillKind(index int) int { return index%MaxSkill/8 + 1 }
 
-// SkillClass is the class that owns a skill index (index / MaxSkill).
+// SkillClass é a classe dona de um índice de skill (index / MaxSkill).
 func SkillClass(index int) int { return index / MaxSkill }
 
-// SkillData is the skill catalog indexed by STRUCT_SPELL index (g_pSpell).
+// SkillData é o catálogo de skills indexado pelo índice de STRUCT_SPELL (g_pSpell).
 type SkillData struct {
 	skills map[int]Spell
 }
 
-// NewSkillData builds a catalog from explicit spells (tests/tools); rows with
-// an out-of-range Index are skipped, like the file loader.
+// NewSkillData monta um catálogo a partir de spells explícitas (testes/ferramentas);
+// linhas com Index fora da faixa são puladas, como no loader de arquivo.
 func NewSkillData(spells []Spell) *SkillData {
 	s := &SkillData{skills: make(map[int]Spell, len(spells))}
 	for _, sp := range spells {
@@ -82,16 +82,16 @@ func NewSkillData(spells []Spell) *SkillData {
 	return s
 }
 
-// Get returns the spell for a skill index.
+// Get devolve a spell de um índice de skill.
 func (s *SkillData) Get(index int) (Spell, bool) { e, ok := s.skills[index]; return e, ok }
 
-// Len returns the number of loaded skills.
+// Len devolve o número de skills carregadas.
 func (s *SkillData) Len() int { return len(s.skills) }
 
-// LoadSkillData reads SkillData.csv exactly as BASE_InitializeSkill: the index
-// comes from column 0 (NOT the row number — indexes are sparse past 149), rows
-// with index outside [0,MaxSkillIndex) are skipped, and AffectTime is scaled
-// after parsing (÷4, matching the legacy loader).
+// LoadSkillData lê SkillData.csv exatamente como BASE_InitializeSkill: o índice
+// vem da coluna 0 (NÃO do número da linha — os índices são esparsos além de 149),
+// linhas com índice fora de [0,MaxSkillIndex) são puladas, e AffectTime é
+// escalado após o parse (÷4, igual ao loader legado).
 func LoadSkillData(path string) (*SkillData, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -110,10 +110,10 @@ func parseSkillData(r io.Reader) (*SkillData, error) {
 			continue
 		}
 		fields := strings.Split(line, ",")
-		// The legacy sscanf consumes exactly 22 tokens: 13 ints, the 2 dotted
-		// Act strings, then 7 ints. Rows have 23 or 24 columns; whatever sits
-		// between Passive and Name on 24-column rows is ignored by the
-		// original loader, so it is ignored here too (parity).
+		// O sscanf legado consome exatamente 22 tokens: 13 ints, as 2 strings
+		// Act pontuadas, depois 7 ints. As linhas têm 23 ou 24 colunas; o que estiver
+		// entre Passive e Name nas linhas de 24 colunas é ignorado pelo
+		// loader original, então é ignorado aqui também (paridade).
 		if len(fields) < 22 {
 			continue
 		}

@@ -9,8 +9,8 @@ import (
 func TestLoadNPCGenerators(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "NPCGener.txt")
-	// gen[0] mirrors a real Start/Dest patrol block (Coliseu): waypoints land in
-	// SegX[0] (Start) and SegX[4] (Dest) exactly as ParseString maps them.
+	// gen[0] espelha um bloco real de patrulha Start/Dest (Coliseu): os waypoints caem em
+	// SegX[0] (Start) e SegX[4] (Dest) exatamente como ParseString os mapeia.
 	const sample = `// header comment
 #	[   0]
 	MinuteGenerate:	-1
@@ -87,7 +87,7 @@ func TestLoadNPCGenerators(t *testing.T) {
 	}
 }
 
-// TestLoadNPCGeneratorsReal parses the shipped NPCGener.txt if present.
+// TestLoadNPCGeneratorsReal lê o NPCGener.txt distribuído, se presente.
 func TestLoadNPCGeneratorsReal(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "tmserver", "content", "TMsrv", "run", "NPCGener.txt")
 	if _, err := os.Stat(path); err != nil {

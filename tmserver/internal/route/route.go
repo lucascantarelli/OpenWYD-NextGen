@@ -1,29 +1,29 @@
-// Package route ports the original tile pathfinding: BASE_GetRoute's greedy
-// 8-direction line-walk over the height grid (Basedef.cpp:6194-6482) and
-// BASE_ApplyAttribute's blocked-tile bake (Basedef.cpp:2624-2647). It is pure
-// (no world state) so the walk can be golden-tested against synthetic maps.
+// Package route porta o pathfinding de tiles original: o line-walk guloso de
+// 8 direções do BASE_GetRoute sobre o grid de altura (Basedef.cpp:6194-6482) e o
+// bake de tiles bloqueados do BASE_ApplyAttribute (Basedef.cpp:2624-2647). É puro
+// (sem estado de mundo) para o passeio poder ser testado golden contra mapas sintéticos.
 package route
 
 import "openwyd-nextgen/tmserver/internal/content"
 
 const (
-	// MaxRoute is MAX_ROUTE (Basedef.h:184): the longest route the original
-	// fills per call, so a walk advances at most MaxRoute-1 steps.
+	// MaxRoute é MAX_ROUTE (Basedef.h:184): a rota mais longa que o original
+	// preenche por chamada, então um passeio avança no máximo MaxRoute-1 passos.
 	MaxRoute = 24
-	// MH is the max height step a walker can climb/descend between adjacent
-	// tiles (Basedef.h:194): a neighbour is passable iff its height is within
+	// MH é o maior degrau de altura que um andarilho sobe/desce entre tiles
+	// adjacentes (Basedef.h:194): um vizinho é passável sse sua altura estiver
 	// (cur-MH, cur+MH) exclusive.
 	MH = 8
-	// Blocked is the height Bake writes into cells whose attribute has bit 2
-	// set — outside every (cur±MH) window, so nothing can step in or out.
+	// Blocked é a altura que o Bake escreve em células cujo atributo tem o bit 2
+	// ligado — fora de toda janela (cur±MH), então nada pode entrar ou sair.
 	Blocked = 127
 )
 
-// Bake burns the AttributeMap into the height grid, exactly as the original does
+// Bake grava o AttributeMap no grid de altura, exatamente como o original faz
 // once at boot (Server.cpp:7954 → BASE_ApplyAttribute, Basedef.cpp:2624-2647):
-// each attribute byte covers a 4×4 block of height cells ((x>>2)&0x3FF), and
-// att&2 marks the block impassable (height ← 127). Mutates h.Data; call once
-// before wiring the grid into the AI.
+// cada byte de atributo cobre um bloco 4×4 de células de altura ((x>>2)&0x3FF), e
+// att&2 marca o bloco como intransponível (altura ← 127). Muta h.Data; chame
+// uma vez antes de ligar o grid na IA.
 func Bake(h, attr *content.Grid) {
 	for y := 0; y < h.Dim; y++ {
 		row := h.Data[y*h.Dim : (y+1)*h.Dim]
@@ -36,23 +36,23 @@ func Bake(h, attr *content.Grid) {
 	}
 }
 
-// Next ports BASE_GetRoute (Basedef.cpp:6194-6482): from (x,y) it walks up to
-// min(distance, MaxRoute-1) greedy steps toward (tx,ty) and returns where it
-// stopped. Each step tries the exact branch order of the original — the primary
-// direction from the sign of (tx-x, ty-y), then its lateral fallbacks — taking
-// the first passable neighbour (height within ±MH of the current cell, signed
-// bytes); if none passes, or the walker reaches the target or the map border
-// margin, it stops early. moved=false means it could not take even one step
-// (the caller's "stuck" signal, Route[0]==0 in the original).
+// Next porta BASE_GetRoute (Basedef.cpp:6194-6482): de (x,y) ele anda até
+// min(distância, MaxRoute-1) passos gulosos em direção a (tx,ty) e devolve onde
+// parou. Cada passo tenta a ordem exata de ramos do original — a direção
+// primária pelo sinal de (tx-x, ty-y), depois suas alternativas laterais —
+// pegando o primeiro vizinho passável (altura dentro de ±MH da célula atual,
+// bytes com sinal); se nenhum passa, ou o andarilho chega ao alvo ou à margem
+// do mapa, ele para antes. moved=false significa que não conseguiu dar nem um
+// passo (o sinal de "travado" do chamador, Route[0]==0 no original).
 //
-// Quirk kept as-is: after the primary branches fail, the original gives up when
-// the target is within 1 on EITHER axis (Basedef.cpp:6379) — so the lateral
-// fallbacks never fire right next to the target.
+// Peculiaridade mantida como está: depois que os ramos primários falham, o original
+// desiste quando o alvo está a 1 em QUALQUER eixo (Basedef.cpp:6379) — então as
+// alternativas laterais nunca disparam bem ao lado do alvo.
 func Next(h *content.Grid, x, y, tx, ty, distance int) (nx, ny int, moved bool) {
 	sx, sy := x, y
 	dim := h.Dim
-	// ht reads a signed height: the original's pHeight is char (signed on MSVC
-	// x86) and real map cells go negative; Blocked=127 stays the max int8.
+	// ht lê uma altura com sinal: o pHeight do original é char (com sinal no MSVC
+	// x86) e células reais do mapa ficam negativas; Blocked=127 segue o int8 máximo.
 	ht := func(x, y int) int { return int(int8(h.Data[y*dim+x])) }
 
 	for i := 0; i < distance && i < MaxRoute-1; i++ {
@@ -68,8 +68,8 @@ func Next(h *content.Grid, x, y, tx, ty, distance int) (nx, ny int, moved bool) 
 		if tx == x && ty == y {
 			break // arrived
 		}
-		// Primary direction (branch order = Basedef.cpp:6232-6305). Note the
-		// digit convention: y-- is '2' and y++ is '8' (screen-space numpad).
+		// Direção primária (ordem de ramos = Basedef.cpp:6232-6305). Note a
+		// convenção de dígitos: y-- é '2' e y++ é '8' (numpad em espaço de tela).
 		if tx == x && ty < y && pass(0, -1) {
 			y--
 			continue
@@ -106,7 +106,7 @@ func Next(h *content.Grid, x, y, tx, ty, distance int) (nx, ny int, moved bool) 
 			y--
 			continue
 		}
-		// Diagonal fallbacks: try each axis of the blocked diagonal separately
+		// Alternativas diagonais: tenta cada eixo da diagonal bloqueada separadamente
 		// (Basedef.cpp:6307-6377).
 		if tx > x && ty < y && pass(1, 0) {
 			x++
@@ -140,12 +140,12 @@ func Next(h *content.Grid, x, y, tx, ty, distance int) (nx, ny int, moved bool) 
 			y--
 			continue
 		}
-		// Adjacent-to-target bailout (Basedef.cpp:6379) — before the straight-
+		// Saída por adjacência ao alvo (Basedef.cpp:6379) — antes das
 		// line deviations below.
 		if tx == x+1 || ty == y+1 || tx == x-1 || ty == y-1 {
 			break
 		}
-		// Straight-line deviations: the direct cardinal is blocked, sidestep
+		// Desvios em linha reta: a cardinal direta está bloqueada, desvia
 		// diagonally (Basedef.cpp:6386-6464).
 		if tx == x && ty > y && pass(1, 1) {
 			x++

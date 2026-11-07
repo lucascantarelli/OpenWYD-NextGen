@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// GuildMemberRow is one guild_member row as the admin surface reads it: the
-// character reference plus the level/slot the world will load on boot.
+// GuildMemberRow é uma linha de guild_member como a superfície de admin a lê: a
+// referência do personagem mais o nível/slot que o mundo carregará no boot.
 type GuildMemberRow struct {
 	GuildID     int32
 	CharacterID int64
@@ -16,10 +16,10 @@ type GuildMemberRow struct {
 	GuildLevel  int16
 }
 
-// GuildRoster returns every guild membership in one query, ordered so the leader
-// (level 9) comes first inside each guild. The table is small (a guild is 20ish
-// rows at most), so the admin surface groups it in Go instead of issuing one
-// query per guild.
+// GuildRoster devolve toda associação de guild numa consulta, ordenada para o
+// líder (nível 9) vir primeiro dentro de cada guild. A tabela é pequena (uma
+// guild tem no máximo umas 20 linhas), então a superfície de admin a agrupa em
+// Go em vez de emitir uma
 func (s *Store) GuildRoster(ctx context.Context) ([]GuildMemberRow, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT guild_id, character_id, account_id, slot, name, guild_level

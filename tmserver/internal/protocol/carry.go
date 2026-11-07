@@ -2,9 +2,9 @@ package protocol
 
 const updateCarrySize = HeaderSize + 64*ItemSize + 4
 
-// EncodeUpdateCarryBody builds MSG_UpdateCarry: the full Carry[64] snapshot plus
-// carried gold. The legacy sends this after Bolsa do Andarilho changes so the
-// client recalculates which inventory pages are available.
+// EncodeUpdateCarryBody monta MSG_UpdateCarry: o snapshot completo de Carry[64]
+// mais o ouro carregado. O legado envia isto após mudanças na Bolsa do Andarilho
+// para o cliente recalcular quais páginas de inventário estão disponíveis.
 func EncodeUpdateCarryBody(carry [64]SelItem, coin int32) []byte {
 	b := make([]byte, updateCarrySize-HeaderSize)
 	for i := 0; i < 64; i++ {

@@ -2,13 +2,13 @@ package refine
 
 import "openwyd-nextgen/tmserver/internal/world"
 
-// efAmount is EF_AMOUNT (ItemEffect.h): a stack size, when an item carries
-// one. Shared by the handler and combine packages, which both already depend
-// on refine for the sanc encoding.
+// efAmount é EF_AMOUNT (ItemEffect.h): um tamanho de pilha, quando o item carrega
+// um. Compartilhado pelos pacotes handler e combine, que já dependem
+// de refine para a codificação de sanc.
 const efAmount = 61
 
-// Amount returns an item's stack size (BASE_GetItemAmount), or 1 for an item
-// with no EF_AMOUNT pair.
+// Amount devolve o tamanho da pilha de um item (BASE_GetItemAmount), ou 1 para item
+// sem par EF_AMOUNT.
 func Amount(it world.Item) int {
 	for _, ef := range it.Effects {
 		if ef.Effect == efAmount {

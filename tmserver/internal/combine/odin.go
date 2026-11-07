@@ -1,7 +1,7 @@
-// Odin combine family (GetMatchCombineOdin, GetFunc.cpp:551; dispatched by
-// Exec_MSG_CombineItemOdin, _MSG_CombineItemOdin.cpp:132-722): 11 numbered
-// recipes plus a default "Composição de Sets" fallback keyed off an item's
-// catalog Extra field, the same "_selado" mechanism AnctResult already uses.
+// Família de combinação Odin (GetMatchCombineOdin, GetFunc.cpp:551; despachada por
+// Exec_MSG_CombineItemOdin, _MSG_CombineItemOdin.cpp:132-722): 11 receitas
+// numeradas mais um fallback padrão "Composição de Sets" disparado pelo campo
+// Extra do catálogo, o mesmo mecanismo "_selado" que AnctResult já usa.
 package combine
 
 import (
@@ -9,9 +9,9 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// Odin recipe ids, matching GetMatchCombineOdin's return values. OdinNoMatch
-// is the function's DEFAULT return (no numbered pattern matched) — it is NOT
-// "invalid": Exec always attempts "Composição de Sets" for it.
+// Ids de receita Odin, iguais aos valores de retorno de GetMatchCombineOdin. OdinNoMatch
+// é o retorno PADRÃO da função (nenhum padrão numerado casou) — NÃO é
+// "inválido": o Exec sempre tenta "Composição de Sets" para ele.
 const (
 	OdinNoMatch          = 0 // "Composição de Sets" — the default fallback
 	OdinItemCelestial    = 1 // Exec's own comment for this branch is "Composição de armas"
@@ -27,18 +27,18 @@ const (
 	OdinCapaCelestial    = 11
 )
 
-// blockedItem747 is already declared in match.go; reused here (Item[747]
-// blocks every Odin recipe the same way it blocks Anct).
+// blockedItem747 já é declarado em match.go; reusado aqui (Item[747]
+// bloqueia toda receita Odin do mesmo jeito que bloqueia Anct).
 
-// maxItemListOdin mirrors handler.maxItemList — MAX_ITEMLIST is undocumented;
-// same UNVERIFIED placeholder used everywhere else in this fork.
+// maxItemListOdin espelha handler.maxItemList — MAX_ITEMLIST não é documentado;
+// mesmo valor provisório UNVERIFIED usado no resto deste fork.
 const maxItemListOdin = 30000
 
-// MatchOdin is the GetMatchCombineOdin port. items must have exactly 8
-// elements (protocol.MaxCombine / MAX_COMBINE, Basedef.h:173); a short slice
-// never matches. It returns the recipe id 0..11 — 0 means "no numbered
-// pattern matched", which the caller still routes to "Composição de Sets",
-// NOT to an invalid/no-op response.
+// MatchOdin é o porte de GetMatchCombineOdin. items precisa ter exatamente 8
+// elementos (protocol.MaxCombine / MAX_COMBINE, Basedef.h:173); slice curto
+// nunca casa. Devolve o id da receita 0..11 — 0 significa "nenhum padrão
+// numerado casou", que quem chama ainda encaminha para "Composição de Sets",
+// NÃO para uma resposta inválida/sem efeito.
 func MatchOdin(cat Catalog, items []world.Item) int {
 	for _, it := range items {
 		if int(it.Index) == blockedItem747 {
@@ -100,17 +100,17 @@ func MatchOdin(cat Catalog, items []world.Item) int {
 	return OdinNoMatch
 }
 
-// inRange reports whether lo < v <= hi (the "+12+" recipe's level window).
+// inRange diz se lo < v <= hi (a janela de nível da receita "+12+").
 func inRange(v, lo, hi int) bool { return v > lo && v <= hi }
 
-// isRuneOr3338 is the "+12+" recipe's per-slot ingredient gate: one of the
-// four elemental Secreta stones (5334-5337), or the neutral rune stone 3338.
+// isRuneOr3338 é o gate de ingrediente por slot da receita "+12+": uma das
+// quatro pedras elementais Secreta (5334-5337), ou a pedra de runa neutra 3338.
 func isRuneOr3338(idx int) bool {
 	return (idx >= 5334 && idx <= 5337) || idx == 3338
 }
 
-// isPlus12Pos gates the "+12+" recipe to the equip slots it actually applies
-// to (g_pItemList[Item[2].sIndex].nPos == one of these).
+// isPlus12Pos limita a receita "+12+" aos slots de equip a que ela se aplica
+// (g_pItemList[Item[2].sIndex].nPos == um destes).
 func isPlus12Pos(pos int) bool {
 	switch pos {
 	case 2, 4, 8, 16, 32, 64, 192, 128:
@@ -119,21 +119,21 @@ func isPlus12Pos(pos int) bool {
 	return false
 }
 
-// g_pItemSancRate12 / g_pItemSancRate12Minus (Basedef.cpp:115-120): the
-// "+12+" recipe's rate bonuses (per rune stone present, and per the neutral
-// stone's own sanc level) and penalties (by the target's current level).
+// g_pItemSancRate12 / g_pItemSancRate12Minus (Basedef.cpp:115-120): os bônus
+// de taxa da receita "+12+" (por pedra de runa presente, e pelo nível de sanc
+// da própria pedra neutra) e as penalidades (pelo nível atual do alvo).
 var (
 	itemSancRate12      = [11]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 15}
 	itemSancRate12Minus = [4]int{2, 3, 4, 5}
 )
 
-// Plus12Rate accumulates the "+12+" recipe's success rate
-// (_MSG_CombineItemOdin.cpp:257-322): a base rate, +itemSancRate12[0] per rune
-// stone (5334-5337) among the 8 slots, +itemSancRate12[1..9] keyed by stone
-// 3338's own level (0..9), a count of item 4043 ("protect") occurrences, and
-// finally a penalty from itemSancRate12Minus keyed by target's CURRENT level
-// (12/13/14/15 — 11 pays no penalty). items must be the same 8-slot input
-// MatchOdin saw; target is items[2], read before the level bump.
+// Plus12Rate acumula a taxa de sucesso da receita "+12+"
+// (_MSG_CombineItemOdin.cpp:257-322): uma taxa base, +itemSancRate12[0] por pedra
+// de runa (5334-5337) entre os 8 slots, +itemSancRate12[1..9] indexado pelo
+// nível da pedra 3338 (0..9), a contagem de ocorrências do item 4043 ("protect") e
+// por fim uma penalidade de itemSancRate12Minus indexada pelo nível ATUAL do
+// alvo (12/13/14/15 — 11 não paga penalidade). items precisa ser a mesma entrada
+// de 8 slots que MatchOdin viu; target é items[2], lido antes do aumento de nível.
 func Plus12Rate(baseRate int, items []world.Item) (rate, protect int) {
 	rate = baseRate
 	for _, it := range items {
@@ -163,10 +163,10 @@ func Plus12Rate(baseRate int, items []world.Item) (rate, protect int) {
 	return rate, protect
 }
 
-// Plus12NewLevel is the "+12+" recipe's level ladder
-// (_MSG_CombineItemOdin.cpp:333-352): +11→12, +12→13, +13→14, +14→15. Any
-// other level (already excluded by the caller's level>10 && level<=15 gate,
-// but guarded here too) reports no bump.
+// Plus12NewLevel é a escada de nível da receita "+12+"
+// (_MSG_CombineItemOdin.cpp:333-352): +11→12, +12→13, +13→14, +14→15. Qualquer
+// outro nível (já excluído pelo gate level>10 && level<=15 do chamador,
+// mas protegido aqui também) não reporta aumento.
 func Plus12NewLevel(level int) (int, bool) {
 	switch level {
 	case 11:

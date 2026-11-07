@@ -2,9 +2,9 @@ package refine
 
 import "openwyd-nextgen/tmserver/internal/world"
 
-// bonusValue3/2/4/5 are g_pBonusValue3/2/4/5 (Basedef.cpp:432/467/396/353):
-// SetItemBonus2's reroll pools, one per equip slot class. Each row is
-// {effect1, value1, effect2, value2}.
+// bonusValue3/2/4/5 são g_pBonusValue3/2/4/5 (Basedef.cpp:432/467/396/353):
+// os bolsões de re-sorteio do SetItemBonus2, um por classe de slot de equip. Cada linha é
+// {efeito1, valor1, efeito2, valor2}.
 var (
 	bonusValue3 = [25][4]int{ // Elmo (nPos 2)
 		{4, 60, 26, 18}, {4, 60, 26, 15}, {4, 60, 26, 12},
@@ -55,23 +55,23 @@ var (
 	}
 )
 
-// classeSancCap is the +6 ceiling SetItemBonus2 puts on the sanc it bumps
-// (Server.cpp:2727-2739 and its three siblings) — distinct from the dust
-// path's own caps, and never lowered, only raised toward it.
+// classeSancCap é o teto +6 que SetItemBonus2 impõe ao sanc que ele aumenta
+// (Server.cpp:2727-2739 e seus três irmãos) — diferente do teto próprio do
+// caminho de pó, e nunca reduzido, só elevado até ele.
 const classeSancCap = 6
 
-// efDamageBonus is EF_DAMAGE (ItemEffect.h:4), reused here for the boot-only
-// clamp below.
+// efDamageBonus é EF_DAMAGE (ItemEffect.h:4), reusado aqui para o limite
+// só de boot abaixo.
 const efDamageBonus = 2
 
-// classeSancEffect is EF_SANC (ItemEffect.h:100). Kept local (rather than
-// exported from this package) because SetItemBonus2 checks slot 0
-// specifically, not the general readSlot/writeSlot scan the dust path uses.
+// classeSancEffect é EF_SANC (ItemEffect.h:100). Mantido local (em vez de
+// exportado do pacote) porque SetItemBonus2 confere o slot 0
+// especificamente, não a varredura geral readSlot/writeSlot do caminho de pó.
 const classeSancEffect = efSanc
 
-// nPos equip-slot classes SetItemBonus2 rerolls (Basedef.h:1162+). Any other
-// nPos (weapons, accessories, …) is left completely untouched — the legacy
-// function simply has no `if` branch for them.
+// Classes de slot de equip que SetItemBonus2 re-sorteia (Basedef.h:1162+). Qualquer outro
+// nPos (armas, acessórios, …) fica totalmente intocado — a função
+// legada simplesmente não tem ramo `if` para eles.
 const (
 	nPosHelm      = 2
 	nPosChest     = 4
@@ -81,13 +81,13 @@ const (
 	bootDamageCap = 30
 )
 
-// ClasseBonus rerolls dest's sanc (capped at +6) and its two bonus effects,
-// selected by dest's equip slot nPos (SetItemBonus2, Server.cpp:2719-2861).
-// roll(n) must behave like rand()%n; itemAbility must sum an item's catalog +
-// instance effects for a given id (BASE_GetItemAbility), needed only for the
-// boot damage clamp. Reports whether nPos was one of the four covered slots —
-// the caller does not need to branch on it (an uncovered item is left
-// unchanged, matching the legacy exactly), but tests find it useful.
+// ClasseBonus re-sorteia o sanc de dest (limitado a +6) e seus dois efeitos de bônus,
+// escolhidos pelo nPos do slot de equip de dest (SetItemBonus2, Server.cpp:2719-2861).
+// roll(n) precisa se comportar como rand()%n; itemAbility precisa somar catálogo +
+// efeitos da instância de um id (BASE_GetItemAbility), necessário só para o
+// limite de dano no boot. Reporta se nPos era um dos quatro slots cobertos —
+// quem chama não precisa ramificar nisso (um item não coberto fica
+// inalterado, igual ao legado), mas os testes acham útil.
 func ClasseBonus(dest *world.Item, nPos int, roll func(int) int, itemAbility func(world.Item, uint8) int) bool {
 	var table [][4]int
 	switch nPos {
@@ -103,10 +103,10 @@ func ClasseBonus(dest *world.Item, nPos int, roll func(int) int, itemAbility fun
 		return false
 	}
 
-	// The table index is drawn BEFORE any sanc roll: every branch of
-	// SetItemBonus2 opens with `int _rand = rand()%N;` and only then touches
-	// stEffect[0] (Server.cpp:2723-2726 and its three siblings). Keeping that
-	// order is what makes a captured rand() sequence reproduce byte-for-byte.
+	// O índice da tabela é sorteado ANTES de qualquer sorteio de sanc: todo ramo de
+	// SetItemBonus2 abre com `int _rand = rand()%N;` e só então toca
+	// stEffect[0] (Server.cpp:2723-2726 e seus três irmãos). Manter essa
+	// ordem é o que faz uma sequência de rand() capturada reproduzir byte a byte.
 	row := table[roll(len(table))]
 
 	if dest.Effects[0].Effect == classeSancEffect {
@@ -131,9 +131,9 @@ func ClasseBonus(dest *world.Item, nPos int, roll func(int) int, itemAbility fun
 	return true
 }
 
-// clampBootDamage ports the boot-only EF_DAMAGE ceiling (Server.cpp:2845-2861):
-// a freshly-rolled EF_DAMAGE bonus is trimmed so the item's total damage
-// ability (catalog + instance, read AFTER the roll above) never exceeds 30.
+// clampBootDamage porta o teto de EF_DAMAGE só de boot (Server.cpp:2845-2861):
+// um bônus EF_DAMAGE recém-sorteado é aparado para o dano total do item
+// (catálogo + instância, lido DEPOIS do sorteio acima) nunca passar de 30.
 func clampBootDamage(dest *world.Item, itemAbility func(world.Item, uint8) int) {
 	for i := 1; i <= 2; i++ {
 		if dest.Effects[i].Effect != efDamageBonus {

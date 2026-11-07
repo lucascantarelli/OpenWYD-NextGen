@@ -11,7 +11,7 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// Store persists migrated data to PostgreSQL.
+// Store persiste os dados migrados no PostgreSQL.
 type Store struct {
 	pool *pgxpool.Pool
 }
@@ -19,9 +19,9 @@ type Store struct {
 // New wraps a pgx pool.
 func New(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
-// SaveAccount inserts an account with its characters, items and affects in a
-// single transaction, returning the new account id. The whole account is
-// atomic: any failure rolls back (no partial accounts).
+// SaveAccount insere uma conta com seus personagens, itens e affects numa
+// única transação, devolvendo o novo id de conta. A conta inteira é
+// atômica: qualquer falha faz rollback (sem contas parciais).
 func (s *Store) SaveAccount(ctx context.Context, acc domain.Account) (int64, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -81,9 +81,9 @@ func (s *Store) SaveAccount(ctx context.Context, acc domain.Account) (int64, err
 
 func insertCharacter(ctx context.Context, tx pgx.Tx, accountID int64, ch domain.Character) (int64, error) {
 	var id int64
-	// PKPoint defaults to neutral (75) for a freshly created character (the DB
-	// column DEFAULT covers a bare INSERT, but this column list is explicit, so a
-	// zero-value ch.PKPoint would otherwise override it with 0/chaos — issue #210).
+	// PKPoint volta ao padrão neutro (75) para um personagem recém-criado (o
+	// DEFAULT da coluna cobre um INSERT cru, mas esta lista de colunas é explícita,
+	// então um ch.PKPoint zerado sobreporia com 0/caos — issue #210).
 	pkPoint := ch.PKPoint
 	if pkPoint == 0 {
 		pkPoint = 75
@@ -127,8 +127,8 @@ func insertItem(ctx context.Context, tx pgx.Tx, kind string, accountID, charID *
 	return nil
 }
 
-// expiryTime maps a Unix-seconds expiry to a nullable timestamp (0 = permanent →
-// NULL), and back via expirySeconds on load.
+// expiryTime mapeia uma expiração em Unix-segundos para um timestamp anulável (0 = permanente →
+// NULL), e de volta via expirySeconds na carga.
 func expiryTime(unix int64) *time.Time {
 	if unix == 0 {
 		return nil
@@ -144,7 +144,7 @@ func expirySeconds(t *time.Time) int64 {
 	return t.Unix()
 }
 
-// byteArrToInt16 widens a byte slice to []int16 for a smallint[] column.
+// byteArrToInt16 alarga um vetor de bytes para []int16 para uma coluna smallint[].
 func byteArrToInt16(b []uint8) []int16 {
 	out := make([]int16, len(b))
 	for i, v := range b {

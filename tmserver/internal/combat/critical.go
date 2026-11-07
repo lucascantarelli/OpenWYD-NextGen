@@ -45,7 +45,7 @@ func initHitRate() [hitRateSize]int {
 }
 
 // DoubleCritical ports BASE_GetDoubleCritical. It mutates both progress counters
-// exactly like the legacy routine and returns the authoritative bitfield:
+// exatamente como a rotina legada e devolve o bitfield autoritativo:
 // bit 0 = total critical, bit 1 = partial critical.
 func DoubleCritical(r Rand, attackRun uint8, critical int, serverProgress, clientProgress *uint16) (uint8, bool) {
 	if clientProgress == nil {
@@ -70,8 +70,8 @@ func DoubleCritical(r Rand, attackRun uint8, critical int, serverProgress, clien
 	return flags, ret
 }
 
-// ParryRate ports GetParryRate. The return value is in thousandths and is
-// clamped to the legacy [1,650] range.
+// ParryRate porta GetParryRate. O valor de retorno é em milésimos e é
+// limitado à faixa legada [1,650].
 func ParryRate(targetDex, add, attackerDex, attackerRsv int) int {
 	if add > 100 {
 		add = 100
@@ -113,8 +113,8 @@ func ParryRate(targetDex, add, attackerDex, attackerRsv int) int {
 	return parry
 }
 
-// ResolveParry consumes the legacy rand()%1000+1 roll and returns 0 for a hit,
-// -3 for a parry/miss, or -4 for a blocked low parry roll.
+// ResolveParry consome o roll legado rand()%1000+1 e devolve 0 para acerto,
+// -3 para parry/erro, ou -4 para um roll baixo de parry bloqueado.
 func ResolveParry(r Rand, skillIndex, parryRate int, targetRsvBlock bool) int {
 	parry := parryRate
 	if skillIndex == 79 || skillIndex == 22 {

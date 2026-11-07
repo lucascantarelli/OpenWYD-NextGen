@@ -15,20 +15,20 @@ const (
 	jewelBaseIndex = 2441
 	blockedItem747 = 747
 
-	// anctResultSanc is the refine level BASE_SetItemSanc stamps on an Anct
-	// success (_MSG_CombineItem.cpp:100).
+	// anctResultSanc é o nível de refino que BASE_SetItemSanc grava num
+	// sucesso de Anct (_MSG_CombineItem.cpp:100).
 	anctResultSanc = 7
 )
 
-// Catalog holds the item metadata GetMatchCombine reads from g_pItemList.
+// Catalog guarda os metadados de item que GetMatchCombine lê de g_pItemList.
 type Catalog struct {
 	Unique     map[int]int
 	Extra      map[int]int
 	Effects    map[int][]content.BaseEffect
 	AnctChance [3]int
-	// Pos maps item index → nPos (equip-slot class). It backs BASE_GetItemAbility's
-	// EF_POS branch (see itemAbility), so both MatchAnct's sacrifice gate and
-	// MatchOdin's "+12+" recipe gate read it.
+	// Pos mapeia índice de item → nPos (classe de slot de equip). Sustenta o ramo
+	// EF_POS de BASE_GetItemAbility (ver itemAbility), então tanto o gate de sacrifício
+	// do MatchAnct quanto o da receita "+12+" do MatchOdin leem dele.
 	Pos   map[int]int
 	Grade map[int]int
 }
@@ -50,7 +50,7 @@ func validItems(items []world.Item, required int) bool {
 	return true
 }
 
-// MatchEhre returns the legacy recipe id (1..8), or 0 when no recipe matches.
+// MatchEhre devolve o id da receita legada (1..8), ou 0 quando nenhuma casa.
 func MatchEhre(items []world.Item) int {
 	if len(items) < 8 {
 		return 0
@@ -83,9 +83,9 @@ func MatchEhre(items []world.Item) int {
 	}
 }
 
-// MatchTiny returns its success rate. The impossible legacy EF_ITEMTYPE gate is
-// deliberately omitted: shipped content contains no values 4/5, so retaining it
-// makes the NPC permanently unusable (issue #292).
+// MatchTiny devolve sua taxa de sucesso. O gate EF_ITEMTYPE legado, impossível, é
+// omitido de propósito: o conteúdo entregue não tem valores 4/5, então mantê-lo
+// deixa o NPC permanentemente inutilizável (issue #292).
 func MatchTiny(cat Catalog, items []world.Item, base int) int {
 	if !validItems(items, 3) || itemAbility(cat, items[0], efMobType) != 1 {
 		return 0
@@ -166,7 +166,7 @@ func MatchAgatha(cat Catalog, items []world.Item, base int) int {
 	return base + cat.Grade[int(items[1].Index)]*5 + bonus
 }
 
-// MatchLindy identifies the deterministic Arch quest recipe.
+// MatchLindy identifica a receita determinística da quest Arch.
 func MatchLindy(items []world.Item) bool {
 	if !validItems(items, 7) || items[0].Index != 413 || items[1].Index != 413 || refine.Amount(items[0]) != 10 || refine.Amount(items[1]) != 10 || items[2].Index != 4127 {
 		return false
@@ -179,7 +179,7 @@ func MatchLindy(items []world.Item) bool {
 	return true
 }
 
-// MatchAlquimia returns 0..9, or -1 when no recipe matches.
+// MatchAlquimia devolve 0..9, ou -1 quando nenhuma receita casa.
 func MatchAlquimia(items []world.Item) int {
 	if len(items) < 8 {
 		return -1
@@ -215,9 +215,9 @@ func MatchAlquimia(items []world.Item) int {
 	return -1
 }
 
-// MatchAnct is the GetMatchCombine port (GetFunc.cpp:76). It returns the recipe
-// success rate (0 = invalid). A valid base item plus jewel yields rate 1; optional
-// sacrifice gear at sanc 7/8/9 adds g_pAnctChance[0..2].
+// MatchAnct é o porte de GetMatchCombine (GetFunc.cpp:76). Devolve a taxa de
+// sucesso da receita (0 = inválida). Item base válido mais joia dá taxa 1;
+// equipamento de sacrifício em sanc 7/8/9 soma g_pAnctChance[0..2].
 func MatchAnct(cat Catalog, items []world.Item) int {
 	for _, it := range items {
 		if int(it.Index) == blockedItem747 {
@@ -271,15 +271,15 @@ func MatchAnct(cat Catalog, items []world.Item) int {
 	return rate
 }
 
-// itemAbility is the BASE_GetItemAbility port (Basedef.cpp:1560-1600): the sum of
-// the catalog's static effects and the item instance's own effect pairs.
+// itemAbility é o porte de BASE_GetItemAbility (Basedef.cpp:1560-1600): a soma dos
+// efeitos estáticos do catálogo com os pares de efeito da instância do item.
 //
-// EF_POS is NOT one of those pairs. BASE_GetItemAbility adds g_pItemList[idx].nPos
-// before it ever scans stEffect[] (Basedef.cpp:1579-1580, and the identical
-// branches at :1741 and :1912), and ItemList.csv carries nPos as column 6 — the
-// token "EF_POS" appears in zero of its rows. Summing only the effect pairs
-// therefore made EF_POS always 0, which made MatchAnct reject every sacrifice item
-// and left the Compositor's Anct recipe unbuildable (issue #270).
+// EF_POS NÃO é um desses pares. BASE_GetItemAbility soma g_pItemList[idx].nPos
+// antes de varrer stEffect[] (Basedef.cpp:1579-1580, e os ramos idênticos
+// em :1741 e :1912), e ItemList.csv traz nPos como coluna 6 — o token
+// "EF_POS" aparece em zero linhas dele. Somar só os pares de efeito
+// portanto deixava EF_POS sempre 0, o que fazia o MatchAnct recusar todo item de
+// sacrifício e deixava a receita Anct do Compositor impossível (issue #270).
 func itemAbility(cat Catalog, it world.Item, eff uint8) int32 {
 	var sum int32
 	if eff == efPos {
@@ -298,13 +298,13 @@ func itemAbility(cat Catalog, it world.Item, eff uint8) int32 {
 	return sum
 }
 
-// AnctResult builds the Anct success item (game-rules.md §3.1): joia + Extra, sanc 7.
+// AnctResult monta o item de sucesso Anct (game-rules.md §3.1): joia + Extra, sanc 7.
 //
-// The result inherits item[0]'s effects wholesale — the legacy memcpy's the whole
-// STRUCT_ITEM before overwriting sIndex (_MSG_CombineItem.cpp:97) — and then
-// BASE_SetItemSanc writes 7 into whichever slot already carries a sanc pair. When
-// item[0] has none that call returns FALSE and the result keeps no sanc at all,
-// which refine.Set reproduces.
+// O resultado herda os efeitos de item[0] por inteiro — o legado copia todo o
+// STRUCT_ITEM antes de sobrescrever sIndex (_MSG_CombineItem.cpp:97) — e então
+// BASE_SetItemSanc grava 7 no slot que já carrega um par de sanc. Quando
+// item[0] não tem nenhum, a chamada devolve FALSE e o resultado fica sem sanc,
+// o que refine.Set reproduz.
 func AnctResult(cat Catalog, items []world.Item) world.Item {
 	result := items[0]
 	if len(items) < 2 {

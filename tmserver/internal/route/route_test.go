@@ -6,7 +6,7 @@ import (
 	"openwyd-nextgen/tmserver/internal/content"
 )
 
-// flat returns a dim×dim height grid of zeros with the given cells raised to h.
+// flat devolve um grid de altura dim×dim de zeros com as células dadas elevadas a h.
 func flat(dim int, h byte, cells ...[2]int) *content.Grid {
 	g := &content.Grid{Dim: dim, Data: make([]byte, dim*dim)}
 	for _, c := range cells {
@@ -41,16 +41,16 @@ func TestNextWalksAndArrives(t *testing.T) {
 	}
 }
 
-// TestNextDeviatesAroundWall: the direct east cell is Blocked, so the walker
-// takes the straight-line deviation (SE, Basedef.cpp:6446) and then converges
-// back via the NE diagonal-fallback — sliding around the wall like the original.
+// TestNextDeviatesAroundWall: a célula direta a leste está Blocked, então o andarilho
+// pega o desvio em linha reta (SE, Basedef.cpp:6446) e então converge
+// de volta pela alternativa diagonal NE — deslizando em volta do muro como o original.
 func TestNextDeviatesAroundWall(t *testing.T) {
 	g := flat(16, Blocked, [2]int{4, 3})
 	nx, ny, moved := Next(g, 3, 3, 8, 3, 6)
 	if !moved || nx != 8 || ny != 3 {
 		t.Fatalf("Next around wall = (%d,%d,%v), want (8,3,true)", nx, ny, moved)
 	}
-	// And the wall cell itself was never entered: re-walk one step at a time.
+	// E a célula do muro em si nunca foi entrada: refaça o passeio um passo por vez.
 	x, y := 3, 3
 	for i := 0; i < 6; i++ {
 		px, py := x, y
@@ -65,7 +65,7 @@ func TestNextDeviatesAroundWall(t *testing.T) {
 	t.Fatalf("single-stepping never reached the target, stopped at (%d,%d)", x, y)
 }
 
-// TestNextHeightStep: a neighbour is passable iff |Δheight| < MH (exclusive on
+// TestNextHeightStep: um vizinho é passável sse |Δheight| < MH (exclusivo em
 // both sides, Basedef.cpp:6232) — a 7 step passes, an 8 step blocks.
 func TestNextHeightStep(t *testing.T) {
 	pass := flat(16, 7, [2]int{6, 5})
@@ -76,7 +76,7 @@ func TestNextHeightStep(t *testing.T) {
 	if _, _, moved := Next(block, 5, 5, 6, 5, 1); moved {
 		t.Error("Δh=8 (=MH) must block")
 	}
-	// Signed heights: from a -6 cell to a 0 cell is Δ6 → passable.
+	// Alturas com sinal: de uma célula -6 para uma 0 é Δ6 → passável.
 	neg := flat(16, 0)
 	neg.Data[5*16+5] = uint8(0xFA) // int8(-6) two's-complement
 	if _, _, moved := Next(neg, 5, 5, 6, 5, 1); !moved {
@@ -84,9 +84,9 @@ func TestNextHeightStep(t *testing.T) {
 	}
 }
 
-// TestNextAdjacentQuirk pins the original's bailout (Basedef.cpp:6379): when the
-// target is within 1 on either axis and the primary step is blocked, the walker
-// gives up rather than sidestepping.
+// TestNextAdjacentQuirk fixa a saída do original (Basedef.cpp:6379): quando o
+// alvo está a 1 em qualquer eixo e o passo primário está bloqueado, o andarilho
+// desiste em vez de desviar.
 func TestNextAdjacentQuirk(t *testing.T) {
 	g := flat(16, Blocked, [2]int{5, 6})
 	nx, ny, moved := Next(g, 5, 5, 5, 6, 4)
@@ -95,7 +95,7 @@ func TestNextAdjacentQuirk(t *testing.T) {
 	}
 }
 
-// TestBake: each attribute byte covers a 4×4 height block; att&2 → Blocked
+// TestBake: cada byte de atributo cobre um bloco de altura 4×4; att&2 → Blocked
 // (BASE_ApplyAttribute, Basedef.cpp:2624-2647). Other bits leave heights alone.
 func TestBake(t *testing.T) {
 	h := &content.Grid{Dim: 8, Data: make([]byte, 64)}

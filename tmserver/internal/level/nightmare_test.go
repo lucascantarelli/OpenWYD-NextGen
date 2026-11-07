@@ -21,7 +21,7 @@ func TestNightmareExpReward(t *testing.T) {
 		{"arcane celestial CS", 2, 4, 50, 32000, 0, ExpEvents{KefraLive: true}, 51},
 		{"arcane super celestial", 2, 5, 50, 32000, 0, ExpEvents{KefraLive: true}, 51},
 		{"normal duplicate celestial divisor", 0, 3, 50, 10240000, 0, ExpEvents{KefraLive: true}, 0},
-		// 1024000 / 320 / 320 = 10; 6*10/10 = 6; 15% truncates to zero.
+		// 1024000 / 320 / 320 = 10; 6*10/10 = 6; 15% trunca para zero.
 		{"normal duplicate celestial divisor below gate", 0, 3, 50, 1024000, 0, ExpEvents{KefraLive: true}, 6},
 		{"mystic mortal divisor", 1, 2, 250, 103000, 0, ExpEvents{KefraLive: true}, 51000},
 		{"arcane mortal divisor", 2, 2, 250, 84000, 0, ExpEvents{KefraLive: true}, 51000},

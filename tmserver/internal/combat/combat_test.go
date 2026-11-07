@@ -6,8 +6,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/rng"
 )
 
-// seqRand returns predetermined Intn values in order, so each formula's rand()
-// calls are controlled and the math can be checked by hand.
+// seqRand devolve valores Intn predeterminados em ordem, então as chamadas de rand()
+// de cada fórmula são controladas e a matemática pode ser conferida à mão.
 type seqRand struct {
 	vals []int
 	i    int
@@ -107,16 +107,16 @@ func TestResolveHit(t *testing.T) {
 	}
 }
 
-// TestDamageWithMSVCLCG ties the formula to the real MSVC stream: with the
-// default seed the first rand() is 41, so 41%7=6 ⇒ rnd=110 ⇒ 90*110/100 = 99.
+// TestDamageWithMSVCLCG amarra a fórmula ao fluxo real da MSVC: com a
+// semente default o primeiro rand() é 41, então 41%7=6 ⇒ rnd=110 ⇒ 90*110/100 = 99.
 func TestDamageWithMSVCLCG(t *testing.T) {
 	if got := Damage(rng.New(), 100, 20, 10); got != 99 {
 		t.Errorf("Damage(LCG) = %d, want 99", got)
 	}
 }
 
-// TestResolveHitDeterministic confirms the same seed yields the same result
-// (the basis for exact golden cases from a clean boot).
+// TestResolveHitDeterministic confirma que a mesma semente dá o mesmo resultado
+// (a base para casos golden exatos a partir de um boot limpo).
 func TestResolveHitDeterministic(t *testing.T) {
 	in := HitInput{AttackerDamage: 250, TargetAC: 30, Master: 8, DoubleCritical: 2}
 	a := ResolveHit(rng.NewSeeded(1), in)

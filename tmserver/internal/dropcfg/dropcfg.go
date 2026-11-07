@@ -1,15 +1,15 @@
-// Package dropcfg folds the moderator drop-rate overlay (issue 34) into the
-// code defaults of package loot.
+// Package dropcfg dobra a sobreposição de taxa de drop do moderador (issue 34)
+// nos defaults de código do pacote loot.
 //
-// DropRate is a divisor per Carry slot (1 = always, 20000 = ultra rare) and it is
-// **code**, not content: loot.DropRate is filled in its init() from
-// Basedef.cpp:222. The overlay therefore replaces values in that table instead of
-// parsing a file, and it must be applied exactly once, at boot, before the world
-// loop starts — the same rule as -rates-editing and -mob-stat-editing.
+// DropRate é um divisor por slot de Carry (1 = sempre, 20000 = ultra raro) e é
+// **código**, não conteúdo: loot.DropRate é preenchido no init() a partir de
+// Basedef.cpp:222. A sobreposição, portanto, substitui valores nessa tabela em vez
+// de ler um arquivo, e precisa ser aplicada exatamente uma vez, no boot, antes do
+// laço do mundo começar — a mesma regra de -rates-editing e -mob-stat-editing.
 //
-// RNG parity: this package only writes numbers. No rand() call is added, removed
-// or reordered, so a boot with the overlay consumes the same sequence as one
-// without it (the difference is which slots can drop).
+// Paridade de RNG: este pacote só escreve números. Nenhuma chamada de rand() é
+// adicionada, removida ou reordenada, então um boot com a sobreposição consome a
+// mesma sequência de um sem ela (a diferença é quais slots podem dropar).
 package dropcfg
 
 import (
@@ -17,22 +17,22 @@ import (
 	"openwyd-nextgen/tmserver/internal/loot"
 )
 
-// MaxRate is the largest accepted divisor, matching the CHECK on
-// drop_rate_override.value and the web editor's range. Anything above it is
-// treated as invalid instead of silently clamping: a typo that makes a drop
-// impossible should be visible.
+// MaxRate é o maior divisor aceito, casando com o CHECK em
+// drop_rate_override.value e com a faixa do editor web. Qualquer valor acima
+// disso é tratado como inválido em vez de ser limitado em silêncio: um erro de
+// digitação que torna um drop impossível precisa ser visível.
 const MaxRate = droprate.MaxRate
 
-// Override is one edited Carry slot as the dbServer serves it.
+// Override é um slot de Carry editado, como o dbServer o entrega.
 type Override struct {
 	Slot  int
 	Value int64
 }
 
-// Apply writes every valid override into loot.DropRate and reports how many were
-// applied/ignored. Out-of-range slots and values are ignored (and counted), never
-// clamped: the portal already validates the same range, so an ignored row means
-// the table was edited out of band.
+// Apply escreve toda sobreposição válida em loot.DropRate e informa quantas foram
+// aplicadas/ignoradas. Slots e valores fora da faixa são ignorados (e contados),
+// nunca limitados: o portal já valida a mesma faixa, então uma linha ignorada
+// significa que a tabela foi editada fora de banda.
 func Apply(overrides []Override) (applied, ignored int) {
 	for _, o := range overrides {
 		if o.Slot < 0 || o.Slot >= len(loot.DropRate) || o.Value < 1 || o.Value > MaxRate {
@@ -45,6 +45,6 @@ func Apply(overrides []Override) (applied, ignored int) {
 	return applied, ignored
 }
 
-// Snapshot copies the current table, for logging and for tests that need to
-// restore the code defaults.
+// Snapshot copia a tabela atual, para logging e para testes que precisam
+// restaurar os defaults de código.
 func Snapshot() [64]int { return loot.DropRate }

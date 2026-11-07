@@ -9,20 +9,20 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// maxActivePlayCodes caps the unexpired codes per account: each "play in the
-// browser" click issues one, and only the newest few can still be in flight.
+// maxActivePlayCodes limita os códigos não expirados por conta: cada clique em
+// "jogar no navegador" emite um, e só os poucos mais novos ainda podem estar em voo.
 const maxActivePlayCodes = 5
 
-// PlayCodeIssue is the outcome of IssuePlayCode.
+// PlayCodeIssue é o resultado de IssuePlayCode.
 type PlayCodeIssue struct {
 	Name    string // canonical account name, the login field the code pairs with
 	Blocked bool   // true: no code was stored
 }
 
-// IssuePlayCode stores the hash of a one-time login code for an existing,
-// unblocked account (web client ADR 017). It drops the account's expired codes
-// and keeps at most maxActivePlayCodes, oldest first out. Returns ErrNotFound
-// when no account has that id.
+// IssuePlayCode guarda o hash de um código de login de uso único para uma conta
+// existente e desbloqueada (web client ADR 017). Descarta os códigos expirados da
+// conta e mantém no máximo maxActivePlayCodes, os mais antigos primeiro fora.
+// Devolve ErrNotFound quando nenhuma conta tem esse id.
 func (s *Store) IssuePlayCode(ctx context.Context, accountID int64, codeHash []byte, expiresAt time.Time) (PlayCodeIssue, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -30,7 +30,7 @@ func (s *Store) IssuePlayCode(ctx context.Context, accountID int64, codeHash []b
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// FOR UPDATE serializes concurrent issues for one account, so the cap holds.
+	// FOR UPDATE serializa emissões concorrentes para uma conta, então o limite se mantém.
 	var out PlayCodeIssue
 	err = tx.QueryRow(ctx, `SELECT name, is_blocked FROM account WHERE id = $1 FOR UPDATE`, accountID).
 		Scan(&out.Name, &out.Blocked)
@@ -64,9 +64,9 @@ func (s *Store) IssuePlayCode(ctx context.Context, accountID int64, codeHash []b
 	return out, nil
 }
 
-// ConsumePlayCode reports whether codeHash is an unexpired code of accountID
-// and deletes it in the same statement, so a code logs in at most once even
-// under concurrent logins.
+// ConsumePlayCode informa se codeHash é um código não expirado de accountID
+// e o apaga no mesmo comando, então um código loga no máximo uma vez mesmo
+// sob logins concorrentes.
 func (s *Store) ConsumePlayCode(ctx context.Context, accountID int64, codeHash []byte) (bool, error) {
 	var one int
 	err := s.pool.QueryRow(ctx, `

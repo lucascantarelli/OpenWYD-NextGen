@@ -2,22 +2,22 @@ package protocol
 
 import "encoding/binary"
 
-// Type is the 2-byte HEADER.Type field: a message base OR'd with direction
-// flags (protocol-spec.md §2, Basedef.h:1212-1221). The dispatcher compares the
-// full wire value (base + flags) directly, so a constant with multiple flags
-// has a single wire value that matches in any context.
+// Type é o campo HEADER.Type de 2 bytes: uma base de mensagem com OR de
+// flags de direção (protocol-spec.md §2, Basedef.h:1212-1221). O dispatcher compara o
+// valor completo do wire (base + flags) direto, então uma constante com várias
+// flags tem um único valor de wire que casa em qualquer contexto.
 type Type uint16
 
-// MessageLength is MSG_MessageChat.String[MESSAGE_LENGTH] (Basedef.h:189,
-// 1789): mob action chat and normal public chat are a fixed 96-byte C string.
+// MessageLength é MSG_MessageChat.String[MESSAGE_LENGTH] (Basedef.h:189,
+// 1789): o chat de ação de mob e o chat público normal são uma string C fixa de 96 bytes.
 const MessageLength = 96
 
-// MessagePanelLength is MSG_MessagePanel.String's fixed-width C string
+// MessagePanelLength é a string C de largura fixa de MSG_MessagePanel.String
 // (Basedef.h:1528). Unlike chat messages, client notices reserve 128 bytes.
 const MessagePanelLength = 128
 
-// EncodeMessagePanelBody returns the fixed MSG_MessagePanel.String payload.
-// The zero-filled tail supplies the C-string terminator expected by the client.
+// EncodeMessagePanelBody devolve o payload fixo de MSG_MessagePanel.String.
+// A cauda preenchida com zeros fornece o terminador de string C esperado pelo cliente.
 func EncodeMessagePanelBody(text string) []byte {
 	body := make([]byte, MessagePanelLength)
 	copy(body[:MessagePanelLength-1], text)
@@ -34,25 +34,25 @@ const (
 	FlagNP2DB       Type = 0x2000 // NPServer → DBSrv
 	FlagNew         Type = 0x4000 // "new" message family (ranking grind/exp)
 
-	// flagMask covers all direction bits; the remaining low bits are the base.
+	// flagMask cobre todos os bits de direção; os bits baixos restantes são a base.
 	flagMask Type = 0xFF00
 )
 
-// EncodeMessageChatBody returns the fixed MSG_MessageChat.String payload. The
-// client expects the whole struct (legacy SendSay sends sizeof(MSG_MessageChat)),
-// and the last byte stays zero so over-long text is still a terminated C string.
+// EncodeMessageChatBody devolve o payload fixo de MSG_MessageChat.String. O
+// cliente espera a struct inteira (o SendSay legado envia sizeof(MSG_MessageChat)),
+// e o último byte fica zero para texto longo demais continuar sendo string C terminada.
 func EncodeMessageChatBody(text string) []byte {
 	body := make([]byte, MessageLength)
 	copy(body[:MessageLength-1], text)
 	return body
 }
 
-// MsgExpPanelBodySize is the packed body of MSG_Exp_Msg_Panel_: Msg[96]
-// followed by its 32-bit ARGB text color.
+// MsgExpPanelBodySize é o corpo empacotado de MSG_Exp_Msg_Panel_: Msg[96]
+// seguido de sua cor de texto ARGB de 32 bits.
 const MsgExpPanelBodySize = MessageLength + 4
 
-// EncodeExpPanelBody builds the fixed-width body shown in the client's EXP
-// notification panel. Text longer than the legacy C string is truncated.
+// EncodeExpPanelBody monta o corpo de largura fixa exibido no painel de
+// notificação de EXP do cliente. Texto maior que a string C legada é truncado.
 func EncodeExpPanelBody(text string, color uint32) []byte {
 	body := make([]byte, MsgExpPanelBodySize)
 	copy(body[:MessageLength], text)
@@ -60,16 +60,16 @@ func EncodeExpPanelBody(text string, color uint32) []byte {
 	return body
 }
 
-// Base returns the message base (the wire value with direction flags stripped).
+// Base devolve a base da mensagem (o valor de wire sem as flags de direção).
 func (t Type) Base() Type { return t &^ flagMask }
 
-// HasFlag reports whether t carries the given direction flag.
+// HasFlag informa se t carrega a flag de direção dada.
 func (t Type) HasFlag(f Type) bool { return t&f == f }
 
-// Client → TMSrv message types the server must handle (protocol-spec.md §3.1).
-// These are the only ones with a case in the original dispatcher
-// (ProcessClientMessage.cpp); the full 198-Type dump lives in protocol-spec.md
-// Appendix B and is not all named here yet.
+// Tipos de mensagem Cliente → TMSrv que o servidor precisa tratar (protocol-spec.md §3.1).
+// Estes são os únicos com case no dispatcher original
+// (ProcessClientMessage.cpp); o dump completo de 198 Types vive em protocol-spec.md
+// Apêndice B e ainda não estão todos nomeados aqui.
 const (
 	MsgAccountLogin        Type = 0x020D // 525  MSG_AccountLogin
 	MsgCharacterLogin      Type = 0x0213 // 531  MSG_CharacterLogin
@@ -128,23 +128,23 @@ const (
 	MsgChallangeConfirm    Type = 0x028F // 655  confirm challenge (MSG_STANDARDPARM2)
 	MsgPing                Type = 0x03A0 // 928  keepalive — no-op on receive (§2)
 
-	// Personal shop / autotrade (issue #115, Basedef.h:2165-2325). SendAutoTrade is
-	// bidirectional: C→S opens the shop, S→C (SendAutoTrade) lists it back.
+	// Loja pessoal / autotrade (issue #115, Basedef.h:2165-2325). SendAutoTrade é
+	// bidirecional: C→S abre a loja, S→C (SendAutoTrade) a lista de volta.
 	MsgSendAutoTrade Type = 0x0397 // 919  C↔S open shop / list a shop (MSG_SendAutoTrade)
 	MsgReqBuy        Type = 0x0398 // 920  C→S buy an item from a shop (MSG_ReqBuy)
 	MsgReqTradeList  Type = 0x039A // 922  C→S browse a shop (MSG_STANDARDPARM, Parm=sellerID)
-	// MsgDeprivate (0x028C, 140|FLAG_CLIENT2GAME) is NOT autotrade — despite the
-	// issue title it is a GUILD op (destitute a sub-leader, Server.cpp:8694
-	// DoDeprivate). A personal shop is closed by RemoveTrade (handler.removeTrade),
-	// not by this message, so it is intentionally left unrouted here.
+	// MsgDeprivate (0x028C, 140|FLAG_CLIENT2GAME) NÃO é autotrade — apesar do
+	// título da issue, é uma op de GUILD (destitui um sub-líder, Server.cpp:8694
+	// DoDeprivate). Uma loja pessoal é fechada por RemoveTrade (handler.removeTrade),
+	// não por esta mensagem, então ela fica de propósito sem rota aqui.
 	MsgDeprivate Type = 0x028C // 652  C→S guild destitute (out of scope for #115)
 )
 
-// MsgDeleteCharacterFail is _MSG_DeleteCharacterFail (Basedef.h:1732): the
-// dbServer refused the delete (wrong password), answered with an empty body.
+// MsgDeleteCharacterFail é _MSG_DeleteCharacterFail (Basedef.h:1732): o
+// dbServer recusou a exclusão (senha errada), respondida com corpo vazio.
 const MsgDeleteCharacterFail Type = 0x011B // 283
 
-// TMSrv → client message types the server must produce (protocol-spec.md §3.2,
+// Tipos de mensagem TMSrv → cliente que o servidor precisa produzir (protocol-spec.md §3.2,
 // actionable subset).
 const (
 	MsgMessagePanel       Type = 0x0101 // 257
@@ -190,17 +190,16 @@ const (
 	MsgMobLeft            Type = 0x03B0 // 944  S→C remaining-mob counter (MSG_STANDARDPARM, Basedef.h:2570)
 	MsgUpdateWeather      Type = 0x018B // 395  S→C global weather change (MSG_UpdateWeather, Basedef.h:2167)
 
-	// MsgMagicTrumpet is _MSG_MagicTrumpet (Basedef.h:1738, protocol-spec.md:685):
-	// 29 | DB2Game | Game2DB | Game2Client. The Trombeta Mágica shout — a
-	// server-wide chat line. The legacy relayed it through the DBSrv so every
-	// channel saw it; here it is emitted straight to the players of this tmServer.
-	// The ClientPatch paints it green on arrival (ClientPatch_v7662/Functions.cpp:51
-	// writes TNColor::Speak 0xFF00CD00 to 0x4A016A), which is why the shout does not
-	// reuse MsgMessageChat.
+	// MsgMagicTrumpet é _MSG_MagicTrumpet (Basedef.h:1738, protocol-spec.md:685):
+	// 29 | DB2Game | Game2DB | Game2Client. O grito Trombeta Mágica — uma
+	// linha de chat para o servidor inteiro. O legado a repassava pelo DBSrv para todo
+	// O ClientPatch o pinta de verde ao chegar (ClientPatch_v7662/Functions.cpp:51
+	// escreve TNColor::Speak 0xFF00CD00 em 0x4A016A), que é por que o grito não
+	// reusa o MsgMessageChat.
 	MsgMagicTrumpet Type = 0x0D1D // 3357 S→C global shout (MSG_MagicTrumpet)
 
-	// Personal shop / autotrade S→C (issue #115). CreateMobTrade is the shop pose:
-	// the pose is driven by this Type (0x0363), NOT by a CreateType value.
+	// Loja pessoal / autotrade S→C (issue #115). CreateMobTrade é a pose da loja:
+	// a pose é dirigida por este Type (0x0363), NÃO por um valor de CreateType.
 	MsgCreateMobTrade Type = 0x0363 // 867  S→C spawn a shop-owner in view (MSG_CreateMobTrade)
 	MsgItemSold       Type = 0x039B // 923  S→C an item left a shop (MSG_STANDARDPARM2, Parm1=seller Parm2=pos)
 	MsgExpPanel       Type = 0x5000 // S→C MSG_Exp_Msg_Panel_ (custom EXP notification panel)

@@ -9,25 +9,25 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// RemoteDropRate is one drop_rate_override row as tmServer consumes it
-// (issue 34): the divisor replaces the code value for that Carry slot.
+// RemoteDropRate é uma linha de drop_rate_override como o tmServer a consome
+// (issue 34): o divisor substitui o valor do código para aquele slot de Carry.
 type RemoteDropRate struct {
 	Slot  int
 	Value int64
 }
 
-// DropConfig adapts the dbServer DropConfigService. Writes go through the
-// web-api only — this client never mutates config.
+// DropConfig adapta o DropConfigService do dbServer. As escritas vão pelo
+// web-api — este cliente nunca altera config.
 type DropConfig struct {
 	api dbv1.DropConfigServiceClient
 }
 
-// NewDropConfig wraps a gRPC connection as a drop-rate overlay source.
+// NewDropConfig embrulha uma conexão gRPC como fonte de overlay de taxa de drop.
 func NewDropConfig(conn grpc.ClientConnInterface) *DropConfig {
 	return &DropConfig{api: dbv1.NewDropConfigServiceClient(conn)}
 }
 
-// Overrides fetches every overlay row (slots without a row keep the code value).
+// Overrides busca toda linha do overlay (slots sem linha mantêm o valor do código).
 func (c *DropConfig) Overrides(ctx context.Context) ([]RemoteDropRate, error) {
 	resp, err := c.api.ListDropRateOverrides(ctx, &dbv1.ListDropRateOverridesRequest{})
 	if err != nil {

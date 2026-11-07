@@ -1,28 +1,28 @@
 package content
 
-// ItemEffectOverride is one moderator-edited base effect (issue 44) as the world
-// consumes it: Value replaces Effect on ItemIndex. The key is the ItemEffect.h
-// code — the same key BaseEffects uses — not a position in the 3 STRUCT_ITEM
-// slots, because a catalog row can carry up to a dozen pairs (item 1188 has six).
+// ItemEffectOverride é um efeito base editado por moderador (issue 44) como o world
+// o consome: Value substitui Effect em ItemIndex. A chave é o código de
+// ItemEffect.h — a mesma chave que BaseEffects usa — não uma posição nos 3
+// slots do STRUCT_ITEM, porque uma linha do catálogo pode carregar até uma dúzia de pares (o item 1188 tem seis).
 type ItemEffectOverride struct {
 	ItemIndex int
 	Effect    uint8
 	Value     int16
 }
 
-// EffectOverrideStats counts what the boot-time overlay actually did, so the
-// server log can show it instead of a bare row count.
+// EffectOverrideStats conta o que a sobreposição de boot realmente fez, para o
+// log do servidor mostrar isso em vez de uma contagem crua de linhas.
 type EffectOverrideStats struct {
 	Replaced int // the item already declared this effect: value swapped
 	Added    int // the item did not declare it: pair appended
 	Ignored  int // code the score model cannot represent: left out on purpose
 }
 
-// scoreEffectCodes is the set of codes BaseEffects is able to emit (the efName
-// values). An override for anything else is refused: handlers fold equipment into
-// the score by walking exactly these codes, and a code injected here would be
-// silently dead (worse, it would make the catalog claim a bonus the game never
-// applies). EF_RANGE, EF_VOLATILE and friends have their own readers.
+// scoreEffectCodes é o conjunto de códigos que BaseEffects consegue emitir (os
+// valores de efName). Uma sobreposição para qualquer outro é recusada: os handlers
+// somam equipamento no score percorrendo exatamente esses códigos, e um código
+// injetado aqui ficaria morto em silêncio (pior, faria o catálogo alegar um bônus
+// que o jogo nunca aplica). EF_RANGE, EF_VOLATILE e companhia têm leitores próprios.
 var scoreEffectCodes = func() map[uint8]struct{} {
 	out := make(map[uint8]struct{}, len(efName))
 	for _, code := range efName {
@@ -31,12 +31,12 @@ var scoreEffectCodes = func() map[uint8]struct{} {
 	return out
 }()
 
-// ApplyItemEffectOverrides folds the web overlay into the catalog effects.
+// ApplyItemEffectOverrides aplica a sobreposição da web nos efeitos do catálogo.
 //
-// Precedence stays instance > overlay > catalog: this only rewrites the catalog
-// layer, so an item's own refinements (stEffect/stValue) still win at score time.
-// The input map is never mutated — an empty overlay returns the catalog as-is, so
-// the flag being off and being on with no rows are indistinguishable.
+// A precedência continua instância > sobreposição > catálogo: isto só reescreve a
+// camada do catálogo, então os refinos do próprio item (stEffect/stValue) ainda vencem
+// na hora do score. O mapa de entrada nunca é mutado — uma sobreposição vazia devolve o
+// catálogo como está, então a flag desligada e ligada sem linhas são indistinguíveis.
 func ApplyItemEffectOverrides(base map[int][]BaseEffect, rows []ItemEffectOverride) (map[int][]BaseEffect, EffectOverrideStats) {
 	var stats EffectOverrideStats
 	if len(rows) == 0 {
@@ -53,7 +53,7 @@ func ApplyItemEffectOverrides(base map[int][]BaseEffect, rows []ItemEffectOverri
 			stats.Ignored++
 			continue
 		}
-		// Copy-on-write per item: the catalog slices are shared with the caller.
+		// Copy-on-write por item: os slices do catálogo são compartilhados com quem chama.
 		effs, seen := out[row.ItemIndex], false
 		next := make([]BaseEffect, len(effs))
 		copy(next, effs)

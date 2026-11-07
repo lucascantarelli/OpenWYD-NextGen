@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ItemEffectOverride is one moderator-edited base effect of an item (issue 44,
-// metade de escrita). The key is the ItemEffect.h code, which is how the server
-// indexes an item's adds (internal/content.BaseEffects) — a row replaces that
-// effect's value and leaves every other one from ItemList.csv untouched.
+// ItemEffectOverride é um efeito base de item editado por moderador (issue 44,
+// metade de escrita). A chave é o código de ItemEffect.h, que é como o servidor
+// indexa os adds de um item (internal/content.BaseEffects) — uma linha substitui o
+// valor daquele efeito e deixa todos os outros do ItemList.csv intactos.
 type ItemEffectOverride struct {
 	ItemIndex int32
 	Effect    int
@@ -21,8 +21,8 @@ type ItemEffectOverride struct {
 	UpdatedAt time.Time
 }
 
-// ListItemEffectOverrides returns the overlay rows, optionally restricted to one
-// item (itemIndex <= 0 lists every row), ordered by item and effect.
+// ListItemEffectOverrides devolve as linhas de sobreposição, opcionalmente
+// restritas a um item (itemIndex <= 0 lista todas as linhas), ordenadas por item e efeito.
 func (s *Store) ListItemEffectOverrides(ctx context.Context, itemIndex int32) ([]ItemEffectOverride, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT item_index, effect, value, COALESCE(updated_by, 0), updated_at
@@ -48,11 +48,11 @@ func (s *Store) ListItemEffectOverrides(ctx context.Context, itemIndex int32) ([
 	return out, nil
 }
 
-// UpsertItemEffectOverride replaces the (item, effect) row and records
-// before/after in item_effect_audit, both in one transaction: an edit applied
-// without its audit row is exactly what the moderation log cannot tolerate. The
-// `after` snapshot is read back from the table instead of marshalled from the
-// input, so the audit shows what was actually stored.
+// UpsertItemEffectOverride substitui a linha (item, effect) e registra
+// antes/depois em item_effect_audit, ambos numa transação: uma edição aplicada
+// sem sua linha de auditoria é exatamente o que o log de moderação não tolera. O
+// snapshot posterior é relido da tabela em vez de montado a partir da
+// entrada, então a auditoria mostra o que foi realmente guardado.
 func (s *Store) UpsertItemEffectOverride(ctx context.Context, o ItemEffectOverride, moderatorID int64, reason string) error {
 	return s.inTx(ctx, func(tx pgx.Tx) error {
 		before, err := itemEffectJSON(ctx, tx, o.ItemIndex, o.Effect)
@@ -77,8 +77,8 @@ func (s *Store) UpsertItemEffectOverride(ctx context.Context, o ItemEffectOverri
 	})
 }
 
-// DeleteItemEffectOverride drops the overlay row, so the effect falls back to the
-// content value. applied is false when there was no row (nothing to revert).
+// DeleteItemEffectOverride descarta a linha de sobreposição, então o efeito volta ao
+// valor de conteúdo. applied é falso quando não havia linha (nada a reverter).
 func (s *Store) DeleteItemEffectOverride(ctx context.Context, itemIndex int32, effect int, moderatorID int64, reason string) (bool, error) {
 	applied := false
 	err := s.inTx(ctx, func(tx pgx.Tx) error {
@@ -99,10 +99,10 @@ func (s *Store) DeleteItemEffectOverride(ctx context.Context, itemIndex int32, e
 	return applied, err
 }
 
-// itemEffectJSON renders the stored row as JSON for the audit columns; nil means
-// the effect has no override. Reading it back through to_jsonb keeps the audit
-// faithful to the table (including who touched it and when) instead of to
-// whatever the caller believed it was writing.
+// itemEffectJSON renderiza a linha guardada como JSON para as colunas de auditoria;
+// nil significa que o efeito não tem sobreposição. Relê-la via to_jsonb mantém a
+// auditoria fiel à tabela (incluindo quem a tocou e quando) em vez de ao
+// que quem chamou acreditava estar escrevendo.
 func itemEffectJSON(ctx context.Context, tx pgx.Tx, itemIndex int32, effect int) ([]byte, error) {
 	var js []byte
 	err := tx.QueryRow(ctx, `
@@ -117,9 +117,9 @@ func itemEffectJSON(ctx context.Context, tx pgx.Tx, itemIndex int32, effect int)
 	return js, nil
 }
 
-// auditItemEffect appends one edit to item_effect_audit. before/after are nil when
-// the row did not exist / no longer exists, which is how a moderator tells "mudei
-// o efeito" from "removi o efeito".
+// auditItemEffect anexa uma edição a item_effect_audit. Os snapshots de antes e de depois são nil quando
+// a linha não existia / não existe mais, que é como um moderador distingue "mudei
+// o efeito" de "removi o efeito".
 func auditItemEffect(ctx context.Context, tx pgx.Tx, moderatorID int64, itemIndex int32, effect int, action string, before, after []byte, reason string) error {
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO item_effect_audit (moderator_id, item_index, effect, action, before, after, reason)
@@ -130,8 +130,8 @@ func auditItemEffect(ctx context.Context, tx pgx.Tx, moderatorID int64, itemInde
 	return nil
 }
 
-// jsonText passes jsonb through the text protocol: pgx encodes []byte as bytea,
-// which Postgres will not cast to jsonb implicitly.
+// jsonText passa jsonb pelo protocolo de texto: o pgx codifica []byte como bytea,
+// que o Postgres não converte para jsonb implicitamente.
 func jsonText(raw []byte) any {
 	if raw == nil {
 		return nil

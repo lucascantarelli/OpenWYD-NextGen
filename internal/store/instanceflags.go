@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RecordInstanceFlags stores one boot snapshot of a service's process flags
-// (issue 36). History is kept on purpose: comparing the current snapshot with the
-// previous one is how an operator notices that a restart changed something.
+// RecordInstanceFlags guarda um snapshot de boot das flags de processo de um serviço
+// (issue 36). O histórico é mantido de propósito: comparar o snapshot atual com o
+// anterior é como um operador percebe que um reinício mudou algo.
 func (s *Store) RecordInstanceFlags(ctx context.Context, server string, flags []byte) error {
 	if _, err := s.pool.Exec(ctx,
 		`INSERT INTO server_instance_flags (server, flags) VALUES ($1, $2::jsonb)`,
@@ -21,8 +21,8 @@ func (s *Store) RecordInstanceFlags(ctx context.Context, server string, flags []
 	return nil
 }
 
-// LatestInstanceFlags returns the most recent snapshot for a service, plus when it
-// was captured. ok=false means the service never recorded one.
+// LatestInstanceFlags devolve o snapshot mais recente de um serviço, mais quando
+// ele foi capturado. ok=false significa que o serviço nunca registrou nenhum.
 func (s *Store) LatestInstanceFlags(ctx context.Context, server string) ([]byte, time.Time, bool, error) {
 	var raw []byte
 	var captured time.Time

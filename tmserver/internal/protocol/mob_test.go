@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// makeMob builds a raw 816-byte STRUCT_MOB with the fields the codecs read.
+// makeMob monta um STRUCT_MOB cru de 816 bytes com os campos que os codecs leem.
 func makeMob(name string, class, merchant uint8, level, hp int32) []byte {
 	b := make([]byte, structMobSize)
 	copy(b[0:16], name)
@@ -64,38 +64,38 @@ func TestCNFCharacterLoginRawLayout(t *testing.T) {
 	if got := cstr16(b[4:20]); got != "Hero" { // MobName patched @ body4
 		t.Errorf("name = %q, want Hero", got)
 	}
-	// Login position is written to the packet PosX/PosY, while the embedded
-	// STRUCT_MOB keeps its save point (SPX/SPY) from the template.
+	// A posição de login é escrita em PosX/PosY do pacote, enquanto o
+	// STRUCT_MOB embutido mantém seu ponto de save (SPX/SPY) do template.
 	if le.Uint16(b[0:]) != 2453 || le.Uint16(b[2:]) != 2000 {
 		t.Errorf("msg PosX/PosY = %d,%d want 2453,2000", le.Uint16(b[0:]), le.Uint16(b[2:]))
 	}
 	if le.Uint16(b[4+40:]) != 2096 || le.Uint16(b[4+42:]) != 2096 {
 		t.Errorf("mob SPX/SPY = %d,%d want 2096,2096", le.Uint16(b[4+40:]), le.Uint16(b[4+42:]))
 	}
-	// Gold is written at both candidate offsets (24 = client display, 28 = Coin).
+	// O ouro é escrito nos dois offsets candidatos (24 = exibição do cliente, 28 = Coin).
 	if le.Uint32(b[4+24:]) != 777777 || le.Uint32(b[4+28:]) != 777777 {
 		t.Errorf("coin not set at mob offsets 24/28")
 	}
-	// Persisted experience → STRUCT_MOB.Exp @32 (body 4+32), so the exp bar shows the
+	// Experiência persistida → STRUCT_MOB.Exp @32 (corpo 4+32), então a barra de exp
 	// saved total at login.
 	if got := le.Uint64(b[4+32:]); got != 123456789 {
 		t.Errorf("exp @mob32 = %d, want 123456789", got)
 	}
-	// MobName[12] (body 4+12) is the PKPoint that colors the own nick: 75 = white
-	// (neutral). Passing 75 must land there — 0 would render the nick red (issue #59).
+	// MobName[12] (corpo 4+12) é o PKPoint que colora o próprio nick: 75 = branco
+	// (neutro). Passar 75 precisa cair ali — 0 renderizaria o nick vermelho (issue #59).
 	if b[4+12] != 75 {
 		t.Errorf("MobName[12] (PKPoint) = %d, want 75 (neutral/white nick)", b[4+12])
 	}
-	// Persisted equip overlays the template's Equip@140 (mob) → body 4+140 + 1*8.
+	// O equip persistido sobrescreve o Equip@140 (mob) do template → corpo 4+140 + 1*8.
 	if got := le.Uint16(b[4+structMobEquip+1*8:]); got != 1100 {
 		t.Errorf("equip[1] overlay = %d, want 1100", got)
 	}
-	// Persisted carry overlays the template's Carry@268 (mob) → body 4+268 + 3*8.
+	// O carry persistido sobrescreve o Carry@268 (mob) do template → corpo 4+268 + 3*8.
 	if got := le.Uint16(b[4+structMobCarry+3*8:]); got != 831 {
 		t.Errorf("carry[3] overlay = %d, want 831", got)
 	}
-	// Skill block patched over the template: LearnedSkill@780, bonuses@788-793,
-	// SkillBar@796, Special in BaseScore@44+40 / CurrentScore@92+40, hotbar tail.
+	// Bloco de skills sobrescrito sobre o template: LearnedSkill@780, bônus@788-793,
+	// SkillBar@796, Special em BaseScore@44+40 / CurrentScore@92+40, cauda da hotbar.
 	if got := le.Uint32(b[4+780:]); got != 0xFF {
 		t.Errorf("LearnedSkill @780 = %#x, want 0xff", got)
 	}
@@ -176,7 +176,7 @@ func TestSelCharSizes(t *testing.T) {
 	if got := len(EncodeCNFNewCharacterBody(chars)); got != cnfNewCharacterSize-HeaderSize {
 		t.Errorf("CNFNewCharacter body = %d, want %d", got, cnfNewCharacterSize-HeaderSize) // 844
 	}
-	// Slot-0 name at body 36 (sel@20 + Name[][]@16), level at body 100 (sel@20 + Score@80).
+	// Nome do slot 0 no corpo 36 (sel@20 + Name[][]@16), nível no corpo 100 (sel@20 + Score@80).
 	b := EncodeCNFAccountLoginBody("acc", chars, 0, empty)
 	if cstr16(b[36:52]) != "Hero" {
 		t.Errorf("selchar name = %q, want Hero", cstr16(b[36:52]))

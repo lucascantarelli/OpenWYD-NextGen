@@ -42,7 +42,7 @@ func TestKefraStatePersistence(t *testing.T) {
 	if err := s.SaveKefraState(ctx, want); err != nil {
 		t.Fatal(err)
 	}
-	// Recreate the adapter over the same database, as on a dbserver restart.
+	// Recria o adaptador sobre o mesmo banco, como num restart do dbserver.
 	restarted := &Store{pool: s.pool}
 	got, err = restarted.LoadKefraState(ctx)
 	if err != nil || got != want {

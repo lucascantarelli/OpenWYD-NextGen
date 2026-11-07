@@ -7,12 +7,12 @@ const (
 	classCelestialCS uint8 = 4
 	classSCelestial  uint8 = 5
 
-	// soloExpGate is the award window (MobKilled.cpp:1284): a 450-scaled reward
-	// outside (0, 10M] skips the whole award — the legacy gate does NOT clamp.
+	// soloExpGate é a janela de concessão (MobKilled.cpp:1284): recompensa escalada
+	// fora de (0, 10M] pula a concessão inteira — o gate legado NÃO limita.
 	soloExpGate int64 = 10_000_000
 )
 
-// ExpEvents are the global EXP event flags (MobKilled.cpp:1372-1384 globals
+// ExpEvents são as flags globais de evento de EXP (globais de MobKilled.cpp:1372-1384
 // NewbieEventServer / DOUBLEMODE / KefraLive).
 type ExpEvents struct {
 	DoubleMode  bool
@@ -20,22 +20,22 @@ type ExpEvents struct {
 	KefraLive   bool // Legacy name: true means defeated (city open); false halves EXP.
 }
 
-// SoloExpReward computes the solo PvE experience for a killer at killerLevel
-// slaying a mob at mobLevel whose template reward is mobExp. It is the
-// general-field branch of the legacy distribution (MobKilled.cpp:1272-1425)
-// collapsed to a party of one — the branch that governs normal maps, including
-// the training grounds. (game-rules.md §1 previously transcribed the
-// Nightmare-map branch at :443-590, whose divisor tables differ.)
+// SoloExpReward calcula a experiência PvE solo de um matador de nível killerLevel
+// abatendo um mob de nível mobLevel cuja recompensa de template é mobExp. É o
+// ramo de campo geral da distribuição legada (MobKilled.cpp:1272-1425)
+// reduzido a uma party de um — o ramo que rege os mapas normais, inclusive o
+// o Campo de Treino. (game-rules.md §1 antes transcrevia o
+// ramo de mapa Nightmare em :443-590, cujas tabelas de divisor diferem.)
 //
-// Pipeline, in legacy order: GetExpApply level-ratio scaling → +MAX_LEVEL+1
-// level offset for celestial tiers → ×450/(30+myLevel) → the (0,10M] gate →
-// per-tier level divisors → ×0.6 → capped at the un-split GetExpApply value
+// Pipeline, na ordem legada: escala de razão de nível do GetExpApply → +MAX_LEVEL+1
+// deslocamento de nível das tiers celestiais → ×450/(30+myLevel) → o gate (0,10M] →
+// divisores de nível por tier → ×0.6 → limitado ao valor de GetExpApply sem divisão
 // (eMob, :1360) → item exp bonus → newbie +25% → double ×2 → Kefra-alive ÷2 →
 // ±15% newbie swing.
 //
-// Not modeled (deferred with the systems they belong to): the party split and
-// its g_EmptyMob/PARTYBONUS factor, the fairy-pet bonus, the RvR-war +5%, and
-// the DayLog/Hold banking (:1386-1408).
+// Não modelado (adiado junto com os sistemas a que pertence): a divisão de party e
+// seu fator g_EmptyMob/PARTYBONUS, o bônus da fada de estimação, os +5% da guerra
+// RvR e o acúmulo em DayLog/Hold (:1386-1408).
 func SoloExpReward(mobExp int64, killerLevel, mobLevel int32, classMaster uint8, expBonus int32, ev ExpEvents) int64 {
 	exp := soloBaseExp(mobExp, killerLevel, mobLevel, classMaster, expBonus)
 	if exp <= 0 {
@@ -61,13 +61,13 @@ func SoloExpReward(mobExp int64, killerLevel, mobLevel int32, classMaster uint8,
 	return exp
 }
 
-// TrainingFieldExpReward is the solo reward for a kill on the training grounds
-// (generators spawning on AttributeMap 0x80 cells): the event-free base reward
-// of SoloExpReward times mult. Deliberate divergence from the legacy (issue
-// #383): the field must take a fresh character to displayed level 35 in about
-// 15 minutes, so its pace must not depend on the global events — the Kefra ÷2
-// and the newbie ±15% (×0.425 on a default server) are skipped, and so is
-// DOUBLEMODE. The product is capped at the (0,10M] award gate.
+// TrainingFieldExpReward é a recompensa solo por um abate no Campo de Treino
+// (geradores que nascem em células AttributeMap 0x80): a recompensa base sem eventos
+// de SoloExpReward vezes mult. Divergência consciente do legado (issue
+// #383): o campo precisa levar um personagem novo ao nível 35 exibido em cerca
+// de 15 minutos, então seu ritmo não pode depender dos eventos globais — o ÷2 do
+// Kefra e o ±15% de newbie (×0.425 num servidor padrão) são pulados, e o mesmo
+// vale para o DOUBLEMODE. O produto é limitado pelo gate de concessão (0,10M].
 func TrainingFieldExpReward(mobExp int64, killerLevel, mobLevel int32, classMaster uint8, expBonus int32, mult int64) int64 {
 	exp := soloBaseExp(mobExp, killerLevel, mobLevel, classMaster, expBonus)
 	if exp <= 0 || mult <= 0 {
@@ -79,15 +79,15 @@ func TrainingFieldExpReward(mobExp int64, killerLevel, mobLevel int32, classMast
 	return exp * mult
 }
 
-// soloBaseExp is the event-independent head of the general-field pipeline:
-// everything up to and including the item exp bonus.
+// soloBaseExp é o início independente de eventos do pipeline de campo geral:
+// tudo até o bônus de EXP de item, inclusive.
 func soloBaseExp(mobExp int64, killerLevel, mobLevel int32, classMaster uint8, expBonus int32) int64 {
 	isExp := ExpApply(mobExp, killerLevel, mobLevel)
 	if isExp <= 0 {
 		return 0
 	}
-	// Solo: the killer is the only party member, so the per-member cap eMob is
-	// its own GetExpApply value (:1276 and :1360 compute the same expression).
+	// Solo: o matador é o único membro da party, então o teto por membro, eMob, é
+	// o próprio valor de GetExpApply dele (:1276 e :1360 calculam a mesma expressão).
 	eMob := isExp
 	myLevel := int64(killerLevel)
 	if classMaster != classMortal && classMaster != classArch {
@@ -117,11 +117,11 @@ func isCelestialTier(classMaster uint8) bool {
 	}
 }
 
-// applyTierDivisors is the per-tier level-band divisor table of the
-// general-field branch (MobKilled.cpp:1286-1356). The C code divides an int by
-// mixed float/double literals (`exp /= 1.07f` vs `exp /= 1.70`), truncating
-// back to int; the float32/float64 width is preserved per literal so the
-// truncation edges match.
+// applyTierDivisors é a tabela de divisores por faixa de nível da tier do
+// ramo de campo geral (MobKilled.cpp:1286-1356). O código C divide um int por
+// literais mistos float/double (`exp /= 1.07f` vs `exp /= 1.70`), truncando
+// de volta para int; a largura float32/float64 é preservada por literal para as
+// bordas de truncagem casarem.
 func applyTierDivisors(exp, myLevel int64, classMaster uint8) int64 {
 	div32 := func(d float32) int64 { return int64(float32(exp) / d) }
 	div64 := func(d float64) int64 { return int64(float64(exp) / d) }

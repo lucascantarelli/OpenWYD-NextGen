@@ -1,7 +1,7 @@
 //go:build integration
 
-// Integration tests for the live-game store queries (AccountByName, list/load/
-// save/create/delete). Require a real database; excluded from the default build.
+// Testes de integração das consultas do store do jogo vivo (AccountByName, list/load/
+// save/create/delete). Exigem um banco real; fora do build padrão.
 //
 //	W2PP_TEST_DSN=postgres://postgres:dev@localhost:5432/postgres go test -tags=integration ./internal/store/
 package store
@@ -53,8 +53,8 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatalf("AccountByName(ghost) = %v, want ErrNotFound", err)
 	}
 
-	// ListCharacters — the summary now carries the select-screen score preview
-	// and the persisted equipment used by the character-selection model.
+	// ListCharacters — o resumo agora carrega a prévia de score da tela de seleção
+	// e o equipamento persistido usado pelo modelo de seleção de personagem.
 	list, err := s.ListCharacters(ctx, accID)
 	if err != nil || len(list) != 1 || list[0].Name != "Warrior" {
 		t.Fatalf("ListCharacters: %+v err=%v", list, err)
@@ -66,7 +66,7 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatalf("ListCharacters equipment preview: %+v", c0.Equip)
 	}
 
-	// LoadCharacter (with items + affects)
+	// LoadCharacter (com itens + affects)
 	ch, err := s.LoadCharacter(ctx, accID, 0)
 	if err != nil {
 		t.Fatalf("LoadCharacter: %v", err)
@@ -89,7 +89,7 @@ func TestLiveQueries(t *testing.T) {
 	}
 
 	// SaveCharacter (partial: level/exp/coin/hp/mp + replace carry) — mirrors a
-	// level-up, which raises level + max_hp/max_mp.
+	// level-up, que sobe level + max_hp/max_mp.
 	ch.Level = 41
 	ch.Exp = 12345
 	ch.Coin = 1500
@@ -101,8 +101,8 @@ func TestLiveQueries(t *testing.T) {
 	ch.SaveY = 150
 	ch.Fame = 42
 	ch.Carry = []domain.Item{{Slot: 6, Index: 3300}}
-	// Tier transformation + celestial unlock: SaveCharacter must now write class_master
-	// and the celestial gate flags (previously class_master was left untouched).
+	// Transformação de tier + desbloqueio celestial: SaveCharacter agora precisa escrever
+	// class_master e as flags de gate celestial (antes class_master ficava intocado).
 	ch.ClassMaster = 3 // Mortal → Celestial
 	ch.CelLv40 = 1
 	ch.CelCircle = 1
@@ -131,9 +131,9 @@ func TestLiveQueries(t *testing.T) {
 	if reloaded.MortalLevel != 399 || reloaded.CelestialArchLevel != 5 {
 		t.Fatalf("progression metadata not persisted: mortal=%d arch-band=%d", reloaded.MortalLevel, reloaded.CelestialArchLevel)
 	}
-	// A Gema Estelar use mid-session (Vol 12) updates the warp save-point, which
-	// this in-game partial save must persist (issue #140) — it was previously in
-	// the untouched-columns list.
+	// Um uso da Gema Estelar no meio da sessão (Vol 12) atualiza o ponto de save do warp, que
+	// este save parcial in-game precisa persistir (issue #140) — antes estava na
+	// lista de colunas intocadas.
 	if reloaded.SaveX != 1200 || reloaded.SaveY != 150 {
 		t.Fatalf("Gema Estelar save-point not persisted by SaveCharacter: SaveX=%d SaveY=%d", reloaded.SaveX, reloaded.SaveY)
 	}
@@ -145,8 +145,8 @@ func TestLiveQueries(t *testing.T) {
 			reloaded.PKPoint, reloaded.Guilty, reloaded.CurKill, reloaded.TotKill)
 	}
 
-	// CreateArchCharacter chooses the first free slot and allows the legacy
-	// Mortal/Arch same-name pair because uniqueness is per ClassMaster.
+	// CreateArchCharacter escolhe o primeiro slot livre e permite o par legado
+	// Mortal/Arch de mesmo nome porque a unicidade é por ClassMaster.
 	archID, archSlot, err := s.CreateArchCharacter(ctx, accID, domain.Character{
 		Name: "Warrior", Class: 1, ClassMaster: 1, MortalLevel: 399,
 		Equip: []domain.Item{{Slot: 0, Index: 27}},
@@ -171,10 +171,10 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatalf("DeleteCharacter(arch): %v", err)
 	}
 
-	// CreateCharacter + DeleteCharacter. PKPoint is left at the Go zero value —
-	// insertCharacter must default it to neutral (75), not persist 0/chaos
+	// CreateCharacter + DeleteCharacter. PKPoint fica no valor zero do Go —
+	// insertCharacter precisa assumir o padrão neutro (75), não persistir 0/caos
 	// (issue #210: CreateCharacter/CreateArchCharacter's explicit column list
-	// would otherwise override the DB column's own DEFAULT 75).
+	// que de outro modo sobreporia o DEFAULT 75 da própria coluna do banco).
 	if _, err := s.CreateCharacter(ctx, accID, domain.Character{Slot: 1, Name: "Mage", Class: 3}); err != nil {
 		t.Fatalf("CreateCharacter: %v", err)
 	}
@@ -241,9 +241,9 @@ func TestCelestialProgressionSurvivesRelogin(t *testing.T) {
 	}
 }
 
-// TestLiveCargo exercises the account-shared warehouse: it is keyed by account
-// (every character deposits into the same vault) and SaveCargo is a replace-all
-// swap, so re-saving must not leave duplicate item rows behind.
+// TestLiveCargo exercita o armazém compartilhado da conta: tem chave por conta
+// (todo personagem deposita no mesmo cofre) e SaveCargo é uma troca por
+// substituição total, então re-salvar não pode deixar linhas de item duplicadas.
 func TestLiveCargo(t *testing.T) {
 	s, ctx := freshStore(t)
 
@@ -258,7 +258,7 @@ func TestLiveCargo(t *testing.T) {
 		t.Fatalf("SaveAccount: %v", err)
 	}
 
-	// LoadCargo returns the gold + items seeded by SaveAccount.
+	// LoadCargo devolve o ouro + itens semeados por SaveAccount.
 	coin, items, err := s.LoadCargo(ctx, accID)
 	if err != nil {
 		t.Fatalf("LoadCargo: %v", err)
@@ -267,8 +267,8 @@ func TestLiveCargo(t *testing.T) {
 		t.Fatalf("LoadCargo mismatch: coin=%d items=%+v", coin, items)
 	}
 
-	// SaveCargo is replace-all: the new set fully supersedes the old, with no
-	// leftover rows from the previous two-item set.
+	// SaveCargo é substituição total: o conjunto novo supera o antigo por inteiro, sem
+	// linhas sobrando do conjunto anterior de dois itens.
 	if err := s.SaveCargo(ctx, accID, 7500, []domain.Item{{Slot: 3, Index: 3300, Eff1: 2, EffV1: 5}}); err != nil {
 		t.Fatalf("SaveCargo: %v", err)
 	}
@@ -280,7 +280,8 @@ func TestLiveCargo(t *testing.T) {
 		t.Fatalf("SaveCargo not replaced cleanly: coin=%d items=%+v", coin, items)
 	}
 
-	// SaveCargo to an empty set clears all item rows but keeps the gold update.
+	// SaveCargo para um conjunto vazio limpa todas as linhas de item mas mantém a
+	// atualização do ouro.
 	if err := s.SaveCargo(ctx, accID, 0, nil); err != nil {
 		t.Fatalf("SaveCargo(empty): %v", err)
 	}
@@ -288,7 +289,7 @@ func TestLiveCargo(t *testing.T) {
 		t.Fatalf("LoadCargo after clear: coin=%d items=%+v err=%v", coin, items, err)
 	}
 
-	// A missing account is ErrNotFound on both load and save.
+	// Uma conta inexistente é ErrNotFound tanto na leitura quanto na escrita.
 	if _, _, err := s.LoadCargo(ctx, 999999); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("LoadCargo(ghost) = %v, want ErrNotFound", err)
 	}
@@ -351,9 +352,9 @@ func TestExpRankingOrder(t *testing.T) {
 	}
 }
 
-// TestPinHashRoundTrip covers the numeric-PIN storage (issue #120): a fresh account
-// reports an empty PIN hash; SetPinHash persists it; PinHashByID reads it back; and
-// both report ErrNotFound for a missing account.
+// TestPinHashRoundTrip cobre o armazenamento do PIN numérico (issue #120): uma conta nova
+// informa hash de PIN vazio; SetPinHash o persiste; PinHashByID o relê; e
+// os dois informam ErrNotFound para uma conta inexistente.
 func TestPinHashRoundTrip(t *testing.T) {
 	s, ctx := freshStore(t)
 
@@ -362,7 +363,7 @@ func TestPinHashRoundTrip(t *testing.T) {
 		t.Fatalf("SaveAccount: %v", err)
 	}
 
-	// A fresh account has no PIN yet (column default '').
+	// Uma conta nova ainda não tem PIN (padrão da coluna '').
 	if h, err := s.PinHashByID(ctx, accID); err != nil || h != "" {
 		t.Fatalf("initial PinHashByID = %q, %v; want empty, nil", h, err)
 	}

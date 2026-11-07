@@ -10,30 +10,30 @@ import (
 	"openwyd-nextgen/tmserver/internal/content"
 )
 
-// ContentCatalog is the boot-time snapshot tmServer builds the world from
-// (issue 58, fase 2). Each field is exactly the shape the file loaders used to
-// return, so the world code does not change — only where the bytes come from.
+// ContentCatalog é o snapshot de boot com que o tmServer monta o mundo
+// (issue 58, fase 2). Cada campo tem exatamente o formato que os carregadores de
+// arquivo devolviam, então o código do mundo não muda — só de onde vêm os bytes.
 type ContentCatalog struct {
 	Items      []content.ItemEntry
 	Skills     []content.Spell
-	Templates  map[string][]byte // template name → canonical 816-byte STRUCT_MOB
+	Templates  map[string][]byte // nome do template → STRUCT_MOB canônico de 816 bytes
 	WorldItems []content.InitItem
 }
 
-// ContentCatalogClient fetches the static catalogs from dbServer. It is separate
-// from Client because it wraps a different gRPC service (read-only content).
+// ContentCatalogClient busca os catálogos estáticos do dbServer. É separado do
+// Client porque embrulha outro serviço gRPC (conteúdo somente leitura).
 type ContentCatalogClient struct {
 	api dbv1.ContentCatalogServiceClient
 }
 
-// NewContentCatalog wraps a gRPC connection as a content-catalog source.
+// NewContentCatalog embrulha uma conexão gRPC como fonte de catálogo de conteúdo.
 func NewContentCatalog(conn grpc.ClientConnInterface) *ContentCatalogClient {
 	return &ContentCatalogClient{api: dbv1.NewContentCatalogServiceClient(conn)}
 }
 
-// Fetch pulls all four catalogs. The tmServer calls it once, before the world
-// loop starts; a failure is reported to the caller so it can fall back to the
-// content files instead of booting with an empty world.
+// Fetch puxa os quatro catálogos. O tmServer o chama uma vez, antes de o loop do
+// mundo começar; uma falha é reportada a quem chama para ele cair nos arquivos
+// de conteúdo em vez de subir com um mundo vazio.
 func (c *ContentCatalogClient) Fetch(ctx context.Context) (ContentCatalog, error) {
 	out := ContentCatalog{Templates: make(map[string][]byte)}
 

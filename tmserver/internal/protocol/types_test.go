@@ -36,9 +36,9 @@ func TestEncodeMessagePanelBody(t *testing.T) {
 	})
 }
 
-// Legacy message-type direction flags (Basedef.h:1212-1221). These bits are
-// part of the value the client matches on, not metadata about it: every wire
-// type is a base number OR'd with its direction flags.
+// Flags de direção legadas dos tipos de mensagem (Basedef.h:1212-1221). Esses bits
+// são parte do valor que o cliente compara, não metadados sobre ele: todo tipo de
+// wire é um número base com OR das flags de direção.
 const (
 	flagGame2Client = 0x0100
 	flagClient2Game = 0x0200
@@ -46,15 +46,15 @@ const (
 	flagGame2DB     = 0x0800
 )
 
-// TestMessageTypeValues pins every opcode to the legacy constant it ports by
-// re-deriving "base | flags" straight from Basedef.h.
+// TestMessageTypeValues fixa todo opcode na constante legada que ele porta,
+// rederivando "base | flags" direto do Basedef.h.
 //
-// The handler and codec tests assert against these same constants, so they
-// agree with a mistyped opcode by construction and cannot catch one. Only
-// re-deriving the number independently does. Dropping the flag bits yields a
-// type the client silently discards, with no server-side symptom: issue #101
-// sent _MSG_UpdateEquip as 107 instead of 875, so the BM transform's body mesh
-// never rendered while _MSG_UpdateScore (correctly typed) still delivered the
+// Os testes de handler e codec verificam contra essas mesmas constantes, então
+// concordam com um opcode digitado errado por construção e não pegam um. Só
+// rederivar o número de forma independente pega. Perder os bits de flag gera um
+// tipo que o cliente descarta em silêncio, sem sintoma no servidor: a issue #101
+// enviou _MSG_UpdateEquip como 107 em vez de 875, então a malha do corpo do
+// transform BM nunca renderizou enquanto _MSG_UpdateScore (tipado corretamente)
 // transform's stats.
 func TestMessageTypeValues(t *testing.T) {
 	tests := []struct {
@@ -160,8 +160,8 @@ func TestMessageTypeValues(t *testing.T) {
 	}
 }
 
-// TestEncodeMessageChatBody pins the fixed MSG_MessageChat.String width: a short
-// chat frame from an NPC speaker disconnected the client (issue #344).
+// TestEncodeMessageChatBody fixa a largura fixa de MSG_MessageChat.String: um
+// frame de chat curto de um NPC desconectava o cliente (issue #344).
 func TestEncodeMessageChatBody(t *testing.T) {
 	tests := []struct {
 		name string

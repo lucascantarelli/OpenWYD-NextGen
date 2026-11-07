@@ -1,40 +1,40 @@
-// Package level holds the WYD experience curve and level-up math as pure
-// functions (captura-wyd-levelup.md, from CMob::CheckGetLevel / GetExpApply /
-// BASE_GetHpMp / BASE_GetBonusScorePoint in the original source). Like the combat
-// package it is isolated from I/O so it can be golden-tested exactly.
+// Package level guarda a curva de experiência e a matemática de level-up do WYD
+// como funções puras (captura-wyd-levelup.md, a partir de CMob::CheckGetLevel /
+// GetExpApply / BASE_GetHpMp / BASE_GetBonusScorePoint no fonte original). Como o
+// package combat, é isolado de I/O para poder ter teste golden exato.
 //
-// Scope: the MORTAL (ClassMaster 2, Basedef.h:238) solo path — the dominant case. ARCH/CELESTIAL
-// tiers (different curve g_pNextLevel_2, quest gates, half-exp) and party
-// distribution are NOT modeled here yet; the world tracks no tier state for them.
+// Escopo: o caminho solo MORTAL (ClassMaster 2, Basedef.h:238) — o caso dominante. As tiers
+// ARCH/CELESTIAL (outra curva, g_pNextLevel_2, gates de quest, meia EXP) e a
+// distribuição de party ainda NÃO são modeladas aqui; o mundo não guarda estado de tier para elas.
 package level
 
-// MaxLevel is MAX_LEVEL (Basedef.h:177): a MORTAL (or ARCH) never levels past it.
+// MaxLevel é MAX_LEVEL (Basedef.h:177): um MORTAL (ou ARCH) nunca passa disso.
 const MaxLevel int32 = 399
 
-// MaxCLevel is MAX_CLEVEL (Basedef.h:178): the level cap on the CELESTIAL curve
-// (CELESTIAL/CELESTIALCS/SCELESTIAL). CheckGetLevel picks MaxCLevel over MaxLevel
-// for those tiers (CMob.cpp:1085-1086).
+// MaxCLevel é MAX_CLEVEL (Basedef.h:178): o teto de nível na curva CELESTIAL
+// (CELESTIAL/CELESTIALCS/SCELESTIAL). CheckGetLevel escolhe MaxCLevel em vez de MaxLevel
+// para essas tiers (CMob.cpp:1085-1086).
 const MaxCLevel int32 = 199
 
-// MaxHPCap / MaxMPCap are MAX_HP / MAX_MP (Basedef.h:263-264).
+// MaxHPCap / MaxMPCap são MAX_HP / MAX_MP (Basedef.h:263-264).
 const (
 	MaxHPCap int32 = 1_000_000_000
 	MaxMPCap int32 = 1_000_000_000
 )
 
-// MaxExp is the experience ceiling: g_pNextLevel[MAX_LEVEL+1] = g_pNextLevel[400]
-// (MobKilled.cpp clamps accumulated Exp to it).
+// MaxExp é o teto de experiência: g_pNextLevel[MAX_LEVEL+1] = g_pNextLevel[400]
+// (o MobKilled.cpp limita a Exp acumulada a ele).
 const MaxExp int64 = 4_100_000_000
 
-// incHP / incMP are g_pIncrementHp / g_pIncrementMp (Basedef.cpp:63-64): the HP/MP
-// gained per level, indexed by class (0 TK, 1 FM, 2 BM, 3 HT).
+// incHP / incMP são g_pIncrementHp / g_pIncrementMp (Basedef.cpp:63-64): os
+// ganhos por nível, indexados por classe (0 TK, 1 FM, 2 BM, 3 HT).
 var (
 	incHP = [4]int32{3, 1, 1, 2}
 	incMP = [4]int32{1, 3, 2, 1}
 )
 
-// baseSIDCHM is BaseSIDCHM[class][Str,Int,Dex,Con,HP,MP] (Basedef.cpp:44): the
-// per-class starting attributes and base HP/MP, used by the score formulas.
+// baseSIDCHM é BaseSIDCHM[classe][Str,Int,Dex,Con,HP,MP] (Basedef.cpp:44): os
+// atributos iniciais por classe e o HP/MP base, usados pelas fórmulas de score.
 var baseSIDCHM = [4][6]int32{
 	{8, 4, 7, 6, 80, 45},  // TK
 	{5, 8, 5, 5, 60, 65},  // FM
@@ -42,8 +42,8 @@ var baseSIDCHM = [4][6]int32{
 	{8, 9, 13, 6, 75, 60}, // HT
 }
 
-// validClass guards the per-class tables against an out-of-range class (mobs or
-// corrupt data); callers get class 0 semantics rather than a panic.
+// validClass protege as tabelas por classe contra classe fora da faixa (mobs ou
+// dados corrompidos); quem chama recebe a semântica da classe 0 em vez de panic.
 func validClass(cls uint8) int {
 	if int(cls) >= len(baseSIDCHM) {
 		return 0
@@ -51,17 +51,17 @@ func validClass(cls uint8) int {
 	return int(cls)
 }
 
-// BaseStats returns BaseSIDCHM[cls]: Str, Int, Dex, Con, HP and MP of a fresh
-// character of that class.
+// BaseStats devolve BaseSIDCHM[cls]: Str, Int, Dex, Con, HP e MP de um
+// personagem novo daquela classe.
 func BaseStats(cls uint8) [6]int32 { return baseSIDCHM[validClass(cls)] }
 
-// IncHP / IncMP are the per-level HP/MP increments for a class.
+// IncHP / IncMP são os incrementos de HP/MP por nível de uma classe.
 func IncHP(cls uint8) int32 { return incHP[validClass(cls)] }
 func IncMP(cls uint8) int32 { return incMP[validClass(cls)] }
 
-// NextLevelExp returns g_pNextLevel[curLevel+1]: the total experience needed to
-// reach the next level. Levels at or above MaxLevel return MaxExp (no further
-// level-up). curLevel is clamped so the lookup never goes out of range.
+// NextLevelExp devolve g_pNextLevel[curLevel+1]: a experiência total necessária
+// para o próximo nível. Níveis no MaxLevel ou acima devolvem MaxExp (sem outro
+// level-up). curLevel é limitado para a consulta nunca sair da faixa.
 func NextLevelExp(curLevel int32) int64 {
 	next := max(curLevel+1, 1)
 	if int(next) >= len(nextLevel) {
@@ -70,8 +70,8 @@ func NextLevelExp(curLevel int32) int64 {
 	return nextLevel[next]
 }
 
-// MaxLevelForTier is the level cap for a tier: MaxCLevel for the celestial tiers
-// (which ride g_pNextLevel_2), MaxLevel otherwise (CMob.cpp:1082-1086).
+// MaxLevelForTier é o teto de nível de uma tier: MaxCLevel para as tiers
+// celestiais (que andam em g_pNextLevel_2), MaxLevel nos demais casos (CMob.cpp:1082-1086).
 func MaxLevelForTier(classMaster uint8) int32 {
 	if isCelestialTier(classMaster) {
 		return MaxCLevel
@@ -79,10 +79,10 @@ func MaxLevelForTier(classMaster uint8) int32 {
 	return MaxLevel
 }
 
-// NextLevelExpTier returns the total experience needed to reach curLevel+1 on the
-// curve for the given tier: g_pNextLevel_2 for celestial tiers, g_pNextLevel
-// (the Mortal/Arch curve) otherwise (CMob.cpp:1092-1093). At or above the tier's
-// cap it returns the curve ceiling so no further level-up triggers.
+// NextLevelExpTier devolve a experiência total necessária para chegar a curLevel+1 na
+// curva da tier informada: g_pNextLevel_2 para tiers celestiais, g_pNextLevel
+// (a curva Mortal/Arch) nos demais casos (CMob.cpp:1092-1093). No teto da tier
+// ou acima dele devolve o topo da curva para nenhum outro level-up disparar.
 func NextLevelExpTier(curLevel int32, classMaster uint8) int64 {
 	if !isCelestialTier(classMaster) {
 		return NextLevelExp(curLevel)
@@ -94,8 +94,8 @@ func NextLevelExpTier(curLevel int32, classMaster uint8) int64 {
 	return nextLevel2[next]
 }
 
-// ForExpTier maps total experience back to a level on the tier's curve.
-// Ehre's purified-refine recipe subtracts experience and then performs this
+// ForExpTier mapeia experiência total de volta para um nível na curva da tier.
+// A receita de refino purificado do Ehre subtrai experiência e então faz esta
 // inverse lookup exactly like CMob's legacy g_pNextLevel_2 scan.
 func ForExpTier(exp int64, classMaster uint8) int32 {
 	levelCap := MaxLevelForTier(classMaster)
@@ -109,10 +109,10 @@ func ForExpTier(exp int64, classMaster uint8) int32 {
 	return result
 }
 
-// ExpApply is GetExpApply for the MORTAL path (GetFunc.cpp:1028): it scales the
-// mob's base reward by the attacker↔target level ratio. attacker is the killer's
-// level, target the mob's. Higher-level targets give a bonus (capped at 200%); a
-// killer far above the mob (ratio < 80% and level ≥ 49) is penalised.
+// ExpApply é GetExpApply do caminho MORTAL (GetFunc.cpp:1028): escala a
+// recompensa base do mob pela razão de nível atacante↔alvo. attacker é o nível do
+// matador, target o do mob. Alvos de nível maior dão bônus (limitado a 200%);
+// matador muito acima do mob (razão < 80% e nível ≥ 49) é penalizado.
 func ExpApply(exp int64, attacker, target int32) int64 {
 	if exp <= 0 {
 		return 0
@@ -135,11 +135,11 @@ func ExpApply(exp int64, attacker, target int32) int64 {
 	return (exp*mult + 1) / 100
 }
 
-// ScoreBonus is BASE_GetBonusScorePoint for MORTAL (Basedef.cpp:898): the free
-// attribute points the character should have = points granted by level minus
-// points already spent above the class base. It is idempotent (a function of the
-// current level and attributes), so it can be recomputed on each level-up without
-// being persisted.
+// ScoreBonus é BASE_GetBonusScorePoint do MORTAL (Basedef.cpp:898): os pontos
+// livres de atributo que o personagem deveria ter = pontos dados pelo nível menos
+// os já gastos acima da base da classe. É idempotente (função do nível e dos
+// atributos atuais), então pode ser recalculado a cada level-up sem
+// ser persistido.
 func ScoreBonus(cls uint8, level int32, str, intel, dex, con int16) int32 {
 	c := validClass(cls)
 	used := (int32(str) - baseSIDCHM[c][0]) +
@@ -163,15 +163,15 @@ func ScoreBonus(cls uint8, level int32, str, intel, dex, con int16) int32 {
 	return 0
 }
 
-// ScoreBonusCelestial is BASE_GetBonusScorePoint for the celestial tiers
-// (Basedef.cpp:980-1172): 6 points per level plus the quest grants (100 per
-// Arch crystal stage, 200 per Pedra da Furia reset, the flat 1001 and the
-// ArchLevel tier bonus), with extra points from level 120 up. Like ScoreBonus it
-// clamps an over-spend to 0 instead of taking the excess back from BaseScore.
-// CELESTIALCS/SCELESTIAL also credit the parked tier (Basedef.cpp:1084-1101 and
-// :1149-1166): otherLvl is QuestInfo.Celestial.SubCelestialLevel for a
-// CELESTIALCS and CelestialLevel for a SCELESTIAL, worth 3 points per level plus
-// the full 120+ bonuses; pass 0 for a plain CELESTIAL (issue #410).
+// ScoreBonusCelestial é BASE_GetBonusScorePoint das tiers celestiais
+// (Basedef.cpp:980-1172): 6 pontos por nível mais as concessões de quest (100 por
+// estágio de cristal Arch, 200 por reset da Pedra da Furia, os 1001 fixos e o
+// bônus de tier do ArchLevel), com pontos extras a partir do nível 120. Como ScoreBonus,
+// trava um gasto a mais em 0 em vez de retomar o excesso do BaseScore.
+// CELESTIALCS/SCELESTIAL também creditam a tier estacionada (Basedef.cpp:1084-1101 e
+// :1149-1166): otherLvl é QuestInfo.Celestial.SubCelestialLevel para um
+// CELESTIALCS e CelestialLevel para um SCELESTIAL, valendo 3 pontos por nível mais
+// todos os bônus de 120+; passe 0 para um CELESTIAL simples (issue #410).
 func ScoreBonusCelestial(cls uint8, lvl int32, str, intel, dex, con int16, cristal, reset, archLevel uint8, otherLvl int32) int32 {
 	c := validClass(cls)
 	used := (int32(str) - baseSIDCHM[c][0]) +

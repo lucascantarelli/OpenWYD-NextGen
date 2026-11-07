@@ -6,28 +6,28 @@ import (
 	"slices"
 )
 
-// Reference tables that can be dumped as a deterministic SQL seed (issue 58,
-// fase 3). The list is an ALLOWLIST on purpose: a dump that walks pg_tables
-// would copy account/character/item/affect and the audit trails into the
-// repository, and those are player data, not content.
+// Tabelas de referência que podem ser despejadas como um seed SQL determinístico
+// (issue 58, fase 3). A lista é uma ALLOWLIST de propósito: um dump que percorre
+// pg_tables copiaria conta/personagem/item/affect e as trilhas de auditoria para o
+// repositório, e isso é dado de jogador, não conteúdo.
 //
-// server_instance_flags is deliberately absent: it is boot-time runtime state,
-// not content, and a seeded copy would pin flags the operator may have changed.
+// server_instance_flags está deliberadamente ausente: é estado de runtime de boot,
+// não conteúdo, e uma cópia semeada fixaria flags que o operador pode ter mudado.
 var seedTables = []string{
-	// world defaults (small, edited only by migration)
+	// padrões de mundo (pequeno, editado só por migration)
 	"guild_zone", "castle_quest_state", "kefra_state",
 	"world_event_config", "world_event_meta", "npc_config_meta",
-	// NPC spawn catalogue (was NPCGener.txt)
+	// catálogo de spawn de NPC (era NPCGener.txt)
 	"npc_definition", "npc_shop_item",
-	// content catalogs (were CSV/STRUCT_MOB files)
+	// catálogos de conteúdo (eram arquivos CSV/STRUCT_MOB)
 	"item_catalog", "skill_catalog", "npc_template", "world_item_seed",
 }
 
-// ContentNPCDefinitionCount reports how many npc_definition rows the content
-// owns (origin='content') — exactly the number NPCGener.txt used to provide.
-// The dbServer boots on this instead of on the file (issue 58, fase 3): zero
-// means neither the file nor the seed produced a catalogue, which must fail
-// loudly rather than boot a world that never spawns a monster.
+// ContentNPCDefinitionCount informa quantas linhas npc_definition o conteúdo
+// possui (origin='content') — exatamente o número que NPCGener.txt costumava fornecer.
+// O dbServer sobe com base nisto em vez de no arquivo (issue 58, fase 3): zero
+// significa que nem o arquivo nem o seed produziram catálogo, o que precisa falhar
+// alto em vez de subir um mundo que nunca gera monstro.
 func (s *Store) ContentNPCDefinitionCount(ctx context.Context) (int, error) {
 	var n int
 	if err := s.pool.QueryRow(ctx,
@@ -37,11 +37,11 @@ func (s *Store) ContentNPCDefinitionCount(ctx context.Context) (int, error) {
 	return n, nil
 }
 
-// SeedColumns returns the insertable columns of a seed table: every column
-// except identity columns (GENERATED ALWAYS rejects an explicit value) and
-// generated columns. The seed writes the column list explicitly for exactly
-// that reason — `INSERT INTO t SELECT * FROM json_populate_record(...)` fails on
-// npc_definition.id with "cannot insert a non-DEFAULT value into column id".
+// SeedColumns devolve as colunas inseríveis de uma tabela de seed: toda coluna
+// exceto colunas de identidade (GENERATED ALWAYS rejeita valor explícito) e
+// colunas geradas. O seed escreve a lista de colunas explicitamente exatamente
+// por isso — `INSERT INTO t SELECT * FROM json_populate_record(...)` falha em
+// npc_definition.id, reclamando que a coluna id não aceita valor não-DEFAULT.
 func (s *Store) SeedColumns(ctx context.Context, table string) ([]string, error) {
 	if !slices.Contains(seedTables, table) {
 		return nil, fmt.Errorf("store: %q is not an allowlisted seed table", table)
@@ -75,18 +75,18 @@ func (s *Store) SeedColumns(ctx context.Context, table string) ([]string, error)
 	return out, nil
 }
 
-// SeedTables returns the allowlisted reference tables in dump order.
+// SeedTables devolve as tabelas de referência da allowlist na ordem de dump.
 func SeedTables() []string { return slices.Clone(seedTables) }
 
-// DumpTableJSON returns one JSON object per row, ordered by the row's own JSON
-// text. Sorting by the canonical JSON instead of a hand-written column list
-// keeps the dump deterministic for every table without duplicating its schema
-// here — and two rows can never be textually equal, so the order is total.
+// DumpTableJSON devolve um objeto JSON por linha, ordenado pelo próprio texto
+// JSON da linha. Ordenar pelo JSON canônico em vez de uma lista de colunas escrita à mão
+// mantém o dump determinístico para toda tabela sem duplicar seu esquema
+// aqui — e duas linhas nunca são textualmente iguais, então a ordem é total.
 func (s *Store) DumpTableJSON(ctx context.Context, table string) ([][]byte, error) {
 	if !slices.Contains(seedTables, table) {
 		return nil, fmt.Errorf("store: %q is not an allowlisted seed table", table)
 	}
-	// The identifier comes from the allowlist above, never from a caller.
+	// O identificador vem da allowlist acima, nunca de quem chama.
 	rows, err := s.pool.Query(ctx, `SELECT to_jsonb(t)::text FROM `+table+` t ORDER BY to_jsonb(t)::text`)
 	if err != nil {
 		return nil, fmt.Errorf("store: dump %s: %w", table, err)

@@ -10,14 +10,14 @@ import (
 	"openwyd-nextgen/internal/npctemplate"
 )
 
-// NPCGenerator is one spawn block of NPCGener.txt (CNPCGene.cpp ParseString):
-// it spawns MinGroup..MaxGroup mobs of Leader (plus Followers) patrolling the
-// SegX/SegY waypoints per RouteType, regenerating every MinuteGenerate minutes.
+// NPCGenerator é um bloco de spawn do NPCGener.txt (CNPCGene.cpp ParseString):
+// ele gera de MinGroup a MaxGroup mobs de Leader (mais Followers) patrulhando os
+// waypoints SegX/SegY conforme o RouteType, regenerando a cada MinuteGenerate minutos.
 //
-// Waypoint index mapping is the original's: Start*→[0], Segment1..3*→[1..3],
-// Dest*→[4]. Unused waypoints stay 0 and the segment walker skips them
-// (SetSegment, CMob.cpp:608) — so the common Start/Dest-only block patrols
-// 0→4→0. StartX/StartY accessors keep the spawn-point name used elsewhere.
+// O mapeamento de índice de waypoint é o do original: Start*→[0], Segment1..3*→[1..3],
+// Dest*→[4]. Waypoints não usados ficam 0 e o andador de segmento os pula
+// (SetSegment, CMob.cpp:608) — então o bloco comum só com Start/Dest patrulha
+// 0→4→0. Os acessores StartX/StartY mantêm o nome de ponto de spawn usado em outros lugares.
 type NPCGenerator struct {
 	Leader         string
 	Follower       string
@@ -34,8 +34,8 @@ type NPCGenerator struct {
 	DieAction      [4]string
 }
 
-// LoadNPCGenerators parses NPCGener.txt. Blocks start with '#'; lines are
-// "Key:\tvalue"; '//' lines are comments.
+// LoadNPCGenerators lê NPCGener.txt. Os blocos começam com '#'; as linhas são
+// "Key:\tvalue"; linhas '//' são comentários.
 func LoadNPCGenerators(path string) ([]NPCGenerator, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -116,9 +116,9 @@ func LoadNPCGenerators(path string) ([]NPCGenerator, error) {
 				setIndexedAction(key, "DieAction", &cur.DieAction, val) {
 				continue
 			}
-			// Segment1..3{X,Y,Range,Wait} → indices 1..3. Segment*Action keys are
-			// route flavor text and remain unmapped; FightAction/DieAction above are
-			// combat-visible chat lines.
+			// Segment1..3{X,Y,Range,Wait} → índices 1..3. As chaves Segment*Action são
+			// texto de sabor da rota e continuam sem mapeamento; FightAction/DieAction acima são
+			// linhas de chat visíveis em combate.
 			if strings.HasPrefix(key, "Segment") && len(key) > 8 {
 				if i := int(key[7] - '0'); i >= 1 && i <= 3 {
 					switch key[8:] {
@@ -142,12 +142,12 @@ func LoadNPCGenerators(path string) ([]NPCGenerator, error) {
 	return out, nil
 }
 
-// LoadNPCTemplate reads one mob template (tmserver/content/TMsrv/run/npc/<name>) and
-// returns it as a raw canonical 816-byte STRUCT_MOB — the legacy 756/920-byte
-// layouts in that directory are widened by npctemplate.Load (data-formats.md
-// §1.4.1). Legacy NPCGener names are resolved with Windows-like path
-// compatibility (case-insensitive, trailing dots ignored). Templates are cached
-// by the caller (many generators share a name).
+// LoadNPCTemplate lê um template de mob (tmserver/content/TMsrv/run/npc/<name>) e
+// o devolve como STRUCT_MOB canônico cru de 816 bytes — os layouts legados de
+// 756/920 bytes daquele diretório são alargados por npctemplate.Load (data-formats.md
+// §1.4.1). Nomes legados do NPCGener são resolvidos com compatibilidade de caminho
+// no estilo Windows (sem diferenciar caixa, pontos finais ignorados). Os templates são
+// cacheados por quem chama (muitos geradores compartilham um nome).
 func LoadNPCTemplate(dir, name string) ([]byte, error) {
 	b, _, err := npctemplate.Load(dir, name)
 	if err != nil {

@@ -13,8 +13,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/protocol"
 )
 
-// template builds a raw 816-byte STRUCT_MOB filled with a nonzero pattern, so
-// the round-trip check catches any byte the stamp isn't allowed to touch.
+// template monta um STRUCT_MOB cru de 816 bytes preenchido com um padrão não
+// zero, para a checagem de round-trip pegar qualquer byte que o stamp não pode tocar.
 func template(name string, lvl uint32, exp uint64, merchant byte) []byte {
 	b := make([]byte, content.BaseMobSize)
 	for i := range b {
@@ -71,7 +71,7 @@ func TestStampRoundTrip(t *testing.T) {
 		t.Fatalf("entry = %+v, want Cobaia 68571 -> %d", e, want)
 	}
 
-	// The monster file changed in exactly the 8 Exp bytes.
+	// O arquivo do monstro mudou exatamente nos 8 bytes de Exp.
 	got := read(t, dir, "Cobaia")
 	if b := protocol.ParseMobBasics(got); b.Exp != want {
 		t.Errorf("stamped Exp = %d, want %d", b.Exp, want)
@@ -91,11 +91,11 @@ func TestStampRoundTrip(t *testing.T) {
 	}
 }
 
-// legacyTemplate builds a raw 756-byte legacy STRUCT_MOB (data-formats.md
-// §1.4.1) with the same nonzero-pattern trick as template: Exp is a 32-bit
-// field at offset 28 and the compact score sits at 64 (Level u16 @+0,
-// Merchant @+6). size selects the plain 756 layout or the 920-byte padded one,
-// whose trailing junk must survive the stamp untouched.
+// legacyTemplate monta um STRUCT_MOB legado cru de 756 bytes (data-formats.md
+// §1.4.1) com o mesmo truque de padrão não zero do template: Exp é um campo
+// de 32 bits no offset 28 e o score compacto fica em 64 (Level u16 @+0,
+// Merchant @+6). size seleciona o layout plano de 756 ou o de 920 com padding,
+// cujo lixo final precisa sobreviver ao stamp intocado.
 func legacyTemplate(name string, lvl uint16, exp int32, merchant byte, size int) []byte {
 	b := make([]byte, size)
 	for i := range b {
@@ -112,11 +112,11 @@ func legacyTemplate(name string, lvl uint16, exp int32, merchant byte, size int)
 	return b
 }
 
-// TestStampCoversLegacyTemplates is the fix for the residue issue #244 left
-// behind: the legacy layouts used to be skipped, so 222 shipped monsters kept
-// their authored Exp while the tmServer boot log kept telling operators to run
-// this tool. They are restamped in place now — 4 bytes at offset 28 — and the
-// file keeps its size, which was the original reason for skipping them.
+// TestStampCoversLegacyTemplates é a correção do resíduo que a issue #244 deixou
+// para trás: os layouts legados eram pulados, então 222 monstros distribuídos mantinham
+// seu Exp autorado enquanto o log de boot do tmServer seguia dizendo aos operadores
+// para rodar esta ferramenta. Eles são restampados no lugar agora — 4 bytes no
+// offset 28 — e o arquivo mantém seu tamanho, que era o motivo original de pulá-los.
 func TestStampCoversLegacyTemplates(t *testing.T) {
 	dir := t.TempDir()
 	legacy := legacyTemplate("Antigo", 20, 999, 0, savefmt.MobSizeLegacy756)
@@ -137,7 +137,7 @@ func TestStampCoversLegacyTemplates(t *testing.T) {
 			len(res.Stamped), res.StampedVariant, res.Skipped, res.SkippedNonTemplate)
 	}
 
-	// Each legacy file changed in exactly the 4 Exp bytes — trailing junk of the
+	// Cada arquivo legado mudou exatamente nos 4 bytes de Exp — o lixo final do
 	// padded form included.
 	for _, tc := range []struct {
 		file   string
@@ -159,9 +159,9 @@ func TestStampCoversLegacyTemplates(t *testing.T) {
 		}
 	}
 
-	// A legacy merchant is still a merchant: its Merchant flag lives in the
-	// compact score, so reading it through the canonical offsets would have
-	// stamped it by mistake.
+	// Um mercador legado continua mercador: sua flag Merchant vive no
+	// score compacto, então lê-la pelos offsets canônicos o teria
+	// estampado por engano.
 	if !bytes.Equal(read(t, dir, "Loja"), shop) {
 		t.Error("legacy merchant template was modified")
 	}

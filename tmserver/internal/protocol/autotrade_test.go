@@ -3,8 +3,8 @@ package protocol
 import "testing"
 
 func TestAutoTradeBodySizes(t *testing.T) {
-	// Body size + HeaderSize must equal the compiler-verified total packet size
-	// (captura-wyd-autotrade.md, MSVC x86).
+	// Tamanho do corpo + HeaderSize precisa igualar o tamanho total do pacote verificado
+	// pelo compilador
 	tests := []struct {
 		name      string
 		bodySize  int
@@ -37,7 +37,7 @@ func TestSendAutoTradeRoundTrip(t *testing.T) {
 	if len(b) != MsgSendAutoTradeBodySize {
 		t.Fatalf("Encode len = %d, want %d", len(b), MsgSendAutoTradeBodySize)
 	}
-	// Hard-coded offsets (body = abs − 12): Title@0, Item[0]@24, CarryPos[0]@120,
+	// Offsets fixos no código (corpo = abs − 12): Title@0, Item[0]@24, CarryPos[0]@120,
 	// Coin[0]@132, Tax@180, Index@182.
 	if got := cTrimNUL(b[0:24]); got != "Vendo tudo" {
 		t.Errorf("Title@0 = %q, want %q", got, "Vendo tudo")
@@ -76,7 +76,7 @@ func TestSendAutoTradeEncodeListPadding(t *testing.T) {
 	if len(list) != sendAutoTradeListWireSize {
 		t.Fatalf("EncodeList len = %d, want %d (Size=528 quirk)", len(list), sendAutoTradeListWireSize)
 	}
-	// The meaningful 184 bytes lead; the remaining 332 are zero.
+	// Os 184 bytes significativos vêm na frente; os 332 restantes são zero.
 	head := in.Encode()
 	for i := range head {
 		if list[i] != head[i] {
@@ -102,8 +102,8 @@ func TestReqBuyDecodeHonorsPadding(t *testing.T) {
 	if len(b) != MsgReqBuyBodySize {
 		t.Fatalf("Encode len = %d, want %d", len(b), MsgReqBuyBodySize)
 	}
-	// Price must sit at body offset 8 (2-byte pad after the uint16 TargetID@4), not
-	// at 6 — the whole point of the capture.
+	// Price precisa ficar no offset 8 do corpo (pad de 2 bytes após o uint16
+	// TargetID@4), não em 6 — o motivo todo da captura.
 	if got := int32(le.Uint32(b[8:12])); got != 250000 {
 		t.Errorf("Price@8 = %d, want 250000 (padding after TargetID)", got)
 	}
@@ -131,11 +131,11 @@ func TestCreateMobTradeBodyTail(t *testing.T) {
 	if len(body) != createMobTradeSize-HeaderSize {
 		t.Fatalf("body len = %d, want %d", len(body), createMobTradeSize-HeaderSize)
 	}
-	// Shares the CreateMob prefix: MobID@4 (body) must round-trip.
+	// Compartilha o prefixo do CreateMob: MobID@4 (corpo) precisa fazer round-trip.
 	if got := int(le.Uint16(body[4:6])); got != 5 {
 		t.Errorf("MobID@4 = %d, want 5", got)
 	}
-	// Tab[26]@190, Desc[24]@216 (body offsets = abs − 12).
+	// Tab[26]@190, Desc[24]@216 (offsets de corpo = abs − 12).
 	if body[190] != 0xAB {
 		t.Errorf("Tab[0]@190 = %d, want 0xAB", body[190])
 	}

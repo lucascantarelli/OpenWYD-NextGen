@@ -1,14 +1,14 @@
 package protocol
 
-// MaxAffect is the number of affect (buff/debuff) slots per entity (MAX_AFFECT).
+// MaxAffect é o número de slots de affect (buff/debuff) por entidade (MAX_AFFECT).
 const MaxAffect = 32
 
-// sendAffectSize is the full MSG_SendAffect (0x03B9): HEADER + STRUCT_AFFECT[32].
-// STRUCT_AFFECT is 8 bytes (Type u8, Value u8, Level u16, Time u32), so the body is
-// 32*8 = 256 bytes and the packet is 268 (captura-wyd-affect-divina.md §A,D).
+// sendAffectSize é o MSG_SendAffect completo (0x03B9): HEADER + STRUCT_AFFECT[32].
+// STRUCT_AFFECT tem 8 bytes (Type u8, Value u8, Level u16, Time u32), então o
+// corpo é 32*8 = 256 bytes e o pacote é 268 (captura-wyd-affect-divina.md §A,D).
 const sendAffectSize = 268
 
-// AffectData mirrors STRUCT_AFFECT (8 bytes): one timed buff/debuff slot.
+// AffectData espelha STRUCT_AFFECT (8 bytes): um slot de buff/debuff com tempo.
 type AffectData struct {
 	Type  uint8
 	Value uint8
@@ -16,8 +16,8 @@ type AffectData struct {
 	Time  uint32
 }
 
-// EncodeSendAffect builds MSG_SendAffect (0x03B9): a full snapshot of the entity's 32
-// affect slots (empty slots = zero). Send with HEADER.ID = conn (SendFunc.cpp:1901).
+// EncodeSendAffect monta MSG_SendAffect (0x03B9): um snapshot completo dos 32
+// slots de affect da entidade (slots vazios = zero). Envie com HEADER.ID = conn
 func EncodeSendAffect(affects [MaxAffect]AffectData) []byte {
 	b := make([]byte, sendAffectSize-HeaderSize) // 256
 	for i, a := range affects {

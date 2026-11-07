@@ -11,8 +11,8 @@ import (
 	"openwyd-nextgen/tmserver/internal/world"
 )
 
-// fakeAPI implements dbv1.AccountServiceClient, capturing requests and returning
-// canned responses, so the adapter's mapping is tested without a gRPC server.
+// fakeAPI implementa dbv1.AccountServiceClient, capturando requisições e devolvendo
+// respostas prontas, para o mapeamento do adaptador ser testado sem servidor gRPC.
 type fakeAPI struct {
 	kefraResp  *dbv1.LoadKefraStateResponse
 	kefraSaved *dbv1.SaveKefraStateRequest
@@ -182,14 +182,14 @@ func TestAccountLoginMapping(t *testing.T) {
 	if len(out.Characters) != 1 || out.Characters[0].Name != "hero" || out.Characters[0].GuildID != 5 {
 		t.Fatalf("characters not mapped: %+v", out.Characters)
 	}
-	// The select-screen score preview (gold, HP, attributes) is carried too.
+	// A prévia de score da tela de seleção (ouro, HP, atributos) também é carregada.
 	if c0 := out.Characters[0]; c0.Coin != 12345 || c0.MaxHp != 800 || c0.Hp != 750 || c0.Str != 60 {
 		t.Fatalf("character score not mapped: %+v", c0)
 	}
 	if c0 := out.Characters[0]; c0.Equip[1].Index != 1100 || c0.Equip[1].Effects[0].Value != 9 {
 		t.Fatalf("character equip not mapped: %+v", c0.Equip[1])
 	}
-	// Cargo is fetched in the same login round-trip and mapped positionally.
+	// O cargo é buscado na mesma ida e volta do login e mapeado posicionalmente.
 	if out.Cargo.AccountID != 1 || out.Cargo.Coin != 4200 || out.Cargo.Items[2].Index != 999 {
 		t.Fatalf("cargo not loaded on login: %+v", out.Cargo)
 	}
@@ -237,8 +237,8 @@ func TestRecordDuelResultNotOKIsError(t *testing.T) {
 }
 
 func TestAccountLoginFailSkipsList(t *testing.T) {
-	// On a failed login the adapter must not call ListCharacters (nil listResp
-	// would panic if it did).
+	// Num login falho o adaptador não pode chamar ListCharacters (listResp nil
+	// daria panic se chamasse).
 	api := &fakeAPI{loginResp: &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BAD_PASSWORD}}
 	out, err := newClient(api).AccountLogin(context.Background(), "alice", "bad")
 	if err != nil {
@@ -282,7 +282,7 @@ func TestLoadCharacterMapping(t *testing.T) {
 	if st.Citizen != 2 || st.Fame != 999 {
 		t.Fatalf("Citizen/Fame not mapped: citizen=%d fame=%d", st.Citizen, st.Fame)
 	}
-	// Equipment must be injected too (it was previously dropped at this boundary).
+	// O equipamento também precisa ser injetado (antes era descartado nesta fronteira).
 	if st.Equip[1].Index != 1100 || st.Equip[1].Effects[0].Effect != 4 {
 		t.Fatalf("equip not mapped: %+v", st.Equip[1])
 	}
@@ -345,12 +345,12 @@ func TestSaveOnShutdownMapping(t *testing.T) {
 	}
 }
 
-// TestDivinePersistMapping round-trips the Divine buff: it is saved as one affect row
-// carrying the absolute deadline in Time, and loaded back into CharacterState.DivineEnd.
+// TestDivinePersistMapping faz ida e volta do buff Divino: ele é salvo como uma linha de affect
+// que carrega o prazo absoluto em Time, e volta para CharacterState.DivineEnd.
 func TestDivinePersistMapping(t *testing.T) {
 	deadline := time.Now().Unix() + 30*86400
 
-	// Save: an active Divine buff produces one type-34 affect with Time == deadline.
+	// Save: um buff Divino ativo produz um affect tipo 34 com Time == prazo.
 	api := &fakeAPI{}
 	save := world.CharacterSave{AccountID: 1, Slot: 0, DivineEnd: deadline}
 	if err := newClient(api).SaveOnShutdown(context.Background(), save); err != nil {
@@ -361,7 +361,7 @@ func TestDivinePersistMapping(t *testing.T) {
 		t.Fatalf("divine affect not persisted: %+v", aff)
 	}
 
-	// Load: a type-34 affect reconstructs DivineEnd.
+	// Load: um affect tipo 34 reconstrói DivineEnd.
 	api2 := &fakeAPI{loadResp: &dbv1.LoadCharacterResponse{Character: &dbv1.Character{
 		Slot: 0, Name: "div",
 		Affects: []*dbv1.Affect{{Type: int32(world.AffectDivine), Level: 1, Time: uint32(deadline)}},
@@ -375,7 +375,7 @@ func TestDivinePersistMapping(t *testing.T) {
 	}
 }
 
-// TestDivineNotPersistedWhenExpired confirms an expired/absent buff writes no affect.
+// TestDivineNotPersistedWhenExpired confirma que buff expirado/ausente não grava affect.
 func TestDivineNotPersistedWhenExpired(t *testing.T) {
 	api := &fakeAPI{}
 	save := world.CharacterSave{AccountID: 1, Slot: 0, DivineEnd: time.Now().Unix() - 100}
@@ -390,7 +390,7 @@ func TestDivineNotPersistedWhenExpired(t *testing.T) {
 func TestLoadCargoMapping(t *testing.T) {
 	api := &fakeAPI{cargoResp: &dbv1.LoadCargoResponse{CargoCoin: 7777, Items: []*dbv1.Item{
 		{Slot: 5, Index: 2468, Eff1: 3, Effv1: 2},
-		{Slot: 200, Index: 1}, // out-of-range slot is dropped, not panicked on
+		{Slot: 200, Index: 1}, // slot fora da faixa é descartado, não gera panic
 	}}}
 	st, err := newClient(api).LoadCargo(context.Background(), 9)
 	if err != nil {

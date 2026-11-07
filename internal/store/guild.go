@@ -16,9 +16,9 @@ const (
 	guildAllocLockBase   = 0x77326775696c6400
 )
 
-// CreateGuild allocates a legacy ushort guild id, creates the guild row, debits
-// the creation cost, and makes the requesting character its leader in one
-// transaction.
+// CreateGuild aloca um id de guild ushort legado, cria a linha da guild, debita
+// o custo de criação e torna o personagem solicitante seu líder numa
+// só transação.
 func (s *Store) CreateGuild(ctx context.Context, accountID int64, slot int, characterName, guildName string, clan, citizen uint8, serverIndex int, cost int32) (domain.Guild, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -87,8 +87,8 @@ func (s *Store) CreateGuild(ctx context.Context, accountID int64, slot int, char
 	return guild, nil
 }
 
-// SetGuildMember sets a character's guild id/level and mirrors it in
-// guild_member. A guild id of 0 removes the membership.
+// SetGuildMember define o id/nível de guild de um personagem e espelha em
+// guild_member. Um id de guild 0 remove a associação.
 func (s *Store) SetGuildMember(ctx context.Context, accountID int64, slot int, characterName string, guildID uint16, guildLevel uint8) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -118,7 +118,7 @@ func (s *Store) SetGuildMember(ctx context.Context, accountID int64, slot int, c
 	return nil
 }
 
-// LeaveGuild removes a character from its guild.
+// LeaveGuild remove um personagem da sua guild.
 func (s *Store) LeaveGuild(ctx context.Context, accountID int64, slot int) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -146,8 +146,8 @@ func (s *Store) LeaveGuild(ctx context.Context, accountID int64, slot int) error
 	return nil
 }
 
-// PromoteGuildMember assigns the first available sub-leader level (6, 7, 8) and
-// debits the leader in the same transaction.
+// PromoteGuildMember atribui o primeiro nível de sub-líder disponível (6, 7, 8) e
+// debita o líder na mesma transação.
 func (s *Store) PromoteGuildMember(ctx context.Context, guildID uint16, leaderAccountID int64, leaderSlot int, accountID int64, slot int, cost int32) (uint8, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -232,7 +232,7 @@ func (s *Store) PromoteGuildMember(ctx context.Context, guildID uint16, leaderAc
 	return level, nil
 }
 
-// TransferGuildLeader moves level 9 from oldAccountID/slot to newAccountID/slot.
+// TransferGuildLeader move o nível 9 de oldAccountID/slot para newAccountID/slot.
 func (s *Store) TransferGuildLeader(ctx context.Context, guildID uint16, oldAccountID int64, oldSlot int, newAccountID int64, newSlot int) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -341,7 +341,7 @@ func setGuildMemberTx(ctx context.Context, tx pgx.Tx, accountID int64, slot int,
 	return nil
 }
 
-// SetGuildRelation upserts or removes one directed ally/war relation.
+// SetGuildRelation insere/remove uma relação direcionada de aliado/guerra.
 func (s *Store) SetGuildRelation(ctx context.Context, guildID, targetGuildID uint16, kind domain.GuildRelationKind) error {
 	if guildID == 0 || guildID == targetGuildID {
 		return ErrConflict
@@ -370,7 +370,7 @@ func (s *Store) SetGuildRelation(ctx context.Context, guildID, targetGuildID uin
 	return nil
 }
 
-// ListGuilds returns every registered guild ordered by id.
+// ListGuilds devolve toda guild registrada ordenada por id.
 func (s *Store) ListGuilds(ctx context.Context) ([]domain.Guild, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, name, clan, fame, citizen FROM guild ORDER BY id`)
@@ -389,7 +389,7 @@ func (s *Store) ListGuilds(ctx context.Context) ([]domain.Guild, error) {
 	return out, rows.Err()
 }
 
-// ListGuildRelations returns every directed guild relation ordered by guild id.
+// ListGuildRelations devolve toda relação direcionada de guild ordenada por id de guild.
 func (s *Store) ListGuildRelations(ctx context.Context) ([]domain.GuildRelation, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT guild_id, target_guild_id, kind FROM guild_relation ORDER BY guild_id, target_guild_id`)
@@ -408,7 +408,7 @@ func (s *Store) ListGuildRelations(ctx context.Context) ([]domain.GuildRelation,
 	return out, rows.Err()
 }
 
-// LoadGuildZones loads the five guild/city zones.
+// LoadGuildZones carrega as cinco zonas de guild/cidade.
 func (s *Store) LoadGuildZones(ctx context.Context) ([]domain.GuildZone, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT zone, charge_guild, challenge_guild, clan, victory, city_tax, challenge_money, tax_vault
@@ -428,7 +428,7 @@ func (s *Store) LoadGuildZones(ctx context.Context) ([]domain.GuildZone, error) 
 	return out, rows.Err()
 }
 
-// SaveGuildZone persists one guild/city zone.
+// SaveGuildZone persiste uma zona de guild/cidade.
 func (s *Store) SaveGuildZone(ctx context.Context, z domain.GuildZone) error {
 	tag, err := s.pool.Exec(ctx, `
 		INSERT INTO guild_zone(zone, charge_guild, challenge_guild, clan, victory, city_tax, challenge_money, tax_vault, updated_at)
@@ -453,7 +453,7 @@ func (s *Store) SaveGuildZone(ctx context.Context, z domain.GuildZone) error {
 	return nil
 }
 
-// LoadGuildTowerState loads the single GTorre owner row.
+// LoadGuildTowerState carrega a única linha de dono de GTorre.
 func (s *Store) LoadGuildTowerState(ctx context.Context) (domain.GuildTowerState, error) {
 	var st domain.GuildTowerState
 	err := s.pool.QueryRow(ctx,
@@ -468,7 +468,7 @@ func (s *Store) LoadGuildTowerState(ctx context.Context) (domain.GuildTowerState
 	return st, nil
 }
 
-// SaveGuildTowerState persists the single GTorre owner row.
+// SaveGuildTowerState persiste a única linha de dono de GTorre.
 func (s *Store) SaveGuildTowerState(ctx context.Context, st domain.GuildTowerState) error {
 	if st.UpdatedAtUnix == 0 {
 		st.UpdatedAtUnix = time.Now().Unix()
@@ -487,7 +487,7 @@ func (s *Store) SaveGuildTowerState(ctx context.Context, st domain.GuildTowerSta
 	return nil
 }
 
-// LoadCastleQuestState loads the single Castle/Zakum quest row.
+// LoadCastleQuestState carrega a única linha da quest de Castelo/Zakum.
 func (s *Store) LoadCastleQuestState(ctx context.Context) (domain.CastleQuestState, error) {
 	var st domain.CastleQuestState
 	err := s.pool.QueryRow(ctx,
@@ -502,7 +502,7 @@ func (s *Store) LoadCastleQuestState(ctx context.Context) (domain.CastleQuestSta
 	return st, nil
 }
 
-// SaveCastleQuestState persists the single Castle/Zakum quest row.
+// SaveCastleQuestState persiste a única linha da quest de Castelo/Zakum.
 func (s *Store) SaveCastleQuestState(ctx context.Context, st domain.CastleQuestState) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO castle_quest_state(id, level, time_left, clear, leader_name, updated_at)

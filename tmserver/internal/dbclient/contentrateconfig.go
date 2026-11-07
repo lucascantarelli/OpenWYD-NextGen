@@ -9,8 +9,8 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// RemoteRateOverride is one content_rate_override row as tmServer consumes it
-// (issue 36): the value replaces the file's at (file, family, name).
+// RemoteRateOverride é uma linha de content_rate_override como o tmServer a consome
+// (issue 36): o valor substitui o do arquivo em (file, family, name).
 type RemoteRateOverride struct {
 	File   string
 	Family string
@@ -18,18 +18,18 @@ type RemoteRateOverride struct {
 	Value  int64
 }
 
-// ContentRateConfig adapts the dbServer ContentRateConfigService. Writes go
-// through the web-api only — this client never mutates config.
+// ContentRateConfig adapta o ContentRateConfigService do dbServer. As escritas vão
+// vão só pelo web-api — este cliente nunca altera config.
 type ContentRateConfig struct {
 	api dbv1.ContentRateConfigServiceClient
 }
 
-// NewContentRateConfig wraps a gRPC connection as a rate overlay source.
+// NewContentRateConfig embrulha uma conexão gRPC como fonte de overlay de rates.
 func NewContentRateConfig(conn grpc.ClientConnInterface) *ContentRateConfig {
 	return &ContentRateConfig{api: dbv1.NewContentRateConfigServiceClient(conn)}
 }
 
-// Overrides fetches every overlay row (cells without a row keep the file value).
+// Overrides busca toda linha do overlay (células sem linha mantêm o valor do arquivo).
 func (c *ContentRateConfig) Overrides(ctx context.Context) ([]RemoteRateOverride, error) {
 	resp, err := c.api.ListContentRateOverrides(ctx, &dbv1.ListContentRateOverridesRequest{})
 	if err != nil {
