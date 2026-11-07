@@ -11,7 +11,7 @@ Preencher `docs/manual-usuario/`, `docs/manual-técnico/` e `docs/arquitetura/`
 
 Estrutura criada (pastas com `.gitkeep`); conteúdo pendente. Padrão vigente:
 MkDocs + C4 + specs de pacotes (`pre-release-rust.md` FASE 11). Manual do usuário
-cobre portal/launcher/manuais do jogo; manual técnico cobre arquitetura,
+cobre wyd-portal/launcher/manuais do jogo; manual técnico cobre arquitetura,
 implementação, padrões, testes e CI/CD; arquitetura cobre componentes, módulos,
 diagramas, fluxos, protocolos e ADRs (ver `README.md` e `docs/arquitetura/adr/`).
 

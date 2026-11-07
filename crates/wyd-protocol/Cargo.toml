@@ -2,7 +2,7 @@
 name = "wyd-protocol"
 version = "0.1.0"
 edition = "2021"
-description = "Contratos de wire/cliente do OpenWYD (CPSock, offsets explicitos)"
+description = "Contratos de wire/cliente do WYD (CPSock, offsets explicitos)"
 
 [lib]
 name = "wyd_protocol"

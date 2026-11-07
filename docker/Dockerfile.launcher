@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# wyd-launcher — exe de distribuição/check do cliente (FORA do compose).
+# Artefato de release/smoke (FASE-05-2). Esqueleto padrão para
+# `docker/Dockerfile.<svc>` (builder + runtime mínima, non-root).
+# Build:  docker build -f docker/Dockerfile.launcher -t wyd/launcher:dev .
+# Uso:    docker run --rm wyd/launcher:dev update /jogo /pacote --key-file /chave.key
+
+FROM rust:1-bookworm AS builder
+WORKDIR /src
+# Dependências primeiro (cache de camada): só manifests do workspace.
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY crates ./crates
+# Cache BuildKit do registry + target acelera rebuilds sem invalidar camadas.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release -p wyd-launcher && \
+    cp /src/target/release/wyd-launcher /usr/local/bin/wyd-launcher
+
+FROM debian:bookworm-slim AS runtime
+LABEL org.opencontainers.image.title="wyd-launcher" \
+      org.opencontainers.image.description="Distribuicao e verificacao do cliente WYD" \
+      org.opencontainers.image.source="https://github.com/lucascantarelli/wyd"
+RUN useradd --create-home --shell /bin/false wyd && \
+    mkdir -p /jogo /pacote && chown wyd:wyd /jogo /pacote
+COPY --from=builder /usr/local/bin/wyd-launcher /usr/local/bin/wyd-launcher
+USER wyd
+WORKDIR /jogo
+ENTRYPOINT ["wyd-launcher"]
+CMD ["--help"]

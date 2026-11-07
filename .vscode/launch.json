@@ -1,0 +1,107 @@
+{
+  // Debug (F5) e Run (Ctrl+F5) do workspace.
+  // Rust via CodeLLDB (ver .vscode/extensions.json); portal via Node.
+  // Pré-requisito do debug Rust: `cargo build` (task `cargo-build` abaixo).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rust: debug wyd-launcher",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "build",
+          "-p",
+          "wyd-launcher"
+        ],
+        "filter": {
+          "name": "wyd-launcher",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--help"
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Rust: debug testes (crate ativa)",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "${input:crate}"
+        ],
+        "filter": {
+          "kind": "lib"
+        }
+      },
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Rust: run launcher check (tmp)",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "run",
+          "-p",
+          "wyd-launcher",
+          "--",
+          "check",
+          "/tmp/jogo",
+          "/tmp/pacote/manifesto"
+        ],
+        "filter": {
+          "name": "wyd-launcher",
+          "kind": "bin"
+        }
+      },
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Portal: dev (Next.js)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "${workspaceFolder}/portal",
+      "console": "integratedTerminal",
+      "env": {
+        "PORT": "3000"
+      }
+    },
+    {
+      "name": "Portal: attach (server-side)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "crate",
+      "type": "promptString",
+      "description": "Crate para testar (ex.: wyd-core, wyd-net, wyd-db, wyd-admin, wyd-protocol)",
+      "default": "wyd-core"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Stack: portal dev",
+      "configurations": [
+        "Portal: dev (Next.js)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

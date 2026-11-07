@@ -7,9 +7,10 @@
 /client/
 
 # Portal Next.js (dependências e saída de build).
-/portal/.next/
-/portal/out/
-/portal/next-env.d.ts
+/wyd-portal/.next/
+/wyd-portal/out/
+/wyd-portal/next-env.d.ts
+/wyd-portal/node_modules/
 
 # Metadados locais do Freebuff (project-id do workspace).
 /.freebuff/

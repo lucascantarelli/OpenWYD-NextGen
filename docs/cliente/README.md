@@ -37,7 +37,7 @@ Este dossiê é a fonte canônica desse conhecimento dentro do repositório.
 
 Evidência histórica (arquivo Go, **leitura apenas**):
 `.deprecated-go/docs/migration/client-patch-hooks.md`,
-`openwyd-client-feasibility.md`,
+`wyd-client-feasibility.md`,
 `investigacao-freeze-cliente.md`.
 
 ## 3. Regras

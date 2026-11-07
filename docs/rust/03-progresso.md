@@ -56,7 +56,7 @@
 | Issue | Status | Observação |
 |---|---|---|
 | FASE-05-1 pipeline CI | ⬜ | Base: `.github/workflows/rust.yml` + `Makefile` (`check`, `ci`, `audit`, `bench`). |
-| FASE-05-2 release/docker | ⬜ | Base: `docker/Dockerfile.rust`. |
+| FASE-05-2 release/docker | ⬜ | Base: `docker/Dockerfile.launcher` + `Dockerfile.portal`. |
 | FASE-06-1 telemetria | ⬜ | Depende de FASE-03. |
 | FASE-06-2 hardening | ✅ | `limits/rate.rs` (balde + porte de handshake) + `tests/flood.rs`; flood 100/10000, fuzz 5000 sem panic; legit preservado. |
 | FASE-07-1 gateway | ✅ | Backend do contrato (`AdminError`→HTTP, staff/auditoria/grants idempotentes); 11 lib + 4 integração; fiação do portal aguarda transporte. |
@@ -122,3 +122,33 @@
 - Captura ao vivo (08-6): structs S→C, offsets de campo do header e causa do freeze — exige
   `wyd-net`/`wyd-core` executáveis + VM com o jogo.
 - Validar spawn real em VM com o jogo (complemento da 08-7).
+
+## 2026-11-07 — Revisão total + reparos do arquivamento (este turno)
+- Inventário: 60/60 issues referenciadas no index (100% planejadas); painéis 23✅/5🚧 coerentes (antes da FASE-08-8).
+- Revisão registrada em `docs/rust/04-revisao-roadmap.md` (cobertura, conformidade skills, reparos, prova, bloqueadores).
+- Reparos: `api/web/v1/web.proto` restaurado do git (b0a0394^, 2046 linhas) + README; 63 handlers Go repovoados no arquivo; `guias.test.ts` aponta p/ arquivo; `wyd-portal/Dockerfile` resiliente ao proto; paths `../api` corrigidos nos .env.example.
+- Prova: portal tsc 0 + vitest 118/118; cargo fmt+clippy+test verdes; compose config verde (base e prod).
+
+## 2026-11-07 — Rename para WYD + GUI Tauri decidida (este turno)
+- Nome: dono manteve "WYD"; repo GitHub já renomeado para `lucascantarelli/wyd`; remote local ajustado e verificado (`git ls-remote` resolve HEAD).
+- Rename aplicado em 49 arquivos (skills, compose, portal, docs, issues, Cargo descriptions, proto `go_package`); crates já eram `wyd-*` (sem mudança de código). Restos zero fora de paths reais Windows (pasta local mantida) e `.deprecated-go/` + `client/` intactos.
+- Containers e canais dos guias renomeados para o padrão `wyd-*` / `WYD-1/2`.
+- Docs: `docs/cliente/launcher.md` (análise legado + referência Electron/Squirrel + proposta), skill nova `.agents/skills/wyd-launcher`, ADR-0007 (Tauri v2 aceita), issue nova FASE-08-8 (GUI launcher, 🚧).
+- Inventário: 61/61 issues no index (100% planejadas); painéis 23✅/6🚧 coerentes.
+- Prova: compose config verde (base e prod); portal vitest 118/118; `cargo test --workspace` sem falhas.
+
+## 2026-11-07 — Revisão docker completa + rename portal/ → wyd-portal/ (este turno)
+- Resíduo openwyd/NextGen zerado fora de paths reais Windows e `.deprecated-go/`/`client/` (o `grep` anterior só via arquivos tracked — compose, `docker/`, `api/`, `.env` tinham ficado de fora; corrigido com varredura total).
+- `portal/` → `wyd-portal/` (pasta renomeada; `portal/Dockerfile` → `docker/Dockerfile.portal` — todo Dockerfile agora em `docker/`); `docker-compose.yml` aponta para o novo caminho; `.gitignore` + 33 arquivos de refs atualizados.
+- `docs/rust/05-stack-docker.md` criado: mapa crates → deployáveis (só tmserver/gateway/portal/db viram containers; libs e launcher fora), integração de observabilidade (06-1 → 12-1) e regras (arquivo Go morto, docs só em docs/).
+- Issues docker resolvidas: FASE-05, 05-2, 15, 15-2 sem refs a `Dockerfile.rust` (substituído); `Makefile` ganha `portal-install/dev/test/build` (documentados no AGENTS mas inexistentes).
+- Prova: compose config verde (base e prod); vitest 118/118 em `wyd-portal/`; tsc OK; `cargo test --workspace` 21 suites ok.
+- Painel: 61/61 planejadas, 23✅/6🚧 (sem mudança de status; revisão, não execução).
+
+## 2026-11-07 — Revisão docker/devops com questionário do dono (este turno)
+- Regras fixadas pelo dono: `.deprecated-go/` mantida, só-leitura, nunca fonte; expurgo total do que veio do Go; docs só em `docs/`; skill normativa reescrita.
+- Expurgo: `docker/README.md` apagado; `.env.example` sem bloco E2E/OPENWYD (eram convenção Go copiada); compose sem `launcher`, sem `depends_on` do portal no db, `WEB_API_ADDR` default `gateway:7600` (nome reservado p/ FASE-07-1); Dockerfiles com headers e COPY fail-fast; `api/web/v1/README.md` com paths corretos.
+- Criado `docs/rust/05-stack-docker.md`: crates → deployáveis (containers só tmserver/gateway/portal/db; libs e launcher fora), o que sobe hoje, alvo por issue dona, integração de observabilidade (06-1 → 12-1, sem código: deps bloqueadas em ADR+vendor).
+- Skill `wyd-server-ops` reescrita para o stack Rust (sinais de saúde, 502 esperado sem gateway, proibições incluindo copiar da legada).
+- Exceção consciente: `api/web/v1/web.proto` (2046 linhas, origem Go) mantido — é dependência viva do portal até a FASE-07-4; remover quebraria vitest. Dono pode overrule.
+- Prova: compose config verde (base e prod). Resíduo Go fora da legada só em 3 skills antigas (client-connect, database, testing-bots) — próxima rodada.

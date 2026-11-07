@@ -10,10 +10,12 @@ com release LTO e imagem mínima multi-stage, espelhável localmente via `make`.
 ## Contexto / evidência
 
 Base existente: `.github/workflows/rust.yml` (fmt/clippy/build/test),
-`Makefile` (`check`, `audit`, `bench`, `ci`), `docker/Dockerfile.rust`
-(multi-stage). Faltam: `cargo audit`/`deny` configurados, `cargo bench` com alvo
-real e release com LTO (`pre-release-rust.md` FASE 5). O CI Go arquivado está em
-`.deprecated-go/.github/workflows/` (referência, não copiar segredos).
+`Makefile` (`check`, `audit`, `bench`, `ci`), Dockerfiles por serviço em
+`docker/` (`Dockerfile.launcher`, `Dockerfile.portal`; mapa em
+`docs/rust/05-stack-docker.md`). Faltam: `cargo audit`/`deny` configurados, `cargo bench`
+com alvo real e release com LTO (`pre-release-rust.md` FASE 5). O CI Go
+arquivado está em `.deprecated-go/.github/workflows/` (referência, não copiar
+segredos).
 
 ## Passos
 
@@ -23,15 +25,16 @@ real e release com LTO (`pre-release-rust.md` FASE 5). O CI Go arquivado está e
    validar `make bench`.
 3. Configurar perfil release com LTO no workspace e validar
    `cargo build --release --workspace`.
-4. Validar `docker build -f docker/Dockerfile.rust .` (imagem mínima, binário
-   `wyd-launcher` como entrypoint).
+4. Validar `docker build -f docker/Dockerfile.launcher .` (imagem mínima,
+   binário `wyd-launcher` como entrypoint) + `docker build -f
+   docker/Dockerfile.portal .` (portal standalone).
 5. `make ci` verde local.
 
 ## Arquivos
 
 - Criados: `deny.toml`, `crates/wyd-core/benches/*.rs`, `crates/wyd-net/benches/*.rs`.
 - Alterados: `.github/workflows/rust.yml`, `Makefile`, `Cargo.toml`
-  (perfil release), `docker/Dockerfile.rust` (se necessário).
+  (perfil release), `docker/Dockerfile.*` (se necessário).
 - Proibido tocar: `.deprecated-go/.github/` (referência), segredos e
   `client/`.
 
@@ -40,11 +43,11 @@ real e release com LTO (`pre-release-rust.md` FASE 5). O CI Go arquivado está e
 ```bash
 make ci
 cargo build --release --workspace 2>&1 | tail -n 3
-docker build -f docker/Dockerfile.rust -t openwyd-rust:check .
+docker build -f docker/Dockerfile.launcher -t wyd/launcher:check .
+docker build -f docker/Dockerfile.portal -t wyd/portal:check .
 ```
 
-Saída esperada: `make ci` verde; release compila; imagem builda
-(`Successfully tagged openwyd-rust:check`).
+Saída esperada: `make ci` verde; release compila; imagens buildam.
 
 ## Skills Relacionadas do freebuff
 

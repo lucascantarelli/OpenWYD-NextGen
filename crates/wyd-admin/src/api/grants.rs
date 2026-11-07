@@ -1,4 +1,4 @@
-//! Grants: intenções do portal/admin → `delivery_queue` (idempotente).
+//! Grants: intenções do wyd-portal/admin → `delivery_queue` (idempotente).
 //!
 //! A web nunca escreve estado vivo: o grant entra na fila e o servidor drena.
 //! Idempotência por chave rastreável — retry do browser não duplica entrega.

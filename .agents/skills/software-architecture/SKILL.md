@@ -1,6 +1,6 @@
 ---
 name: software-architecture
-description: Aplica boas práticas de arquitetura e engenharia no OpenWYD (Hot Path vs Cold Path, DOD/ECS, baixo acoplamento, C4, ADRs, rastreabilidade). Use ao desenhar módulos, dividir crates, definir fronteiras entre engine/rede/persistência/portal ou antes de qualquer refatoração estrutural.
+description: Aplica boas práticas de arquitetura e engenharia no WYD (Hot Path vs Cold Path, DOD/ECS, baixo acoplamento, C4, ADRs, rastreabilidade). Use ao desenhar módulos, dividir crates, definir fronteiras entre engine/rede/persistência/portal ou antes de qualquer refatoração estrutural.
 ---
 
 # Arquitetura e engenharia (boas práticas)

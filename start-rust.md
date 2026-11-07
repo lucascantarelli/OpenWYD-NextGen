@@ -9,7 +9,7 @@ D:\dolorestec\wyd2\OpenWYD\pre-release-bots.md - definições da suite de bots
 D:\dolorestec\wyd2\OpenWYD\pre-release.md - definições do projeto
 
 Fizemos uma nova análise sobre a portabilidade para rust, usando padrões corretos de desenvolvimento, segue toda a análise:
-Uma análise rigorosa e sem concessões do escopo e da arquitetura proposta para projetos modernos de reescrita como o OpenWYD-NextGen exige olhar além da boa intenção de "modernizar o código legado". Em ecossistemas de emulação de MMORPGs, a transição de bases arcaicas (C++ dos anos 2000) para paradigmas modernos frequentemente esbarra em armadilhas de engenharia corporativa que destroem a performance em tempo real.
+Uma análise rigorosa e sem concessões do escopo e da arquitetura proposta para projetos modernos de reescrita como o WYD exige olhar além da boa intenção de "modernizar o código legado". Em ecossistemas de emulação de MMORPGs, a transição de bases arcaicas (C++ dos anos 2000) para paradigmas modernos frequentemente esbarra em armadilhas de engenharia corporativa que destroem a performance em tempo real.
 Abaixo, a autópsia técnica e crítica sobre o desenho arquitetural esperado para esse tipo de iniciativa:
 
 1. A Ilusão dos Microsserviços no Domínio de Jogos
@@ -19,7 +19,7 @@ Veredito Crítico: A divisão em múltiplos serviços só faz sentido estrito no
 
 2. O Calcanhar de Aquiles: Gerenciamento de Memória e Estruturas de Dados
 A Abordagem ingênua (OOP Clássica): Manter hierarquias de classes orientadas a objetos (Player, Monster, Item como entidades espalhadas no heap com ponteiros brutos) anula qualquer ganho de uma nova linguagem. Isso gera uma enxurrada de cache misses (L1/L2/L3 da CPU), sufocando o desempenho do processador.
-A Solução Obrigatória (DOD/ECS): Um projeto NextGen de verdade precisa abandonar a OOP tradicional e adotar Data-Oriented Design (DOD) ou um modelo Entity Component System (ECS). Dados contíguos em memória (Vec<Position>, Vec<Attribute>) são essenciais para varreduras vetorizadas via SIMD durante o processamento em lote de centenas de jogadores em uma mesma zona de combate (ex: guerras de guildas).
+A Solução Obrigatória (DOD/ECS): Um projeto nova geração de verdade precisa abandonar a OOP tradicional e adotar Data-Oriented Design (DOD) ou um modelo Entity Component System (ECS). Dados contíguos em memória (Vec<Position>, Vec<Attribute>) são essenciais para varreduras vetorizadas via SIMD durante o processamento em lote de centenas de jogadores em uma mesma zona de combate (ex: guerras de guildas).
 
 3. A Escolha da Linguagem: O Veredito Técnico
 Go (Golang): Embora ágil para APIs e microsserviços periféricos, o coletor de lixo (Garbage Collector) do Go introduz pausas imprevisíveis (stop-the-world ou micro-stutters) inadmissíveis para a sincronização exata de pacotes de movimento e física de um MMORPG de ação competitiva.
@@ -29,7 +29,7 @@ Rust: É a escolha tecnicamente irrepreensível para o núcleo de um motor de jo
 Modelo Thread-per-Core (Shared-Nothing): Em vez de travar o mundo inteiro com mutexes globais, o mapa deve ser particionado em zonas espaciais onde cada thread de CPU gerencia exclusivamente a sua região de forma isolada, comunicando-se apenas por lock-free ring buffers (como canais concorrentes de altíssimo rendimento).
 I/O Assíncrono com io_uring: No subsistema de rede, wrappers legados baseados em select/poll ou epoll bloqueantes devem ser descartados em favor do io_uring (no Linux), permitindo operações de I/O assíncronas com zero-copy de buffers diretamente entre o kernel e o espaço de usuário.
 
-5. O Que um Especialista Faria? (O Blueprint Definitivo para o OpenWYD-NextGen)
+5. O Que um Especialista Faria? (O Blueprint Definitivo para o WYD)
 Core Monolítico Baseado em Rust (Hot Path): Um único processo altamente otimizado por nó de mundo, rodando um loop determinístico com Arena Allocators (ex: bumpalo) para zerar o custo de alocações dinâmicas de heap durante o gameplay.
 Serialização Binária Zero-Copy: Eliminação de parsers manuais vulneráveis a buffer overflows ou formatos pesados como JSON/Protobuf, utilizando esquemas binários estritos e seguros contra estouro de buffer (como rkyv ou layouts de structs em Rust com validação estrita de pacotes).
 Autoridade Absoluta do Servidor com Fixed-Point Math: Prevenção de exploits de velocidade e coordenadas através de matemática de ponto fixo, garantindo consistência determinística independentemente da arquitetura da CPU cliente.

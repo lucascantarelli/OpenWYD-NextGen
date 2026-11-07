@@ -22,7 +22,7 @@ visualização + ações moderadas com confirmação.
 ## Arquivos
 
 - Criados: telas admin + testes no portal.
-- Alterados: `portal/src/**`, `crates/wyd-admin/src/` (endpoint faltante, com teste).
+- Alterados: `wyd-portal/src/**`, `crates/wyd-admin/src/` (endpoint faltante, com teste).
 - Proibido tocar: bypass de auditoria, ação sem confirmação destrutiva.
 
 ## Testes / verificação
@@ -43,7 +43,7 @@ registro auditável.
 
 ## Documentação de referencia
 
-- portal/README.md - overlays e auditoria.
+- wyd-portal/README.md - overlays e auditoria.
 - pre-release-rust.md (FASE 7 §7.2).
 
 ## Subtasks
@@ -65,4 +65,4 @@ registro auditável.
 
 - Risco: ação irreversível sem confirmação → mitigação: confirmação obrigatória
   + soft-action quando possível.
-- Rollback: `git checkout -- portal/ crates/wyd-admin/`.
+- Rollback: `git checkout -- wyd-portal/ crates/wyd-admin/`.

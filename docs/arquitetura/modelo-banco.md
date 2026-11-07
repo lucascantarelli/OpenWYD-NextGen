@@ -24,7 +24,7 @@ accounts 1───* characters 1───* character_items
    │
    ├───1 vault_items (PK account_id+slot)
    │
-   └───* delivery_queue (grants pendentes do portal/admin)
+   └───* delivery_queue (grants pendentes do wyd-portal/admin)
 
 audit_log (append-only, sem FK para nunca bloquear escrita)
 ```

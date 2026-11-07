@@ -1,4 +1,4 @@
-# Roadmap Rust — OpenWYD-NextGen (planejamento e execução)
+# Roadmap Rust — WYD (planejamento e execução)
 
 > Fonte: `pre-release-rust.md` (§16 ordem estratégica + FASES 1–15) e `start-rust.md`
 > (planejamento/limpeza/organização; código só após documentação).
@@ -80,6 +80,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-08-5-cliente-reverso-estatico.md` | 8 | RE estático profundo (`WYD.exe` 7662) | ✅ |
 | `issues/FASE-08-6-cliente-reverso-dinamico.md` | 8 | Trace dinâmico e correlação de pacotes | 🚧 |
 | `issues/FASE-08-7-cliente-customizacao.md` | 8 | Customização sustentável + manifesto do launcher | ✅ |
+| `issues/FASE-08-8-launcher-gui-tauri.md` | 8 | GUI do launcher em Tauri v2 (notícias + Jogar) | 🚧 |
 | `issues/FASE-09-1-auditoria-skills.md` | 9 | Auditoria das skills Go restantes | ⬜ |
 | `issues/FASE-09-2-criar-skills.md` | 9 | Skills sucessoras Rust | ⬜ |
 | `issues/FASE-10-1-equacoes.md` | 10 | Equações exatas de combate | ⬜ |

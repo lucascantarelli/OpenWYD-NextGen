@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-core
-description: Desenvolve a engine Hot Path do OpenWYD em Rust (crates/wyd-core): tick determinístico, ECS/DOD, spatial grid, sem GC e sem mutex global no estado de jogo. Use ao alterar game loop, componentes ECS, particionamento espacial, autoridade de cena ou fixed-point.
+description: Desenvolve a engine Hot Path do WYD em Rust (crates/wyd-core): tick determinístico, ECS/DOD, spatial grid, sem GC e sem mutex global no estado de jogo. Use ao alterar game loop, componentes ECS, particionamento espacial, autoridade de cena ou fixed-point.
 ---
 
 # Engine Rust (wyd-core)

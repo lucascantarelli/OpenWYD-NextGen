@@ -57,7 +57,7 @@ d6 65 73 65 72 76 65 64 00 4e 65 78 74 47 65 6e 00 00 4e 65 78 74 47 65 6e 32 00
 
 | Observação | Evidência |
 |---|---|
-| Nomes em texto claro separados por NUL, a partir do offset 1 | `eserved`, `NextGen`, `NextGen2`… |
+| Nomes em texto claro separados por NUL, a partir do offset 1 | `eserved`, `nova geração`, `nova geração2`… |
 | 13 entradas no total | contagem por NUL em 143 B |
 | Primeiro byte `0xd6` | não explicado por nenhuma hipótese testada — **UNVERIFIED** |
 

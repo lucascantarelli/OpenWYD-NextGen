@@ -1,0 +1,27 @@
+# Override de PRODUÇÃO — uso explícito, SEM o override de dev:
+#   TAG=1.0.0 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Regras: sem porta de banco publicada, sem volume de código, limites de
+# recursos, restart sempre. Segredos vêm do `.env` do host (nunca commitado)
+# ou do gerenciador de segredos — nunca deste arquivo.
+
+services:
+  db:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    # Sem `ports:` — o banco só fala na rede interna `wyd`.
+
+  portal:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production

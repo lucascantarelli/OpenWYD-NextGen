@@ -37,7 +37,7 @@ com `cargo test -p wyd-core`.
 - Alterados: `crates/wyd-core/src/lib.rs`, `crates/wyd-core/Cargo.toml`
   (somente deps aprovadas via ADR — ver `docs/rust/01-dependencias.md`).
 - Proibido tocar: `crates/wyd-protocol/src/` (contrato é da FASE-08),
-  `.deprecated-go/`, `client/`, `portal/`.
+  `.deprecated-go/`, `client/`, `wyd-portal/`.
 
 ## Testes / verificação
 

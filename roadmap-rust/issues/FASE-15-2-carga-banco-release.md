@@ -31,7 +31,7 @@ métricas 06-1 e dashboards 12-1. Gates: 05-2 (release/imagem).
 ```bash
 make check
 cargo build --release --workspace 2>&1 | tail -n 3
-docker build -f docker/Dockerfile.rust -t openwyd-rust:release .
+docker build -f docker/Dockerfile.launcher -t wyd/launcher:release . && docker build -f docker/Dockerfile.portal -t wyd/portal:release .
 ```
 
 Saída esperada: tudo verde; relatório com P99, pacotes/s e cobertura anexado;

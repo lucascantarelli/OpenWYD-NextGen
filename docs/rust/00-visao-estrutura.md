@@ -64,10 +64,10 @@ crates/
   wyd-sim/        # laboratório matemático: simulação de combate/balanceamento, milhões de iterações
   wyd-launcher/   # launcher/patcher moderno (Tauri/CLI): hash, patch, bootstrap (FASE 8)
 tools/dev/        # scripts de dev/bench (futuro; hoje vazio)
-docs/rust/        # este doc + futuros ADRs, spec de pacotes, guias (portal Next.js continua em portal/)
+docs/rust/        # este doc + futuros ADRs, spec de pacotes, guias (portal Next.js continua em wyd-portal/)
 ```
 
-O portal Next.js (`portal/`) é **mantido** como gateway Cold Path (FASE 7) — não entra no `crates/`.
+O portal Next.js (`wyd-portal/`) é **mantido** como gateway Cold Path (FASE 7) — não entra no `crates/`.
 `Source/`, `docs/migration/` e `tmserver/content/` ficam como **referência de engenharia reversa** até a extração do conhecimento (FASE 10) estar documentada; só então desativar (pre-release.md §1.2).
 
 `Cargo.toml` workspace, `rust-toolchain.toml`, CI (`fmt/clippy/test/bench/audit/deny`), Docker multi-stage distroless e `tracing`+Prometheus/Grafana ficam para **depois** que o roadmap Rust estiver aprovado — criar agora violaria o "sem código/configs ainda".
@@ -97,7 +97,7 @@ Pré-requisito de host: `rustup` + toolchain stable + `clippy` + `rustfmt` (ause
 ## 6. VS Code, CI, Docker (implementado neste passe)
 
 - `.vscode/extensions.json` (rust-analyzer, Even Better TOML, crates, CodeLLDB + mantidas) e `.vscode/settings.json` (clippy como check, format on save) criados; nenhuma extensão desinstalada (não havia Go instalado no editor).
-- `.github/workflows/rust.yml` (fmt → clippy `-D warnings` → build → test) e `Dockerfile.rust` (multi-stage, binário `wyd-launcher`) criados; workflows Go/portal intocados.
+- `.github/workflows/rust.yml` (fmt → clippy `-D warnings` → build → test) e Dockerfiles por serviço em `docker/` (`Dockerfile.launcher`, `Dockerfile.portal`) criados; workflows Go/portal intocados.
 - Dependências reais catalogadas em `docs/rust/01-dependencias.md`; workspace segue sem deps externas para build offline-verificável (ver §7).
 
 ## 7. Estado efetivo deste passe (esqueleto compilável, Go intacto)
@@ -107,12 +107,12 @@ Pré-requisito de host: `rustup` + toolchain stable + `clippy` + `rustfmt` (ause
 - Manifestos + código mínimo por crate (cada um com 1 teste unitário): `wyd-protocol` (PROTOCOL_VERSION=12000, ESCENE_FIELD=30000), `wyd-core` (TICK_HZ=20), `wyd-net` (MAX_PACKET_BYTES=4096), `wyd-db` (scheme postgres://), `wyd-admin` (/admin), `wyd-sim` (saturating_sub), `wyd-launcher` (lib + bin mínimo).
 - Verificação: `cargo build --workspace` OK (7 crates), `cargo test --workspace` OK (7 testes lib + doc-tests 0), `cargo clippy --workspace -- -D warnings` OK, `cargo fmt --check` OK, `go build ./...` OK (Go 1.27.3 intacto).
 - `.gitignore`: acrescida seção Rust (`/target/`, `**/*.rs.bk`) — nenhuma regra Go removida.
-- Neste passe (não-destrutivo): `roadmap-rust/` + 15 issues, 4 skills Rust, `rust.yml`, `Dockerfile.rust`, `.vscode/`, `docs/rust/01-dependencias.md`, `docs/arquitetura/adr/0001-hot-path-monolitico.md`; workspace mantido sem deps externas (build offline).
+- Neste passe (não-destrutivo): `roadmap-rust/` + 15 issues, 4 skills Rust, `rust.yml`, `docker/Dockerfile.launcher` (+ `Dockerfile.portal`), `.vscode/`, `docs/rust/01-dependencias.md`, `docs/arquitetura/adr/0001-hot-path-monolitico.md`; workspace mantido sem deps externas (build offline).
 
 ## 8. Arquivamento executado e pendências restantes
 
 1. [x] Arquivamento executado em `.deprecated-go/` (nome confirmado pelo dono):
-   Go legado movido com histórico preservado (rename); `portal/`, `.agents/`,
+   Go legado movido com histórico preservado (rename); `wyd-portal/`, `.agents/`,
    workspace Rust, `docs/rust/`, `roadmap-rust/` e `README.md`/`AGENTS.md` ficaram
    fora; `docs/migration/` e `Source/` (referência) estão em
    `.deprecated-go/docs/migration/` e `.deprecated-go/Source/`; regra no

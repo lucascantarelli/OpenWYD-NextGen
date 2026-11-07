@@ -23,8 +23,9 @@ fórmulas da FASE-10. Nada é "release" sem evidência anexada.
 3. Carga de rede: harness contra `wyd-net` medindo pacotes/s, P99 e rejeições
    (comparar com baseline da FASE-06).
 4. Banco: migrations do zero + integridade (FASE-04) + seeds conferidos.
-5. Build de produção: `cargo build --release --workspace` (LTO) + imagem
-   `docker build -f docker/Dockerfile.rust .` + smoke do binário.
+5. Build de produção: `cargo build --release --workspace` (LTO) + imagens
+   por serviço (`docker/Dockerfile.launcher`, `docker/Dockerfile.portal`;
+   mapa em `docs/rust/05-stack-docker.md`) + smoke dos binários.
 
 ## Arquivos
 

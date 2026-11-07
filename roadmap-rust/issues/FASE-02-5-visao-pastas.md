@@ -18,7 +18,7 @@ a amarração do cliente (build 7662 fechado, ~344 MB fora do git) como consumid
 
 | Entrega | Evidência |
 |---|---|
-| Visão de pastas | `docs/arquitetura/visao-pastas.md`: inventário real (raiz, `crates/`, `tools/`, `docs/`, `fixtures/`, `client/`, `portal/`) + tabela-alvo + anti-sprawl |
+| Visão de pastas | `docs/arquitetura/visao-pastas.md`: inventário real (raiz, `crates/`, `tools/`, `docs/`, `fixtures/`, `client/`, `wyd-portal/`) + tabela-alvo + anti-sprawl |
 | Mapa do cliente | `docs/cliente/mapa.md`: documentado×lacuna, contrato client↔launcher, roadmap 08-4…08-7, plano de desassemble consolidado |
 | Amarrações | índice do dossiê, `README.md`, `AGENTS.md`, skill `wyd-client-reverso`, `engenharia-reversa.md`, index e progresso |
 

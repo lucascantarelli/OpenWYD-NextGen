@@ -1,4 +1,4 @@
-# ⚔️ OpenWYD — NextGen (Rust)
+# ⚔️ WYD — nova geração (Rust)
 
 Servidor do *With Your Destiny* (WYD2) reescrito em **Rust** — Hot Path monolítico,
 mesmo espaço de memória, sem GC — com portal de administração em **Next.js** no Cold Path.
@@ -20,7 +20,7 @@ mesmo espaço de memória, sem GC — com portal de administração em **Next.js
 │   ├── wyd-admin/         # control plane Cold Path (gRPC/REST p/ o portal)
 │   ├── wyd-sim/           # laboratório matemático (balanceamento)
 │   └── wyd-launcher/      # launcher/patcher para o cliente (hash, patch, bootstrap,update,install, anticheat)
-├── portal/                # 📊 UI Next.js (BFF; nunca escreve estado vivo)
+├── wyd-portal/                # 📊 UI Next.js (BFF; nunca escreve estado vivo)
 ├── docs/                  # 📚 documentação (arquitetura, ADRs, boas práticas, testes, CI/CD)
 │   ├── manual-usuario/    # documentação de usuário final (portal, launcher,manuais do jogo)
 │   ├── manual-técnico/    # documentação técnica (arquitetura, implementação, padrões, boas práticas, testes, CI/CD)
@@ -82,7 +82,7 @@ Fonte autoritativa para agentes: [`AGENTS.md`](AGENTS.md) §0. Skills vigentes:
 | 🕹️ Cliente do jogo (inventário, hooks, plano de RE) | [`docs/cliente/`](docs/cliente/) |
 | 🗺️ Mapa do cliente (usuário do launcher, lacunas, roadmap) | [`docs/cliente/mapa.md`](docs/cliente/mapa.md) |
 | 🧩 Customização e manifesto do launcher (ADR-0003) | [`docs/cliente/customizacao.md`](docs/cliente/customizacao.md) |
-| 🖥️ Portal (BFF, telas, sessão) | [`portal/README.md`](portal/README.md) |
+| 🖥️ Portal (BFF, telas, sessão) | [`wyd-portal/README.md`](wyd-portal/README.md) |
 | 🤖 Convenções para agentes de IA | [`AGENTS.md`](AGENTS.md) |
 
 ## 🔐 Segurança

@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-db
-description: Desenvolve a persistência async do OpenWYD em Rust (crates/wyd-db): PostgreSQL via sqlx, migrations versionadas, integridade referencial, sem I/O bloqueante no tick loop. Use ao modelar tabelas, escrever migrations, seeds ou código de acesso a dados.
+description: Desenvolve a persistência async do WYD em Rust (crates/wyd-db): PostgreSQL via sqlx, migrations versionadas, integridade referencial, sem I/O bloqueante no tick loop. Use ao modelar tabelas, escrever migrations, seeds ou código de acesso a dados.
 ---
 
 # Persistência Rust (wyd-db)

@@ -1,6 +1,6 @@
 ---
 name: solid-design-patterns
-description: Aplica SOLID e design patterns idiomáticos em Rust no OpenWYD (traits, composição, newtype, type-state, command/strategy via enums). Use ao modelar domínios (itens, skills, combate, quests), refatorar condicionais espalhadas ou eliminar duplicação entre crates.
+description: Aplica SOLID e design patterns idiomáticos em Rust no WYD (traits, composição, newtype, type-state, command/strategy via enums). Use ao modelar domínios (itens, skills, combate, quests), refatorar condicionais espalhadas ou eliminar duplicação entre crates.
 ---
 
 # SOLID e patterns em Rust

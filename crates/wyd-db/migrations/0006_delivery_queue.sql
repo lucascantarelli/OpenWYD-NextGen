@@ -1,4 +1,4 @@
--- 0006_delivery_queue: grants do portal/admin para dreno do servidor (única ponte web→jogo).
+-- 0006_delivery_queue: grants do wyd-portal/admin para dreno do servidor (única ponte web→jogo).
 -- Convenção: -- migrate:up / -- migrate:down (ver docs/arquitetura/modelo-banco.md §4).
 -- Grant pendente impede apagar conta/personagem (RESTRICT: falha explícita, sem item órfão).
 
