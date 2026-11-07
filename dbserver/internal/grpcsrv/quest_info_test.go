@@ -6,9 +6,9 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// The dbServer leg of the QuestInfo round trip (issue #401): every gate the
-// tmServer saves must reach domain.Character (and so SaveCharacter's UPDATE)
-// and come back out on LoadCharacter.
+// A perna dbServer da ida e volta do QuestInfo (issue #401): todo gate que o
+// tmServer salva precisa chegar a domain.Character (e portanto ao UPDATE de
+// SaveCharacter) e voltar na saída do LoadCharacter.
 func TestQuestInfoMappingRoundTrip(t *testing.T) {
 	tests := []struct {
 		name string
@@ -46,8 +46,8 @@ func TestQuestInfoMappingRoundTrip(t *testing.T) {
 	}
 }
 
-// save_celestial (issue #410) is opaque to the dbServer: the blob must come back
-// byte for byte, and a character without parked sheets stays empty.
+// save_celestial (issue #410) é opaco para o dbServer: o blob tem de voltar
+// byte a byte, e um personagem sem fichas guardadas continua vazio.
 func TestSaveCelestialMappingRoundTrip(t *testing.T) {
 	for _, blob := range [][]byte{nil, {1, 2, 3, 0, 255}} {
 		got := characterToProto(protoToCharacter(&dbv1.Character{SaveCelestial: blob})).GetSaveCelestial()

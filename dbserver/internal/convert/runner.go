@@ -11,16 +11,16 @@ import (
 	"openwyd-nextgen/internal/savefmt"
 )
 
-// FileResult is the outcome of converting one account file.
+// FileResult é o resultado da conversão de um arquivo de conta.
 type FileResult struct {
 	Path    string
 	Version savefmt.Version
-	Account *domain.Account // non-nil only when converted
-	Skipped string          // reason, when the version is not modelled
+	Account *domain.Account // só não nulo quando convertido
+	Skipped string          // motivo, quando a versão não é modelada
 	Err     error           // conversion/IO failure
 }
 
-// Report summarizes a directory walk.
+// Report resume uma varredura de diretório.
 type Report struct {
 	Total     int
 	Converted int
@@ -29,11 +29,11 @@ type Report struct {
 	Results   []FileResult
 }
 
-// WalkAccounts walks the legacy account/ directory tree and converts every
-// current-format (7952-byte) file into a domain.Account. Files in an
-// UNVERIFIED legacy layout (4294 / 7500–7600) are recorded as Skipped, not
-// failures — they need their layout reversed first (data-formats.md §1.2). The
-// returned error is only for walking the tree itself.
+// WalkAccounts percorre a árvore legada account/ e converte cada arquivo no
+// formato atual (7952 bytes) num domain.Account. Arquivos num layout legado
+// UNVERIFIED (4294 / 7500–7600) são registrados como Skipped, não como
+// falhas — antes é preciso reverter o layout deles (data-formats.md §1.2). O
+// erro devolvido é só para a varredura da árvore em si.
 func WalkAccounts(root string) (*Report, error) {
 	rep := &Report{}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

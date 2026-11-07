@@ -9,25 +9,25 @@ import (
 	dbv1 "openwyd-nextgen/api/db/v1"
 )
 
-// InstanceFlagsStore is the write surface the flags snapshot needs (satisfied by
-// *store.Store).
+// InstanceFlagsStore é a superfície de escrita de que o snapshot de flags precisa
+// (satisfeita por *store.Store).
 type InstanceFlagsStore interface {
 	RecordInstanceFlags(ctx context.Context, server string, flags []byte) error
 }
 
-// InstanceFlagsServer implements dbv1.InstanceFlagsServiceServer: tmServer records
-// the flags it booted with so the portal can show them read-only (issue 36).
+// InstanceFlagsServer implementa dbv1.InstanceFlagsServiceServer: o tmServer grava
+// as flags com que subiu para o portal mostrá-las em leitura (issue 36).
 type InstanceFlagsServer struct {
 	dbv1.UnimplementedInstanceFlagsServiceServer
 	store InstanceFlagsStore
 }
 
-// NewInstanceFlags builds the flags service over the given store.
+// NewInstanceFlags monta o serviço de flags sobre o store recebido.
 func NewInstanceFlags(s InstanceFlagsStore) *InstanceFlagsServer {
 	return &InstanceFlagsServer{store: s}
 }
 
-// RecordInstanceFlags appends one boot snapshot.
+// RecordInstanceFlags acrescenta um snapshot de boot.
 func (s *InstanceFlagsServer) RecordInstanceFlags(ctx context.Context, req *dbv1.RecordInstanceFlagsRequest) (*dbv1.RecordInstanceFlagsResponse, error) {
 	server := req.GetServer()
 	if server == "" {

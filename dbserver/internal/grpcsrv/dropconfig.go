@@ -11,27 +11,27 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// DropConfigStore is the read surface the drop overlay needs (satisfied by
-// *store.Store).
+// DropConfigStore é a superfície de leitura de que o overlay de drop precisa
+// (satisfeita por *store.Store).
 type DropConfigStore interface {
 	ListDropRateOverrides(ctx context.Context) ([]store.DropRateOverride, error)
 	ListMobCarryOverrides(ctx context.Context) ([]domain.MobCarryOverride, error)
 }
 
-// DropConfigServer implements dbv1.DropConfigServiceServer: tmServer fetches the
-// moderator drop overlays once at boot, behind their own flags (issue 34).
-// Read-only from tmServer's side.
+// DropConfigServer implementa dbv1.DropConfigServiceServer: o tmServer busca os
+// overlays de drop do moderador uma vez no boot, sob flags próprias (issue 34).
+// Somente leitura do lado do tmServer.
 type DropConfigServer struct {
 	dbv1.UnimplementedDropConfigServiceServer
 	store DropConfigStore
 }
 
-// NewDropConfig builds the drop config service over the given store.
+// NewDropConfig monta o serviço de configuração de drop sobre o store recebido.
 func NewDropConfig(s DropConfigStore) *DropConfigServer {
 	return &DropConfigServer{store: s}
 }
 
-// ListDropRateOverrides returns every edited Carry slot.
+// ListDropRateOverrides devolve todo slot de Carry editado.
 func (s *DropConfigServer) ListDropRateOverrides(ctx context.Context, _ *dbv1.ListDropRateOverridesRequest) (*dbv1.ListDropRateOverridesResponse, error) {
 	rows, err := s.store.ListDropRateOverrides(ctx)
 	if err != nil {
@@ -44,7 +44,7 @@ func (s *DropConfigServer) ListDropRateOverrides(ctx context.Context, _ *dbv1.Li
 	return &dbv1.ListDropRateOverridesResponse{Rows: out}, nil
 }
 
-// ListMobCarryOverrides returns the Carry[] overlay of every edited template.
+// ListMobCarryOverrides devolve o overlay de Carry[] de cada template editado.
 func (s *DropConfigServer) ListMobCarryOverrides(ctx context.Context, _ *dbv1.ListMobCarryOverridesRequest) (*dbv1.ListMobCarryOverridesResponse, error) {
 	rows, err := s.store.ListMobCarryOverrides(ctx)
 	if err != nil {

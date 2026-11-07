@@ -6,8 +6,8 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// The base columns of migration 0027 survive the domain <-> proto mapping, and
-// HasBase travels with them (false keeps a pre-0027 row on the derive path).
+// As colunas de base da migration 0027 sobrevivem ao mapeamento domínio <-> proto,
+// e HasBase viaja junto (falso mantém uma linha pré-0027 no caminho de derivação).
 func TestCharacterBaseScoreMapping(t *testing.T) {
 	ch := domain.Character{Str: 212, HasBase: true, BaseStr: 12, BaseInt: 13, BaseDex: 2512, BaseCon: 860,
 		BaseMaxHp: 2000, BaseMaxMp: 500}

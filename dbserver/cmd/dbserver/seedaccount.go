@@ -18,30 +18,30 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// runSeedAccount creates one password-only account for local testing. The name
-// is canonicalized to lowercase (matching the converter, convert.Account); the
-// password is stored only as an argon2id hash (never plaintext). It is
-// idempotent: an existing account is left untouched and reported, not an error,
-// so the local bring-up script can run repeatedly.
+// runSeedAccount cria uma conta só com senha para teste local. O nome é
+// canonicalizado em minúsculas (igual ao conversor, convert.Account); a senha é
+// guardada só como hash argon2id (nunca texto plano). É idempotente: conta
+// existente fica intocada e é apenas reportada, não é erro, para o script de
+// bring-up local poder rodar várias vezes.
 func runSeedAccount(args []string, logger *slog.Logger) error {
 	fs := flag.NewFlagSet("seed-account", flag.ContinueOnError)
-	name := fs.String("name", "", "account login (canonicalized to lowercase)")
-	pass := fs.String("pass", "", "account password (hashed with argon2id)")
-	dsn := fs.String("dsn", envOr("W2PP_DB_DSN", ""), "PostgreSQL DSN (or W2PP_DB_DSN)")
+	name := fs.String("name", "", "login da conta (canonicalizado em minúsculas)")
+	pass := fs.String("pass", "", "senha da conta (com hash argon2id)")
+	dsn := fs.String("dsn", envOr("W2PP_DB_DSN", ""), "DSN do PostgreSQL (ou W2PP_DB_DSN)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *name == "" || *pass == "" {
-		return fmt.Errorf("-name and -pass are required")
+		return fmt.Errorf("-name e -pass são obrigatórios")
 	}
 	if *dsn == "" {
-		return fmt.Errorf("-dsn (or W2PP_DB_DSN) is required")
+		return fmt.Errorf("-dsn (ou W2PP_DB_DSN) é obrigatório")
 	}
 	canonical := strings.ToLower(*name)
 
 	passHash, err := secret.HashSecret(*pass)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return fmt.Errorf("gerar hash da senha: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -49,7 +49,7 @@ func runSeedAccount(args []string, logger *slog.Logger) error {
 
 	pool, err := pgxpool.New(ctx, *dsn)
 	if err != nil {
-		return fmt.Errorf("connect: %w", err)
+		return fmt.Errorf("conectar: %w", err)
 	}
 	defer pool.Close()
 	if err := store.MigrateWithEnv(ctx, pool); err != nil {
@@ -58,16 +58,16 @@ func runSeedAccount(args []string, logger *slog.Logger) error {
 	s := store.New(pool)
 
 	if _, err := s.AccountByName(ctx, canonical); err == nil {
-		logger.Info("account already exists — leaving untouched", "name", canonical)
+		logger.Info("conta já existe — deixando intocada", "name", canonical)
 		return nil
 	} else if !errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("lookup: %w", err)
+		return fmt.Errorf("buscar conta: %w", err)
 	}
 
 	id, err := s.SaveAccount(ctx, domain.Account{Name: canonical, PassHash: passHash})
 	if err != nil {
-		return fmt.Errorf("save account: %w", err)
+		return fmt.Errorf("salvar conta: %w", err)
 	}
-	logger.Info("account seeded", "name", canonical, "id", id, "characters", 0)
+	logger.Info("conta semeada", "name", canonical, "id", id, "characters", 0)
 	return nil
 }

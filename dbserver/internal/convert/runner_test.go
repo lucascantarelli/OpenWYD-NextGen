@@ -11,7 +11,7 @@ import (
 func TestWalkAccounts(t *testing.T) {
 	root := t.TempDir()
 
-	// Two current-format accounts in subdirs (First-letter sharding).
+	// Duas contas no formato atual em subdiretórios (sharding pela primeira letra).
 	mkCurrent := func(first, name string) {
 		var af savefmt.AccountFile
 		copy(af.Info.AccountName[:], name)
@@ -27,7 +27,7 @@ func TestWalkAccounts(t *testing.T) {
 	mkCurrent("A", "alice")
 	mkCurrent("B", "bob")
 
-	// One legacy (4294) file → must be Skipped, not Failed.
+	// Um arquivo legado (4294) → tem de virar Skipped, não Failed.
 	if err := os.WriteFile(filepath.Join(root, "legacy"), make([]byte, 4294), 0o644); err != nil {
 		t.Fatal(err)
 	}

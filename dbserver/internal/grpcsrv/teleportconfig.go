@@ -10,29 +10,29 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// TeleportConfigStore is the read surface the teleport-overlay service needs
-// (satisfied by *store.Store). tmServer only reads through here; every write
-// goes through the web-api.
+// TeleportConfigStore é a superfície de leitura de que o serviço de overlay de
+// teleporte precisa (satisfeita por *store.Store). O tmServer só lê por aqui; toda
+// escrita vai pelo web-api.
 type TeleportConfigStore interface {
 	ListTeleportRoutes(ctx context.Context) ([]domain.TeleportRoute, error)
 }
 
-// TeleportConfigServer implements dbv1.TeleportConfigServiceServer: the
-// read-only bridge tmServer polls to apply moderator-edited teleport routes
-// (issue 42).
+// TeleportConfigServer implementa dbv1.TeleportConfigServiceServer: a ponte
+// somente leitura que o tmServer consulta para aplicar rotas de teleporte
+// editadas pelo moderador (issue 42).
 type TeleportConfigServer struct {
 	dbv1.UnimplementedTeleportConfigServiceServer
 	store TeleportConfigStore
 }
 
-// NewTeleportConfig builds the teleport-config service over the given store.
+// NewTeleportConfig monta o serviço de config de teleporte sobre o store recebido.
 func NewTeleportConfig(s TeleportConfigStore) *TeleportConfigServer {
 	return &TeleportConfigServer{store: s}
 }
 
-// ListTeleportRoutes returns the full overlay snapshot. There is no version
-// field on purpose: the payload is a few dozen rows, so the 15s poll just
-// re-reads it and the world swaps the snapshot atomically.
+// ListTeleportRoutes devolve o snapshot completo do overlay. Não há campo de
+// versão de propósito: o payload são algumas dezenas de linhas, então o poll de
+// 15 s apenas relê e o mundo troca o snapshot de forma atômica.
 func (s *TeleportConfigServer) ListTeleportRoutes(ctx context.Context, _ *dbv1.ListTeleportRoutesRequest) (*dbv1.ListTeleportRoutesResponse, error) {
 	routes, err := s.store.ListTeleportRoutes(ctx)
 	if err != nil {
