@@ -10,9 +10,9 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// ContentCatalogStore is the read surface the content-catalog service needs
-// (satisfied by *store.Store). Issue 58, fase 2: these are the catalogs the
-// importer seeds and tmServer fetches once at boot.
+// ContentCatalogStore é a superfície de leitura de que o serviço de catálogo
+// precisa (satisfeita por *store.Store). Issue 58, fase 2: são os catálogos que o
+// importador semeia e o tmServer busca uma vez no boot.
 type ContentCatalogStore interface {
 	ListItemCatalog(ctx context.Context) ([]domain.ItemCatalogEntry, error)
 	ListSkillCatalog(ctx context.Context) ([]domain.SkillCatalogEntry, error)
@@ -20,19 +20,19 @@ type ContentCatalogStore interface {
 	ListWorldItemSeeds(ctx context.Context) ([]domain.WorldItemSeedEntry, error)
 }
 
-// ContentCatalogServer implements dbv1.ContentCatalogServiceServer. It is
-// strictly read-only: writes happen through tmserver/cmd/importcontent.
+// ContentCatalogServer implementa dbv1.ContentCatalogServiceServer. É
+// estritamente somente leitura: escritas acontecem em tmserver/cmd/importcontent.
 type ContentCatalogServer struct {
 	dbv1.UnimplementedContentCatalogServiceServer
 	store ContentCatalogStore
 }
 
-// NewContentCatalog builds the read-only content-catalog service.
+// NewContentCatalog monta o serviço somente leitura de catálogo de conteúdo.
 func NewContentCatalog(s ContentCatalogStore) *ContentCatalogServer {
 	return &ContentCatalogServer{store: s}
 }
 
-// nullIndex maps a nullable catalog value to the proto sentinel (-1).
+// nullIndex mapeia um valor anulável do catálogo para o sentinela do proto (-1).
 func nullIndex(v *int16) int32 {
 	if v == nil {
 		return -1
@@ -40,7 +40,7 @@ func nullIndex(v *int16) int32 {
 	return int32(*v)
 }
 
-// FetchItemCatalog returns the whole item catalog ordered by index.
+// FetchItemCatalog devolve o catálogo de itens inteiro, ordenado por índice.
 func (s *ContentCatalogServer) FetchItemCatalog(ctx context.Context, _ *dbv1.FetchItemCatalogRequest) (*dbv1.FetchItemCatalogResponse, error) {
 	items, err := s.store.ListItemCatalog(ctx)
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *ContentCatalogServer) FetchItemCatalog(ctx context.Context, _ *dbv1.Fet
 	return &dbv1.FetchItemCatalogResponse{Items: out}, nil
 }
 
-// FetchSkillCatalog returns every skill ordered by index.
+// FetchSkillCatalog devolve todas as skills, ordenadas por índice.
 func (s *ContentCatalogServer) FetchSkillCatalog(ctx context.Context, _ *dbv1.FetchSkillCatalogRequest) (*dbv1.FetchSkillCatalogResponse, error) {
 	skills, err := s.store.ListSkillCatalog(ctx)
 	if err != nil {
@@ -109,7 +109,7 @@ func (s *ContentCatalogServer) FetchSkillCatalog(ctx context.Context, _ *dbv1.Fe
 	return &dbv1.FetchSkillCatalogResponse{Skills: out}, nil
 }
 
-// FetchNPCTemplates returns every template blob ordered by name.
+// FetchNPCTemplates devolve todos os blobs de template, ordenados por nome.
 func (s *ContentCatalogServer) FetchNPCTemplates(ctx context.Context, _ *dbv1.FetchNPCTemplatesRequest) (*dbv1.FetchNPCTemplatesResponse, error) {
 	tpls, err := s.store.ListNPCTemplates(ctx)
 	if err != nil {
@@ -128,7 +128,7 @@ func (s *ContentCatalogServer) FetchNPCTemplates(ctx context.Context, _ *dbv1.Fe
 	return &dbv1.FetchNPCTemplatesResponse{Templates: out}, nil
 }
 
-// FetchWorldItems returns the static world objects in insertion order.
+// FetchWorldItems devolve os objetos estáticos do mundo na ordem de inserção.
 func (s *ContentCatalogServer) FetchWorldItems(ctx context.Context, _ *dbv1.FetchWorldItemsRequest) (*dbv1.FetchWorldItemsResponse, error) {
 	seeds, err := s.store.ListWorldItemSeeds(ctx)
 	if err != nil {

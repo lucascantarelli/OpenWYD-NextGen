@@ -8,10 +8,10 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// fakeCatalogStore is the read surface NewContentCatalog needs, with one row per
-// catalog. It exists to pin the proto mapping (issue 58, fase 2) without a
-// database: the fields that would silently degrade a boot are the raw CSV
-// columns, the nullable sentinels and the 816-byte blob.
+// fakeCatalogStore é a superfície de leitura que o NewContentCatalog precisa, com
+// uma linha por catálogo. Existe para fixar o mapeamento do proto (issue 58, fase 2)
+// sem banco: os campos que degradariam o boot em silêncio são as colunas cruas do
+// CSV, os sentinelas anuláveis e o blob de 816 bytes.
 type fakeCatalogStore struct{}
 
 func (fakeCatalogStore) ListItemCatalog(context.Context) ([]domain.ItemCatalogEntry, error) {

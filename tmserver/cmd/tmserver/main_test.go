@@ -45,10 +45,10 @@ func TestSpawnNPCsLeavesWaterGeneratorsForRoomLifecycle(t *testing.T) {
 	}
 }
 
-// TestSpawnNPCsSkipsMissingLeaderTemplate: a block whose leader template cannot be
-// decoded never becomes a generator slot (the importer drops it, so the catalogue
-// the tmServer reads has no definition for it), and a missing follower degrades the
-// block to a leader-only group.
+// TestSpawnNPCsSkipsMissingLeaderTemplate: bloco cujo template de líder não pode
+// ser decodificado nunca vira slot de gerador (o importador o descarta, então o
+// catálogo lido pelo tmServer não tem definição para ele), e um seguidor ausente
+// degrada o bloco para um grupo só com o líder.
 func TestSpawnNPCsSkipsMissingLeaderTemplate(t *testing.T) {
 	dir := t.TempDir()
 	runDir := filepath.Join(dir, "TMsrv", "run")

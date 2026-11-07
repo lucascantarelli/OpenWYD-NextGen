@@ -10,26 +10,26 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// ContentRateConfigStore is the read surface the rate-overlay service needs
-// (satisfied by *store.Store). tmServer only reads through here; writes go through
-// the web-api, which owns the validation and the audit trail.
+// ContentRateConfigStore é a superfície de leitura de que o serviço de overlay
+// de rates precisa (satisfeita por *store.Store). O tmServer só lê por aqui; as
+// escritas vão pelo web-api, que é dono da validação e da trilha de auditoria.
 type ContentRateConfigStore interface {
 	ListContentRateOverrides(ctx context.Context) ([]store.ContentRateOverride, error)
 }
 
-// ContentRateConfigServer implements dbv1.ContentRateConfigServiceServer.
+// ContentRateConfigServer implementa dbv1.ContentRateConfigServiceServer.
 type ContentRateConfigServer struct {
 	dbv1.UnimplementedContentRateConfigServiceServer
 	store ContentRateConfigStore
 }
 
-// NewContentRateConfig builds the rate config service over the given store.
+// NewContentRateConfig monta o serviço de rates sobre o store recebido.
 func NewContentRateConfig(s ContentRateConfigStore) *ContentRateConfigServer {
 	return &ContentRateConfigServer{store: s}
 }
 
-// ListContentRateOverrides returns the full overlay snapshot: one row per edited
-// cell, which is a handful even on a tuned server.
+// ListContentRateOverrides devolve o snapshot completo do overlay: uma linha por
+// célula editada, que são poucas mesmo num servidor ajustado.
 func (s *ContentRateConfigServer) ListContentRateOverrides(ctx context.Context, _ *dbv1.ListContentRateOverridesRequest) (*dbv1.ListContentRateOverridesResponse, error) {
 	rows, err := s.store.ListContentRateOverrides(ctx)
 	if err != nil {

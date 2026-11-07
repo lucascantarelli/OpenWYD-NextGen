@@ -10,9 +10,9 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// NpcConfigStore is the read surface the NPC-config service needs (satisfied by
-// *store.Store). tmServer only reads NPC config through here; all writes go
-// through the web-api.
+// NpcConfigStore é a superfície de leitura de que o serviço de config de NPC
+// precisa (satisfeita por *store.Store). O tmServer só lê config de NPC por aqui;
+// todas as escritas vão pelo web-api.
 type NpcConfigStore interface {
 	NPCConfigVersion(ctx context.Context) (int64, error)
 	ListNPCDefinitions(ctx context.Context) ([]domain.NPCDefinition, error)
@@ -20,17 +20,17 @@ type NpcConfigStore interface {
 	ListMobTemplateStats(ctx context.Context) ([]domain.MobTemplateStat, error)
 }
 
-// NpcConfigServer implements dbv1.NpcConfigServiceServer. It is the read-only
-// bridge tmServer polls to reload moderator-edited NPC config (npc-editing-plan.md).
+// NpcConfigServer implementa dbv1.NpcConfigServiceServer. É a ponte somente
+// leitura que o tmServer consulta para recarregar config de NPC editada (npc-editing-plan.md).
 type NpcConfigServer struct {
 	dbv1.UnimplementedNpcConfigServiceServer
 	store NpcConfigStore
 }
 
-// NewNpcConfig builds the NPC-config service over the given store.
+// NewNpcConfig monta o serviço de config de NPC sobre o store recebido.
 func NewNpcConfig(s NpcConfigStore) *NpcConfigServer { return &NpcConfigServer{store: s} }
 
-// NpcConfigVersion returns the monotonic config version for the tmServer poll.
+// NpcConfigVersion devolve a versão monotônica da config para o poll do tmServer.
 func (s *NpcConfigServer) NpcConfigVersion(ctx context.Context, _ *dbv1.NpcConfigVersionRequest) (*dbv1.NpcConfigVersionResponse, error) {
 	v, err := s.store.NPCConfigVersion(ctx)
 	if err != nil {
@@ -39,12 +39,12 @@ func (s *NpcConfigServer) NpcConfigVersion(ctx context.Context, _ *dbv1.NpcConfi
 	return &dbv1.NpcConfigVersionResponse{Version: v}, nil
 }
 
-// ListNpcDefinitions returns the full definition snapshot plus global price
-// overrides, tagged with the version they were read at.
+// ListNpcDefinitions devolve o snapshot completo de definições mais as
+// sobreposições globais de preço, marcadas com a versão lida.
 func (s *NpcConfigServer) ListNpcDefinitions(ctx context.Context, _ *dbv1.ListNpcDefinitionsRequest) (*dbv1.ListNpcDefinitionsResponse, error) {
-	// Read the version FIRST so a concurrent write can only make the snapshot look
-	// older than it is (the tmServer re-polls and reloads), never newer — which
-	// would let a stale snapshot masquerade as current and skip the next reload.
+	// Lê a versão PRIMEIRO para uma escrita concorrente só poder deixar o snapshot
+	// mais velho do que é (o tmServer consulta e recarrega de novo), nunca mais novo —
+	// o que deixaria um snapshot velho se passar por atual e pular o próximo reload.
 	version, err := s.store.NPCConfigVersion(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "npc config version: %v", err)
@@ -98,10 +98,10 @@ func itemPricesToProto(prices []domain.ItemPriceOverride) []*dbv1.ItemPrice {
 	return out
 }
 
-// ListMobTemplateStats returns every moderator-edited mob/NPC template stat
-// override (mob-template-editing-plan.md). Deliberately independent of
-// ListNpcDefinitions: no version field, because tmServer applies this only
-// once at boot — no hot-reload for this feature.
+// ListMobTemplateStats devolve toda sobreposição de stat de template de mob/NPC
+// editada pelo moderador (mob-template-editing-plan.md). De propósito independente de
+// ListNpcDefinitions: sem campo de versão, porque o tmServer aplica isto só
+// uma vez no boot — não há hot-reload para este recurso.
 func (s *NpcConfigServer) ListMobTemplateStats(ctx context.Context, _ *dbv1.ListMobTemplateStatsRequest) (*dbv1.ListMobTemplateStatsResponse, error) {
 	stats, err := s.store.ListMobTemplateStats(ctx)
 	if err != nil {

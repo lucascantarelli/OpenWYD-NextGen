@@ -9,8 +9,8 @@ import (
 	"openwyd-nextgen/internal/secret"
 )
 
-// cstr trims a fixed-size C char array to a Go string: it cuts at the first NUL
-// and strips trailing spaces (legacy files space-pad — see the antonio sample).
+// cstr corta um vetor C de tamanho fixo para string Go: para no primeiro NUL
+// e remove espaços à direita (os arquivos legados preenchem com espaço — ver a amostra antonio).
 func cstr(b []byte) string {
 	if i := indexByte(b, 0); i >= 0 {
 		b = b[:i]
@@ -27,9 +27,9 @@ func indexByte(b []byte, c byte) int {
 	return -1
 }
 
-// Account converts a current-format (7952-byte) AccountFile into the relational
-// domain model, hashing the password, PIN and block password. The account name
-// is canonicalized to lowercase (data-formats.md §1.1 case-sensitivity note).
+// Account converte um AccountFile no formato atual (7952 bytes) para o modelo
+// relacional do domínio, com hash de senha, PIN e senha de bloqueio. O nome da
+// conta é canonicalizado em minúsculas (nota de sensibilidade a caixa em data-formats.md §1.1).
 func Account(af savefmt.AccountFile) (domain.Account, error) {
 	name := strings.ToLower(cstr(af.Info.AccountName[:]))
 	if name == "" {
@@ -135,8 +135,8 @@ func character(slot int, m savefmt.Mob, ex savefmt.MobExtra, shortSkill [16]uint
 	return c
 }
 
-// items normalizes a fixed array of save items into domain items, dropping empty
-// slots (sIndex==0) while preserving the slot index (positional meaning).
+// items normaliza um vetor fixo de itens de save em itens de domínio, descartando
+// slots vazios (sIndex==0) e preservando o índice do slot (significado posicional).
 func items(src []savefmt.Item) []domain.Item {
 	var out []domain.Item
 	for slot := range src {

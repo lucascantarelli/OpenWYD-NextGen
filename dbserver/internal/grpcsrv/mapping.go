@@ -9,19 +9,19 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// uniqueViolation is the PostgreSQL SQLSTATE for a unique-constraint conflict.
+// uniqueViolation é o SQLSTATE do PostgreSQL para conflito de restrição única.
 const uniqueViolation = "23505"
 
-// isUniqueViolation reports whether err is a PostgreSQL unique-constraint error
-// (e.g. a taken character slot or name on create).
+// isUniqueViolation diz se err é um erro de restrição única do PostgreSQL
+// (por exemplo, slot ou nome de personagem já ocupado na criação).
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolation
 }
 
-// characterToProto maps the relational character to the wire contract. Only the
-// fields the contract carries are emitted (see store.SaveCharacter for why the
-// model is intentionally a subset).
+// characterToProto mapeia o personagem relacional para o contrato do wire. Só os
+// campos que o contrato carrega são emitidos (ver store.SaveCharacter para o motivo
+// de o modelo ser, de propósito, um subconjunto).
 func characterToProto(ch domain.Character) *dbv1.Character {
 	return &dbv1.Character{
 		Slot:       int32(ch.Slot),
@@ -113,7 +113,7 @@ func byteArrToProto(v []uint8) []uint32 {
 	return out
 }
 
-// protoToCharacter maps the wire contract back to the relational character.
+// protoToCharacter mapeia o contrato do wire de volta para o personagem relacional.
 func protoToCharacter(c *dbv1.Character) domain.Character {
 	if c == nil {
 		return domain.Character{}

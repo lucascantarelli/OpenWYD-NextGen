@@ -22,7 +22,7 @@ func TestSpawnNPCsDefersKefraUntilStateLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	var config strings.Builder
-	// NPCGener indices are the block order; the bracketed number is a comment.
+	// Os índices do NPCGener são a ordem dos blocos; o número entre colchetes é um comentário.
 	for idx := 0; idx <= 400; idx++ {
 		if idx > 0 && idx < 396 {
 			fmt.Fprintf(&config, "# [%d]\nLeader: 0\n\n", idx)

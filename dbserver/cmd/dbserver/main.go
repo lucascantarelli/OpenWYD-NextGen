@@ -1,17 +1,17 @@
-// Command dbserver is the persistence service (DBSrv). It ships the one-shot
-// account-file converter and the gRPC AccountService (api/db/v1) that tmServer
-// consumes over gRPC+mTLS (migration-plan.md §3.5).
+// Command dbserver é o serviço de persistência (DBSrv). Ele traz o conversor
+// one-shot de arquivo de conta e o AccountService gRPC (api/db/v1) que o tmServer
+// consome via gRPC+mTLS (migration-plan.md §3.5).
 //
-// Usage:
+// Uso:
 //
 //	dbserver convert -accounts <dir> [-dsn <postgres-url>]
 //	dbserver serve [-addr :7514] -dsn <postgres-url> [-tls-cert … -tls-key … -tls-ca …]
 //	dbserver seed-account -name <login> -pass <password> [-dsn <postgres-url>]
 //
-// convert: without -dsn it is a dry run; with -dsn it applies migrations and
-// persists each converted account. serve: applies migrations then serves gRPC.
-// seed-account: creates a single password-only account (no characters) for local
-// testing; the player creates characters in the client. Idempotent.
+// convert: sem -dsn é simulação; com -dsn aplica as migrations e persiste cada
+// conta convertida. serve: aplica as migrations e então serve gRPC.
+// seed-account: cria uma conta só com senha (sem personagens) para teste local;
+// o jogador cria personagens no cliente. Idempotente.
 package main
 
 import (

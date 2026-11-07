@@ -10,7 +10,7 @@ import (
 	"openwyd-nextgen/internal/domain"
 )
 
-// LoadKefraState returns the durable cycle, or revision zero on first boot.
+// LoadKefraState devolve o ciclo durável, ou revisão zero no primeiro boot.
 func (s *Server) LoadKefraState(ctx context.Context, _ *dbv1.LoadKefraStateRequest) (*dbv1.LoadKefraStateResponse, error) {
 	st, err := s.store.LoadKefraState(ctx)
 	if err != nil {
@@ -19,7 +19,7 @@ func (s *Server) LoadKefraState(ctx context.Context, _ *dbv1.LoadKefraStateReque
 	return &dbv1.LoadKefraStateResponse{State: &dbv1.KefraState{Defeated: st.Defeated, NextSpawnUnix: st.NextSpawnUnix, LastSpawnUnix: st.LastSpawnUnix, Revision: st.Revision}}, nil
 }
 
-// SaveKefraState validates the cycle before committing its monotonic revision.
+// SaveKefraState valida o ciclo antes de gravar sua revisão monotônica.
 func (s *Server) SaveKefraState(ctx context.Context, req *dbv1.SaveKefraStateRequest) (*dbv1.SaveKefraStateResponse, error) {
 	p := req.GetState()
 	if p.GetRevision() <= 0 || p.GetNextSpawnUnix() <= 0 || p.GetLastSpawnUnix() < 0 || p.GetLastSpawnUnix() >= p.GetNextSpawnUnix() {

@@ -1,6 +1,6 @@
-// Package grpcsrv implements the dbServer's gRPC AccountService (api/db/v1) over
-// the PostgreSQL store. It is the persistence boundary tmServer talks to over
-// gRPC+mTLS (migration-plan.md §3.5); the legacy CPSock never reaches here.
+// Package grpcsrv implementa o AccountService gRPC do dbServer (api/db/v1) sobre
+// o store PostgreSQL. É a fronteira de persistência com que o tmServer fala via
+// gRPC+mTLS (migration-plan.md §3.5); o CPSock legado nunca chega aqui.
 package grpcsrv
 
 import (
@@ -19,9 +19,9 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// Store is the persistence surface the service depends on (satisfied by
-// *store.Store). Kept as an interface so the service is unit-testable without a
-// live database.
+// Store é a superfície de persistência de que o serviço depende (satisfeita
+// por *store.Store). Fica como interface para o serviço ser testável em unidade
+// sem banco vivo.
 type Store interface {
 	LoadKefraState(ctx context.Context) (domain.KefraState, error)
 	SaveKefraState(ctx context.Context, state domain.KefraState) error
@@ -60,36 +60,36 @@ type Store interface {
 	SaveCastleQuestState(ctx context.Context, state domain.CastleQuestState) error
 }
 
-// Server implements dbv1.AccountServiceServer.
+// Server implementa dbv1.AccountServiceServer.
 type Server struct {
 	dbv1.UnimplementedAccountServiceServer
 	store Store
-	// crossoverKey validates the channel-change token a client carries in the
-	// password field after picking another channel (canais.md §8.1.2). Empty
-	// disables the path, so a bad key can never turn into a login bypass.
+	// crossoverKey valida o token de troca de canal que o cliente carrega no campo
+	// de senha depois de escolher outro canal (canais.md §8.1.2). Vazio
+	// desativa o caminho, então uma chave ruim nunca vira bypass de login.
 	crossoverKey string
 }
 
-// WithCrossoverKey enables the server-change token path (W2PP_CROSSOVER_KEY).
+// WithCrossoverKey liga o caminho de token de troca de servidor (W2PP_CROSSOVER_KEY).
 func (s *Server) WithCrossoverKey(key string) *Server { s.crossoverKey = key; return s }
 
 const (
 	classMasterArch   = 1
 	classMasterMortal = 2
 	maxClass          = 4
-	// pkPointNeutral is the clean/neutral value of the legacy PKPoint byte
-	// (GetFunc.cpp, 75 = neutral; issue #210). A freshly created character must
-	// start here explicitly: CreateCharacter's column list is explicit, so the Go
-	// zero value (0 = maximally chaotic) would otherwise win over the DB
-	// column's DEFAULT.
+	// pkPointNeutral é o valor limpo/neutro do byte PKPoint legado
+	// (GetFunc.cpp, 75 = neutro; issue #210). Um personagem recém-criado precisa
+	// começar aqui explicitamente: a lista de colunas do CreateCharacter é explícita,
+	// então o zero do Go (0 = maximamente caótico) venceria o DEFAULT da coluna
+	// no banco.
 	pkPointNeutral = 75
 )
 
-// New builds an AccountService over the given store.
+// New monta um AccountService sobre o store recebido.
 func New(s Store) *Server { return &Server{store: s} }
 
-// AccountLogin authenticates an account name + password against the stored
-// argon2id hash. Plaintext is never compared (secret.VerifySecret).
+// AccountLogin autentica nome de conta + senha contra o hash argon2id
+// guardado. Texto plano nunca é comparado (secret.VerifySecret).
 func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest) (*dbv1.AccountLoginResponse, error) {
 	auth, err := s.store.AccountByName(ctx, req.GetAccountName())
 	if errors.Is(err, store.ErrNotFound) {
@@ -101,10 +101,10 @@ func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest
 	if auth.IsBlocked {
 		return &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BLOCKED}, nil
 	}
-	// Channel change (canais.md §8.1.2): the client that came from another channel
-	// sends a signed token in the password field instead of the password. The
-	// signature covers the account name, so a token cannot be replayed by another
-	// account; an invalid or expired one is just a wrong password.
+	// Troca de canal (canais.md §8.1.2): o cliente que veio de outro canal manda um
+	// token assinado no campo de senha em vez da senha. A assinatura cobre o nome
+	// da conta, então um token não pode ser reusado por outra conta; um inválido ou
+	// expirado é apenas uma senha errada.
 	if tok := req.GetPassword(); s.crossoverKey != "" && crossover.IsToken(tok) {
 		if _, ok := crossover.Verify(s.crossoverKey, req.GetAccountName(), tok, time.Now()); !ok {
 			return &dbv1.AccountLoginResponse{Result: dbv1.LoginResult_LOGIN_RESULT_BAD_PASSWORD}, nil
@@ -119,9 +119,9 @@ func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "verify password: %v", err)
 	}
-	// The web client logs in with a one-time code from the portal in the
-	// password field (web client ADR 017). The password is tried first, so an
-	// account whose real password looks like a code keeps working.
+	// O cliente web loga com um código de uso único vindo do portal no campo de
+	// senha (ADR 017 do cliente web). A senha é tentada primeiro, então uma conta
+	// cuja senha real pareça um código continua funcionando.
 	if !ok && playcode.Valid(req.GetPassword()) {
 		ok, err = s.store.ConsumePlayCode(ctx, auth.ID, playcode.Hash(req.GetPassword()))
 		if err != nil {
@@ -134,11 +134,11 @@ func (s *Server) AccountLogin(ctx context.Context, req *dbv1.AccountLoginRequest
 	return &dbv1.AccountLoginResponse{
 		Result:    dbv1.LoginResult_LOGIN_RESULT_OK,
 		AccountId: auth.ID,
-		Role:      auth.Role, // carried to tmServer for in-game GM authz (issue #122)
+		Role:      auth.Role, // levado ao tmServer para autorização de GM in-game (issue #122)
 	}, nil
 }
 
-// ListCharacters returns the character-selection projection for an account.
+// ListCharacters devolve a projeção da seleção de personagens de uma conta.
 func (s *Server) ListCharacters(ctx context.Context, req *dbv1.ListCharactersRequest) (*dbv1.ListCharactersResponse, error) {
 	chars, err := s.store.ListCharacters(ctx, req.GetAccountId())
 	if err != nil {
@@ -168,7 +168,7 @@ func (s *Server) ListCharacters(ctx context.Context, req *dbv1.ListCharactersReq
 	return &dbv1.ListCharactersResponse{Characters: out}, nil
 }
 
-// LoadCharacter loads one character's state by slot.
+// LoadCharacter carrega o estado de um personagem pelo slot.
 func (s *Server) LoadCharacter(ctx context.Context, req *dbv1.LoadCharacterRequest) (*dbv1.LoadCharacterResponse, error) {
 	ch, err := s.store.LoadCharacter(ctx, req.GetAccountId(), int(req.GetSlot()))
 	if errors.Is(err, store.ErrNotFound) {
@@ -180,7 +180,7 @@ func (s *Server) LoadCharacter(ctx context.Context, req *dbv1.LoadCharacterReque
 	return &dbv1.LoadCharacterResponse{Character: characterToProto(ch)}, nil
 }
 
-// SaveCharacter persists a character's live state (partial; see store.SaveCharacter).
+// SaveCharacter persiste o estado vivo de um personagem (parcial; ver store.SaveCharacter).
 func (s *Server) SaveCharacter(ctx context.Context, req *dbv1.SaveCharacterRequest) (*dbv1.SaveCharacterResponse, error) {
 	if stage := req.GetCharacter().GetArchCrystalStage(); stage < 0 || stage > 4 {
 		return nil, status.Error(codes.InvalidArgument, "arch crystal stage must be between 0 and 4")
@@ -196,7 +196,7 @@ func (s *Server) SaveCharacter(ctx context.Context, req *dbv1.SaveCharacterReque
 	return &dbv1.SaveCharacterResponse{Ok: true}, nil
 }
 
-// QuoteKingdomCape returns the durable price and revision used by both Kings.
+// QuoteKingdomCape devolve o preço durável e a revisão usados pelos dois Reis.
 func (s *Server) QuoteKingdomCape(ctx context.Context, _ *dbv1.QuoteKingdomCapeRequest) (*dbv1.QuoteKingdomCapeResponse, error) {
 	q, err := s.store.QuoteKingdomCape(ctx)
 	if err != nil {
@@ -205,7 +205,7 @@ func (s *Server) QuoteKingdomCape(ctx context.Context, _ *dbv1.QuoteKingdomCapeR
 	return kingdomCapeQuoteToProto(q), nil
 }
 
-// PurchaseKingdomCape commits the staged character outcome at the quoted revision.
+// PurchaseKingdomCape confirma o resultado preparado do personagem na revisão cotada.
 func (s *Server) PurchaseKingdomCape(ctx context.Context, req *dbv1.PurchaseKingdomCapeRequest) (*dbv1.PurchaseKingdomCapeResponse, error) {
 	q, ok, err := s.store.PurchaseKingdomCape(ctx, req.GetAccountId(), req.GetExpectedRevision(), uint8(req.GetKingdom()), protoToCharacter(req.GetCharacter()))
 	if errors.Is(err, store.ErrNotFound) {
@@ -221,8 +221,8 @@ func kingdomCapeQuoteToProto(q domain.KingdomCapeQuote) *dbv1.QuoteKingdomCapeRe
 	return &dbv1.QuoteKingdomCapeResponse{Revision: q.Revision, HekalotiaCost: q.HekalotiaCost, AkeloniaCost: q.AkeloniaCost}
 }
 
-// LoadCargo loads the account-shared cargo (gold + items). A missing account
-// returns NotFound.
+// LoadCargo carrega o cargo compartilhado da conta (ouro + itens). Conta
+// inexistente devolve NotFound.
 func (s *Server) LoadCargo(ctx context.Context, req *dbv1.LoadCargoRequest) (*dbv1.LoadCargoResponse, error) {
 	coin, items, err := s.store.LoadCargo(ctx, req.GetAccountId())
 	if errors.Is(err, store.ErrNotFound) {
@@ -234,7 +234,7 @@ func (s *Server) LoadCargo(ctx context.Context, req *dbv1.LoadCargoRequest) (*db
 	return &dbv1.LoadCargoResponse{CargoCoin: coin, Items: itemsToProto(items)}, nil
 }
 
-// SaveCargo persists the account-shared cargo gold + items (replace-all).
+// SaveCargo persiste ouro + itens do cargo compartilhado (substitui tudo).
 func (s *Server) SaveCargo(ctx context.Context, req *dbv1.SaveCargoRequest) (*dbv1.SaveCargoResponse, error) {
 	err := s.store.SaveCargo(ctx, req.GetAccountId(), req.GetCargoCoin(), protoToItems(req.GetItems()))
 	if errors.Is(err, store.ErrNotFound) {
@@ -246,8 +246,8 @@ func (s *Server) SaveCargo(ctx context.Context, req *dbv1.SaveCargoRequest) (*db
 	return &dbv1.SaveCargoResponse{Ok: true}, nil
 }
 
-// ListPendingDeliveries returns the account's pending item grants from the
-// delivery_queue mailbox (donate web shop, issue #34).
+// ListPendingDeliveries devolve as concessões de item pendentes da conta na
+// caixa delivery_queue (loja de donate web, issue #34).
 func (s *Server) ListPendingDeliveries(ctx context.Context, req *dbv1.ListPendingDeliveriesRequest) (*dbv1.ListPendingDeliveriesResponse, error) {
 	deliveries, err := s.store.PendingItemDeliveries(ctx, req.GetAccountId())
 	if err != nil {
@@ -260,9 +260,9 @@ func (s *Server) ListPendingDeliveries(ctx context.Context, req *dbv1.ListPendin
 	return &dbv1.ListPendingDeliveriesResponse{Deliveries: out}, nil
 }
 
-// SaveCargoWithDeliveries persists the cargo and marks the drained mailbox rows
-// delivered/lost in one transaction (the anti-dup boundary for the drain). A
-// missing account returns ok=false.
+// SaveCargoWithDeliveries persiste o cargo e marca as linhas drenadas da caixa
+// como entregues/perdidas numa transação (a fronteira anti-duplicação da drenagem).
+// Conta inexistente devolve ok=false.
 func (s *Server) SaveCargoWithDeliveries(ctx context.Context, req *dbv1.SaveCargoWithDeliveriesRequest) (*dbv1.SaveCargoResponse, error) {
 	err := s.store.SaveCargoWithDeliveries(ctx, req.GetAccountId(), req.GetCargoCoin(),
 		protoToItems(req.GetItems()), req.GetDeliveredIds(), req.GetLostIds())
@@ -275,8 +275,8 @@ func (s *Server) SaveCargoWithDeliveries(ctx context.Context, req *dbv1.SaveCarg
 	return &dbv1.SaveCargoResponse{Ok: true}, nil
 }
 
-// SetAccountBlocked flips account.is_blocked by name — the write side of the
-// in-game GM ban/unban command (issue #122). A missing account returns ok=false.
+// SetAccountBlocked inverte account.is_blocked por nome — o lado de escrita do
+// comando in-game de ban/unban de GM (issue #122). Conta inexistente devolve ok=false.
 func (s *Server) SetAccountBlocked(ctx context.Context, req *dbv1.SetAccountBlockedRequest) (*dbv1.SetAccountBlockedResponse, error) {
 	err := s.store.SetBlockedByName(ctx, req.GetAccountName(), req.GetBlocked())
 	if errors.Is(err, store.ErrNotFound) {
@@ -288,9 +288,9 @@ func (s *Server) SetAccountBlocked(ctx context.Context, req *dbv1.SetAccountBloc
 	return &dbv1.SetAccountBlockedResponse{Ok: true}, nil
 }
 
-// RecordDuelResult persists a 1v1 duel outcome (issue #118): winner_name's
-// wins and loser_name's losses are each incremented by one. Either name not
-// resolving to a character is reported as ok=false, not an error.
+// RecordDuelResult persiste o resultado de um duelo 1v1 (issue #118): as vitórias
+// de winner_name e as derrotas de loser_name sobem de um em um. Nome que não
+// resolve para um personagem é reportado como ok=false, não como erro.
 func (s *Server) RecordDuelResult(ctx context.Context, req *dbv1.RecordDuelResultRequest) (*dbv1.RecordDuelResultResponse, error) {
 	err := s.store.RecordDuelResult(ctx, req.GetWinnerName(), req.GetLoserName())
 	if errors.Is(err, store.ErrNotFound) {
@@ -302,7 +302,7 @@ func (s *Server) RecordDuelResult(ctx context.Context, req *dbv1.RecordDuelResul
 	return &dbv1.RecordDuelResultResponse{Ok: true}, nil
 }
 
-// CreateGuild creates a guild and marks the requester as its leader.
+// CreateGuild cria uma guild e marca o solicitante como líder dela.
 func (s *Server) CreateGuild(ctx context.Context, req *dbv1.CreateGuildRequest) (*dbv1.CreateGuildResponse, error) {
 	g, err := s.store.CreateGuild(ctx, req.GetAccountId(), int(req.GetSlot()), req.GetCharacterName(),
 		req.GetGuildName(), uint8(req.GetClan()), uint8(req.GetCitizen()), int(req.GetServerIndex()), req.GetCost())
@@ -315,7 +315,7 @@ func (s *Server) CreateGuild(ctx context.Context, req *dbv1.CreateGuildRequest) 
 	return &dbv1.CreateGuildResponse{Ok: true, Guild: guildToProto(g)}, nil
 }
 
-// SetGuildMember sets or clears one character's guild membership.
+// SetGuildMember define ou limpa a filiação de um personagem a uma guild.
 func (s *Server) SetGuildMember(ctx context.Context, req *dbv1.SetGuildMemberRequest) (*dbv1.SetGuildMemberResponse, error) {
 	err := s.store.SetGuildMember(ctx, req.GetAccountId(), int(req.GetSlot()), req.GetCharacterName(),
 		uint16(req.GetGuildId()), uint8(req.GetGuildLevel()))
@@ -328,7 +328,7 @@ func (s *Server) SetGuildMember(ctx context.Context, req *dbv1.SetGuildMemberReq
 	return &dbv1.SetGuildMemberResponse{Ok: true}, nil
 }
 
-// LeaveGuild removes one character from its guild.
+// LeaveGuild remove um personagem da guild dele.
 func (s *Server) LeaveGuild(ctx context.Context, req *dbv1.LeaveGuildRequest) (*dbv1.SetGuildMemberResponse, error) {
 	err := s.store.LeaveGuild(ctx, req.GetAccountId(), int(req.GetSlot()))
 	if errors.Is(err, store.ErrNotFound) {
@@ -340,7 +340,7 @@ func (s *Server) LeaveGuild(ctx context.Context, req *dbv1.LeaveGuildRequest) (*
 	return &dbv1.SetGuildMemberResponse{Ok: true}, nil
 }
 
-// PromoteGuildMember promotes a member to the first free sub-leader rank.
+// PromoteGuildMember promove um membro para o primeiro posto de sub-líder livre.
 func (s *Server) PromoteGuildMember(ctx context.Context, req *dbv1.PromoteGuildMemberRequest) (*dbv1.PromoteGuildMemberResponse, error) {
 	level, err := s.store.PromoteGuildMember(ctx, uint16(req.GetGuildId()), req.GetLeaderAccountId(), int(req.GetLeaderSlot()),
 		req.GetAccountId(), int(req.GetSlot()), req.GetCost())
@@ -353,7 +353,7 @@ func (s *Server) PromoteGuildMember(ctx context.Context, req *dbv1.PromoteGuildM
 	return &dbv1.PromoteGuildMemberResponse{Ok: true, GuildLevel: int32(level)}, nil
 }
 
-// TransferGuildLeader transfers rank 9 to another member.
+// TransferGuildLeader passa o posto 9 para outro membro.
 func (s *Server) TransferGuildLeader(ctx context.Context, req *dbv1.TransferGuildLeaderRequest) (*dbv1.SetGuildMemberResponse, error) {
 	err := s.store.TransferGuildLeader(ctx, uint16(req.GetGuildId()), req.GetOldAccountId(), int(req.GetOldSlot()),
 		req.GetNewAccountId(), int(req.GetNewSlot()))
@@ -366,7 +366,7 @@ func (s *Server) TransferGuildLeader(ctx context.Context, req *dbv1.TransferGuil
 	return &dbv1.SetGuildMemberResponse{Ok: true}, nil
 }
 
-// SetGuildRelation upserts or clears a directed ally/war relation.
+// SetGuildRelation cria/atualiza ou limpa uma relação direcionada de aliança/guerra.
 func (s *Server) SetGuildRelation(ctx context.Context, req *dbv1.SetGuildRelationRequest) (*dbv1.SetGuildRelationResponse, error) {
 	err := s.store.SetGuildRelation(ctx, uint16(req.GetGuildId()), uint16(req.GetTargetGuildId()), relationKindFromProto(req.GetKind()))
 	if errors.Is(err, store.ErrNotFound) || errors.Is(err, store.ErrConflict) {
@@ -378,7 +378,7 @@ func (s *Server) SetGuildRelation(ctx context.Context, req *dbv1.SetGuildRelatio
 	return &dbv1.SetGuildRelationResponse{Ok: true}, nil
 }
 
-// ListGuilds returns the guild registry snapshot.
+// ListGuilds devolve o snapshot do registro de guilds.
 func (s *Server) ListGuilds(ctx context.Context, _ *dbv1.ListGuildsRequest) (*dbv1.ListGuildsResponse, error) {
 	guilds, err := s.store.ListGuilds(ctx)
 	if err != nil {
@@ -387,7 +387,7 @@ func (s *Server) ListGuilds(ctx context.Context, _ *dbv1.ListGuildsRequest) (*db
 	return &dbv1.ListGuildsResponse{Guilds: guildsToProto(guilds)}, nil
 }
 
-// ListGuildRelations returns all directed ally/war relations.
+// ListGuildRelations devolve todas as relações direcionadas de aliança/guerra.
 func (s *Server) ListGuildRelations(ctx context.Context, _ *dbv1.ListGuildRelationsRequest) (*dbv1.ListGuildRelationsResponse, error) {
 	relations, err := s.store.ListGuildRelations(ctx)
 	if err != nil {
@@ -396,7 +396,7 @@ func (s *Server) ListGuildRelations(ctx context.Context, _ *dbv1.ListGuildRelati
 	return &dbv1.ListGuildRelationsResponse{Relations: relationsToProto(relations)}, nil
 }
 
-// LoadGuildZones loads city/guild-zone state.
+// LoadGuildZones carrega o estado das zonas de cidade/guild.
 func (s *Server) LoadGuildZones(ctx context.Context, _ *dbv1.LoadGuildZonesRequest) (*dbv1.LoadGuildZonesResponse, error) {
 	zones, err := s.store.LoadGuildZones(ctx)
 	if err != nil {
@@ -405,7 +405,7 @@ func (s *Server) LoadGuildZones(ctx context.Context, _ *dbv1.LoadGuildZonesReque
 	return &dbv1.LoadGuildZonesResponse{Zones: zonesToProto(zones)}, nil
 }
 
-// SaveGuildZone persists one city/guild-zone row.
+// SaveGuildZone persiste uma linha de zona de cidade/guild.
 func (s *Server) SaveGuildZone(ctx context.Context, req *dbv1.SaveGuildZoneRequest) (*dbv1.SaveGuildZoneResponse, error) {
 	err := s.store.SaveGuildZone(ctx, zoneFromProto(req.GetZone()))
 	if errors.Is(err, store.ErrNotFound) {
@@ -417,7 +417,7 @@ func (s *Server) SaveGuildZone(ctx context.Context, req *dbv1.SaveGuildZoneReque
 	return &dbv1.SaveGuildZoneResponse{Ok: true}, nil
 }
 
-// LoadGuildTowerState loads current GTorre ownership.
+// LoadGuildTowerState carrega a posse atual da GTorre.
 func (s *Server) LoadGuildTowerState(ctx context.Context, _ *dbv1.LoadGuildTowerStateRequest) (*dbv1.LoadGuildTowerStateResponse, error) {
 	st, err := s.store.LoadGuildTowerState(ctx)
 	if errors.Is(err, store.ErrNotFound) {
@@ -429,7 +429,7 @@ func (s *Server) LoadGuildTowerState(ctx context.Context, _ *dbv1.LoadGuildTower
 	return &dbv1.LoadGuildTowerStateResponse{State: towerStateToProto(st)}, nil
 }
 
-// SaveGuildTowerState persists current GTorre ownership.
+// SaveGuildTowerState persiste a posse atual da GTorre.
 func (s *Server) SaveGuildTowerState(ctx context.Context, req *dbv1.SaveGuildTowerStateRequest) (*dbv1.SaveGuildTowerStateResponse, error) {
 	if err := s.store.SaveGuildTowerState(ctx, towerStateFromProto(req.GetState())); err != nil {
 		return nil, status.Errorf(codes.Internal, "save guild tower state: %v", err)
@@ -437,7 +437,7 @@ func (s *Server) SaveGuildTowerState(ctx context.Context, req *dbv1.SaveGuildTow
 	return &dbv1.SaveGuildTowerStateResponse{Ok: true}, nil
 }
 
-// LoadCastleQuestState loads current Castle/Zakum quest state.
+// LoadCastleQuestState carrega o estado atual da quest de Castelo/Zakum.
 func (s *Server) LoadCastleQuestState(ctx context.Context, _ *dbv1.LoadCastleQuestStateRequest) (*dbv1.LoadCastleQuestStateResponse, error) {
 	st, err := s.store.LoadCastleQuestState(ctx)
 	if errors.Is(err, store.ErrNotFound) {
@@ -449,7 +449,7 @@ func (s *Server) LoadCastleQuestState(ctx context.Context, _ *dbv1.LoadCastleQue
 	return &dbv1.LoadCastleQuestStateResponse{State: castleQuestStateToProto(st)}, nil
 }
 
-// SaveCastleQuestState persists current Castle/Zakum quest state.
+// SaveCastleQuestState persiste o estado atual da quest de Castelo/Zakum.
 func (s *Server) SaveCastleQuestState(ctx context.Context, req *dbv1.SaveCastleQuestStateRequest) (*dbv1.SaveCastleQuestStateResponse, error) {
 	if err := s.store.SaveCastleQuestState(ctx, castleQuestStateFromProto(req.GetState())); err != nil {
 		return nil, status.Errorf(codes.Internal, "save castle quest state: %v", err)
@@ -457,15 +457,15 @@ func (s *Server) SaveCastleQuestState(ctx context.Context, req *dbv1.SaveCastleQ
 	return &dbv1.SaveCastleQuestStateResponse{Ok: true}, nil
 }
 
-// CreateCharacter creates a character in a free slot. A taken slot/name (unique
-// violation) returns ok=false, not an error.
+// CreateCharacter cria um personagem num slot livre. Slot/nome ocupado (violação
+// de unicidade) devolve ok=false, não erro.
 func (s *Server) CreateCharacter(ctx context.Context, req *dbv1.CreateCharacterRequest) (*dbv1.CreateCharacterResponse, error) {
-	// Initialize a playable level-0 character ("Nv 1" on screen; the BaseMob
-	// templates carry BaseScore.Level 0 @44). The original DBSrv seeds these from
-	// per-class BaseMob templates (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); until
-	// those are wired we set sane base stats + HP/MP and a starting position so the
-	// character can enter the world. (UNVERIFIED: exact per-class base attributes
-	// and starter equipment / spawn coords — placeholder values.)
+	// Inicializa um personagem jogável de nível 0 ("Nv 1" na tela; os templates
+	// BaseMob trazem BaseScore.Level 0 @44). O DBSrv original os semeia a partir dos
+	// templates BaseMob por classe (tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}); até
+	// eles estarem ligados, definimos stats base sensatos + HP/MP e uma posição inicial
+	// para o personagem entrar no mundo. (UNVERIFIED: atributos base exatos por
+	// classe e equipamento inicial / coordenadas de spawn — valores provisórios.)
 	ch := domain.Character{
 		Slot:        int(req.GetSlot()),
 		Name:        req.GetName(),
@@ -474,9 +474,9 @@ func (s *Server) CreateCharacter(ctx context.Context, req *dbv1.CreateCharacterR
 		Level:       0,
 		Str:         12, Int: 12, Dex: 12, Con: 12,
 		MaxHp: 100, Hp: 100, MaxMp: 100, Mp: 100,
-		Coin:  1000000,           // starting gold (so the shop is usable)
-		SaveX: 2096, SaveY: 2096, // matches the BaseMob template spawn
-		PKPoint: pkPointNeutral, // Pontos Caos: a fresh character starts clean (issue #210)
+		Coin:  1000000,           // ouro inicial (para a loja ser utilizável)
+		SaveX: 2096, SaveY: 2096, // igual ao spawn do template BaseMob
+		PKPoint: pkPointNeutral, // Pontos Caos: personagem novo começa limpo (issue #210)
 	}
 	id, err := s.store.CreateCharacter(ctx, req.GetAccountId(), ch)
 	if isUniqueViolation(err) {
@@ -488,9 +488,9 @@ func (s *Server) CreateCharacter(ctx context.Context, req *dbv1.CreateCharacterR
 	return &dbv1.CreateCharacterResponse{Ok: true, CharacterId: id}, nil
 }
 
-// CreateArchCharacter creates the ARCH twin in the first free account slot. The
-// new character keeps the Mortal name and receives the Arch body item derived
-// from MortalFace, matching DBSrv::_MSG_DBCreateArchCharacter.
+// CreateArchCharacter cria o gêmeo ARCH no primeiro slot livre da conta. O
+// personagem novo mantém o nome do Mortal e recebe o item de corpo Arch derivado
+// de MortalFace, igual ao DBSrv::_MSG_DBCreateArchCharacter.
 func (s *Server) CreateArchCharacter(ctx context.Context, req *dbv1.CreateArchCharacterRequest) (*dbv1.CreateArchCharacterResponse, error) {
 	class := int(req.GetClass())
 	if class < 0 || class >= maxClass {
@@ -501,12 +501,12 @@ func (s *Server) CreateArchCharacter(ctx context.Context, req *dbv1.CreateArchCh
 		Class:       uint8(class),
 		ClassMaster: classMasterArch,
 		MortalLevel: uint16(req.GetMortalLevel()),
-		Level:       0, // the Arch twin also starts from g_pBaseSet (CFileDB.cpp:1448)
+		Level:       0, // o gêmeo Arch também parte de g_pBaseSet (CFileDB.cpp:1448)
 		Str:         12, Int: 12, Dex: 12, Con: 12,
 		MaxHp: 100, Hp: 100, MaxMp: 100, Mp: 100,
 		Coin:  1000000,
 		SaveX: 2096, SaveY: 2096,
-		PKPoint: pkPointNeutral, // Pontos Caos: a fresh character starts clean (issue #210)
+		PKPoint: pkPointNeutral, // Pontos Caos: personagem novo começa limpo (issue #210)
 		Equip: []domain.Item{{
 			Slot:  0,
 			Index: int16(req.GetMortalFace() + 5 + int32(class)),
@@ -522,7 +522,7 @@ func (s *Server) CreateArchCharacter(ctx context.Context, req *dbv1.CreateArchCh
 	return &dbv1.CreateArchCharacterResponse{Ok: true, CharacterId: id, Slot: int32(slot)}, nil
 }
 
-// DeleteCharacter removes a character after confirming the account password.
+// DeleteCharacter remove um personagem depois de confirmar a senha da conta.
 func (s *Server) DeleteCharacter(ctx context.Context, req *dbv1.DeleteCharacterRequest) (*dbv1.DeleteCharacterResponse, error) {
 	auth, err := s.store.AccountAuthByID(ctx, req.GetAccountId())
 	if errors.Is(err, store.ErrNotFound) {
@@ -547,8 +547,8 @@ func (s *Server) DeleteCharacter(ctx context.Context, req *dbv1.DeleteCharacterR
 	return &dbv1.DeleteCharacterResponse{Ok: true}, nil
 }
 
-// SetPin sets (or changes) the account's numeric PIN, stored only as an argon2id
-// hash (legacy _MSG_AccountSecure change path, but hashed instead of plaintext).
+// SetPin define (ou troca) o PIN numérico da conta, guardado só como hash
+// argon2id (caminho de troca legado do _MSG_AccountSecure, mas com hash em vez de texto plano).
 func (s *Server) SetPin(ctx context.Context, req *dbv1.SetPinRequest) (*dbv1.SetPinResponse, error) {
 	hash, err := secret.HashSecret(req.GetPin())
 	if err != nil {
@@ -563,9 +563,9 @@ func (s *Server) SetPin(ctx context.Context, req *dbv1.SetPinRequest) (*dbv1.Set
 	return &dbv1.SetPinResponse{Ok: true}, nil
 }
 
-// VerifyPin checks a numeric PIN against the stored hash (legacy _MSG_AccountSecure
-// verify path). An account with no PIN yet reports NOT_SET so the caller can offer
-// first-time setup rather than treating it as a bad PIN.
+// VerifyPin confere um PIN numérico contra o hash guardado (caminho de verificação
+// legado do _MSG_AccountSecure). Conta ainda sem PIN responde NOT_SET para o
+// chamador oferecer configuração inicial em vez de tratar como PIN errado.
 func (s *Server) VerifyPin(ctx context.Context, req *dbv1.VerifyPinRequest) (*dbv1.VerifyPinResponse, error) {
 	hash, err := s.store.PinHashByID(ctx, req.GetAccountId())
 	if errors.Is(err, store.ErrNotFound) {

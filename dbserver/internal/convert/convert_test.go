@@ -19,7 +19,7 @@ func TestAccountConversion(t *testing.T) {
 	af.Donate = 99
 	af.IsBlocked = true
 
-	// Slot 0 empty (no name); slot 1 has a character.
+	// Slot 0 vazio (sem nome); o slot 1 tem um personagem.
 	copy(af.Char[1].Name[:], "Hero")
 	af.Char[1].Class = 3
 	af.Char[1].CurrentScore = savefmt.Score{Level: 100, Str: 50, Hp: 1200}

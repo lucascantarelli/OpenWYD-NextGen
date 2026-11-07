@@ -15,9 +15,9 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// TestServiceOverWire runs the real AccountService through a gRPC connection
-// (bufconn) end to end against the in-memory fakeStore, proving the generated
-// codec + registration wire up correctly (not just the method logic).
+// TestServiceOverWire roda o AccountService real através de uma conexão gRPC
+// (bufconn) ponta a ponta contra o fakeStore em memória, provando que o código
+// gerado de codec + registro liga corretamente (não só a lógica do método).
 func TestServiceOverWire(t *testing.T) {
 	hash, _ := secret.HashSecret("pw")
 	fs := &fakeStore{

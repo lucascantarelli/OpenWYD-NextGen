@@ -16,7 +16,7 @@ import (
 	"openwyd-nextgen/internal/store"
 )
 
-// fakeStore is an in-memory Store for unit tests (no PostgreSQL).
+// fakeStore é um Store em memória para testes de unidade (sem PostgreSQL).
 type fakeStore struct {
 	kefraState domain.KefraState
 	kefraErr   error
@@ -43,15 +43,15 @@ type fakeStore struct {
 	pendingDeliveries      map[int64][]domain.Delivery // accountID -> mailbox rows
 	ackedDelivered         []int64                     // last SaveCargoWithDeliveries delivered ids
 	ackedLost              []int64                     // last SaveCargoWithDeliveries lost ids
-	saveCargoDeliveriesErr error                       // forces SaveCargoWithDeliveries to return this
+	saveCargoDeliveriesErr error                       // força SaveCargoWithDeliveries a devolver isto
 
 	pinHashes map[int64]string // accountID -> stored argon2id PIN hash ("" = unset)
 
 	duelResults []duelResult // RecordDuelResult calls, for assertions
-	duelErr     error        // forces RecordDuelResult to return this
+	duelErr     error        // força RecordDuelResult a devolver isto
 
 	playCodes   map[int64]map[string]bool // accountID -> live code hashes (one-time)
-	playCodeErr error                     // forces ConsumePlayCode to return this
+	playCodeErr error                     // força ConsumePlayCode a devolver isto
 }
 
 func (f *fakeStore) LoadKefraState(context.Context) (domain.KefraState, error) {
@@ -178,8 +178,8 @@ func (f *fakeStore) PurchaseKingdomCape(_ context.Context, _ int64, _ int64, kin
 	return q, true, nil
 }
 
-// LoadCargo returns the account-shared cargo. An account absent from byName/byID
-// is treated as missing (ErrNotFound), mirroring the live store keying on account.
+// LoadCargo devolve o cargo compartilhado da conta. Conta ausente de byName/byID
+// é tratada como inexistente (ErrNotFound), igual ao store vivo, que usa a conta como chave.
 func (f *fakeStore) LoadCargo(_ context.Context, accountID int64) (int32, []domain.Item, error) {
 	if _, ok := f.cargoCoin[accountID]; !ok {
 		if _, known := f.byID[accountID]; !known {
@@ -330,9 +330,9 @@ func TestAccountLogin(t *testing.T) {
 	}
 }
 
-// TestAccountLoginPlayCode covers the one-time code from the portal (web
-// client ADR 017): it logs in once, only for its own account, never for a
-// blocked one, and the password keeps working.
+// TestAccountLoginPlayCode cobre o código de uso único do portal (ADR 017 do
+// cliente web): ele loga uma vez, só para a própria conta, nunca para uma conta
+// bloqueada, e a senha continua funcionando.
 func TestAccountLoginPlayCode(t *testing.T) {
 	pw := "correct horse"
 	code, other := "abcdefgh29", "zyxwvuts23"
@@ -381,7 +381,7 @@ func TestAccountLoginPlayCode(t *testing.T) {
 		&dbv1.AccountLoginRequest{AccountName: "alice", Password: "abcdefgh22"}); status.Code(err) != codes.Internal {
 		t.Fatalf("store failure err = %v, want Internal", err)
 	}
-	// A password that cannot be a code never reaches the code store.
+	// Senha que não pode ser um código nunca chega ao store de códigos.
 	if got := login("alice", "nope"); got != dbv1.LoginResult_LOGIN_RESULT_BAD_PASSWORD {
 		t.Fatalf("non-code wrong password = %v, want BAD_PASSWORD", got)
 	}
@@ -418,7 +418,7 @@ func TestSetAccountBlocked(t *testing.T) {
 		t.Error("account not blocked in store")
 	}
 
-	// Unknown account → ok=false, no error.
+	// Conta desconhecida → ok=false, sem erro.
 	resp, err = s.SetAccountBlocked(context.Background(),
 		&dbv1.SetAccountBlockedRequest{AccountName: "ghost", Blocked: true})
 	if err != nil {
@@ -453,7 +453,7 @@ func TestCreateCharacterOK(t *testing.T) {
 	if !resp.GetOk() || resp.GetCharacterId() != 42 {
 		t.Fatalf("got ok=%v id=%d, want ok=true id=42", resp.GetOk(), resp.GetCharacterId())
 	}
-	// Level 0 like the legacy BaseMob templates: the client shows Level+1.
+	// Nível 0 como os templates BaseMob legados: o cliente mostra Nível+1.
 	if fs.created.Level != 0 {
 		t.Fatalf("new character Level = %d, want 0", fs.created.Level)
 	}
@@ -506,7 +506,7 @@ func TestDeleteCharacterPasswordGate(t *testing.T) {
 	}
 	s := New(fs)
 
-	// Wrong password → not deleted.
+	// Senha errada → não apaga.
 	resp, err := s.DeleteCharacter(context.Background(),
 		&dbv1.DeleteCharacterRequest{AccountId: 1, Slot: 0, Password: "bad"})
 	if err != nil {
@@ -516,7 +516,7 @@ func TestDeleteCharacterPasswordGate(t *testing.T) {
 		t.Fatal("wrong password should not delete")
 	}
 
-	// Correct password → deleted.
+	// Senha certa → apaga.
 	resp, err = s.DeleteCharacter(context.Background(),
 		&dbv1.DeleteCharacterRequest{AccountId: 1, Slot: 0, Password: pw})
 	if err != nil {
@@ -570,7 +570,7 @@ func TestSaveCharacterRoundTrip(t *testing.T) {
 		t.Fatalf("loaded Kefra balance = %d, want 199", loaded.GetKefraTicket())
 	}
 
-	// protoToCharacter must have mapped the fields the store will persist.
+	// protoToCharacter precisa ter mapeado os campos que o store vai persistir.
 	got := fs.savedChar
 	if got.ArchCrystalStage != 4 || got.ArchLv355 != 1 || got.ArchLv370 != 1 {
 		t.Fatalf("Arch progress not saved: %+v", got)
@@ -705,14 +705,14 @@ func TestSetAndVerifyPin(t *testing.T) {
 	s := New(fs)
 	ctx := context.Background()
 
-	// No PIN set yet ⇒ NOT_SET (lets the caller offer first-time setup).
+	// Sem PIN definido ⇒ NOT_SET (deixa o chamador oferecer a configuração inicial).
 	if resp, err := s.VerifyPin(ctx, &dbv1.VerifyPinRequest{AccountId: 1, Pin: "1234"}); err != nil {
 		t.Fatalf("VerifyPin: %v", err)
 	} else if resp.GetResult() != dbv1.PinResult_PIN_RESULT_NOT_SET {
 		t.Errorf("result = %v, want NOT_SET", resp.GetResult())
 	}
 
-	// Set a PIN; it must be stored hashed (never plaintext).
+	// Define um PIN; ele precisa ser guardado com hash (nunca em texto plano).
 	if resp, err := s.SetPin(ctx, &dbv1.SetPinRequest{AccountId: 1, Pin: "1234"}); err != nil || !resp.GetOk() {
 		t.Fatalf("SetPin ok=%v err=%v", resp.GetOk(), err)
 	}
