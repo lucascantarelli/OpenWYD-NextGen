@@ -25,6 +25,7 @@ offset de outro build não é evidência.
 | `keytable.mjs` | tabela `pKeyWord[512]` e transformação CPSock | `loadKeywordTable`, `transform` (mesmas regras de `crates/wyd-protocol`) |
 | `evidence.mjs` | confirmar/refutar endereços herdados | `ANCHORS`, `PATCH_SITES`, `analyseEvidence`, `disassemble` |
 | `formats.mjs` | estrutura inicial de `.wyt`, `.msa`, `sn.bin`, `serverlist.bin` | `analyseFormats` |
+| `serverlist.mjs` | gerar/inspecionar `serverlist.bin` (grade 10×11×64, ofuscação própria) | CLI `--in/--out` e `--print`; dados em `serverlist-servers.txt` |
 | `extract-tables.mjs` | tabelas de dados (`ItemList.bin`, `SkillData.bin`): XOR, registro e perfil de colunas | CLI única; grava `docs/cliente/gerado/tabelas.json` |
 | `analyse.mjs` | orquestrar e gravar artefatos | CLI única; nada de lógica de análise aqui |
 | `captura.mjs` | gerar (`--gen`) e validar (`--check`) goldens do caminho login→campo | CLI única; fontes só de `payload.rs` + tabela de opcodes | CLI única; nada de lógica de análise aqui |
@@ -46,7 +47,7 @@ offset de outro build não é evidência.
 | `pe.json` | cabeçalho, seções, diretórios, imports, exports, rich header |
 | `strings.json` | totais e strings relevantes (arquivos de dados, rede, proteção, protocolo, versão, UI) |
 | `evidencia.json` | âncoras, patches de checksum, CPSock (tabela/INITCODE/limite), resumo |
-| `formatos.json` | amostras de `.wyt`/`.msa`, `sn.bin`, `serverlist.bin` (inclui tentativa de decodificação) |
+| `formatos.json` | amostras de `.wyt`/`.msa`, `sn.bin`, `serverlist.bin` (a decodificação correta está em `docs/cliente/formatos.md` §4 e em `serverlist.mjs`) |
 | `ancoras.txt` | desassemble das âncoras e dos patches (quando `objdump` existe) |
 | `goldens.json` | resultado da validação de `fixtures/cliente/*.json` |
 

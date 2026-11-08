@@ -32,11 +32,13 @@ declarado aqui é o do cabeçalho da própria ADR; quando divergirem, vale a ADR
 | [0019](0019-sancrate-e-painel-do-jogador.md) | SancRate do legado e fronteira de confiança do painel do jogador | aceita |
 | [0020](0020-versao-de-cliente-no-login.md) | **Versão de cliente: `APP_VERSION` (7640) é histórico; o gate compara igualdade com a versão medida do cliente oficial (`client/` = 12 000)** | aceita (implementada) |
 | [0021](0021-async-sqlx-adotados.md) | `tokio` + `sqlx` adotados: pool real e save fora do tick | aceita |
+| [0022](0022-binarios-de-servico.md) | Binários de serviço (`wyd-gateway` agora, `tmserver` depois): imagem/tag, healthcheck pelo binário, `/metrics` declarado | aceita (gateway implementado) |
 
 ## Decisões que o código já aplica
 
 As ADRs **0001, 0002, 0004, 0005, 0008, 0009, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019,
-0020 e 0021** têm implementação com prova em `docs/rust/03-progresso.md`. As **0010 e 0011**
+0020, 0021 e 0022** têm implementação com prova em `docs/rust/03-progresso.md` (a 0022 prova o
+gateway em Docker; o `tmserver` dela ainda é contrato). As **0010 e 0011**
 seguem proposta: a árvore de `wyd-sim` existe, mas o aceite e a fiação de bots/LLM não.
 
 ## ADR-0020 em uma linha (o gate de versão)

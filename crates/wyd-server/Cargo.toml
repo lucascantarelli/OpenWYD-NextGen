@@ -1,0 +1,25 @@
+[package]
+name = "wyd-server"
+version = "0.1.0"
+edition = "2021"
+description = "Monolito Hot Path do WYD (tmserver): CPSock, status HTTP e metricas"
+publish = false
+
+# Raiz de composição do monólito (ADR-0022 §1): só ela conhece todas as libs —
+# `wyd-net` continua sem saber o que é Postgres e `wyd-db` continua sem saber o que é socket.
+[lib]
+name = "wyd_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wyd-server"
+path = "src/main.rs"
+
+[dependencies]
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+# `metrics`: o daemon publica o fragmento de rede no `/metrics` (FASE-06-1).
+wyd-net = { path = "../wyd-net", version = "0.1.0", features = ["metrics"] }
+wyd-db = { path = "../wyd-db", version = "0.1.0" }
+# Reaproveita o transporte HTTP/1.1 já provado (ADR-0008/0022), sem reimplementar contrato.
+wyd-admin = { path = "../wyd-admin", version = "0.1.0" }
+tokio = { version = "1", features = ["rt-multi-thread"] }

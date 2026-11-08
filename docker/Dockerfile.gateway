@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+# wyd-gateway — BFF HTTP/JSON do portal (ADR-0022, FASE-07-1).
+# Multi-stage: builder com toolchain, runtime distroless (sem shell, non-root).
+# Build:  docker build -f docker/Dockerfile.gateway -t wyd/gateway:dev .
+# Health: o próprio binário faz o check (`--healthcheck` → GET /health → SELECT 1),
+#         porque distroless não tem curl/wget e "processo vivo" não prova banco.
+
+FROM rust:1-bookworm AS builder
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+# Árvore completa de crates: o workspace declara todos os membros no Cargo.toml, então
+# copiar só quatro quebra o manifest. `-p wyd-admin --bin wyd-gateway` compila só o alvo.
+COPY crates ./crates
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release -p wyd-admin --bin wyd-gateway && \
+    install -Dm0755 target/release/wyd-gateway /out/wyd-gateway
+
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+ARG WYD_VERSION=0.1.0
+ARG WYD_COMMIT=unknown
+LABEL org.opencontainers.image.title="wyd-gateway" \
+      org.opencontainers.image.description="Gateway HTTP/JSON do portal WYD (Cold Path)" \
+      org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
+      org.opencontainers.image.version="${WYD_VERSION}" \
+      org.opencontainers.image.revision="${WYD_COMMIT}" \
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
+COPY --from=builder /out/wyd-gateway /usr/local/bin/wyd-gateway
+USER nonroot:nonroot
+# Sem shell: o healthcheck é o próprio binário (ADR-0022 §3).
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+    CMD ["/usr/local/bin/wyd-gateway", "--healthcheck"]
+EXPOSE 7600
+ENTRYPOINT ["/usr/local/bin/wyd-gateway"]

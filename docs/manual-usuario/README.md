@@ -21,11 +21,16 @@ enviada pelo cliente 7662 é **12000** — divergência derruba o login com falh
 
 ```bash
 cargo run -p wyd-launcher -- check <dir-do-jogo> <manifesto>
-cargo run -p wyd-launcher -- launch <dir-do-jogo> <manifesto> [--dry-run]
+cargo run -p wyd-launcher -- launch <dir-do-jogo> <manifesto> <registro-de-canais> [--dry-run] [-- args]
+cargo run -p wyd-launcher -- serverlist <registro-de-canais> <dir-do-jogo> [--dry-run]
 cargo run -p wyd-launcher -- update <dir-do-jogo> <pacote> --key-file <arquivo> [--dry-run]
 ```
 
 - `check` compara hash de cada arquivo com o manifesto (nada é alterado).
+- `launch` verifica o manifesto, gera e instala o `serverlist.bin` (atômico, com backup) e só
+  então abre o jogo. Manifesto inacessível = não escreve nada e não abre o jogo (`exit 2`).
+- `serverlist` faz só a parte da lista de servidores/canais — use quando só os canais mudaram.
+  A fonte é `tools/client/serverlist-servers.txt` (um canal por linha).
 - `update` aplica patch assinado de forma atômica e guarda backup do que substituiu.
 - `--dry-run` mostra a decisão sem tocar no disco — use antes de atualizar em máquina
   de jogador.

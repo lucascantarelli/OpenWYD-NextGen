@@ -6,6 +6,7 @@ members = [
   "crates/wyd-net",
   "crates/wyd-db",
   "crates/wyd-admin",
+  "crates/wyd-server",
   "crates/wyd-sim",
   "crates/wyd-launcher",
 ]

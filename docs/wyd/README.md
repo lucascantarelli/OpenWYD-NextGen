@@ -19,6 +19,7 @@ código tem de cumprir.
 | `sistemas/mundo.md` | cidades e NPCs, teleportes, **as 52 regiões**, dungeons, zonas |
 | `sistemas/quests.md` | story line, Kefra, **Pista de Runas sala por sala**, Arch, destraves |
 | `sistemas/eventos.md` | evento de drop, Kefra, invasões, calendário, sazonais |
+| `canais-e-cidadania.md` | **servidor × canal**, cidadania (Kibita, bônus, `/getout`), canal verde/novato e guildas donas de cidade por canal |
 | `fontes.md` | **de onde vem cada afirmação** e onde cada site engana |
 
 ## Confiança

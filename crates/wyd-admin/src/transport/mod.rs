@@ -16,7 +16,7 @@ use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::task::{Context, Poll, Waker};
 
-use wyd_db::{Accounts, Characters, DeliveryQueue, Role};
+use wyd_db::{Accounts, CatalogSnapshot, Characters, DeliveryQueue, Role};
 
 use crate::api::{
     create_account, find_account, own_account, own_characters, request_grant, request_recovery,
@@ -278,14 +278,33 @@ const fn admin_result(error: &AdminError) -> u8 {
     }
 }
 
+/// Verificação de login **síncrona** já resolvida pelo binário.
+///
+/// O roteador não tem runtime (ADR-0006): o gateway passa aqui uma função que
+/// consulta o banco com `block_on` e verifica argon2id, devolvendo
+/// `(account_id, login, role)` só quando a senha confere.
+pub type LoginCheck = std::sync::Arc<dyn Fn(&str, &str) -> Option<LoginOk> + Send + Sync>;
+
+/// Conta autenticada devolvida pelo [`LoginCheck`] (sem hash).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoginOk {
+    pub account_id: i64,
+    pub login: String,
+    pub role: Role,
+}
+
 /// Roteador do contrato: `servico/metodo` → `api/*`.
-#[derive(Debug)]
+///
+/// Sem `derive(Debug)` de propósito: `login` é `Arc<dyn Fn>` e imprimir fecho
+/// não ajuda em diagnóstico nenhum.
 pub struct Router<A, C, S> {
     accounts: A,
     characters: C,
     audit: S,
     grants: GrantService,
     tokens: StaticTokens,
+    catalog: Option<CatalogSnapshot>,
+    login: Option<LoginCheck>,
     max_body: usize,
 }
 
@@ -299,8 +318,26 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             audit,
             grants: GrantService::new(),
             tokens,
+            catalog: None,
+            login: None,
             max_body: http::MAX_BODY,
         }
+    }
+
+    /// Liga a verificação de login (gateway monta com o pool; testes com fake).
+    #[must_use]
+    pub fn with_login_check(mut self, check: LoginCheck) -> Self {
+        self.login = Some(check);
+        self
+    }
+
+    /// Foto do catálogo lida do banco no boot do gateway (ADR-0022).
+    ///
+    /// Sem ela `item_catalog/list_items` responde `503` — nunca lista vazia inventada.
+    #[must_use]
+    pub fn with_catalog(mut self, catalog: CatalogSnapshot) -> Self {
+        self.catalog = Some(catalog);
+        self
     }
 
     /// Limite de corpo (o teste usa valor pequeno para provar o `413`).
@@ -358,9 +395,87 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("panel", "self") => self.panel_self(session, &params, trace),
             ("panel", "characters") => self.panel_characters(session, &params, trace),
             ("panel", "rankings") => self.panel_rankings(session, &params, trace),
+            ("item_catalog", "list_items") => self.catalog_list_items(session, trace),
+            ("account_web", "verify_credentials") => self.verify_credentials(&params, trace),
             _ if conhecido(service, method) => self.pending(session, service, method, trace),
             _ => Reply::transport(404, trace, "método desconhecido"),
         }
+    }
+
+    /// `account_web/verify_credentials` — login do portal (contrato `VerifyCredentialsResponse`).
+    ///
+    /// A senha só existe aqui: compara argon2id com o hash do banco e devolve
+    /// `ok`/`role`, nunca o hash. Recusa de senha **e** de conta inexistente usam a
+    /// mesma resposta (`ok:false`), para não vazar existência de login.
+    fn verify_credentials(&self, params: &json::Json, trace: &str) -> Reply {
+        let Some(login) = params.get("name").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo name obrigatório");
+        };
+        let Some(password) = params.get("password").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo password obrigatório");
+        };
+        let recusa = || {
+            Reply::ok(
+                trace,
+                ",\"ok\":false,\"account_id\":0,\"blocked\":false,\"role\":\"\"",
+            )
+        };
+        let Some(check) = &self.login else {
+            return Reply::transport(503, trace, "verificação de login não montada no gateway");
+        };
+        let Some(account) = check(login, password) else {
+            // Sem senha no log: só o login tentado e o resultado.
+            log_panel(
+                &self.audit,
+                Session {
+                    account_id: 0,
+                    role: Role::Player,
+                },
+                "auth.login",
+                login,
+                "credencial recusada",
+            );
+            return recusa();
+        };
+        log_panel(
+            &self.audit,
+            Session {
+                account_id: account.account_id,
+                role: account.role,
+            },
+            "auth.login",
+            &account.login,
+            "ok",
+        );
+        let role = json::quote(account.role.as_db());
+        Reply::ok(
+            trace,
+            &format!(
+                ",\"ok\":true,\"account_id\":{},\"blocked\":false,\"role\":{role}",
+                account.account_id
+            ),
+        )
+    }
+
+    /// `item_catalog/list_items` —a rota que o `/api/health` do portal consome (ADR-0022),
+    /// servida da foto real do Postgres carregada no boot.
+    fn catalog_list_items(&self, session: Session, trace: &str) -> Reply {
+        let Some(snapshot) = &self.catalog else {
+            return Reply::transport(503, trace, "catálogo ainda não carregado do banco");
+        };
+        log_panel(
+            &self.audit,
+            session,
+            "catalog.list_items",
+            "content_version",
+            &format!("{} itens", snapshot.items.len()),
+        );
+        let items = crate::api::items_json(&snapshot.items);
+        let version = json::quote(&snapshot.version);
+        Reply::ok(
+            trace,
+            &format!(",\"items\":{items},\"catalog_version\":{version},\"icon_pack_version\":\"\""),
+        )
     }
 
     /// Rota do contrato ainda sem handler de domínio: `501` explícito, com autor auditado.

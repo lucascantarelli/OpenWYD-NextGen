@@ -23,7 +23,7 @@ revalidação em [`inventario.md`](inventario.md).
 | `.wyt` (magic, versão, dimensões candidatas) | ✅ parcial | `formatos.md` §1 |
 | `.msa` (versão, textura @34) | ✅ parcial | `formatos.md` §2 |
 | `sn.bin` (13 nomes, 1º byte opaco) | ✅ parcial | `formatos.md` §3 |
-| `serverlist.bin` (codificação) | ❌ opaco | `formatos.md` §4 (+ `serverlist.txt` como gabarito) |
+| `serverlist.bin` (codificação) | ✅ decodificado: grade `10×11×64` + tabela própria | `formatos.md` §4, `tools/client/serverlist.mjs` |
 | Structs de jogo (`STRUCT_MOB`/`SELCHAR`/CreateMob) | ❌ lacuna | 08-6 (trace dinâmico) |
 | Offsets de campo do header 12 B | ❌ lacuna | 08-6 (trace dinâmico) |
 | S→C (CNFAccountLogin, CreateMob, ESCENE_FIELD) | ❌ lacuna | 08-6 (captura ao vivo) |

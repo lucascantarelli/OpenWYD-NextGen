@@ -1,0 +1,45 @@
+# Prometheus do WYD (FASE-12-1) — contrato fechado com a telemetria da FASE-06-1.
+#
+# Só consulta métricas que existem: wyd_ticks_total, histograma
+# wyd_tick_duration_microseconds, wyd_entities_active, process_resident_memory_bytes,
+# wyd_memory_samples_total, wyd_packets_total, wyd_packets_rejected_total{reason},
+# wyd_handshakes_total, wyd_connections_pending, wyd_sessions_open.
+# Nenhuma métrica nova nasce aqui (a fonte é `crates/wyd-core/src/metrics/` e
+# `crates/wyd-net/src/metrics.rs`, com `--features metrics`).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: wyd
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # O próprio Prometheus: prova que a stack está viva mesmo sem servidor de jogo.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Host (container) — CPU/RAM/disco do nó onde a stack roda.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Gateway do Cold Path (ADR-0022): métricas do processo do portal, distintas das do
+  # motor. `wyd_gateway_requests_total{result}` e `wyd_gateway_uptime_seconds`.
+  - job_name: wyd-gateway
+    static_configs:
+      - targets: ["gateway:7600"]
+
+  # Motor de jogo: alvo descoberto por arquivo, NÃO fixo no YAML.
+  #
+  # O endpoint `/metrics` do motor (default 127.0.0.1:9898, `MetricsServer` da FASE-06-1)
+  # só existe quando o binário do servidor existir (FASE-03/04/06 → serviço `tmserver`,
+  # ver docs/rust/05-stack-docker.md §3). Até lá `targets/wyd-server.json` é uma lista
+  # vazia: o Prometheus não fica tentando scrape de uma porta inexistente e nenhum alerta
+  # dispara por ausência estrutural. Ligar = acrescentar o alvo no JSON (hot reload em 30s).
+  - job_name: wyd-server
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/wyd-server.json"]
+        refresh_interval: 30s

@@ -55,6 +55,18 @@ impl PgBackend {
         self.config
     }
 
+    /// Prova que o pool responde (`SELECT 1`) — base do `/health` do gateway (ADR-0022).
+    ///
+    /// Não é `SELECT 1` decorativo: é a única forma de o healthcheck saber que a conexão
+    /// ainda vale (banco reiniciado deixa o pool com conexões mortas até alguém tocar).
+    pub async fn ping(&self) -> Result<(), DbError> {
+        sqlx::query_scalar::<_, i32>("SELECT 1")
+            .fetch_one(&self.pool)
+            .await
+            .map(|_| ())
+            .map_err(map_error("pool.ping", "pool"))
+    }
+
     /// Abre transação curta com o teto de statement do [`PoolConfig`].
     ///
     /// `SET LOCAL` vale só para a transação: a conexão volta ao pool sem carregar o

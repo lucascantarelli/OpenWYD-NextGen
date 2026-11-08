@@ -59,7 +59,7 @@ Histórico consolidado neste dossiê: `docs/cliente/customizacao.md` (patches/ho
 | Inventário de arquivos e hashes | ✅ publicado (`inventario.md`) |
 | CPSock/hooks mapeados por endereço | ✅ documentado (`superficie-conhecida.md`) |
 | Cabeçalho PE, imports, âncoras e patches | ✅ FASE-08-5 (`analise-estatica.md`) |
-| Estrutura inicial de `.wyt`/`.msa`/`sn.bin` | ✅ parcial (`formatos.md`) — `serverlist.bin` opaco |
+| Estrutura inicial de `.wyt`/`.msa`/`sn.bin` | ✅ parcial (`formatos.md`) — `serverlist.bin` **decodificado** (`formatos.md` §4) |
 | Roteiro de trace + goldens gerados C→S | 🚧 FASE-08-6 (`depuracao.md`, `fixtures/cliente/`) |
 | Captura ao vivo e structs S→C | ⬜ FASE-08-6 (exige servidor executável + VM) |
 | Camada de customização + manifesto do launcher | ✅ FASE-08-7 (launcher implementado, 19/19 testes) |

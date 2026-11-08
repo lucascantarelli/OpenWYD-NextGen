@@ -62,7 +62,7 @@ não de rede.
 
 | Arquivo | Bytes | Papel aparente | Status |
 |---|---:|---|---|
-| `serverlist.bin` | 7.040 | Lista de canais ofuscada pelo CPSock | **CONHECIDO** (mesma tabela do servidor) |
+| `serverlist.bin` | 7.040 | Servidores/canais: grade 10×11×64 ofuscada com tabela própria (não é a do CPSock) | **CONHECIDO** (`formatos.md` §4) |
 | `serverlist.txt` | 70 | Formato texto legível (`http://IP/serv00.htm`, `IP:8281`) | CONHECIDO |
 | `sn.bin` | 143 | Nomes de canal/servidor (ofuscado) | **UNVERIFIED** (layout) |
 | `Config.bin` | 30 | Configuração curta | UNVERIFIED |

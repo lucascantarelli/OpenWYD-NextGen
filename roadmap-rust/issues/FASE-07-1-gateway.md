@@ -170,3 +170,27 @@ que já tinham handler:
   verificação real do JWT sem mudar o transporte.
 - Rollback: `git checkout -- crates/wyd-admin`; o portal continua no cliente
   gRPC lazy até a fiação terminar.
+
+## Resultados (binário `wyd-gateway` em Docker, 2026-11-08 — ADR-0022)
+
+O transporte já existia; faltava o **serviço**. Agora existe binário e ele roda no compose:
+
+- `crates/wyd-admin/src/main.rs`: config por env (`WYD_GATEWAY_BIND`, `DATABASE_URL`,
+  `WEB_API_TOKEN` — os dois últimos obrigatórios), pool `sqlx` com `PoolConfig::local()`,
+  `SELECT 1` no boot, `GET /health` (200/503 conforme banco), `GET /metrics` (texto Prometheus
+  0.0.4), `POST /admin/v1/{servico}/{metodo}` pelo roteador existente e `--healthcheck`
+  (TCP + `GET /health`, exit 0 só em 200) para imagem distroless.
+- `crates/wyd-admin/src/metrics.rs`: `wyd_gateway_requests_total{result="ok|business|transport|unauthorized"}`
+  e `wyd_gateway_uptime_seconds`.
+- `crates/wyd-admin/src/api/catalog.rs` + `Router::with_catalog`: `item_catalog/list_items`
+  responde da foto real do Postgres (3.220 itens) — rota que `/api/health` do portal usa.
+  **Lacuna:** `icon_key/slot_mask/slots/grade/mesh/texture/icon_url` não existem em
+  `item_catalog`; a resposta devolve vazio/0 e a lacuna está no ADR-0022.
+- `crates/wyd-db`: `PgBackend::ping()` (health real) e `catalog_snapshot()` (leitura única),
+  sem SQL saindo do adapter.
+- `docker/Dockerfile.gateway` + serviço `gateway` no compose (db saudável, sem porta na base),
+  `portal` com `depends_on: gateway` e `WEB_API_TOKEN`.
+- `tools/dev/db-migrate.mjs` prepara o banco da stack (o db do compose sobe vazio de propósito).
+
+**Ainda aberto nesta issue:** handlers de domínio das 13 rotas de conteúdo/painel (seguem
+`501` auditado) e escrita de auditoria em `audit_log` (hoje stdout estruturado do container).

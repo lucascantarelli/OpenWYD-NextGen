@@ -10,7 +10,102 @@ use wyd_core::ports::{
     ContentError, ContentSource, ContentTables, ContentVersion, ItemRow, SettingRow, SkillRow,
 };
 
+use crate::error::DbError;
 use crate::pool::pg::PgBackend;
+
+/// Item da foto do catálogo — só o que o schema já tem (ADR-0022 §4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogItemRow {
+    pub item_index: i64,
+    pub name: String,
+}
+
+/// Foto do catálogo servida pelo gateway (`item_catalog/list_items`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogSnapshot {
+    pub version: String,
+    pub items: Vec<CatalogItemRow>,
+}
+
+/// Canal de servidor (migration `0029`): o que o `tmserver` publica no `serv00.htm` e usa
+/// no handshake. `channel = 0` é a linha de status; `1..10` são os hosts do `:8281`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerChannel {
+    pub group_id: i64,
+    pub channel: i64,
+    pub host: String,
+    pub status_url: String,
+    pub enabled: bool,
+}
+
+impl PgBackend {
+    /// Lista os canais de servidor ordenados por grupo e canal.
+    ///
+    /// O `tmserver` lê isto no boot: lista de canais não é arquivo local, é configuração do
+    /// servidor no banco (ADR-0022 §6). Tabela ausente = migrations não aplicadas (`Transport`).
+    pub async fn server_channels(&self) -> Result<Vec<ServerChannel>, DbError> {
+        let rows = sqlx::query(
+            "SELECT group_id, channel, host, status_url, enabled \
+             FROM server_channel ORDER BY group_id, channel",
+        )
+        .fetch_all(self.pool())
+        .await
+        .map_err(|_| DbError::Transport {
+            op: "channels.list",
+        })?;
+
+        let mut canais = Vec::with_capacity(rows.len());
+        for row in &rows {
+            use sqlx::Row;
+            canais.push(ServerChannel {
+                group_id: i64::from(row.try_get::<i16, _>("group_id").unwrap_or_default()),
+                channel: i64::from(row.try_get::<i16, _>("channel").unwrap_or_default()),
+                host: row.try_get::<String, _>("host").unwrap_or_default(),
+                status_url: row.try_get::<String, _>("status_url").unwrap_or_default(),
+                enabled: row.try_get::<bool, _>("enabled").unwrap_or(false),
+            });
+        }
+        Ok(canais)
+    }
+
+    /// Lê versão de conteúdo + catálogo numa leitura só (boot do gateway, nunca no tick).
+    ///
+    /// Tabela ausente é `Transport { op }` — a mensagem do erro não carrega DSN nem SQL, e o
+    /// chamador decide se sobe degradado ou falha (o gateway falha: health sem catálogo mentiria).
+    pub async fn catalog_snapshot(&self) -> Result<CatalogSnapshot, DbError> {
+        // `content_version.version` é INTEGER (migration 0007); o cast mantém o tipo do
+        // contrato em texto sem espalhar `i32` pelo handler.
+        let version = sqlx::query_scalar::<_, String>(
+            "SELECT version::text FROM content_version WHERE id = 1",
+        )
+        .fetch_optional(self.pool())
+        .await
+        .map_err(|_| DbError::Transport {
+            op: "catalog.version",
+        })?
+        .ok_or(DbError::NotFound {
+            entity: "content_version",
+            id: 1,
+        })?;
+
+        let rows = sqlx::query("SELECT item_index, name FROM item_catalog ORDER BY item_index")
+            .fetch_all(self.pool())
+            .await
+            .map_err(|_| DbError::Transport {
+                op: "catalog.items",
+            })?;
+
+        let mut items = Vec::with_capacity(rows.len());
+        for row in &rows {
+            use sqlx::Row;
+            items.push(CatalogItemRow {
+                item_index: i64::from(row.try_get::<i32, _>("item_index").unwrap_or_default()),
+                name: row.try_get::<String, _>("name").unwrap_or_default(),
+            });
+        }
+        Ok(CatalogSnapshot { version, items })
+    }
+}
 
 impl ContentSource for PgBackend {
     async fn load_content(&self) -> Result<ContentTables, ContentError> {

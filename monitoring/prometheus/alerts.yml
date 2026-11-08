@@ -1,0 +1,81 @@
+# Regras de alerta do WYD (FASE-12-1) — só métricas do contrato da FASE-06-1.
+#
+# Cada alerta tem runbook em `docs/rust/06-observabilidade-runbooks.md`. Os testes de
+# regra (disparo e resolução, sem esperar tempo real) ficam em `alerts.test.yml` e rodam
+# com `promtool test rules` — é a prova de aceite da issue 12-1.
+groups:
+  - name: wyd-gateway
+    rules:
+      - alert: WydGatewayForaDoAr
+        expr: up{job="wyd-gateway"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "scrape do gateway falhando (portal responde 502)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydgatewayforadoar"
+
+      - alert: WydGatewayErroDeTransporte
+        expr: sum(rate(wyd_gateway_requests_total{result="transport"}[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "gateway respondendo erro de transporte (5xx/4xx fora do envelope)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydgatewayerrodetransporte"
+
+  - name: wyd-motor
+    rules:
+      - alert: WydServidorForaDoAr
+        expr: up{job="wyd-server"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "scrape do servidor de jogo falhando"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydservidorforadoar"
+
+      - alert: WydTickP99Alto
+        expr: histogram_quantile(0.99, sum by (le) (rate(wyd_tick_duration_microseconds_bucket[5m]))) > 20000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 do tick acima de 20 ms (orçamento do tick é 50 ms)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydtickp99alto"
+
+      - alert: WydPacotesRecusados
+        expr: sum(rate(wyd_packets_rejected_total[5m])) / clamp_min(sum(rate(wyd_packets_total[5m])), 0.001) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mais de 10% dos pacotes recusados (rate limit/IP/tamanho)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydpacotesrecusados"
+
+      - alert: WydHandshakeFalhando
+        expr: sum(rate(wyd_handshakes_total[5m])) == 0 and sum(rate(wyd_packets_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "pacotes entrando, nenhum handshake concluído"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydhandshakefalhando"
+
+      - alert: WydRssAlto
+        expr: process_resident_memory_bytes{job="wyd-server"} > 1.5e9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RSS do motor acima de 1,5 GB"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydrssalto"
+
+      - alert: WydSemAmostraDeMemoria
+        expr: increase(wyd_memory_samples_total[10m]) == 0 and up{job="wyd-server"} == 1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "motor no ar sem amostrar RSS (fora de Linux: amostragem indisponível)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydsemamostradememoria"

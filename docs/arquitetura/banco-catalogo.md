@@ -11,15 +11,16 @@
 
 ## 1. Resumo
 
-- migrations: **28** · última versão: **28**
-- tabelas: **66** · colunas: **491** · índices: **32** · funções: **1**
-- domínios: **15** · tabelas com dado provisório: **23**
+- migrations: **29** · última versão: **29**
+- tabelas: **67** · colunas: **497** · índices: **32** · funções: **1**
+- domínios: **16** · tabelas com dado provisório: **23**
 
 | Domínio | Tabelas |
 |---|---|
 | acesso | `accounts` |
 | arena | `arena`, `arena_match`, `arena_round`, `arena_score` |
 | auditoria | `audit_log` |
+| canal de servidor | `server_channel` |
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
 | economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim` |
@@ -1450,6 +1451,26 @@
 | `owner_guild` | `bigint` | não |
 | `updated_at_unix` | `bigint` | não |
 
+### `server_channel`
+
+- **Arquivo:** `0029_canal_de_servidor.sql` · **Domínio:** canal de servidor · **Estado:** confirmado
+- **Fonte:** ADR-0022 §7 + docs/wyd/canais-e-cidadania.md §5 + tools/client/serverlist-servers.txt
+- **Nota:** Canal 0 = URL de status (≤ 32 chars); 1..10 = host que o cliente disca no 8281 fixo. Coloracao verde/normal e papel do processo, nao da linha: o mesmo host pode ser verde em outro grupo.
+- **PK:** `group_id`, `channel`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `group_id` | `smallint` | não |
+| `channel` | `smallint` | não |
+| `host` | `text` | não |
+| `status_url` | `text` | não |
+| `enabled` | `boolean` | não |
+| `note` | `text` | não |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1530,6 +1551,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0026 | `0026_seed_sanc_rate_defaults.sql` | seed | — |
 | 0027 | `0027_seed_combine.sql` | seed | — |
 | 0028 | `0028_estado_de_jogo.sql` | DDL | `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower` |
+| 0029 | `0029_canal_de_servidor.sql` | DDL | `server_channel` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

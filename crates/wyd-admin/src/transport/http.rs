@@ -60,8 +60,21 @@ impl HttpError {
     }
 }
 
-/// Lê uma requisição completa (request line + headers + corpo).
+/// Lê uma requisição completa (request line + headers + corpo) — só `POST` (contrato admin).
 pub fn read_request<R: BufRead>(reader: &mut R, max_body: usize) -> Result<Request, HttpError> {
+    read_request_mode(reader, max_body, false)
+}
+
+/// Igual a [`read_request`], mas aceita `GET` sem corpo (health/metrics do serviço, ADR-0022).
+pub fn read_request_any<R: BufRead>(reader: &mut R, max_body: usize) -> Result<Request, HttpError> {
+    read_request_mode(reader, max_body, true)
+}
+
+fn read_request_mode<R: BufRead>(
+    reader: &mut R,
+    max_body: usize,
+    allow_get: bool,
+) -> Result<Request, HttpError> {
     let mut head = Vec::new();
     let mut total = 0usize;
     loop {
@@ -121,6 +134,18 @@ pub fn read_request<R: BufRead>(reader: &mut R, max_body: usize) -> Result<Reque
         headers.push((name, value.to_string()));
     }
 
+    if allow_get && method == "GET" {
+        // GET não tem corpo no contrato do serviço: `Content-Length` só vale 0.
+        if content_length.unwrap_or(0) != 0 {
+            return Err(HttpError::BadRequest);
+        }
+        return Ok(Request {
+            method: method.to_string(),
+            path: path.to_string(),
+            headers,
+            body: Vec::new(),
+        });
+    }
     if method != "POST" {
         return Err(HttpError::MethodNotAllowed);
     }
@@ -161,9 +186,32 @@ pub fn write_response<W: Write>(
     out.flush()
 }
 
+/// Resposta em texto (métricas, ADR-0022): mesmo `no-store` e `close`, outro content-type.
+pub fn write_text_response<W: Write>(
+    out: &mut W,
+    status: u16,
+    content_type: &str,
+    body: &str,
+) -> io::Result<()> {
+    let mut head = String::with_capacity(160);
+    head.push_str("HTTP/1.1 ");
+    head.push_str(&status.to_string());
+    head.push(' ');
+    head.push_str(reason(status));
+    head.push_str("\r\ncontent-type: ");
+    head.push_str(content_type);
+    head.push_str("\r\ncache-control: no-store\r\ncontent-length: ");
+    head.push_str(&body.len().to_string());
+    head.push_str("\r\nconnection: close\r\n\r\n");
+    out.write_all(head.as_bytes())?;
+    out.write_all(body.as_bytes())?;
+    out.flush()
+}
+
 const fn reason(status: u16) -> &'static str {
     match status {
         200 => "OK",
+        503 => "Service Unavailable",
         400 => "Bad Request",
         401 => "Unauthorized",
         404 => "Not Found",
@@ -229,6 +277,31 @@ mod tests {
         assert!(text.contains("cache-control: no-store"));
         assert!(text.contains("x-trace-id: trace-1"));
         assert!(text.ends_with("{\"result\":1}"));
+    }
+
+    #[test]
+    fn get_is_accepted_only_in_any_mode_without_body() {
+        let raw = "GET /health HTTP/1.1\r\nHost: x\r\n\r\n";
+        let mut cursor = Cursor::new(raw.as_bytes().to_vec());
+        let req = read_request_any(&mut cursor, 1024).expect("GET aceito");
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.path, "/health");
+        assert!(req.body.is_empty());
+
+        let mut cursor = Cursor::new(raw.as_bytes().to_vec());
+        assert_eq!(
+            read_request(&mut cursor, 1024),
+            Err(HttpError::MethodNotAllowed)
+        );
+    }
+
+    #[test]
+    fn text_response_carries_content_type() {
+        let mut out = Vec::new();
+        write_text_response(&mut out, 200, "text/plain; version=0.0.4", "a 1\n").expect("escreve");
+        let text = String::from_utf8(out).expect("utf-8");
+        assert!(text.contains("content-type: text/plain; version=0.0.4"));
+        assert!(text.ends_with("a 1\n"));
     }
 
     #[test]

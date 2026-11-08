@@ -8,11 +8,12 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke telemetry-smoke clean ci migrations-check migrations-apply banco-catalogo banco-verify stack-config stack-up stack-down stack-logs portal-install portal-dev portal-test portal-build
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate banco-catalogo banco-verify stack-config stack-up stack-down stack-logs monitoring-config monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
-	@echo "         stack-config stack-up stack-down stack-logs"
+	@echo "         stack-config stack-up stack-down stack-logs db-migrate"
+	@echo "         gateway-image gateway-smoke monitoring-check"
 	@echo "         portal-install portal-dev portal-test portal-build"
 
 fmt: ## formatação (skill: rust-code-quality)
@@ -83,7 +84,29 @@ ci: check test-all bench-build audit deny ## espelho local do .github/workflows/
 stack-config: ## valida o compose (base+dev e prod) sem subir nada
 	docker compose config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
 
-stack-up: ## sobe a stack de dev (db + portal; ver `docs/rust/05-stack-docker.md`)
+db-migrate: ## aplica as migrations no Postgres DA STACK (wyd-db) — sem dado não há saúde
+	node tools/dev/db-migrate.mjs
+
+gateway-image: ## imagem do gateway HTTP/JSON do portal (ADR-0022, FASE-07-1)
+	docker build -f docker/Dockerfile.gateway -t wyd/gateway:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+server-image: ## imagem do monolito de jogo (um container POR canal, ADR-0022)
+	docker build -f docker/Dockerfile.server -t wyd/server:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+server-smoke: ## handshake + serv00.htm dos DOIS canais (exige stack-up)
+	@curl -fsS http://192.168.100.3/serv00.htm; echo
+	@curl -fsS http://192.168.100.3/health; echo
+	@cargo test -p wyd-server --test handshake -- --nocapture
+
+gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-up)
+	@curl -fsS http://127.0.0.1:7600/health && echo
+	@curl -fsS http://127.0.0.1:7600/metrics | head -20
+
+stack-up: ## sobe a stack de dev inteira (db + gateway + portal + canais + monitoramento)
 	docker compose up -d --build
 
 stack-down: ## derruba a stack de dev (mantém o volume pgdata)
@@ -91,6 +114,25 @@ stack-down: ## derruba a stack de dev (mantém o volume pgdata)
 
 stack-logs: ## segue os logs da stack
 	docker compose logs -f
+
+monitoring-config: ## valida o compose com o monitoramento (agora parte do `up`)
+	docker compose config --quiet
+
+# MSYS_NO_PATHCONV=1: sem isso o Git Bash no Windows converte /etc/prometheus em caminho
+# de host e o container recebe um workdir inválido. Em Linux a variável é inerte.
+monitoring-rules: ## promtool: config + regras + teste de disparo/resolução (FASE-12-1)
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
+
+monitoring-up: ## sobe Prometheus + Grafana + node-exporter (parte do `up` desde 2026-11-08)
+	docker compose up -d prometheus grafana node-exporter
+
+monitoring-down: ## para só a observabilidade (mantém os volumes)
+	docker compose stop prometheus grafana node-exporter
+
+monitoring-check: monitoring-rules ## smoke da stack de monitoramento (ready, targets, datasource, dashboard)
+	node tools/dev/monitoring-smoke.mjs
 
 portal-install: ## npm ci no portal (skill: wyd-web-admin-ui)
 	cd wyd-portal && npm ci

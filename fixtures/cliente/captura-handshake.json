@@ -1,0 +1,8 @@
+{
+  "origem": "execução do cliente oficial client/WYD.exe apontado para loopback",
+  "aviso": "bytes crus de rede; contas/senhas digitadas no login NÃO foram preenchidas na execução registrada",
+  "comando": "node tools/client/captura-live.mjs --host 0.0.0.0 --port 8281 --timeout 90000 --out fixtures/cliente/captura-handshake.json",
+  "endereco_loopback": "0.0.0.0:8281",
+  "capturado_em": "2026-11-08T17:11:54.843Z",
+  "conexoes": []
+}

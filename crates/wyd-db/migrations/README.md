@@ -62,6 +62,11 @@ make migrations-apply   # up → down → up, contagens iguais (Docker)
 | `content_version` | 7 |
 | ciclo up/down/up | 24 migrations, ~55 s, contagens idênticas |
 
+Atualização de 2026-11-08 (ADR-0022 §7): `0029_canal_de_servidor.sql` acrescentou
+`server_channel` — **29 migrations, 67 tabelas, 497 colunas**, seed com 3 linhas
+(canal 0 = URL de status, 1 = normal, 2 = verde). `node tools/dev/db-migrate.mjs` aplica a série
+no Postgres da stack; `banco-catalogo.md` e `banco-fontes.mjs` já refletem a tabela.
+
 ## Lacunas declaradas (tabela criada ≠ conteúdo pronto)
 
 | Tabela | Estado | Por quê |

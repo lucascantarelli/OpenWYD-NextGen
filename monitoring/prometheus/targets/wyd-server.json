@@ -1,0 +1,10 @@
+[
+  {
+    "targets": ["server:9898"],
+    "labels": { "canal": "1", "service": "wyd-server" }
+  },
+  {
+    "targets": ["server-canal-2:9898"],
+    "labels": { "canal": "2", "service": "wyd-server" }
+  }
+]
