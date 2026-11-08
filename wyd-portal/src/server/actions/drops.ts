@@ -17,7 +17,7 @@ import { DROP_RATE_MAX, DROP_RATE_MIN, hardcodedRate } from "@/lib/droprate";
 
 import { adminCall } from "@/server/admin";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { dropAdmin, type AdminAck } from "@/server/grpc";
+import { dropAdmin, type AdminAck } from "@/server/admin-client";
 import { listItemDrops, listMobDrops } from "@/server/drops";
 
 export type DropSearchResult<T> =

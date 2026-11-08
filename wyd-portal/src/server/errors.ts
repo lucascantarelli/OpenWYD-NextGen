@@ -2,13 +2,10 @@
  * Erros do BFF: **um** tipo com status HTTP + mensagem pronta para o usuário.
  *
  * Regra da casa (issue 21): nenhuma action/page monta `{ error }` na mão. Ela
- * lança `AdminError` (ou deixa o erro gRPC subir) e a rota chama `toResponse`.
- * Assim o browser nunca recebe stack, DSN, caminho de arquivo ou nome de tabela.
+ * lança `AdminError` (ou deixa a falha de transporte subir) e a rota chama
+ * `toResponse`. Assim o browser nunca recebe stack, DSN, caminho de arquivo ou
+ * nome de tabela.
  */
-
-/** Códigos do grpc-js que significam "o web-api não está aí / não respondeu". */
-const GRPC_DEADLINE_EXCEEDED = 4;
-const GRPC_UNAVAILABLE = 14;
 
 const NO_STORE = { "cache-control": "no-store" } as const;
 
@@ -22,19 +19,20 @@ export class AdminError extends Error {
   }
 }
 
-function grpcCode(err: unknown): number | null {
-  if (typeof err !== "object" || err === null) return null;
-  const code = (err as { code?: unknown }).code;
-  return typeof code === "number" ? code : null;
+/**
+ * Backend de administração fora do ar/inacessível (conexão recusada, timeout,
+ * 5xx). Não confundir com `AdminResult`, que viaja no corpo com status 200.
+ */
+export class AdminUnavailableError extends Error {
+  constructor(message = "serviço de administração indisponível") {
+    super(message);
+    this.name = "AdminUnavailableError";
+  }
 }
 
-/**
- * Falha de infraestrutura do web-api: erro gRPC de transporte (`UNAVAILABLE`,
- * `DEADLINE_EXCEEDED`) — não confundir com `AdminResult`, que viaja no corpo.
- */
+/** Falha de infraestrutura do `wyd-admin` (não é recusa de negócio). */
 export function isInfraFailure(err: unknown): boolean {
-  const code = grpcCode(err);
-  return code === GRPC_UNAVAILABLE || code === GRPC_DEADLINE_EXCEEDED;
+  return err instanceof AdminUnavailableError;
 }
 
 /** Converte qualquer falha em `Response` JSON sem detalhe interno. */

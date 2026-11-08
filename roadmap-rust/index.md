@@ -60,7 +60,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-03-1-tick.md` | 3 | Tick determinístico 20–50 Hz | ✅ |
 | `issues/FASE-03-2-ecs.md` | 3 | ECS: componentes contíguos + ADR | 🚧 |
 | `issues/FASE-03-3-spatial-grid.md` | 3 | Spatial grid e interest management O(1) | ✅ |
-| `issues/FASE-03-4-dados-estaticos.md` | 3 | Fim dos TXT/CSV; validação de schema no boot | ⬜ |
+| `issues/FASE-03-4-dados-estaticos.md` | 3 | Fim dos TXT/CSV; validação de schema no boot | 🚧 |
 | `issues/FASE-03-5-autoridade-servidor.md` | 3 | Autoridade server-side (física/dano/skills/inventário) | ⬜ |
 | `issues/FASE-04-1-modelagem.md` | 4 | Modelo relacional com FKs/CHECKs/índices | ✅ |
 | `issues/FASE-04-2-migrations.md` | 4 | Migrations versionadas + seeds | ✅ |

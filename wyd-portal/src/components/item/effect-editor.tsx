@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { deleteEffect, upsertEffect } from "@/server/actions/itemeffects";
-import type { ItemEffectEntry, ItemEffectType } from "@/server/grpc";
+import type { ItemEffectEntry, ItemEffectType } from "@/server/admin-client";
 
 type Props = {
   itemIndex: number;

@@ -5,7 +5,7 @@
  * aqui inventa dado — `slots` vem decodificado do `slot_mask` pelo web-api e
  * `icon_key` é **opaco**, só serve para saber se existe ícone.
  */
-import type { CatalogItem } from "@/server/grpc";
+import type { CatalogItem } from "@/server/admin-client";
 
 /** `grade` do ItemList.csv: 1=Normal … 4=Lendário (proto:ItemCatalogEntry). */
 const GRADE: Record<number, string> = {

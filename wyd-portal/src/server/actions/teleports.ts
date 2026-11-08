@@ -18,7 +18,7 @@ import {
   type AdminAck,
   type SimulateTeleportRouteResponse,
   type UpsertTeleportRouteResponse,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type TeleportActionResult =
   | { ok: true; warnings: string[] }

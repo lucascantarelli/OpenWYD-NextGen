@@ -15,7 +15,7 @@ import { npcFormSchema, shopSchema, type NpcFormValues } from "@/lib/npc";
 
 import { adminCall } from "@/server/admin";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { npcAdmin, type AdminAck, type UpsertNpcResponse } from "@/server/grpc";
+import { npcAdmin, type AdminAck, type UpsertNpcResponse } from "@/server/admin-client";
 import { getNpc } from "@/server/npcs";
 
 export type NpcActionResult =

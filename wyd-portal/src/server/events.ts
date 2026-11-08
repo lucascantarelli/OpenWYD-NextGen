@@ -8,7 +8,7 @@
 import { emptyConfig, type WorldEventConfig } from "@/lib/worldevent";
 
 import { adminCall } from "./admin";
-import { worldEventAdmin, type GetWorldEventConfigResponse } from "./grpc";
+import { worldEventAdmin, type GetWorldEventConfigResponse } from "./admin-client";
 
 export interface WorldEventSnapshot {
   version: number;

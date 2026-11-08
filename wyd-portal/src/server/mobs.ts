@@ -10,7 +10,7 @@
 import type { MobStat, MobTemplateFile } from "@/lib/mob";
 
 import { adminCall } from "./admin";
-import { mobAdmin, type GetMobTemplateStatResponse, type ListMobTemplatesResponse } from "./grpc";
+import { mobAdmin, type GetMobTemplateStatResponse, type ListMobTemplatesResponse } from "./admin-client";
 
 export async function listMobTemplates(): Promise<MobTemplateFile[]> {
   const res = await adminCall<Record<string, never>, ListMobTemplatesResponse>(

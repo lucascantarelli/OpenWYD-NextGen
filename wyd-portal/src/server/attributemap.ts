@@ -24,7 +24,7 @@ import {
   attributeMapAdmin,
   type AttributeMapTransformRequest,
   type AttributeMapTransformResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export async function getAttributeMapInfo(): Promise<AttributeMapInfo> {
   const res = await adminCall<

@@ -6,7 +6,7 @@
  * da tabela de efeitos.
  */
 import { adminCall } from "./admin";
-import { itemEffectAdmin, type ListItemEffectsResponse } from "./grpc";
+import { itemEffectAdmin, type ListItemEffectsResponse } from "./admin-client";
 
 export async function getItemEffects(itemIndex: number): Promise<ListItemEffectsResponse> {
   return adminCall<{ item_index: number }, ListItemEffectsResponse>(

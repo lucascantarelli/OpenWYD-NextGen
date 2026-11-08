@@ -8,7 +8,7 @@
 import type { Rate, ServerFlag } from "@/lib/rates";
 
 import { adminCall } from "./admin";
-import { contentRates, type GetRatesResponse, type GetServerFlagsResponse } from "./grpc";
+import { contentRates, type GetRatesResponse, type GetServerFlagsResponse } from "./admin-client";
 
 export interface RatesSnapshot {
   rates: Rate[];

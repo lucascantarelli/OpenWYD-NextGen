@@ -13,7 +13,7 @@ import path from "node:path";
 import { unstable_cache } from "next/cache";
 
 import { adminCall } from "./admin";
-import { npcAdmin, type ItemPriceEntry, type ListItemPricesResponse } from "./grpc";
+import { npcAdmin, type ItemPriceEntry, type ListItemPricesResponse } from "./admin-client";
 
 export const BASE_PRICE_TAG = "item-base-prices";
 

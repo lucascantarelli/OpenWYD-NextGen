@@ -17,7 +17,7 @@ import {
   itemEffectAdmin,
   type ItemEffectWriteResponse,
   type UpsertItemEffectInput,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type ItemEffectActionResult =
   | { ok: true; message?: string }

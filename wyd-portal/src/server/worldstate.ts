@@ -8,7 +8,7 @@
 import type { WorldState } from "@/lib/worldstate";
 
 import { adminCall } from "./admin";
-import { worldStateAdmin, type GetWorldStateResponse } from "./grpc";
+import { worldStateAdmin, type GetWorldStateResponse } from "./admin-client";
 
 export async function getWorldState(): Promise<WorldState> {
   const res = await adminCall<Record<string, never>, GetWorldStateResponse>(

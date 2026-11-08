@@ -22,7 +22,7 @@ import { adminCall } from "@/server/admin";
 import { isOk } from "@/server/admin-result";
 import { getCatalog } from "@/server/catalog";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { worldEventAdmin, type AdminAck, type GetWorldEventConfigResponse } from "@/server/grpc";
+import { worldEventAdmin, type AdminAck, type GetWorldEventConfigResponse } from "@/server/admin-client";
 
 export type WorldEventActionResult =
   | { ok: true; message: string; config: WorldEventConfig; version: number }

@@ -11,7 +11,8 @@ auditoria de ações administrativas.
 ## Contexto / evidência
 
 O portal consome hoje um contrato de serviços admin (48 módulos via
-`wyd-portal/src/server/grpc.ts`) e **não há backend Rust atrás dele**: o Go foi
+`wyd-portal/src/server/admin-client.ts`, desde 2026-11-08) e **não há backend Rust
+atrás dele além de 3 rotas**: o Go foi
 removido e o cliente ficou lazy (só falha no primeiro uso). Regra permanente:
 portal é BFF puro — lê e envia intenções, nunca escreve estado de personagem
 vivo (`AGENTS.md`). Transporte e contrato decididos na **ADR-0008**: HTTP/1.1 +

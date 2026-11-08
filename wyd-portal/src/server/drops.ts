@@ -18,7 +18,7 @@ import {
   type ListDropItemsResponse,
   type ListDropRatesResponse,
   type ListMobDropsResponse,
-} from "./grpc";
+} from "./admin-client";
 
 /** Teto de filtros guardados: o suficiente para navegar e pequeno o bastante para não crescer. */
 const CACHE_LIMIT = 64;

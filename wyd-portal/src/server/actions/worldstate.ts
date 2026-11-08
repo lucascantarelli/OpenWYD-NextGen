@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 import { adminCall } from "@/server/admin";
 import { isOk } from "@/server/admin-result";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { worldStateAdmin, type SetWorldStateResponse } from "@/server/grpc";
+import { worldStateAdmin, type SetWorldStateResponse } from "@/server/admin-client";
 
 export type WorldStateActionResult = { ok: true; message?: string } | { ok: false; error: string };
 

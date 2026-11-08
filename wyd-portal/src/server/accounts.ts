@@ -12,7 +12,7 @@ import {
   accountAdmin,
   type GetAccountAdminResponse,
   type ListAccountsResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export interface AccountPage {
   accounts: AdminAccount[];

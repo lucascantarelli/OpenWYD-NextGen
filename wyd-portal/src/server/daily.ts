@@ -8,7 +8,7 @@
 import { emptyDailyReward, type DailyRewardItem } from "@/lib/daily";
 
 import { adminCall } from "./admin";
-import { dailyRewardAdmin, type ListRewardItemsResponse } from "./grpc";
+import { dailyRewardAdmin, type ListRewardItemsResponse } from "./admin-client";
 
 function normalize(item: Partial<DailyRewardItem>): DailyRewardItem {
   const base = emptyDailyReward();

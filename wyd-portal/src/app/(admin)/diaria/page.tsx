@@ -2,7 +2,7 @@ import { RetryButton } from "@/components/RetryButton";
 import { getCatalog } from "@/server/catalog";
 import { getDailyRewards } from "@/server/daily";
 import { AdminError } from "@/server/errors";
-import type { ItemEffectType } from "@/server/grpc";
+import type { ItemEffectType } from "@/server/admin-client";
 
 import { DailyTable, type DailyRewardRow } from "./daily-table";
 

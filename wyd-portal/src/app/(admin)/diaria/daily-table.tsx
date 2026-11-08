@@ -24,7 +24,7 @@ import {
 } from "@/lib/daily";
 import { loadItemOptions } from "@/lib/itemsearch";
 import { deleteReward, duplicateReward, saveReward, setRewardEnabled } from "@/server/actions/daily";
-import type { CatalogItem, ItemEffectType } from "@/server/grpc";
+import type { CatalogItem, ItemEffectType } from "@/server/admin-client";
 
 export interface DailyRewardRow extends DailyRewardItem {
   /** `null` quando o item não está no catálogo (oferta antiga ou catálogo fora). */
