@@ -24,7 +24,7 @@ pub mod transfer;
 /// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
 /// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
 /// juntos é pior que não ter versão.
-pub const SCHEMA_VERSION: u32 = 28;
+pub const SCHEMA_VERSION: u32 = 29;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -38,7 +38,10 @@ pub fn is_postgres_dsn(dsn: &str) -> bool {
 pub use error::DbError;
 pub use model::{Account, AuditEntry, Character, Guild, GuildMember, Role, MAX_SLOTS};
 pub use pool::{PgBackend, PoolConfig};
-pub use repo::{Accounts, Characters, Grant, Grants, NO_CREDENTIAL};
+pub use repo::{
+    Accounts, CatalogItemRow, CatalogSnapshot, Characters, CredentialRecord, Grant, Grants,
+    ServerChannel, NO_CREDENTIAL,
+};
 pub use transfer::{
     DeliveryQueue, FlushReport, QueuedGrant, SaveDrain, SavePolicy, SaveQueue, SaveRequest,
 };
@@ -55,7 +58,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 28);
+        assert_eq!(SCHEMA_VERSION, 29);
         // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }

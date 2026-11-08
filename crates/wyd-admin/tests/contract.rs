@@ -179,6 +179,14 @@ fn router() -> Router<FakeAccounts, FakeCharacters, VecSink> {
         tokens(),
     )
     .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
+    // Foto do catálogo vazia: `item_catalog/list_items` tem handler (ADR-0022), então a
+    // rota responde 200 como as demais implementadas — o que se prova aqui é "nunca 404".
+    .with_catalog(wyd_db::CatalogSnapshot {
+        version: "teste".to_string(),
+        items: Vec::new(),
+    })
+    // Login sem credencial neste router: a rota responde 200 com `ok:false`.
+    .with_login_check(std::sync::Arc::new(|_, _| None))
 }
 
 fn raw(method: &str, path: &str, token: Option<&str>, body: &str) -> String {
@@ -329,9 +337,25 @@ fn rota_do_portal_sem_handler_e_501_auditado_e_nunca_404() {
         .into_iter()
         .filter(|entrada| entrada.action == "admin.pending")
         .collect();
-    assert_eq!(pendencias.len(), 72, "cada chamada pendente fica auditada");
-    // Ordem é a do arquivo do portal (`item_catalog` primeiro); o autor é da sessão.
-    assert_eq!(pendencias[0].target, "item_catalog.list_items");
+    // 72 rotas do contrato - 2 com handler (`item_catalog/list_items`, ADR-0022, e
+    // `account_web/verify_credentials`, login do portal).
+    assert_eq!(
+        pendencias.len(),
+        70,
+        "cada chamada pendente fica auditada; rota com handler não vira pendência"
+    );
+    assert!(
+        pendencias
+            .iter()
+            .all(|entrada| entrada.target != "item_catalog.list_items"),
+        "rota servida da foto do catálogo não é pendência"
+    );
+    assert!(
+        pendencias
+            .iter()
+            .all(|entrada| entrada.target != "account_web.verify_credentials"),
+        "login do portal tem handler (argon2id), não é pendência"
+    );
     assert!(
         pendencias.iter().all(|entrada| entrada.actor_id == 7),
         "autor vem da sessão em toda pendência"

@@ -70,7 +70,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-05-2-release-docker.md` | 5 | Release LTO + imagem mínima | ✅ |
 | `issues/FASE-06-1-telemetria.md` | 6 | tracing + Prometheus no motor | ✅ |
 | `issues/FASE-06-2-hardening.md` | 6 | DoS, rate limiting, sanitização | ✅ |
-| `issues/FASE-07-1-gateway.md` | 7 | Transporte + contrato Next.js ↔ `wyd-admin` (ADR-0008) | 🚧 |
+| `issues/FASE-07-1-gateway.md` | 7 | Transporte + contrato + binário `wyd-gateway` em Docker (ADR-0008; [ADR-0022](../docs/arquitetura/adr/0022-binarios-de-servico.md)) | 🚧 |
 | `issues/FASE-07-2-painel-usuario.md` | 7 | Painel do jogador | ✅ |
 | `issues/FASE-07-3-painel-admin.md` | 7 | Painel de staff auditável | ⬜ |
 | `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, loja, painel) | ⬜ |
@@ -89,7 +89,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-10-3-laboratorio.md` | 10 | Laboratório `wyd-sim` em lote | ⬜ |
 | `issues/FASE-11-1-guia.md` | 11 | Guia de contribuição + manuais | ✅ |
 | `issues/FASE-11-2-c4-pacotes.md` | 11 | C4 + specs de pacotes | ✅ |
-| `issues/FASE-12-1-dashboards.md` | 12 | Dashboards + alertas + runbooks | ⬜ |
+| `issues/FASE-12-1-dashboards.md` | 12 | Dashboards + alertas + runbooks | ✅ |
 | `issues/FASE-13-1-rito-adr.md` | 13 | Rito ADR + template | ✅ |
 | `issues/FASE-13-2-primeiras-adrs.md` | 13 | ADRs (monolito, ECS, binário, async) | ✅ |
 | `issues/FASE-14-1-pesquisa.md` | 14 | Notas de pesquisa + PoC | ✅ |

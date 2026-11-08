@@ -8,6 +8,7 @@ pub mod bootstrap;
 pub mod distribuicao;
 pub mod manifest;
 pub mod patch;
+pub mod serverlist;
 pub mod sha256;
 
 /// Nome do binario do launcher.

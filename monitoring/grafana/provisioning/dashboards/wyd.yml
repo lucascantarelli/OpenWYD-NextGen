@@ -1,0 +1,15 @@
+# Provisionamento de dashboards (Grafana 12): lê os JSON versionados em
+# /var/lib/grafana/dashboards e recarrega a cada 30 s.
+apiVersion: 1
+
+providers:
+  - name: wyd
+    orgId: 1
+    folder: WYD
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

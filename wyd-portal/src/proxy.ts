@@ -57,5 +57,6 @@ export const config = {
     "/castelo/:path*",
     "/config/:path*",
     "/logs/:path*",
+    "/monitoramento/:path*",
   ],
 };

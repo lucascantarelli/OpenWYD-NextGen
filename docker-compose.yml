@@ -7,6 +7,8 @@
 # Mapa completo (crates → deployáveis, observabilidade, pendências por issue)
 # em `docs/rust/05-stack-docker.md`. Só entra no compose o serviço cujo
 # binário existe; o resto está mapeado e bloqueado pela issue dona.
+# Prometheus/Grafana/Node Exporter sobem no MESMO `up` (monitoramento é parte da
+# stack, não um extra: a aba /monitoramento do portal depende deles).
 
 # Rede/volume fixos `wyd_*` (mesmo padrão do arquivado `openwyd_*`).
 name: ${COMPOSE_PROJECT_NAME:-wyd}
@@ -37,13 +39,81 @@ services:
     networks:
       - wyd
 
+  gateway:
+    # Gateway HTTP/JSON do Cold Path (ADR-0022, FASE-07-1) — o upstream real do
+    # portal em `:7600`. `GET /health` consulta o Postgres (SELECT 1) e só então
+    # devolve 200; `GET /metrics` publica wyd_gateway_requests_total/uptime.
+    # Imagem distroless: o healthcheck é o próprio binário (`--healthcheck`).
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+    image: wyd/gateway:${TAG:-dev}
+    container_name: wyd-gateway
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # 0.0.0.0 = interface do container (não é exposição no host: base não
+      # publica portas; quem publica é o override de dev, em loopback).
+      WYD_GATEWAY_BIND: 0.0.0.0:7600
+      DATABASE_URL: "postgres://${POSTGRES_USER:-wyd}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-wyd}"
+      WEB_API_TOKEN: ${WEB_API_TOKEN:?defina WEB_API_TOKEN no .env (portal -> gateway)}
+      # Seed da conta de staff roda no boot do gateway (idempotente), não num
+      # container one-shot: `WYD_SEED_STAFF=1` + `PORTAL_ADMIN_*` no `.env`.
+      WYD_SEED_STAFF: ${WYD_SEED_STAFF:-0}
+      PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
+      PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "/usr/local/bin/wyd-gateway", "--healthcheck" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    networks:
+      - wyd
+
+  server:
+    # Monólito de jogo — UM container POR CANAL (ADR-0022 §7). Mesma imagem, mesmo
+    # Postgres, canais diferentes: `WYD_SERVER_CHANNEL` + o IP publicado no override.
+    # `wyd-canal-1` é o canal normal; `wyd-canal-2` (verde) entra no override de dev
+    # com IP próprio, porque o cliente disca 8281 fixo no host da célula do .bin.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    image: wyd/server:${TAG:-dev}
+    container_name: wyd-canal-1
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-wyd}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-wyd}"
+      WYD_SERVER_CHANNEL: "1"
+      WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
+      WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
+      WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/wyd-server", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    networks:
+      - wyd
+
   portal:
     # Serviço web: Dockerfile próprio (multi-stage, non-root, standalone).
     # O portal NUNCA fala SQL (invariante 7 do AGENTS.md): BFF puro sobre o
-    # web-api gRPC. Por isso NÃO há depends_on no db — a dependência real é o
-    # gateway Rust (`webserver:7600`, FASE-07), que ainda não existe como
-    # binário. Sem backend, a UI sobe e /api/health responde 502
-    # ("web-api indisponível") — sinal honesto, não bug do compose.
+    # gateway Rust (`gateway:7600`, ADR-0022). /api/health chama
+    # item_catalog/list_items e devolve 200 com a contagem real do catálogo;
+    # 502 é backend ausente, não bug do compose.
     build:
       context: .
       dockerfile: docker/Dockerfile.portal
@@ -58,13 +128,71 @@ services:
       PORT: 3000
       SESSION_SECRET: ${SESSION_SECRET:?defina SESSION_SECRET no .env}
       # DNS interno do compose (NUNCA 127.0.0.1: dentro do container o
-      # loopback é ele mesmo). `gateway` é o nome reservado para o gateway
-      # Rust (FASE-07-1); hoje sem backend, /api/health responde 502.
+      # loopback é ele mesmo). `gateway` é o serviço do gateway Rust.
       WEB_API_ADDR: ${WEB_API_ADDR:-gateway:7600}
+      # Token processo→processo (ADR-0022 §2); o browser nunca o vê.
+      WEB_API_TOKEN: ${WEB_API_TOKEN:?defina WEB_API_TOKEN no .env (portal -> gateway)}
       AUDIT_LOG_DIR: ${AUDIT_LOG_DIR:-/var/log/wyd-portal}
+      # Prometheus do próprio compose (rede interna `wyd`). O browser nunca fala
+      # com ele: `/monitoramento` renderiza no servidor.
+      PROMETHEUS_URL: ${PROMETHEUS_URL:-http://prometheus:9090}
+    depends_on:
+      gateway:
+        condition: service_healthy
     networks:
       - wyd
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: wyd-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - wyd
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    container_name: wyd-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-troque-aqui-dev}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    networks:
+      - wyd
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: wyd-node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    networks:
+      - wyd
 networks:
   wyd:
     name: wyd
@@ -73,3 +201,7 @@ networks:
 volumes:
   pgdata:
     name: wyd-pgdata
+  prometheus-data:
+    name: wyd-prometheus-data
+  grafana-data:
+    name: wyd-grafana-data

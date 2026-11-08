@@ -11,6 +11,7 @@
 use crate::error::DbError;
 use crate::model::{Account, Character, Role};
 use crate::pool::pg::{map_error, PgBackend};
+use crate::repo::accounts::CredentialRecord;
 use crate::repo::{Accounts, Characters, Grant, Grants};
 
 use sqlx::postgres::PgRow;
@@ -58,6 +59,51 @@ impl Accounts for PgBackend {
         .fetch_one(self.pool())
         .await
         .map_err(map_error("accounts.create_account", "accounts"))?;
+        account_row(&row)
+    }
+
+    async fn credentials(&self, login: &str) -> Result<CredentialRecord, DbError> {
+        let row =
+            sqlx::query("SELECT id, login, role, password_hash FROM accounts WHERE login = $1")
+                .bind(login)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("accounts.credentials", "accounts"))?;
+        let Some(row) = row else {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        };
+        let password_hash: String =
+            row.try_get("password_hash")
+                .map_err(|_| DbError::Transport {
+                    op: "accounts.credentials.decode",
+                })?;
+        Ok(CredentialRecord {
+            account: account_row(&row)?,
+            password_hash,
+        })
+    }
+
+    async fn set_credentials(
+        &self,
+        login: &str,
+        password_hash: &str,
+        role: Role,
+    ) -> Result<Account, DbError> {
+        Account::validate_login(login)?;
+        // Upsert de propósito: o seed de staff roda no `up` da stack e precisa ser
+        // idempotente (rodar de novo rotaciona a senha, não duplica a conta).
+        let row = sqlx::query(
+            "INSERT INTO accounts (login, password_hash, role) VALUES ($1, $2, $3) \
+             ON CONFLICT (login) DO UPDATE \
+             SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role \
+             RETURNING id, login, role",
+        )
+        .bind(login)
+        .bind(password_hash)
+        .bind(role.as_db())
+        .fetch_one(self.pool())
+        .await
+        .map_err(map_error("accounts.set_credentials", "accounts"))?;
         account_row(&row)
     }
 }

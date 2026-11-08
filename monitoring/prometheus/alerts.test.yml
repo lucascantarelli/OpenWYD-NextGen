@@ -1,0 +1,82 @@
+# Teste de regra do Prometheus (FASE-12-1): dispara e resolve sem esperar tempo real.
+#
+# Roda com: `promtool test rules monitoring/prometheus/alerts.test.yml`
+# (ou `make monitoring-rules`, que usa a imagem oficial do Prometheus).
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    name: "servidor fora do ar dispara e resolve"
+    input_series:
+      - series: 'up{job="wyd-server",instance="tmserver:9898"}'
+        values: '0x12'   # 12 minutos de up=0
+      - series: 'up{job="wyd-server",instance="tmserver:9898"}'
+        values: '0x12 1x5'
+        # segundo cenário abaixo usa série própria; aqui só documenta a recuperação
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WydServidorForaDoAr
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: wyd-server
+              instance: tmserver:9898
+            exp_annotations:
+              summary: "scrape do servidor de jogo falhando"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydservidorforadoar"
+
+  - interval: 1m
+    name: "gateway fora do ar dispara"
+    input_series:
+      - series: 'up{job="wyd-gateway",instance="gateway:7600"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WydGatewayForaDoAr
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: wyd-gateway
+              instance: gateway:7600
+            exp_annotations:
+              summary: "scrape do gateway falhando (portal responde 502)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydgatewayforadoar"
+
+  - interval: 1m
+    name: "tick P99 acima de 20 ms"
+    input_series:
+      - series: 'wyd_tick_duration_microseconds_bucket{le="5000.0"}'
+        values: '0+0x20'
+      - series: 'wyd_tick_duration_microseconds_bucket{le="25000.0"}'
+        values: '0+60x20'
+      - series: 'wyd_tick_duration_microseconds_bucket{le="+Inf"}'
+        values: '0+60x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WydTickP99Alto
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "P99 do tick acima de 20 ms (orçamento do tick é 50 ms)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydtickp99alto"
+
+  - interval: 1m
+    name: "pacotes recusados acima de 10%"
+    input_series:
+      - series: 'wyd_packets_total'
+        values: '0+100x15'
+      - series: 'wyd_packets_rejected_total{reason="rate"}'
+        values: '0+20x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WydPacotesRecusados
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "mais de 10% dos pacotes recusados (rate limit/IP/tamanho)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydpacotesrecusados"

@@ -8,7 +8,8 @@ pub mod content;
 pub mod grants;
 pub mod pg;
 
-pub use accounts::Accounts;
+pub use accounts::{Accounts, CredentialRecord};
 pub use characters::Characters;
+pub use content::{CatalogItemRow, CatalogSnapshot, ServerChannel};
 pub use grants::{Grant, Grants};
 pub use pg::NO_CREDENTIAL;

@@ -9,5 +9,15 @@ publish = false
 name = "wyd_admin"
 path = "src/lib.rs"
 
+# ADR-0022: binário de serviço do Cold Path (gateway HTTP/JSON do portal).
+# O runtime async entra só aqui (pool sqlx); o roteador continua síncrono (ADR-0006).
+[[bin]]
+name = "wyd-gateway"
+path = "src/main.rs"
+
 [dependencies]
 wyd-db = { path = "../wyd-db", version = "0.1.0" }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+# AGENTS §3.6: senha de login só com hash resistente (argon2id). Entra na borda
+# de autenticação (`auth/password.rs`), nunca no Hot Path.
+argon2 = "0.5"

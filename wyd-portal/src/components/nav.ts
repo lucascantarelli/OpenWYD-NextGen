@@ -69,7 +69,7 @@ export const NAV: readonly NavGroup[] = [
     group: "Operação",
     items: [
       { href: "/contas", label: "Contas e papéis", icon: "users" },
-      { href: "/operacao", label: "Ao vivo", icon: "activity", soon: true },
+      { href: "/monitoramento", label: "Monitoramento", icon: "activity" },
       { href: "/loja", label: "Loja de donate", icon: "tag" },
       { href: "/faturamento", label: "Faturamento", icon: "receipt" },
       { href: "/personagens", label: "Personagens", icon: "user" },

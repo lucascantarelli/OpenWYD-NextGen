@@ -1,0 +1,38 @@
+# Entrada do gerador de serverlist.bin — "<grupo> <canal> <endereço>".
+#
+# Um GRUPO é um servidor (lista de servidores independentes: sistemas, banco e
+# mundo próprios). Cada grupo tem até 10 CANAIS (células 1..10), que compartilham
+# o mesmo banco e diferem só na instância do mundo (cidadania, guildas donas de
+# cidade, canal verde/novato).
+#
+# Estado atual: UM servidor (o Rust) e um canal. Os backups em client/ são as
+# tentativas antigas de descobrir este formato; o layout abaixo é o medido.
+#
+# Regras que o gerador não pode violar (medidas no cliente 7662):
+#   - célula 0 do grupo = URL de status, no máximo 32 caracteres úteis;
+#     com IP de LAN use sem porta (o status é servido no :80):
+#       http://192.168.100.3/serv00.htm  (31) ok
+#       http://192.168.100.3:8281/serv00.htm (36) estoura e o cliente não lista nada
+#   - células 1..10 = host do canal; o cliente disca 8281 fixo, então cada canal
+#     precisa de um IP próprio (porta no endereço é UNVERIFIED).
+#
+# Servidor Rust (um processo de mundo):
+#   grupo 1 = "NextGen2" no sn.bin atual (contadores [3 2] desenham os grupos 2 e 1)
+1 0 http://192.168.100.3/serv00.htm
+1 1 192.168.100.3
+# Canal 2 = canal verde (novato): mesmo binário, mesma 8281, outro IP da máquina.
+# O papel "verde × normal" é configuração do servidor (por canal), não do .bin —
+# aqui só existe o endereço onde a instância escuta.
+1 2 192.168.100.4
+#
+# Para subir mais canais, uma linha por canal (célula = IP da instância):
+# 1 3 192.168.100.5
+# 1 4 192.168.100.6
+#
+# Limites: 10 canais por grupo (células 1..10) e 10 grupos (servidores); todo
+# canal precisa de IP próprio porque o cliente fixa a porta 8281. Registrar um
+# canal novo = acrescentar uma linha aqui, rodar o launcher e reiniciar o
+# cliente — o servidor não precisa de build novo.
+#
+# Um segundo servidor independente usaria outro grupo; ele só aparece na tela se
+# o contador correspondente em client/sn.bin apontar para ele.

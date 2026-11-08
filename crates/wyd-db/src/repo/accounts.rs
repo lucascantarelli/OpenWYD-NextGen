@@ -8,6 +8,16 @@ use std::future::Future;
 use crate::error::DbError;
 use crate::model::{Account, Role};
 
+/// Credencial de login: a conta e o hash guardado.
+///
+/// O hash **nunca** sai da borda de autenticação (`wyd-admin`): o BFF só recebe
+/// `ok`/`role`, nunca `password_hash`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CredentialRecord {
+    pub account: Account,
+    pub password_hash: String,
+}
+
 /// Operações sobre `accounts` (implementação `pg` futura; fakes em teste).
 pub trait Accounts {
     /// Busca por login exato (retorna `NotFound`, nunca `None` silencioso).
@@ -25,4 +35,29 @@ pub trait Accounts {
         login: &str,
         role: Role,
     ) -> impl Future<Output = Result<Account, DbError>> + Send;
+
+    /// Hash da credencial para a verificação de login (borda de autenticação).
+    ///
+    /// Conta inexistente é `NotFoundKey` — quem chama responde a mesma recusa
+    /// genérica de senha errada, sem vazar existência.
+    fn credentials(
+        &self,
+        login: &str,
+    ) -> impl Future<Output = Result<CredentialRecord, DbError>> + Send {
+        let _ = login;
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Define/atualiza a credencial de uma conta (seed de staff, troca de senha).
+    ///
+    /// `password_hash` já vem calculado (argon2id); a porta não decide algoritmo.
+    fn set_credentials(
+        &self,
+        login: &str,
+        password_hash: &str,
+        role: Role,
+    ) -> impl Future<Output = Result<Account, DbError>> + Send {
+        let _ = (login, password_hash, role);
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
 }

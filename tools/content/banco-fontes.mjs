@@ -57,6 +57,14 @@ export const FONTES = {
     estado: 'confirmado',
     nota: 'Única escrita do Cold Path no estado de jogo; o servidor drena.',
   },
+  server_channel: {
+    dominio: 'canal de servidor',
+    fonte: 'ADR-0022 §7 + docs/wyd/canais-e-cidadania.md §5 + tools/client/serverlist-servers.txt',
+    estado: 'confirmado',
+    nota:
+      'Canal 0 = URL de status (≤ 32 chars); 1..10 = host que o cliente disca no 8281 fixo. ' +
+      'Coloracao verde/normal e papel do processo, nao da linha: o mesmo host pode ser verde em outro grupo.',
+  },
   content_version: {
     dominio: 'catálogo',
     fonte: 'ADR-0009',

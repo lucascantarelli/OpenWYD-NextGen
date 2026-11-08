@@ -73,7 +73,7 @@ Estrutura inicial documentada em `docs/cliente/formatos.md`:
 | `.wyt` | magic `WT10`, versão `0x00020000`, candidatos a largura/altura, campo @20 variável | controles, fontes, sprites, eventos |
 | `.msa` | `0x112` @0, `0x20` @4, `1` @8, nome de textura ASCII @34 | geometria, esqueleto, animação |
 | `sn.bin` | 13 nomes NUL-separados a partir do offset 1 | primeiro byte `0xd6` |
-| `serverlist.bin` | nenhuma hipótese sobreviveu (CPSock, XOR 1 byte, XOR tabela) | codificação e layout de canal |
+| `serverlist.bin` | CPSock/XOR não se aplicam (falso positivo); formato real decodificado: grade `10×11×64` com soma de tabela própria — ver `formatos.md` §4 | — (fechado em 2026-11-08) |
 
 ## 6. Divergências conhecidas com forks
 

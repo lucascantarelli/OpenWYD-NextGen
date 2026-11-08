@@ -62,7 +62,7 @@
 | FASE-05-2 release/docker | ✅ | `[profile.release]` com `lto = "thin"`, `codegen-units = 1`, `strip = "symbols"` e `panic = "abort"` (ADR-0017): `wyd-launcher` **323.072 → 296.448 bytes** (−8,2%), build release do workspace exit 0 e binário executando (`check` de manifesto real exit 0). Imagem mínima multi-stage com runtime **distroless `cc-debian12:nonroot`** (sem shell, sem toolchain), labels OCI de versão/commit, `docker build` exit 0 e **37.847.971 bytes** (36,1 MiB); smoke no container: `check /jogo /jogo/manifest.toml` exit 0 (`1 íntegros`), `--help` imprime uso (exit 2 por contrato), `docker export` sem `/bin/sh` nem `rustc`/`cargo`/`gcc`. `.dockerignore` criado; `Makefile` com `release`/`docker`/`docker-smoke` e workflow com job `release`. Bench sem regressão: IA 85,6–189,7 µs/tick (baseline 205,86) e balde 2,7–2,8 ns / porte 100,1–100,8 ns (baseline 8,1 / 234,3). |
 | FASE-06-1 telemetria | ✅ | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23 (ADR-0018) e exporter Prometheus próprio (`TcpListener` + texto 0.0.4) em `crates/wyd-core/src/metrics/`; contadores de rede em `crates/wyd-net/src/metrics.rs` atrás da feature `metrics` (default off — o `fetch_add` por pacote custa ~24,5 ns contra 2,7 ns sem ela). Nível por `WYD_LOG` (fallback `RUST_LOG`, default `info`). **Prova em execução:** `WYD_LOG=debug cargo test -p wyd-core --test telemetry -- --nocapture` loga `DEBUG tick concluido tick=0 micros=2365`… e `INFO resumo de telemetria ticks=40 p50_us=5000 p95_us=5000 p99_us=5000 rss_bytes=0`, e o `GET /metrics` real devolve `wyd_ticks_total 40`, `wyd_tick_duration_microseconds_count 40`, buckets cumulativos com `le="+Inf"} 40` e `wyd_entities_active 104`; com `WYD_LOG=info` nenhuma linha DEBUG sai (0) e valor inválido cai em `info`. `Cargo.lock` 7→24 pacotes; `wyd-launcher` release segue 296.448 bytes e a imagem distroless remede **37.847.971 bytes** (igual à 05-2, launcher não linka o core), smoke no container exit 0. Benches: tick 81,27–82,22 µs (p99 88–116) contra baseline 85,6–189,7; balde 2,7 ns e porte 98,1 ns contra 2,7–2,8 / 100,1–100,8. |
 | FASE-06-2 hardening | ✅ | `limits/rate.rs` (balde + porte de handshake) + `tests/flood.rs`; flood 100/10000, fuzz 5000 sem panic; legit preservado. |
-| FASE-07-1 gateway | ✅ | Backend do contrato (`AdminError`→HTTP, staff/auditoria/grants idempotentes); 11 lib + 4 integração; fiação do portal aguarda transporte. |
+| FASE-07-1 gateway | ✅ | Backend do contrato (`AdminError`→HTTP, staff/auditoria/grants idempotentes); transporte HTTP/JSON + 72 rotas conhecidas; **binário `wyd-gateway` em Docker** (`:7600`, ADR-0022): `/health` com `SELECT 1`, `/metrics` Prometheus, `item_catalog/list_items` servido da foto real do Postgres (3.220 itens), `/api/health` do portal deixa de ser 502. Imagem distroless com `--healthcheck`. Restam os handlers de domínio das 13 rotas de conteúdo/painel (701→501 auditado). |
 | FASE-07-2 painel usuário | ✅ | Rotas `panel/{self,characters,rankings}` + `accounts/recovery` no roteador do ADR-0008, com `account_id` injetado pelo BFF a partir do cookie assinado (ADR-0019); página `/conta` com conta, personagens, ranking e recuperação. **Prova:** 6 testes de contrato (`tests/painel.rs`: 401, conta, personagens escopados, ranking ordenado sem `account_id`, recuperação idêntica para login existente/inexistente, parâmetros inválidos → `result: 3`, rota desconhecida → 404) + `typecheck` 0 e vitest 137/137 (19 arquivos). |
 | FASE-07-3 painel admin | ⬜ | Depende de 07-1. |
 | FASE-07-4 E2E Playwright | ⬜ | Depende de 07-2, 07-3. |
@@ -80,7 +80,7 @@
 | FASE-10-3 laboratório | ⬜ | Depende de 10-1, 10-2. |
 | FASE-11-1 guia + manuais | ⬜ | Pastas `docs/manual-*/` criadas. |
 | FASE-11-2 C4 + pacotes | ⬜ | Depende de 08-1. |
-| FASE-12-1 dashboards | ⬜ | Depende de 06-1. |
+| FASE-12-1 dashboards | ✅ | Stack de monitoramento em Docker (`monitoring/`), 8 alertas com runbook, dashboard `wyd-saude` com 9 painéis. **Série real do gateway** (`wyd_gateway_requests_total`, `wyd_gateway_uptime_seconds`) desde a ADR-0022; painéis do motor seguem vazios até existir `tmserver`. |
 | FASE-13-1 rito ADR | ✅ | `docs/arquitetura/adr/0000-template.md` criado (estado, contexto, decisão, consequências, alternativas, rastreabilidade); `0001` promovida a **aceita** no formato do template. |
 | FASE-13-2 primeiras ADRs | ✅ | ADR-0004 (SoA manual), 0005 (LE+`repr(C)`), 0006 (std até rede/vendor); 7 arquivos 0000–0006 sem lacuna, seções conformes; consumidoras vinculadas. |
 | FASE-14-1 pesquisa | ✅ | Notas datadas em `docs/rust/01-dependencias.md` (manter/descartar por candidato + PoC fora de `crates/`; sem diff no workspace). |
@@ -103,6 +103,10 @@
 | 2026-11-08 | U-P7 + ADR-0020 | Sete tabelas sem espelho separadas em jogo × portal (decisão em `modelo-banco.md` §8) e versão de cliente decidida por ADR | `docs/arquitetura/modelo-banco.md` §8; `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md` |
 | 2026-11-08 | D-D1 (fechamento do ADR de versão) | ADR-0020 consolidado como norma: `APP_VERSION = 7640` é **valor histórico** de um cliente específico (não conjunto aceito); o gate compara **igualdade** com `PROTOCOL_VERSION` (12 000, medido em `client/`). ADR ganhou a tabela "onde 7640 aparece" com arquivo:linha (definição em `wire/header.rs:31`, reexports, 3 testes, nada em launcher/portal) e a seção "como o servidor compara" (igualdade em `handshake.rs:72`, sem faixa/lista; `Tolerant` só em captura). Contradições de contrato corrigidas (`APP_VERSION` do legado × gate nosso e D-T2 marcado resolvido) | `cargo test -p wyd-net session::` 4/4 ok (aceita 12 000, recusa 7640 com `ClientVersionUnsupported`); `cargo test --workspace` 0 failed |
 | 2026-11-08 | U-P7 (fechamento de banco) | `modelo-banco.md` §8 reorganizada como norma: tabela de cinco colunas (nome, classificação, evidência por arquivo/consulta, implicação), fontes de evidência declaradas (inclui por que o cliente `client/` não é prova aqui e por que `blogal` nunca é fonte de requisito) e **regra** que define "sem espelho" como estado do schema — entrar, ficar fora, UNVERIFIED e sair. Conferido que as 5 de jogo são exatamente as de `0028` e que as 2 de portal não existem em `crates/wyd-db/migrations/` | `cargo test -p wyd-db` 6 suítes / 0 failed; `node tools/content/check-migrations.mjs` 28/66/146 ok; `banco-catalogo.md` lista as 5 em `0028` |
+| 2026-11-08 | FASE-08-6 (serverlist) | `serverlist.bin` **decodificado**: grade `MAX_SERVERGROUP(10) × MAX_SERVERNUMBER(11) × 64 B` com soma de tabela própria (`Basedef.cpp:6874/6927`), célula 0 = URL de status (≤ 32 caracteres), células 1..10 = host do canal (8281 fixa, um IP por canal), linhas decididas pelos contadores do `sn.bin`. Gerador/inspetor próprio em `tools/client/serverlist.mjs` (porte do `client-tools/serverlist` da `main`, sem Go) e dados do servidor Rust em `tools/client/serverlist-servers.txt`; `client/serverlist.bin` regenerado com backup e o cliente passou a listar **um** servidor (`NextGen`) | `node tools/client/serverlist.mjs --print client/serverlist.bin` → `1 0 http://192.168.100.3/serv00.htm` / `1 1 192.168.100.3`; round-trip dados→bin→decode idêntico; screenshot `target/janela-blt.png` (uma linha, sem `NextGen2`) |
+| 2026-11-08 | FASE-08-6 (entrega serverlist) | Geração e instalação do `serverlist.bin` passam a ser do **launcher Rust**: `crates/wyd-launcher/src/serverlist.rs` (grade 10×11×64, `OBFUSCATION_KEY`, parse do registro `<grupo> <canal> <endereço>` com erro nomeado para URL > 32, porta no canal e IP repetido; instalação atômica `.tmp`→`rename` com `.bak`) + subcomandos `serverlist` e `launch <dir> <manifesto> <registro>` fail-closed (exit 2 sem manifesto). Registro passa a ter **2 canais**: 192.168.100.3 (normal) e 192.168.100.4 (verde). Captura estática do `serv00.htm`: WinInet com **uma** leitura de `0x400` B e corpo CSV consumido por `strtok`/`sscanf` (`0x46d7xx`/`0x4b013b`) | `cargo test -p wyd-launcher` 39 testes ok (paridade Rust×Node byte-a-byte, URL de 36 recusada nos dois lados, instalação atômica/backup/no-op); `cargo run -p wyd-launcher -- serverlist tools/client/serverlist-servers.txt client/` instalou 7040 B com backup; `--print` devolve as 3 células; `cargo fmt --check` e `cargo clippy -D warnings` = 0 |
+| 2026-11-08 | stack única + monitoramento no portal + login de staff | Monitoramento deixou de ser perfil separado: `prometheus`/`grafana`/`node-exporter` subiram para o `docker-compose.yml` (o `docker-compose.monitoring.yml` foi removido) e entram no `up` normal. O portal ganhou `/monitoramento` (server-side, `PROMETHEUS_URL=http://prometheus:9090`) com canais, handshakes, sessões, memória, host e estado dos demais alvos. A causa de "não consigo acessar o portal" era de contrato: `account_web/verify_credentials` caía em `pending()` (501) e não havia hash de senha em nenhum crate — agora tem handler com **argon2id** (`crates/wyd-admin/src/auth/password.rs`, dep `argon2` 0.5) e o seed de boot do gateway (`WYD_SEED_STAFF=1`; `--seed-staff` para uso manual) cria/atualiza a conta `PORTAL_ADMIN_USER`/`PORTAL_ADMIN_PASSWORD` do `.env` (idempotente, papel `admin`), sem serviço one-shot que fica parado no `docker compose up`. Canais: `sn.bin` decodificado de verdade (nomes 9 B desde o offset 0, contadores `int32` no 99, `contador - 1` = grupo do slot) — era isso que invertia a lista e deixava a primeira linha apontando para grupo vazio; o gerador passou a escrever `--sn-out` e o inspetor `--sn` mostra slot → grupo → canais. | `cargo test --workspace` 0 falhas (inclui `crates/wyd-admin/tests/login.rs`: senha certa, senha errada = conta inexistente, `NO_CREDENTIAL` nunca autentica, hash nunca volta), `clippy -D warnings` 0, `fmt --check` 0, `npx tsc --noEmit` 0, `docker compose config` (dev e prod) 0, `promtool` 0 |
+| 2026-11-08 | FASE-12-1 (observabilidade) | Stack de monitoramento versionada e subindo em Docker: override `docker-compose.monitoring.yml` com perfil `monitoring` (Prometheus v3.5.0, Grafana 12.2.0, node-exporter v1.9.1 — tags fixas, portas só em loopback), `monitoring/prometheus/{prometheus.yml,alerts.yml,alerts.test.yml,targets/wyd-server.json}`, provisioning do Grafana e dashboard `wyd-saude.json` (tick P50/P95/P99, ticks/s, entidades, pacotes, recusas por motivo, sessões, RSS). Seis alertas com runbook em `docs/rust/06-observabilidade-runbooks.md`; alvo do motor descoberto por arquivo e **vazio** porque não há binário de servidor (só `wyd-launcher` tem `[[bin]]`) — casa nenhum alerta por ausência estrutural. `make monitoring-up/rules/check` e `stack-config` validam o override | `docker compose ... --profile monitoring config --quiet` = 0; `promtool check config`/`check rules`/`test rules` = 0 (disparo **e** resolução de `WydServidorForaDoAr`, `WydTickP99Alto`, `WydPacotesRecusados`); `curl 127.0.0.1:9090/-/ready` = 200 e `/api/v1/targets` com prometheus+node `up`; `curl 127.0.0.1:3001/api/health` = ok e `/api/dashboards/uid/wyd-saude` = 200 |
 | 2026-11-08 | FASE-04 (parcial) | `0028_estado_de_jogo` cria as 5 tabelas de estado: `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower`; `SCHEMA_VERSION` 27→28; catálogo regenerado (66 tabelas) | `check-migrations` 28/66 ok; `cargo test -p wyd-db --test catalogo` 3 ok; `migrations-apply` up/down/up |
 | 2026-11-08 | FASE-08 (parcial) | Gate de versão do login em `wyd-net::session::handshake` (`VersionGate`), erro tipado `NetError::ClientVersionUnsupported` e contador `wyd_client_version_total{version}` | `cargo test -p wyd-net --features metrics` (12 testes) |
 | 2026-11-07 | FASE-01-3 | Mapa de sucessão das 24 skills publicado | `docs/manual-técnico/skills.md` |
@@ -871,3 +875,51 @@
 `cargo fmt --all -- --check` **0**; `cargo clippy --workspace --all-targets -D warnings`
 **0**; `cargo test --workspace` **0** — 37 alvos, **429 testes passados**, 0 falhas;
 `cargo test -p wyd-protocol --test golden` 10/10; `node tools/dev/bench-gate.mjs` **0**.
+
+## 2026-11-08 — ADR-0022: gateway `:7600` em Docker (primeiro serviço de jogo real)
+
+O workspace tinha um único `[[bin]]` (launcher): nada escutava `:7600`, o `wyd-portal` ficava
+`unhealthy`/502 e o job `wyd-server` do Prometheus não tinha alvo. Entregue:
+
+- `docs/arquitetura/adr/0022-binarios-de-servico.md` — decisão dos dois binários de serviço
+  (`wyd-gateway` agora, `tmserver` com contrato fixado), imagem `wyd/<svc>:${TAG}`, container
+  `wyd-<svc>`, healthcheck pelo próprio binário (`--healthcheck`) e `/metrics` com nomes
+  declarados (`wyd_gateway_requests_total{result}`, `wyd_gateway_uptime_seconds`).
+- `crates/wyd-admin/src/main.rs` (`wyd-gateway`): `DATABASE_URL` + `WEB_API_TOKEN` obrigatórios
+  (fail-closed), `SELECT 1` no boot, foto do catálogo via `PgBackend::catalog_snapshot`
+  (novo, `wyd-db/repo/content.rs`), `GET /health` (503 sem banco), `GET /metrics`,
+  `POST /admin/v1/...` pelo roteador existente, auditoria em stdout estruturado.
+- Rota `item_catalog/list_items` servida da foto real do banco (`api/catalog.rs`) — é a rota que
+  `/api/health` do portal consome; sem ela o portal continuaria 502 mesmo com o binário no ar.
+- `docker/Dockerfile.gateway` (multi-stage, distroless non-root, `--healthcheck`), serviço
+  `gateway` no compose (depends_on `db` saudável, token do `.env`, sem porta publicada na base),
+  `portal` agora `depends_on: gateway (service_healthy)` + `WEB_API_TOKEN`.
+- `tools/dev/db-migrate.mjs` (`make db-migrate`): aplica as 28 migrations no `wyd-db` da stack
+  (66 tabelas, `item_catalog` 3.220, `content_version` 1) — sem isso o gateway não tem catálogo.
+- Observabilidade: job `wyd-gateway` em `prometheus.yml`, alertas `WydGatewayForaDoAr` e
+  `WydGatewayErroDeTransporte` (com runbook), caso de teste em `alerts.test.yml`, dois painéis
+  novos no `wyd-saude.json`, smoke cobrando o alvo do gateway.
+
+## 2026-11-08 — canais: dois processos, um banco, status real no `:80`
+
+Canal no WYD é **processo**, não flag: `crates/wyd-server` (binário `tmserver`) passou a existir e
+o compose roda **um container por canal**, mesma imagem `wyd/server:${TAG}` e mesmo Postgres:
+
+- `wyd-canal-1` → `192.168.100.3:8281` (normal) e `wyd-canal-2` → `192.168.100.4:8281` (verde);
+- canal é dado, não build: migration `0029` criou `server_channel` (grupo, canal, host, URL de
+  status, `enabled`) com 3 linhas (0 = status, 1 = normal, 2 = verde) — **67 tabelas, 497 colunas**,
+  `banco-catalogo.md` e `banco-fontes.mjs` regenerados;
+- `GET :80/serv00.htm` (canal 1) devolve `192.168.100.3,192.168.100.4` — corpo de 27 bytes, uma
+  leitura de `0x400` do cliente; `/health` faz `SELECT 1` e reporta `channels=2`;
+- CPSock `:8281`: `INITCODE` → desofuscação → checksum estrito → `inspect` → `AccountLogin` →
+  gate de versão (ADR-0020) → `_MSG_CNFAccountLogin` (só cabeçalho; corpo é UNVERIFIED);
+  probe real contra os dois containers: aceito em 12 000, recusado em 7 640;
+- `/metrics` `:9898` com o fragmento da FASE-06-1 + `wyd_server_*`; dois alvos no Prometheus
+  (`server:9898`, `server-canal-2:9898`) ambos `up=1`;
+- launcher: `serverlist` regenerado a partir do registro (`.bin` + `serverlist.txt` com os dois canais).
+
+**Prova no cliente:** o server select passou a desenhar `NextGen-1` e `NextGen-2` (antes eram duas
+linhas `Inexistente`) — a coluna Canal é alimentada pelo `serv00.htm` real. **A conexão pelo cliente
+gráfico ainda não foi provada:** o clique em Conectar não gerou nenhum `accept` nos containers
+(log sem `handshake`), então o cliente está discando outro destino/porta; o diagnóstico seguinte é
+captura de socket do próprio `WYD.exe`, não ajuste especulativo no servidor.

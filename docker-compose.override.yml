@@ -9,6 +9,55 @@ services:
     ports:
       - "127.0.0.1:${PGPORT:-5432}:5432"
 
+  gateway:
+    # Só em loopback: o gateway é backend do portal, não serviço público.
+    # Em prod (docker-compose.prod.yml) não há publicação — só a rede `wyd`.
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-7600}:7600"   # contrato admin (ADR-0008/0022)
+    environment:
+      # Dev: o seed do staff roda no boot do gateway (credencial default do `.env`).
+      # Trocar em qualquer ambiente que não seja a máquina local.
+      WYD_SEED_STAFF: ${WYD_SEED_STAFF:-1}
+      PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
+      PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-troque-aqui-dev}
+
+  server:
+    # Canal 1 (normal): o cliente disca 8281 fixo no IP da célula do .bin, então a
+    # publicação é por IP, não só por porta. O status `serv00.htm` sai no :80 deste
+    # canal — é a resposta que popula a coluna Canal nos dois canais.
+    ports:
+      - "${WYD_CANAL1_IP:-192.168.100.3}:8281:8281"
+      - "${WYD_CANAL1_IP:-192.168.100.3}:80:8080"
+
+  server-canal-2:
+    # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
+    # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
+    image: wyd/server:${TAG:-dev}
+    container_name: wyd-canal-2
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-wyd}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-wyd}"
+      WYD_SERVER_CHANNEL: "2"
+      WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
+      WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
+      WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/wyd-server", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    networks:
+      - wyd
+
   portal:
     ports:
       - "127.0.0.1:${PORTAL_PORT:-3000}:3000"   # UI de administração

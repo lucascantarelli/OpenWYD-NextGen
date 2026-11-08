@@ -12,6 +12,7 @@ pub mod api;
 pub mod audit;
 pub mod auth;
 pub mod error;
+pub mod metrics;
 pub mod service;
 pub mod transport;
 
@@ -30,10 +31,13 @@ pub use api::{
     PanelCharacter, RankingEntry,
 };
 pub use audit::{log_action, log_denied, AuditEntry, AuditSink, VecSink};
-pub use auth::{may_change_role, may_target, Session, StaffSession};
+pub use auth::{
+    hash_password, may_change_role, may_target, verify_password, PasswordError, Session,
+    StaffSession, MIN_PASSWORD_LEN,
+};
 pub use error::AdminError;
 pub use service::GrantService;
-pub use transport::{Authenticator, Reply, Router, StaticTokens, ADMIN_PORT};
+pub use transport::{Authenticator, LoginCheck, LoginOk, Reply, Router, StaticTokens, ADMIN_PORT};
 pub use wyd_db::{DeliveryQueue, Grant, QueuedGrant, Role};
 
 /// Executor mínimo para testes: futuros prontos, sem runtime.

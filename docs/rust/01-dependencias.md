@@ -26,6 +26,7 @@
 | Scripting sandbox | `wasmtime` | pendente (FASE-03) |
 | Observabilidade | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23; exporter Prometheus próprio | **adotado na FASE-06-1** (ADR-0018) |
 | Qualidade/supply-chain | `cargo-audit`, `cargo-deny`, `cargo-tarpaulin`, `miri` | pendente (FASE-05/15) |
+| Hash de senha | `argon2` 0.5 | **adotado no `wyd-admin`** em 2026-11-08 (AGENTS §3.6): argon2id padrão, só na borda de login (`auth/password.rs`); o hash nunca sai da resposta |
 | Launcher UI | Tauri (ou CLI puro) | pendente (FASE-08) |
 
 ## Notas datadas (FASE-14-1, 2026-11-07 — sem troca sem ADR + PoC)
