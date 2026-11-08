@@ -25,7 +25,7 @@ import {
   type AdminAck,
   type ListRewardItemsResponse,
   type UpsertRewardItemResponse,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type DailyActionResult =
   | { ok: true; message: string; id?: number }

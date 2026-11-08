@@ -29,7 +29,7 @@ import {
   type RevenueSummaryRequest,
   type RevenueSummaryResponse,
   type SearchAccountsResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export interface RevenueSummary {
   totals: RevenueTotalsWire;

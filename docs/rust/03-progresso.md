@@ -186,3 +186,25 @@
 - Contrato completo na ADR: rota→params→resposta, regras de auth/auditoria (bind loopback, `StaffSession` do token, audita leitura e escrita, `401` anônimo não audita), limites (32 MiB, 5 s no servidor, 10 s no cliente) e status de transporte (400/401/404/405/413/500) vs recusa de negócio (200 + `result`).
 - Árvore §13 do `wyd-admin` ganhou `src/transport/{mod,http,json}.rs` e `tests/contract.rs`; `.proto` proibido.
 - Issues atualizadas: `FASE-07.md` (contexto, passos, arquivos, pendências) e `FASE-07-1-gateway.md` (transporte HTTP/JSON, passos, aceite, rollback). Docs alinhados: `estrutura-e-padroes.md` §13, `visao-pastas.md`, `00-visao-estrutura.md`, `05-stack-docker.md`, skill `wyd-web-admin-ui`.
+
+## 2026-11-07 — FASE-07-1: transporte HTTP/JSON do wyd-admin implementado (ADR-0008)
+- `crates/wyd-admin/src/transport/json.rs`: JSON do contrato sem dependência (escapes, `\uXXXX` com surrogate, `MAX_DEPTH` 32, rejeita `01`/lixo/aninhamento profundo; nenhum `panic!` em entrada).
+- `crates/wyd-admin/src/transport/http.rs`: HTTP/1.1 mínimo em std — POST obrigatório, `Content-Length` obrigatório, sem chunked, head ≤ 16 KiB, corpo ≤ 32 MiB, `cache-control: no-store`, `x-trace-id`, `connection: close`, `bind_loopback` e `serve_conn` só em loopback.
+- `crates/wyd-admin/src/transport/mod.rs`: `POST /admin/v1/{servico}/{metodo}` → `accounts/find`, `accounts/create`, `grants/request`; `Authenticator` (porta) + `StaticTokens`; 401 sem token (não audita), papel insuficiente = 200 + `result: 2` com `auth.denied` auditado, 404/400/405/413 de transporte, envelope `result` 1..5 + `trace_id`.
+- `crates/wyd-admin/tests/contract.rs`: 9 casos incl. grant idempotente (replay com mesmo `grant_id`) e round-trip real em socket loopback.
+- Prova: `cargo fmt --all -- --check` 0, `cargo clippy --workspace --all-targets -- -D warnings` 0, `cargo test --workspace` 22 suites ok.
+- Pendente na issue: `admin-client.ts` no portal (remover `@grpc/*`) e os 13 serviços restantes sobre o mesmo roteador.
+
+## 2026-11-08 — FASE-07-1: portal fiado no HTTP/JSON (fim do gRPC no BFF)
+- `wyd-portal/src/server/admin-client.ts`: `fetch` para `WEB_API_ADDR` (default `http://127.0.0.1:7600`), `POST /admin/v1/{servico}/{metodo}`, `authorization: Bearer $WEB_API_TOKEN`, `x-trace-id`, `AbortSignal.timeout(10 s)`, `cache: no-store`; mantém as 16 exportações e todos os tipos do antigo `grpc.ts` (serviços via `svc<T>()`), removendo `moderator_id`/`moderatorId` do corpo antes de enviar.
+- `promisify.ts` vira fachada `(req, traceId) => Promise<Res>` (deadline no cliente); `trace.ts` expõe `traceHeaders()` puro; `errors.ts` ganha `AdminUnavailableError` (conexão recusada/timeout/5xx/resposta inválida → 502) e `isInfraFailure` deixa de checar código gRPC.
+- 25 módulos do BFF reimportados (`@/server/grpc` → `@/server/admin-client`), `grpc.ts` removido; `@grpc/grpc-js`/`@grpc/proto-loader` fora do `package.json` e do lock; `docker/Dockerfile.portal` não copia `.proto`; `.env.example` documenta `WEB_API_ADDR` (URL) + `WEB_API_TOKEN`; README do portal reescrito para HTTP/JSON.
+- Prova: `npm run typecheck` 0, `npm run test -- --run` 118/118 (16 arquivos), `grep grpc` em `src/` = 0.
+- Pendência honesta: `StaticTokens` não valida HMAC (token de dev até a fiação cripto) e os 13 serviços ainda respondem 404 de transporte enquanto as rotas não existem.
+
+## 2026-11-08 — FASE-03-4: inventário dos dados estáticos (itens/skills/NPCs)
+- `docs/arquitetura/modelo-banco.md` §6 (novo): procedência do conteúdo de jogo, com números conferidos no git — `origin/main` guarda `internal/migrations/seed_*.up.sql` (`item_catalog` 3.220, `skill_catalog` 151, `npc_template` 1.991, `npc_definition` 6.100, `npc_shop_item` 6.708, `world_item_seed` 49, `guild_zone` 5) e `0008_platform_content.up.sql` (`guard_spawn`, `level_item` por ordinal, `mob_merc`, `game_setting`, 52 retângulos de `Regions`, com `content_source_file` de proveniência).
+- Regra registrada: seed Rust sai das linhas de catálogo (texto + `sha256`), **não** dos `.bin` do cliente — `ItemList.bin` (910.004 B), `SkillData.bin` (23.812 B), `Mixlist.bin` (272.000 B) abrem com bytes repetidos (XOR) e não têm leitor em `tools/client/`; `docs/cliente/inventario.md` já os marcava como CONHECIDO parcial/UNVERIFIED.
+- Lacunas declaradas: nenhuma migração Rust cria tabela de conteúdo; `docs/sistemas/*` (13), `docs/lore/*` (3) e `docs/guias/*` (4) existem só em `origin/main` (a árvore perdeu os originais e mantém `guias.json` com 19 slugs); não há documento de mix/refino.
+- Issue `FASE-03-4` passou a 🚧 (passo 1 concluído) no índice e no próprio arquivo; falta decidir formato destino e implementar o validador de boot.
+- Verificação: contagens lidas de `git show origin/main:<seed>` (cabeçalho de cada arquivo) e `git cat-file -s` para os TXT; nenhum código alterado, logo sem gate Rust/TS neste passo.

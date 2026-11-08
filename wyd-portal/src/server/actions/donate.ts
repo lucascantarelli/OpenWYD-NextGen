@@ -33,7 +33,7 @@ import {
   type CreditDonateBalanceResponse,
   type ListShopItemsResponse,
   type UpsertShopItemResponse,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type DonateActionResult =
   | { ok: true; message: string; id?: number; new_balance?: number }

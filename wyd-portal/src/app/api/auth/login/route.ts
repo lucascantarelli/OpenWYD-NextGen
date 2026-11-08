@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { accountWeb, promisify, type VerifyCredentialsResponse } from "@/server/grpc";
+import { accountWeb, promisify, type VerifyCredentialsResponse } from "@/server/admin-client";
 import { normalizeRole, setSession } from "@/server/session";
 
 export const dynamic = "force-dynamic";

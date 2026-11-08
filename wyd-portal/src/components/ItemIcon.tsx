@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { itemInitials } from "@/lib/item";
-import type { CatalogItem } from "@/server/grpc";
+import type { CatalogItem } from "@/server/admin-client";
 
 const SIZE = 32;
 

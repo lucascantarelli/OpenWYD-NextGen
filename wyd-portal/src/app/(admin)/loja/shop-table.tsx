@@ -40,7 +40,7 @@ import {
   saveShopItem,
   setShopItemEnabled,
 } from "@/server/actions/donate";
-import type { CatalogItem, ItemEffectType } from "@/server/grpc";
+import type { CatalogItem, ItemEffectType } from "@/server/admin-client";
 
 export interface ShopRow extends DonateShopItem {
   /** `null` quando o item não está no catálogo (oferta antiga ou catálogo fora). */

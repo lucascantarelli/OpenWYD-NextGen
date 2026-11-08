@@ -12,7 +12,7 @@ import {
   characterAdmin,
   type GetCharacterAdminResponse,
   type SearchCharactersResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export async function searchCharacters(query: string): Promise<CharacterSummary[]> {
   const trimmed = query.trim();

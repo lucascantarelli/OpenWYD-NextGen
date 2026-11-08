@@ -8,7 +8,7 @@ import { ItemIcon } from "@/components/ItemIcon";
 import { Badge } from "@/components/Badge";
 import { fmtCoin } from "@/lib/format";
 import { distinctSlots, gradeLabel, gradeTone, itemSearchText, slotsText } from "@/lib/item";
-import type { CatalogItem } from "@/server/grpc";
+import type { CatalogItem } from "@/server/admin-client";
 
 /**
  * Navegador do catálogo: filtro por slot (multi) e grau, busca com debounce de

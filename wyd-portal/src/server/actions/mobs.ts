@@ -23,7 +23,7 @@ import {
   type AdminAck,
   type GetMobTemplateStatResponse,
   type UpsertMobTemplateStatResponse,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type MobActionResult = { ok: true } | { ok: false; error: string; status: number };
 

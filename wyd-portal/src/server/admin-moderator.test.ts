@@ -1,4 +1,3 @@
-import type * as grpc from "@grpc/grpc-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { adminCall } from "./admin";
@@ -29,17 +28,12 @@ interface Reply {
   message?: string;
 }
 
-/** RPC unary falsa: registra o payload que o portal realmente enviaria. */
+/** Chamada admin falsa (HTTP/JSON, ADR-0008): registra o payload enviado. */
 function captureRpc(reply: Reply = { result: 1 }) {
   const seen: Body[] = [];
-  const fn = (
-    req: Body,
-    _metadata: grpc.Metadata,
-    _options: grpc.CallOptions,
-    cb: (err: grpc.ServiceError | null, res: Reply) => void,
-  ): void => {
+  const fn = async (req: Body): Promise<Reply> => {
     seen.push(req);
-    cb(null, reply);
+    return reply;
   };
   return { seen, fn };
 }

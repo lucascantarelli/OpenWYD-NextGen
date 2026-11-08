@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import { adminCall } from "@/server/admin";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { characterAdmin, type GrantCharacterItemResponse } from "@/server/grpc";
+import { characterAdmin, type GrantCharacterItemResponse } from "@/server/admin-client";
 
 const grantSchema = z.object({
   character_id: z.number().int().positive(),

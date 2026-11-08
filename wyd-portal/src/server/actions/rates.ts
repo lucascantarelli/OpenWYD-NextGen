@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 import { adminCall } from "@/server/admin";
 import { isOk } from "@/server/admin-result";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { contentRates, type SetRateResponse } from "@/server/grpc";
+import { contentRates, type SetRateResponse } from "@/server/admin-client";
 
 export type RateActionResult = { ok: true; message?: string } | { ok: false; error: string };
 

@@ -8,7 +8,7 @@
 import type { MobCarry } from "@/lib/mobcarry";
 
 import { adminCall } from "./admin";
-import { dropAdmin, type ListMobCarryResponse } from "./grpc";
+import { dropAdmin, type ListMobCarryResponse } from "./admin-client";
 
 export async function listMobCarry(templateName: string): Promise<MobCarry> {
   const res = await adminCall<{ template_name: string }, ListMobCarryResponse>(

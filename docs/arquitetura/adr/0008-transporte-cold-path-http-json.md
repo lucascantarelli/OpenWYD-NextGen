@@ -121,6 +121,9 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
   `AdminResult` → HTTP do browser.
 - `@grpc/grpc-js` e `@grpc/proto-loader` saem do `package.json` quando a fiação
   terminar (FASE-07-1), não antes.
+- **Implementado em 2026-11-08:** `grpc.ts` removido, `admin-client.ts` com as 16
+  exportações sobre `fetch`, `promisify.ts` sem `@grpc/*`, dependências e
+  referências de `.proto` fora do `package.json`/lock e do `Dockerfile.portal`.
 
 ## Consequências
 

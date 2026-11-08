@@ -1,4 +1,4 @@
-import { itemCatalog, promisify, type ListItemsResponse } from "@/server/grpc";
+import { itemCatalog, promisify, type ListItemsResponse } from "@/server/admin-client";
 
 export const dynamic = "force-dynamic";
 

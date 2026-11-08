@@ -2,8 +2,8 @@
 //!
 //! Camadas (dentro→fora): `error` (HTTP por variante) → `auth` (sessão/papéis)
 //! → `audit` (quem/o quê/quando) → `api` (endpoints por domínio) → `service`
-//! (regra + idempotência). Transporte (HTTP/gRPC) chega com runtime async
-//! (04-3/FASE-05: exige rede + ADR); a regra já é testável sem ele.
+//! (regra + idempotência) → `transport` (HTTP/1.1 + JSON em loopback, ADR-0008).
+//! O transporte é Cold Path: nunca é importado por `wyd-core`/`wyd-net`.
 //!
 //! Invariantes: BFF puro — nunca estado vivo de personagem (só intenções para
 //! `delivery_queue`); `moderator_id` sempre da sessão, nunca do corpo.
@@ -13,6 +13,7 @@ pub mod audit;
 pub mod auth;
 pub mod error;
 pub mod service;
+pub mod transport;
 
 /// Prefixo das rotas administrativas neste esqueleto.
 pub const ADMIN_SCOPE: &str = "/admin";
@@ -31,6 +32,7 @@ pub use audit::{log_action, log_denied, AuditEntry, AuditSink, VecSink};
 pub use auth::{may_change_role, may_target, Session, StaffSession};
 pub use error::AdminError;
 pub use service::GrantService;
+pub use transport::{Authenticator, Reply, Router, StaticTokens, ADMIN_PORT};
 pub use wyd_db::{DeliveryQueue, Grant, QueuedGrant, Role};
 
 /// Executor mínimo para testes: futuros prontos, sem runtime.

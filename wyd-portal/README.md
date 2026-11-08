@@ -1,7 +1,8 @@
 # Portal de administração (WYD2)
 
-Next.js 15 (App Router) como **BFF puro** sobre o `web-api` gRPC do
-`webserver` (`:7600`). O browser nunca fala gRPC nem vê certificado.
+Next.js 15 (App Router) como **BFF puro** sobre o `wyd-admin` via **HTTP/1.1 +
+JSON em loopback** (`:7600`, ADR-0008). O browser nunca fala com o backend nem
+vê o token de staff.
 
 ```bash
 cd portal
@@ -15,9 +16,8 @@ Variáveis de ambiente:
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `WEB_API_ADDR` | `127.0.0.1:7600` | endereço do web-api |
-| `WEB_API_PROTO` | `../api/web/v1/web.proto` | contrato gRPC |
-| `WEB_API_TLS_{CA,CERT,KEY}` | — | mTLS; sem os três, canal insecure (dev) |
+| `WEB_API_ADDR` | `http://127.0.0.1:7600` | URL do `wyd-admin` (loopback na v1) |
+| `WEB_API_TOKEN` | — | token de staff (`authorization: Bearer`), processo→processo |
 | `SESSION_SECRET` | — | assinatura HS256 do cookie `wyd_session` |
 | `AUDIT_LOG_DIR` | — | opcional: grava `audit-YYYY-MM-DD.ndjson` além do log do processo |
 
@@ -31,7 +31,7 @@ deadline de 10s, mapeia `AdminResult` → HTTP e registra auditoria.
 // src/app/api/npcs/[id]/route.ts
 import { adminCall } from "@/server/admin";
 import { toResponse } from "@/server/errors";
-import { npcAdmin } from "@/server/grpc";
+import { npcAdmin } from "@/server/admin-client";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -48,7 +48,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 }
 ```
 
-**Não** chame o cliente gRPC admin direto de uma page ou action: sem `adminCall`
+**Não** chame o cliente admin direto de uma page ou action: sem `adminCall`
 não há `moderator_id` da sessão, nem mapeamento de `CONTENT_OWNED`, nem auditoria.
 
 ## `AdminResult` → HTTP
@@ -64,15 +64,15 @@ não há `moderator_id` da sessão, nem mapeamento de `CONTENT_OWNED`, nem audit
 | `CONTENT_OWNED` (5) | 409 | este item é conteúdo versionado: oculte em vez de apagar |
 | `UNSPECIFIED` (0) / desconhecido | 500 | resultado desconhecido do web-api |
 
-Falha de transporte (`UNAVAILABLE`, `DEADLINE_EXCEEDED`) → **502**
+Falha de transporte (conexão recusada, timeout de 10 s ou 5xx) → **502**
 "serviço de administração indisponível". Stack, DSN e caminho nunca vão para o
 browser: `toResponse` só devolve `{ error }` com `cache-control: no-store`.
 
 ## Estrutura
 
 ```
-src/server/grpc.ts         cliente gRPC tipado (server-only) + tipos de resposta
-src/server/promisify.ts    callback → Promise com deadline de 10s
+src/server/admin-client.ts cliente HTTP/JSON do wyd-admin (server-only) + tipos
+src/server/promisify.ts    fachada da chamada admin (deadline no cliente)
 src/server/admin.ts        adminCall (sessão + moderator_id + resultado + auditoria)
 src/server/admin-result.ts AdminResult → HTTP/mensagem (puro)
 src/server/errors.ts       AdminError + toResponse
@@ -91,9 +91,9 @@ O compose da raiz sobe o portal junto com o web-api:
 docker compose up -d --build portal   # http://localhost:3000
 ```
 
-A imagem (`wyd-portal/Dockerfile`) usa o output `standalone` do Next. O contexto de build é a **raiz do
-repositório** (não `wyd-portal/`) porque a imagem precisa de `api/web/v1/web.proto`. No container,
-`WEB_API_ADDR=wyd-webserver:7600`, `W2PP_CONTENT=/Release` e `AUDIT_LOG_DIR` vêm do compose;
+A imagem (`docker/Dockerfile.portal`) usa o output `standalone` do Next. O contexto de build é a
+**raiz do repositório** (compose: `context: .`). No container, `WEB_API_ADDR=http://wyd-admin:7600`
+e `AUDIT_LOG_DIR` vêm do compose;
 `SESSION_SECRET` tem default apenas de desenvolvimento (>= 32 caracteres em produção).
 
 ### Guias públicos (`/guias`)
@@ -123,7 +123,7 @@ com `read_only`, `no-new-privileges` e `group_add: 0` para ler o socket rodando 
 autentica a sessão e repassa o stream em SSE (`/api/logs/<serviço>`, `/api/logs/status`), com
 `redact` de ANSI/DSN/segredo antes de qualquer linha chegar ao browser.
 
-Serviços aceitos: `tmserver`, `dbserver`, `binserver`, `webserver`, `db`, `portal` e o alvo `all`.
+Serviços aceitos: `db`, `portal` e o alvo `all` (o servidor de jogo entra com a FASE-07).
 Nada vem cru do browser: whitelist fixa, `tail` 1..2000 e `since` só no formato `10m`. Sem
 `LOG_PIPE_URL` (ex.: `make portal-dev` no host), o BFF volta ao `docker compose logs -f` local.
 
@@ -133,11 +133,11 @@ Lista com cursor keyset (`apos`), filtro por prefixo de login, papel e estado de
 traz a conta, o motivo do bloqueio e a **auditoria** (`account_admin_audit`: quem, quando, antes →
 depois e o motivo digitado). Criar conta já com papel é coisa de `admin`.
 
-Toda escrita é `action → adminCall → AccountAdminService`, com `moderator_id` vindo da sessão. As
-regras **não** moram na UI nem no gRPC: `internal/store/account_admin.go` as aplica dentro da
-transação — ninguém altera o próprio papel/bloqueio, a última conta admin ativa é protegida e
-`moderator` só bloqueia `player`. O web-api responde `INVALID` com uma explicação ("esta é a última
-conta admin ativa — promova outra antes") e o `adminCall` repassa essa mensagem à tela.
+Toda escrita é `action → adminCall → admin-client`, com `moderator_id` vindo da sessão. As
+regras **não** moram na UI nem no transporte: `crates/wyd-admin/src/api/accounts.rs` as aplica —
+ninguém altera o próprio papel/bloqueio, a última conta admin ativa é protegida e `moderator` só
+bloqueia `player`. O backend responde `INVALID` com uma explicação ("esta é a última conta admin
+ativa — promova outra antes") e o `adminCall` repassa essa mensagem à tela.
 
 Nada aqui toca personagem: `account.role` e `account.is_blocked` são lidos no **próximo login**.
 A conta nunca é apagada e senha/PIN não são redefinidos por esta tela (fora do escopo da issue).

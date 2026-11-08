@@ -11,7 +11,7 @@ import {
   teleportAdmin,
   type ListTeleportRoutesResponse,
   type SimulateTeleportRouteResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export async function listTeleportRoutes(): Promise<TeleportRoute[]> {
   const res = await adminCall<Record<string, never>, ListTeleportRoutesResponse>(

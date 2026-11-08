@@ -2,7 +2,7 @@
  * Tipo e validação do editor de stats de template de mob (issue 25).
  *
  * Os intervalos espelham **exatamente** a checagem do web-api
- * (`webserver/internal/grpcsrv/mobtemplateadmin.go: mobTemplateStatInRange`),
+ * (limite portado para `crates/wyd-admin` na fiação do contrato),
  * que por sua vez estreita para os tipos do `STRUCT_MOB` (816 B). Validar aqui
  * evita uma ida ao servidor só para receber `INVALID`, mas a decisão final
  * continua sendo do servidor.

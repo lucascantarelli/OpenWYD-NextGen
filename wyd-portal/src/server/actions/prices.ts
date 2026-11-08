@@ -11,7 +11,7 @@ import { CLEAR_PRICE, priceSchema, type PriceInput } from "@/lib/price";
 
 import { adminCall } from "@/server/admin";
 import { AdminError, isInfraFailure } from "@/server/errors";
-import { npcAdmin, type AdminAck } from "@/server/grpc";
+import { npcAdmin, type AdminAck } from "@/server/admin-client";
 
 export type PriceActionResult = { ok: true } | { ok: false; error: string; status: number };
 

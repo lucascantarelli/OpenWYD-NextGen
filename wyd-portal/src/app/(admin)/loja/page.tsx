@@ -2,7 +2,7 @@ import { RetryButton } from "@/components/RetryButton";
 import { getCatalog } from "@/server/catalog";
 import { getShopItems } from "@/server/donate";
 import { AdminError } from "@/server/errors";
-import type { ItemEffectType } from "@/server/grpc";
+import type { ItemEffectType } from "@/server/admin-client";
 
 import { ShopTable, type ShopRow } from "./shop-table";
 

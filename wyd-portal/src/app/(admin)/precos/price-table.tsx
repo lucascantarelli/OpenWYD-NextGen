@@ -13,7 +13,7 @@ import { useToast } from "@/components/Toast";
 import { fmtCoin } from "@/lib/format";
 import { CLEAR_PRICE } from "@/lib/price";
 import { setItemPrice } from "@/server/actions/prices";
-import type { CatalogItem } from "@/server/grpc";
+import type { CatalogItem } from "@/server/admin-client";
 
 export interface PriceRow {
   index: number;

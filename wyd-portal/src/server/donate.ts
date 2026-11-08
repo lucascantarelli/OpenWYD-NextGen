@@ -8,7 +8,7 @@
 import { emptyShopItem, type DonateShopItem } from "@/lib/donate";
 
 import { adminCall } from "./admin";
-import { donateAdmin, type ListShopItemsResponse } from "./grpc";
+import { donateAdmin, type ListShopItemsResponse } from "./admin-client";
 
 function normalize(item: Partial<DonateShopItem>): DonateShopItem {
   const base = emptyShopItem();

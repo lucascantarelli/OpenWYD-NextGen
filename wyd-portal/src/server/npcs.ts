@@ -14,7 +14,7 @@ import {
   type ListMapZonesResponse,
   type ListMerchantTemplatesResponse,
   type ListNpcsResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export async function listNpcs(): Promise<NpcDefinition[]> {
   const res = await adminCall<Record<string, never>, ListNpcsResponse>(

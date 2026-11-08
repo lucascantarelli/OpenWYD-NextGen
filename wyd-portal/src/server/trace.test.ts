@@ -1,8 +1,7 @@
-import * as grpc from "@grpc/grpc-js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { promisify } from "./promisify";
-import { TRACE_HEADER, newTraceId, traceMetadata, validTraceId } from "./trace";
+import { TRACE_HEADER, newTraceId, traceHeaders, validTraceId } from "./trace";
 
 describe("trace", () => {
   it("gera ids de 32 hex, distintos entre chamadas", () => {
@@ -24,57 +23,31 @@ describe("trace", () => {
     expect(validTraceId(undefined)).toBe(false);
   });
 
-  it("preserva o id válido (normalizado) no metadata", () => {
-    const md = traceMetadata("0123456789ABCDEF0123456789ABCDEF");
-    expect(md.get(TRACE_HEADER)).toEqual(["0123456789abcdef0123456789abcdef"]);
+  it("preserva o id válido (normalizado) no header", () => {
+    const headers = traceHeaders("0123456789ABCDEF0123456789ABCDEF");
+    expect(headers[TRACE_HEADER]).toBe("0123456789abcdef0123456789abcdef");
   });
 
   it("substitui um id forjado em vez de propagá-lo", () => {
-    const md = traceMetadata("texto livre\ncom quebra");
-    const got = md.get(TRACE_HEADER);
-    expect(got).toHaveLength(1);
-    // get() devolve MetadataValue (string | Buffer); o header é sempre texto.
-    expect(validTraceId(got?.[0]?.toString())).toBe(true);
+    const headers = traceHeaders("texto livre\ncom quebra");
+    expect(validTraceId(headers[TRACE_HEADER])).toBe(true);
   });
 
-  it("promisify manda o trace_id recebido no metadata da RPC", async () => {
-    let seen: grpc.Metadata | undefined;
-    let sent: unknown;
-    const fn = (
-      req: { value: number },
-      md: grpc.Metadata,
-      _opts: grpc.CallOptions,
-      cb: (err: grpc.ServiceError | null, res: { result: number }) => void,
-    ) => {
-      sent = req;
-      seen = md;
-      cb(null, { result: 1 });
-    };
+  it("promisify encaminha request e trace_id para a chamada", async () => {
+    const fn = vi.fn(async (req: { value: number }) => ({ result: req.value }));
 
     const id = newTraceId();
     const res = await promisify(fn)({ value: 7 }, id);
 
-    expect(res).toEqual({ result: 1 });
-    expect(sent).toEqual({ value: 7 });
-    expect(seen?.get(TRACE_HEADER)).toEqual([id]);
+    expect(res).toEqual({ result: 7 });
+    expect(fn).toHaveBeenCalledWith({ value: 7 }, id);
   });
 
-  it("promisify gera um id quando não recebe nenhum", async () => {
-    let seen: grpc.Metadata | undefined;
-    const fn = (
-      _req: object,
-      md: grpc.Metadata,
-      _opts: grpc.CallOptions,
-      cb: (err: grpc.ServiceError | null, res: { result: number }) => void,
-    ) => {
-      seen = md;
-      cb(null, { result: 1 });
-    };
+  it("promisify gera chamada sem trace quando não recebe nenhum", async () => {
+    const fn = vi.fn(async () => ({ result: 1 }));
 
     await promisify(fn)({});
-    const got = seen?.get(TRACE_HEADER);
-    expect(got).toHaveLength(1);
-    // get() devolve MetadataValue (string | Buffer); o header é sempre texto.
-    expect(validTraceId(got?.[0]?.toString())).toBe(true);
+
+    expect(fn).toHaveBeenCalledWith({}, undefined);
   });
 });

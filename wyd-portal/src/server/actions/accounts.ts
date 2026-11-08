@@ -30,7 +30,7 @@ import {
   accountAdmin,
   type AccountWriteResponse,
   type AdminCreateAccountResponse,
-} from "@/server/grpc";
+} from "@/server/admin-client";
 
 export type AccountActionResult =
   | { ok: true; message?: string }

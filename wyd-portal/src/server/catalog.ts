@@ -14,7 +14,7 @@ import {
   type CatalogItem,
   type ItemEffectType,
   type ListItemsResponse,
-} from "./grpc";
+} from "./admin-client";
 
 export const CATALOG_TAG = "item-catalog";
 
