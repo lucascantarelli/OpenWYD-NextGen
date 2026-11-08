@@ -169,6 +169,7 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
 | Contrato de um opcode | `docs/arquitetura/protocolo.md` §4–§5 + `crates/wyd-protocol/src/payload/<domínio>.rs` |
 | Fluxos ponta-a-ponta | `docs/cliente/pacotes.md` + `crates/wyd-net/tests/` |
 | Fórmulas/balanceamento | `crates/wyd-sim/` + issues FASE-10 |
+| Lore, classes, skills, sistemas e itens | `docs/wyd/` (base de conhecimento) + `docs/wyd/itens.md` (classificação de item) |
 | Portal: BFF, telas, sessão, guias | `wyd-portal/README.md` + skill `wyd-web-admin-ui` (via FASE-09) |
 | Plano vigente (15 fases, dependências, status) | `roadmap-rust/index.md` + `roadmap-rust/issues/FASE-*.md` |
 | Auditoria do planejamento histórico | `docs/manual-técnico/auditoria-roadmap.md` |

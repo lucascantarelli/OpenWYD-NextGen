@@ -40,7 +40,7 @@
 | FASE-03-1 tick | ✅ | `tick/scheduler.rs` (acumulador + clamp) + `ports/clock.rs`; fatiamento 7×286 = 50×40. |
 | FASE-03-2 ECS | 🚧 | Dados prontos (`components.rs` + `ComponentStore` SoA); restam `systems/`, ADR e bench. |
 | FASE-03-3 spatial grid | ✅ | `spatial/grid.rs`; guerra 5000: 8,6 ms inserts, 79 µs consulta (debug). |
-| FASE-03-4 dados estáticos | ⬜ | Depende de FASE-04 (fonte de dados). |
+| FASE-03-4 dados estáticos | 🚧 | Esquema+seed completos (0007–0012, verificado no Postgres); falta carga no boot (FASE-04-3). |
 | FASE-03-5 autoridade do servidor | ⬜ | Depende de 03-2, 03-3, 03-4. |
 
 ## Fase 4 — persistência (`wyd-db`)
@@ -208,3 +208,38 @@
 - Lacunas declaradas: nenhuma migração Rust cria tabela de conteúdo; `docs/sistemas/*` (13), `docs/lore/*` (3) e `docs/guias/*` (4) existem só em `origin/main` (a árvore perdeu os originais e mantém `guias.json` com 19 slugs); não há documento de mix/refino.
 - Issue `FASE-03-4` passou a 🚧 (passo 1 concluído) no índice e no próprio arquivo; falta decidir formato destino e implementar o validador de boot.
 - Verificação: contagens lidas de `git show origin/main:<seed>` (cabeçalho de cada arquivo) e `git cat-file -s` para os TXT; nenhum código alterado, logo sem gate Rust/TS neste passo.
+
+## 2026-11-08 — ADR-0009 reescrita: conteúdo vem do PostgreSQL, não de arquivo
+- Correção de rumo por veto do dono: a primeira versão da ADR-0009 propunha `content/*.csv` versionado e foi **descartada** — arquivo plano é prática do servidor Go e o projeto está eliminando isso (`pre-release-rust.md` FASE 3 §3.2, FASE 4 §4.1/§4.2).
+- Decisão vigente: **PostgreSQL é a única fonte canônica** do conteúdo (`item_catalog`, `skill_catalog`, `npc_*`, `level_item`, `guard_spawn`, `mob_merc`, `game_setting`, `region`, `content_version`) com `PRIMARY KEY`/`FOREIGN KEY`/`CHECK`, populado por migrações versionadas de seed (idempotentes, com `down`); `wyd-db` carrega no boot e `wyd-core` valida antes do primeiro tick (`ports/content.rs`), abortando com `{tabela, pk, coluna, motivo}`.
+- Nenhum `.csv`/`.txt`/`.bin` é lido em runtime: os arquivos do legado são **insumo** de `tools/content/gen-seed.mjs` (que emite SQL) e base de conhecimento. `content_source_file` guarda só a proveniência do import.
+- Propagado: `docs/arquitetura/adr/0009-conteudo-estatico.md` (reescrito), `modelo-banco.md` §6, `estrutura-e-padroes.md` §10/§12/§15, `visao-pastas.md`, issue `FASE-03-4` (fonte decidida; dependência passa a ser **FASE-04-3**, o `sqlx`).
+- Consequência declarada: o servidor passa a **não subir sem Postgres**; até a FASE-04-3 existir, o conteúdo fica semeado mas sem consumidor no core.
+
+## 2026-11-08 — FASE-03-4: catálogo de conteúdo no banco + base de conhecimento `docs/wyd/`
+- **Seed decidido:** migração versionada gerada (não importador manual) — `tools/content/gen-seed.mjs` lê `origin/main` via `git show` e emite SQL idempotente em lotes de 200 linhas; registrado na ADR-0009 (com alternativa do importador descartada e mitigação de tamanho).
+- **Esquema (0007):** `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog` (+`kind`, `primary_system`, `event_only`, `tradeable`, `stackable`, `class_mask`, `effect_names[]` com GIN, `classification_source`, `confidence`) e `skill_catalog` (+`class_code`, `lineage_code`, `primary_system`, `skill_role`); PK/FK/CHECK em tudo que é provado, `class_mask` documentada como UNVERIFIED.
+- **Masssa real (0009/0010, gerados):** 3.220 itens com preço/grade/requisitos/efeitos e 151 skills; 55 símbolos `EF_*` no vocabulário; 1.688 itens (52%) classificados por regra de nome, **1.532 ficam `NULL`** (nome não prova), 99 `event_only`, 156 não negociáveis; 12 skills mapeadas por nome confirmado, 139 `unmapped`.
+- **Base de conhecimento:** `docs/wyd/{README,lore,classes,skills,sistemas,itens}.md` — Kersef, Yetzirah/Tzfah, Hekalotia/Akeronia, Kefra, as 4 classes + Arch, linhagens, 10ª/12ª skill, refino/repleção/celestial, drop, reinos; o que é UNVERIFIED está marcado e não vira `CHECK`.
+- **Prova:** bloco `up` de 0007–0010 aplicado com `ON_ERROR_STOP=1` no Postgres do compose em banco descartável `wyd_seedcheck` → 3.220 itens, 151 skills, 55 efeitos, 20 sistemas, 1.688 classificados, `content_version = 3`; banco de teste removido e container parado depois.
+- **Pendente:** carga tipada + validação no boot (`wyd-db` → `ports/content.rs`) e teste de conteúdo inconsistente — bloqueado pela FASE-04-3 (`sqlx`, ADR-0006).
+
+## 2026-11-08 — FASE-03-4: mundo no banco (NPCs, lojas, prêmios, spawns, regiões) + sanitização
+
+- **Auditoria antes do seed** (`modelo-banco.md` §6.6): 12 insumos em UTF-8 válido e NFC;
+  `LevelItem.txt` com 4 bytes truncados, todos em linha `#`; 5 TXT em CRLF; 0 BOM, 0
+  invisível, 0 controle, 0 NBSP; 20 nomes de `npc_template` em CP949 lido como latin1
+  (chave preservada; 12 recuperados para coreano em `name_recovered`).
+- **Duplicidades explicadas** (§6.6.1): 489 grupos de nome de item cobrindo 1.370 itens —
+  tiers `(Anct)` g5..g8, `Cupom_da_Sorte` ×78, placeholders `NONAME`/`not_used`, itens de
+  classe. **0 duplicata acidental** (nome+grade+preço+efeitos idênticos) → nada deduplicado.
+  `npc_template` tem 345 grupos de variantes `@Nome`/`Nome_` — são chaves, mantidas.
+- **Esquema (0011):** `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`,
+  `level_item`, `guard_spawn(_reward)`, `mob_merc`, `game_setting`/`game_matrix`, `region`,
+  `world_item_seed`, `guild_zone` — FK real onde não há órfão e ausência de FK documentada
+  onde o catálogo tem lacuna (22 itens de loja, 1 de `level_item`).
+- **Busca sem acento:** `content_fold()` IMMUTABLE + `name_fold` gerado em `item_catalog` e
+  `region` (sem `unaccent`/`citext`; motivo em `modelo-banco.md` §7).
+- **Prova:** 0007–0012 no Postgres do compose em `wyd_seedcheck` → 1.991/6.100/6.706/161/
+  27/25/20/52/49/5, `content_version = 4`, `sha256(blob)` 1.991/1.991, `down` inverso →
+  0 tabelas.

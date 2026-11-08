@@ -204,9 +204,11 @@ crates/wyd-core/
 │   └── ports/
 │       ├── mod.rs
 │       ├── persistence.rs # trait: o core pede, wyd-db entrega (DIP)
+│       ├── content.rs     # trait: tabelas de conteúdo carregadas do banco (ADR-0009)
 │       └── clock.rs       # trait: tempo injetável (determinismo em teste)
 ├── tests/
 │   ├── common/mod.rs
+│   ├── content.rs        # conteúdo inconsistente aborta o boot (ADR-0009)
 │   └── determinism.rs    # mesmo seed → mesmo resultado
 └── benches/
     └── tick.rs           # regressão de performance do loop
@@ -258,12 +260,14 @@ crates/wyd-db/
 │   │   ├── account.rs
 │   │   ├── character.rs
 │   │   ├── guild.rs
+│   │   ├── content.rs    # item/skill/npc/level/settings (ADR-0009)
 │   │   └── audit.rs
 │   ├── repo/             # traits (portas) + implementação pg
 │   │   ├── mod.rs
 │   │   ├── accounts.rs
 │   │   ├── characters.rs
-│   │   └── grants.rs     # leitura de delivery_queue (Cold Path)
+│   │   ├── grants.rs     # leitura de delivery_queue (Cold Path)
+│   │   └── content.rs    # carga única no boot + validação (ADR-0009)
 │   ├── pool/
 │   │   ├── mod.rs
 │   │   └── config.rs     # pool dimensionado, timeouts, transações curtas
@@ -349,8 +353,16 @@ tools/
 ├── protocol/
 │   ├── gen-protocol.mjs  # tabelas a partir do C++ arquivado
 │   └── README.md         # PREVISTO: fonte canônica + reprodução
+├── content/
+│   ├── gen-seed.mjs      # legado (origin/main) → migração SQL de seed (ADR-0009)
+│   └── README.md         # comando + sha256 do insumo; nada vai para runtime
 └── dev/                  # placeholder: só .gitkeep até ter propósito declarado
 ```
+
+**Nenhum dado de jogo é lido de arquivo em runtime** (ADR-0009): a fonte é o PostgreSQL,
+carregado por `wyd-db` no boot e validado antes do primeiro tick (`ports/content.rs`).
+`tools/content/` só converte o legado (`tmserver/content/**`, `internal/migrations/seed_*`)
+em SQL de migração — o arquivo é insumo do gerador e base de conhecimento, não fonte.
 
 Regra: `tools/` é análise/geração, nunca runtime; script novo entra no
 `README.md` do seu diretório. Raiz segue `visao-pastas.md` §1 (só manifestos e

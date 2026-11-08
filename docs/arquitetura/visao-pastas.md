@@ -40,6 +40,7 @@
 |---|---|---|
 | `tools/client/` | 7 scripts `.mjs` + `README.md` | pipeline de análise estática do cliente + goldens (`analyse`, `evidence`, `captura`, `formats`, `pe`, `strings`, `keytable`) |
 | `tools/protocol/` | `gen-protocol.mjs` | gerador das tabelas de protocolo a partir do C++ arquivado |
+| `tools/content/` | **PREVISTO (ADR-0009)** | `gen-seed.mjs` converte o legado em migração SQL de seed + `README.md` com comando e sha256; nada vai para runtime |
 | `tools/dev/` | só `.gitkeep` | **placeholder**: só vira pasta real com `README.md` + propósito declarado |
 
 ### Documentação (`docs/`)

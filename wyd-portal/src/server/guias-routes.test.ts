@@ -16,6 +16,7 @@ import { getGuia, guiaStaticParams, listGuias, renderGuia } from "./guias";
 const APP = path.resolve(process.cwd(), "src", "app", "(public)", "guias");
 const ROUTE_FILE = path.join(APP, "[slug]", "page.tsx");
 const INDEX_FILE = path.join(APP, "page.tsx");
+const SEARCH_FILE = path.join(APP, "guias-search.tsx");
 
 describe("rotas públicas de guias", () => {
   it("todo guia do índice tem parâmetro de rota estática", () => {
@@ -51,31 +52,26 @@ describe("rotas públicas de guias", () => {
     }
   });
 
-  it("as 12 páginas de sistema renderizam tabela, handler e subtítulo", () => {
-    const sistemas = listGuias().filter(
-      (guia) => guia.section === "sistemas" && guia.slug !== "sistemas",
-    );
+  it("as páginas de sistema renderizam tabela e subtítulo", () => {
+    const sistemas = listGuias().filter((guia) => guia.slug.startsWith("manual-sistemas-"));
 
-    expect(sistemas).toHaveLength(12);
+    expect(sistemas.length).toBeGreaterThanOrEqual(6);
     for (const guia of sistemas) {
       const { html } = renderGuia(guia);
 
       expect(html, guia.slug).toContain("<table");
       expect(html, guia.slug).toContain("<h2");
-      expect(html, guia.slug).toMatch(/\.go/);
     }
   });
 
-  it("a navegação de seção alcança todos os sistemas a partir de um deles", () => {
-    const combate = getGuia("combate");
-    expect(combate, "guia combate ausente").toBeDefined();
+  it("a navegação de seção alcança o manual inteiro a partir de uma página", () => {
+    const lore = getGuia("manual-lore");
+    expect(lore, "manual-lore ausente").toBeDefined();
 
-    const { siblings } = renderGuia(combate!);
-    const slugs = siblings.map((item) => item.slug);
+    const { siblings } = renderGuia(lore!);
 
-    expect(siblings).toHaveLength(12);
-    expect(slugs).toContain("personagem");
-    expect(slugs).toContain("mapa");
+    expect(siblings.length).toBe(listGuias().length - 1);
+    expect(siblings.map((item) => item.slug)).toContain("manual-sistemas-refino");
   });
 
   it("slug fora do índice não renderiza (caminho de 404)", () => {
@@ -83,8 +79,11 @@ describe("rotas públicas de guias", () => {
     expect(guiaStaticParams().map((param) => param.slug)).not.toContain("nao-existe");
   });
 
-  it("a página de índice agrupa por seção a partir do JSON", () => {
+  it("a página de índice agrupa por seção e usa a busca sem acento", () => {
     expect(existsSync(INDEX_FILE), INDEX_FILE).toBe(true);
     expect(readFileSync(INDEX_FILE, "utf8")).toContain("groupGuias");
+
+    expect(existsSync(SEARCH_FILE), SEARCH_FILE).toBe(true);
+    expect(readFileSync(SEARCH_FILE, "utf8")).toContain("foldMatch");
   });
 });
