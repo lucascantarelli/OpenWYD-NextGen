@@ -31,7 +31,7 @@ fórmulas da FASE-10. Nada é "release" sem evidência anexada.
 
 - Criados: relatório de release em `docs/` (números, versões, evidências).
 - Alterados: ajustes mínimos exigidos pela auditoria (cada um com teste).
-- Proibido tocar: `.deprecated-go/`, `client/`, segredos; nenhum `#[ignore]`
+- Proibido tocar: `client/`, segredos; nenhum `#[ignore]`
   para esconder falha, nenhum `unwrap` novo no quente.
 
 ## Testes / verificação

@@ -30,7 +30,7 @@ Sem rito, decisões se perdem em chat e o código diverge do motivo.
 - Alterados: `docs/arquitetura/adr/0001-hot-path-monolitico.md` (status),
   `roadmap-rust/issues/FASE-13.md` (este).
 - Proibido tocar: `crates/*/src/` (ADR precede código, não o contém),
-  `.deprecated-go/`.
+  .
 
 ## Testes / verificação
 

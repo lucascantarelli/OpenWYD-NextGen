@@ -13,7 +13,7 @@ superfície conhecida e plano de desassemble vivem em `docs/cliente/` (FASE-08-4
 
 ## Contexto / evidência
 
-Toda a verdade do wire vive em `.deprecated-go/docs/migration/` (`protocol-spec.md`,
+Toda a verdade do wire vive em `docs/` (`protocol-spec.md`,
 `data-formats.md`, `handlers/` 58/58, `flows.md`) e nas `STRUCT_*` do legado
 (`STRUCT_MOB`=816, `STRUCT_ITEM`=8, `STRUCT_SELCHAR`=840, `STRUCT_ACCOUNTFILE`=7952).
 Esqueleto atual: `crates/wyd-protocol/src/lib.rs` (PROTOCOL_VERSION=12000,
@@ -41,7 +41,7 @@ bootstrap; falta hash/patch (`pre-release-rust.md` FASE 8).
   testes golden, doc do contrato em `docs/arquitetura/`.
 - Alterados: `crates/wyd-protocol/src/lib.rs`, `crates/wyd-net/src/lib.rs`,
   `Cargo.toml` das crates (deps `zerocopy`/`nom` via ADR).
-- Proibido tocar: `.deprecated-go/` (leitura apenas), `client/` (binários),
+- Proibido tocar: `client/` (binários),
    mudar protocolo sem avaliar impacto no cliente existente.
 
 ## Testes / verificação
@@ -63,10 +63,10 @@ opcode desconhecido é rejeitado (teste dedicado).
 
 ## Documentação de referencia
 
-- .deprecated-go/docs/migration/protocol-spec.md - HEADER, Types, framing.
-- .deprecated-go/docs/migration/data-formats.md - alinhamentos e tamanhos.
-- .deprecated-go/docs/migration/handlers/ - contrato de cada `_MSG_*`.
-- .deprecated-go/docs/migration/flows.md - fluxos ponta a ponta.
+- docs/arquitetura/protocolo.md - HEADER, Types, framing.
+- docs/arquitetura/protocolo.md §5 - alinhamentos e tamanhos.
+- crates/wyd-protocol/src/wire/generated/opcode_table.rs + docs/arquitetura/protocolo.md §4 - contrato de cada `_MSG_*`.
+- docs/cliente/pacotes.md + crates/wyd-net/tests/ - fluxos ponta a ponta.
 - pre-release-rust.md (FASE 8) - launcher e zero-copy.
 
 ## Subtasks

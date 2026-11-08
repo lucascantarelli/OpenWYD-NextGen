@@ -30,7 +30,7 @@
 | `wyd-core` | engine Hot Path (tick, ECS, spatial grid) |
 | `wyd-net` | transporte async (tokio/io_uring, zero-copy) |
 | `wyd-db` | persistência async (Postgres) |
-| `wyd-admin` | control plane Cold Path (gRPC/REST p/ o portal) |
+| `wyd-admin` | control plane Cold Path (HTTP/JSON p/ o portal, ADR-0008) |
 | `wyd-sim` | laboratório matemático (balanceamento) |
 | `wyd-launcher` | launcher/patcher — **consome o `client/`** (ver §4) |
 
@@ -46,7 +46,7 @@
 
 | Pasta | Conteúdo real |
 |---|---|
-| `docs/arquitetura/` | `estrutura-e-padroes.md`, `visao-pastas.md` (este), `adr/` |
+| `docs/arquitetura/` | `protocolo.md`, `modelo-banco.md`, `c4-pacotes.md`, `estrutura-e-padroes.md`, `visao-pastas.md` (este), `adr/` |
 | `docs/cliente/` | 10 docs (`README`, `mapa`, `customizacao`, `inventario`, `superficie-conhecida`, `analise-estatica`, `formatos`, `engenharia-reversa`, `depuracao`, `pacotes`) + `gerado/` (artefatos determinísticos) |
 | `docs/rust/` | `00-visao-estrutura`, `01-dependencias`, `02-execucao`, `03-progresso` |
 | `docs/manual-técnico/` | `auditoria-roadmap.md`, `skills.md` |
@@ -62,7 +62,7 @@
 | `roadmap-rust/` | `index.md` + `issues/` (fases 00–15, incl. 02-4/02-5 e 08-4…08-7) |
 | `docker/`, `.github/`, `.vscode/` | container, CI, editor |
 | `.agents/skills/` | skills vigentes (`wyd-rust-*`, `wyd-client-reverso`, boas práticas) |
-| `.deprecated-go/` | arquivo Go — **leitura apenas**, nada volta ao build sem ADR |
+| ~~arquivo Go/C++~~ | **removido em 2026-11** — sem leitura, sem cópia; fonte canônica é `docs/` + `crates/` (mudança exige ADR) |
 | `target/` | build — fora do git |
 
 ## 2. Tabela-alvo — pasta → responsabilidade → padrão → SOLID → nomenclatura
@@ -73,14 +73,14 @@
 | `crates/wyd-core/` | simulação Hot Path | ECS/DOD, State machine de tick | SRP (tick puro), DIP (dados via componentes) | sistemas por domínio, sem `utils.rs` | tick, componentes, spatial grid | rede, banco, HTTP |
 | `crates/wyd-net/` | transporte | Adapter (socket→frame), validação em camadas | SRP (bytes→frames), LSP (erros tipados) | `session/`, `transport/`, `dispatch/`, `limits/`, `telemetry/`, `error.rs` (estrutura §11) | framing, limites, rate limit | regra de jogo |
 | `crates/wyd-db/` | persistência | Repository + porta | DIP (core depende de trait, não de SQL) | `model/`, `repo/`, `pool/`, `transfer/`, `migrations/` (estrutura §12) | SQL, pool, seeds | estado vivo |
-| `crates/wyd-admin/` | control plane | Facade REST/gRPC p/ o portal | ISP (contratos mínimos por tela) | `api/`, `auth/`, `audit/`, `service/` (estrutura §13) | leitura e intenções auditadas | mutação de estado vivo |
+| `crates/wyd-admin/` | control plane | Facade HTTP/JSON p/ o portal (ADR-0008) | ISP (contratos mínimos por tela) | `api/`, `auth/`, `audit/`, `service/` (estrutura §13) | leitura e intenções auditadas | mutação de estado vivo |
 | `crates/wyd-sim/` | matemática offline | Strategy de fórmulas, laboratório em lote | OCP (nova fórmula = módulo) | `formula/`, `scenario/`, `report/` (estrutura §14) | equações, benches | rede, cliente |
 | `crates/wyd-launcher/` | verificar/patch/iniciar o jogo | Facade (`lib.rs`) + erros tipados + CLI fina (check/launch/update) | SRP (só distribuição) | `manifest.rs`, `patch.rs`, `bootstrap.rs`, `sha256.rs`, `distribuicao.rs` (estrutura §9) | hash, patch atômico, bootstrap | lógica de jogo, segredo |
 | `tools/client/` | análise do cliente | pipeline de funções puras + CLI fina | SRP (um módulo = uma etapa) | verbo + domínio: `pe.mjs`, `evidence.mjs`, `captura.mjs` | leitura de binário, relatório | código de jogo/servidor |
 | `tools/protocol/` | geração de tabelas | gerador versionado com fonte canônica | — (determinístico, `cargo fmt` após gerar) | `gen-*.mjs` + `README` de reprodução | geradores | estado, credencial |
 | `docs/*` | conhecimento | um assunto por arquivo, nome do domínio | — | `substantivo-do-dominio.md`, minúsculas | narrativa, tabelas, evidência | binário, segredo, código |
 | `fixtures/cliente/` | goldens de pacote | JSON com esquema fixo + validador | — | `<fase>-<opcode>-<n>.json` | bytes sintéticos/higienizados | dado real de conta, `.pcap` |
-| `wyd-portal/` | BFF e telas | BFF puro sobre `wyd-admin` | DIP (fala com contrato, não com banco) | rotas por tela | UI, chamadas admin auditadas | gRPC direto, segredo no browser |
+| `wyd-portal/` | BFF e telas | BFF puro sobre `wyd-admin` | DIP (fala com contrato, não com banco) | rotas por tela | UI, chamadas admin auditadas | chamada direta ao backend fora do `adminCall`, segredo no browser |
 | `client/` | artefato fechado | **nenhum padrão de código**: é dado | — | (não versionado) | binários/assets locais | qualquer arquivo versionado novo |
 | `roadmap-rust/issues/` | uma entrega = uma issue | template Fase/Depende/Bloqueia/Esforço + DoD | — | `FASE-NN-slug.md` | plano e aceite | implementação |
 

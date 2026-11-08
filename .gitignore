@@ -26,13 +26,6 @@
 /site/
 /tmp/
 
-# Rust (esqueleto workspace; sem tocar nas regras Go acima)
+# Rust (workspace; sem Go no repo desde 2026-11)
 /target/
 **/*.rs.bk
-
-# Arquivo do legado Go (start-rust.md): conteúdo preservado via git,
-# novos arquivos soltos aqui não entram no versionamento
-.deprecated-go/
-
-# Arquivos obsoletos
-/.deprecated-go/

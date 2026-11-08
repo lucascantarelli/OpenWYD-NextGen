@@ -27,7 +27,7 @@ viveram juntas — ver `AGENTS.md` §8). Ordem de dependências: `roadmap-rust/i
 - Criados: `docs/rust/02-execucao.md`.
 - Alterados: `roadmap-rust/issues/FASE-02.md` (este).
 - Proibido tocar: `crates/*/src/` (fase de processo, sem código de engine),
-  `.deprecated-go/`, `client/`.
+  `client/`.
 
 ## Testes / verificação
 

@@ -31,7 +31,7 @@ manifesto: `docs/cliente/inventario.md` §1–§4. Contrato de patch: `docs/clie
 
 - Criar: `crates/wyd-launcher/src/distribuicao.rs` + `mod tests` no mesmo arquivo (padrão do crate).
 - Alterar: `crates/wyd-launcher/src/lib.rs` (1 linha: `pub mod distribuicao;`), `crates/wyd-launcher/src/main.rs` (subcomando `update` + uso), `docs/cliente/customizacao.md` (§4, só se o contrato de entrega mudar).
-- Proibido: qualquer outro `.rs` novo ou alterado; `client/` sem backup; `.deprecated-go/` (leitura apenas); arquivo novo na raiz do repo.
+- Proibido: qualquer outro `.rs` novo ou alterado; `client/` sem backup; arquivo novo na raiz do repo.
 - Nota: uma primeira versão de `distribuicao.rs` + `update` já existe no working tree (passada interrompida, sem gate). Ela só vale se passar na revisão contra esta lista e no gate cheio; se divergir, reescrever, não remendar.
 
 ## Testes / verificação
@@ -55,7 +55,7 @@ nenhuma escrita em `client/` fora de tmp com backup.
 - docs/cliente/customizacao.md - contrato de patch que a entrega deve respeitar.
 - docs/arquitetura/adr/0003-estrategia-patch-cliente.md - aplicação atômica, fail-closed.
 - pre-release-rust.md (FASE 8 §8.2).
-- .deprecated-go/docs/migration/config-ops.md - distribuição legada.
+- docs/rust/05-stack-docker.md - distribuição legada.
 
 ## Subtasks
 

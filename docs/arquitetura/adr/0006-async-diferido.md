@@ -24,7 +24,7 @@ portas, não como reescrita.
 
 - **Positivas:** `cargo test --workspace` verde offline; fronteiras async já definidas
   (`async fn` em traits, `sync_channel` com backpressure).
-- **Negativas:** sem pool real, sem servidor HTTP/gRPC, sem telemetria exportada — FASE-04-3,
+- **Negativas:** sem pool real, sem servidor HTTP, sem telemetria exportada — FASE-04-3,
   06-1, 07-transporte e 05-1 ficam explicitamente pendentes.
 - **Invariantes afetados:** nenhum `await` no tick (regra permanente); DSN nunca versionado;
   `sqlx`/`tokio` entram juntos, via ADR filha, com vendor auditado.
@@ -51,4 +51,5 @@ portas, não como reescrita.
 
 - Revisar quando: rede/vendor liberarem `tokio`+`sqlx` (ou decisão de vendor próprio).
 - Sinais de que a decisão envelheceu: fila `mpsc` virando gargalo medido; necessidade de
-  HTTP/gRPC real para o portal operar sem Go.
+  servidor HTTP real para o portal operar sem Go (transporte já decidido na ADR-0008:
+  HTTP/1.1 + JSON em std na v1; `tokio`/`axum` viram otimização, não requisito).

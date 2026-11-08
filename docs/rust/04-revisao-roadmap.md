@@ -30,7 +30,7 @@ Revisão completa do planejado com as skills vigentes como base
 
 Caminhos citados nas issues existem no arquivo: `combat/`, `monitoring/`,
 `game-rules.md`, `config-ops.md`, `webserver/` (todos OK em
-`.deprecated-go/`). Exceções encontradas e **reparadas** (§3).
+`arquivo Go removido (2026-11)`). Exceções encontradas e **reparadas** (§3).
 
 ## 3. Reparos aplicados nesta revisão (implementação iniciada, com prova)
 
@@ -43,7 +43,7 @@ histórico git do próprio repo:
    `route.test.ts`, `COPY` do `wyd-portal/Dockerfile` e o runtime gRPC.
    `api/web/v1/README.md` documenta o contrato e como validar.
 2. **63 handlers Go citados pelos guias restaurados** no arquivo
-   (`.deprecated-go/tmserver/internal/handler/`, todos existiam em
+   (`crates/wyd-protocol/src/payload/ + crates/wyd-net/src/dispatch/`, todos existiam em
    `b0a0394^:tmserver/internal/handler/`). Preservação de conhecimento
    (`pre-release.md` §1.2): os guias do portal citam esses arquivos.
 3. **`wyd-portal/src/server/guias.test.ts` adaptado**: `handlerDir` agora aponta

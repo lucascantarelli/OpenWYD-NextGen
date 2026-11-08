@@ -28,7 +28,7 @@ skills novas; falta o inventário formal das restantes.
 - Criados: tabela de sucessão (nesta issue).
 - Alterados: nenhum (inventário não edita skills).
 - Proibido tocar: `.agents/skills/*/SKILL.md` (edição é da FASE-09),
-  `.deprecated-go/`.
+  .
 
 ## Testes / verificação
 

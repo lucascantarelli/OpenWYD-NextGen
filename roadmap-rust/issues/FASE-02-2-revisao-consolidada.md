@@ -26,7 +26,7 @@ integração de módulos) a cada 10 issues. Sem checklist fixo, a revisão vira
 
 - Criados: checklist (em `docs/rust/02-execucao.md` ou doc próprio).
 - Alterados: `roadmap-rust/index.md` (contador de revisões).
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/*/src/`.
 
 ## Testes / verificação
 

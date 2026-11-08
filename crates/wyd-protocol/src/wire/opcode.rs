@@ -1,7 +1,7 @@
 //! Catálogo de `Type`: `Opcode`, direção (`Flow`) e lookup.
 //!
-//! Todo o conteúdo é GERADO de `.deprecated-go/Source/Code/Basedef.h` por
-//! `tools/protocol/gen-protocol.mjs` — a fonte canônica vive em
+//! Todo o conteúdo é CONGELADO (tabelas versionadas; fonte histórica Basedef.h v7662).
+//! Gerador arquivado em `tools/protocol/gen-protocol.mjs` — a fonte canônica vive em
 //! [`super::generated::opcode_table`]; aqui só há re-export com documentação.
 
 pub use super::generated::opcode_table::{

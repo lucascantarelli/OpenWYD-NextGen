@@ -22,5 +22,5 @@ FASE 3, `roadmap-rust/issues/FASE-03.md`, `docs/rust/00-visao-estrutura.md`.
 ## Antes de mudar
 
 Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §10.
-Leia o contrato em `crates/wyd-protocol/src/lib.rs` e `docs/migration/` correspondente.
+Leia o contrato em `crates/wyd-protocol/src/lib.rs` e `docs/arquitetura/protocolo.md` (§§1–5).
 Todo comportamento novo nasce com teste (`cargo test -p wyd-core`).

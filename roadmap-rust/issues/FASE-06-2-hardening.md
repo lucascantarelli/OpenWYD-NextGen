@@ -25,7 +25,7 @@ e sanitização estrita, tudo testado contra flood básico.
 
 - Criados: rate-limiter, testes de flood/rejeição em `wyd-net`.
 - Alterados: `crates/wyd-net/src/lib.rs`.
-- Proibido tocar: `.deprecated-go/`, `client/`.
+- Proibido tocar: `client/`.
 
 ## Testes / verificação
 

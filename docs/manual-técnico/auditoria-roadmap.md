@@ -1,7 +1,7 @@
 # Auditoria do planejamento legado (Go) — inventário
 
 > Resultado da FASE-01-1 (`roadmap-rust/issues/FASE-01-1-auditoria-estado.md`).
-> Fonte auditada: `.deprecated-go/roadmap/` (arquivo do projeto Go). Status
+> Fonte auditada: `roadmap-rust/` (arquivo do projeto Go). Status
 > declarado **não** é tratado como prova: onde não há evidência, o item é
 > marcado **hipótese**.
 
@@ -9,17 +9,17 @@
 
 | Item | Antes | Agora |
 |---|---|---|
-| `roadmap/` na árvore de trabalho | ausente (movido para `.deprecated-go/` e o diretório ficou vazio) | restaurado de `HEAD` (`b58a607`) em `.deprecated-go/roadmap/` |
+| `roadmap/` na árvore de trabalho | ausente (movido para `arquivo Go removido (2026-11)` e o diretório ficou vazio) | restaurado de `HEAD` (`b58a607`) em `roadmap-rust/` |
 | Arquivos de planejamento | 0 em disco | 138 |
 | `roadmap/issues/` | — | 62 |
 | `roadmap/done/` | — | 54 |
 | `roadmap/test/` | — | 13 |
 
-Restauração executada (sem tocar no índice do git, pois `.deprecated-go/` está
+Restauração executada (sem tocar no índice do git, pois `arquivo Go removido (2026-11)` está
 fora do versionamento):
 
 ```bash
-git archive HEAD roadmap | tar -x -C .deprecated-go
+git archive HEAD roadmap | tar -x -C arquivo-Go-removido
 ```
 
 **Achado:** o planejamento Go existia apenas no histórico do git. O conteúdo
@@ -58,7 +58,7 @@ Verificar amostralmente antes de concluir que não há dívida.
 | `DBSrv/CRanking.cpp` (3×) | leitura de arquivo inicial/ranking | **descartar** | substituído por `wyd-db` + ranking no portal (FASE-07-2) |
 | `DBSrv/Server.cpp` (2×) | leitura de arquivo inicial | **descartar** | idem |
 | `TMSrv/MobKilled.cpp` | renomear `UNK_s` | **investigar** | FASE-10-1 (equações/drop) |
-| `TMSrv/ProcessDBMessage.cpp` (4×) | `break` vs `return` no fluxo DB | **investigar** | FASE-08-1 (`.deprecated-go/docs/migration/flows.md`) |
+| `TMSrv/ProcessDBMessage.cpp` (4×) | `break` vs `return` no fluxo DB | **investigar** | FASE-08-1 (`docs/cliente/pacotes.md + crates/wyd-net/tests/`) |
 | `TMSrv/ProcessSecMinTimer.cpp` | timer periódico: manter? | **investigar** | FASE-03-1 (tick substitui timers) |
 | `TMSrv/Server.cpp` | "TODO: EVERYTHING" | **investigar** | FASE-03-1 (boot/validação de conteúdo) |
 | `TMSrv/_MSG_AcceptParty.cpp` | trecho marcado `HACK` | **portar com cautela** | FASE-08-1 + FASE-03-5 (autoridade) |

@@ -29,7 +29,7 @@ diagramas, fluxos, protocolos e ADRs (ver `README.md` e `docs/arquitetura/adr/`)
 - Criados: `docs/manual-usuario/*.md`, `docs/manual-técnico/*.md`,
   `docs/arquitetura/*.md` (diagramas como código-fonte + render).
 - Alterados: `README.md` (tabela de docs, se necessário), `roadmap-rust/issues/FASE-11.md`.
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/` (referência, não cópia),
+- Proibido tocar: `crates/*/src/` (referência, não cópia),
   `client/` e seus binários.
 
 ## Testes / verificação
@@ -52,7 +52,7 @@ Saída esperada: gates verdes e `LINKS-OK` (nenhum link `docs/*` quebrado no REA
 - docs/rust/00-visao-estrutura.md - visão da transição.
 - docs/arquitetura/adr/ - ADRs como fonte de decisões.
 - pre-release-rust.md (FASE 11) - escopo de docs.
-- .deprecated-go/docs/migration/ - fonte histórica (citar, não duplicar).
+- docs/ - fonte histórica (citar, não duplicar).
 
 ## Subtasks
 

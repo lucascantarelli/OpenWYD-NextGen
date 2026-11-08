@@ -21,5 +21,5 @@ Sucessora da `wyd-database` para Rust. Referências: `pre-release-rust.md` FASE 
 ## Antes de mudar
 
 Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §12.
-Confira `docs/analysis/banco-de-dados.md` e rode o fluxo de validação de
+Confira `docs/arquitetura/modelo-banco.md` e rode o fluxo de validação de
 migrations da FASE-05 antes de marcar a issue como pronta.

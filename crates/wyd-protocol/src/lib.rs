@@ -2,9 +2,9 @@
 //! a ofuscação do legado.
 //!
 //! Tudo aqui é derivado de fonte canônica verificável:
-//! - `.deprecated-go/docs/migration/protocol-spec.md` (especificação de fio);
-//! - `.deprecated-go/Source/Code/Basedef.h` (198 constantes `_MSG_*`);
-//! - `.deprecated-go/Source/Code/CPSock.cpp` (tabela `pKeyWord[512]`).
+//! - `docs/arquitetura/protocolo.md` (especificação de fio, §§1–5);
+//! - `crates/wyd-protocol/src/wire/generated/opcode_table.rs` (198 constantes `_MSG_*`, tabelas congeladas; fonte histórica Basedef.h v7662);
+//! - `crates/wyd-protocol/src/codec/generated/keyword_table.rs` (tabela `pKeyWord[512]`; ver protocolo.md §3).
 //!
 //! Árvore normativa em `docs/arquitetura/estrutura-e-padroes.md` §3.
 //!

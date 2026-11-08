@@ -17,7 +17,7 @@ const OUT = 'docs/cliente/gerado/goldens.json';
 
 const SYNTHETIC = 'GOLDEN';
 
-function loadOpcodeMap(file = 'crates/wyd-protocol/src/opcodes.rs') {
+function loadOpcodeMap(file = 'crates/wyd-protocol/src/wire/generated/opcode_table.rs') {
   const source = fs.readFileSync(file, 'utf8');
   const map = new Map();
   for (const match of source.matchAll(/Opcode::(\w+)\s*=>\s*(0x[0-9a-fA-F]+)/g)) {

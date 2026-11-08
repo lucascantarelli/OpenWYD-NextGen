@@ -4,8 +4,8 @@
 > `04c9d2a1235cba57f7b588347fae935a2466824ddf9d7d92e541e0cc8a27ddf8` (`inventario.md` §1).
 > A coluna **Status** vem de `docs/cliente/analise-estatica.md` (2026-11-07): cada linha foi
 > conferida por bytes + fronteira de instrução, não por herança de documentação.
-> Fonte primária: `Source/Code/ClientPatch_v7662/` e `Source/Code/CPSock.cpp`; consolidação
-> histórica em `.deprecated-go/docs/migration/client-patch-hooks.md` e `protocol-spec.md`.
+> Fonte primária: `client/WYD.exe` 7662 (hash em `inventario.md` §1) + `tools/client/`;
+> consolidação em `docs/cliente/customizacao.md` e `docs/arquitetura/protocolo.md`.
 
 ## 1. Transporte (CPSock)
 

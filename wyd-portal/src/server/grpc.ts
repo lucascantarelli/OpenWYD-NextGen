@@ -19,11 +19,16 @@ import { promisify, type Unary } from "./promisify";
 
 const PROTO_PATH =
   process.env.WEB_API_PROTO ??
-  path.join(process.cwd(), "..", "api", "web", "v1", "web.proto");
+  path.join(process.cwd(), "..", "crates", "wyd-admin", "proto", "admin.proto");
 
 const ADDR = process.env.WEB_API_ADDR ?? "127.0.0.1:7600";
 
 function loadProto() {
+  if (!fs.existsSync(PROTO_PATH)) {
+    throw new Error(
+      `contrato gRPC ausente em ${PROTO_PATH} (backend Rust FASE-07-1 ainda não entrega proto; defina WEB_API_PROTO ou implemente crates/wyd-admin/proto/admin.proto)`
+    );
+  }
   const definition = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
     longs: Number,
@@ -49,14 +54,29 @@ function buildCredentials(): grpc.ChannelCredentials {
   );
 }
 
-const proto = loadProto();
-const credentials = buildCredentials();
+let cachedProto: ReturnType<typeof loadProto> | null = null;
+let cachedCredentials: grpc.ChannelCredentials | null = null;
 
-/** Cria um cliente gRPC tipado de forma frouxa (tipos de domínio em src/lib). */
-function client<T>(service: string): T {
-  const Ctor = proto.web.v1[service];
-  if (!Ctor) throw new Error(`serviço gRPC desconhecido: ${service}`);
-  return new Ctor(ADDR, credentials) as T;
+/** Cria um cliente gRPC tipado de forma frouxa (tipos de domínio em src/lib). Lazy: só conecta no primeiro uso. */
+function client<T extends object>(service: string): T {
+  let real: T | null = null;
+  const ensure = (): T => {
+    if (!real) {
+      cachedProto ??= loadProto();
+      cachedCredentials ??= buildCredentials();
+      const Ctor = (cachedProto as unknown as { web: { v1: Record<string, new (a: string, c: unknown) => unknown> } }).web.v1[service];
+      if (!Ctor) throw new Error('servico gRPC desconhecido: ' + service);
+      real = new Ctor(ADDR, cachedCredentials) as T;
+    }
+    return real;
+  };
+  return new Proxy({} as T, {
+    get(_t, prop, recv) {
+      const target = ensure() as unknown as Record<string | symbol, unknown>;
+      const v = target[prop as string];
+      return typeof v === 'function' ? (v as Function).bind(target) : v;
+    },
+  });
 }
 
 export const itemCatalog = client<{

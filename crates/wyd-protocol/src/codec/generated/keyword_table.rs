@@ -1,6 +1,6 @@
 //! Tabela de ofuscação `pKeyWord[512]` — GERADO, não editar à mão.
 //!
-//! Fonte canônica: `CPSock.cpp` (`pKeyWord[512] = { // 7.xx keys }`).
+//! Fonte canônica: `docs/arquitetura/protocolo.md` §3 (tabela `pKeyWord[512]` congelada; fonte histórica CPSock.cpp v7662).
 //! Gerador: `tools/protocol/gen-protocol.mjs`. Bytes pares = semente (`KeyWord`),
 //! ímpares = byte de transformação (`Trans`), como em `docs/arquitetura/protocolo.md`.
 

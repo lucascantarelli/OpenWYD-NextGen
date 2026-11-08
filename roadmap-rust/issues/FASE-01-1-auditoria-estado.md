@@ -11,11 +11,11 @@ sem mover nada para `done/` sem prova.
 
 `pre-release-rust.md` §§1.1–1.6: auditar abertas/fechadas/em andamento,
 `done/` e `test/`, verificando evidência real em vez de status manual.
-Arquivo Go vive em `.deprecated-go/roadmap/`; Rust em `roadmap-rust/`.
+Arquivo Go vive em `roadmap-rust/`; Rust em `roadmap-rust/`.
 
 ## Passos
 
-1. Listar e contar: `ls .deprecated-go/roadmap/issues .deprecated-go/roadmap/done .deprecated-go/roadmap/test roadmap-rust/issues`.
+1. Listar e contar: `ls roadmap-rust/issues roadmap-rust/done roadmap-rust/test roadmap-rust/issues`.
 2. Para cada issue Go marcada concluída, buscar evidência (commit/teste/código);
    sem evidência, marcar como **hipótese** de incompleta.
 3. Publicar tabela (issue → estado declarado → evidência → estado auditado).
@@ -25,7 +25,7 @@ Arquivo Go vive em `.deprecated-go/roadmap/`; Rust em `roadmap-rust/`.
 
 - Criados: tabela de auditoria (nesta issue ou `roadmap-rust/`).
 - Alterados: `roadmap-rust/index.md` (contadores auditados).
-- Proibido tocar: `.deprecated-go/` (leitura apenas), `done/` do Go (sem mover
+- Proibido tocar: `done/` histórico (sem mover
   nada), código.
 
 ## Testes / verificação

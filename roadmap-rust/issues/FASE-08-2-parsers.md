@@ -27,7 +27,7 @@ qualquer parse, com testes golden byte-exatos.
 
 - Criados: `crates/wyd-protocol/src/header.rs`, `opcodes.rs`, goldens, testes.
 - Alterados: `lib.rs` das crates, `Cargo.toml` (deps via ADR).
-- Proibido tocar: `.deprecated-go/`, `client/`, mudar protocolo sem avaliar
+- Proibido tocar: `client/`, mudar protocolo sem avaliar
   impacto no cliente.
 
 ## Testes / verificação
@@ -84,7 +84,7 @@ Saída esperada: `test result: ok` incluindo golden e rejeições.
   opcode não-portado rejeitados com erro tipado.
 - Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes (protocolo
   35 lib + 9 golden + 4 roundtrip; zero `unsafe` na crate).
-- `Cargo.toml` intocado (sem deps novas); `.deprecated-go/` e `client/` intocados.
+- `Cargo.toml` intocado (sem deps novas) e `client/` intocados.
 - Limitação herdada: fixtures são sintéticos (`--gen`); golden contra captura
   real aguarda FASE-08-6.
 

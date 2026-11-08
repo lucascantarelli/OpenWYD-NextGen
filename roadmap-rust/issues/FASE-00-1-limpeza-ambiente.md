@@ -11,7 +11,7 @@ usuário) antes de qualquer execução Rust.
 
 Ordem do `start-rust.md`: limpeza completa do ambiente é a primeira issue após o
 mapeamento. Estado atual: Go 1.27.3 ainda instalado (`go version` responde);
-`go.mod` arquivado em `.deprecated-go/go.mod`; `GOPATH`/caches intactos.
+`go.mod`/toolchain Go removidos do repo em 2026-11; verificar `GOPATH`/caches residuais no host e remover com aprovação do dono.
 
 ## Passos
 
@@ -24,7 +24,7 @@ mapeamento. Estado atual: Go 1.27.3 ainda instalado (`go version` responde);
 
 - Criados: nenhum (ação de ambiente).
 - Alterados: configuração do VS Code (ver 00-2), variáveis de ambiente do usuário.
-- Proibido tocar: `.deprecated-go/` (arquivo preservado), `client/`, qualquer código.
+- Proibido tocar: `client/`, `client/`, qualquer código.
 
 ## Testes / verificação
 

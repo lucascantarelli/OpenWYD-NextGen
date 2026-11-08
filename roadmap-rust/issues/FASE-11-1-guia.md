@@ -1,65 +1,46 @@
-# Issue 11-1 — Guia de contribuição + manuais (usuário e técnico)
+# Issue 11-1 — Guia de contribuição + manuais (usuário e técnico) ✅ CONCLUÍDA
 
-**Fase:** 11 · **Depende de:** 02-1 · **Bloqueia:** — · **Esforço:** M
+**Fase:** 11 · **Depende de:** 02-1 ✅ · **Bloqueia:** — · **Esforço:** M · **Status:** ✅ concluída (2026-11-07)
 
 ## Objetivo
 
 Publicar o guia que permite a um novato compilar, testar e contribuir, mais o
 esqueleto dos manuais de usuário e técnico.
 
-## Contexto / evidência
+## O que foi executado
 
-`pre-release-rust.md` FASE 11: MkDocs + guias de contribuição. Pastas criadas:
-`docs/manual-usuario/`, `docs/manual-técnico/` (com `.gitkeep`).
+1. **`docs/manual-técnico/guia-contribuicao.md`** (Diátaxis how-to): pré-requisitos,
+   primeiro build/teste em 5 comandos, gate `make check`, comandos do portal e das
+   ferramentas, fluxo issue→branch→PR de `docs/rust/02-execucao.md`, regras que reprovam
+   a contribuição (invariantes de `AGENTS.md` §3) e tabela "onde pedir contexto".
+2. **`docs/manual-usuario/README.md`** (a pasta estava vazia): jogar no servidor local,
+   CLI real do launcher (`check`/`launch`/`update` com `--dry-run`, conferido em
+   `crates/wyd-launcher/src/main.rs`), tabela com as telas reais do portal
+   (`wyd-portal/src/app/(admin)/`), o que o portal **não** faz (delivery_queue) e FAQ.
+3. **`README.md` normalizado**: bloco de estrutura tinha `docs/` duplicado e
+   `.agents/skills/` descrito como "Go (legado) + wyd-rust-*"; virou árvore única com
+   subpastas reais e skills vigentes. Skills do §"Começando" ganharam `wyd-rust-testing`;
+   tabela de documentação ganhou C4, guia de contribuição e manual do usuário.
+4. **`docs/arquitetura/visao-pastas.md`** (feito em 11-2) lista `docs/arquitetura/` completa.
 
-## Passos
+## Evidência (passe 2026-11-07)
 
-1. Escrever o guia (pré-requisitos, `make check`, fluxo issue→branch→PR).
-2. Esboçar `manual-usuario/` (portal, launcher, manuais do jogo) e
-   `manual-técnico/` (arquitetura, implementação, padrões, testes, CI/CD).
-3. Validar por leitura fria: seguir o guia do zero compila e testa?
-4. `make check`.
-
-## Arquivos
-
-- Criados: `docs/manual-usuario/*.md`, `docs/manual-técnico/*.md`.
-- Alterados: `README.md` (tabela de docs, se necessário).
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/` (citar, não duplicar).
-
-## Testes / verificação
-
-```bash
-make check
-for p in $(grep -o 'docs/[^)]*\.md' README.md | sort -u); do test -e "$p" || echo "QUEBRADO $p"; done; echo LINKS-OK
+```text
+cargo fmt --all -- --check                                  → FMT-OK
+cargo clippy --workspace --all-targets -- -D warnings       → 0 warnings
+cargo test --workspace                                     → 20 suites ok, 0 failed
+npm --prefix wyd-portal run test -- --run                  → 118/118 passed
+for p in $(grep -o 'docs/[^)]*\.md' README.md | sort -u); do test -e "$p" || echo "QUEBRADO $p"; done → LINKS-OK
+grep -rln 'tmserver|.deprecated-go|docs/migration' docs/manual-usuario docs/manual-técnico/guia-contribuicao.md README.md → limpo
 ```
-
-Saída esperada: gates verdes + `LINKS-OK`.
-
-## Skills Relacionadas do freebuff
-
-- .agents/skills/documentation-writer - Diátaxis e redação.
-- .agents/skills/wyd-rust-toolchain - `make check`.
-
-## Documentação de referencia
-
-- pre-release-rust.md (FASE 11).
-- docs/rust/00-visao-estrutura.md - estrutura a documentar.
-
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Novato compila/testa só com o guia; links do README todos resolvendo.
+- [x] Novato compila/testa só com o guia; links do README todos resolvendo.
 
-## Riscos / rollback
+## Notas
 
-- Risco: documentar intenção em vez do código real → mitigação: gerar a partir
-  de `Cargo.toml`/imports + revisão da FASE-01.
-- Rollback: `git checkout -- docs/ README.md`.
+- Pastas e arquivos conferidos contra o código (`main.rs` do launcher, rotas reais do
+  portal) — nenhum comando ou tela inventada.
+- Sem `crates/*/src/` tocado. Próxima de menor esforço sugerida: **FASE-12-1**
+  (dashboards + alertas + runbooks — docs/config, sem tocar o tick).

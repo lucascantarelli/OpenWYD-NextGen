@@ -27,7 +27,7 @@ falha comprovada ante vulnerabilidade.
 
 - Criados: `deny.toml`, `crates/*/benches/*.rs`.
 - Alterados: `.github/workflows/rust.yml`, `Makefile` (se necessário).
-- Proibido tocar: segredos, `.deprecated-go/.github/` (referência).
+- Proibido tocar: segredos, `.github/workflows/rust.yml` (referência).
 
 ## Testes / verificação
 

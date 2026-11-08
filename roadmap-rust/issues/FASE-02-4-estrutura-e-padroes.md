@@ -35,7 +35,7 @@ declarar testes de integração. Resultado: **protótipo congelado** (ver
 - Alterados: `.agents/skills/{software-architecture,wyd-rust-net,rust-code-quality}/SKILL.md`,
   `AGENTS.md`, `roadmap-rust/index.md`, `docs/rust/03-progresso.md`, `README.md`.
 - Proibido tocar: `crates/*/src/` (esta issue planeja, não implementa),
-  `.deprecated-go/`, `client/`.
+  `client/`.
 
 ## Testes / verificação
 

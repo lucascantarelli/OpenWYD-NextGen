@@ -3,7 +3,7 @@
 //! Cada struct representa o pacote **inteiro** (o `HEADER` de 12 bytes continua no
 //! início), mas apenas o corpo é lido/escrito — o cabeçalho é responsabilidade de
 //! [`Header`](crate::wire::header::Header). Offsets e tamanhos vêm de
-//! `.deprecated-go/docs/migration/protocol-spec.md` §3.5.
+//! `docs/arquitetura/protocolo.md` §5.
 //!
 //! Regras de segurança do parser:
 //! - nada de `unwrap`/`panic` em bytes de rede: toda entrada é validada por

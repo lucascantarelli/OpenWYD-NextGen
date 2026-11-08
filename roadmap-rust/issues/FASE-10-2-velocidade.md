@@ -44,7 +44,7 @@ Saída esperada: cenário reproduz a anomalia (números anexados: antes × desej
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 10 §10.2).
-- .deprecated-go/docs/migration/ingame-bugs.md.
+- roadmap-rust/issues/FASE-10-2-velocidade.md.
 - roadmap-rust/issues/FASE-10-1-equacoes.md - equações base.
 
 ## Subtasks

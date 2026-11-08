@@ -10,7 +10,7 @@ entidades ativas e memória, sem `println!` como telemetria.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 6 §6.1. Legado: `printf`s e `monitoring/` Go
-(referência em `.deprecated-go/monitoring/`).
+(referência em `docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1)`).
 
 ## Passos
 
@@ -25,7 +25,7 @@ entidades ativas e memória, sem `println!` como telemetria.
 
 - Criados: módulos `metrics`/`telemetry` + testes em `wyd-core` e `wyd-net`.
 - Alterados: `Cargo.toml` das crates (deps via ADR), `docs/rust/01-dependencias.md`.
-- Proibido tocar: segredos em log/métrica, `.deprecated-go/`.
+- Proibido tocar: segredos em log/métrica.
 
 ## Testes / verificação
 
@@ -46,7 +46,7 @@ Saída esperada: `test result: ok`; métricas exibem tick e pacotes/s sob carga.
 
 - pre-release-rust.md (FASE 6 §6.1).
 - docs/rust/01-dependencias.md - tracing/prometheus.
-- .deprecated-go/monitoring/ - referência legada.
+- docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1) - referência legada.
 
 ## Subtasks
 

@@ -26,7 +26,7 @@ management O(1); §0.2: thread-per-core com zonas isoladas e canais lock-free
 
 - Criados: `crates/wyd-core/src/spatial/grid.rs`, testes de vizinhança/travessia.
 - Alterados: `crates/wyd-core/src/lib.rs`.
-- Proibido tocar: `crates/wyd-protocol/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/wyd-protocol/src/`.
 
 ## Testes / verificação
 
@@ -46,7 +46,7 @@ densidade).
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 3 §3.1, §0.2 thread-per-core).
-- .deprecated-go/docs/migration/game-rules.md - regras de visibilidade legada.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md - regras de visibilidade legada.
 
 ## Subtasks
 

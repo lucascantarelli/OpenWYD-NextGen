@@ -25,7 +25,7 @@ Base: `crates/wyd-db/src/lib.rs` (`validate_scheme()`, `DEFAULT_SCHEME`).
 
 - Criados: `crates/wyd-db/migrations/*.sql`, seeds, testes de integração.
 - Alterados: `crates/wyd-db/Cargo.toml` (ferramenta via ADR).
-- Proibido tocar: `crates/wyd-core/src/`, `.deprecated-go/`, DSN real.
+- Proibido tocar: `crates/wyd-core/src/`, DSN real.
 
 ## Testes / verificação
 

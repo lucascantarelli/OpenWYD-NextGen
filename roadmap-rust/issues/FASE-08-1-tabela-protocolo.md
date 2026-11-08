@@ -11,7 +11,7 @@ payloads documentados e round-trip testado.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 8 §8.1. Fontes canônicas: `protocol-spec.md`,
-`handlers/`, `data-formats.md` (em `.deprecated-go/docs/migration/`),
+`handlers/`, `data-formats.md` (em `docs/`),
 `Basedef.h` (198 constantes `_MSG_*`) e `CPSock.cpp` (`pKeyWord[512]`).
 
 **Estado real (2026-11-07):** existe um protótipo em `crates/wyd-protocol/src/`
@@ -52,7 +52,6 @@ tests/{common/mod.rs, roundtrip.rs}
 - Criados: `src/{error.rs, wire/**, codec/**, payload/**}`, `tests/**`,
   `docs/arquitetura/protocolo.md`, `tools/protocol/gen-protocol.mjs` (já existe).
 - Alterados: `src/lib.rs` (fachada), `Cargo.toml` da crate (sem dependências novas).
-- Proibido tocar: `.deprecated-go/` (leitura), `client/`, qualquer `unwrap` em
   parse, tipo para layout UNVERIFIED.
 
 ## Testes / verificação
@@ -77,8 +76,8 @@ completo verde (`fmt`, `clippy -D warnings`, `build`, `test`).
 
 - docs/arquitetura/estrutura-e-padroes.md - árvore normativa.
 - docs/arquitetura/adr/0002-estrutura-modulos.md - decisão da estrutura.
-- .deprecated-go/docs/migration/protocol-spec.md - espec de fio.
-- .deprecated-go/Source/Code/Basedef.h / CPSock.cpp - fonte canônica gerada.
+- docs/arquitetura/protocolo.md - espec de fio.
+- crates/wyd-protocol/src/wire/generated/opcode_table.rs (tabelas congeladas; fonte histórica Basedef.h v7662) / CPSock.cpp - fonte canônica gerada.
 
 ## Subtasks
 

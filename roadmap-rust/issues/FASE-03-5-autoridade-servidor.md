@@ -26,7 +26,7 @@ anti-exploit).
 
 - Criados: validadores + testes de rejeição em `wyd-core`.
 - Alterados: `crates/wyd-core/src/lib.rs` (pontos de validação).
-- Proibido tocar: fórmulas finais (FASE-10), `.deprecated-go/`.
+- Proibido tocar: fórmulas finais (FASE-10).
 
 ## Testes / verificação
 
@@ -47,7 +47,7 @@ inalterado após ação forjada).
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 3 §3.3).
-- .deprecated-go/docs/migration/flows.md - fluxos ponta a ponta legados.
+- docs/cliente/pacotes.md + crates/wyd-net/tests/ - fluxos ponta a ponta legados.
 
 ## Subtasks
 

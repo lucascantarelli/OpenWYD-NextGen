@@ -22,5 +22,5 @@ Referências: `pre-release-rust.md` FASE 6, `roadmap-rust/issues/FASE-06.md`,
 
 ## Antes de mudar
 
-Confira `docs/analysis/banco-de-dados.md` para métricas de banco e a FASE-05
+Confira `docs/arquitetura/modelo-banco.md` para métricas de banco e a FASE-05
 para onde os gates de CI validam a instrumentação.

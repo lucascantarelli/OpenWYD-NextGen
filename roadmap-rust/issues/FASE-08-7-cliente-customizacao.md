@@ -60,7 +60,7 @@ Saída obtida: fmt 0, clippy limpo, workspace todo verde (launcher 19/19, protoc
 - docs/cliente/customizacao.md - especificação seguida pela implementação.
 - docs/arquitetura/adr/0003-estrategia-patch-cliente.md - decisão.
 - docs/cliente/inventario.md - base do manifesto.
-- .deprecated-go/docs/migration/client-patch-hooks.md - mecânica de patch em runtime.
+- docs/cliente/customizacao.md - mecânica de patch em runtime.
 
 ## Subtasks
 

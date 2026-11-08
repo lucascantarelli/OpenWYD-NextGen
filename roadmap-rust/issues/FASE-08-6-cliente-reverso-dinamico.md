@@ -8,7 +8,7 @@ Confirmar em execução o que o desassemble estático propôs: capturar pacotes 
 
 ## Contexto / evidência
 
-O servidor emite o dialeto 7662, mas não há prova de ida-e-volta contra o binário em todos os pacotes. `investigacao-freeze-cliente.md` (arquivo Go) registra freeze com o cliente ACKando TCP mas descartando tudo — `session last sends` como post-mortem. T2 (structs de jogo) foi transferido da 08-5 para cá por limitação de ferramenta.
+O servidor emite o dialeto 7662, mas não há prova de ida-e-volta contra o binário em todos os pacotes. `docs/cliente/depuracao.md` §4 registra freeze com o cliente ACKando TCP mas descartando tudo — `session last sends` como post-mortem. T2 (structs de jogo) foi transferido da 08-5 para cá por limitação de ferramenta.
 
 ## Resultados desta rodada (2026-11-07)
 
@@ -55,8 +55,8 @@ cargo test --workspace && cargo clippy --workspace -- -D warnings && cargo fmt -
 
 - docs/cliente/depuracao.md - roteiro e bloqueios.
 - docs/cliente/pacotes.md - catálogo GERADO/PENDENTE.
-- .deprecated-go/docs/migration/flows.md - fluxos esperados login→campo.
-- .deprecated-go/docs/migration/investigacao-freeze-cliente.md - sintoma e hipóteses a confirmar.
+- docs/cliente/pacotes.md + crates/wyd-net/tests/ - fluxos esperados login→campo.
+- docs/cliente/depuracao.md - sintoma e hipóteses a confirmar.
 
 ## Subtasks
 

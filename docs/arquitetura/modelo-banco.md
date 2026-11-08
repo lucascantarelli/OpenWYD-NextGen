@@ -3,15 +3,13 @@
 > Fonte: `roadmap-rust/issues/FASE-04.md` (+ 04-1/04-2/04-3). Implementação:
 > `crates/wyd-db/{migrations,seeds,src/{model,repo,pool,transfer}}`.
 
-## 0. Lacuna do arquivo legado (registrado honestamente)
+## 0. Origem do modelo (arquivo Go/C++ removido em 2026-11)
 
-As referências citadas nas issues (`.deprecated-go/internal/migrations/` e
-`.deprecated-go/docs/analysis/banco-de-dados.md`) estão **vazias no arquivo**
-(diretórios presentes, sem arquivos em 2026-11-07). O modelo abaixo deriva
-portanto dos requisitos das issues + domínio do jogo + invariantes do
+O arquivo Go/C++ foi removido do repo; não há schema legado a revisar.
+Este documento + `crates/wyd-db/migrations/` são a **fonte canônica** do schema.
+O modelo deriva dos requisitos das issues + domínio do jogo + invariantes do
 `AGENTS.md` (autoridade server-side, auditoria, `delivery_queue` como única
-ponte web→jogo). Revisar contra o schema Go/legado real quando o arquivo for
-preenchido (pendência registrada, não bloqueio).
+ponte web→jogo).
 
 ## 1. ER (texto)
 

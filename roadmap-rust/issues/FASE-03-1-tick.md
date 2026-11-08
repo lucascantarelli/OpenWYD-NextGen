@@ -12,7 +12,7 @@ documentada, sem alocação no caminho quente.
 `pre-release-rust.md` FASE 3 §3.1: tick determinístico; §5 do `start-rust.md`:
 loop determinístico + arena allocators. Base: `crates/wyd-core/src/lib.rs`
 (`TICK_HZ=20`, `tick_interval_ms()`). Legado: `Map.cpp`/`Actor.cpp` com travas
-globais (ver `.deprecated-go/Source/`).
+globais (ver `docs/arquitetura/protocolo.md` + `docs/cliente/`).
 
 ## Passos
 
@@ -28,7 +28,7 @@ globais (ver `.deprecated-go/Source/`).
 - Criados: `crates/wyd-core/src/tick/scheduler.rs`, `tests/determinism.rs`.
 - Alterados: `crates/wyd-core/src/lib.rs`, `crates/wyd-core/Cargo.toml`
   (deps via ADR).
-- Proibido tocar: `crates/wyd-protocol/src/`, `.deprecated-go/`, I/O ou lock
+- Proibido tocar: `crates/wyd-protocol/src/`, I/O ou lock
   global no tick.
 
 ## Testes / verificação

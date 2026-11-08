@@ -10,7 +10,7 @@ com alertas para regressão de P99 e falha de migration.
 ## Contexto / evidência
 
 Métricas nascem na FASE-06 (`tracing`/Prometheus no motor); sem dashboard
-versionado, cada ambiente improvisa. Referência legada: `.deprecated-go/monitoring/`
+versionado, cada ambiente improvisa. Referência legada: `docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1)`
 (Prometheus + Grafana) e `logpipe/`. Destino: paineis como código no repo,
 provisionados automaticamente (`pre-release-rust.md` FASE 12).
 
@@ -29,7 +29,7 @@ provisionados automaticamente (`pre-release-rust.md` FASE 12).
   regras de alerta), runbooks em `docs/`.
 - Alterados: composição local de monitoring (somente o necessário para subir).
 - Proibido tocar: `crates/*/src/` além da exposição de métricas da FASE-06,
-  `.deprecated-go/`, segredos.
+  segredos.
 
 ## Testes / verificação
 
@@ -48,7 +48,7 @@ JSON de provisionamento anexado); alerta de teste dispara e resolve.
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 12) - escopo dos painéis.
-- .deprecated-go/monitoring/ - dashboards e exporters legados.
+- docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1) - dashboards e exporters legados.
 - roadmap-rust/issues/FASE-06.md - métricas expostas pelo motor.
 
 ## Subtasks

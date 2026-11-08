@@ -26,7 +26,7 @@ conteúdo e completar o que faltar.
 
 - Criados: nenhum novo (completar `.vscode/` se faltar algo).
 - Alterados: `.vscode/extensions.json`, `.vscode/settings.json`.
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/*/src/`.
 
 ## Testes / verificação
 

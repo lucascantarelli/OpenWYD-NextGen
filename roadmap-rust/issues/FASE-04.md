@@ -9,9 +9,8 @@ do tick loop, com integridade referencial e seeds reproduzíveis dev/prod.
 
 ## Contexto / evidência
 
-O legado persistia `.dat` instáveis em disco (`dbServer`); a fase Go usava
-`pgx` + migrations em `internal/migrations/` (arquivadas em
-`.deprecated-go/internal/migrations/`). Destino: `crates/wyd-db` com `sqlx`,
+O jogo persiste em PostgreSQL via `crates/wyd-db` (migrations versionadas em
+`crates/wyd-db/migrations/`, modelo em `docs/arquitetura/modelo-banco.md`). Destino: `crates/wyd-db` com `sqlx`,
 `sqlx-cli`/`refinery`, Redis transacional onde fizer sentido
 (`pre-release-rust.md` FASE 4). Esqueleto atual: `crates/wyd-db/src/lib.rs`
 (validação de scheme) — `cargo test -p wyd-db` verde.
@@ -36,7 +35,7 @@ O legado persistia `.dat` instáveis em disco (`dbServer`); a fase Go usava
   `tests/constraints.rs`, doc do modelo em `docs/arquitetura/`.
 - Alterados: `crates/wyd-db/Cargo.toml` (sqlx + refinery via ADR).
 - Proibido tocar: `crates/wyd-core/src/` (engine não conhece SQL),
-  `.deprecated-go/`, `client/`, segredos (nunca versionar DSN real).
+  `client/`, segredos (nunca versionar DSN real).
 
 ## Testes / verificação
 
@@ -58,8 +57,8 @@ Saída esperada: `test result: ok`; migrations aplicam do zero e rollback funcio
 
 - docs/rust/01-dependencias.md - sqlx/refinery/redis.
 - pre-release-rust.md (FASE 4) - modelagem e migrations.
-- .deprecated-go/docs/analysis/banco-de-dados.md - análise do banco legado.
-- .deprecated-go/internal/migrations/ - migrations Go como referência de schema.
+- docs/arquitetura/modelo-banco.md - ER, CHECKs e decisões (normativo).
+- crates/wyd-db/migrations/ - migrations versionadas (fonte canônica do schema).
 
 ## Subtasks
 

@@ -16,7 +16,7 @@ silencioso.
 ## Passos
 
 1. Inventariar os arquivos planos consumidos pelo legado (somente leitura em
-   `.deprecated-go/`).
+   `docs/arquitetura/modelo-banco.md`).
 2. Definir o formato destino (tabelas versionadas ou banco — ver FASE-04) e o
    validador de schema.
 3. Implementar a carga validada no boot com relatório de erro por
@@ -28,7 +28,7 @@ silencioso.
 - Criados: validador de schema + testes (módulo em `wyd-core` ou `wyd-db`,
   conforme decisão).
 - Alterados: docs do formato em `docs/arquitetura/`.
-- Proibido tocar: conteúdo de jogo sem motivo, `.deprecated-go/`, default
+- Proibido tocar: conteúdo de jogo sem motivo, default
   silencioso (proibido por regra).
 
 ## Testes / verificação
@@ -50,7 +50,7 @@ abortado com relatório).
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 3 §3.2).
-- .deprecated-go/docs/migration/config-ops.md - arquivos planos legados.
+- docs/rust/05-stack-docker.md - arquivos planos legados.
 
 ## Subtasks
 

@@ -10,7 +10,7 @@ produção) com alertas de P99 e falha de migration.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 12. Métricas fonte: 06-1. Referência:
-`.deprecated-go/monitoring/` (Prometheus + Grafana) e `logpipe/`.
+`docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1)` (Prometheus + Grafana) e `logpipe/`.
 
 ## Passos
 
@@ -43,7 +43,7 @@ teste dispara e resolve (evidência anexada).
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 12).
-- .deprecated-go/monitoring/ - referência legada.
+- docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1) - referência legada.
 - roadmap-rust/issues/FASE-06-1-telemetria.md - métricas disponíveis.
 
 ## Subtasks

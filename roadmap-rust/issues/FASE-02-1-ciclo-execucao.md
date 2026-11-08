@@ -24,7 +24,7 @@ documento, cada agente improvisa o ritmo.
 
 - Criados: `docs/rust/02-execucao.md`.
 - Alterados: nenhum outro.
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/*/src/`.
 
 ## Testes / verificação
 

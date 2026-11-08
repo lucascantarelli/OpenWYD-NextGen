@@ -1,8 +1,7 @@
 //! Catálogo de `Type` do protocolo CPSock — GERADO, não editar à mão.
 //!
-//! Fonte canônica: `.deprecated-go/Source/Code/Basedef.h` (198 constantes `_MSG_*`).
-//! Gerador: `tools/protocol/gen-protocol.mjs`.
-//! Especificação: `docs/arquitetura/protocolo.md` + `.deprecated-go/docs/migration/protocol-spec.md`.
+//! Fonte canônica: `docs/arquitetura/protocolo.md` §4 (198 constantes `_MSG_*`, tabelas congeladas; fonte histórica Basedef.h v7662).
+//! Gerador arquivado: `tools/protocol/gen-protocol.mjs` (congelado; não regenerar sem ADR).
 //!
 //! O valor de fio inclui os bits de direção (`FLAG_*`); `Opcode::wire()` devolve o
 //! valor exato que trafega no `HEADER.Type`.

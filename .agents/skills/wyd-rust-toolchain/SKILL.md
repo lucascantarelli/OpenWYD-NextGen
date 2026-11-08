@@ -17,8 +17,8 @@ Referências: `rust-toolchain.toml`, `.github/workflows/rust.yml`,
 3. **Dependências com lockfile consistente.** Adicionar dep exige justificar
    (performance/memória/manutenibilidade), atualizar `Cargo.lock` e manter build
    verificável offline ou com rede declarada; preferir `cargo deny`/`audit`.
-4. **Go intacto.** Nada de `deprecate-go`, desinstalação ou push neste fluxo;
-   Go continua buildável (`go build ./...`).
+4. **Repo 100% Rust.** Arquivo Go removido em 2026-11 (sem `go build`, sem
+   `deprecate-go`); toolchain verificada só com `cargo` + `rustc` (ver FASE-00-1).
 
 ## Diagnóstico rápido
 

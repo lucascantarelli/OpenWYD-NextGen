@@ -14,7 +14,7 @@ Base existente: `.github/workflows/rust.yml` (fmt/clippy/build/test),
 `docker/` (`Dockerfile.launcher`, `Dockerfile.portal`; mapa em
 `docs/rust/05-stack-docker.md`). Faltam: `cargo audit`/`deny` configurados, `cargo bench`
 com alvo real e release com LTO (`pre-release-rust.md` FASE 5). O CI Go
-arquivado está em `.deprecated-go/.github/workflows/` (referência, não copiar
+arquivado está em `.github/workflows/rust.ymlworkflows/` (referência, não copiar
 segredos).
 
 ## Passos
@@ -35,7 +35,7 @@ segredos).
 - Criados: `deny.toml`, `crates/wyd-core/benches/*.rs`, `crates/wyd-net/benches/*.rs`.
 - Alterados: `.github/workflows/rust.yml`, `Makefile`, `Cargo.toml`
   (perfil release), `docker/Dockerfile.*` (se necessário).
-- Proibido tocar: `.deprecated-go/.github/` (referência), segredos e
+- Proibido tocar: `.github/workflows/rust.yml` (referência), segredos e
   `client/`.
 
 ## Testes / verificação

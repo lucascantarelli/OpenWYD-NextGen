@@ -14,8 +14,8 @@ código morto, agrupadas por domínio, eliminando duplicidades (§1.2).
 
 ## Passos
 
-1. Varrer o legado (leitura): `grep -rn --include='*.go' -E 'TODO|FIXME|XXX|HACK|DEPRECATED' .deprecated-go/tmserver .deprecated-go/internal .deprecated-go/dbserver .deprecated-go/binserver .deprecated-go/webserver`.
-2. Repetir para C++ legado: mesmos marcadores em `.deprecated-go/Source/`.
+1. Varrer o código Rust atual: `grep -rn --include='*.rs' --include='*.ts' --include='*.mjs' -E 'TODO|FIXME|XXX|HACK|DEPRECATED' crates tools docs wyd-portal/src | head -n 100`.
+2. Repetir para docs/planejamento: mesmos marcadores em `docs/` + `roadmap-rust/` (dívida documentada, não código).
 3. Agrupar por domínio (rede, gameplay, persistência, portal), eliminar
    duplicidades com issues existentes e priorizar.
 4. Registrar lacunas (o que o legado nunca implementou) como novas entradas.
@@ -24,12 +24,12 @@ código morto, agrupadas por domínio, eliminando duplicidades (§1.2).
 
 - Criados: lista priorizada (nesta issue ou `roadmap-rust/`).
 - Alterados: `roadmap-rust/index.md` (se novas issues forem abertas).
-- Proibido tocar: `.deprecated-go/` (leitura apenas), `client/`, código Rust.
+- Proibido tocar: `client/`, código Rust.
 
 ## Testes / verificação
 
 ```bash
-grep -rn --include='*.go' -cE 'TODO|FIXME|XXX|HACK' .deprecated-go/tmserver .deprecated-go/internal | awk -F: '{s+=$2} END {print s " ocorrencias mapeadas"}'
+grep -rn --include='*.rs' --include='*.ts' --include='*.mjs' -cE 'TODO|FIXME|XXX|HACK' crates tools wyd-portal/src | awk -F: '{s+=$2} END {print s " ocorrencias mapeadas"}'
 make check
 ```
 
@@ -62,6 +62,6 @@ Saída esperada: contagem publicada e zerada de duplicidades com issues abertas;
 
 ## Riscos / rollback
 
-- Risco: débito do Go não se aplicar ao Rust → mitigação: marcar cada item como
-  "portar", "descartar" ou "investigar" (nunca portar cegamente).
+- Risco: débito documentado não se aplicar ao Rust atual → mitigação: marcar cada item como
+  "corrigir", "descartar" ou "investigar" (nunca mudar sem issue dona).
 - Rollback: `git checkout -- roadmap-rust/`.
