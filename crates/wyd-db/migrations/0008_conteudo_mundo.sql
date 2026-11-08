@@ -1,4 +1,4 @@
--- 0011_conteudo_mundo: mundo (NPCs, lojas, prêmios por nível, spawns, regiões) + proveniência.
+-- 0008_conteudo_mundo: mundo (NPCs, lojas, prêmios por nível, spawns, regiões) + proveniência.
 -- Convenção: -- migrate:up / -- migrate:down (docs/arquitetura/modelo-banco.md §4).
 -- Fonte canônica é o Postgres (ADR-0009); nada é lido de arquivo em runtime.
 -- Sanitização aplicada ao insumo e mapa coluna↔insumo: modelo-banco.md §6.6.

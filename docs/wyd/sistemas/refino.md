@@ -53,9 +53,24 @@ em passos de 5 pontos percentuais:
 | +7 → +8 | **55%** |
 | +8 → +9 | **50%** |
 | +9 → +10 | **30%** (composição, §3) |
-| +10 → +11 | **30%** (composição, §5) |
+| +10 → +11 | **3%** refino com **Poeira de Lactolerium** ("Lac 100%" = 100%) |
 
 **CONFIRMADO** para a escada +0→+9 na tabela do WYD International (`rate1`…`rate9`).
+
+> **+10 → +11 é refino, não composição.** A central Kersef ("Refining System +0 to +11")
+> descreve o passo como *"usando Poeira de Lactolerium no item +10 você poderá refiná-lo até
+> +11"*; as wikis publicam **3%** para a Lac normal e **100%** para o item de cash
+> **"Lac 100%"**. O legado tem **15%** fixo em código no passo `GEM_LEVEL` (+10) e **100%**
+> quando o pó é o `Lactolerium_100` — as células Âmago 10/11 do `SancRate.txt` (5%) **não**
+> são consultadas nesse nível. O dado registra as três configurações; o seed adota os 3%
+> publicados.
+>
+> **Tabela efetiva do legado (36 células).** O `SancRate.txt` é aplicado **por cima** do
+> default compilado (`Basedef.cpp g_pSancRate`), e a leitura é em `nível + 1`. O arquivo lista
+> PO 0–5, PL 0–9 e Âmago 0–11; o resto (PO 6–11, PL 10–11) vale **0** — não "sem dado".
+> Consequência: PO 5 = 40% é o passo +4→+5, e +5→+6 (PO 6 = 0%) só sobe por **piedade**.
+> A auditoria completa, com as divergências e o backlog de port, está em
+> [`refino-auditoria.md`](refino-auditoria.md).
 
 > **Divergência entre fontes, registrada:** a wiki Fandom descreve +0→+4 como **100%** e
 > só depois começa a cair; outra fonte ainda lista +12→+15 como **15/14/13/12%**. São
@@ -350,4 +365,5 @@ refine_attempt (id, item_instance_id, npc, items_used, rng_roll, success, destro
 | custo do +10 (Pedra do Sábio+50kk vs 30 Lac+5kk) | **divergência de servidor**, registrada |
 | fórmula do refino sobre atributos (1,9× no +9) | **CONFIRMADO** como afirmação, sem tabela por peça |
 | se absorção/perfuração acima de +10 escala linear | **SIM: 40 × (nível − 9)** → +10 = 40 … +15 = 240 |
+| `+10 → +11` no legado | **15%** fixo em código (100% no Âmago) — divergente dos 3% publicados |
 | chance de destruição com Pacote de Lac (+12..+15) | "pequena chance", **sem número** |

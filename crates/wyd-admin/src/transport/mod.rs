@@ -16,10 +16,12 @@ use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
 use std::task::{Context, Poll, Waker};
 
-use wyd_db::{Accounts, DeliveryQueue, Role};
+use wyd_db::{Accounts, Characters, DeliveryQueue, Role};
 
 use crate::api::{
-    create_account, find_account, request_grant, AccountSummary, GrantKind, GrantRequest,
+    create_account, find_account, own_account, own_characters, request_grant, request_recovery,
+    top_rankings, AccountSummary, GrantKind, GrantRequest, PanelAccount, PanelCharacter,
+    RankingEntry,
 };
 use crate::audit::AuditSink;
 use crate::auth::Session;
@@ -129,20 +131,22 @@ const fn admin_result(error: &AdminError) -> u8 {
 
 /// Roteador do contrato: `servico/metodo` → `api/*`.
 #[derive(Debug)]
-pub struct Router<A, S> {
+pub struct Router<A, C, S> {
     accounts: A,
+    characters: C,
     audit: S,
     grants: GrantService,
     tokens: StaticTokens,
     max_body: usize,
 }
 
-impl<A: Accounts, S: AuditSink> Router<A, S> {
+impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
     /// Monta o roteador com as portas de persistência e auditoria.
     #[must_use]
-    pub fn new(accounts: A, audit: S, tokens: StaticTokens) -> Self {
+    pub fn new(accounts: A, characters: C, audit: S, tokens: StaticTokens) -> Self {
         Self {
             accounts,
+            characters,
             audit,
             grants: GrantService::new(),
             tokens,
@@ -200,8 +204,81 @@ impl<A: Accounts, S: AuditSink> Router<A, S> {
         match (service, method) {
             ("accounts", "find") => self.accounts_find(session, &params, trace),
             ("accounts", "create") => self.accounts_create(session, &params, trace),
+            ("accounts", "recovery") => self.accounts_recovery(session, &params, trace),
             ("grants", "request") => self.grants_request(session, &params, trace),
+            ("panel", "self") => self.panel_self(session, &params, trace),
+            ("panel", "characters") => self.panel_characters(session, &params, trace),
+            ("panel", "rankings") => self.panel_rankings(session, &params, trace),
             _ => Reply::transport(404, trace, "método desconhecido"),
+        }
+    }
+
+    fn accounts_recovery(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(login) = params.get("login").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo login obrigatório");
+        };
+        match request_recovery(Some(session), login, &self.audit) {
+            Ok(()) => Reply::ok(trace, ",\"requested\":true"),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    fn panel_self(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(account_id) = params.get("account_id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo account_id obrigatório");
+        };
+        match poll_once(own_account(
+            Some(session),
+            account_id,
+            &self.accounts,
+            &self.audit,
+        )) {
+            Some(Ok(account)) => Reply::ok(
+                trace,
+                &format!(",\"account\":{}", panel_account_json(&account)),
+            ),
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    fn panel_characters(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(account_id) = params.get("account_id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo account_id obrigatório");
+        };
+        match poll_once(own_characters(
+            Some(session),
+            account_id,
+            &self.characters,
+            &self.audit,
+        )) {
+            Some(Ok(characters)) => {
+                let lista = characters_json(&characters);
+                Reply::ok(trace, &format!(",\"characters\":{lista}"))
+            }
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    fn panel_rankings(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(10);
+        let limit = usize::try_from(limit).unwrap_or(0);
+        match poll_once(top_rankings(
+            Some(session),
+            limit,
+            &self.characters,
+            &self.audit,
+        )) {
+            Some(Ok(entries)) => {
+                let lista = rankings_json(&entries);
+                Reply::ok(trace, &format!(",\"ranking\":{lista}"))
+            }
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
         }
     }
 
@@ -282,9 +359,9 @@ impl<A: Accounts, S: AuditSink> Router<A, S> {
 }
 
 /// Fila de conexões do Cold Path (sequencial: um cliente local, tráfego de admin).
-pub fn serve<A: Accounts, S: AuditSink>(
+pub fn serve<A: Accounts, C: Characters, S: AuditSink>(
     listener: &TcpListener,
-    router: &Router<A, S>,
+    router: &Router<A, C, S>,
 ) -> std::io::Result<()> {
     loop {
         match listener.accept() {
@@ -295,7 +372,10 @@ pub fn serve<A: Accounts, S: AuditSink>(
 }
 
 /// Atende uma conexão: lê uma requisição, responde e fecha (`Connection: close`).
-pub fn serve_conn<A: Accounts, S: AuditSink>(stream: TcpStream, router: &Router<A, S>) {
+pub fn serve_conn<A: Accounts, C: Characters, S: AuditSink>(
+    stream: TcpStream,
+    router: &Router<A, C, S>,
+) {
     let Ok(peer) = stream.peer_addr() else {
         return;
     };
@@ -377,6 +457,49 @@ fn grant_kind(value: &json::Json) -> Option<GrantKind> {
         }),
         _ => None,
     }
+}
+
+fn panel_account_json(account: &PanelAccount) -> String {
+    json::Json::Obj(vec![
+        ("id".to_string(), json::Json::Num(account.id as f64)),
+        ("login".to_string(), json::Json::Str(account.login.clone())),
+        (
+            "role".to_string(),
+            json::Json::Str(account.role.as_db().to_string()),
+        ),
+    ])
+    .render()
+}
+
+fn characters_json(characters: &[PanelCharacter]) -> String {
+    let items = characters
+        .iter()
+        .map(|c| {
+            json::Json::Obj(vec![
+                ("id".to_string(), json::Json::Num(c.id as f64)),
+                ("slot".to_string(), json::Json::Num(c.slot as f64)),
+                ("name".to_string(), json::Json::Str(c.name.clone())),
+                ("class".to_string(), json::Json::Num(c.class as f64)),
+                ("level".to_string(), json::Json::Num(c.level as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
+}
+
+fn rankings_json(entries: &[RankingEntry]) -> String {
+    let items = entries
+        .iter()
+        .map(|e| {
+            json::Json::Obj(vec![
+                ("rank".to_string(), json::Json::Num(e.rank as f64)),
+                ("name".to_string(), json::Json::Str(e.name.clone())),
+                ("class".to_string(), json::Json::Num(e.class as f64)),
+                ("level".to_string(), json::Json::Num(e.level as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
 }
 
 fn account_json(account: &AccountSummary) -> String {

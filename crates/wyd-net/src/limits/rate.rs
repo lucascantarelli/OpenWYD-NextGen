@@ -64,8 +64,10 @@ impl TokenBucket {
         }
         if self.tokens >= 1.0 {
             self.tokens -= 1.0;
+            crate::metrics::NET.packet_accepted();
             Ok(())
         } else {
+            crate::metrics::NET.packet_rejected("rate");
             Err(Deny::RateLimited)
         }
     }
@@ -108,12 +110,14 @@ impl ConnectionGate {
     pub fn admit(&mut self, ip: u32, now_ms: u64) -> Result<u64, Deny> {
         self.sweep(now_ms);
         if self.total >= self.max_total {
+            crate::metrics::NET.packet_rejected("total");
             return Err(Deny::TooManyTotal {
                 limit: self.max_total,
             });
         }
         let used = self.per_ip.get(&ip).copied().unwrap_or(0);
         if used >= self.max_per_ip {
+            crate::metrics::NET.packet_rejected("ip");
             return Err(Deny::TooManyPerIp {
                 limit: self.max_per_ip,
             });
@@ -123,12 +127,19 @@ impl ConnectionGate {
         let id = self.next_conn;
         self.next_conn += 1;
         self.pending.insert(id, (ip, now_ms));
+        crate::metrics::NET.handshake_opened();
+        crate::metrics::NET.pending_delta(1);
+        crate::metrics::NET.session_delta(1);
         Ok(id)
     }
 
     /// Handshake concluído: libera a vaga de pendente (conta segue em `total`).
     pub fn complete(&mut self, conn: u64) -> bool {
-        self.pending.remove(&conn).is_some()
+        let concluido = self.pending.remove(&conn).is_some();
+        if concluido {
+            crate::metrics::NET.pending_delta(-1);
+        }
+        concluido
     }
 
     /// Encerra conexão (libera teto por IP e total).
@@ -140,6 +151,7 @@ impl ConnectionGate {
             }
         }
         self.total = self.total.saturating_sub(1);
+        crate::metrics::NET.session_delta(-1);
     }
 
     /// Varre pendentes estourados; devolve quantos caíram.
@@ -154,6 +166,8 @@ impl ConnectionGate {
         let n = expired.len();
         for (id, ip) in expired {
             self.pending.remove(&id);
+            crate::metrics::NET.pending_delta(-1);
+            crate::metrics::NET.packet_rejected("timeout");
             self.release(ip);
         }
         n

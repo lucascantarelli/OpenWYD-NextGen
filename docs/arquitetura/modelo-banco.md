@@ -69,6 +69,14 @@ over-engineering nesta escala; CHECK documenta o domínio).
 - Runner `sqlx`/`refinery` chega na FASE-05/04-3 (exige rede + ADR); até lá a
   aplicação é por `psql -f` com split nos marcadores (script de validação em
   `tests/constraints.rs` + prova ao vivo documentada na issue).
+- **Nenhum `ALTER TABLE` no `up`**: coluna nova nasce na criação da tabela. O banco ainda não
+  foi para produção, então desenho corrigido se reescreve na origem, não por cima (foi o que
+  aconteceu em 2026-11-08 com `0023_inventario_gema`/`0024_catalogo_skill_nota`, consolidados
+  em `0003`/`0007`). `crates/wyd-db/tests/catalogo.rs` falha se um `ALTER` voltar.
+- **Catálogo gerado**: `docs/arquitetura/banco-catalogo.md` vem de `make banco-catalogo`
+  (migrations + `tools/content/banco-fontes.mjs`) e lista, por tabela, colunas/tipos/nulidade,
+  PK/FK/CHECK/índices, arquivo de origem, fonte da decisão e o que é provisório (D-Bxx).
+  Verificação: `cargo test -p wyd-db` (doc ↔ SQL) e `make banco-verify` (Postgres real ↔ doc).
 
 ## 5. Seeds
 
@@ -145,11 +153,12 @@ fonte de verdade do servidor.
 
 ### 6.4 Lacunas registradas
 
-1. Nenhuma migração Rust cria as tabelas de conteúdo acima (FASE-04): elas entram no
-   `wyd-db` como DDL + seed idempotente, com `content_version` e proveniência
-   (ADR-0009); nada de arquivo em runtime.
-2. Não existe tabela de **lore/quests** nem de **mix/refino** na árvore Rust; o
-   legado tinha `QuestsRate.txt`, `RefineRate.txt`, `Mixlist` (cliente).
+1. ~~Nenhuma migração Rust cria as tabelas de conteúdo~~ — **fechado em 2026-11-08**: o
+   conteúdo entra em `wyd-db` como DDL + seed idempotente, com `content_version` e
+   proveniência (ADR-0009); nada de arquivo em runtime (§6.5/§6.8).
+2. ~~Não existe tabela de lore/quests nem de mix/refino~~ — **fechado em 2026-11-08**: os
+   domínios viraram `0009_refino`, `0013_quests` e `0010_economia` (mix fica em
+   `game_system` + receita a modelar quando a fórmula for fechada, ver §6.8).
 3. `docs/sistemas/*` (13 arquivos), `docs/lore/*` (3) e `docs/guias/*` (4)
    existem **apenas em `origin/main`**; a árvore atual perdeu os originais e
    mantém só `wyd-portal/src/content/guias.json` (19 slugs gerados) — o gerador
@@ -157,14 +166,46 @@ fonte de verdade do servidor.
 4. Texto de sistema em `docs/` hoje é só protocolo/cliente/arquitetura; não
    existe documento de combate/drop/refino na árvore Rust.
 
-### 6.5 Esquema entregue (migrações 0007–0010, 2026-11-08)
+### 6.5 Sequência de migrações (revisada em 2026-11-08)
 
-| Migração | Conteúdo |
-|---|---|
-| `0007_conteudo_catalogo.sql` | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` — PK/FK/CHECK + índice GIN em `effect_names` |
-| `0008_seed_taxonomia.sql` | 20 sistemas, 6 classes, 13 linhagens, 16 categorias de item |
-| `0009_seed_item_catalog.sql` (gerado) | 3.220 itens + 55 símbolos `EF_*` |
-| `0010_seed_skill_catalog.sql` (gerado) | 151 skills |
+Regra da série: **DDL primeiro (0001–0016), seed depois (0017–0024)**, um domínio por
+arquivo, nenhuma tabela partida entre arquivos, nenhuma FK para tabela criada depois e
+nenhum `ALTER TABLE` no `up`. Verificação em três camadas:
+`node tools/content/check-migrations.mjs` (ordem/FK/down/INSERT, sem banco),
+`cargo test -p wyd-db` (`tests/catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
+e `node tools/content/verify-schema.mjs` (banco vazio → `up` → `information_schema` ↔ catálogo).
+Números atuais: **24 arquivos, 59 tabelas, 457 colunas, 140 `INSERT`s**, sem problema.
+
+| Migração | Domínio | Objetos |
+|---|---|---|
+| `0001_contas.sql` | acesso | `accounts` |
+| `0002_personagens.sql` | personagem | `characters` |
+| `0003_inventario.sql` | inventário | `character_items`, `vault_items` |
+| `0004_guildas.sql` | social | `guilds`, `guild_members` |
+| `0005_auditoria.sql` | auditoria | `audit_log` |
+| `0006_delivery_queue.sql` | Cold Path → Hot Path | `delivery_queue` |
+| `0007_conteudo_catalogo.sql` | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` — PK/FK/CHECK + índice GIN em `effect_names` |
+| `0008_conteudo_mundo.sql` | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone` |
+| `0009_refino.sql` | refino | `refine_rate` (taxa por passo em bps), `refine_gem_effect` (4 gemas: drop/pierce/exp/absorb) |
+| `0010_economia.sql` | economia | `city`, `personal_shop`, `city_tax_ledger`, `item_price`, `donate_shop_item`, `daily_reward_item` |
+| `0011_rotas_mundo.sql` | mundo | `map_definition`, `teleport_route` |
+| `0012_combate.sql` | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
+| `0013_quests.sql` | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
+| `0014_eventos.sql` | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
+| `0015_arena.sql` | arena | `arena`, `arena_match`, `arena_round`, `arena_score` |
+| `0016_progressao.sql` | progressão | `character_status` (atributos, pontos, fama), `character_lineage` (maestria), `character_skills` (aprendidas) |
+| `0017_seed_taxonomia.sql` | seed | 20 sistemas, 6 classes, 13 linhagens, 16 categorias de item |
+| `0018_seed_item_catalog.sql` (gerado) | seed | 3.220 itens + 55 símbolos `EF_*` |
+| `0019_seed_skill_catalog.sql` (gerado) | seed | 151 skills |
+| `0020_seed_mundo.sql` (gerado, 5,5 MB) | seed | NPCs, lojas, mundo, settings (§6.7) |
+| `0021_seed_skill_lineage.sql` (gerado) | seed | classe/linhagem de 63 skills curadas, com fonte e confiança por linha (cobertura 69/154) |
+| `0022_seed_refino.sql` | seed | 14 passos de `refine_rate` (9 de pó, +10 e +12..+15; +11 sem fonte publicada) + 4 gemas de `refine_gem_effect` |
+| `0023_seed_mundo_fixo.sql` | seed | 4 `city`, 2 `arena`, 3 `world_event` + 3 `event_schedule` (Kefra sábado, Noatun quinzenal, guerra de cidades) |
+| `0024_seed_skill_catalog_kersef.sql` | seed | 3 skills publicadas pela Kersef que o seed do cliente não trazia (`Roubar_Dinheiro`, `Evocar_Lobo_Selvagem`, `Metamorfose_Superior`), com linhagem, fonte, confiança e índice provisório declarado; `content_version = 7` |
+
+Uma migração por domínio, não uma por tabela: o `down` de `0013_quests`, por exemplo,
+derruba `quest` (CASCADE em `quest_step`/`quest_reward`/`character_quest`) numa unidade —
+meia quest não existe.
 
 Campos que respondem "para que serve este item": `item_catalog.kind`,
 `primary_system`, `event_only`, `tradeable`, `stackable`, `classification_source`,
@@ -232,12 +273,12 @@ Por que os nomes de item repetem (medido, não suposto):
 Ou seja: nome **não é chave** de item e não deve ser único. O que identifica é
 `item_index`; o que agrupa visualmente é `name_fold`.
 
-### 6.7 Mundo entregue (migrações 0011–0012, 2026-11-08)
+### 6.7 Mundo entregue (migração 0008 + seed 0019, 2026-11-08)
 
 | Migração | Conteúdo |
 |---|---|
-| `0011_conteudo_mundo.sql` | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn` + `guard_spawn_reward`, `mob_merc`, `game_setting` + `game_matrix`, `region`, `world_item_seed`, `guild_zone` |
-| `0012_seed_mundo.sql` (gerado, 5,5 MB) | 1.991 templates, 6.100 NPCs, 6.706 slots de loja, 161 `level_item`, 5 guardas/27 exigências, 1 mercador, 25 settings, 20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda, 12 linhas de `content_source`, `content_version = 4` |
+| `0008_conteudo_mundo.sql` | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn` + `guard_spawn_reward`, `mob_merc`, `game_setting` + `game_matrix`, `region`, `world_item_seed`, `guild_zone` |
+| `0019_seed_mundo.sql` (gerado, 5,5 MB) | 1.991 templates, 6.100 NPCs, 6.706 slots de loja, 161 `level_item`, 5 guardas/27 exigências, 1 mercador, 25 settings, 20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda, 12 linhas de `content_source`, `content_version = 4` |
 
 Mapa insumo → tabela/coluna (o "mapeado completamente"):
 
@@ -262,12 +303,87 @@ o bloco de 8 campos do `Guard.txt` (o cabeçalho do arquivo descreve 13), as se�
 `Treasure`/`Drop Item Event`, `class_mask` do item.
 
 Prova (2026-11-08, Postgres do compose, banco descartável `wyd_seedcheck`, `ON_ERROR_STOP=1`):
-`up` de 0007–0012 → contagens da tabela acima; `sha256(blob) = sha256` em **1.991/1.991**;
+`up` de 0007–0008 → contagens da tabela acima; `sha256(blob) = sha256` em **1.991/1.991**;
 `content_fold('Capa_de_Akelônia') = 'capa de akelonia'`, `('Arco_Æsir') = 'arco aesir'`,
 `('Baú_de_10ª_Skill') = 'bau de 10a skill'`; `down` na ordem inversa → **0 tabelas** e
 `content_fold` removida.
 
-### 7. Revisão de uso do PostgreSQL (2026-11-08)
+### 6.8 Domínios modelados depois do mundo (0009–0015)
+
+| Domínio | Por que virou tabela (e não constante em Rust) | Onde a regra vive |
+|---|---|---|
+| Refino | taxa muda por servidor; o portal e a auditoria precisam ler o mesmo número | `refine_rate.rate_bps`; fórmula em `crates/wyd-sim/src/formula/refine.rs` (+ `wyd-core` como autoridade) |
+| Gemas | efeito é dado de catálogo (item 3386–3389), não `match` no código | `refine_gem_effect`; escala `40 × (nível − 9)` em `GEM_*` no core |
+| Economia | preço, taxa por cidade e fatia de Noatun são configuração do dono | `city`, `personal_shop`, `city_tax_ledger`; `item_price` sobrepõe o preço do catálogo sem reescrevê-lo |
+| Rotas | teleporte tem requisito (nível, item, gold) e destino por mapa | `map_definition`, `teleport_route` |
+| Combate | stats/equip de monstro e overrides de drop/EXP são por servidor | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
+| Quests | passo, recompensa e estado por personagem não cabem em `characters` | `quest`, `quest_step`, `quest_reward`, `character_quest` |
+| Eventos | Kefra/Noatun/castelo têm estado e agenda próprios | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
+| Arena | partida e round são histórico, não estado vivo | `arena_match`, `arena_round`, `arena_score` |
+
+Fronteira mantida: **nada aqui é escrito pela web** e nada entra no tick. Overlay de
+cold path (preço, taxa, agenda) chega ao servidor por `delivery_queue` (0006); o core lê
+uma cópia em memória carregada no boot (FASE-04-3). `character_quest` e `arena_match`
+são escrita **do servidor**, nunca de portal.
+
+Pendente declarado: receita de **mix/craft** (`Mixlist` 272 KB) ainda não tem tabela porque
+a fórmula de resultado não está fechada — modelar antes seria inventar coluna. O insumo
+está inventariado em `docs/cliente/` e a decisão fica registrada em
+`docs/wyd/decisoes-servidor.md`.
+
+### 6.9 Prova no Postgres (2026-11-08) — up/down/up
+
+A série deixou de ser "validada só estruturalmente": roda inteira num Postgres 17 real.
+
+```bash
+make migrations-apply     # = node tools/content/migrate-cycle.mjs
+```
+
+O runner (`tools/content/migrate-cycle.mjs`) sobe um container efêmero `wyd-migcheck`
+(`postgres:17-alpine`, o mesmo do compose), espera **duas consultas reais seguidas** —
+`pg_isready` responde ao servidor temporário do init e daria falso positivo —, aplica os 22
+`up` com `ON_ERROR_STOP=1`, mede, aplica os 22 `down` em ordem inversa, exige **0 tabelas** e
+reaplica tudo comparando as contagens dos dois ciclos.
+
+Resultado real (24 migrations, ~55 s): **59 tabelas / 457 colunas** no fim do `up`, **0** após
+o `down`; `item_catalog` 3.220, `item_effect` 55, `skill_catalog` **154** (**63** com
+`class_code`), `game_system` 20, `region` 52, `npc_definition` 6.100, `npc_shop_item` 6.706,
+`level_item` 161, `city` 4, `arena` 2, `world_event` 3, `refine_rate` 14,
+`refine_gem_effect` 4, `content_version` **7**. Ciclo 1 e ciclo 2 idênticos.
+
+Além do ciclo, `node tools/content/verify-schema.mjs` compara o banco recém-criado com
+`banco-catalogo.md` via `pg_attribute`/`information_schema`: mesma contagem de tabelas, mesma
+ordem/nome/tipo/nulidade de coluna e mesma PK em todas as 59 — é o que impede o catálogo de
+virar ficção. Ver §6.10.
+
+Três defeitos apareceram **só** ao aplicar de verdade, e foram corrigidos na origem:
+
+1. runner lia o marcador citado no cabeçalho (`-- migrate:up / -- migrate:down`) e montava um
+   bloco inválido — passou a exigir o marcador sozinho na linha, e o `check-migrations` foi
+   corrigido do mesmo jeito;
+2. `0021` (então `0020`) anunciava 61 skills mapeadas e o banco tinha 60: a curadoria tinha um índice
+   duplicado e a cobertura somava "já mapeadas + novas" em vez da união. O gerador agora
+   descarta e **reporta** a duplicata e calcula a união;
+3. `refine_rate` tinha 9 passos com o doc dizendo 15, e `city`/`arena`/`world_event` estavam
+   vazias (FK sem dado, loja pessoal impossível de abrir). Entraram os passos +10 e +12..+15,
+   o seed `0022` e `city.map_id` virou anulável — o build 7662 não publica o mapa de cada
+   cidade, e inventar número quebraria o teleporte.
+
+#### 6.10 Catálogo do banco (fonte única da leitura humana)
+
+`docs/arquitetura/banco-catalogo.md` é **gerado** por `make banco-catalogo` a partir das
+migrations + `tools/content/banco-fontes.mjs`. Por tabela ele traz: arquivo que a cria,
+domínio, estado (`confirmado`/`provisorio`), a fonte da decisão, PK/FK/CHECK/UNIQUE/índices e
+a lista de colunas com tipo e nulidade. As seções finais registram as decisões provisórias
+(`D-B01`..`D-B08`, mesmo padrão `D-xx` de `matematica-sim.md`) e o mapa tabela legada → nova,
+com as pendências nomeadas em vez de silenciadas.
+
+O catálogo **não** é escrito à mão: `cargo test -p wyd-db --test catalogo` falha se ele
+divergir das migrations (tabela, coluna, PK, `SCHEMA_VERSION`, seed antes do DDL) e
+`make banco-verify` falha se o Postgres real divergir dele. É por isso que os números deste
+documento podem ser cobrados.
+
+## 7. Revisão de uso do PostgreSQL (2026-11-08)
 
 Pergunta: "estamos usando os recursos do Postgres e as boas práticas?" No volume atual
 (maior tabela: 6.706 linhas) o que dá ganho é **integridade declarativa, proveniência e

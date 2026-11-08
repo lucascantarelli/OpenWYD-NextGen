@@ -583,7 +583,7 @@ function emitItemSql({ source, items, effectNames }) {
   ].join(", ")})`);
 
   return [
-    "-- 0009_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).",
+    "-- 0017_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     `-- Fonte: origin/main:${source.path} (sha256 ${source.sha256}).`,
     "-- Sanitização: NFC, LF, sem BOM/invisível/controle (modelo-banco §6.6).",
@@ -636,7 +636,7 @@ function emitSkillSql({ source, skills }) {
   ].join(", ")})`);
 
   return [
-    "-- 0010_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).",
+    "-- 0018_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     `-- Fonte: origin/main:${source.path} (sha256 ${source.sha256}).`,
     "",
@@ -774,7 +774,7 @@ function buildWorld() {
 
 function emitWorldSql(world) {
   const out = [
-    "-- 0012_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,",
+    "-- 0019_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,",
     "-- spawns de guarda, mercador, configuração de jogo e regiões.",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     "-- Insumos e hashes: tabela content_source (gravada por esta migração).",
@@ -1008,9 +1008,9 @@ function main() {
 
   mkdirSync(MIGRATIONS, { recursive: true });
   const files = [
-    ["0009_seed_item_catalog.sql", emitItemSql(item)],
-    ["0010_seed_skill_catalog.sql", emitSkillSql(skill)],
-    ["0012_seed_mundo.sql", emitWorldSql(world)],
+    ["0017_seed_item_catalog.sql", emitItemSql(item)],
+    ["0018_seed_skill_catalog.sql", emitSkillSql(skill)],
+    ["0019_seed_mundo.sql", emitWorldSql(world)],
   ];
   for (const [name, sql] of files) {
     const path = resolve(MIGRATIONS, name);

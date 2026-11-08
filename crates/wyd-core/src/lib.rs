@@ -12,8 +12,12 @@
 
 pub mod ecs;
 pub mod error;
+pub mod metrics;
+pub mod npc;
 pub mod ports;
 pub mod spatial;
+pub mod systems;
+pub mod telemetry;
 pub mod tick;
 
 /// Ticks por segundo do game loop deterministico.
@@ -26,11 +30,23 @@ pub fn tick_interval_ms() -> u64 {
 }
 
 pub use ecs::{
-    ComponentStore, Entity, EntityKind, Inventory, Item, Position, Stats, BAG_SLOTS, EQUIP_SLOTS,
+    gem_effect_code, gem_value, AppliedGem, ComponentStore, Entity, EntityKind, Inventory, Item,
+    Position, Stats, BAG_SLOTS, EQUIP_SLOTS, GEM_EFFECT_ABSORB, GEM_EFFECT_DROP, GEM_EFFECT_EXP,
+    GEM_EFFECT_NONE, GEM_EFFECT_PIERCE, GEM_MAX_REFINE, GEM_MIN_REFINE,
 };
+pub use ecs::{DomainEvent, DomainEvents, GemEffect, EVENT_QUEUE_CAPACITY};
 pub use error::CoreError;
+pub use metrics::{Metrics, MetricsServer, MetricsSource, TickSnapshot};
+pub use npc::{Decision, Intention, NpcMode, NpcProfile, NpcState, NpcStates};
 pub use ports::{elapsed_ms, Clock, ManualClock, SystemClock};
 pub use spatial::{Grid, GridConfig};
+pub use systems::{
+    anct, apply_powder, attack, aylin, cast, downgrade_refine, equip, equip_into, jewel_effect,
+    move_item, odin, plus12_failure, powder_failure, roll_115, roll_199, step, unequip,
+    AttackRules, Cast, ComposeOutcome, ComposeRules, DamageModel, EquipmentRules, Equipped, Hit,
+    ItemFacts, ItemRules, MoveRules, OdinRecipe, Plus12Failure, PowderFailure, PowderOutcome,
+    SkillBook, SkillDef, Unequipped,
+};
 pub use tick::{Scheduler, SchedulerConfig, Tick, MAX_HZ, MAX_STEPS_PER_ADVANCE, MIN_HZ};
 
 /// Reexporta o marcador autoritativo de cena para o game loop.

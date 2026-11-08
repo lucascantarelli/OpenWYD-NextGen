@@ -1,4 +1,4 @@
--- 0010_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).
+-- 0019_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).
 -- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.
 -- Fonte: origin/main:internal/migrations/seed_skill_catalog.up.sql (sha256 f779ceff7b9f74a1d21938c816f539c0535c38ac706433d00eae15d6d2bcde7e).
 

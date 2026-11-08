@@ -166,6 +166,7 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
 | Dependências Rust (catálogo, decisão offline, como adicionar) | `docs/rust/01-dependencias.md` |
 | Stack Docker (crates→deployáveis, o que sobe, proibições) | `docs/rust/05-stack-docker.md` |
 | Progresso e evidências | `docs/rust/03-progresso.md` + `roadmap-rust/index.md` |
+| IA de NPC, bots de carga e LLM (o que existe × planejado) | `docs/rust/07-ia-e-bots.md` + `docs/arquitetura/adr/0010-ia-npc-e-bots.md` |
 | Contrato de um opcode | `docs/arquitetura/protocolo.md` §4–§5 + `crates/wyd-protocol/src/payload/<domínio>.rs` |
 | Fluxos ponta-a-ponta | `docs/cliente/pacotes.md` + `crates/wyd-net/tests/` |
 | Fórmulas/balanceamento | `crates/wyd-sim/` + issues FASE-10 |

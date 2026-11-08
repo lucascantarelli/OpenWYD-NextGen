@@ -30,7 +30,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wyd}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wyd}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,12 +64,6 @@ services:
       AUDIT_LOG_DIR: ${AUDIT_LOG_DIR:-/var/log/wyd-portal}
     networks:
       - wyd
-
-  # NOTA: sem serviço `launcher` aqui de propósito. O launcher é ferramenta
-  # de distribuição do lado do cliente (GUI Tauri, ADR-0007), não daemon da
-  # stack. A imagem `docker/Dockerfile.launcher` existe como artefato de
-  # release/smoke (FASE-05-2): `docker build -f docker/Dockerfile.launcher .`
-  # + `docker run --rm ...` — fora do compose.
 
 networks:
   wyd:

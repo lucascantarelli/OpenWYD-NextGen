@@ -18,9 +18,9 @@ arquivo do legado é copiado para a árvore.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `crates/wyd-db/migrations/0009_seed_item_catalog.sql` | 3.220 itens + vocabulário `EF_*` |
-| `crates/wyd-db/migrations/0010_seed_skill_catalog.sql` | 151 skills |
-| `crates/wyd-db/migrations/0012_seed_mundo.sql` | 1.991 templates, 6.100 NPCs, 6.706 slots de loja, 161 prêmios por nível, 5 guardas (27 exigências), 1 mercador, 25 settings, 20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda + `content_source` |
+| `crates/wyd-db/migrations/0017_seed_item_catalog.sql` | 3.220 itens + vocabulário `EF_*` |
+| `crates/wyd-db/migrations/0018_seed_skill_catalog.sql` | 151 skills |
+| `crates/wyd-db/migrations/0019_seed_mundo.sql` | 1.991 templates, 6.100 NPCs, 6.706 slots de loja, 161 prêmios por nível, 5 guardas (27 exigências), 1 mercador, 25 settings, 20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda + `content_source` |
 
 Todos são **gerados**: não editar à mão (`NÃO EDITAR À MÃO` no cabeçalho). Mudança de
 regra ou de parser = mudar este arquivo, regerar e revisar o diff de dados.

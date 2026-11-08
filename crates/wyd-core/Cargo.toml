@@ -3,10 +3,24 @@ name = "wyd-core"
 version = "0.1.0"
 edition = "2021"
 description = "Engine Hot Path do WYD (tick deterministico, ECS, spatial grid)"
+publish = false
 
 [lib]
 name = "wyd_core"
 path = "src/lib.rs"
 
 [dependencies]
-wyd-protocol = { path = "../wyd-protocol" }
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+# FASE-06-1 / ADR-0018: log estruturado (sem `env-filter`, que arrastaria regex).
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "fmt",
+    "ansi",
+    "std",
+] }
+
+# Bench sem dependência nova (`criterion` exige rede/ADR): mede com `std::time::Instant`.
+[[bench]]
+name = "tick"
+harness = false
+test = false

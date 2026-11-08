@@ -172,14 +172,35 @@ em qual linhagem**.
 
 ## 6. O que o banco já tem e o que falta
 
-`skill_catalog` (151 linhas) guarda: `skill_index`, `name`, `skill_point`, `target_type`,
+`skill_catalog` (**154 linhas**: 151 do seed do cliente + 3 da Kersef que o cliente não trazia —
+`Roubar_Dinheiro`, `Evocar_Lobo_Selvagem`, `Metamorfose_Superior`, em
+`0024_seed_skill_catalog_kersef.sql`, com índice provisório declarado em `notes`) guarda:
+`skill_index`, `name`, `skill_point`, `target_type`,
 `mana_spent`, `delay_ticks`, `range_tiles`, `instance_type/value`, `tick_type/value`,
 `affect_type/value/time`, `instance_attribute`, `tick_attribute`, `aggressive`,
 `max_target`, `party`, `affect_resist`, `passive`.
 
-Ou seja: **comportamento está no dado**. Falta `class_code`, `lineage_code` e `skill_role`
-(`damage`, `heal`, `buff`, `debuff`, `summon`, `mobility`, `passive`, `craft`).
+Ou seja: **comportamento está no dado**. `class_code`, `lineage_code` e `skill_role`
+(`damage`, `heal`, `buff`, `debuff`, `summon`, `mobility`, `passive`, `craft`) estão preenchidos
+em **69 das 154** linhas — as outras continuam `NULL` com `classification_source = 'unmapped'`.
 
 Regra de preenchimento: só por **nome confirmado** nas fontes acima; nome fora da lista fica
 `NULL` com `classification_source = 'unmapped'`. Nunca chute — um `skill_role` errado faz o
 bot de teste tomar decisão errada e o bug aparece como "IA burra", não como dado ruim.
+
+A cobertura subiu de 60 para **69** com a tabela de **12ª skill por linhagem** (10 das 12
+linhagens; Natureza/BeastMaster e Captura/Huntress continuam "não confirmada" na fonte) e a 9ª
+de Espada Mágica (`Espelho_Mágico`). `Freezing` e `Reinforce_Soul` entram com `skill_role`
+**NULL**: a linhagem está confirmada, o efeito não está descrito — preencher seria dedução.
+
+> **Conflitos declarados (seed × fonte oficial).** `Clod_Attack` está no seed como
+> `magic_sword`, mas a tabela oficial o coloca em **Faith**; a curadoria `0021` (fonte
+> `kersef:12th`, confiança 90) prevalece porque roda depois do seed. `Another_Change` vinha como
+> `passive` e entra como `buff` (troca HP por MP). Ambos aparecem no relatório do gerador como
+> "já mapeadas (repetidas)" — a divergência é visível, não silenciosa.
+>
+> **Down seletivo (2026-11-08).** Reverter só a `0021` devolve as 6 linhas que a `0019` já
+> classificava ao estado do seed (`Bênção_Divina`, `Chama_Resistente`, `Carga`, `Assalto`,
+> `Clod_Attack`, `Another_Change` — inclusive o conflito de linhagem, que volta ao valor do
+> seed) e as 57 novas a `unmapped`. Os valores restaurados saem da própria `0019`, lidos pelo
+> gerador, então o `down` não carrega cópia mantida à mão.

@@ -12,7 +12,7 @@ use std::sync::Mutex;
 
 use wyd_admin::transport::{http, json, serve_conn, Router, StaticTokens};
 use wyd_admin::{DeliveryQueue, Role, Session, VecSink};
-use wyd_db::{Account, Accounts, DbError};
+use wyd_db::{Account, Accounts, Character, Characters, DbError};
 
 struct FakeAccounts {
     by_login: Mutex<HashMap<String, Account>>,
@@ -49,6 +49,22 @@ impl Accounts for FakeAccounts {
         }
     }
 
+    fn find_by_id(&self, id: i64) -> impl Future<Output = Result<Account, DbError>> + Send {
+        let found = self
+            .by_login
+            .lock()
+            .expect("fake acessível")
+            .values()
+            .find(|account| account.id == id)
+            .cloned();
+        async move {
+            found.ok_or(DbError::NotFound {
+                entity: "account",
+                id,
+            })
+        }
+    }
+
     fn create(
         &self,
         login: &str,
@@ -60,6 +76,72 @@ impl Accounts for FakeAccounts {
             role,
         };
         async move { Ok(account) }
+    }
+}
+
+struct FakeCharacters {
+    rows: Vec<Character>,
+}
+
+impl FakeCharacters {
+    fn new() -> Self {
+        let character = |id: i64, account_id: i64, slot: i64, name: &str, level: i64| Character {
+            id,
+            account_id,
+            slot,
+            name: name.to_string(),
+            class: 1,
+            level,
+            exp: 0,
+            hp: 100,
+            mp: 100,
+            pos_x: 0,
+            pos_y: 0,
+        };
+        Self {
+            rows: vec![
+                character(1, 5, 0, "Baixo", 40),
+                character(2, 5, 1, "Alto", 90),
+                character(3, 9, 0, "Alvo", 70),
+            ],
+        }
+    }
+}
+
+impl Characters for FakeCharacters {
+    fn list_by_account(
+        &self,
+        account_id: i64,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send {
+        let rows: Vec<Character> = self
+            .rows
+            .iter()
+            .filter(|c| c.account_id == account_id)
+            .cloned()
+            .collect();
+        async move { Ok(rows) }
+    }
+
+    fn top_by_level(
+        &self,
+        limit: usize,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send {
+        let mut rows = self.rows.clone();
+        rows.sort_by(|a, b| b.level.cmp(&a.level).then_with(|| a.name.cmp(&b.name)));
+        rows.truncate(limit);
+        async move { Ok(rows) }
+    }
+
+    fn create(
+        &self,
+        character: &Character,
+    ) -> impl Future<Output = Result<Character, DbError>> + Send {
+        let created = character.clone();
+        async move { Ok(created) }
+    }
+
+    async fn soft_delete(&self, _id: i64) -> Result<(), DbError> {
+        Ok(())
     }
 }
 
@@ -89,9 +171,14 @@ fn tokens() -> StaticTokens {
     tokens
 }
 
-fn router() -> Router<FakeAccounts, VecSink> {
-    Router::new(FakeAccounts::new(), VecSink::default(), tokens())
-        .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
+fn router() -> Router<FakeAccounts, FakeCharacters, VecSink> {
+    Router::new(
+        FakeAccounts::new(),
+        FakeCharacters::new(),
+        VecSink::default(),
+        tokens(),
+    )
+    .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
 }
 
 fn raw(method: &str, path: &str, token: Option<&str>, body: &str) -> String {
@@ -104,7 +191,10 @@ fn raw(method: &str, path: &str, token: Option<&str>, body: &str) -> String {
     request
 }
 
-fn dispatch(router: &Router<FakeAccounts, VecSink>, request: &str) -> (u16, json::Json) {
+fn dispatch(
+    router: &Router<FakeAccounts, FakeCharacters, VecSink>,
+    request: &str,
+) -> (u16, json::Json) {
     let mut cursor = Cursor::new(request.as_bytes().to_vec());
     let parsed = http::read_request(&mut cursor, 1 << 20).expect("request válida");
     let reply = router.dispatch(&parsed);

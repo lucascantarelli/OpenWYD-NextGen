@@ -1,0 +1,9 @@
+# Contexto mínimo para os builds das imagens (FASE-05-2): nada de artefato local.
+target
+client
+.git
+.github
+wyd-portal/node_modules
+wyd-portal/.next
+**/*.log
+.tmp-*

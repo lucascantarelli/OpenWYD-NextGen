@@ -110,8 +110,17 @@ das três cidades vai para Noatun; o resto fica na cidade. Rateio exato entre as
 
 ## 6. Skills → classe/linhagem (o que foi tentado e onde parou)
 
-Estado real: **139 das 151 skills estão `unmapped`** no seed `0010`. O mapeamento não existe
-no repositório e não há fonte pública que liste as 151 por linhagem.
+Estado real: **82 das 154 linhas continuam `unmapped`**. O seed `0019` já trazia 12 com
+`rule:name_confirmed`; a curadoria fechou **57 novas** com fonte oficial (9ª e 10ª skill da
+Kersef e listas por linhagem das páginas de classe), gravadas em
+`crates/wyd-db/migrations/0021_seed_skill_lineage.sql` por
+`tools/content/gen-skill-lineage.mjs` — cada linha cita fonte, `skill_role` e confiança. O
+`down` é seletivo: restaura as 6 linhas herdadas do seed e só zera as 57 que a `0021` criou.
+Cobertura: **69 das 151 do seed**; três nomes publicados pela Kersef não existiam no seed do
+cliente (`Roubar_Dinheiro`, `Evocar_Lobo_Selvagem`, `Metamorfose_Superior`) e viraram linhas
+de catálogo em `0024_seed_skill_catalog_kersef.sql`, com linhagem, fonte, confiança e índice
+provisório declarado em `notes` — total **63 de 154**. O que não tem fonte pública por
+linhagem segue `NULL`, não chutado.
 
 O que foi provado nesta rodada:
 
@@ -136,8 +145,16 @@ Caminho recomendado para fechar, em ordem de custo:
    `(classe, lista de skills)`; cruzar com os 151 nomes do seed → fecha a coluna `class_code`;
 2. **Ghidra** no `WYD.exe` 7662: achar a tabela que a loja de skills percorre;
 3. **Curadoria por linhagem**: usar as listas oficiais por linhagem (Kersef/Fandom) e marcar
-   `classification_source = 'lineage:official'` com `confidence` menor — cobre ~60 skills
-   hoje, sem inventar.
+   `classification_source` com `confidence` menor — é o que a migração `0020` já faz para 53
+   linhas curadas; a mesma tabela aceita as demais sem mudar código. Regra do gerador: nome da
+   fonte sem correspondência literal no seed é **reportado**, nunca aproximado
+   (`Titã` ≠ `Tit`, `Roubar_Dinheiro` não existe no seed).
+
+O que a curadoria já cobre por linhagem (53 linhas, fonte e confiança por linha):
+TransKnight `faith`/`trans`/`magic_sword`; Foema `white_magic`/`black_magic`/`special_magic`;
+Huntress `survival`/`trade`/`capture`; BeastMaster `elemental`/`evocation`/`nature`. O que
+falta concentra-se nas **11ª e 12ª skills** e nas skills de transformação Arch, cuja lista por
+linhagem não está publicada — daí ficarem `NULL`.
 
 ---
 

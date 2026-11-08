@@ -74,6 +74,26 @@ pub fn log_action(
     });
 }
 
+/// Registra leitura/solicitação do painel do jogador (autor autenticado, qualquer papel).
+///
+/// `target` nunca carrega login/nome: só o identificador interno da conta.
+pub fn log_panel(
+    sink: &impl AuditSink,
+    session: crate::auth::Session,
+    action: &str,
+    target: &str,
+    detail: &str,
+) {
+    sink.record(AuditEntry {
+        at_ms: now_ms(),
+        actor_id: session.account_id,
+        actor_role: session.role,
+        action: action.to_string(),
+        target: target.to_string(),
+        detail: detail.to_string(),
+    });
+}
+
 /// Registra tentativa negada de conta autenticada sem papel.
 pub fn log_denied(sink: &impl AuditSink, account_id: i64, action: &str, detail: &str) {
     sink.record(AuditEntry {

@@ -61,7 +61,7 @@ describe("conteúdo de guias", () => {
 describe("manual de WYD", () => {
   const slugs = listGuias().map((guia) => guia.slug);
 
-  it("publica os 16 documentos na ordem de leitura", () => {
+  it("publica os 17 documentos na ordem de leitura", () => {
     expect(slugs).toEqual([
       "manual",
       "manual-lore",
@@ -79,6 +79,7 @@ describe("manual de WYD", () => {
       "manual-sistemas-eventos",
       "manual-fontes",
       "manual-decisoes-servidor",
+      "manual-sistemas-battle-royale",
     ]);
   });
 

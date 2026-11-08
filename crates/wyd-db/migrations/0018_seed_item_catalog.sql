@@ -1,4 +1,4 @@
--- 0009_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).
+-- 0018_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).
 -- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.
 -- Fonte: origin/main:internal/migrations/seed_item_catalog.up.sql (sha256 2f7efc1591defcf331166408e2862f92426fee00117065878c50d79ba4a1d197).
 -- Sanitização: NFC, LF, sem BOM/invisível/controle (modelo-banco §6.6).

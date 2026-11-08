@@ -12,8 +12,12 @@ pub mod pool;
 pub mod repo;
 pub mod transfer;
 
-/// Versão do schema = última migration aplicada (`0006_delivery_queue`).
-pub const SCHEMA_VERSION: u32 = 6;
+/// Versão do schema = número da última migration (`0027_seed_combine`).
+///
+/// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
+/// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
+/// juntos é pior que não ter versão.
+pub const SCHEMA_VERSION: u32 = 27;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -42,6 +46,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 6);
+        assert_eq!(SCHEMA_VERSION, 27);
+        // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }
