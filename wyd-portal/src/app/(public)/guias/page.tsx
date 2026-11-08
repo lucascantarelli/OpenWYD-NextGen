@@ -1,6 +1,6 @@
-import Link from "next/link";
-
 import { groupGuias } from "@/server/guias";
+
+import { GuiasSearch } from "./guias-search";
 
 import "./guias.css";
 
@@ -12,9 +12,17 @@ export const metadata = {
 /**
  * Índice público dos guias. O conteúdo é o mesmo markdown que alimenta o site
  * de documentação (mkdocs): uma fonte, dois destinos.
+ *
+ * A navegação é por seção (âncora) e a busca é feita no cliente sobre títulos —
+ * ver `guias-search.tsx`. O manual completo de domínio (`docs/wyd/`) entra como
+ * uma seção própria, gerada por `npm run guias`.
  */
 export default function GuiasPage() {
-  const sections = groupGuias();
+  const sections = groupGuias().map((section) => ({
+    id: section.id,
+    label: section.label,
+    items: section.items.map((guia) => ({ slug: guia.slug, title: guia.title })),
+  }));
 
   return (
     <main className="guias">
@@ -25,21 +33,7 @@ export default function GuiasPage() {
         documentação; aqui você lê sem sair do portal.
       </p>
 
-      {sections.map((section) => (
-        <section key={section.id}>
-          <h2>{section.label}</h2>
-          <ul className="guias__grid">
-            {section.items.map((guia) => (
-              <li key={guia.slug}>
-                <Link className="guias__card" href={`/guias/${guia.slug}`}>
-                  {guia.title}
-                  <span>Ler o guia</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <GuiasSearch sections={sections} />
     </main>
   );
 }

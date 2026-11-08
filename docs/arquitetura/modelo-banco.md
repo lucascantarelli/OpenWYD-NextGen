@@ -81,9 +81,15 @@ over-engineering nesta escala; CHECK documenta o domínio).
 
 Conteúdo de jogo é **dado de referência**, não estado de jogador: nunca entra em
 `audit_log`, nunca é escrito pela web e nunca mistura linha de conta. O que a
-árvore Rust tem hoje são só as tabelas de jogador (§2); o catálogo de conteúdo
-ainda **não foi portado** — esta seção registra de onde ele vem, para a FASE-03-4
+árvore Rust tem hoje são só as tabelas de jogador (§2); o catálogo deconteúdo ainda **não foi portado** — esta seção registra de onde ele vem, para a FASE-03-4
 (seed + validação de schema no boot) e a FASE-10 (fórmulas) não inventarem dado.
+
+**Fonte canônica decidida na ADR-0009:** o **PostgreSQL**, em tabelas tipadas
+(`item_catalog`, `skill_catalog`, `npc_*`, `level_item`, `game_setting`, …) com
+`PRIMARY KEY`, `FOREIGN KEY` e `CHECK`, populadas por migrações versionadas de seed;
+`wyd-db` carrega e `wyd-core` valida antes do primeiro tick. Nenhum `.csv`/`.txt`/`.bin`
+é lido em runtime — o legado é insumo do gerador de seed (`tools/content/`) e base de
+conhecimento. As §6.1–§6.3 abaixo ficam como histórico do import.
 
 ### 6.1 Fonte histórica (árvore Go em `origin/main`, removida da árvore em 2026-11)
 
@@ -139,7 +145,9 @@ fonte de verdade do servidor.
 
 ### 6.4 Lacunas registradas
 
-1. Nenhuma migração Rust cria as tabelas de conteúdo acima (FASE-03-4/04).
+1. Nenhuma migração Rust cria as tabelas de conteúdo acima (FASE-04): elas entram no
+   `wyd-db` como DDL + seed idempotente, com `content_version` e proveniência
+   (ADR-0009); nada de arquivo em runtime.
 2. Não existe tabela de **lore/quests** nem de **mix/refino** na árvore Rust; o
    legado tinha `QuestsRate.txt`, `RefineRate.txt`, `Mixlist` (cliente).
 3. `docs/sistemas/*` (13 arquivos), `docs/lore/*` (3) e `docs/guias/*` (4)
@@ -148,3 +156,149 @@ fonte de verdade do servidor.
    `scripts/build-guias.mjs` não tem mais fonte para regenerar.
 4. Texto de sistema em `docs/` hoje é só protocolo/cliente/arquitetura; não
    existe documento de combate/drop/refino na árvore Rust.
+
+### 6.5 Esquema entregue (migrações 0007–0010, 2026-11-08)
+
+| Migração | Conteúdo |
+|---|---|
+| `0007_conteudo_catalogo.sql` | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` — PK/FK/CHECK + índice GIN em `effect_names` |
+| `0008_seed_taxonomia.sql` | 20 sistemas, 6 classes, 13 linhagens, 16 categorias de item |
+| `0009_seed_item_catalog.sql` (gerado) | 3.220 itens + 55 símbolos `EF_*` |
+| `0010_seed_skill_catalog.sql` (gerado) | 151 skills |
+
+Campos que respondem "para que serve este item": `item_catalog.kind`,
+`primary_system`, `event_only`, `tradeable`, `stackable`, `classification_source`,
+`confidence`; do lado de skill: `class_code`, `lineage_code`, `skill_role`. A
+classificação vem de regra de nome (`rule:name_v1`, confiança 60) ou fica `NULL` —
+**1.532 itens permanecem sem categoria** porque o nome não prova nada; isso é
+informação registrada, não falha a esconder.
+
+Prova (2026-11-08, Postgres do compose, banco descartável `wyd_seedcheck`): bloco `up`
+das quatro migrações aplicado com `ON_ERROR_STOP=1`; resultado das consultas → 3.220
+itens, 151 skills, 55 efeitos, 20 sistemas, 1.688 itens classificados, 99 `event_only`,
+156 não negociáveis e `content_version = 3`. O bloco `down` derruba as quatro tabelas
+na ordem inversa.
+
+### 6.6 Sanitização e normalização do insumo (2026-11-08)
+
+Regras aplicadas por `tools/content/gen-seed.mjs` **antes** de emitir SQL. O gerador
+verifica e falha; não conserta dado por chute. O relatório `sanitizacao` conta cada regra
+que disparou, então "está limpo" é uma afirmação medida, não uma suposição.
+
+| Regra | Por quê | Medido nos 12 insumos |
+|---|---|---|
+| UTF-8 estrito, por arquivo | Postgres só guarda UTF-8 válido; `?` silencioso perde nome | 11 válidos; `LevelItem.txt` com 4 bytes truncados (`0xC3` antes de CRLF), **todos em linha `#`** → tolerado, contado e descartado com o comentário |
+| CRLF → LF | `\r` fantasma quebra `raw` e comparação de linha | 5 TXT em CRLF (`LevelItem` 546, `Regions` 51, `gameconfig` 30, `Guard` 8, `MobMerc` 7) — normalizado no parse |
+| BOM, U+200B–200F, U+2060, U+00AD, controle C0/C1 | invisível quebra busca, log e diff | 0 |
+| NBSP (U+00A0, U+2007, U+202F) → espaço | `foo bar` ≠ `foo bar` numa comparação | 0 |
+| NFC como forma canônica | `ã` (U+00E3) e `a`+U+0303 são textos diferentes para `=` | todos já NFC; a regra impede NFD entrar |
+| espaços colapsados em rótulo | `"Guarda   Real "` → `"Guarda Real"` | 0 (dado já aparado) |
+| dobra de acento em chave de busca | busca do portal sem digitar acento | ver §6.7 (`content_fold`) |
+
+Três correções **de dado**, todas registradas no relatório:
+
+1. `level_item`: 318 linhas → **161 de conteúdo** (o bloco inteiro aparece repetido; 157
+   linhas idênticas descartadas). Dois `seq` têm duas linhas distintas — preservados.
+2. `region`: um retângulo vem invertido (`x1 > x2`); canonizar é perda zero (mesmos tiles).
+   Duas regiões passam de 4095 (`Dugeon_1_Andar_Hidra` tem `6841`) — preservadas, porque o
+   teto do cliente é regra do loader, não do banco.
+3. `npc_template`: **20 nomes em CP949 lido como ISO-8859-1** (arquivo coreano decodificado
+   como latin1), ex. `ÇÇ´Ð½º` = 피닉스. A chave **não** é renomeada — é referência do
+   cliente e de `npc_definition`; `encoding_origin` marca as 20 e `name_recovered` guarda o
+   coreano quando a recuperação é total (**12 de 20**; 8 perderam byte no legado).
+   `Foema_Anciã` e `Troll_Caçador@@` são português legítimo e ficam `utf8`.
+
+#### 6.6.1 Duplicidades — o que é e por que existe
+
+| Conjunto | Grupos | Itens | Causa | Ação |
+|---|---|---|---|---|
+| `item_catalog.name` (exato) | 488 | 1.367 | nomes comerciais repetidos | nenhuma |
+| `item_catalog.name` (dobrado) | 489 | 1.370 | idem, com acento/caixa variando | nenhuma |
+| `item_catalog` (nome+grade+preço+`effects`+`fields`) | **0** | 0 | — | **nenhuma duplicata acidental** |
+| `npc_template.template_name` (exato) | 0 | — | é PK | — |
+| `npc_template` (nome normalizado) | 345 | — | variantes `@Nome`, `Nome_`, `Nome__` | mantidas (são chaves) |
+| `npc_definition` (`id`, `slug`) | 0 | — | `slug` = nome + id | — |
+| `npc_shop_item` (`npc_id`, `slot`) | 0 | — | é PK | — |
+| `region.name` | 2 | 4 | `Erion` e `Armia` com **retângulos diferentes** | id sintético |
+| `game_setting` (`section`,`key`) | 0 | — | é PK | — |
+
+Por que os nomes de item repetem (medido, não suposto):
+
+- **tier antigo**: `Espada_Vorpal(Anct)` em `g5,g6,g7,g8` — mesmo nome, quatro grades;
+- **evento**: `Cupom_da_Sorte` ×78, cada um com `item_index` próprio;
+- **placeholder**: `NONAME` ×12, `not_used` ×7 (índice reservado no `ItemList`);
+- **item de classe**: `TransKnight`, `Foema`, `BeastMaster`, `Huntress` ×6 cada.
+
+Ou seja: nome **não é chave** de item e não deve ser único. O que identifica é
+`item_index`; o que agrupa visualmente é `name_fold`.
+
+### 6.7 Mundo entregue (migrações 0011–0012, 2026-11-08)
+
+| Migração | Conteúdo |
+|---|---|
+| `0011_conteudo_mundo.sql` | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn` + `guard_spawn_reward`, `mob_merc`, `game_setting` + `game_matrix`, `region`, `world_item_seed`, `guild_zone` |
+| `0012_seed_mundo.sql` (gerado, 5,5 MB) | 1.991 templates, 6.100 NPCs, 6.706 slots de loja, 161 `level_item`, 5 guardas/27 exigências, 1 mercador, 25 settings, 20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda, 12 linhas de `content_source`, `content_version = 4` |
+
+Mapa insumo → tabela/coluna (o "mapeado completamente"):
+
+| Insumo | Tabela | Colunas |
+|---|---|---|
+| `seed_npc_template.up.sql` | `npc_template` | `template_name`, `file_name`, `source_size`, `sha256`, `blob` (STRUCT_MOB 816 B) 1:1; `encoding_origin`/`name_recovered` derivados (§6.6) |
+| `seed_npc_definition.up.sql` | `npc_definition` | `id`, `slug`, `template_name`, `display_name`, `enabled`, `map_id`, `pos_x`, `pos_y`, `route_type`, `merchant`, `origin`, `generator_index`, `follower_template`, `minute_generate`, `min_group`, `max_group`, `max_num_mob`, `formation`, `generator_data` 1:1 |
+| `seed_npc_shop_item.up.sql` | `npc_shop_item` | `npc_id`, `slot`, `item_index`, `eff1..3`, `effv1..3`, `quantity` 1:1 |
+| `LevelItem.txt` | `level_item` | `source_seq`←`seq`, `level`, `class_id`←`classe`, `type_id`←`type`, `item_index`←`item`, `extras`; `ordinal`/`source_line` derivados |
+| `Guard.txt` | `guard_spawn` / `guard_spawn_reward` | `guard_index`, `npc_id`←`npc_index`, `source_line`; `req_slot`+`values[8]`←blocos |
+| `MobMerc.txt` | `mob_merc` | `generator_index`, `template_name`←`MobName`, `renew_seconds`, `reborn_seconds`, `items` |
+| `gameconfig.txt` (escalares) | `game_setting` | `section`, `key`, `value_int`, `value_text`, `source_line` |
+| `gameconfig.txt` (matrizes) | `game_matrix` | `section`, `block_index`, `line_index`, `values[]`, `source_line` |
+| `Regions.txt` | `region` | `name`, `x1..y2`, `source_line`; `id` identity, `name_fold` gerado |
+| `seed_world_item_seed.up.sql` | `world_item_seed` | `id`, `item_index`, `pos_x`, `pos_y`, `rotate`, `enabled` 1:1 |
+| `seed_guild_zone.up.sql` | `guild_zone` | `clan`, `zone`, `victory`, `city_tax`, `tax_vault`, `charge_guild`, `challenge_guild`, `challenge_money` 1:1 |
+| os 12 anteriores | `content_source` | `path`, `sha256`, `size_bytes`, `row_count`, `loaded_by`, `transform` |
+
+Semântica não provada, marcada e não promovida a gate: `merchant` acima de 0
+(UNVERIFIED; o campo é `BYTE` no `STRUCT_MOB`), efeitos numéricos `eff/effv` de loja,
+o bloco de 8 campos do `Guard.txt` (o cabeçalho do arquivo descreve 13), as seções
+`Treasure`/`Drop Item Event`, `class_mask` do item.
+
+Prova (2026-11-08, Postgres do compose, banco descartável `wyd_seedcheck`, `ON_ERROR_STOP=1`):
+`up` de 0007–0012 → contagens da tabela acima; `sha256(blob) = sha256` em **1.991/1.991**;
+`content_fold('Capa_de_Akelônia') = 'capa de akelonia'`, `('Arco_Æsir') = 'arco aesir'`,
+`('Baú_de_10ª_Skill') = 'bau de 10a skill'`; `down` na ordem inversa → **0 tabelas** e
+`content_fold` removida.
+
+### 7. Revisão de uso do PostgreSQL (2026-11-08)
+
+Pergunta: "estamos usando os recursos do Postgres e as boas práticas?" No volume atual
+(maior tabela: 6.706 linhas) o que dá ganho é **integridade declarativa, proveniência e
+chave de busca derivada** — não índice exótico. O que foi adotado:
+
+| Recurso | Onde | Por quê |
+|---|---|---|
+| `CHECK` derivado do dado | `slot`, `class_id`, `type_id`, `pos_x/y`, `quantity`, `level`, `source_size` | falha na migração, não no tick |
+| `FOREIGN KEY` real | `npc_definition→npc_template`, `npc_shop_item→npc_definition`, `guard_spawn→npc_definition` | 0 órfãos medidos |
+| ausência de FK, documentada | `npc_shop_item.item_index`, `level_item.item_index` | 22 + 1 itens fora do catálogo; FK quebraria o seed |
+| função `IMMUTABLE` | `content_fold(text)` | indexável e determinística sem extensão |
+| `GENERATED ALWAYS AS … STORED` | `item_catalog.name_fold`, `region.name_fold` | a dobra é derivada, nunca digitada |
+| `GENERATED … AS IDENTITY` | `region.id` | padrão SQL, sem `SERIAL` |
+| índice parcial | `npc_definition (merchant) WHERE merchant > 0` | 549 de 6.100 linhas |
+| tabela filha em vez de JSON | `guard_spawn_reward`, `game_matrix` | consultável por `values[1]`/coluna |
+| `jsonb` | `generator_data`, `extras`, `mob_merc.items` | estrutura aberta/UNVERIFIED |
+| `smallint[]` | `guard_spawn_reward.values`, `game_matrix.values` | bloco posicional sem semântica |
+
+Descartado, com motivo — para não reabrir a discussão:
+
+| Recurso | Motivo |
+|---|---|
+| `unaccent` | STABLE: não entra em índice nem em coluna gerada; exigiria wrapper + extensão para 29 letras que `translate()` resolve |
+| `citext` | ignora caixa e **não** acento; o `UNIQUE` implícito dele é case-sensitive (armadilha documentada) |
+| `pg_trgm` / trigram | 3.220 itens: varredura sequencial responde em menos de 1 ms; reavaliar acima de 100 mil |
+| BRIN / particionamento | maior tabela tem 6.706 linhas |
+| `ENUM` nativo | valor novo viraria migração de tipo; `item_kind`/`game_system` já dão FK + rótulo |
+| FK `NOT VALID` em `item_index` | barraria item novo de loja sem catálogo no overlay |
+| `SERIAL` | `IDENTITY` é o padrão SQL |
+| migração única de conteúdo | 6 arquivos por domínio mantêm diff e rollback revisáveis |
+
+Pendências que **não** são de arquitetura, são de entrega: carga tipada no boot
+(FASE-04-3), `ContentError { tabela, pk, coluna, motivo }`, e o servidor logando
+`content_version` + `content_source.sha256` para provar que duas máquinas têm o mesmo mundo.

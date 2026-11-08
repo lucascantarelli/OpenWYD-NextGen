@@ -1,0 +1,884 @@
+{
+  "generatedBy": "tools/client/map-skills.mjs",
+  "binary": "client/ItemList.bin",
+  "status": "diagnostico",
+  "recordSize": 140,
+  "matches": 279,
+  "distinctSkills": 131,
+  "nameOffsets": [
+    {
+      "offset": 136,
+      "count": 263
+    },
+    {
+      "offset": 4,
+      "count": 14
+    },
+    {
+      "offset": 8,
+      "count": 2
+    }
+  ],
+  "candidates": [
+    {
+      "field": 2,
+      "purity": 1,
+      "total": 28,
+      "classes": 15
+    },
+    {
+      "field": 3,
+      "purity": 1,
+      "total": 28,
+      "classes": 14
+    },
+    {
+      "field": 4,
+      "purity": 1,
+      "total": 28,
+      "classes": 15
+    },
+    {
+      "field": 5,
+      "purity": 1,
+      "total": 28,
+      "classes": 15
+    },
+    {
+      "field": 137,
+      "purity": 1,
+      "total": 28,
+      "classes": 12
+    },
+    {
+      "field": 138,
+      "purity": 1,
+      "total": 28,
+      "classes": 12
+    }
+  ],
+  "mapped": [
+    {
+      "index": 0,
+      "name": "Giro_da_Fúria",
+      "record": 4999,
+      "known": null
+    },
+    {
+      "index": 1,
+      "name": "Toque_Sagrado",
+      "record": 5000,
+      "known": null
+    },
+    {
+      "index": 2,
+      "name": "Golpe_Duplo",
+      "record": 5001,
+      "known": null
+    },
+    {
+      "index": 3,
+      "name": "Possuído",
+      "record": 5002,
+      "known": null
+    },
+    {
+      "index": 4,
+      "name": "Fanatismo",
+      "record": 5003,
+      "known": null
+    },
+    {
+      "index": 5,
+      "name": "Aura_da_Vida",
+      "record": 5004,
+      "known": null
+    },
+    {
+      "index": 6,
+      "name": "Fúria_Divina",
+      "record": 899,
+      "known": null
+    },
+    {
+      "index": 7,
+      "name": "Destino",
+      "record": 5006,
+      "known": null
+    },
+    {
+      "index": 8,
+      "name": "Carga",
+      "record": 5007,
+      "known": null
+    },
+    {
+      "index": 9,
+      "name": "Mestre_das_Armas",
+      "record": 5008,
+      "known": null
+    },
+    {
+      "index": 10,
+      "name": "Golpe_Mortal",
+      "record": 5009,
+      "known": null
+    },
+    {
+      "index": 11,
+      "name": "Assalto",
+      "record": 5010,
+      "known": null
+    },
+    {
+      "index": 12,
+      "name": "Espada_da_Fênix",
+      "record": 5011,
+      "known": null
+    },
+    {
+      "index": 13,
+      "name": "Samaritano",
+      "record": 5012,
+      "known": null
+    },
+    {
+      "index": 14,
+      "name": "Noção_de_Combate",
+      "record": 5013,
+      "known": null
+    },
+    {
+      "index": 15,
+      "name": "Armadura_Crítica",
+      "record": 5014,
+      "known": null
+    },
+    {
+      "index": 16,
+      "name": "Perseguição",
+      "record": 5015,
+      "known": null
+    },
+    {
+      "index": 17,
+      "name": "Espada_Flamejante",
+      "record": 5016,
+      "known": null
+    },
+    {
+      "index": 20,
+      "name": "Ataque_da_Alma",
+      "record": 5019,
+      "known": null
+    },
+    {
+      "index": 21,
+      "name": "Punhalada_Venenosa",
+      "record": 5020,
+      "known": null
+    },
+    {
+      "index": 22,
+      "name": "Exterminar",
+      "record": 5021,
+      "known": null
+    },
+    {
+      "index": 23,
+      "name": "Tempestade_de_Gelo",
+      "record": 5022,
+      "known": null
+    },
+    {
+      "index": 24,
+      "name": "Flecha_Mágica",
+      "record": 5023,
+      "known": null
+    },
+    {
+      "index": 25,
+      "name": "Desintoxicar",
+      "record": 5024,
+      "known": null
+    },
+    {
+      "index": 26,
+      "name": "Flash",
+      "record": 3450,
+      "known": null
+    },
+    {
+      "index": 27,
+      "name": "Cura",
+      "record": 3314,
+      "known": null
+    },
+    {
+      "index": 28,
+      "name": "Choque_Divino",
+      "record": 5027,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "faith"
+      }
+    },
+    {
+      "index": 29,
+      "name": "Recuperar",
+      "record": 5028,
+      "known": null
+    },
+    {
+      "index": 30,
+      "name": "Julgamento_Divino",
+      "record": 5029,
+      "known": null
+    },
+    {
+      "index": 31,
+      "name": "Renascimento",
+      "record": 5030,
+      "known": null
+    },
+    {
+      "index": 32,
+      "name": "Ataque_de_Fogo",
+      "record": 5031,
+      "known": null
+    },
+    {
+      "index": 33,
+      "name": "Relâmpago",
+      "record": 5032,
+      "known": null
+    },
+    {
+      "index": 34,
+      "name": "Lança_de_Gelo",
+      "record": 5033,
+      "known": null
+    },
+    {
+      "index": 36,
+      "name": "Nevasca",
+      "record": 5035,
+      "known": null
+    },
+    {
+      "index": 37,
+      "name": "Trovão",
+      "record": 5036,
+      "known": null
+    },
+    {
+      "index": 38,
+      "name": "Fênix_de_Fogo",
+      "record": 5037,
+      "known": null
+    },
+    {
+      "index": 39,
+      "name": "Inferno",
+      "record": 5038,
+      "known": null
+    },
+    {
+      "index": 41,
+      "name": "Teleporte",
+      "record": 5041,
+      "known": null
+    },
+    {
+      "index": 42,
+      "name": "Velocidade",
+      "record": 5040,
+      "known": null
+    },
+    {
+      "index": 43,
+      "name": "Escudo_Mágico",
+      "record": 5042,
+      "known": null
+    },
+    {
+      "index": 44,
+      "name": "Arma_Mágica",
+      "record": 5043,
+      "known": null
+    },
+    {
+      "index": 46,
+      "name": "Controle_de_Mana",
+      "record": 5045,
+      "known": null
+    },
+    {
+      "index": 47,
+      "name": "Cancelamento",
+      "record": 5046,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "trans"
+      }
+    },
+    {
+      "index": 48,
+      "name": "Fera_Flamejante",
+      "record": 5047,
+      "known": null
+    },
+    {
+      "index": 49,
+      "name": "Chamas_Etéreas",
+      "record": 5048,
+      "known": {
+        "classCode": "beastmaster",
+        "lineageCode": "elemental"
+      }
+    },
+    {
+      "index": 50,
+      "name": "Som_das_Fadas",
+      "record": 5049,
+      "known": null
+    },
+    {
+      "index": 51,
+      "name": "Enfraquecer",
+      "record": 5050,
+      "known": null
+    },
+    {
+      "index": 53,
+      "name": "Proteção_Elemental",
+      "record": 5052,
+      "known": null
+    },
+    {
+      "index": 56,
+      "name": "Evocar_Condor",
+      "record": 5055,
+      "known": null
+    },
+    {
+      "index": 57,
+      "name": "Evocar_Javali_Selvagem",
+      "record": 5056,
+      "known": null
+    },
+    {
+      "index": 58,
+      "name": "Evocar_Lobo",
+      "record": 5057,
+      "known": null
+    },
+    {
+      "index": 59,
+      "name": "Evocar_Grande_Tigre",
+      "record": 5059,
+      "known": null
+    },
+    {
+      "index": 60,
+      "name": "Evocar_Urso_Selvagem",
+      "record": 5058,
+      "known": null
+    },
+    {
+      "index": 61,
+      "name": "Evocar_Gorila_Gigante",
+      "record": 5060,
+      "known": null
+    },
+    {
+      "index": 62,
+      "name": "Evocar_Dragão_Negro",
+      "record": 5061,
+      "known": null
+    },
+    {
+      "index": 63,
+      "name": "Evocar_Succubus",
+      "record": 5062,
+      "known": null
+    },
+    {
+      "index": 64,
+      "name": "Lobisomem",
+      "record": 21,
+      "known": null
+    },
+    {
+      "index": 67,
+      "name": "Escudo_do_Tormento",
+      "record": 5066,
+      "known": null
+    },
+    {
+      "index": 68,
+      "name": "Astaroth",
+      "record": 23,
+      "known": {
+        "classCode": "huntress",
+        "lineageCode": "survival"
+      }
+    },
+    {
+      "index": 70,
+      "name": "Titã",
+      "record": 24,
+      "known": null
+    },
+    {
+      "index": 71,
+      "name": "Éden",
+      "record": 31,
+      "known": null
+    },
+    {
+      "index": 72,
+      "name": "Ataque_Fatal",
+      "record": 5071,
+      "known": null
+    },
+    {
+      "index": 73,
+      "name": "Ilusão",
+      "record": 5072,
+      "known": null
+    },
+    {
+      "index": 74,
+      "name": "Encantar_Gelo",
+      "record": 5074,
+      "known": null
+    },
+    {
+      "index": 75,
+      "name": "Agressividade",
+      "record": 5073,
+      "known": null
+    },
+    {
+      "index": 76,
+      "name": "Imunidade",
+      "record": 5075,
+      "known": null
+    },
+    {
+      "index": 77,
+      "name": "Meditação",
+      "record": 5076,
+      "known": null
+    },
+    {
+      "index": 78,
+      "name": "Lança_de_Ferro",
+      "record": 5077,
+      "known": null
+    },
+    {
+      "index": 79,
+      "name": "Tempestade_de_Raios",
+      "record": 5078,
+      "known": null
+    },
+    {
+      "index": 80,
+      "name": "Golpe_Felino",
+      "record": 5079,
+      "known": null
+    },
+    {
+      "index": 81,
+      "name": "Ligação_Espectral",
+      "record": 5080,
+      "known": null
+    },
+    {
+      "index": 83,
+      "name": "Alquimia",
+      "record": 5083,
+      "known": null
+    },
+    {
+      "index": 84,
+      "name": "Extração",
+      "record": 3021,
+      "known": null
+    },
+    {
+      "index": 85,
+      "name": "Explosão_Etérea",
+      "record": 5085,
+      "known": null
+    },
+    {
+      "index": 86,
+      "name": "Escudo_Dourado",
+      "record": 5084,
+      "known": null
+    },
+    {
+      "index": 88,
+      "name": "Lâmina_das_Sombras",
+      "record": 5087,
+      "known": null
+    },
+    {
+      "index": 89,
+      "name": "Evasão_Aprimorada",
+      "record": 5088,
+      "known": null
+    },
+    {
+      "index": 94,
+      "name": "Proteção_das_Sombras",
+      "record": 5093,
+      "known": null
+    },
+    {
+      "index": 95,
+      "name": "Invisibilidade",
+      "record": 5094,
+      "known": null
+    },
+    {
+      "index": 96,
+      "name": "Poder_Superior",
+      "record": 5095,
+      "known": null
+    },
+    {
+      "index": 97,
+      "name": "Canhão_Guardião",
+      "record": 5096,
+      "known": null
+    },
+    {
+      "index": 98,
+      "name": "Muro_de_Espinhos",
+      "record": 667,
+      "known": null
+    },
+    {
+      "index": 100,
+      "name": "Concentração",
+      "record": 669,
+      "known": null
+    },
+    {
+      "index": 101,
+      "name": "Força_Espectral",
+      "record": 670,
+      "known": null
+    },
+    {
+      "index": 102,
+      "name": "Limite_da_Alma",
+      "record": 5101,
+      "known": null
+    },
+    {
+      "index": 200,
+      "name": "Proteção_Divina",
+      "record": 678,
+      "known": null
+    },
+    {
+      "index": 201,
+      "name": "Bênção_Divina",
+      "record": 5400,
+      "known": null
+    },
+    {
+      "index": 202,
+      "name": "Blaze_Luncher",
+      "record": 5401,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "magic_sword"
+      }
+    },
+    {
+      "index": 203,
+      "name": "Clod_Attack",
+      "record": 5402,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "magic_sword"
+      }
+    },
+    {
+      "index": 204,
+      "name": "Mãos_Sangrentas",
+      "record": 5403,
+      "known": null
+    },
+    {
+      "index": 206,
+      "name": "Fencing_Master",
+      "record": 5405,
+      "known": null
+    },
+    {
+      "index": 207,
+      "name": "WindStorm",
+      "record": 5406,
+      "known": null
+    },
+    {
+      "index": 208,
+      "name": "Espelho_Mágico",
+      "record": 5407,
+      "known": null
+    },
+    {
+      "index": 209,
+      "name": "Conexão_de_Gelo",
+      "record": 5408,
+      "known": null
+    },
+    {
+      "index": 211,
+      "name": "Seal_Master",
+      "record": 5410,
+      "known": null
+    },
+    {
+      "index": 212,
+      "name": "Cenote",
+      "record": 5411,
+      "known": {
+        "classCode": "beastmaster",
+        "lineageCode": "elemental"
+      }
+    },
+    {
+      "index": 213,
+      "name": "Proteção_Absoluta",
+      "record": 5412,
+      "known": null
+    },
+    {
+      "index": 214,
+      "name": "Life_Wave",
+      "record": 5413,
+      "known": null
+    },
+    {
+      "index": 215,
+      "name": "Holy_Power",
+      "record": 5414,
+      "known": null
+    },
+    {
+      "index": 216,
+      "name": "Magia_Misteriosa",
+      "record": 5415,
+      "known": null
+    },
+    {
+      "index": 217,
+      "name": "Congelamento_Proficiente",
+      "record": 5416,
+      "known": null
+    },
+    {
+      "index": 218,
+      "name": "Thunder_Force",
+      "record": 5417,
+      "known": null
+    },
+    {
+      "index": 219,
+      "name": "Thunder_Lising",
+      "record": 5418,
+      "known": null
+    },
+    {
+      "index": 220,
+      "name": "Remover_Memória",
+      "record": 5419,
+      "known": null
+    },
+    {
+      "index": 221,
+      "name": "Incapacitador",
+      "record": 5420,
+      "known": null
+    },
+    {
+      "index": 222,
+      "name": "Special_Master",
+      "record": 5421,
+      "known": null
+    },
+    {
+      "index": 223,
+      "name": "Another_Change",
+      "record": 5422,
+      "known": {
+        "classCode": "foema",
+        "lineageCode": "special_magic"
+      }
+    },
+    {
+      "index": 224,
+      "name": "Anti_Magia",
+      "record": 5423,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "trans"
+      }
+    },
+    {
+      "index": 225,
+      "name": "Chama_Resistente",
+      "record": 5424,
+      "known": null
+    },
+    {
+      "index": 226,
+      "name": "Resi_Decrease",
+      "record": 5425,
+      "known": null
+    },
+    {
+      "index": 227,
+      "name": "Manaburn_Master",
+      "record": 5426,
+      "known": null
+    },
+    {
+      "index": 228,
+      "name": "Unidade_Mental",
+      "record": 5427,
+      "known": null
+    },
+    {
+      "index": 229,
+      "name": "Invocação_Final",
+      "record": 5428,
+      "known": null
+    },
+    {
+      "index": 230,
+      "name": "Poworful_Summon",
+      "record": 5429,
+      "known": null
+    },
+    {
+      "index": 231,
+      "name": "Ice_Armor",
+      "record": 5430,
+      "known": null
+    },
+    {
+      "index": 232,
+      "name": "Concha_Resistente",
+      "record": 5431,
+      "known": null
+    },
+    {
+      "index": 233,
+      "name": "Espinhos_Fortalecidos",
+      "record": 5432,
+      "known": null
+    },
+    {
+      "index": 234,
+      "name": "Weapon_Power",
+      "record": 5433,
+      "known": null
+    },
+    {
+      "index": 235,
+      "name": "Last_Resistance",
+      "record": 5434,
+      "known": null
+    },
+    {
+      "index": 236,
+      "name": "Contra_Ataque",
+      "record": 5017,
+      "known": null
+    },
+    {
+      "index": 237,
+      "name": "Ataque_Rápido_Proficiente",
+      "record": 5436,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "faith"
+      }
+    },
+    {
+      "index": 238,
+      "name": "Skill_Master",
+      "record": 5437,
+      "known": null
+    },
+    {
+      "index": 239,
+      "name": "Freezing",
+      "record": 5409,
+      "known": null
+    },
+    {
+      "index": 240,
+      "name": "Ponto_do_Mestre",
+      "record": 5439,
+      "known": null
+    },
+    {
+      "index": 241,
+      "name": "Absorção_de_Alma",
+      "record": 5440,
+      "known": {
+        "classCode": "beastmaster",
+        "lineageCode": "nature"
+      }
+    },
+    {
+      "index": 242,
+      "name": "Plunder",
+      "record": 5441,
+      "known": null
+    },
+    {
+      "index": 243,
+      "name": "Reinforce_Soul",
+      "record": 5442,
+      "known": null
+    },
+    {
+      "index": 244,
+      "name": "Tiro_Direto",
+      "record": 5443,
+      "known": null
+    },
+    {
+      "index": 245,
+      "name": "Garra_Habilidosa",
+      "record": 5444,
+      "known": null
+    },
+    {
+      "index": 246,
+      "name": "Bleeding",
+      "record": 5445,
+      "known": {
+        "classCode": "transknight",
+        "lineageCode": "faith"
+      }
+    },
+    {
+      "index": 247,
+      "name": "Ambush",
+      "record": 5446,
+      "known": null
+    }
+  ]
+}

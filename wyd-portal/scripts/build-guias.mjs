@@ -20,11 +20,41 @@ const repo = path.resolve(here, "..", "..");
 const outFile = path.resolve(here, "..", "src", "content", "guias.json");
 
 /** Seções publicadas no portal. `dir` é relativo à raiz do repositório. */
+// `docs/` foi reorganizado em 2026-11: as pastas `guias/`, `sistemas/` e `lore/`
+// foram substituídas por `docs/wyd/` (manual de domínio). Manter seções apontando
+// para diretórios inexistentes quebrava `npm run guias` — e o JSON antigo seguia
+// publicado, escondendo o problema.
 const SECTIONS = [
-  { id: "jogador", label: "Guia do jogador", order: 10, dir: "docs/guias/usuario" },
-  { id: "admin", label: "Guia do administrador", order: 20, dir: "docs/guias/admin" },
-  { id: "sistemas", label: "Sistemas de jogo", order: 30, dir: "docs/sistemas" },
-  { id: "lore", label: "História, guerras e reinos", order: 40, dir: "docs/lore" },
+  {
+    id: "manual",
+    label: "Manual completo de WYD",
+    order: 5,
+    dir: "docs/wyd",
+    prefix: "manual-",
+    recursive: true,
+  },
+];
+
+/**
+ * Ordem do manual: história primeiro (dá contexto), depois personagem, depois
+ * os sistemas na ordem em que o jogador os encontra, e as fontes por último.
+ */
+const MANUAL_ORDER = [
+  "README",
+  "lore",
+  "classes",
+  "skills",
+  "progressao",
+  "itens",
+  "economia",
+  "sistemas",
+  "sistemas/refino",
+  "sistemas/drops",
+  "sistemas/guerras",
+  "sistemas/mundo",
+  "sistemas/quests",
+  "sistemas/eventos",
+  "fontes",
 ];
 
 /**
@@ -48,11 +78,26 @@ const SYSTEM_ORDER = [
 
 /** README primeiro (é a introdução da seção); o resto segue a ordem declarada. */
 function rankOf(sectionId, file) {
-  const base = file.replace(/\.md$/, "");
+  const base = file.replace(/\.md$/, "").split(path.sep).join("/");
   if (base === "README") return -1;
-  if (sectionId !== "sistemas") return 0;
-  const index = SYSTEM_ORDER.indexOf(base);
-  return index === -1 ? SYSTEM_ORDER.length : index;
+  const order = sectionId === "sistemas" ? SYSTEM_ORDER : sectionId === "manual" ? MANUAL_ORDER : null;
+  if (!order) return 0;
+  const index = order.indexOf(base);
+  return index === -1 ? order.length : index;
+}
+
+/** Caminhos relativos (com `/`) de todos os `.md`, recursivo quando pedido. */
+function collect(dirAbs, recursive, prefix = "") {
+  const found = [];
+  for (const entry of readdirSync(dirAbs, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      if (recursive) found.push(...collect(path.join(dirAbs, entry.name), true, rel));
+      continue;
+    }
+    if (entry.name.endsWith(".md")) found.push(rel);
+  }
+  return found;
 }
 
 const readDoc = (abs) => readFileSync(abs, "utf8").replace(/\r\n/g, "\n");
@@ -111,7 +156,7 @@ for (const section of SECTIONS) {
   const dir = path.join(repo, section.dir);
   let entries;
   try {
-    entries = readdirSync(dir).filter((f) => f.endsWith(".md"));
+    entries = collect(dir, Boolean(section.recursive));
   } catch {
     throw new Error(`build-guias: diretório ausente: ${section.dir}`);
   }
@@ -122,8 +167,11 @@ for (const section of SECTIONS) {
 
   for (const file of entries) {
     const abs = path.join(dir, file);
-    const base = file.replace(/\.md$/, "");
-    const slug = base === "README" ? section.id : base;
+    // `collect` sempre usa "/" (mesmo no Windows), então não dá para confiar em `path.sep`.
+    const base = file.replace(/\.md$/, "").replace(/[/\\]/g, "-");
+    const prefix = section.prefix ?? "";
+    // README vira a porta da seção: `manual`, `jogador`, `sistemas`…
+    const slug = base === "README" ? prefix.replace(/-$/, "") || section.id : `${prefix}${base}`;
     docs.push({ abs, slug, section, file, md: readDoc(abs) });
   }
 }

@@ -25,6 +25,7 @@ offset de outro build não é evidência.
 | `keytable.mjs` | tabela `pKeyWord[512]` e transformação CPSock | `loadKeywordTable`, `transform` (mesmas regras de `crates/wyd-protocol`) |
 | `evidence.mjs` | confirmar/refutar endereços herdados | `ANCHORS`, `PATCH_SITES`, `analyseEvidence`, `disassemble` |
 | `formats.mjs` | estrutura inicial de `.wyt`, `.msa`, `sn.bin`, `serverlist.bin` | `analyseFormats` |
+| `extract-tables.mjs` | tabelas de dados (`ItemList.bin`, `SkillData.bin`): XOR, registro e perfil de colunas | CLI única; grava `docs/cliente/gerado/tabelas.json` |
 | `analyse.mjs` | orquestrar e gravar artefatos | CLI única; nada de lógica de análise aqui |
 | `captura.mjs` | gerar (`--gen`) e validar (`--check`) goldens do caminho login→campo | CLI única; fontes só de `payload.rs` + tabela de opcodes | CLI única; nada de lógica de análise aqui |
 

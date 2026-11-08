@@ -1,6 +1,6 @@
 # Issue 03-4 — Fim dos TXT/CSV: validação de schema no boot
 
-**Fase:** 3 · **Depende de:** FASE-04 · **Bloqueia:** 03-5 · **Esforço:** M
+**Fase:** 3 · **Depende de:** FASE-04-3 (carga de conteúdo) · **Bloqueia:** 03-5 · **Esforço:** M
 
 ## Objetivo
 
@@ -35,22 +35,34 @@ Inventário completo em `docs/arquitetura/modelo-banco.md` §6. Resumo:
 - **Docs de sistema/lore** (`docs/sistemas/*`, `docs/lore/*`, `docs/guias/*`)
   só existem em `origin/main`; a árvore atual perdeu os originais.
 
+## Decisão (ADR-0009, 2026-11-08)
+
+Fonte canônica do conteúdo estático: **PostgreSQL**, em tabelas tipadas com
+`PRIMARY KEY`/`FOREIGN KEY`/`CHECK` + `content_version`, populadas por migrações
+versionadas de seed (idempotentes, com `down`). `wyd-db` carrega e `wyd-core` valida
+antes do primeiro tick (`ports/content.rs`), abortando com `{tabela, pk, coluna, motivo}`.
+**Nenhum `.csv`/`.txt`/`.bin` é lido em runtime** — o legado é insumo de
+`tools/content/gen-seed.mjs` e base de conhecimento. Alternativas descartadas (CSV/JSON
+em repo, `.bin` do cliente, TXT legado, `include_str!`) e consequências estão na ADR.
+
 ## Passos
 
 1. [x] Inventariar os arquivos planos consumidos pelo legado (`modelo-banco.md`
    §6, incluindo procedência e lacunas).
-2. Definir o formato destino (tabelas versionadas ou banco — ver FASE-04) e o
-   validador de schema.
-3. Implementar a carga validada no boot com relatório de erro por
-   arquivo/linha/campo.
+2. [x] Definir a fonte canônica — **ADR-0009**: PostgreSQL com migração de seed e
+   validação tipada no boot; arquivo plano nunca é lido em runtime.
+3. Implementar a carga validada no boot (via `wyd-db`) com relatório por
+   tabela/pk/coluna.
 4. Teste: dado corrompido aborta com mensagem que identifica o problema.
 
 ## Arquivos
 
-- Criados: validador de schema + testes (módulo em `wyd-core` ou `wyd-db`,
-  conforme decisão).
-- Alterados: docs do formato em `docs/arquitetura/` (`modelo-banco.md` §6 já
-  recebeu o inventário desta issue).
+- Criados: migrações de schema/seed em `crates/wyd-db/migrations/`, carga em
+  `crates/wyd-db/src/repo/content.rs`, porta `crates/wyd-core/src/ports/content.rs` e
+  testes de conteúdo inconsistente.
+- Alterados: docs do formato em `docs/arquitetura/` (`modelo-banco.md` §6 com o
+  inventário; `estrutura-e-padroes.md` §10/§15 e `visao-pastas.md` com a árvore de
+  `content/`).
 - Proibido tocar: conteúdo de jogo sem motivo, default
   silencioso (proibido por regra).
 
@@ -75,9 +87,8 @@ abortado com relatório).
 - pre-release-rust.md (FASE 3 §3.2).
 - docs/rust/05-stack-docker.md - arquivos planos legados.
 
-**Status:** 🚧 (2026-11-08) — inventário de dados estáticos concluído e
-registrado; falta decidir o formato destino (tabelas em `wyd-db` vs. arquivo
-versionado) e implementar o validador de boot.
+**Status:** 🚧 (2026-11-08) — esquema e seed de **mundo** entregues (0007–0012, verificado
+em Postgres); falta a carga/validação no boot, que depende da FASE-04-3 (`sqlx`).
 
 ## Subtasks
 
@@ -88,13 +99,55 @@ versionado) e implementar o validador de boot.
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
+## Resultados (esquema + seed, 2026-11-08)
+
+- `crates/wyd-db/migrations/0007_conteudo_catalogo.sql`: tabelas de conteúdo
+  (`item_catalog`, `skill_catalog`) + taxonomia (`game_system`, `game_class`,
+  `skill_lineage`, `item_kind`, `item_effect`, `content_version`) com PK/FK/CHECK e GIN em
+  `effect_names`.
+- `0008_seed_taxonomia.sql`: 20 sistemas, 6 classes, 13 linhagens, 16 categorias de item
+  (base em `docs/wyd/sistemas.md` e `docs/wyd/classes.md`).
+- `0009_seed_item_catalog.sql` (gerado): 3.220 itens, 55 símbolos `EF_*`, 1.688 com
+  `kind`/`primary_system`, 99 `event_only`, 156 não negociáveis. Os 1.532 restantes
+  ficam `NULL` (nome não prova categoria).
+- `0010_seed_skill_catalog.sql` (gerado): 151 skills; 12 mapeadas por nome confirmado
+  (classe/linhagem/papel), 139 `unmapped` — o casamento nome↔índice ainda não foi provado.
+- `tools/content/gen-seed.mjs` + `README.md`: gerador offline (lê `origin/main` via
+  `git show`, emite lotes de 200 linhas); seed = **migração versionada**, não importador
+  manual (ADR-0009).
+- `docs/wyd/`: lore, classes, skills, sistemas e itens — fonte das regras de classificação
+  e material para `/guias`.
+- Prova: bloco `up` de 0007–0010 aplicado em banco descartável no Postgres do compose
+  (`ON_ERROR_STOP=1`) → 3.220/151/55/20 e `content_version = 3`.
+- Pendente: carga tipada + validação no boot (`wyd-db` → `ports/content.rs`), que depende
+  da FASE-04-3 (`sqlx`); teste de conteúdo inconsistente abortando o boot.
+
 ## Critérios de aceite
 
-- [ ] Zero TXT/CSV lido sem validação; inconsistência aborta com relatório claro.
-- [ ] Teste de corrupção verde; evidência anexada.
+- [ ] Zero `.csv`/`.txt`/`.bin` lido em runtime; conteúdo vem do banco e
+  inconsistência aborta o boot com relatório claro.
+- [ ] Teste de conteúdo inconsistente (banco descartável) verde; evidência anexada.
 
 ## Riscos / rollback
 
 - Risco: formato destino incompatível com ferramenta de conteúdo → mitigação:
   conversor versionado + validador antes/depois.
 - Rollback: `git checkout -- crates/ docs/`.
+
+## Resultados (mundo, 2026-11-08)
+
+- `0011_conteudo_mundo.sql`: `content_source`, `npc_template` (STRUCT_MOB 816 B com
+  `sha256` conferido), `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn` +
+  `guard_spawn_reward`, `mob_merc`, `game_setting` + `game_matrix`, `region`,
+  `world_item_seed`, `guild_zone`.
+- `0012_seed_mundo.sql` (gerado, 5,5 MB): 1.991 templates, 6.100 NPCs, 6.706 slots de
+  loja, 161 linhas de `level_item`, 5 guardas com 27 exigências, 1 mercador, 25 settings,
+  20 matrizes, 52 regiões, 49 itens de chão, 5 zonas de guilda, `content_version = 4`.
+- Correções que a auditoria obrigou: `region.name` **não** é único (Erion e Armia têm dois
+  retângulos cada) → id sintético; `LevelItem.txt` tem 318 linhas para 161 de conteúdo →
+  deduplicado; `gameconfig` põe várias chaves na mesma linha e `evstart` tem 4 valores →
+  `value_text`; `Guard.txt` tem blocos de 8 campos contra um cabeçalho de 13 → bloco cru
+  preservado; `npc_shop_item.item_index` aceita `-25426` (2 linhas) → sem FK e sem CHECK.
+- Prova: `up` de 0007–0012 no Postgres do compose (`wyd_seedcheck`, `ON_ERROR_STOP=1`) →
+  contagens acima, `sha256(blob) = sha256` em 1.991/1.991, `content_fold` conferido em
+  quatro nomes; `down` na ordem inversa deixa **0 tabelas** e remove `content_fold`.

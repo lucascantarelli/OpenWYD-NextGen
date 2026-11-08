@@ -1,0 +1,1679 @@
+{
+  "key": 90,
+  "headerBytes": 4,
+  "arquivos": [
+    {
+      "file": "SkillData.bin",
+      "kind": "skill",
+      "bytes": 23812,
+      "sha256": "e25eb8ed6bdc7ddc",
+      "registroBytes": 192,
+      "registros": 124,
+      "sobraBytes": 0,
+      "evidencia": "período 192 em 93,6% das posições; (23812-4)/192 = 124 registros exatos",
+      "colunas": {
+        "sequenciaIndex": [],
+        "candidatasEnum16": [
+          {
+            "offset": 0,
+            "distinct": 6,
+            "max": 6
+          },
+          {
+            "offset": 12,
+            "distinct": 8,
+            "max": 8
+          },
+          {
+            "offset": 16,
+            "distinct": 8,
+            "max": 11
+          },
+          {
+            "offset": 24,
+            "distinct": 5,
+            "max": 23
+          },
+          {
+            "offset": 60,
+            "distinct": 4,
+            "max": 4
+          },
+          {
+            "offset": 68,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 72,
+            "distinct": 6,
+            "max": 13
+          },
+          {
+            "offset": 76,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 80,
+            "distinct": 4,
+            "max": 3
+          },
+          {
+            "offset": 84,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 88,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 96,
+            "distinct": 7,
+            "max": 6
+          },
+          {
+            "offset": 108,
+            "distinct": 5,
+            "max": 13
+          },
+          {
+            "offset": 112,
+            "distinct": 10,
+            "max": 12
+          },
+          {
+            "offset": 156,
+            "distinct": 5,
+            "max": 4
+          },
+          {
+            "offset": 164,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 168,
+            "distinct": 6,
+            "max": 13
+          },
+          {
+            "offset": 172,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 176,
+            "distinct": 5,
+            "max": 4
+          },
+          {
+            "offset": 180,
+            "distinct": 2,
+            "max": 1
+          },
+          {
+            "offset": 184,
+            "distinct": 2,
+            "max": 1
+          }
+        ],
+        "sempreZero32": [
+          48,
+          56,
+          64,
+          144,
+          152,
+          160
+        ]
+      },
+      "perfil32": [
+        {
+          "offset": 0,
+          "width": 4,
+          "zeros": 93,
+          "distinct": 6,
+          "min": 0,
+          "max": 6,
+          "enumLike": true,
+          "seqRatio": 0.049,
+          "sample": [
+            3,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "offset": 4,
+          "width": 4,
+          "zeros": 72,
+          "distinct": 31,
+          "min": 0,
+          "max": 500,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            15,
+            10,
+            30,
+            75,
+            12,
+            20
+          ]
+        },
+        {
+          "offset": 8,
+          "width": 4,
+          "zeros": 73,
+          "distinct": 17,
+          "min": 0,
+          "max": 1200,
+          "enumLike": false,
+          "seqRatio": 0.033,
+          "sample": [
+            3,
+            3,
+            1,
+            3,
+            15,
+            15
+          ]
+        },
+        {
+          "offset": 12,
+          "width": 4,
+          "zeros": 92,
+          "distinct": 8,
+          "min": 0,
+          "max": 8,
+          "enumLike": true,
+          "seqRatio": 0.033,
+          "sample": [
+            5,
+            3,
+            5,
+            6,
+            1,
+            1
+          ]
+        },
+        {
+          "offset": 16,
+          "width": 4,
+          "zeros": 94,
+          "distinct": 8,
+          "min": 0,
+          "max": 11,
+          "enumLike": true,
+          "seqRatio": 0.057,
+          "sample": [
+            4,
+            1,
+            4,
+            0,
+            1,
+            1
+          ]
+        },
+        {
+          "offset": 20,
+          "width": 4,
+          "zeros": 96,
+          "distinct": 23,
+          "min": 0,
+          "max": 350,
+          "enumLike": false,
+          "seqRatio": 0.008,
+          "sample": [
+            5,
+            13,
+            75,
+            0,
+            15,
+            40
+          ]
+        },
+        {
+          "offset": 24,
+          "width": 4,
+          "zeros": 119,
+          "distinct": 5,
+          "min": 0,
+          "max": 23,
+          "enumLike": true,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 28,
+          "width": 4,
+          "zeros": 119,
+          "distinct": 6,
+          "min": 0,
+          "max": 160,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 32,
+          "width": 4,
+          "zeros": 102,
+          "distinct": 18,
+          "min": 0,
+          "max": 47,
+          "enumLike": false,
+          "seqRatio": 0.008,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 36,
+          "width": 4,
+          "zeros": 109,
+          "distinct": 10,
+          "min": 0,
+          "max": 100,
+          "enumLike": false,
+          "seqRatio": 0.057,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 40,
+          "width": 4,
+          "zeros": 94,
+          "distinct": 10,
+          "min": 0,
+          "max": 600,
+          "enumLike": false,
+          "seqRatio": 0.041,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 44,
+          "width": 4,
+          "zeros": 48,
+          "distinct": 32,
+          "min": 0,
+          "max": 402653208,
+          "enumLike": false,
+          "seqRatio": 0.016,
+          "sample": [
+            167772170,
+            117440519,
+            150994953,
+            402653194,
+            117440520,
+            117440520
+          ]
+        },
+        {
+          "offset": 48,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 52,
+          "width": 4,
+          "zeros": 48,
+          "distinct": 28,
+          "min": 0,
+          "max": 402653208,
+          "enumLike": false,
+          "seqRatio": 0.016,
+          "sample": [
+            167772170,
+            117440519,
+            150994953,
+            402653194,
+            117440520,
+            117440520
+          ]
+        },
+        {
+          "offset": 56,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 60,
+          "width": 4,
+          "zeros": 110,
+          "distinct": 4,
+          "min": 0,
+          "max": 4,
+          "enumLike": true,
+          "seqRatio": 0.024,
+          "sample": [
+            4,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 64,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 68,
+          "width": 4,
+          "zeros": 94,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.065,
+          "sample": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "offset": 72,
+          "width": 4,
+          "zeros": 71,
+          "distinct": 6,
+          "min": 0,
+          "max": 13,
+          "enumLike": true,
+          "seqRatio": 0.065,
+          "sample": [
+            13,
+            2,
+            1,
+            1,
+            1,
+            2
+          ]
+        },
+        {
+          "offset": 76,
+          "width": 4,
+          "zeros": 121,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.016,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 80,
+          "width": 4,
+          "zeros": 111,
+          "distinct": 4,
+          "min": 0,
+          "max": 3,
+          "enumLike": true,
+          "seqRatio": 0.033,
+          "sample": [
+            3,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 84,
+          "width": 4,
+          "zeros": 98,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.081,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 88,
+          "width": 4,
+          "zeros": 99,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.057,
+          "sample": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            1
+          ]
+        },
+        {
+          "offset": 92,
+          "width": 4,
+          "zeros": 50,
+          "distinct": 36,
+          "min": 0,
+          "max": 360,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            48,
+            84,
+            81,
+            224,
+            45,
+            78
+          ]
+        },
+        {
+          "offset": 96,
+          "width": 4,
+          "zeros": 101,
+          "distinct": 7,
+          "min": 0,
+          "max": 6,
+          "enumLike": true,
+          "seqRatio": 0.024,
+          "sample": [
+            4,
+            0,
+            0,
+            6,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 100,
+          "width": 4,
+          "zeros": 76,
+          "distinct": 34,
+          "min": 0,
+          "max": 800,
+          "enumLike": false,
+          "seqRatio": 0.008,
+          "sample": [
+            20,
+            105,
+            53,
+            140,
+            0,
+            47
+          ]
+        },
+        {
+          "offset": 104,
+          "width": 4,
+          "zeros": 77,
+          "distinct": 19,
+          "min": 0,
+          "max": 300,
+          "enumLike": false,
+          "seqRatio": 0.033,
+          "sample": [
+            3,
+            0,
+            0,
+            5,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 108,
+          "width": 4,
+          "zeros": 99,
+          "distinct": 5,
+          "min": 0,
+          "max": 13,
+          "enumLike": true,
+          "seqRatio": 0.041,
+          "sample": [
+            0,
+            0,
+            0,
+            5,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 112,
+          "width": 4,
+          "zeros": 103,
+          "distinct": 10,
+          "min": 0,
+          "max": 12,
+          "enumLike": true,
+          "seqRatio": 0.016,
+          "sample": [
+            0,
+            0,
+            0,
+            3,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 116,
+          "width": 4,
+          "zeros": 104,
+          "distinct": 20,
+          "min": 0,
+          "max": 2000,
+          "enumLike": false,
+          "seqRatio": 0.008,
+          "sample": [
+            0,
+            0,
+            0,
+            190,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 120,
+          "width": 4,
+          "zeros": 120,
+          "distinct": 5,
+          "min": 0,
+          "max": 46,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            17,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 124,
+          "width": 4,
+          "zeros": 120,
+          "distinct": 4,
+          "min": 0,
+          "max": 100,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            75,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 128,
+          "width": 4,
+          "zeros": 94,
+          "distinct": 26,
+          "min": 0,
+          "max": 48,
+          "enumLike": false,
+          "seqRatio": 0.033,
+          "sample": [
+            1,
+            14,
+            0,
+            0,
+            0,
+            13
+          ]
+        },
+        {
+          "offset": 132,
+          "width": 4,
+          "zeros": 103,
+          "distinct": 10,
+          "min": 0,
+          "max": 255,
+          "enumLike": false,
+          "seqRatio": 0.049,
+          "sample": [
+            2,
+            10,
+            0,
+            0,
+            0,
+            7
+          ]
+        },
+        {
+          "offset": 136,
+          "width": 4,
+          "zeros": 90,
+          "distinct": 11,
+          "min": 0,
+          "max": 600,
+          "enumLike": false,
+          "seqRatio": 0.024,
+          "sample": [
+            3,
+            600,
+            600,
+            0,
+            0,
+            600
+          ]
+        },
+        {
+          "offset": 140,
+          "width": 4,
+          "zeros": 49,
+          "distinct": 26,
+          "min": 0,
+          "max": 402653208,
+          "enumLike": false,
+          "seqRatio": 0.016,
+          "sample": [
+            167772170,
+            402653208,
+            402653208,
+            402653208,
+            402653204,
+            402653203
+          ]
+        },
+        {
+          "offset": 144,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 148,
+          "width": 4,
+          "zeros": 49,
+          "distinct": 24,
+          "min": 0,
+          "max": 402653208,
+          "enumLike": false,
+          "seqRatio": 0.008,
+          "sample": [
+            167772170,
+            402653208,
+            402653208,
+            83886104,
+            134217748,
+            402653204
+          ]
+        },
+        {
+          "offset": 152,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 156,
+          "width": 4,
+          "zeros": 109,
+          "distinct": 5,
+          "min": 0,
+          "max": 4,
+          "enumLike": true,
+          "seqRatio": 0.033,
+          "sample": [
+            2,
+            0,
+            0,
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 160,
+          "width": 4,
+          "zeros": 124,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 164,
+          "width": 4,
+          "zeros": 106,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.081,
+          "sample": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 168,
+          "width": 4,
+          "zeros": 71,
+          "distinct": 6,
+          "min": 0,
+          "max": 13,
+          "enumLike": true,
+          "seqRatio": 0.073,
+          "sample": [
+            13,
+            1,
+            1,
+            13,
+            0,
+            1
+          ]
+        },
+        {
+          "offset": 172,
+          "width": 4,
+          "zeros": 121,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.024,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 176,
+          "width": 4,
+          "zeros": 110,
+          "distinct": 5,
+          "min": 0,
+          "max": 4,
+          "enumLike": true,
+          "seqRatio": 0.041,
+          "sample": [
+            2,
+            0,
+            0,
+            3,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 180,
+          "width": 4,
+          "zeros": 100,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.089,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "offset": 184,
+          "width": 4,
+          "zeros": 113,
+          "distinct": 2,
+          "min": 0,
+          "max": 1,
+          "enumLike": true,
+          "seqRatio": 0.041,
+          "sample": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 188,
+          "width": 4,
+          "zeros": 49,
+          "distinct": 34,
+          "min": 0,
+          "max": 1514300698,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            66,
+            72,
+            90,
+            21,
+            69,
+            72
+          ]
+        }
+      ],
+      "amostra": [
+        "03 00 00 00 0f 00 00 00 03 00 00 00 05 00 00 00 04 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0a 00 00 0a",
+        "01 00 00 00 0a 00 00 00 03 00 00 00 03 00 00 00 01 00 00 00 0d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 00 07",
+        "01 00 00 00 1e 00 00 00 01 00 00 00 05 00 00 00 04 00 00 00 4b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 09 00 00 09",
+        "01 00 00 00 4b 00 00 00 03 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0a 00 00 18"
+      ]
+    },
+    {
+      "file": "ItemList.bin",
+      "kind": "item",
+      "bytes": 910004,
+      "sha256": "66e61a43ada6db7b",
+      "registroBytes": 140,
+      "registros": 6500,
+      "sobraBytes": 0,
+      "evidencia": "período 140 em 90,3% das posições; (910004-4)/140 = 6500 registros exatos",
+      "colunas": {
+        "sequenciaIndex": [],
+        "candidatasEnum16": [],
+        "sempreZero32": [
+          36,
+          40,
+          44,
+          48,
+          52,
+          56
+        ]
+      },
+      "perfil32": [
+        {
+          "offset": 0,
+          "width": 4,
+          "zeros": 3321,
+          "distinct": 660,
+          "min": 0,
+          "max": 3981270895,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            1768835955,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 4,
+          "width": 4,
+          "zeros": 3517,
+          "distinct": 899,
+          "min": 0,
+          "max": 4200682335,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            7628903,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 8,
+          "width": 4,
+          "zeros": 3861,
+          "distinct": 846,
+          "min": 0,
+          "max": 3983305077,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 12,
+          "width": 4,
+          "zeros": 4893,
+          "distinct": 524,
+          "min": 0,
+          "max": 3882770806,
+          "enumLike": false,
+          "seqRatio": 0.001,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 16,
+          "width": 4,
+          "zeros": 5857,
+          "distinct": 206,
+          "min": 0,
+          "max": 3882444146,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 20,
+          "width": 4,
+          "zeros": 6410,
+          "distinct": 41,
+          "min": 0,
+          "max": 1970422367,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 24,
+          "width": 4,
+          "zeros": 6477,
+          "distinct": 21,
+          "min": 0,
+          "max": 1935763812,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 28,
+          "width": 4,
+          "zeros": 6494,
+          "distinct": 7,
+          "min": 0,
+          "max": 1936680041,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 32,
+          "width": 4,
+          "zeros": 6496,
+          "distinct": 5,
+          "min": 0,
+          "max": 1702129253,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 36,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 40,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 44,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 48,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 52,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 56,
+          "width": 4,
+          "zeros": 6500,
+          "distinct": 1,
+          "min": 0,
+          "max": 0,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 60,
+          "width": 4,
+          "zeros": 3370,
+          "distinct": 889,
+          "min": 0,
+          "max": 10027007,
+          "enumLike": false,
+          "seqRatio": 0.087,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 64,
+          "width": 4,
+          "zeros": 4735,
+          "distinct": 206,
+          "min": 0,
+          "max": 26148864,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 68,
+          "width": 4,
+          "zeros": 5374,
+          "distinct": 325,
+          "min": 0,
+          "max": 37945535,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 72,
+          "width": 4,
+          "zeros": 5868,
+          "distinct": 163,
+          "min": 0,
+          "max": 20971520,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 76,
+          "width": 4,
+          "zeros": 3470,
+          "distinct": 118,
+          "min": 0,
+          "max": 16711698,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            65554,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 80,
+          "width": 4,
+          "zeros": 3769,
+          "distinct": 210,
+          "min": 0,
+          "max": 16711698,
+          "enumLike": false,
+          "seqRatio": 0.002,
+          "sample": [
+            0,
+            65563,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 84,
+          "width": 4,
+          "zeros": 4359,
+          "distinct": 428,
+          "min": 0,
+          "max": 131072004,
+          "enumLike": false,
+          "seqRatio": 0.001,
+          "sample": [
+            0,
+            131119,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 88,
+          "width": 4,
+          "zeros": 4745,
+          "distinct": 99,
+          "min": 0,
+          "max": 131072005,
+          "enumLike": false,
+          "seqRatio": 0.003,
+          "sample": [
+            0,
+            131120,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 92,
+          "width": 4,
+          "zeros": 4915,
+          "distinct": 94,
+          "min": 0,
+          "max": 50593794,
+          "enumLike": false,
+          "seqRatio": 0.002,
+          "sample": [
+            0,
+            655402,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 96,
+          "width": 4,
+          "zeros": 5132,
+          "distinct": 85,
+          "min": 0,
+          "max": 35061762,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 100,
+          "width": 4,
+          "zeros": 5590,
+          "distinct": 48,
+          "min": 0,
+          "max": 7864327,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 104,
+          "width": 4,
+          "zeros": 6000,
+          "distinct": 56,
+          "min": 0,
+          "max": 13762567,
+          "enumLike": false,
+          "seqRatio": 0.002,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 108,
+          "width": 4,
+          "zeros": 6178,
+          "distinct": 22,
+          "min": 0,
+          "max": 11796489,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 112,
+          "width": 4,
+          "zeros": 6410,
+          "distinct": 10,
+          "min": 0,
+          "max": 3932216,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 116,
+          "width": 4,
+          "zeros": 6488,
+          "distinct": 5,
+          "min": 0,
+          "max": 3932216,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 120,
+          "width": 4,
+          "zeros": 6499,
+          "distinct": 2,
+          "min": 0,
+          "max": 3932216,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 124,
+          "width": 4,
+          "zeros": 4097,
+          "distinct": 286,
+          "min": 0,
+          "max": 1000000000,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 128,
+          "width": 4,
+          "zeros": 4157,
+          "distinct": 238,
+          "min": 0,
+          "max": 2703228928,
+          "enumLike": false,
+          "seqRatio": 0.015,
+          "sample": [
+            0,
+            65536,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 132,
+          "width": 4,
+          "zeros": 4970,
+          "distinct": 478,
+          "min": 0,
+          "max": 112132096,
+          "enumLike": false,
+          "seqRatio": 0.022,
+          "sample": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "offset": 136,
+          "width": 4,
+          "zeros": 3283,
+          "distinct": 490,
+          "min": 0,
+          "max": 4100810052,
+          "enumLike": false,
+          "seqRatio": 0,
+          "sample": [
+            1851880020,
+            0,
+            0,
+            0,
+            0,
+            1851880020
+          ]
+        }
+      ],
+      "amostra": [
+        "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+        "73 4b 6e 69 67 68 74 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+        "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+        "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+      ]
+    }
+  ],
+  "ausentes": [],
+  "ausentesNoCliente": [
+    {
+      "dado": "taxa de drop por item",
+      "onde": "configuração do servidor (TMSrv), não no cliente",
+      "evidencia": "nenhum dos .bin do cliente tem tabela por monstro; drop é decidido no servidor"
+    },
+    {
+      "dado": "curva de EXP por nível",
+      "onde": "lógica do servidor; o cliente só recebe o valor de EXP atual",
+      "evidencia": "SkillData/ItemList/InitItem não contêm coluna com 400 valores crescentes de EXP"
+    }
+  ]
+}

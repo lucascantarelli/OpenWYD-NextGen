@@ -1,6 +1,3 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
 import { getGuia, groupGuias, listGuias } from "./guias";
@@ -14,10 +11,10 @@ import { getGuia, groupGuias, listGuias } from "./guias";
  * aqui — teste que relê o disco esconderia a divergência até o build da imagem.
  */
 describe("conteúdo de guias", () => {
-  it("tem as quatro seções publicadas", () => {
+  it("publica a seção do manual", () => {
     const ids = groupGuias().map((section) => section.id);
 
-    expect(ids).toEqual(["jogador", "admin", "sistemas", "lore"]);
+    expect(ids).toEqual(["manual"]);
   });
 
   it("toda página tem slug, título e corpo", () => {
@@ -51,56 +48,50 @@ describe("conteúdo de guias", () => {
     }
   });
 
-  it("o guia do jogador e o do administrador existem", () => {
-    expect(getGuia("comecando")?.title).toMatch(/jogador/i);
-    expect(getGuia("portal")?.title).toMatch(/pap[eé]is/i);
+  it("o índice e a história existem com o título esperado", () => {
+    expect(getGuia("manual")?.title).toMatch(/manual/i);
+    expect(getGuia("manual-lore")?.title).toMatch(/hist[oó]ria/i);
   });
 });
 
 /**
- * Estrutura da seção de sistemas: uma página por sistema catalogado, na ordem
- * de leitura declarada em `scripts/build-guias.mjs`.
+ * Estrutura do manual: uma página por domínio, na ordem de leitura declarada em
+ * `scripts/build-guias.mjs`.
  */
-describe("sistemas de jogo", () => {
-  const slugs = listGuias()
-    .filter((guia) => guia.section === "sistemas")
-    .map((guia) => guia.slug);
+describe("manual de WYD", () => {
+  const slugs = listGuias().map((guia) => guia.slug);
 
-  it("publica o índice e uma página por sistema, na ordem de leitura", () => {
+  it("publica os 16 documentos na ordem de leitura", () => {
     expect(slugs).toEqual([
-      "sistemas",
-      "personagem",
-      "combate",
-      "skills",
-      "drops",
-      "refino",
-      "quests",
-      "comercio",
-      "guildas",
-      "castelos",
-      "eventos",
-      "canais",
-      "mapa",
+      "manual",
+      "manual-lore",
+      "manual-classes",
+      "manual-skills",
+      "manual-progressao",
+      "manual-itens",
+      "manual-economia",
+      "manual-sistemas",
+      "manual-sistemas-refino",
+      "manual-sistemas-drops",
+      "manual-sistemas-guerras",
+      "manual-sistemas-mundo",
+      "manual-sistemas-quests",
+      "manual-sistemas-eventos",
+      "manual-fontes",
+      "manual-decisoes-servidor",
     ]);
   });
 
-  it("cada página, inclusive o índice, cita módulo Rust existente", () => {
-    // O vitest roda com cwd em wyd-portal/; o repositório é o diretório pai.
-    // Fonte canônica Rust (arquivo Go removido em 2026-11): payloads em
-    // crates/wyd-protocol/src/payload/ e despacho em crates/wyd-net/src/dispatch/.
-    const payloadDir = path.resolve(process.cwd(), "..", "crates", "wyd-protocol", "src", "payload");
-    const paginas = listGuias().filter((guia) => guia.section === "sistemas");
+  it("cada página traz tabela e subtítulo, não só prosa", () => {
+    for (const guia of listGuias()) {
+      expect(guia.body, `${guia.slug} sem tabela`).toContain("|---");
+      expect(guia.body, `${guia.slug} sem H2`).toMatch(/^##\s/m);
+    }
+  });
 
-    for (const guia of paginas) {
-      const citados = [...guia.body.matchAll(/`[^`]*?([a-z0-9_]+\.rs)`/g)].map((match) => match[1]);
-
-      expect(citados.length, `${guia.slug} não cita nenhum módulo Rust`).toBeGreaterThan(0);
-      for (const arquivo of citados) {
-        expect(
-          existsSync(path.join(payloadDir, arquivo)),
-          `${guia.slug} cita payload/${arquivo}, que não existe`,
-        ).toBe(true);
-      }
+  it("não cita arquivo Go: o projeto é 100% Rust desde 2026-11", () => {
+    for (const guia of listGuias()) {
+      expect(guia.body, guia.slug).not.toMatch(/`[^`]+\.go`/);
     }
   });
 });
