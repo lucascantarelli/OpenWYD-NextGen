@@ -13,6 +13,9 @@ pub trait Accounts {
     /// Busca por login exato (retorna `NotFound`, nunca `None` silencioso).
     fn find_by_login(&self, login: &str) -> impl Future<Output = Result<Account, DbError>> + Send;
 
+    /// Busca por id (painel do jogador — leitura da própria conta).
+    fn find_by_id(&self, id: i64) -> impl Future<Output = Result<Account, DbError>> + Send;
+
     /// Cria a conta (login validado antes; UNIQUE estoura como `ConstraintViolation`).
     fn create(
         &self,

@@ -1,29 +1,32 @@
 # syntax=docker/dockerfile:1
 # wyd-launcher — exe de distribuição/check do cliente (FORA do compose).
-# Artefato de release/smoke (FASE-05-2). Esqueleto padrão para
-# `docker/Dockerfile.<svc>` (builder + runtime mínima, non-root).
+# Artefato de release/smoke (FASE-05-2, ADR-0017). Multi-stage: builder com toolchain,
+# runtime distroless (sem shell, sem compilador, non-root) só com o binário + libc.
 # Build:  docker build -f docker/Dockerfile.launcher -t wyd/launcher:dev .
-# Uso:    docker run --rm wyd/launcher:dev update /jogo /pacote --key-file /chave.key
+# Uso:    docker run --rm wyd/launcher:dev check /jogo /jogo/manifest.toml
+# Proveniência: versão/commit entram por build-arg e ficam nas labels OCI.
 
 FROM rust:1-bookworm AS builder
 WORKDIR /src
-# Dependências primeiro (cache de camada): só manifests do workspace.
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates ./crates
 # Cache BuildKit do registry + target acelera rebuilds sem invalidar camadas.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release -p wyd-launcher && \
-    cp /src/target/release/wyd-launcher /usr/local/bin/wyd-launcher
+    install -Dm0755 target/release/wyd-launcher /out/wyd-launcher
 
-FROM debian:bookworm-slim AS runtime
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+ARG WYD_VERSION=0.1.0
+ARG WYD_COMMIT=unknown
 LABEL org.opencontainers.image.title="wyd-launcher" \
       org.opencontainers.image.description="Distribuicao e verificacao do cliente WYD" \
-      org.opencontainers.image.source="https://github.com/lucascantarelli/wyd"
-RUN useradd --create-home --shell /bin/false wyd && \
-    mkdir -p /jogo /pacote && chown wyd:wyd /jogo /pacote
-COPY --from=builder /usr/local/bin/wyd-launcher /usr/local/bin/wyd-launcher
-USER wyd
+      org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
+      org.opencontainers.image.version="${WYD_VERSION}" \
+      org.opencontainers.image.revision="${WYD_COMMIT}" \
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
+COPY --from=builder /out/wyd-launcher /usr/local/bin/wyd-launcher
+USER nonroot:nonroot
 WORKDIR /jogo
-ENTRYPOINT ["wyd-launcher"]
+ENTRYPOINT ["/usr/local/bin/wyd-launcher"]
 CMD ["--help"]

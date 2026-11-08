@@ -1,21 +1,27 @@
-//! Laboratorio matematico (esqueleto).
+//! Laboratório matemático do WYD — fachada do crate.
 //!
-//! Simula interacoes de combate de forma deterministica para validar
-//! balanceamento antes de tocar a engine.
+//! Este arquivo **não** carrega regra: só declara módulos e reexporta. A matemática mora em
+//! [`formula`] (um arquivo por sistema), a ordem do tick em [`scenario`], o sorteio
+//! determinístico em [`roll`] e a saída comparável em [`report`].
+//!
+//! Documento de arquitetura (entradas, saídas, unidades, ordem no tick, arredondamento e
+//! decisões provisórias): `docs/arquitetura/matematica-sim.md`. Inventário rápido:
+//! `docs/rust/06-matematica.md`. Árvore normativa: `docs/arquitetura/estrutura-e-padroes.md`
+//! §14 (ADR-0011).
+//!
+//! Determinismo é contrato: nenhuma fórmula usa `rand`, relógio, `f32` ou `f64`; a seed entra
+//! por [`XorShift64::from_seed`] e o estado do gerador é inspecionável.
 
-/// Calculo placeholder deterministico: dano base menos absorcao, sem underflow.
-#[must_use]
-pub fn damage_after_absorb(base: u32, absorb: u32) -> u32 {
-    base.saturating_sub(absorb)
-}
+pub mod error;
+pub mod formula;
+pub mod report;
+pub mod roll;
+pub mod scenario;
+pub mod units;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn absorb_never_underflows() {
-        assert_eq!(damage_after_absorb(100, 30), 70);
-        assert_eq!(damage_after_absorb(10, 30), 0);
-    }
-}
+pub use error::SimError;
+pub use formula::*;
+pub use report::{damage_by_defense, Table};
+pub use roll::{Die, XorShift64, CHANCE_SCALE};
+pub use scenario::{resolve_attack, AttackOutcome, AttackProfile, Combatant, TICK_PHASES};
+pub use units::{mul_bps, Bps, Tenths};

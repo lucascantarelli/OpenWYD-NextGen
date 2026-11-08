@@ -25,8 +25,9 @@ pub fn is_admin_path(path: &str) -> bool {
 }
 
 pub use api::{
-    create_account, find_account, request_grant, AccountSummary, GrantKind, GrantReceipt,
-    GrantRequest,
+    create_account, find_account, own_account, own_characters, request_grant, request_recovery,
+    top_rankings, AccountSummary, GrantKind, GrantReceipt, GrantRequest, PanelAccount,
+    PanelCharacter, RankingEntry,
 };
 pub use audit::{log_action, log_denied, AuditEntry, AuditSink, VecSink};
 pub use auth::{may_change_role, may_target, Session, StaffSession};

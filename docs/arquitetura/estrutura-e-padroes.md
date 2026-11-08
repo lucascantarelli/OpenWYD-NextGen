@@ -13,6 +13,7 @@
 
 ```
 wyd-launcher ──► (nenhuma crate interna)
+wyd-bots     ──► wyd-sim, wyd-net, wyd-protocol   # PLANEJADO (ADR-0010, FASE-15-3)
 wyd-admin    ──► wyd-db
 wyd-db       ──► (independente)
 wyd-sim      ──► wyd-protocol
@@ -183,7 +184,7 @@ crates/wyd-core/
 │   ├── ecs/
 │   │   ├── mod.rs
 │   │   ├── components.rs # Position, Stats, Inventory — dados, sem lógica
-│   │   └── resources.rs  # recursos globais (tempo, seed de RNG)
+│   │   └── resources.rs  # recursos globais (tempo, seed) + DomainEvents (fila limitada)
 │   ├── tick/
 │   │   ├── mod.rs
 │   │   └── scheduler.rs  # intervalo fixo, ordem documentada dos sistemas
@@ -191,16 +192,26 @@ crates/wyd-core/
 │   │   ├── mod.rs
 │   │   └── grid.rs       # visibilidade / interest management O(1)
 │   ├── systems/
-│   │   ├── mod.rs
-│   │   ├── movement.rs
-│   │   ├── combat.rs     # aplica fórmula aprovada (FASE-10), não a inventa
-│   │   └── visibility.rs
+│   │   ├── mod.rs        # executado (03-5): só declara e re-exporta
+│   │   ├── movement.rs   # executado (03-5): orçamento de velocidade + limites do mundo
+│   │   ├── combat.rs     # executado (03-5): dano por `DamageModel` (ADR-0014), não o inventa
+│   │   ├── skill.rs      # executado (03-5): skill aprendida, MP, cooldown e alcance
+│   │   ├── inventory.rs  # executado (03-5): equipar/desequipar/mover (ADR-0015)
+│   │   ├── visibility.rs
+│   │   └── npc.rs        # executado (03-6): integra npc/ ao tick (ADR-0016)
 │   ├── rules/            # fórmulas puras aplicadas (dano/EXP aprovados)
 │   │   └── mod.rs
 │   ├── world/
 │   │   ├── mod.rs
 │   │   ├── state.rs      # dono do estado do mundo (um por nó)
 │   │   └── snapshot.rs   # save/load do estado
+│   ├── npc/              # executado (03-6, ADR-0016) — IA determinística
+│   │   ├── mod.rs
+│   │   ├── state.rs      # NpcMode, NpcState/NpcStates SoA, ThreatTable, RNG semeado — dado
+│   │   ├── behavior.rs   # FSM: idle→patrol→aggro→chase→attack→flee→return (precedência)
+│   │   ├── brain.rs      # percepção + alvo + intenção inteira (NpcProfile por parâmetro)
+│   │   ├── route.rs      # rota ancorada (route_type UNVERIFIED até o trace)
+│   │   └── budget.rs     # cadência de decisão (5 Hz, tick % 4) e teto por tick
 │   └── ports/
 │       ├── mod.rs
 │       ├── persistence.rs # trait: o core pede, wyd-db entrega (DIP)
@@ -211,7 +222,7 @@ crates/wyd-core/
 │   ├── content.rs        # conteúdo inconsistente aborta o boot (ADR-0009)
 │   └── determinism.rs    # mesmo seed → mesmo resultado
 └── benches/
-    └── tick.rs           # regressão de performance do loop
+    └── tick.rs           # executado (03-6): custo da IA com 500 NPCs no orçamento do tick
 ```
 
 ## 11. `wyd-net` — árvore alvo (FASE-08)
@@ -314,26 +325,62 @@ crates/wyd-admin/
 Transporte decidido na **ADR-0008** (HTTP/1.1 + JSON em loopback); `.proto` não
 entra na árvore.
 
-## 14. `wyd-sim` — árvore alvo (FASE-10)
+## 14. `wyd-sim` — árvore alvo (FASE-10, ADR-0011)
+
+Um arquivo por **sistema de jogo**, não por "tipo de arquivo": a árvore cai da matemática
+(`docs/arquitetura/matematica-sim.md` §2), não o contrário.
 
 ```
 crates/wyd-sim/
-├── Cargo.toml            # deps numéricas só via ADR
+├── Cargo.toml            # deps numéricas só via ADR (hoje: nenhuma)
 ├── src/
-│   ├── lib.rs            # fachada (seed explícita, determinismo)
+│   ├── lib.rs            # fachada: declara e reexporta; sem regra
+│   ├── error.rs          # SimError (um erro por fronteira)
+│   ├── units.rs          # Bps, Tenths, mul_bps — truncamento único, sem f64
+│   ├── roll/             # sorteio determinístico (fronteira, não fórmula)
+│   │   ├── mod.rs        # trait Die + escala de chance
+│   │   └── xorshift64.rs # XorShift64 (seed explícita, estado auditável)
 │   ├── formula/          # funções puras: fato × hipótese separados
+│   │   ├── mod.rs        # só declara/reexporta
+│   │   ├── attributes.rs # derivados: nível → atributo → equipamento
+│   │   ├── progression.rs# pontos, tetos de maestria, degraus, ExpTable
+│   │   ├── damage.rs     # base→skill→buff→crítico→defesa/perfuração→resist→absorção
+│   │   ├── hit.rs        # acerto, evasão, crítico
+│   │   ├── effect.rs     # efeitos com duração em ticks
+│   │   ├── resist.rs     # resistência elemental
+│   │   ├── drop.rs       # roll por item (1..1.000.000)
+│   │   ├── regen.rs      # HP/MP por tick com resto acumulado
+│   │   ├── threat.rs     # aggro e estado de criatura (matemática da IA)
+│   │   ├── refine.rs     # +0..+15 em bps, composição +10 e gemas de efeito
+│   │   ├── speed.rs      # ⛔ BLOQUEADO até FASE-10-2 (anomalia ~200% sem causa)
+│   │   └── economia.rs   # ⬜ planejado (imposto, preço, drop de gold)
+│   ├── scenario/         # ordem do tick e do golpe
 │   │   ├── mod.rs
-│   │   ├── damage.rs     # ordem: base→atrib→equip→skill→buff→crit→defesa
-│   │   ├── speed.rs      # inclui a anomalia ~200% (cenário reproduzível)
-│   │   └── crit.rs
-│   ├── scenario/         # cenários numerados (tabelas velocidade×hits…)
-│   │   └── mod.rs
+│   │   └── combat.rs     # TICK_PHASES + resolve_attack (acerto→crítico→dano)
+│   ├── bot/              # PLANEJADO (ADR-0010, FASE-15-3) — política de bot
+│   │   ├── mod.rs
+│   │   ├── persona.rs    # perfil (classe, nível, objetivo) — dado, sem lógica
+│   │   └── policy.rs     # decisão pura: estado → ação (mesma FSM do core)
 │   └── report/
 │       ├── mod.rs
 │       └── table.rs      # saída comparável (atual × proposto)
 └── tests/
-    └── goldens.rs        # regressões matemáticas de valor exato
+    ├── goldens.rs        # regressões matemáticas de valor exato (inalteradas)
+    └── determinism.rs    # mesma seed → mesma partida; replay com rolls gravados
 ```
+
+Mapa de sistemas, unidades, ordem no tick e decisões provisórias:
+**`docs/arquitetura/matematica-sim.md`**. Inventário curto e dívidas:
+**`docs/rust/06-matematica.md`**.
+
+Regras que a árvore carrega:
+
+1. Fórmula sem prova fica ⛔ no plano; `scenario/` pode explorar hipótese, `formula/` não.
+2. Nenhuma lógica em `lib.rs`/`mod.rs`/`main.rs`; fórmula nova é módulo novo (OCP).
+3. Percentual é `Bps`, decimal de item é `Tenths`, duração é tick inteiro; `f64` proibido em
+   `formula/` (relatório é texto).
+4. Sortear é papel de `roll::Die`; fórmula que consome `rand` ou relógio reprova revisão.
+5. `bot/` e `formula/speed.rs` são **reservados**: existem no plano, entram por issue própria.
 
 Equações documentadas fora do código, no manual técnico (`docs/`).
 

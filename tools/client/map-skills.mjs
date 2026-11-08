@@ -21,7 +21,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const BIN = path.join(ROOT, "client", "ItemList.bin");
-const SEED = path.join(ROOT, "crates", "wyd-db", "migrations", "0010_seed_skill_catalog.sql");
+const SEED = path.join(ROOT, "crates", "wyd-db", "migrations", "0018_seed_skill_catalog.sql");
 const OUT = path.join(ROOT, "docs", "cliente", "gerado", "skills-map.json");
 
 const KEY = 0x5a;

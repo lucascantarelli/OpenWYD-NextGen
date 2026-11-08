@@ -49,6 +49,20 @@ Saída esperada: `test result: ok` com exemplo numérico documentado reproduzido
 - crates/wyd-sim/src/ + crates/wyd-core/src/systems/.
 - pre-release-rust.md (FASE 10 §10.1).
 
+## Progresso 2026-11-08 — composição codificada, ordem provisória
+
+- **Criados:** `crates/wyd-sim/src/formula/{attributes,progression,hit,resist,effect,drop,regen,threat}.rs`,
+  `scenario/combat.rs`, `report/table.rs`, `units.rs`, `error.rs`, `roll/{mod,xorshift64}.rs`;
+  `tests/determinism.rs`. `formula/damage.rs` virou cadeia (`DamageInput` → dano final)
+  mantendo `damage_after_absorb`.
+- **Documentado:** `docs/arquitetura/matematica-sim.md` (por sistema: entradas, saídas, unidade,
+  ordem no tick, arredondamento) + ADR-0011 (árvore).
+- **Não fechado:** a **ordem exata** (defesa subtrativa × multiplicativa, posição do crítico e
+  da absorção, grandeza do crítico de item) é hipótese D-02..D-04/D-06 — exige trace do
+  cliente (FASE-08-6) e stats reais (`mob_template_stat`, hoje vazia).
+- **Prova:** `cargo test -p wyd-sim` (goldens existentes com as mesmas asserções + 6 testes de
+  determinismo + unidade por módulo).
+
 ## Subtasks
 
 - [ ] Codificar issue

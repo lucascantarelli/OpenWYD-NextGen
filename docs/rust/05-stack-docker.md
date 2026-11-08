@@ -48,12 +48,16 @@ prod), linha nesta tabela e `make stack-config` verde nos dois modos.
 
 Cadeia normativa (skill `wyd-rust-obs`, FASE-06-1 → FASE-12-1):
 
-1. **Instrumentação no motor** (FASE-06-1, bloqueada: deps `tracing`/`prometheus`
-   pendentes de ADR + `vendor/` — ver `docs/rust/01-dependencias.md`):
-   tick P50/P95/P99, pacotes/s, entidades ativas, memória, filas. Zero
-   segredo em log/métrica (ver `.gitleaks.toml`).
-2. **Exposição**: cada binário Rust serve `/metrics`; contrato fechado de
-   nomes sai da 06-1 — dashboard só consulta o que 06-1 expõe.
+1. **Instrumentação no motor** (FASE-06-1 ✅, ADR-0018): `tracing` + histograma de tick
+   (`crates/wyd-core/src/metrics/`, `telemetry.rs`), contadores de rede em
+   `crates/wyd-net/src/metrics.rs` (feature `metrics`, desligada no build default por custo
+   medido). Nomes fechados: `wyd_ticks_total`, `wyd_tick_duration_microseconds`,
+   `wyd_entities_active`, `process_resident_memory_bytes`, `wyd_memory_samples_total`,
+   `wyd_packets_total`, `wyd_packets_rejected_total{reason}`, `wyd_handshakes_total`,
+   `wyd_connections_pending`, `wyd_sessions_open`. Zero segredo em log/métrica.
+2. **Exposição**: `MetricsServer` serve `GET /metrics` em texto Prometheus 0.0.4
+   (endereço decidido pelo binário, default `127.0.0.1:9898`); o fragmento do `wyd-net`
+   entra por `Metrics::render(extra)`. Dashboard só consulta o que 06-1 expõe.
 3. **Coleta/visualização** (FASE-12/12-1): profile `monitoring` no compose
    (Prometheus + Grafana + node-exporter, imagens oficiais) com configs em
    `monitoring/` — diretório ainda não existe; será autorado na 12-1, sem

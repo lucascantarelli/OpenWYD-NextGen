@@ -78,3 +78,24 @@ Saída esperada: `test result: ok`; bench de iteração publicado como baseline.
 - Risco: ECS inadequado à carga de guerras → mitigação: bench antes/depois;
   trocar exige nova ADR.
 - Rollback: `git checkout -- crates/wyd-core/`.
+
+## Progresso 2026-11-08 — gema como transação do inventário
+
+- **Caminho único:** `ComponentStore::apply_gem(entity, slot, gem_item)` opera no inventário
+  real da entidade; `Inventory::{plan_gem, consume_gem, commit_gem, apply_gem_from_bag}` ficaram
+  `pub(crate)` (fora do crate só existe o caminho com entidade viva, estoque e evento).
+- **Transação:** `plan_gem` valida sem escrever → estoque conferido (`GemNotInBag`) → espaço na
+  fila (`EventQueueFull`) → `DomainEvent::GemEffectChanged` publicado → `consume_gem` retira uma
+  unidade → `commit_gem` grava o efeito. Toda recusa acontece antes da primeira escrita.
+- **Fonte:** `docs/wyd/sistemas/refino.md` §3 (gema aplicada sobre o item; vale para Anct e
+  +10+; efeito trocável; 40 por nível acima de +9; drop 8% e EXP 2% fixos).
+- **Provisório:** D-12 (a gema é consumida — a fonte descreve aplicar sobre o item, não diz
+  quantas unidades; assumimos uma) e D-13 (reaplicar a mesma gema é permitido: o efeito não é
+  definitivo, então "esgotada" é estoque, não "já aplicada"), em
+  `docs/arquitetura/matematica-sim.md` §4. ADR-0012 registra a decisão.
+- **Prova:** `crates/wyd-core/tests/gem.rs` (6 testes de API pública) + `gem_tests` em
+  `components.rs` (11): consumo unitário, recusa sem mutação parcial, evento único por
+  aplicação e zero nas recusas, troca de efeito carregando o delta, fila cheia sem consumir, e
+  **Anct +9 (40 de perfuração) estritamente melhor que comum +9 (recusado, 0)**.
+- **Ainda aberto:** `systems/` (spawn/despawn/movimento em lote), ADR de ECS (hecs vs bevy_ecs)
+  e bench de iteração contígua.

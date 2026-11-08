@@ -124,6 +124,19 @@ mod tests {
                 })
         }
 
+        async fn find_by_id(&self, id: i64) -> Result<Account, wyd_db::DbError> {
+            self.by_login
+                .lock()
+                .expect("fake acessível")
+                .values()
+                .find(|account| account.id == id)
+                .cloned()
+                .ok_or(wyd_db::DbError::NotFound {
+                    entity: "account",
+                    id,
+                })
+        }
+
         async fn create(&self, login: &str, role: Role) -> Result<Account, wyd_db::DbError> {
             let mut by_login = self.by_login.lock().expect("fake acessível");
             if by_login.contains_key(login) {

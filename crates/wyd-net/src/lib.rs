@@ -6,6 +6,7 @@
 //! payload herdada de `wyd-protocol` (08-2). Input de rede nunca causa panic.
 
 pub mod limits;
+pub mod metrics;
 
 /// Tamanho maximo aceito para um pacote CPSock.
 pub const MAX_PACKET_BYTES: usize = 4096;
@@ -17,6 +18,7 @@ pub fn accepts_len(len: usize) -> bool {
 }
 
 pub use limits::{default_bucket, ConnectionGate, Deny, TokenBucket};
+pub use metrics::{NetMetrics, NET};
 
 #[cfg(test)]
 mod tests {

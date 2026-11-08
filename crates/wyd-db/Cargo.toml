@@ -3,6 +3,7 @@ name = "wyd-db"
 version = "0.1.0"
 edition = "2021"
 description = "Persistencia async do WYD (Postgres sqlx, migrations)"
+publish = false
 
 [lib]
 name = "wyd_db"

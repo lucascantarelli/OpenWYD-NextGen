@@ -49,6 +49,22 @@ impl Accounts for FakeAccounts {
         }
     }
 
+    fn find_by_id(&self, id: i64) -> impl Future<Output = Result<Account, DbError>> + Send {
+        let found = self
+            .by_login
+            .lock()
+            .expect("fake acessível")
+            .values()
+            .find(|account| account.id == id)
+            .cloned();
+        async move {
+            found.ok_or(DbError::NotFound {
+                entity: "account",
+                id,
+            })
+        }
+    }
+
     fn create(
         &self,
         login: &str,

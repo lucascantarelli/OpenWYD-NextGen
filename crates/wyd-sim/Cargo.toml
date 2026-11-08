@@ -3,6 +3,7 @@ name = "wyd-sim"
 version = "0.1.0"
 edition = "2021"
 description = "Laboratorio matematico do WYD (simulacao de combate/balanceamento)"
+publish = false
 
 [lib]
 name = "wyd_sim"

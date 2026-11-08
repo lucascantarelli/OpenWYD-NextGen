@@ -2,9 +2,10 @@
 //!
 //! Valida estaticamente: marcadores up/down, reversibilidade (toda tabela
 //! criada no up cai no down), FKs apontando para tabelas criadas e seeds só
-//! tocando tabelas existentes. A prova contra Postgres real (FK violada falha,
-//! CHECK violado falha, revert limpa) é a validação ao vivo documentada na
-//! issue FASE-04 — este teste garante a mesma disciplina no `cargo test`.
+//! tocando tabelas existentes e tabela criada duas vezes. A aplicação contra
+//! Postgres real (up → down → up, com contagens) é `make migrations-apply`
+//! (`tools/content/migrate-cycle.mjs`); este teste garante a mesma disciplina
+//! no `cargo test`, sem depender de banco vivo.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -95,7 +96,14 @@ fn migrations_are_numbered_reversible_and_fk_consistent() {
         let sql = std::fs::read_to_string(path).expect("migration legível");
         let (up, down) = split_up_down(&sql, &name);
         let created = tables_created(&up);
-        assert!(!created.is_empty(), "{name} cria ao menos uma tabela");
+        // DDL cria tabela ou evolui uma existente (`ALTER TABLE`); seed (`NNNN_seed_*`) só
+        // insere, então não pode ser exigido dele.
+        if !name.contains("_seed_") {
+            assert!(
+                !created.is_empty() || up.contains("ALTER TABLE"),
+                "{name} cria ou altera ao menos uma tabela"
+            );
+        }
         for t in tables_dropped(&down) {
             downs.entry(t).or_default().insert(name.clone());
         }
@@ -105,14 +113,21 @@ fn migrations_are_numbered_reversible_and_fk_consistent() {
                 "{name}: FK para tabela desconhecida `{target}`"
             );
         }
-        // CHECKs de domínio: toda tabela com papel enumerado declara o domínio.
-        if up.contains("role") {
+        // CHECKs de domínio: SÓ a tabela de contas enumera o papel de acesso. Buscar a
+        // substring `role` reprovava 0007 por causa de `skill_role` e de `game_class.role`
+        // (texto livre, sem domínio) — nenhum dos dois é papel de acesso.
+        if created.contains("accounts") {
             assert!(
                 up.contains("IN ('player', 'moderator', 'admin')"),
                 "{name}: CHECK de role"
             );
         }
-        known.extend(created);
+        for table in &created {
+            assert!(
+                known.insert(table.clone()),
+                "{name}: tabela `{table}` criada duas vezes"
+            );
+        }
     }
 
     // Reversibilidade total: toda tabela criada cai em algum down.
@@ -122,11 +137,19 @@ fn migrations_are_numbered_reversible_and_fk_consistent() {
             "tabela `{t}` sem DROP em nenhum down"
         );
     }
-    assert_eq!(
-        known.len(),
-        8,
-        "modelo tem 8 tabelas (accounts, characters, character_items, vault_items, guilds, guild_members, audit_log, delivery_queue)"
-    );
+    // O modelo cresceu por domínio (24 migrations); o que não pode sumir é o núcleo de jogo.
+    for core in [
+        "accounts",
+        "characters",
+        "character_items",
+        "vault_items",
+        "guilds",
+        "guild_members",
+        "audit_log",
+        "delivery_queue",
+    ] {
+        assert!(known.contains(core), "modelo mantém a tabela core `{core}`");
+    }
 }
 
 #[test]

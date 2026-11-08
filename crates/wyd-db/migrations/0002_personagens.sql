@@ -8,6 +8,10 @@ CREATE TABLE characters (
     slot        SMALLINT NOT NULL,
     name        TEXT NOT NULL,
     class       SMALLINT NOT NULL DEFAULT 0,
+    -- Camada de progressão (Mortal → God → Arch → Subcelestial → God2 → Nightmare),
+    -- CONFIRMADA em docs/wyd/progressao.md §1; `arch_of_id` liga Mortal ↔ Arch (idem §3).
+    tier        TEXT NOT NULL DEFAULT 'mortal',
+    arch_of_id  BIGINT REFERENCES characters (id) DEFERRABLE INITIALLY DEFERRED,
     level       INTEGER NOT NULL DEFAULT 1,
     exp         BIGINT NOT NULL DEFAULT 0,
     hp          INTEGER NOT NULL DEFAULT 1,
@@ -19,6 +23,11 @@ CREATE TABLE characters (
     deleted_at  TIMESTAMPTZ,
     CONSTRAINT characters_slot CHECK (slot BETWEEN 0 AND 3),
     CONSTRAINT characters_name_nonempty CHECK (char_length(name) > 0),
+    CONSTRAINT characters_tier CHECK (tier IN (
+        'mortal', 'god', 'arch', 'subcelestial', 'god2', 'nightmare'
+    )),
+    -- Arch é o único elo 1:1 opcional; nenhum personagem é Arch de si mesmo.
+    CONSTRAINT characters_arch_not_self CHECK (arch_of_id IS NULL OR arch_of_id <> id),
     CONSTRAINT characters_level CHECK (level >= 1),
     CONSTRAINT characters_exp CHECK (exp >= 0),
     CONSTRAINT characters_hp CHECK (hp >= 0),

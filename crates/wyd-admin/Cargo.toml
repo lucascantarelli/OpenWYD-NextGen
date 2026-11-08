@@ -3,10 +3,11 @@ name = "wyd-admin"
 version = "0.1.0"
 edition = "2021"
 description = "Control plane Cold Path do WYD (contrato admin para o portal)"
+publish = false
 
 [lib]
 name = "wyd_admin"
 path = "src/lib.rs"
 
 [dependencies]
-wyd-db = { path = "../wyd-db" }
+wyd-db = { path = "../wyd-db", version = "0.1.0" }

@@ -3,6 +3,7 @@ name = "wyd-launcher"
 version = "0.1.0"
 edition = "2021"
 description = "Launcher/patcher moderno do WYD (hash, patch, bootstrap)"
+publish = false
 
 [[bin]]
 name = "wyd-launcher"

@@ -24,7 +24,7 @@
 | Parse/serialização | `nom`, `zerocopy`/`rkyv` | pendente (FASE-08) |
 | Persistência | `sqlx` (+ `sqlx-cli`), `refinery`, `redis` | pendente (FASE-04) |
 | Scripting sandbox | `wasmtime` | pendente (FASE-03) |
-| Observabilidade | `tracing`, `prometheus` | pendente (FASE-06) |
+| Observabilidade | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23; exporter Prometheus próprio | **adotado na FASE-06-1** (ADR-0018) |
 | Qualidade/supply-chain | `cargo-audit`, `cargo-deny`, `cargo-tarpaulin`, `miri` | pendente (FASE-05/15) |
 | Launcher UI | Tauri (ou CLI puro) | pendente (FASE-08) |
 
@@ -41,7 +41,14 @@
 - `tokio`/`tokio-uring` (async): **manter como candidato**; ADR-0006 adia async real até rede vendor. PoC futura: echo TCP com `tokio` vs std, latência P50/P99 local.
 - `zerocopy`/`rkyv`/`nom` (serialização): **manter como candidato**; ADR-0005 congela parse manual `repr(C)` + offsets provados. PoC futura: parse de `HEADER` manual vs `zerocopy`, sem `unsafe` novo.
 - `wasmtime` (scripts): **descartar por ora**; sem caso de uso aberto nas issues; reabrir só com proposta de sistema de eventos (FASE-03/10).
-- `tracing`/`prometheus` (obs): **manter**; bloqueado até FASE-06-1 definir nomes de métricas; sem `println!` no Hot Path até lá.
+- `tracing`/`prometheus` (obs): **decidido na FASE-06-1 (ADR-0018)** — `tracing` + `tracing-subscriber`
+  entraram (`fmt` sem `env-filter`, para não arrastar `regex`); a crate `prometheus` foi **descartada**
+  (protobuf/push gateway desnecessários) em favor de um exporter de texto Prometheus sobre atomics
+  no próprio `wyd-core`. Nomes publicados: `wyd_ticks_total`, `wyd_tick_duration_microseconds`
+  (histograma), `wyd_entities_active`, `process_resident_memory_bytes`, `wyd_memory_samples_total`,
+  mais o fragmento de rede (`wyd_packets_total`, `wyd_packets_rejected_total{reason}`,
+  `wyd_handshakes_total`, `wyd_connections_pending`, `wyd_sessions_open`). `Cargo.lock` passou de 7
+  para 24 pacotes; `cargo deny`/`audit` verdes.
 - `sqlx`/`refinery`/`redis`: **manter**; bloqueado até FASE-04-3 com rede + ADR; até lá `psql -f` + `tests/constraints.rs`.
 - `cargo-audit`/`cargo-deny`: **manter**; `deny.toml` + falha comprovada saem na FASE-05-1.
 - Evidência deste turno: `cargo test --workspace` verde, `clippy -D warnings` verde, `git status --short -- crates/ Cargo.toml Cargo.lock` sem diff (pesquisa não tocou no workspace).

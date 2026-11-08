@@ -1,4 +1,4 @@
--- 0008_seed_taxonomia: sistemas, classes, linhagens e categorias de item (docs/wyd/).
+-- 0017_seed_taxonomia: sistemas, classes, linhagens e categorias de item (docs/wyd/).
 -- Convenção: -- migrate:up / -- migrate:down.
 -- Dados curados e citados em docs/wyd/{sistemas,classes,itens}.md. Idempotente.
 

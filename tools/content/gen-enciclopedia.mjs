@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Gera `wyd-portal/src/content/itens.json` a partir de
-// `crates/wyd-db/migrations/0009_seed_item_catalog.sql`.
+// `crates/wyd-db/migrations/0017_seed_item_catalog.sql`.
 //
 // POR QUE JSON VERSIONADO: a imagem do portal copia só `wyd-portal/` — o seed SQL não
 // existe dentro do container, e a rota pública não deve depender do web-api (que exige
@@ -13,7 +13,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const SEED = 'crates/wyd-db/migrations/0009_seed_item_catalog.sql';
+const SEED = 'crates/wyd-db/migrations/0017_seed_item_catalog.sql';
 const OUT = 'wyd-portal/src/content/itens.json';
 
 /** Divisão por vírgula respeitando string SQL, parênteses e colchetes do jsonb. */
@@ -106,7 +106,7 @@ for (let i = start + 1; i < lines.length; i += 1) {
 items.sort((a, b) => a[0] - b[0]);
 
 mkdirSync(path.dirname(OUT), { recursive: true });
-const payload = { version: 1, source: '0009_seed_item_catalog', count: items.length, items };
+const payload = { version: 1, source: '0017_seed_item_catalog', count: items.length, items };
 writeFileSync(OUT, `${JSON.stringify(payload)}\n`, 'utf8');
 
 const withSystem = items.filter((item) => item[6]).length;

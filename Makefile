@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test check audit bench clean ci stack-config stack-up stack-down stack-logs portal-install portal-dev portal-test portal-build
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build release docker docker-smoke telemetry-smoke clean ci migrations-check migrations-apply banco-catalogo banco-verify stack-config stack-up stack-down stack-logs portal-install portal-dev portal-test portal-build
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
@@ -18,8 +18,8 @@ help:
 fmt: ## formatação (skill: rust-code-quality)
 	$(CARGO) fmt --check
 
-clippy: ## lints como erro (skill: rust-code-quality)
-	$(CARGO) clippy --workspace -- -D warnings
+clippy: ## lints como erro, incluindo testes e benches (skill: rust-code-quality)
+	$(CARGO) clippy --workspace --all-targets -- -D warnings
 
 build: ## compila o workspace (skill: wyd-rust-toolchain)
 	$(CARGO) build --workspace
@@ -27,18 +27,55 @@ build: ## compila o workspace (skill: wyd-rust-toolchain)
 test: ## testes do workspace (skill: wyd-rust-toolchain)
 	$(CARGO) test --workspace
 
-check: fmt clippy build test ## gate completo — exigido por toda issue
+test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
+	$(CARGO) test --workspace --all-targets
+
+check: fmt clippy build test migrations-check ## gate completo — exigido por toda issue
+
+migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
+	node tools/content/check-migrations.mjs
+
+migrations-apply: ## aplica a série num Postgres efêmero: up → down → up (exige Docker)
+	node tools/content/migrate-cycle.mjs
+
+banco-catalogo: ## regenera docs/arquitetura/banco-catalogo.md a partir das migrations
+	node tools/content/gen-catalogo-banco.mjs
+
+banco-verify: ## banco vazio → migrations → compara com o catálogo via information_schema (exige Docker)
+	node tools/content/verify-schema.mjs
 
 audit: ## supply-chain (skill: wyd-rust-toolchain; exige cargo-audit instalado)
 	$(CARGO) audit
 
+deny: ## licenças, duplicidade, fontes e wildcards (exige cargo-deny instalado)
+	$(CARGO) deny check
+
 bench: ## benchmarks / simulações pesadas (skill: wyd-rust-sim)
 	$(CARGO) bench --workspace
+
+bench-build: ## compila os benches sem rodar (gate de compilação do CI)
+	$(CARGO) bench --workspace --no-run
+
+telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (FASE-06-1)
+	$(CARGO) test -p wyd-core --test telemetry -- --nocapture
+	$(CARGO) test -p wyd-net --features metrics --test metrics -- --nocapture
+
+release: ## release otimizado (LTO thin, codegen-units=1, strip — ADR-0017)
+	$(CARGO) build --release --workspace
+
+docker: ## imagem mínima do launcher (distroless, non-root — FASE-05-2)
+	docker build -f docker/Dockerfile.launcher -t wyd/launcher:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+docker-smoke: docker ## tamanho da imagem + `check` do launcher rodando no container
+	docker image inspect --format 'wyd/launcher size={{.Size}} bytes' wyd/launcher:$${TAG:-dev}
+	docker run --rm -v "$$(pwd)/target/smoke:/jogo:ro" wyd/launcher:$${TAG:-dev} check /jogo /jogo/manifest.toml
 
 clean:
 	$(CARGO) clean
 
-ci: check ## espelho local do .github/workflows/rust.yml
+ci: check test-all bench-build audit deny ## espelho local do .github/workflows/rust.yml
 
 stack-config: ## valida o compose (base+dev e prod) sem subir nada
 	docker compose config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet

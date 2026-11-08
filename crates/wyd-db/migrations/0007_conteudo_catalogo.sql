@@ -143,6 +143,10 @@ CREATE TABLE skill_catalog (
     )),
     classification_source TEXT NOT NULL DEFAULT 'legacy',
     confidence            SMALLINT CHECK (confidence BETWEEN 0 AND 100),
+    -- Procedência por linha: skill cujo nome/linhagem têm fonte oficial mas cujo
+    -- `skill_index`/parâmetros ainda não foram provados no cliente 7662. Sem esta coluna a
+    -- diferença ficaria invisível e alguém trataria índice provisório como confirmado.
+    notes                 TEXT NOT NULL DEFAULT '',
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -160,6 +164,8 @@ COMMENT ON COLUMN item_catalog.classification_source IS
 
 COMMENT ON TABLE skill_catalog IS
     'Catálogo de skills (SkillData) — comportamento no dado; classe/linhagem/papel são semântica classificada.';
+COMMENT ON COLUMN skill_catalog.notes IS
+    'Procedência e pendências da linha (ex.: índice provisório, parâmetros não extraídos). Vazio = linha do seed do cliente.';
 
 INSERT INTO content_version (id, version, note)
 VALUES (1, 1, 'catálogo de conteúdo no banco (ADR-0009)');

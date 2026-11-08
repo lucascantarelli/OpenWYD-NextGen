@@ -13,6 +13,12 @@ pub trait Characters {
         account_id: i64,
     ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send;
 
+    /// Ranking por nível (desc) e nome (asc) — leitura pública, sem `account_id`.
+    fn top_by_level(
+        &self,
+        limit: usize,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send;
+
     /// Cria validando invariantes (o banco impõe o resto).
     fn create(
         &self,

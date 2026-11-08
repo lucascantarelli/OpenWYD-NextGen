@@ -4,4 +4,4 @@
 
 pub mod log;
 
-pub use log::{log_action, log_denied, AuditEntry, AuditSink, VecSink};
+pub use log::{log_action, log_denied, log_panel, AuditEntry, AuditSink, VecSink};

@@ -1,4 +1,4 @@
--- 0012_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,
+-- 0020_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,
 -- spawns de guarda, mercador, configuração de jogo e regiões.
 -- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.
 -- Insumos e hashes: tabela content_source (gravada por esta migração).
