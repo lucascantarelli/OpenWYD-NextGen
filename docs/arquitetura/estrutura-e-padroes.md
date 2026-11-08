@@ -288,6 +288,10 @@ crates/wyd-admin/
 │   │   ├── mod.rs
 │   │   ├── accounts.rs
 │   │   └── grants.rs     # intenções → delivery_queue (idempotente)
+│   ├── transport/        # Cold Path: HTTP/1.1 + JSON em loopback (ADR-0008)
+│   │   ├── mod.rs        # roteador servico/metodo → api/*, envelope + trace_id
+│   │   ├── http.rs       # HTTP/1.1 mínimo em std (limite de corpo, close)
+│   │   └── json.rs       # JSON do subconjunto do contrato (escape/números)
 │   ├── auth/
 │   │   ├── mod.rs
 │   │   ├── session.rs    # sessão de staff (moderator_id da sessão!)
@@ -299,8 +303,12 @@ crates/wyd-admin/
 │       ├── mod.rs
 │       └── grant_service.rs # regra + idempotência por transação rastreável
 └── tests/
-    └── unauthorized.rs   # sem sessão → 401; sem papel → 403
+    ├── unauthorized.rs   # sem sessão → 401; sem papel → 403
+    └── contract.rs       # rota→método, envelope AdminResult, limites (ADR-0008)
 ```
+
+Transporte decidido na **ADR-0008** (HTTP/1.1 + JSON em loopback); `.proto` não
+entra na árvore.
 
 ## 14. `wyd-sim` — árvore alvo (FASE-10)
 

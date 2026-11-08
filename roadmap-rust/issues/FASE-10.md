@@ -13,7 +13,7 @@ antes de tocar a engine.
 Anomalia prioritária: ~200% de velocidade gerando hits duplicados/DPS anormal
 (`pre-release-rust.md` FASE 10 §10.5). Referências: `game-rules.md` (fórmulas),
 `ingame-bugs.md` (histórico), código de combate arquivado
-(`.deprecated-go/tmserver/internal/combat/`). Esqueleto: `crates/wyd-sim/src/lib.rs`
+(`crates/wyd-sim/src/ + crates/wyd-core/src/systems/`). Esqueleto: `crates/wyd-sim/src/lib.rs`
 (`damage_after_absorb`, saturating) — `cargo test -p wyd-sim` verde. Regra:
 diferenciar fato (código/observado) de relato de fórum e de **hipótese**.
 
@@ -38,7 +38,7 @@ diferenciar fato (código/observado) de relato de fórum e de **hipótese**.
 - Alterados: `crates/wyd-sim/src/lib.rs`, `crates/wyd-sim/Cargo.toml`
   (deps numéricas via ADR).
 - Proibido tocar: `crates/wyd-core/src/` (engine só consome fórmula aprovada),
-  `.deprecated-go/`, balanceamento por opinião (sem simulação, sem merge).
+  balanceamento por opinião (sem simulação, sem merge).
 
 ## Testes / verificação
 
@@ -59,9 +59,9 @@ atual e o proposto diverge de forma explicada (números anexados).
 
 ## Documentação de referencia
 
-- .deprecated-go/docs/migration/game-rules.md - fórmulas de referência.
-- .deprecated-go/docs/migration/ingame-bugs.md - histórico de bugs.
-- .deprecated-go/tmserver/internal/combat/ - implementação arquivada.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md - fórmulas de referência.
+- roadmap-rust/issues/FASE-10-2-velocidade.md - histórico de bugs.
+- crates/wyd-sim/src/ + crates/wyd-core/src/systems/ - implementação arquivada.
 - pre-release-rust.md (FASE 10) - roteiro da investigação.
 - docs/rust/01-dependencias.md - candidatos numéricos.
 

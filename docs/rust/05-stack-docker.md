@@ -1,7 +1,7 @@
 # Stack Docker do WYD (Rust) — mapa de serviços e integração
 
 Onde cada crate vira container, o que sobe hoje, o que falta e por qual issue.
-Regra-mãe: **`.deprecated-go/` é arquivo morto, somente leitura, nunca fonte**
+Regra-mãe: **arquivo Go/C++ removido em 2026-11 — nunca fonte** (nomes, portas, variáveis e topologia legadas não entram aqui; fonte canônica é `docs/` + `crates/`)
 (nomes, portas, variáveis e topologia de lá não entram aqui).
 
 ## 1. Crates → deployáveis
@@ -15,7 +15,7 @@ Regra-mãe: **`.deprecated-go/` é arquivo morto, somente leitura, nunca fonte**
 | `wyd-db` | persistência (migrations, delivery) | Não — lib usada pelos binários (FASE-04) |
 | `wyd-admin` | Cold Path (auth, billing, gateway) | Futuro binário gateway (FASE-07-1) |
 | `wyd-launcher` | CLI/exe do cliente (GUI Tauri, ADR-0007) | **Nunca** — exe do lado do cliente, fora do compose |
-| `wyd-portal/` | BFF Next.js sobre o backend gRPC | Sim — serviço `portal` |
+| `wyd-portal/` | BFF Next.js sobre o backend HTTP/JSON (ADR-0008) | Sim — serviço `portal` |
 
 Só existe binário para `wyd-launcher` (único `[[bin]]` do workspace).
 Sem binário, não há serviço: o compose não antecipa o que a issue dona

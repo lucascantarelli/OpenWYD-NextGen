@@ -11,7 +11,7 @@ sanitização estrita do parser).
 ## Contexto / evidência
 
 O legado usa `printf`s; a fase Go tinha `logpipe`/`node-exporter` em
-`.deprecated-go/monitoring/` e `logpipe/`. Destino Rust: sem `println!` como
+`docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1)` e `logpipe/`. Destino Rust: sem `println!` como
 telemetria, métricas do motor desde o dia um (`pre-release-rust.md` FASE 6,
 skill `wyd-rust-obs`). Sem instrumentação, regressão de P99 só aparece no
 jogador reclamando.
@@ -33,7 +33,7 @@ jogador reclamando.
 - Criados: módulos `metrics`/`telemetry` em `wyd-core` e `wyd-net`, testes.
 - Alterados: `crates/wyd-core/Cargo.toml`, `crates/wyd-net/Cargo.toml`
   (deps via ADR), `docs/rust/01-dependencias.md`.
-- Proibido tocar: segredos em logs/métricas, `.deprecated-go/`, `client/`.
+- Proibido tocar: segredos em logs/métricas, `client/`.
 
 ## Testes / verificação
 
@@ -56,7 +56,7 @@ pacotes/s (trecho do log anexado, sem segredos).
 
 - docs/rust/01-dependencias.md - tracing/prometheus.
 - pre-release-rust.md (FASE 6) - telemetria e segurança.
-- .deprecated-go/monitoring/ - dashboards e exporters legados (referência).
+- docs/rust/05-stack-docker.md §4 (stack legada removida; ver FASE-12-1) - dashboards e exporters legados (referência).
 
 ## Subtasks
 

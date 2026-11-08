@@ -77,9 +77,8 @@ Portal em modo dev (hot reload, sem container): `make portal-dev`
 
 - `docker compose down -v`, `DROP DATABASE` ou reset de volume sem pedido explícito.
 - Publicar 5432 fora do loopback; exigir menos que isso na prod (prod não publica banco).
-- Copiar qualquer coisa de `.deprecated-go/` para o stack novo: a pasta é
-  arquivo morto, somente leitura, nunca fonte (nomes, portas, variáveis e
-  topologia de lá não entram aqui).
+- Reintroduzir arquivo Go removido (2026-11): nomes, portas, variáveis e
+  topologia legadas não entram no stack novo; fonte canônica é `docs/` + `crates/`.
 - Tratar o 502 do `/api/health` como bug do compose: é ausência do gateway,
   com issue dona (FASE-07-1).
 - Subir `tmserver`/`gateway` "na mão" sem o binário da issue correspondente.

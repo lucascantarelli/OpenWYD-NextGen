@@ -16,9 +16,9 @@ confere hash, aplica patch e inicia este binário. Sem conhecer o cliente não h
 - evoluir UI, eventos e assets (`.wyt`, `.msa`, `.bin`) com previsibilidade;
 - fechar a lacuna entre o que o servidor Rust emite e o que o binário 7662 realmente lê.
 
-O cliente é **fechado** (HanbitSoft/JoyImpact — fonte nunca liberada). Todo conhecimento vem de
-`Source/` (servidor C++ 7662 + `ClientPatch_v7662`), de capturas de pacote e de desassemble.
-Este dossiê é a fonte canônica desse conhecimento dentro do repositório.
+O cliente é **fechado** (HanbitSoft/JoyImpact — fonte nunca liberada). Todo conhecimento vem do
+binário local `client/` + `ClientPatch_v7662` (DLL em `client/`), de capturas de pacote e de
+desassemble (`tools/client/`). Este dossiê é a fonte canônica desse conhecimento no repositório.
 
 ## 2. Documentos
 
@@ -35,10 +35,8 @@ Este dossiê é a fonte canônica desse conhecimento dentro do repositório.
 | [`pacotes.md`](pacotes.md) | Catálogo de pacotes com estado GERADO/PENDENTE por opcode |
 | [`gerado/`](gerado/) | Artefatos determinísticos (`pe`, `strings`, `evidencia`, `formatos`, `ancoras`, `goldens`) |
 
-Evidência histórica (arquivo Go, **leitura apenas**):
-`.deprecated-go/docs/migration/client-patch-hooks.md`,
-`wyd-client-feasibility.md`,
-`investigacao-freeze-cliente.md`.
+Histórico consolidado neste dossiê: `docs/cliente/customizacao.md` (patches/hooks),
+`docs/cliente/mapa.md` (paridade entre builds), `docs/cliente/depuracao.md` (freeze).
 
 ## 3. Regras
 

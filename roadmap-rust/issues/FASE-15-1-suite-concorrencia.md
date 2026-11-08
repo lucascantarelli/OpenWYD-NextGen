@@ -23,7 +23,7 @@ fórmulas críticas. Módulos críticos: protocolo, tick, persistência.
 
 - Criados: relatório parcial em `docs/` (números, cobertura).
 - Alterados: ajustes mínimos exigidos (cada um com teste).
-- Proibido tocar: `.deprecated-go/`, `client/`; nenhum `#[ignore]` para
+- Proibido tocar: `client/`; nenhum `#[ignore]` para
   esconder falha.
 
 ## Testes / verificação

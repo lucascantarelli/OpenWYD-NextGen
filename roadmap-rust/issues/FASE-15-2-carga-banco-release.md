@@ -24,7 +24,7 @@ métricas 06-1 e dashboards 12-1. Gates: 05-2 (release/imagem).
 
 - Criados: relatório de release em `docs/`.
 - Alterados: ajustes mínimos exigidos (cada um com teste).
-- Proibido tocar: `.deprecated-go/`, `client/`, segredos.
+- Proibido tocar: `client/`, segredos.
 
 ## Testes / verificação
 

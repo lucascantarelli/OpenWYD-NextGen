@@ -25,7 +25,7 @@ Canônico: `docs/arquitetura/adr/` (com `0001-hot-path-monolitico.md` proposto).
 
 - Criados: `docs/arquitetura/adr/0000-template.md`.
 - Alterados: `docs/rust/02-execucao.md` (rito), esta issue.
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/*/src/`.
 
 ## Testes / verificação
 

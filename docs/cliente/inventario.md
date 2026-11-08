@@ -8,7 +8,7 @@
 
 | Item | Valor |
 |---|---|
-| Build | **7662** (Cavaleiros de Kersef) — inferido de `Source/Code/ClientPatch_v7662` e do par `client-version 12000` já medido no handshake |
+| Build | **7662** (Cavaleiros de Kersef) — inferido do patch `ClientPatch_v7662` (DLL em `client/`) e do par `client-version 12000` já medido no handshake |
 | Arquitetura | **PE32 / i386** (`machine=0x014c`, `magic=0x010b` nos três binários principais) |
 | `WYD.exe` SHA-256 | `04c9d2a1235cba57f7b588347fae935a2466824ddf9d7d92e541e0cc8a27ddf8` |
 | `WYD.exe` tamanho | 2.347.008 bytes |

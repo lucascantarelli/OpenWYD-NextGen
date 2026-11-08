@@ -27,7 +27,7 @@ Modelar Players, NPCs, Monsters e Items no chão como dados contíguos
 
 - Criados: `crates/wyd-core/src/ecs/components.rs`, `src/systems/` (spawn, despawn, movimento), testes.
 - Alterados: `crates/wyd-core/src/lib.rs`, `Cargo.toml` (ECS via ADR).
-- Proibido tocar: lógica de fórmulas (FASE-10), `.deprecated-go/`, OOP no core.
+- Proibido tocar: lógica de fórmulas (FASE-10), OOP no core.
 
 ## Testes / verificação
 

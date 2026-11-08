@@ -35,7 +35,7 @@ valem como gate (registrar qual foi usado na evidência).
   `develop`, mergeada de volta com `--no-ff`.
 - Commits pequenos, descritivos, em português, um por passo relevante.
 - Proibido: force-push em `develop`/`main`, commit de segredo, `client/`,
-  `target/` ou `.deprecated-go/`.
+  `target/` (nunca versionar build).
 
 ## 3. Definition of Done por tipo de issue
 
@@ -67,4 +67,4 @@ Checklist fixo, registrado em `docs/rust/03-progresso.md`:
 - Documento que descreve comportamento deve ser atualizado **na entrega que
   muda o comportamento**, nunca "depois". Doc desatualizada é defeito.
 - Toda afirmação técnica não confirmada leva a marca **hipótese** (ou
-  UNVERIFIED, no caso de protocolo), como em `.deprecated-go/docs/migration/`.
+  UNVERIFIED, no caso de protocolo), como em `docs/`.

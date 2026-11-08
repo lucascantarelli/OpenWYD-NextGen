@@ -47,7 +47,7 @@ do stream jogo (sem credencial — ver §5).
 ## 4. Reprodução do freeze (investigação aberta do legado)
 
 Sintoma herdado: jogo congela minutos após o login, TCP continua com ACK, cliente descarta
-tudo (`investigacao-freeze-*.md` no arquivo Go — hipóteses: frame S→C malformado, fila de
+tudo (hipóteses registradas em `docs/cliente/pacotes.md` — frame S→C malformado, fila de
 keyword do cliente, NPC com visual inválido).
 
 Protocolo de reprodução:

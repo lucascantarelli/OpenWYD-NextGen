@@ -7,7 +7,7 @@ import fs from 'node:fs';
 export const KEYWORD_OFFSET = 4;
 
 /** Lê a tabela do arquivo gerado (fonte única, já validada pelo crate). */
-export function loadKeywordTable(file = 'crates/wyd-protocol/src/keyword.rs') {
+export function loadKeywordTable(file = 'crates/wyd-protocol/src/codec/generated/keyword_table.rs') {
   const source = fs.readFileSync(file, 'utf8');
   const start = source.indexOf('KEY_TABLE');
   const end = source.indexOf('];', start);

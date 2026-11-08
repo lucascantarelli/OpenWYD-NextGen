@@ -9,7 +9,7 @@ espacial, sem GC, sem mutex global e sem I/O bloqueante no tick.
 
 ## Contexto / evidência
 
-O legado (`TMSrv`, `Map.cpp`, `Actor.cpp` em `.deprecated-go/Source/`) usa ponteiros
+O motor legado (monolito CPSock com ponteiros e mutexes globais; ver `pre-release-rust.md` §0.1) usa ponteiros
 brutos e travas globais; a tentativa Go usou goroutine única com locks proibidos
 (`AGENTS.md` legado). O blueprint Rust exige monolito Hot Path por nó de mundo,
 thread-per-core e dados contíguos (`start-rust.md` §§2, 5; `pre-release-rust.md`
@@ -37,7 +37,7 @@ com `cargo test -p wyd-core`.
 - Alterados: `crates/wyd-core/src/lib.rs`, `crates/wyd-core/Cargo.toml`
   (somente deps aprovadas via ADR — ver `docs/rust/01-dependencias.md`).
 - Proibido tocar: `crates/wyd-protocol/src/` (contrato é da FASE-08),
-  `.deprecated-go/`, `client/`, `wyd-portal/`.
+  `client/`, `wyd-portal/`.
 
 ## Testes / verificação
 
@@ -62,8 +62,8 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 - docs/rust/01-dependencias.md - candidatos ECS/arena (hecs/bevy_ecs, bumpalo).
 - docs/arquitetura/adr/0001-hot-path-monolitico.md - decisão do monolito.
 - pre-release-rust.md (FASE 3) - escopo da engine.
-- .deprecated-go/docs/migration/game-rules.md - fórmulas de referência.
-- .deprecated-go/docs/migration/data-formats.md - alinhamentos de save.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md - fórmulas de referência.
+- docs/arquitetura/protocolo.md §5 - alinhamentos de save.
 
 ## Subtasks
 

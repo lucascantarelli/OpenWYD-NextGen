@@ -84,22 +84,21 @@ describe("sistemas de jogo", () => {
     ]);
   });
 
-  it("cada página, inclusive o índice, cita handler existente", () => {
+  it("cada página, inclusive o índice, cita módulo Rust existente", () => {
     // O vitest roda com cwd em wyd-portal/; o repositório é o diretório pai.
-    // Desde o arquivamento do Go (transição Rust), os handlers vivem no arquivo.
-    const handlerDir = path.resolve(process.cwd(), "..", ".deprecated-go", "tmserver", "internal", "handler");
+    // Fonte canônica Rust (arquivo Go removido em 2026-11): payloads em
+    // crates/wyd-protocol/src/payload/ e despacho em crates/wyd-net/src/dispatch/.
+    const payloadDir = path.resolve(process.cwd(), "..", "crates", "wyd-protocol", "src", "payload");
     const paginas = listGuias().filter((guia) => guia.section === "sistemas");
 
     for (const guia of paginas) {
-      const citados = [...guia.body.matchAll(/`([a-z0-9_]+\.go)`/g)].map((match) => match[1]);
+      const citados = [...guia.body.matchAll(/`[^`]*?([a-z0-9_]+\.rs)`/g)].map((match) => match[1]);
 
-      expect(citados.length, `${guia.slug} não cita nenhum handler`).toBeGreaterThan(0);
+      expect(citados.length, `${guia.slug} não cita nenhum módulo Rust`).toBeGreaterThan(0);
       for (const arquivo of citados) {
-        // Nome de arquivo só conta como citação quando está em crase; prosa
-        // histórica ("o que era attack.go") não é verificada de propósito.
         expect(
-          existsSync(path.join(handlerDir, arquivo)),
-          `${guia.slug} cita handler/${arquivo}, que não existe`,
+          existsSync(path.join(payloadDir, arquivo)),
+          `${guia.slug} cita payload/${arquivo}, que não existe`,
         ).toBe(true);
       }
     }

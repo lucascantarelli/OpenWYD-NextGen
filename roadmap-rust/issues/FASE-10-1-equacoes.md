@@ -10,7 +10,7 @@ skill → buffs → crítico → defesa) com ordem, limites e arredondamento.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 10 §10.1. Fontes: `game-rules.md`,
-`.deprecated-go/tmserver/internal/combat/`. Diferenciar fato de relato de fórum
+`crates/wyd-sim/src/ + crates/wyd-core/src/systems/`. Diferenciar fato de relato de fórum
 e de **hipótese**.
 
 ## Passos
@@ -45,8 +45,8 @@ Saída esperada: `test result: ok` com exemplo numérico documentado reproduzido
 
 ## Documentação de referencia
 
-- .deprecated-go/docs/migration/game-rules.md.
-- .deprecated-go/tmserver/internal/combat/.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md.
+- crates/wyd-sim/src/ + crates/wyd-core/src/systems/.
 - pre-release-rust.md (FASE 10 §10.1).
 
 ## Subtasks

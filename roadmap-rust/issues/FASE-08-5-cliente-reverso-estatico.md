@@ -65,7 +65,7 @@ hashes iguais; gate com exit 0.
 
 - docs/cliente/analise-estatica.md - resultado completo desta issue.
 - docs/cliente/formatos.md - estrutura inicial dos formatos.
-- .deprecated-go/docs/migration/data-formats.md - alinhamento esperado das structs.
+- docs/arquitetura/protocolo.md §5 - alinhamento esperado das structs.
 
 ## Subtasks
 

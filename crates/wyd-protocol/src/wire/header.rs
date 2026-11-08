@@ -1,7 +1,7 @@
 //! `HEADER` de 12 bytes do CPSock e o enquadramento por `Size`.
 //!
 //! Layout canônico (little-endian, sem padding), de
-//! `.deprecated-go/docs/migration/protocol-spec.md` §1.1:
+//! `docs/arquitetura/protocolo.md` §1:
 //!
 //! | offset | campo | tipo |
 //! |---:|---|---|

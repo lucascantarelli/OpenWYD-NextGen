@@ -10,8 +10,8 @@ CHECKs e índices para o caminho quente, documentado em `docs/arquitetura/`.
 ## Contexto / evidência
 
 `pre-release-rust.md` FASE 4 §4.1. Referência de schema legado em
-`.deprecated-go/internal/migrations/` e análise em
-`.deprecated-go/docs/analysis/banco-de-dados.md`.
+`crates/wyd-db/migrations/` e análise em
+`docs/arquitetura/modelo-banco.md`.
 
 ## Passos
 
@@ -26,7 +26,7 @@ CHECKs e índices para o caminho quente, documentado em `docs/arquitetura/`.
 
 - Criados: doc do modelo em `docs/arquitetura/`.
 - Alterados: nenhum código.
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`, DSN real.
+- Proibido tocar: `crates/*/src/`, DSN real.
 
 ## Testes / verificação
 
@@ -44,8 +44,8 @@ Saída esperada: gates verdes; documento do modelo presente e revisado.
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 4 §4.1).
-- .deprecated-go/docs/analysis/banco-de-dados.md.
-- .deprecated-go/internal/migrations/ - schema legado.
+- docs/arquitetura/modelo-banco.md.
+- crates/wyd-db/migrations/ - schema legado.
 
 ## Subtasks
 

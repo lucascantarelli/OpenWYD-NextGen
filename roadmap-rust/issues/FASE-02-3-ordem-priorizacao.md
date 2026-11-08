@@ -24,7 +24,7 @@ explícito fase→fase (o que bloqueia o quê).
 
 - Criados: nenhum (atualização de índice).
 - Alterados: `roadmap-rust/index.md` (grafo + caminho crítico).
-- Proibido tocar: `crates/*/src/`, `.deprecated-go/`.
+- Proibido tocar: `crates/*/src/`.
 
 ## Testes / verificação
 

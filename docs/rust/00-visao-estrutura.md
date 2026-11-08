@@ -52,7 +52,7 @@ Recomendação: só rode o passo 4 depois que `deprecate-go/` existir, `develop`
 
 ## 3. Estrutura Rust proposta (pastas vazias criadas com `.gitkeep`, sem workspace ainda)
 
-Princípio do `pre-release-rust.md`: **Hot Path monolítico em Rust por nó de mundo** (mesmo espaço de memória, ECS, thread-per-core, arena allocators) + **Cold Path periférico** (auth, billing, portal, matchmaking) via gRPC/REST assíncrono. Nada de microsserviços no tick loop, nada de GC no core, nada de OOP espalhada no heap.
+Princípio do `pre-release-rust.md`: **Hot Path monolítico em Rust por nó de mundo** (mesmo espaço de memória, ECS, thread-per-core, arena allocators) + **Cold Path periférico** (auth, billing, portal, matchmaking) via HTTP/JSON assíncrono (ADR-0008). Nada de microsserviços no tick loop, nada de GC no core, nada de OOP espalhada no heap.
 
 ```
 crates/
@@ -60,7 +60,7 @@ crates/
   wyd-core/       # engine: tick determinístico 20-50/s, ECS (hecs/bevy_ecs), spatial grid, fixed-point
   wyd-net/        # transporte async: tokio (+ tokio-uring/io_uring no Linux), zero-copy, rate-limit/DoS
   wyd-db/         # persistência async: Postgres sqlx + Redis cache, migrations versionadas
-  wyd-admin/      # control plane Cold Path: gRPC/REST p/ portal Next.js (substitui binserver/webserver)
+  wyd-admin/      # control plane Cold Path: HTTP/JSON p/ portal Next.js (ADR-0008; substitui binserver/webserver)
   wyd-sim/        # laboratório matemático: simulação de combate/balanceamento, milhões de iterações
   wyd-launcher/   # launcher/patcher moderno (Tauri/CLI): hash, patch, bootstrap (FASE 8)
 tools/dev/        # scripts de dev/bench (futuro; hoje vazio)
@@ -111,11 +111,11 @@ Pré-requisito de host: `rustup` + toolchain stable + `clippy` + `rustfmt` (ause
 
 ## 8. Arquivamento executado e pendências restantes
 
-1. [x] Arquivamento executado em `.deprecated-go/` (nome confirmado pelo dono):
+1. [x] Arquivamento executado em `arquivo Go removido (2026-11)` (nome confirmado pelo dono):
    Go legado movido com histórico preservado (rename); `wyd-portal/`, `.agents/`,
    workspace Rust, `docs/rust/`, `roadmap-rust/` e `README.md`/`AGENTS.md` ficaram
    fora; `docs/migration/` e `Source/` (referência) estão em
-   `.deprecated-go/docs/migration/` e `.deprecated-go/Source/`; regra no
+   `docs/` e `docs/cliente/ + tools/client/ (fontes C++ removidas com o arquivo Go)`; regra no
    `.gitignore`; `README.md` reescrito para a nova infra.
 2. Limpeza/desinstalação do Go no Windows — pendente, destrutivo, exige ação
    elevada do usuário (ver §2).

@@ -28,7 +28,7 @@ registrar, com PoC antes de qualquer troca. Candidatos já catalogados em
 - Criados: notas em `docs/` (pesquisa) ou atualização de `docs/rust/01-dependencias.md`.
 - Alterados: `roadmap-rust/issues/FASE-14.md` (este).
 - Proibido trocar: dependência do workspace sem ADR + PoC (ver FASE-13),
-  `.deprecated-go/`.
+  .
 
 ## Testes / verificação
 

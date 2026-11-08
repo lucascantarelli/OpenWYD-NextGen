@@ -32,7 +32,7 @@ atualização. Pedido original: `start-rust.md` ("analisar `.agents/skills/*`").
 - Criados: `.agents/skills/<nova>/SKILL.md`.
 - Alterados: `.agents/skills/<go>/SKILL.md` (somente nota de sucessão + link),
   `AGENTS.md` §0 (se o mapa mudar), `roadmap-rust/issues/FASE-09.md` (este).
-- Proibido tocar: `crates/*/src/` (fase de docs), `.deprecated-go/`, `client/`.
+- Proibido tocar: `crates/*/src/` (fase de docs), `client/`.
 
 ## Testes / verificação
 

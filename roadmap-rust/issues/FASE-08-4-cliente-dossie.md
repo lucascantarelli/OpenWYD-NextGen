@@ -12,7 +12,7 @@ engenharia reversa — antes de qualquer trabalho de desassemble.
 
 `client/` tem ~344 MB de binários proprietários, é **ignorado pelo git** e era citado apenas
 como "ignorado" em `AGENTS.md` e na skill `wyd-client-connect`. O conhecimento real estava
-enterrado em `.deprecated-go/docs/migration/client-patch-hooks.md` (mapa de 11 patches e 7 hooks
+enterrado em `docs/cliente/customizacao.md` (mapa de 11 patches e 7 hooks
 por endereço) e `wyd-client-feasibility.md` (paridade de transporte e divergência de
 structs). O `wyd-launcher` (08-3) precisa de manifesto de integridade que só existe se o
 cliente estiver inventariado.
@@ -55,8 +55,8 @@ Saída esperada: hashes idênticos, `LINKS-OK`, gate com exit 0.
 
 ## Documentação de referencia
 
-- .deprecated-go/docs/migration/client-patch-hooks.md - patches e hooks por endereço.
-- .deprecated-go/docs/migration/wyd-client-feasibility.md - paridade e divergências.
+- docs/cliente/customizacao.md - patches e hooks por endereço.
+- docs/cliente/mapa.md - paridade e divergências.
 - docs/cliente/ (novo) - fonte canônica.
 
 ## Subtasks

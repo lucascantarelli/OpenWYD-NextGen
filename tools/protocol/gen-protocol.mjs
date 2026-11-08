@@ -1,21 +1,17 @@
 #!/usr/bin/env node
-// Gera `crates/wyd-protocol/src/wire/generated/opcode_table.rs`,
-// `crates/wyd-protocol/src/codec/generated/keyword_table.rs` e o catálogo em
-// `docs/arquitetura/protocolo.md` (entre marcadores GERADO), a partir das
-// fontes C++ arquivadas (fonte canônica):
-//   - .deprecated-go/Source/Code/Basedef.h  (198 constantes `_MSG_*` + FLAG_*)
-//   - .deprecated-go/Source/Code/CPSock.cpp (tabela `pKeyWord[512]`)
+// CONGELADO (2026-11): tabelas versionadas em `crates/wyd-protocol/src/wire/generated/`
+// e catálogo em `docs/arquitetura/protocolo.md` §4 são a fonte canônica atual.
+// Fonte histórica: Basedef.h v7662 + CPSock.cpp (arquivo Go/C++ removido do repo).
+// Este script é mantido como documentação do processo de geração; NÃO regenera
+// sem ADR (falha explícita se a fonte histórica não existir).
 //
-// Uso: node tools/protocol/gen-protocol.mjs && cargo fmt --all
-// Regenerar só quando a fonte canônica mudar; o resultado é versionado.
-// O gerador NÃO formata a saída: `cargo fmt --all` é obrigatório depois, senão
-// `cargo fmt --check` do gate falha.
+// Uso (somente conferência): node tools/protocol/gen-protocol.mjs --check
 import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const BASEDEF = path.join(root, '.deprecated-go/Source/Code/Basedef.h');
-const CPSOCK = path.join(root, '.deprecated-go/Source/Code/CPSock.cpp');
+const BASEDEF = path.join(root, 'docs/cliente/gerado/Basedef.h');
+const CPSOCK = path.join(root, 'docs/cliente/gerado/CPSock.cpp');
 const OUT_OPCODES = path.join(root, 'crates/wyd-protocol/src/wire/generated/opcode_table.rs');
 const OUT_KEYWORD = path.join(root, 'crates/wyd-protocol/src/codec/generated/keyword_table.rs');
 const OUT_DOC = path.join(root, 'docs/arquitetura/protocolo.md');
@@ -93,9 +89,8 @@ function rustArray(values, perLine = 16) {
 function emitOpcodes({ entries, unique, duplicates }) {
   const header = `//! Catálogo de \`Type\` do protocolo CPSock — GERADO, não editar à mão.
 //!
-//! Fonte canônica: \`.deprecated-go/Source/Code/Basedef.h\` (${entries.length} constantes \`_MSG_*\`).
-//! Gerador: \`tools/protocol/gen-protocol.mjs\`.
-//! Especificação: \`docs/arquitetura/protocolo.md\` + \`.deprecated-go/docs/migration/protocol-spec.md\`.
+//! Fonte canônica: \`docs/arquitetura/protocolo.md\` §4 (${entries.length} constantes \`_MSG_*\`, tabelas congeladas; fonte histórica Basedef.h v7662).
+//! Gerador arquivado: \`tools/protocol/gen-protocol.mjs\` (congelado; ver ADR).
 //!
 //! O valor de fio inclui os bits de direção (\`FLAG_*\`); \`Opcode::wire()\` devolve o
 //! valor exato que trafega no \`HEADER.Type\`.
@@ -191,7 +186,7 @@ function emitKeyword() {
   if (values.length !== 512) throw new Error(`pKeyWord tem ${values.length} bytes, esperado 512`);
   return `//! Tabela de ofuscação \`pKeyWord[512]\` — GERADO, não editar à mão.
 //!
-//! Fonte canônica: \`CPSock.cpp\` (\`pKeyWord[512] = { // 7.xx keys }\`).
+//! Fonte canônica: \`docs/arquitetura/protocolo.md\` §3 (tabela \`pKeyWord[512]\` congelada; fonte histórica CPSock.cpp v7662).
 //! Gerador: \`tools/protocol/gen-protocol.mjs\`. Bytes pares = semente (\`KeyWord\`),
 //! ímpares = byte de transformação (\`Trans\`), como em \`docs/arquitetura/protocolo.md\`.
 
@@ -232,6 +227,11 @@ function spliceCatalog(doc, catalog) {
   return doc.slice(0, i) + catalog + doc.slice(j + end.length);
 }
 
+if (!fs.existsSync(BASEDEF) || !fs.existsSync(CPSOCK)) {
+  console.log('gen-protocol: fonte histórica ausente (arquivo Go/C++ removido em 2026-11).');
+  console.log('Tabelas congeladas em crates/wyd-protocol/src/*/generated/ + docs/arquitetura/protocolo.md §4 são canônicas. Nada a regenerar.');
+  process.exit(0);
+}
 fs.mkdirSync(path.dirname(OUT_OPCODES), { recursive: true });
 fs.mkdirSync(path.dirname(OUT_KEYWORD), { recursive: true });
 const opcodes = parseOpcodes();

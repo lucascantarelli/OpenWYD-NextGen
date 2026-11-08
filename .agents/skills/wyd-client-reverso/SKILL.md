@@ -6,8 +6,7 @@ description: Inspect and reverse engineer the closed WYD 7662 Windows client (cl
 # Engenharia reversa do cliente (`client/`)
 
 O cliente é **fechado** (HanbitSoft/JoyImpact, build 7662, PE32/i386) e **não é versionado**.
-Não existe fonte: todo conhecimento vem de desassemble, captura de pacote e do C++ do servidor
-(`Source/`) + `ClientPatch_v7662`. Dossiê canônico: `docs/cliente/`.
+Não existe fonte: todo conhecimento vem de desassemble, captura de pacote e da DLL `ClientPatch_v7662` em `client/` + capturas. Dossiê canônico: `docs/cliente/`.
 
 ## 1. Antes de qualquer coisa: fixe o build
 

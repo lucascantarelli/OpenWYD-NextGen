@@ -30,5 +30,5 @@ novo fora dessa árvore exige ADR.
 
 ## Antes de mudar
 
-Mapeie opcode/tamanho em `.deprecated-go/docs/migration/handlers/` e espelhe com
+Mapeie opcode/tamanho em `crates/wyd-protocol/src/wire/generated/opcode_table.rs + docs/arquitetura/protocolo.md §4` e espelhe com
 teste byte-exato (`cargo test -p wyd-net -p wyd-protocol`).

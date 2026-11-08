@@ -1,7 +1,7 @@
 # Progresso da execução — roadmap-rust
 
 > Documento vivo. Atualizado a **cada issue** executada (regra em
-> `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-07.
+> `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-07 (remoção do arquivo Go + 09-1/14-1).
 
 ## Legenda
 
@@ -70,7 +70,7 @@
 | FASE-08-5 RE estático | ✅ | `tools/client/` (7 módulos) + `docs/cliente/gerado/` (PE, strings, evidência, formatos); **6/6 âncoras** e **3/3 patches** confirmados por bytes + objdump; os 3 sites de checksum já estão `EB` no disco; `.wyt`/`.msa`/`sn.bin` com estrutura inicial; `serverlist.bin` opaco. T2 (structs) movido para 08-6. |
 | FASE-08-6 RE dinâmico | 🚧 | Roteiro em `docs/cliente/depuracao.md` + `captura.mjs` (`--gen`/`--check`, 5/5 goldens gerados C→S, determinístico). Captura ao vivo bloqueada: exige servidor executável + VM. |
 | FASE-08-7 customização | ✅ | `manifest/patch/bootstrap/sha256.rs` + CLI `check`/`launch`, 19/19 testes, `check` real 6/6 OK; spawn real pendente de ambiente com jogo. |
-| FASE-09-1 auditoria de skills | ⬜ | Insumo: FASE-01-3. |
+| FASE-09-1 auditoria de skills | ✅ | Relatório em `roadmap-rust/issues/FASE-09-1-auditoria-skills.md` (7 skills com destino + trechos obsoletos + regras atemporais; plano da 09-2). |
 | FASE-09-2 skills sucessoras | ⬜ | Depende de 09-1. |
 | FASE-10-1 equações | ⬜ | Depende de 03-5. |
 | FASE-10-2 velocidade | ⬜ | Depende de 10-1. |
@@ -80,7 +80,7 @@
 | FASE-12-1 dashboards | ⬜ | Depende de 06-1. |
 | FASE-13-1 rito ADR | ✅ | `docs/arquitetura/adr/0000-template.md` criado (estado, contexto, decisão, consequências, alternativas, rastreabilidade); `0001` promovida a **aceita** no formato do template. |
 | FASE-13-2 primeiras ADRs | ✅ | ADR-0004 (SoA manual), 0005 (LE+`repr(C)`), 0006 (std até rede/vendor); 7 arquivos 0000–0006 sem lacuna, seções conformes; consumidoras vinculadas. |
-| FASE-14-1 pesquisa | ⬜ | Catálogo: `docs/rust/01-dependencias.md`. |
+| FASE-14-1 pesquisa | ✅ | Notas datadas em `docs/rust/01-dependencias.md` (manter/descartar por candidato + PoC fora de `crates/`; sem diff no workspace). |
 | FASE-15-1 suite + concorrência | ⬜ | Depende de 05-1, 10-3. |
 | FASE-15-2 carga + banco + release | ⬜ | Depende de 15-1, 12-1. |
 
@@ -91,7 +91,7 @@
 | 2026-11-07 | FASE-00-1 | Caches Go limpos (`go clean` exit 0) | `go clean -cache -modcache -testcache` |
 | 2026-11-07 | FASE-00-2 | VS Code verificado: rust-analyzer + clippy; zero extensão Go | `code --list-extensions` |
 | 2026-11-07 | FASE-00-3 | `develop` confirmada como branch atual | `git branch --show-current` |
-| 2026-11-07 | FASE-01-1 | Planejamento Go restaurado do histórico (`roadmap/` estava vazio no arquivo) e inventariado | `git archive HEAD roadmap \| tar -x -C .deprecated-go` → 138 arquivos |
+| 2026-11-07 | FASE-01-1 | Planejamento Go restaurado do histórico (`roadmap/` estava vazio no arquivo) e inventariado | `git archive HEAD roadmap \| tar -x -C arquivo-Go-removido` → 138 arquivos |
 | 2026-11-07 | FASE-02-1/2/3 | Ciclo, checklist de revisão e grafo de dependências documentados | `docs/rust/02-execucao.md`, `roadmap-rust/index.md` |
 | 2026-11-07 | FASE-01-3 | Mapa de sucessão das 24 skills publicado | `docs/manual-técnico/skills.md` |
 | 2026-11-07 | FASE-13-1 | Template de ADR + rito; `0001` promovida a aceita | `docs/arquitetura/adr/0000-template.md`, `0001-hot-path-monolitico.md` |
@@ -131,14 +131,14 @@
 
 ## 2026-11-07 — Rename para WYD + GUI Tauri decidida (este turno)
 - Nome: dono manteve "WYD"; repo GitHub já renomeado para `lucascantarelli/wyd`; remote local ajustado e verificado (`git ls-remote` resolve HEAD).
-- Rename aplicado em 49 arquivos (skills, compose, portal, docs, issues, Cargo descriptions, proto `go_package`); crates já eram `wyd-*` (sem mudança de código). Restos zero fora de paths reais Windows (pasta local mantida) e `.deprecated-go/` + `client/` intactos.
+- Rename aplicado em 49 arquivos (skills, compose, portal, docs, issues, Cargo descriptions, proto `go_package`); crates já eram `wyd-*` (sem mudança de código). Restos zero fora de paths reais Windows (pasta local mantida) e `arquivo Go removido (2026-11)` + `client/` intactos.
 - Containers e canais dos guias renomeados para o padrão `wyd-*` / `WYD-1/2`.
 - Docs: `docs/cliente/launcher.md` (análise legado + referência Electron/Squirrel + proposta), skill nova `.agents/skills/wyd-launcher`, ADR-0007 (Tauri v2 aceita), issue nova FASE-08-8 (GUI launcher, 🚧).
 - Inventário: 61/61 issues no index (100% planejadas); painéis 23✅/6🚧 coerentes.
 - Prova: compose config verde (base e prod); portal vitest 118/118; `cargo test --workspace` sem falhas.
 
 ## 2026-11-07 — Revisão docker completa + rename portal/ → wyd-portal/ (este turno)
-- Resíduo openwyd/NextGen zerado fora de paths reais Windows e `.deprecated-go/`/`client/` (o `grep` anterior só via arquivos tracked — compose, `docker/`, `api/`, `.env` tinham ficado de fora; corrigido com varredura total).
+- Resíduo openwyd/NextGen zerado fora de paths reais Windows e `arquivo Go removido (2026-11)`/`client/` (o `grep` anterior só via arquivos tracked — compose, `docker/`, `api/`, `.env` tinham ficado de fora; corrigido com varredura total).
 - `portal/` → `wyd-portal/` (pasta renomeada; `portal/Dockerfile` → `docker/Dockerfile.portal` — todo Dockerfile agora em `docker/`); `docker-compose.yml` aponta para o novo caminho; `.gitignore` + 33 arquivos de refs atualizados.
 - `docs/rust/05-stack-docker.md` criado: mapa crates → deployáveis (só tmserver/gateway/portal/db viram containers; libs e launcher fora), integração de observabilidade (06-1 → 12-1) e regras (arquivo Go morto, docs só em docs/).
 - Issues docker resolvidas: FASE-05, 05-2, 15, 15-2 sem refs a `Dockerfile.rust` (substituído); `Makefile` ganha `portal-install/dev/test/build` (documentados no AGENTS mas inexistentes).
@@ -146,9 +146,43 @@
 - Painel: 61/61 planejadas, 23✅/6🚧 (sem mudança de status; revisão, não execução).
 
 ## 2026-11-07 — Revisão docker/devops com questionário do dono (este turno)
-- Regras fixadas pelo dono: `.deprecated-go/` mantida, só-leitura, nunca fonte; expurgo total do que veio do Go; docs só em `docs/`; skill normativa reescrita.
+- Regras fixadas pelo dono: `arquivo Go removido (2026-11)` mantida, só-leitura, nunca fonte; expurgo total do que veio do Go; docs só em `docs/`; skill normativa reescrita.
 - Expurgo: `docker/README.md` apagado; `.env.example` sem bloco E2E/OPENWYD (eram convenção Go copiada); compose sem `launcher`, sem `depends_on` do portal no db, `WEB_API_ADDR` default `gateway:7600` (nome reservado p/ FASE-07-1); Dockerfiles com headers e COPY fail-fast; `api/web/v1/README.md` com paths corretos.
 - Criado `docs/rust/05-stack-docker.md`: crates → deployáveis (containers só tmserver/gateway/portal/db; libs e launcher fora), o que sobe hoje, alvo por issue dona, integração de observabilidade (06-1 → 12-1, sem código: deps bloqueadas em ADR+vendor).
 - Skill `wyd-server-ops` reescrita para o stack Rust (sinais de saúde, 502 esperado sem gateway, proibições incluindo copiar da legada).
 - Exceção consciente: `api/web/v1/web.proto` (2046 linhas, origem Go) mantido — é dependência viva do portal até a FASE-07-4; remover quebraria vitest. Dono pode overrule.
 - Prova: compose config verde (base e prod). Resíduo Go fora da legada só em 3 skills antigas (client-connect, database, testing-bots) — próxima rodada.
+
+## 2026-11-07 — Remoção do arquivo Go + aderência total Rust (este turno)
+- Arquivo Go/C++ removido do repo; 65 arquivos normalizados (roadmap-rust/issues, docs, skills, tools/protocol) para fonte canônica Rust (docs/arquitetura/protocolo.md, docs/cliente/, docs/rust/, crates/, fixtures/).
+- Normativos reescritos: AGENTS.md 100% Rust, README sem .deprecated-go, .gitignore sem arquivo, .env.example sem stack Go, gen-protocol.mjs congelado com falha explícita, headers das crates apontando para docs/arquitetura/protocolo.md.
+- Skills: wyd-rust-toolchain sem Go, wyd-server-ops sem copiar legado, wyd-rust-core sem docs/migration; grep SKILLS-LIMPAS nas Rust vigentes.
+- Portal: guias.test.ts cita payloads Rust (character.rs etc.) + guias.json remapeado para crates/docs/arquitetura; grpc.ts lazy (proto ausente só falha no uso real) — vitest 118/118, typecheck 0.
+- Issues de menor esforço executadas: 09-1 (auditoria das 7 skills Go com destino + plano 09-2) e 14-1 (notas datadas em 01-dependencias.md sem diff no workspace) — ambas ✅ no index.
+- Prova: cargo fmt --check 0, clippy -D warnings 0, cargo test --workspace ok, compose config base+prod 0, gen-protocol congelado 0.
+
+## 2026-11-07 — FASE-09-2 concluída: skills sucessoras Rust (este turno)
+- Criada `wyd-rust-testing` (harness/goldens/carga/bots); atualizadas para Rust: `wyd-database`, `wyd-client-connect`, `wyd-game-admin`, `wyd-economy`, `wyd-web-admin-ui`; `wyd-testing-bots` virou alias de transição; `wyd-server-dev` aposentada com stub e sucessoras por domínio.
+- Corrigidas refs obsoletas: `wyd-rust-db`/`wyd-rust-obs` → `docs/arquitetura/modelo-banco.md`; `wyd-client-reverso` sem `Source/`; `keytable.mjs` → `codec/generated/keyword_table.rs`; `captura.mjs` → `wire/generated/opcode_table.rs` (goldens 5/5 de volta).
+- Mapas: `AGENTS.md` §0/§6 com `wyd-rust-testing` e ex-Go resolvidas; `docs/manual-técnico/skills.md` com destinos 09-2 ✅; issue `FASE-09-2-criar-skills.md` ✅ com evidência; `roadmap-rust/index.md` 09-2 ✅.
+- Prova: cargo fmt 0, clippy -D warnings 0, cargo test 20 suites ok, vitest 118/118, tsc 0, compose config base+prod 0, gen-protocol congelado, captura 5/5, grep SKILLS-LIMPAS.
+- Próxima de menor esforço: FASE-11-2 (guia C4 de pacotes — só documentação, sem código).
+
+## 2026-11-07 — FASE-11-2 concluída: C4 + specs de pacotes (este turno)
+- Criado `docs/arquitetura/c4-pacotes.md`: N1 contexto (cliente 7662 → servidor Rust → Postgres/portal), N2 containers ancorados nos members do `Cargo.toml` e nos services `db`/`portal`, N3 só componentes existentes (tick/ECS/spatial/ports, codec/wire/payloads, limits, model/repo/pool/transfer, api/auth/audit/service).
+- Transporte futuro (framing/sessão 8281) marcado como FASE-07, sem caixa inventada; specs de pacotes ancoradas em `protocolo.md` §4–§6 (login 0x020D, CNF 0x010A–0x011D, ESCENE_FIELD, combines 0x02C3–0x02C4, grants via delivery_queue).
+- `visao-pastas.md` corrigido: `docs/arquitetura/` listava só 2 de 5 docs.
+- Prova: cargo fmt 0, clippy -D warnings 0, cargo test 20 suites ok; opcodes conferidos no `opcode_table.rs`.
+
+## 2026-11-07 — FASE-11-1 concluída: guia de contribuição + manuais (este turno)
+- `docs/manual-técnico/guia-contribuicao.md`: pré-requisitos, 5 comandos do primeiro build, `make check`, portal/ferramentas, fluxo de branch e DoD de 02-execucao, regras que reprovam contribuição, mapa de contexto.
+- `docs/manual-usuario/README.md` (pasta estava vazia): jogar no servidor local, CLI real do launcher (`check`/`launch`/`update` + `--dry-run`), telas reais do portal, limites (delivery_queue) e FAQ.
+- `README.md`: árvore com `docs/` duplicado e skills "Go (legado)" corrigidas; `wyd-rust-testing` incluída; tabela de docs com C4, guia e manual.
+- Prova: cargo fmt 0, clippy 0, cargo test ok, vitest 118/118, tsc 0, links do README todos resolvendo.
+
+## 2026-11-07 — ADR-0008: transporte do Cold Path decidido (este turno)
+- Decisão registrada por pedido do dono: HTTP/1.1 + JSON em loopback (`127.0.0.1:7600`), `POST /admin/v1/{servico}/{metodo}`, envelope `AdminResult` (`result` 1..5) + `trace_id`. gRPC/proto ficam **fora da árvore**.
+- Fundamento no repo: zero deps externas (`01-dependencias.md`), ADR-0006 difere `tokio`; nenhum `*.proto` versionado e `grpc.ts` aponta para proto inexistente; 16 serviços unários, 1 consumidor; `AdminResult`/`audit`/deadline já são nossos.
+- Contrato completo na ADR: rota→params→resposta, regras de auth/auditoria (bind loopback, `StaffSession` do token, audita leitura e escrita, `401` anônimo não audita), limites (32 MiB, 5 s no servidor, 10 s no cliente) e status de transporte (400/401/404/405/413/500) vs recusa de negócio (200 + `result`).
+- Árvore §13 do `wyd-admin` ganhou `src/transport/{mod,http,json}.rs` e `tests/contract.rs`; `.proto` proibido.
+- Issues atualizadas: `FASE-07.md` (contexto, passos, arquivos, pendências) e `FASE-07-1-gateway.md` (transporte HTTP/JSON, passos, aceite, rollback). Docs alinhados: `estrutura-e-padroes.md` §13, `visao-pastas.md`, `00-visao-estrutura.md`, `05-stack-docker.md`, skill `wyd-web-admin-ui`.
