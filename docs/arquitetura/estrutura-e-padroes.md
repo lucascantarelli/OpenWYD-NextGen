@@ -183,7 +183,7 @@ crates/wyd-core/
 │   ├── error.rs          # CoreError
 │   ├── ecs/
 │   │   ├── mod.rs
-│   │   ├── components.rs # Position, Stats, Inventory — dados, sem lógica
+│   │   ├── components.rs # Position, Stats, Inventory + spawn/despawn em lote (03-2) — dados, sem lógica
 │   │   └── resources.rs  # recursos globais (tempo, seed) + DomainEvents (fila limitada)
 │   ├── tick/
 │   │   ├── mod.rs
@@ -222,7 +222,7 @@ crates/wyd-core/
 │   ├── content.rs        # conteúdo inconsistente aborta o boot (ADR-0009)
 │   └── determinism.rs    # mesmo seed → mesmo resultado
 └── benches/
-    └── tick.rs           # executado (03-6): custo da IA com 500 NPCs no orçamento do tick
+    └── tick.rs           # executado (03-6 + 03-2): custo da IA (500 NPCs) e baseline SoA (10k entidades)
 ```
 
 ## 11. `wyd-net` — árvore alvo (FASE-08)
@@ -275,18 +275,22 @@ crates/wyd-db/
 │   │   └── audit.rs
 │   ├── repo/             # traits (portas) + implementação pg
 │   │   ├── mod.rs
-│   │   ├── accounts.rs
-│   │   ├── characters.rs
+│   │   ├── accounts.rs   # porta: create_account/find_by_login/find_by_id
+│   │   ├── characters.rs # porta: list/create_character/top_by_level/soft_delete
 │   │   ├── grants.rs     # leitura de delivery_queue (Cold Path)
-│   │   └── content.rs    # carga única no boot + validação (ADR-0009)
+│   │   ├── content.rs    # carga única no boot + validação (ADR-0009)
+│   │   └── pg.rs         # executado (04-3): impl das três portas sobre sqlx
 │   ├── pool/
 │   │   ├── mod.rs
-│   │   └── config.rs     # pool dimensionado, timeouts, transações curtas
+│   │   ├── config.rs     # pool dimensionado, timeouts, transações curtas
+│   │   └── pg.rs         # executado (04-3, ADR-0021): pool sqlx + mapeamento de erro
 │   └── transfer/
 │       ├── mod.rs
-│       └── delivery_queue.rs # grants do portal → dreno do servidor
+│       ├── delivery_queue.rs # grants do portal → dreno do servidor
+│       └── save.rs       # executado (04-3): fila de save, política e dreno Cold Path
 └── tests/
-    └── constraints.rs    # contra Postgres descartável: FK violada falha
+    ├── constraints.rs    # contra Postgres descartável: FK violada falha
+    └── pg.rs             # executado (04-3): portas + save contra Postgres real
 ```
 
 Nenhum acesso a banco dentro do tick; DSN real nunca versionado.

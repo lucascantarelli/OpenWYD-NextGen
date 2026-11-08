@@ -26,7 +26,9 @@ com auth de staff e auditoria — **HTTP/1.1 + JSON em loopback**, conforme
 3. [x] `tests/contract.rs` (401/403/404/405/413/envelope/replay + socket loopback).
 4. [x] Portal: `admin-client.ts` (fetch) mantendo as exportações de `grpc.ts`;
    `promisify.ts` sem `@grpc/grpc-js`; `@grpc/*` fora do `package.json`/lock.
-5. [ ] Expor os demais serviços do portal (13 restantes) sobre o mesmo roteador.
+5. [x] Expor os demais serviços do portal (13 restantes) sobre o mesmo roteador —
+   como rotas declaradas (`SERVICOS`), com `501` explícito e auditoria `admin.pending`
+   enquanto o handler de domínio de cada uma não existe (ver resultado abaixo).
 
 ## Arquivos
 
@@ -74,9 +76,11 @@ npm --prefix wyd-portal run test -- --run
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
-**Status:** 🚧 (2026-11-08) — transporte HTTP/JSON entregue e portal fiado em
-`admin-client.ts` (sem `@grpc/*`, vitest/typecheck verdes); faltam os 13 serviços
-restantes no roteador.
+**Status:** 🚧 (2026-11-08) — transporte HTTP/JSON entregue, portal fiado em
+`admin-client.ts` (sem `@grpc/*`, vitest/typecheck verdes) e **paridade de rotas fechada**
+(16 serviços / 72 métodos do portal conhecidos pelo roteador, sem `404` acidental). O que
+resta não é transporte: são os **handlers de domínio** dos 13 serviços de conteúdo/painel,
+que hoje respondem `501` auditado.
 
 ## Resultados (transporte, ADR-0008)
 
@@ -116,6 +120,38 @@ restantes no roteador.
 - Prova: `npm run typecheck` 0; `npm run test -- --run` 118/118 (16 arquivos).
 - Pendência honesta: `StaticTokens` não valida HMAC — o portal manda o token de
   dev até a fiação cripto do JWT; rotas ainda ausentes respondem 404 de transporte.
+
+## Resultados (paridade de rotas, 2026-11-08)
+
+O roteador passou a conhecer **toda** a superfície que o portal declara, não só as rotas
+que já tinham handler:
+
+- `transport/mod.rs` ganhou `SERVICOS` (16 serviços / 72 métodos) e `conhecido()`; a
+  tabela é a lista do `admin-client.ts` já convertida para `snake_case` (o `toSnake` do
+  cliente). Era o ponto cego: método declarado no portal e ausente do roteador virava
+  `404` de transporte, indistinguível de nome inválido.
+- Método **declarado sem handler** → `501` com a rota no corpo (`"contrato
+  npc_admin.list_npcs existe no portal e ainda não tem handler no control plane"`) e
+  auditoria `admin.pending` com autor da sessão. `404` continua reservado a contrato
+  violado (serviço/método fora da tabela). Não inventei código novo em `AdminResult`
+  (o portal mapeia valor desconhecido para 500): `501` é falha de transporte e o BFF já a
+  traduz em `AdminUnavailableError` → `502` na tela.
+- `tests/contract.rs` ganhou dois testes de paridade:
+  - `cada_metodo_do_portal_tem_rota_no_control_plane` — extrai a superfície do
+    TypeScript com `include_str!` (se o arquivo mudar de lugar, o build quebra) e falha
+    se o roteador não conhecer um método, se sobrar rota que o portal não declara mais,
+    ou se a contagem divergir (16 serviços / 72 métodos).
+  - `rota_do_portal_sem_handler_e_501_auditado_e_nunca_404` — despacha as 72 rotas com
+    sessão de staff: cada uma responde `501` (ou `200` quando o handler existir), a
+    mensagem nomeia a rota e as 72 pendências ficam auditadas com o autor da sessão.
+- Prova: `cargo test -p wyd-admin` → 28 unitários + 11 (contrato) + 6 (painel) + 4
+  (unauthorized), 0 falhas; `cargo fmt --check` 0; `cargo clippy --workspace
+  --all-targets -D warnings` 0; `cargo test --workspace` 0 (37 alvos, 429 testes).
+- **Pendência declarada:** os 13 serviços (npc, conteúdo/rates, drop, daily, donate,
+  revenue, world event/state, mob, attribute map, teleport, item effect, account admin,
+  character admin) têm **rota e resposta determinística**, mas não têm leitura/escrita no
+  Postgres — cada um exige `api/<dominio>.rs` + porta de repositório. Nada disso é
+  pré-requisito do transporte e nenhum deles escreve estado vivo (invariante AGENTS §3.7).
 
 ## Critérios de aceite
 

@@ -70,8 +70,8 @@ Saída esperada: `test result: ok`; bench de iteração publicado como baseline.
 
 ## Critérios de aceite
 
-- [ ] 4 tipos de entidade como componentes contíguos; ADR da escolha do ECS.
-- [ ] Bench baseline anexado; sem `unsafe` fora de interop comprovada.
+- [x] 4 tipos de entidade como componentes contíguos; ADR da escolha do ECS.
+- [x] Bench baseline anexado; sem `unsafe` fora de interop comprovada.
 
 ## Riscos / rollback
 
@@ -99,3 +99,26 @@ Saída esperada: `test result: ok`; bench de iteração publicado como baseline.
   **Anct +9 (40 de perfuração) estritamente melhor que comum +9 (recusado, 0)**.
 - **Ainda aberto:** `systems/` (spawn/despawn/movimento em lote), ADR de ECS (hecs vs bevy_ecs)
   e bench de iteração contígua.
+
+## Progresso 2026-11-08 — fechamento: lote tudo-ou-nada + baseline SoA
+
+- **Lote na fronteira fria do armazém:** `ComponentStore::spawn_batch(&[SpawnSpec])` valida
+  **todos** os `Stats` antes da primeira escrita (um inválido no meio do lote devolve
+  `CoreError::InvalidStats` e o armazém fica como estava — nem índice novo) e
+  `despawn_batch(&[Entity])` devolve quantos ids eram válidos, idempotente como `despawn`.
+  `SpawnSpec { kind, position, stats }` é dado de entrada; inventário nasce vazio porque item
+  inicial é entrega de conteúdo, não default do armazém. Os quatro tipos (`Player`, `Npc`,
+  `Monster`, `GroundItem`) seguem como `Vec<EntityKind>` contíguo ao lado de `Vec<Position>`,
+  `Vec<Stats>` e `Vec<Inventory>`.
+- **Escolha do ECS:** ADR-0004 já decidia SoA manual até o bench mandar o contrário; o baseline
+  agora existe, então a decisão deixa de ser por intuição.
+- **Baseline medido** (`cargo bench -p wyd-core --bench tick`, release, 10 000 entidades por
+  rodada, 40 rodadas de spawn + uma passada contígua em `positions()` + despawn): **p50 3 381,70 µs
+  · p99 11 427,80 µs · 383,867 ns por entidade**, p99 = **22,856%** do orçamento de um tick de
+  50 ms (teto do cenário: 50%). Estado final conferido: 0 entidades vivas, 10 000 índices no
+  armazém (índices são reciclados, não vazam).
+- **Testes:** `spawn_em_lote_e_tudo_ou_nada` (lote recusado não cria entidade nem índice) e
+  `despawn_em_lote_conta_apenas_ids_vivos` (60 de 100, repetição do lote morto devolve 0, resto
+  devolve 40), em `crates/wyd-core/src/ecs/components.rs`; `cargo test -p wyd-core` → todos os
+  alvos `ok`, **91 testes na lib** incluídos.
+- **Nada aberto nesta issue:** `systems/` já cobria movimento/combate/skill/inventário/NPC (03-5/03-6).

@@ -190,6 +190,63 @@ fn golden_header_only() {
 }
 
 #[test]
+fn golden_handshake_offsets_confirmam_a_adr_0020() {
+    // A ADR-0020 apoia o gate do login em três medidas deste pacote: `Size` total de
+    // 116 B, `ClientVersion` como i32 no offset 92 e valor 12 000. Aqui elas são
+    // conferidas contra os bytes do golden — se o layout ou o valor mudar, o gate
+    // documentado na ADR deixa de valer e este teste acusa.
+    let (wire, payload) = load_fixture("account_login");
+    let (header, clear) = receive(&wire);
+
+    assert_eq!(header.size as usize, AccountLogin::WIRE_LEN);
+    assert_eq!(payload.len(), AccountLogin::WIRE_LEN);
+    // `payloadHex` é o frame **claro inteiro** (cabeçalho + corpo), com o campo
+    // `CheckSum` (offset 3) zerado: ele só existe depois da selagem. Todo o resto
+    // do descortinado precisa bater byte a byte com o fixture.
+    assert_eq!(&clear[..3], &payload[..3], "Size/KeyWord em claro");
+    assert_eq!(
+        clear[3], header.checksum,
+        "CheckSum calculado no descortinado"
+    );
+    assert_eq!(clear[4..], payload[4..], "Type/ID/Tick e corpo claros");
+
+    // Offsets declarados em `crates/wyd-protocol/src/payload/auth.rs:8-14`.
+    assert_eq!(
+        &payload[12..24],
+        b"SYNTHETIC\x00\x00\x00",
+        "offset 12: senha"
+    );
+    assert_eq!(
+        &payload[24..40],
+        b"GOLDEN\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+        "offset 24: nome da conta"
+    );
+    assert_eq!(&payload[40..92], &[0u8; 52][..], "offset 40: zero de 52 B");
+    assert_eq!(
+        &payload[92..96],
+        &12_000i32.to_le_bytes(),
+        "offset 92: ClientVersion do cliente oficial (ADR-0020)"
+    );
+    assert_eq!(
+        &payload[96..100],
+        &0i32.to_le_bytes(),
+        "offset 96: db_need_save"
+    );
+    assert_eq!(
+        &payload[100..116],
+        &[0u8; 16][..],
+        "offset 100: adapter_name"
+    );
+
+    let login = AccountLogin::decode(&clear).expect("corpo íntegro");
+    assert_eq!(
+        login.client_version,
+        i32::from(wyd_protocol::PROTOCOL_VERSION)
+    );
+    assert_eq!(login.client_version, 12_000);
+}
+
+#[test]
 fn golden_tampered_checksum_byte_is_rejected() {
     let (wire, _) = load_fixture("header_only");
     // Campo CheckSum (offset 3) é claro no fio: corromper 1 byte invalida.

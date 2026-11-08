@@ -23,13 +23,162 @@ use crate::api::{
     top_rankings, AccountSummary, GrantKind, GrantRequest, PanelAccount, PanelCharacter,
     RankingEntry,
 };
-use crate::audit::AuditSink;
+use crate::audit::{log_panel, AuditSink};
 use crate::auth::Session;
 use crate::error::AdminError;
 use crate::service::GrantService;
 
 /// Porta do contrato no loopback (ADR-0008).
 pub const ADMIN_PORT: u16 = 7600;
+
+/// Superfície declarada pelo portal em `wyd-portal/src/server/admin-client.ts`.
+///
+/// Cada par é `servico` → métodos já convertidos para o formato da rota
+/// (`camelCase` do TS → `snake_case`, como o `toSnake` do cliente). A lista existe
+/// para que **nenhuma** chamada do portal caia em `404` por rota ausente: método
+/// declarado sem handler responde `501` e é auditado (`admin.pending`), enquanto
+/// serviço/método fora daqui continua `404` (nome inválido).
+///
+/// Paridade é testada, não confiada: `tests/contract.rs` extrai a mesma lista do
+/// TypeScript e falha se o portal passar a declarar um método que o roteador não
+/// conhece.
+pub const SERVICOS: &[(&str, &[&str])] = &[
+    (
+        "account_admin",
+        &[
+            "list_accounts",
+            "get_account",
+            "set_role",
+            "set_blocked",
+            "create_account",
+        ],
+    ),
+    ("account_web", &["verify_credentials"]),
+    (
+        "attribute_map_admin",
+        &["get_attribute_map_info", "transform_attribute_map"],
+    ),
+    (
+        "character_admin",
+        &[
+            "search_characters",
+            "get_character",
+            "grant_item",
+            "list_character_grants",
+        ],
+    ),
+    (
+        "content_rates",
+        &["get_rates", "upsert_rate", "reset_rate", "get_server_flags"],
+    ),
+    (
+        "daily_reward_admin",
+        &[
+            "list_reward_items",
+            "upsert_reward_item",
+            "set_reward_item_enabled",
+            "delete_reward_item",
+        ],
+    ),
+    (
+        "donate_admin",
+        &[
+            "list_shop_items",
+            "upsert_shop_item",
+            "set_shop_item_enabled",
+            "delete_shop_item",
+            "credit_donate_balance",
+        ],
+    ),
+    (
+        "donate_revenue_admin",
+        &[
+            "get_revenue_summary",
+            "list_topup_orders",
+            "list_top_buyers",
+            "list_donate_spend",
+            "search_accounts",
+        ],
+    ),
+    (
+        "drop_admin",
+        &[
+            "list_drop_rates",
+            "upsert_drop_rate",
+            "reset_drop_rate",
+            "list_mob_carry",
+            "set_mob_carry",
+            "reset_mob_carry",
+        ],
+    ),
+    ("item_catalog", &["list_items"]),
+    (
+        "item_effect_admin",
+        &["list_effects", "upsert_effect", "delete_effect"],
+    ),
+    (
+        "mob_admin",
+        &[
+            "list_mob_templates",
+            "get_mob_template_stat",
+            "upsert_mob_template_stat",
+            "set_mob_template_equip",
+            "delete_mob_template_stat",
+        ],
+    ),
+    (
+        "npc_admin",
+        &[
+            "list_npcs",
+            "get_npc",
+            "upsert_npc",
+            "set_npc_visibility",
+            "set_npc_shop",
+            "delete_npc",
+            "list_merchant_templates",
+            "list_map_zones",
+            "list_item_prices",
+            "set_item_price",
+            "list_drop_items",
+            "list_mob_drops",
+        ],
+    ),
+    (
+        "teleport_admin",
+        &[
+            "list_routes",
+            "upsert_route",
+            "set_route_enabled",
+            "delete_route",
+            "simulate_route",
+        ],
+    ),
+    (
+        "world_event_admin",
+        &["get_world_event_config", "set_world_event_config"],
+    ),
+    (
+        "world_state_admin",
+        &[
+            "get_world_state",
+            "set_city_tax",
+            "set_kefra_defeated",
+            "set_guild_master",
+            "remove_guild_member",
+            "set_guild_relation",
+            "set_zone_owner",
+            "set_tower_owner",
+        ],
+    ),
+];
+
+/// `true` quando o contrato do portal declara `servico/metodo`.
+#[must_use]
+pub fn conhecido(service: &str, method: &str) -> bool {
+    SERVICOS
+        .iter()
+        .any(|(nome, metodos)| *nome == service && metodos.contains(&method))
+}
 
 /// `AdminResult::OK` do portal (`admin-result.ts`).
 const RESULT_OK: u8 = 1;
@@ -209,8 +358,24 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("panel", "self") => self.panel_self(session, &params, trace),
             ("panel", "characters") => self.panel_characters(session, &params, trace),
             ("panel", "rankings") => self.panel_rankings(session, &params, trace),
+            _ if conhecido(service, method) => self.pending(session, service, method, trace),
             _ => Reply::transport(404, trace, "método desconhecido"),
         }
+    }
+
+    /// Rota do contrato ainda sem handler de domínio: `501` explícito, com autor auditado.
+    ///
+    /// Não é `404`: `404` significa "nome inválido" (contrato violado). Aqui o portal
+    /// pediu algo que **existe** no contrato e o control plane ainda não implementa —
+    /// a diferença é diagnóstico, não cosmética.
+    fn pending(&self, session: Session, service: &str, method: &str, trace: &str) -> Reply {
+        let alvo = format!("{service}.{method}");
+        log_panel(&self.audit, session, "admin.pending", &alvo, "sem handler");
+        Reply::transport(
+            501,
+            trace,
+            &format!("contrato {alvo} existe no portal e ainda não tem handler no control plane"),
+        )
     }
 
     fn accounts_recovery(&self, session: Session, params: &json::Json, trace: &str) -> Reply {

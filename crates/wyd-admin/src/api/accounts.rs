@@ -80,7 +80,7 @@ pub async fn create_account(
         });
     }
     Account::validate_login(login).map_err(AdminError::from)?;
-    let account = repo.create(login, role).await?;
+    let account = repo.create_account(login, role).await?;
     log_action(
         sink,
         &staff,
@@ -137,7 +137,11 @@ mod tests {
                 })
         }
 
-        async fn create(&self, login: &str, role: Role) -> Result<Account, wyd_db::DbError> {
+        async fn create_account(
+            &self,
+            login: &str,
+            role: Role,
+        ) -> Result<Account, wyd_db::DbError> {
             let mut by_login = self.by_login.lock().expect("fake acessível");
             if by_login.contains_key(login) {
                 return Err(wyd_db::DbError::ConstraintViolation {

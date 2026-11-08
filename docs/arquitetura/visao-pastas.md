@@ -47,7 +47,7 @@
 
 | Pasta | Conteúdo real |
 |---|---|
-| `docs/arquitetura/` | `protocolo.md`, `modelo-banco.md`, `c4-pacotes.md`, `estrutura-e-padroes.md`, `visao-pastas.md` (este), `adr/` |
+| `docs/arquitetura/` | `protocolo.md`, `modelo-banco.md`, `c4-pacotes.md`, `estrutura-e-padroes.md`, `visao-pastas.md` (este), `contrato-transporte-cpsock.md`, `contrato-dispatch-opcode.md`, `contrato-persistencia.md`, `adr/` |
 | `docs/cliente/` | 10 docs (`README`, `mapa`, `customizacao`, `inventario`, `superficie-conhecida`, `analise-estatica`, `formatos`, `engenharia-reversa`, `depuracao`, `pacotes`) + `gerado/` (artefatos determinísticos) |
 | `docs/rust/` | `00-visao-estrutura`, `01-dependencias`, `02-execucao`, `03-progresso` |
 | `docs/manual-técnico/` | `auditoria-roadmap.md`, `skills.md` |

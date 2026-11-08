@@ -17,7 +17,10 @@ pub trait Accounts {
     fn find_by_id(&self, id: i64) -> impl Future<Output = Result<Account, DbError>> + Send;
 
     /// Cria a conta (login validado antes; UNIQUE estoura como `ConstraintViolation`).
-    fn create(
+    ///
+    /// Nome sem ambiguidade: `PgBackend` implementa também `Characters`, e dois `create`
+    /// no mesmo tipo obrigariam todo chamador a qualificar a trait.
+    fn create_account(
         &self,
         login: &str,
         role: Role,

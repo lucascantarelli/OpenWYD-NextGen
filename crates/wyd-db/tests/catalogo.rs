@@ -294,25 +294,51 @@ fn serie_e_contigua_e_schema_version_e_a_ultima() {
     );
 }
 
+/// A regra da §6.5 na forma que importa: **nenhum seed insere em tabela que ainda não nasceu**.
+///
+/// A série nasceu "DDL 0001–0016, seed 0017–0027". Em 2026-11-08 o `0028_estado_de_jogo` trouxe
+/// DDL depois do bloco de seed (§8) — o que a regra proíbe de verdade não é a posição do arquivo,
+/// é um seed inserir em tabela que não existe, que é o que este teste cobra.
 #[test]
-fn primeiro_seed_vem_depois_do_ultimo_ddl() {
-    let arquivos = migrations();
-    let ultimo_ddl = arquivos
-        .iter()
-        .filter(|(_, caminho)| !nome(caminho).contains("_seed_"))
-        .map(|(numero, _)| *numero)
-        .max()
-        .expect("há DDL");
-    let primeiro_seed = arquivos
-        .iter()
-        .filter(|(_, caminho)| nome(caminho).contains("_seed_"))
-        .map(|(numero, _)| *numero)
-        .min()
-        .expect("há seed");
-    assert!(
-        primeiro_seed > ultimo_ddl,
-        "seed {primeiro_seed:04} antes do último DDL {ultimo_ddl:04}"
-    );
+fn seed_insere_so_em_tabela_ja_criada() {
+    let tabelas = tabelas_das_migrations();
+    let numero_do_arquivo = |arquivo: &str| -> u32 {
+        arquivo[..4]
+            .parse()
+            .unwrap_or_else(|_| panic!("arquivo sem número: {arquivo}"))
+    };
+
+    let mut verificados = 0usize;
+    for (numero, caminho) in migrations() {
+        if !nome(&caminho).contains("_seed_") {
+            continue;
+        }
+        let sql = std::fs::read_to_string(&caminho).expect("seed legível");
+        for linha in sql.lines() {
+            let Some(pos) = linha.find("INSERT INTO ") else {
+                continue;
+            };
+            let alvo: String = linha[pos + "INSERT INTO ".len()..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            let tabela = tabelas.get(&alvo).unwrap_or_else(|| {
+                panic!(
+                    "{}: INSERT em tabela que nenhuma migration cria: {alvo}",
+                    nome(&caminho)
+                )
+            });
+            let criada_em = numero_do_arquivo(&tabela.arquivo);
+            assert!(
+                criada_em < numero,
+                "{}: INSERT em {alvo}, criada depois em {}",
+                nome(&caminho),
+                tabela.arquivo
+            );
+            verificados += 1;
+        }
+    }
+    assert!(verificados > 0, "há INSERTs de seed para verificar");
 }
 
 fn nome(caminho: &Path) -> String {

@@ -8,3 +8,16 @@ publish = false
 [lib]
 name = "wyd_db"
 path = "src/lib.rs"
+
+# FASE-04-3 / ADR-0021: pool real e runtime async como *implementação* das portas.
+# `default-features = false` evita o conjunto pesado (macros/derive de query e TLS
+# nativo): só runtime, driver Postgres e rustls.
+[dependencies]
+# ADR-0009/DIP: `wyd-db` entrega o conteúdo nos tipos da porta que mora no core.
+wyd-core = { path = "../wyd-core", version = "0.1.0" }
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-rustls-ring",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }

@@ -74,7 +74,7 @@ Fonte autoritativa para agentes: [`AGENTS.md`](AGENTS.md) §0. Skills vigentes:
 | ⚙️ Ciclo de execução, gates, DoD e doc viva | [`docs/rust/02-execucao.md`](docs/rust/02-execucao.md) |
 | 📊 Painel de progresso da execução | [`docs/rust/03-progresso.md`](docs/rust/03-progresso.md) |
 | 📦 Dependências Rust (catálogo e decisão offline) | [`docs/rust/01-dependencias.md`](docs/rust/01-dependencias.md) |
-| 🏛️ Decisões de arquitetura (ADRs) | [`docs/arquitetura/adr/`](docs/arquitetura/adr/) |
+| 🏛️ Decisões de arquitetura (ADRs) | [`docs/arquitetura/adr/README.md`](docs/arquitetura/adr/README.md) (índice) |
 | 🧱 Estrutura de módulos, nomenclatura e padrões (normativo) | [`docs/arquitetura/estrutura-e-padroes.md`](docs/arquitetura/estrutura-e-padroes.md) |
 | 🧭 C4 (contexto, containers, componentes) + fluxos de pacotes | [`docs/arquitetura/c4-pacotes.md`](docs/arquitetura/c4-pacotes.md) |
 | 🛠️ Guia de contribuição (build, gates, fluxo de issue) | [`docs/manual-técnico/guia-contribuicao.md`](docs/manual-técnico/guia-contribuicao.md) |

@@ -1,7 +1,9 @@
-//! Pool de conexões (configuração dimensionada; pool `sqlx` na 04-3).
+//! Pool dimensionado (`config`) e o adapter Postgres (`pg`).
 //!
-//! Só declara e re-exporta; os limites moram em `config`.
+//! A config é dado puro e testável; o adapter é a única peça que fala `sqlx`.
 
 pub mod config;
+pub mod pg;
 
 pub use config::PoolConfig;
+pub use pg::PgBackend;

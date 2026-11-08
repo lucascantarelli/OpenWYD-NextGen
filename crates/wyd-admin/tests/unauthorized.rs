@@ -65,7 +65,7 @@ impl Accounts for FakeAccounts {
         }
     }
 
-    fn create(
+    fn create_account(
         &self,
         login: &str,
         role: Role,

@@ -51,9 +51,9 @@ em repo, `.bin` do cliente, TXT legado, `include_str!`) e consequências estão 
    §6, incluindo procedência e lacunas).
 2. [x] Definir a fonte canônica — **ADR-0009**: PostgreSQL com migração de seed e
    validação tipada no boot; arquivo plano nunca é lido em runtime.
-3. Implementar a carga validada no boot (via `wyd-db`) com relatório por
+3. [x] Implementar a carga validada no boot (via `wyd-db`) com relatório por
    tabela/pk/coluna.
-4. Teste: dado corrompido aborta com mensagem que identifica o problema.
+4. [x] Teste: dado corrompido aborta com mensagem que identifica o problema.
 
 ## Arquivos
 
@@ -65,6 +65,23 @@ em repo, `.bin` do cliente, TXT legado, `include_str!`) e consequências estão 
   `content/`).
 - Proibido tocar: conteúdo de jogo sem motivo, default
   silencioso (proibido por regra).
+
+## Concluído (2026-11-08)
+
+- **Porta:** `wyd_core::ports::content` — `ContentTables`/`ItemRow`/`SkillRow`/
+  `SettingRow`/`ContentVersion`, `ContentSource` (trait async), `ContentIssue`
+  (`{tabela, pk, coluna, motivo}`), `ContentError` com teto de 20 problemas e
+  `ContentCounts` para o log de boot. Validação pura em `ContentTables::validate`:
+  versão ≥ 1, catálogo de itens/skills não vazio, índice/chave repetido, nome vazio ou
+  com caractere de controle, preço negativo, linhagem fora de `skill_lineage`.
+- **Loader:** `wyd_db::repo::content` — `impl ContentSource for PgBackend`, uma
+  transação de leitura (version, items, skills, settings, lineages) e `validate()`
+  antes do commit; falha de leitura vira issue de infraestrutura (`tabela = "*"`),
+  distinta de conteúdo inconsistente. `wyd-db` passou a depender de `wyd-core` (DIP;
+  sem ciclo: `wyd-core` só depende de `wyd-protocol`).
+- **Testes:** `crates/wyd-core/tests/content.rs` (7 casos, sem I/O) e
+  `conteudo_estatico_carrega_e_aborta_com_dado_corrompido` em
+  `crates/wyd-db/tests/pg.rs` (seed real + linha corrompida restaurada antes do assert).
 
 ## Testes / verificação
 

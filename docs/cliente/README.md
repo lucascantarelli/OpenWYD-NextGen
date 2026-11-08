@@ -33,6 +33,8 @@ desassemble (`tools/client/`). Este dossiê é a fonte canônica desse conhecime
 | [`engenharia-reversa.md`](engenharia-reversa.md) | Plano de desassemble profundo: alvos, ferramentas, marcos, entregáveis, riscos |
 | [`depuracao.md`](depuracao.md) | Roteiro de trace dinâmico: breakpoints, fases login→campo, freeze, fixtures |
 | [`pacotes.md`](pacotes.md) | Catálogo de pacotes com estado GERADO/PENDENTE por opcode |
+| [`../arquitetura/contrato-dispatch-opcode.md`](../arquitetura/contrato-dispatch-opcode.md) | Contrato de dispatch: 63 handlers do C++ × 61 rotas Go × 198 opcodes Rust, o que o cliente 7662 envia/omite e as divergências a decidir |
+| [`referencia-wyd-global.md`](referencia-wyd-global.md) | Cliente real do WYD **Global** (terceiro, `wyd_launcher` 2.7.3): inventário medido, arquitetura Electron/Squirrel, domínios de conteúdo que o 7662 não separa e limites de uso — referência, **não** contrato |
 | [`gerado/`](gerado/) | Artefatos determinísticos (`pe`, `strings`, `evidencia`, `formatos`, `ancoras`, `goldens`) |
 
 Histórico consolidado neste dossiê: `docs/cliente/customizacao.md` (patches/hooks),

@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build release docker docker-smoke telemetry-smoke clean ci migrations-check migrations-apply banco-catalogo banco-verify stack-config stack-up stack-down stack-logs portal-install portal-dev portal-test portal-build
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke telemetry-smoke clean ci migrations-check migrations-apply banco-catalogo banco-verify stack-config stack-up stack-down stack-logs portal-install portal-dev portal-test portal-build
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
@@ -55,6 +55,9 @@ bench: ## benchmarks / simulações pesadas (skill: wyd-rust-sim)
 
 bench-build: ## compila os benches sem rodar (gate de compilação do CI)
 	$(CARGO) bench --workspace --no-run
+
+bench-gate: ## mede e falha em regressão de baseline por cenário (tools/dev/bench-gate.mjs)
+	node tools/dev/bench-gate.mjs
 
 telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (FASE-06-1)
 	$(CARGO) test -p wyd-core --test telemetry -- --nocapture

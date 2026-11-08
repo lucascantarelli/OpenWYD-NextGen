@@ -11,9 +11,9 @@
 
 ## 1. Resumo
 
-- migrations: **27** · última versão: **27**
-- tabelas: **61** · colunas: **470** · índices: **31** · funções: **1**
-- domínios: **15** · tabelas com dado provisório: **22**
+- migrations: **28** · última versão: **28**
+- tabelas: **66** · colunas: **491** · índices: **32** · funções: **1**
+- domínios: **15** · tabelas com dado provisório: **23**
 
 | Domínio | Tabelas |
 |---|---|
@@ -22,16 +22,16 @@
 | auditoria | `audit_log` |
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
-| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item` |
+| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | inventário | `character_items`, `vault_items` |
 | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone`, `map_definition`, `teleport_route` |
 | personagem | `characters` |
 | ponte web→jogo | `delivery_queue` |
-| progressão | `character_status`, `character_lineage`, `character_skills` |
+| progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
 | refino | `refine_rate`, `refine_gem_effect`, `sanc_rate`, `combine_value` |
-| social | `guilds`, `guild_members` |
+| social | `guilds`, `guild_members`, `guild_relations`, `guild_tower` |
 
 ## 2. Catálogo
 
@@ -1359,6 +1359,97 @@
 | `mastery` | `smallint` | não |
 | `learned_at` | `timestamp with time zone` | não |
 
+### `character_affects`
+
+- **Arquivo:** `0028_estado_de_jogo.sql` · **Domínio:** progressão · **Estado:** provisorio
+- **Fonte:** modelo-banco.md §8 + legado `affect` (savefmt.go offset 4572)
+- **Nota:** Semântica de `type`/`time` vem do struct do cliente; a faixa não foi provada (UNVERIFIED).
+- **PK:** `character_id`, `type`
+- **FK:** `character_id` → `characters`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `type` | `smallint` | não |
+| `value` | `smallint` | não |
+| `level` | `integer` | não |
+| `time` | `bigint` | não |
+
+### `kingdom_cape_price`
+
+- **Arquivo:** `0028_estado_de_jogo.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** modelo-banco.md §8 + legado `sapphire_balance` (kingdom_cape.go)
+- **Nota:** Linha única: preço por reino (CHECK 4..32) e `version` para concorrência otimista.
+- **PK:** `id`
+- **FK:** —
+- **CHECK:** `kingdom_cape_price_singleton`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `smallint` | não |
+| `version` | `bigint` | não |
+| `hekalotia_cost` | `integer` | não |
+| `akelonia_cost` | `integer` | não |
+
+### `daily_reward_claim`
+
+- **Arquivo:** `0028_estado_de_jogo.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** modelo-banco.md §8 + legado `daily_reward_claim` (dailyreward.go)
+- **Nota:** Um resgate por conta e dia UTC (UNIQUE); o item sai por delivery_queue.
+- **PK:** `id`
+- **FK:** `account_id` → `accounts`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `account_id` | `bigint` | não |
+| `reward_item_id` | `bigint` | sim |
+| `claim_date` | `date` | não |
+| `created_at` | `timestamp with time zone` | não |
+
+### `guild_relations`
+
+- **Arquivo:** `0028_estado_de_jogo.sql` · **Domínio:** social · **Estado:** confirmado
+- **Fonte:** modelo-banco.md §8 + legado `guild_relation` (guild.go)
+- **Nota:** `kind` 1/2 (aliado/hostil), sem auto-relação.
+- **PK:** `guild_id`, `target_guild_id`
+- **FK:** `guild_id` → `guilds` · `target_guild_id` → `guilds`
+- **CHECK:** `guild_relations_kind`, `guild_relations_distinct`
+- **UNIQUE de tabela:** —
+- **Índices:** `guild_relations_target_idx` (target_guild_id) ;
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `guild_id` | `bigint` | não |
+| `target_guild_id` | `bigint` | não |
+| `kind` | `smallint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `guild_tower`
+
+- **Arquivo:** `0028_estado_de_jogo.sql` · **Domínio:** social · **Estado:** confirmado
+- **Fonte:** modelo-banco.md §8 + legado `guild_tower_state` (guild.go)
+- **Nota:** Linha única; `owner_guild` 0 = sem dono (por isso sem FK).
+- **PK:** `id`
+- **FK:** —
+- **CHECK:** `guild_tower_singleton`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `smallint` | não |
+| `owner_guild` | `bigint` | não |
+| `updated_at_unix` | `bigint` | não |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1438,6 +1529,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0025 | `0025_seed_sanc_rate.sql` | seed | — |
 | 0026 | `0026_seed_sanc_rate_defaults.sql` | seed | — |
 | 0027 | `0027_seed_combine.sql` | seed | — |
+| 0028 | `0028_estado_de_jogo.sql` | DDL | `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

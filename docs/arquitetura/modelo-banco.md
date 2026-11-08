@@ -24,6 +24,11 @@ accounts 1───* characters 1───* character_items
    │
    └───* delivery_queue (grants pendentes do wyd-portal/admin)
 
+characters 1───* character_affects   (um por `type`; buffs reidratados no login)
+accounts   1───* daily_reward_claim  (UNIQUE account_id + claim_date)
+guilds     1───* guild_relations     (kind 1/2, sem auto-relação)
+kingdom_cape_price (linha única)  ·  guild_tower (linha única; owner_guild 0 = sem dono)
+
 audit_log (append-only, sem FK para nunca bloquear escrita)
 ```
 
@@ -39,6 +44,11 @@ audit_log (append-only, sem FK para nunca bloquear escrita)
 | `guild_members` | `(guild_id, character_id)` | ambas CASCADE | `rank 0–9` | `UNIQUE(character_id)` (um clã por char) |
 | `audit_log` | `id` | — (nunca bloqueia) | `action` não-vazia | `idx(at)` |
 | `delivery_queue` | `id` | `account_id/character_id` SET NULL (grant sobrevive a delete? não: RESTRICT — ver §4) | coerência por `kind` (item/gold/level) | parcial `WHERE status='pending'` |
+| `character_affects` | `(character_id, type)` | `character_id → characters` CASCADE | `level ≥ 0`, `time ≥ 0` | `idx(character_id)` (= PK) |
+| `kingdom_cape_price` | `id` | — | `id = 1`, `version ≥ 1`, `hekalotia_cost`/`akelonia_cost` 4–32 | — (linha única) |
+| `daily_reward_claim` | `id` | `account_id → accounts` CASCADE | `UNIQUE(account_id, claim_date)` | `idx(account_id, claim_date)` (= UNIQUE) |
+| `guild_relations` | `(guild_id, target_guild_id)` | ambas `→ guilds` CASCADE | `kind ∈ {1,2}`, `guild_id <> target_guild_id` | `idx(target_guild_id)` |
+| `guild_tower` | `id` | — (`owner_guild` sem FK: 0 = sem dono) | `id = 1`, `owner_guild ≥ 0`, `updated_at_unix ≥ 0` | — (linha única) |
 
 Tipos: IDs `BIGINT GENERATED …` (ver `BIGSERIAL` nas migrations — forma
 simples e portátil no PG17); dinheiro/EXP `BIGINT ≥ 0`; tempo `TIMESTAMPTZ`;
@@ -66,9 +76,10 @@ over-engineering nesta escala; CHECK documenta o domínio).
   marcadores `-- migrate:up` e `-- migrate:down` (estilo dbmate/refinery).
 - Down reverte exatamente o up (ordem inversa); `audit_log` incluída (ambiente
   descartável — produção futura exige política própria, ver 04-2).
-- Runner `sqlx`/`refinery` chega na FASE-05/04-3 (exige rede + ADR); até lá a
-  aplicação é por `psql -f` com split nos marcadores (script de validação em
-  `tests/constraints.rs` + prova ao vivo documentada na issue).
+- Runner embutido (`sqlx::migrate!`/`refinery`) **não** entrou na FASE-04-3: o pool e os adapters
+  `pg` foram adotados (ADR-0021), mas a aplicação das migrations continua por `psql -f` com split
+  nos marcadores (`tools/content/migrate-cycle.mjs`; validação estrutural em `tests/constraints.rs`).
+  Trocar o runner exige issue própria.
 - **Nenhum `ALTER TABLE` no `up`**: coluna nova nasce na criação da tabela. O banco ainda não
   foi para produção, então desenho corrigido se reescreve na origem, não por cima (foi o que
   aconteceu em 2026-11-08 com `0023_inventario_gema`/`0024_catalogo_skill_nota`, consolidados
@@ -167,6 +178,12 @@ fonte de verdade do servidor.
    existe documento de combate/drop/refino na árvore Rust.
 
 ### 6.5 Sequência de migrações (revisada em 2026-11-08)
+
+> **Exceção registrada (2026-11-08):** `0028_estado_de_jogo.sql` traz **DDL depois** do bloco de
+> seed (`0017–0027`), porque as cinco tabelas da §8 só foram decididas depois da série de seed.
+> A regra que continua valendo é a que importa: nenhum seed insere em tabela que não existe —
+> cobrado por `crates/wyd-db/tests/catalogo.rs` (`seed_insere_so_em_tabela_ja_criada`). Renumerar
+> a série para manter a ordem posicional não vale o custo em histórico e em referências de ADR.
 
 Regra da série: **DDL primeiro (0001–0016), seed depois (0017–0024)**, um domínio por
 arquivo, nenhuma tabela partida entre arquivos, nenhuma FK para tabela criada depois e
@@ -418,3 +435,93 @@ Descartado, com motivo — para não reabrir a discussão:
 Pendências que **não** são de arquitetura, são de entrega: carga tipada no boot
 (FASE-04-3), `ContentError { tabela, pk, coluna, motivo }`, e o servidor logando
 `content_version` + `content_source.sha256` para provar que duas máquinas têm o mesmo mundo.
+
+## 8. Tabelas do legado sem espelho — decisão (2026-11-08)
+
+Sete tabelas do schema legado (`origin/main`, `internal/migrations/0001_schema.up.sql`) estavam sem
+tabela correspondente em `crates/wyd-db/migrations/` quando esta decisão foi tomada. A pergunta era
+separar **requisito do jogo** de **operação do portal**. Critério: quem consome a tabela — o loop de
+jogo (`tmserver` + `dbclient` + handler de protocolo) ou o caminho web/admin/comercial
+(`internal/store/play_code.go`, `donate_revenue.go`, portal).
+
+**Fontes de evidência usadas (e o que cada uma não prova):**
+
+- **schema legado** (`internal/migrations/0001_schema.up.sql`, com a linha citada) — existência e
+  forma da tabela; não diz quem usa.
+- **código do servidor legado** (`tmserver/internal/store/*.go`, `dbclient/client.go`) — o consumidor
+  real; é a prova que classifica jogo × portal.
+- **nosso schema** (`crates/wyd-db/migrations/0028_estado_de_jogo.sql`) — o lado Rust da decisão, com
+  `-- migrate:up`/`-- migrate:down` e `COMMENT ON TABLE` citando o nome legado.
+- **nosso cliente `client/`** (o oficial) — não foi possível usar como prova aqui: nenhuma dessas
+  sete tabelas aparece na superfície capturada do cliente (`docs/cliente/superficie-conhecida.md`),
+  porque as sete são de **bookkeeping do servidor** (buff persistido, preço, idempotência de resgate,
+  relação de clã, dono da torre, código de site, pedido de pagamento). O cliente consome o **efeito**
+  (buff aplicado, item entregue, relação de clã desenhada), não a linha.
+- **WYD Global (`blogal`, RaidHut)** — é cliente real em funcionamento, mas **terceiro**: serve para
+  conferir comportamento observável, nunca como fonte de requisito do nosso servidor. Nenhuma linha
+  abaixo depende dele.
+
+**Estado aplicado:** as cinco de jogo são exatamente as cinco tabelas de
+`0028_estado_de_jogo.sql`; as duas de portal **não** existem em `crates/wyd-db/migrations/`.
+
+| Tabela legada | Classificação | Evidência (arquivo/consulta) | Implicação no nosso modelo |
+|---|---|---|---|
+| `affect` (168) | **requisito do jogo** | `loadAffects` e `SaveCharacter` em `store_live.go:234,388`; struct `affect[4][32]` em `savefmt.go:110` (offset 4572) | `character_affects` em `0028`, PK `(character_id, type)`, reidratado no login — nunca escrito por tick |
+| `sapphire_balance` (1587) | **requisito do jogo** (nome enganoso: é **preço**, não saldo) | `kingdom_cape.go:25,56,61,103`; `dbclient.Client.QuoteKingdomCape/PurchaseKingdomCape` (`client.go:210,219`) | `kingdom_cape_price` em `0028`, linha única com `version` (revisão otimista) e custo 4..32 por reino |
+| `daily_reward_claim` (529) | **requisito do jogo** | `dailyreward.go:17,23,205,233` — `unique_violation` 23505 era o sinal de "já resgatou" | `daily_reward_claim` em `0028`, `UNIQUE(account_id, claim_date)`; o item sai por `delivery_queue` |
+| `guild_relation` (946) | **requisito do jogo** | `guild.go:351,361,395`; `dbclient` `:408,437` | `guild_relations` em `0028`, PK composta, `kind IN (1,2)`, CHECK contra auto-relação |
+| `guild_tower_state` (967) | **requisito do jogo** | `guild.go:460,477`; `dbclient:475,484` (linha única `id=1`) | `guild_tower` em `0028`, linha única `CHECK (id = 1)`, `owner_guild = 0` = sem dono (sem FK: o sentinela não é clã) |
+| `account_play_code` (149) | **exclusiva do portal legado** | só `store/play_code.go:22-73` (código de login de uso único, máx. 5 ativos); **zero** ocorrências em `tmserver` | fora do schema do jogo: se o portal precisar, persiste por ADR própria no Cold Path (`AGENTS.md` §3 invariante 7) |
+| `donate_topup_order` (752) | **exclusiva do portal legado** (comercial) | `domain.go:408,437`; `donate_revenue.go:14-19` — recarga em dinheiro real, só vira receita depois do gateway | fora do schema do jogo, pelo mesmo motivo: dinheiro não é estado de personagem |
+
+**Decisão.** As **5 primeiras entraram no `wyd-db`** (são estado de jogo que o tick precisa
+reidratar) e as **2 últimas não entram**: código de login do site e pedido de recarga são do Cold
+Path comercial e não têm relação com o estado do personagem — se o portal precisar persistí-los,
+entra por ADR própria, fora do schema do jogo (`AGENTS.md` §3 invariante 7).
+
+**Regra que encerra a ambiguidade de "sem espelho"** (vale para qualquer tabela legada daqui em
+diante):
+
+- **"Sem espelho" é um estado do schema, não um veredito.** Significa exatamente "existe em
+  `internal/migrations/*.up.sql` e não existe em `crates/wyd-db/migrations/` **hoje**". Não significa
+  "sem uso", "obsoleta" nem "fora do jogo" — era essa confusão que deixava as sete pendentes.
+- **Entra no modelo (jogo)** quando houver consumidor **medido no caminho de jogo**: leitura/escrita
+  em `tmserver/internal/{store,dbclient}` ou handler de protocolo que precise do estado reidratado,
+  ou estado que o cliente observe após o login. Entrar = migration nova com `-- migrate:up` e
+  `-- migrate:down` + entrada em `tools/content/banco-fontes.mjs` + seção neste documento. Sem
+  consumidor medido, **não entra** por conveniência.
+- **Fica fora (portal/Cold Path)** quando todos os consumidores estiverem no caminho web/admin/
+  comercial. Se o portal precisar persistir, isso é decisão do portal (ADR própria) e não amplia o
+  schema do jogo.
+- **Sem evidência conclusiva** a tabela permanece **UNVERIFIED nomeada** (com a pergunta que a
+  fecha, como U-P1..U-P7 no contrato de persistência): não vira tabela, não vira "portal por
+  intuição" e não vira gate.
+- **Saída do modelo** só por migration com `down` que reverte exatamente o `up` (nunca `DELETE` de
+  dado como efeito colateral de decisão de modelagem).
+
+**Nomes no Rust** (o legado tem dois nomes enganosos; o schema canônico é este documento):
+
+| Legado | Nome no Rust | Por quê |
+|---|---|---|
+| `affect` | `character_affects` | é por personagem (`character_id`), não estado global |
+| `sapphire_balance` | `kingdom_cape_price` | as colunas são `version`, `hekalotia_cost`, `akelonia_cost` — é **preço** com revisão otimista, não saldo de moeda |
+| `daily_reward_claim` | `daily_reward_claim` | nome já correto; `UNIQUE(account_id, claim_date)` é o coração da idempotência |
+| `guild_relation` | `guild_relations` | plural, como as demais |
+| `guild_tower_state` | `guild_tower` | linha única (`id = 1` com `CHECK`), sem histórico no legado |
+
+**Consequências:**
+
+1. As 5 tabelas entraram em **`0028_estado_de_jogo.sql`** (DDL com `-- migrate:up` e
+   `-- migrate:down`), com a exceção à ordem "DDL antes de seed" registrada na §6.5 e cobrada por
+   `tests/catalogo.rs`.
+2. `kingdom_cape_price` precisa de `version` (revisão otimista) para reproduzir
+   `PurchaseKingdomCape(expectedRevision)` — sem isso duas compras concorrentes pagam o preço velho.
+3. `character_affects` só faz sentido se o save do personagem for por agregado (contrato de
+   persistência §7); gravar buff a cada tick é I/O dentro do tick, proibido (`AGENTS.md` §3
+   invariante 1).
+4. **Prova de ciclo:** `make migrations-apply` (up → down → up num Postgres efêmero) e
+   `make banco-verify` (`information_schema` ↔ `banco-catalogo.md`); resultado registrado em
+   `docs/rust/03-progresso.md`.
+
+**Rastreabilidade:** `docs/arquitetura/contrato-persistencia.md` §5 (U-P7, agora resolvida),
+`docs/rust/03-progresso.md` (registro de 2026-11-08).

@@ -55,15 +55,19 @@ impl std::error::Error for AdminError {}
 impl From<DbError> for AdminError {
     fn from(e: DbError) -> Self {
         match e {
-            DbError::InvalidDsn | DbError::Transport { .. } | DbError::PoolSaturated { .. } => {
-                Self::InvalidInput {
-                    reason: "falha temporária, tente de novo",
-                }
-            }
+            DbError::InvalidDsn
+            | DbError::Transport { .. }
+            | DbError::PoolSaturated { .. }
+            | DbError::SaveQueueFull { .. }
+            | DbError::SaveTimeout { .. } => Self::InvalidInput {
+                reason: "falha temporária, tente de novo",
+            },
             DbError::ConstraintViolation { .. } => Self::InvalidInput {
                 reason: "dados conflitam com as regras",
             },
             DbError::NotFound { entity, id } => Self::NotFound { entity, id },
+            // Busca por chave natural (login): o id não existe por definição.
+            DbError::NotFoundKey { entity } => Self::NotFound { entity, id: 0 },
         }
     }
 }
