@@ -20,7 +20,9 @@ pub trait Characters {
     ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send;
 
     /// Cria validando invariantes (o banco impõe o resto).
-    fn create(
+    ///
+    /// Nome sem ambiguidade com `Accounts::create_account` (mesmo adapter, duas portas).
+    fn create_character(
         &self,
         character: &Character,
     ) -> impl Future<Output = Result<Character, DbError>> + Send;

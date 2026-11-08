@@ -11,6 +11,7 @@ on:
       - "deny.toml"
       - "Makefile"
       - "docker/**"
+      - "tools/dev/**"
       - ".github/workflows/rust.yml"
   pull_request:
     branches: [main, develop]
@@ -44,8 +45,9 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo bench --workspace --no-run
-      # A IA de NPC falha o job se passar de 10% do orçamento do tick (ADR-0016).
-      - run: cargo bench -p wyd-core --bench tick
+      # Mede os cenários (IA de NPC ≤ 10% do tick, ADR-0016; ECS ≤ 50%, FASE-03-2)
+      # e falha em regressão contra o baseline declarado por cenário.
+      - run: node tools/dev/bench-gate.mjs
       - run: cargo bench -p wyd-net --bench limits
 
   release:

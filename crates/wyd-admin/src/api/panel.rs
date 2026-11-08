@@ -253,7 +253,7 @@ mod tests {
                 Ok(Vec::new())
             }
 
-            async fn create(&self, _character: &Character) -> Result<Character, DbError> {
+            async fn create_character(&self, _character: &Character) -> Result<Character, DbError> {
                 Err(DbError::Transport {
                     op: "fake-não-cria",
                 })

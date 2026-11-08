@@ -16,8 +16,14 @@ pub enum DbError {
     },
     /// Entidade inexistente para leitura/escrita pontual.
     NotFound { entity: &'static str, id: i64 },
+    /// Entidade inexistente em busca por chave natural (id desconhecido).
+    NotFoundKey { entity: &'static str },
     /// Pool esgotado (backpressure: o chamador aguarda, nunca abre nova conexão).
     PoolSaturated { max: u32 },
+    /// Fila de save cheia (Hot Path recusa em vez de bloquear o tick).
+    SaveQueueFull { capacity: usize },
+    /// Shutdown não conseguiu esvaziar a fila de save no tempo da política.
+    SaveTimeout { ms: u64 },
     /// Falha de transporte/execução (operação nomeada, sem detalhe sensível).
     Transport { op: &'static str },
 }
@@ -34,8 +40,17 @@ impl fmt::Display for DbError {
             Self::NotFound { entity, id } => {
                 write!(f, "{entity} id={id} não encontrado")
             }
+            Self::NotFoundKey { entity } => {
+                write!(f, "{entity} não encontrado")
+            }
             Self::PoolSaturated { max } => {
                 write!(f, "pool esgotado (máximo {max} conexões)")
+            }
+            Self::SaveQueueFull { capacity } => {
+                write!(f, "fila de save cheia ({capacity} pendentes)")
+            }
+            Self::SaveTimeout { ms } => {
+                write!(f, "shutdown não esvaziou a fila de save em {ms} ms")
             }
             Self::Transport { op } => {
                 write!(f, "falha de persistência em {op}")
@@ -65,7 +80,10 @@ mod tests {
                 id: 7,
             }
             .to_string(),
+            DbError::NotFoundKey { entity: "account" }.to_string(),
             DbError::PoolSaturated { max: 10 }.to_string(),
+            DbError::SaveQueueFull { capacity: 4_096 }.to_string(),
+            DbError::SaveTimeout { ms: 3_000 }.to_string(),
             DbError::Transport {
                 op: "accounts.create",
             }

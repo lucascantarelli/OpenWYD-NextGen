@@ -274,6 +274,14 @@ pub struct Entity {
     pub generation: u32,
 }
 
+/// Pedido de spawn em lote (dado de entrada, sem inventário: ele nasce vazio).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpawnSpec {
+    pub kind: EntityKind,
+    pub position: Position,
+    pub stats: Stats,
+}
+
 /// Armazém SoA: um `Vec` contíguo por componente + vida/geração por índice.
 ///
 /// Spawn/despawn aqui são operação de estrutura de dados (fronteira fria);
@@ -376,6 +384,36 @@ impl ComponentStore {
                 generation: 0,
             })
         }
+    }
+
+    /// Spawn em lote **tudo-ou-nada**: valida todos os `Stats` antes da primeira escrita.
+    ///
+    /// Operação fria (carga de mundo, spawn de evento), nunca por tick com tamanho variável.
+    /// Um único `Stats` inválido devolve `Err` e o armazém fica **byte a byte** como estava: o
+    /// mundo não pode subir meio populado (`AGENTS.md` §3 invariante 3). O inventário nasce
+    /// vazio — item inicial é entrega de conteúdo, não default do armazém.
+    ///
+    /// # Errors
+    ///
+    /// [`CoreError::InvalidStats`] do primeiro `Stats` inválido encontrado, na ordem do lote.
+    pub fn spawn_batch(&mut self, specs: &[SpawnSpec]) -> Result<Vec<Entity>, CoreError> {
+        for spec in specs {
+            spec.stats.validate()?;
+        }
+        self.reserve(specs.len());
+        let mut ids = Vec::with_capacity(specs.len());
+        for spec in specs {
+            // Já validado acima: o `?` aqui só propaga um estado impossível.
+            ids.push(self.spawn(spec.kind, spec.position, spec.stats, Inventory::default())?);
+        }
+        Ok(ids)
+    }
+
+    /// Despawn em lote; devolve quantos ids eram válidos (os inválidos são ignorados).
+    ///
+    /// Idempotente como [`Self::despawn`]: id morto ou de geração antiga não conta.
+    pub fn despawn_batch(&mut self, entities: &[Entity]) -> usize {
+        entities.iter().filter(|e| self.despawn(**e)).count()
     }
 
     /// Despawn idempotente quanto a índice morto; geração nova invalida o id antigo.
@@ -1067,5 +1105,66 @@ mod gem_tests {
             })
         );
         assert!(store.events().is_empty());
+    }
+
+    fn spec(x: i32, y: i32) -> SpawnSpec {
+        SpawnSpec {
+            kind: EntityKind::Monster,
+            position: Position { x, y },
+            stats: stats(),
+        }
+    }
+
+    #[test]
+    fn spawn_em_lote_e_tudo_ou_nada() {
+        let mut store = ComponentStore::default();
+        let ids = store
+            .spawn_batch(&[spec(1, 1), spec(2, 2)])
+            .expect("lote válido");
+        assert_eq!(ids.len(), 2);
+        assert_eq!(store.live_count(), 2);
+        assert_eq!(
+            store.positions().len(),
+            2,
+            "uma posição por entidade, sem buraco entre as fatias"
+        );
+
+        // Um `Stats` inválido no meio do lote não pode criar nada — nem os anteriores.
+        let invalido = SpawnSpec {
+            stats: Stats {
+                max_hp: 0,
+                ..stats()
+            },
+            ..spec(4, 4)
+        };
+        let err = store
+            .spawn_batch(&[spec(3, 3), invalido])
+            .expect_err("lote com stats inválido");
+        assert_eq!(
+            err,
+            CoreError::InvalidStats {
+                field: "max_hp",
+                value: 0
+            }
+        );
+        assert_eq!(store.live_count(), 2, "nada foi criado pelo lote recusado");
+        assert_eq!(store.len(), 2, "nenhum índice novo reservado no armazém");
+    }
+
+    #[test]
+    fn despawn_em_lote_conta_apenas_ids_vivos() {
+        let mut store = ComponentStore::default();
+        let specs: Vec<SpawnSpec> = (0..100).map(|i| spec(i, i * 2)).collect();
+        let ids = store.spawn_batch(&specs).expect("lote válido");
+
+        assert_eq!(store.despawn_batch(&ids[..60]), 60);
+        assert_eq!(store.live_count(), 40);
+        assert_eq!(
+            store.despawn_batch(&ids[..60]),
+            0,
+            "id já morto não conta duas vezes"
+        );
+        assert_eq!(store.despawn_batch(&ids), 40);
+        assert_eq!(store.live_count(), 0);
     }
 }

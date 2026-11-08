@@ -65,7 +65,7 @@ impl Accounts for FakeAccounts {
         }
     }
 
-    fn create(
+    fn create_account(
         &self,
         login: &str,
         role: Role,
@@ -132,7 +132,7 @@ impl Characters for FakeCharacters {
         async move { Ok(rows) }
     }
 
-    fn create(
+    fn create_character(
         &self,
         character: &Character,
     ) -> impl Future<Output = Result<Character, DbError>> + Send {
@@ -206,6 +206,139 @@ fn result_of(body: &json::Json) -> i64 {
     body.get("result")
         .and_then(json::Json::as_i64)
         .expect("result")
+}
+
+/// Superfície do portal, extraída do TypeScript em tempo de compilação.
+///
+/// `include_str!` amarra o teste ao cliente que o BFF usa: se o arquivo mudar de
+/// lugar o build quebra, e se o portal declarar um método novo o teste de paridade
+/// abaixo falha. Assim o roteador não pode ficar para trás em silêncio.
+fn superficie_do_portal() -> Vec<(String, Vec<String>)> {
+    let fonte = include_str!("../../../wyd-portal/src/server/admin-client.ts");
+    let mut servicos = Vec::new();
+    let mut resto = fonte;
+    // Cada serviço é declarado como `svc<{...}>("nome", ["metodo", ...])`: o nome
+    // vem imediatamente antes do colchete que abre a lista de métodos.
+    while let Some(pos) = resto.find(">(\"") {
+        let depois = &resto[pos + 2..];
+        let Some(fim_nome) = depois[1..].find('"').map(|i| i + 1) else {
+            break;
+        };
+        let servico = depois[1..fim_nome].to_string();
+        let cauda = &depois[fim_nome + 1..];
+        let Some(inicio) = cauda.find('[') else {
+            break;
+        };
+        let Some(fim) = cauda[inicio..].find(']') else {
+            break;
+        };
+        let metodos = cauda[inicio + 1..inicio + fim]
+            .split(',')
+            .map(|item| item.trim().trim_matches('"'))
+            .filter(|item| !item.is_empty() && item.chars().all(|c| c.is_ascii_alphanumeric()))
+            .map(para_snake)
+            .collect();
+        servicos.push((servico, metodos));
+        resto = &cauda[inicio + fim + 1..];
+    }
+    servicos
+}
+
+/// Mesma conversão do `toSnake` do `admin-client.ts` (`listNpcs` → `list_npcs`).
+fn para_snake(metodo: &str) -> String {
+    let mut saida = String::with_capacity(metodo.len() + 4);
+    for caractere in metodo.chars() {
+        if caractere.is_ascii_uppercase() {
+            saida.push('_');
+            saida.push(caractere.to_ascii_lowercase());
+        } else {
+            saida.push(caractere);
+        }
+    }
+    saida
+}
+
+#[test]
+fn cada_metodo_do_portal_tem_rota_no_control_plane() {
+    let superficie = superficie_do_portal();
+    assert_eq!(
+        superficie.len(),
+        16,
+        "16 serviços no admin-client.ts de hoje"
+    );
+
+    let mut total = 0usize;
+    for (servico, metodos) in &superficie {
+        assert!(!metodos.is_empty(), "serviço {servico} declara métodos");
+        for metodo in metodos {
+            total += 1;
+            assert!(
+                wyd_admin::transport::conhecido(servico, metodo),
+                "portal chama {servico}.{metodo} e o roteador responde 404: declare a rota em SERVICOS"
+            );
+        }
+    }
+    assert_eq!(total, 72, "72 métodos declarados pelo portal");
+
+    // E o contrário: nada de rota declarada que o portal não conheça mais.
+    let mut declarados: Vec<String> = Vec::new();
+    for &(servico, metodos) in wyd_admin::transport::SERVICOS {
+        for &metodo in metodos {
+            declarados.push(format!("{servico}.{metodo}"));
+        }
+    }
+    for alvo in &declarados {
+        let (servico, metodo) = alvo.split_once('.').expect("chave servico.metodo");
+        let existe = superficie
+            .iter()
+            .any(|(nome, metodos)| nome.as_str() == servico && metodos.iter().any(|m| m == metodo));
+        assert!(
+            existe,
+            "rota {alvo} não existe mais no portal: remova de SERVICOS"
+        );
+    }
+    assert_eq!(declarados.len(), total, "mesma quantidade dos dois lados");
+}
+
+#[test]
+fn rota_do_portal_sem_handler_e_501_auditado_e_nunca_404() {
+    let router = router();
+    for (servico, metodos) in superficie_do_portal() {
+        for metodo in metodos {
+            let caminho = format!("/admin/v1/{servico}/{metodo}");
+            let (status, body) = dispatch(&router, &raw("POST", &caminho, Some("staff"), "{}"));
+            assert!(
+                status == 501 || status == 200,
+                "{caminho} respondeu {status}: contrato declarado não pode virar 404"
+            );
+            if status == 501 {
+                let mensagem = body
+                    .get("message")
+                    .and_then(json::Json::as_str)
+                    .unwrap_or_default();
+                assert!(
+                    mensagem.contains(&format!("{servico}.{metodo}")),
+                    "a mensagem nomeia a rota pendente: {mensagem}"
+                );
+            }
+        }
+    }
+    let pendencias: Vec<_> = router
+        .audit()
+        .entries()
+        .into_iter()
+        .filter(|entrada| entrada.action == "admin.pending")
+        .collect();
+    assert_eq!(pendencias.len(), 72, "cada chamada pendente fica auditada");
+    // Ordem é a do arquivo do portal (`item_catalog` primeiro); o autor é da sessão.
+    assert_eq!(pendencias[0].target, "item_catalog.list_items");
+    assert!(
+        pendencias.iter().all(|entrada| entrada.actor_id == 7),
+        "autor vem da sessão em toda pendência"
+    );
+    assert!(pendencias
+        .iter()
+        .any(|entrada| entrada.target == "account_admin.list_accounts"));
 }
 
 #[test]
@@ -346,7 +479,7 @@ fn unknown_method_is_404_and_broken_json_is_400() {
     let router = router();
     let (status, _) = dispatch(
         &router,
-        &raw("POST", "/admin/v1/nao/existe", Some("staff"), "{}"),
+        &raw("POST", "/admin/v1/nao/existe_rota", Some("staff"), "{}"),
     );
     assert_eq!(status, 404);
     let (status, _) = dispatch(

@@ -244,6 +244,36 @@ export const FONTES = {
     estado: 'confirmado',
     nota: '`day` 1..7 ou NULL para todo dia; item e/ou ouro.',
   },
+  character_affects: {
+    dominio: 'progressão',
+    fonte: 'modelo-banco.md §8 + legado `affect` (savefmt.go offset 4572)',
+    estado: 'provisorio',
+    nota: 'Semântica de `type`/`time` vem do struct do cliente; a faixa não foi provada (UNVERIFIED).',
+  },
+  kingdom_cape_price: {
+    dominio: 'economia',
+    fonte: 'modelo-banco.md §8 + legado `sapphire_balance` (kingdom_cape.go)',
+    estado: 'confirmado',
+    nota: 'Linha única: preço por reino (CHECK 4..32) e `version` para concorrência otimista.',
+  },
+  daily_reward_claim: {
+    dominio: 'economia',
+    fonte: 'modelo-banco.md §8 + legado `daily_reward_claim` (dailyreward.go)',
+    estado: 'confirmado',
+    nota: 'Um resgate por conta e dia UTC (UNIQUE); o item sai por delivery_queue.',
+  },
+  guild_relations: {
+    dominio: 'social',
+    fonte: 'modelo-banco.md §8 + legado `guild_relation` (guild.go)',
+    estado: 'confirmado',
+    nota: '`kind` 1/2 (aliado/hostil), sem auto-relação.',
+  },
+  guild_tower: {
+    dominio: 'social',
+    fonte: 'modelo-banco.md §8 + legado `guild_tower_state` (guild.go)',
+    estado: 'confirmado',
+    nota: 'Linha única; `owner_guild` 0 = sem dono (por isso sem FK).',
+  },
   map_definition: {
     dominio: 'mundo',
     fonte: 'docs/wyd/sistemas/mundo.md',

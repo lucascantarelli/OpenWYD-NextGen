@@ -9,6 +9,8 @@
 //! relaxed por operação, medido em `benches/limits.rs`.
 
 use core::sync::atomic::{AtomicU64, Ordering};
+use std::collections::BTreeMap;
+use std::sync::Mutex;
 
 /// Contadores do processo (único por processo, como o registro do motor).
 ///
@@ -26,6 +28,11 @@ pub struct NetMetrics {
     handshakes: AtomicU64,
     pending: AtomicU64,
     sessions: AtomicU64,
+    version_accepted: AtomicU64,
+    version_rejected: AtomicU64,
+    // Por valor recebido: o handshake é raro (não é caminho quente), então um map sob mutex
+    // cabe; o caminho quente continua só com `fetch_add`.
+    versions: Mutex<BTreeMap<i32, u64>>,
 }
 
 /// Instância global do processo.
@@ -45,7 +52,52 @@ impl NetMetrics {
             handshakes: AtomicU64::new(0),
             pending: AtomicU64::new(0),
             sessions: AtomicU64::new(0),
+            version_accepted: AtomicU64::new(0),
+            version_rejected: AtomicU64::new(0),
+            versions: Mutex::new(BTreeMap::new()),
         }
+    }
+
+    /// Versão de cliente recebida no login, contada por valor (ADR-0020).
+    #[inline]
+    pub fn client_version(&self, version: i32) {
+        #[cfg(feature = "metrics")]
+        {
+            if let Ok(mut mapa) = self.versions.lock() {
+                *mapa.entry(version).or_insert(0) += 1;
+            }
+            self.version_accepted.fetch_add(1, Ordering::Relaxed);
+        }
+        #[cfg(not(feature = "metrics"))]
+        let _ = version;
+    }
+
+    /// Versão recusada pelo gate.
+    #[inline]
+    pub fn client_version_rejected(&self) {
+        #[cfg(feature = "metrics")]
+        self.version_rejected.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Cópias de versões observadas, por valor declarado.
+    #[must_use]
+    pub fn client_versions(&self) -> BTreeMap<i32, u64> {
+        self.versions
+            .lock()
+            .map(|mapa| mapa.clone())
+            .unwrap_or_default()
+    }
+
+    /// Versões aceitas pelo gate (todas as políticas).
+    #[must_use]
+    pub fn client_versions_accepted(&self) -> u64 {
+        self.version_accepted.load(Ordering::Relaxed)
+    }
+
+    /// Versões recusadas pelo gate.
+    #[must_use]
+    pub fn client_versions_rejected(&self) -> u64 {
+        self.version_rejected.load(Ordering::Relaxed)
     }
 
     /// Pacote aceito pelo balde.
@@ -159,6 +211,27 @@ impl NetMetrics {
             "wyd_connections_pending {}\n",
             self.pending.load(Ordering::Relaxed)
         ));
+        out.push_str("# HELP wyd_client_version_accepted_total Logins com versao aceita.\n");
+        out.push_str("# TYPE wyd_client_version_accepted_total counter\n");
+        out.push_str(&format!(
+            "wyd_client_version_accepted_total {}\n",
+            self.client_versions_accepted()
+        ));
+        out.push_str("# HELP wyd_client_version_total Logins por versao de cliente recebida.\n");
+        out.push_str("# TYPE wyd_client_version_total counter\n");
+        for (versao, valor) in self.client_versions() {
+            out.push_str(&format!(
+                "wyd_client_version_total{{version=\"{versao}\"}} {valor}\n"
+            ));
+        }
+        out.push_str(
+            "# HELP wyd_client_version_rejected_total Logins recusados pelo gate de versao.\n",
+        );
+        out.push_str("# TYPE wyd_client_version_rejected_total counter\n");
+        out.push_str(&format!(
+            "wyd_client_version_rejected_total {}\n",
+            self.client_versions_rejected()
+        ));
         out.push_str("# HELP wyd_sessions_open Conexoes abertas (gauge).\n");
         out.push_str("# TYPE wyd_sessions_open gauge\n");
         out.push_str(&format!(
@@ -187,5 +260,21 @@ mod tests {
         assert!(texto.contains("wyd_packets_rejected_total{reason=\"ip\"} 1"));
         m.session_delta(-5);
         assert!(texto.contains("wyd_sessions_open 0"));
+    }
+
+    #[test]
+    fn versao_de_cliente_e_contada_por_valor() {
+        let m = NetMetrics::new();
+        m.client_version(12_000);
+        m.client_version(12_000);
+        m.client_version(7640);
+        m.client_version_rejected();
+        assert_eq!(m.client_versions().get(&12_000), Some(&2));
+        assert_eq!(m.client_versions().get(&7640), Some(&1));
+        assert_eq!(m.client_versions_rejected(), 1);
+        let texto = m.render_prometheus();
+        assert!(texto.contains("wyd_client_version_total{version=\"12000\"} 2"));
+        assert!(texto.contains("wyd_client_version_total{version=\"7640\"} 1"));
+        assert!(texto.contains("wyd_client_version_rejected_total 1"));
     }
 }

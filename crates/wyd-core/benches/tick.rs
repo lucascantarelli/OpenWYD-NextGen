@@ -18,7 +18,8 @@ use std::time::{Duration, Instant};
 use wyd_core::npc::{DecisionBudget, NpcProfile, NpcStates, DECISION_EVERY_TICKS};
 use wyd_core::systems::npc::decide;
 use wyd_core::{
-    tick_interval_ms, ComponentStore, Entity, EntityKind, Inventory, Position, Stats, TICK_HZ,
+    tick_interval_ms, ComponentStore, Entity, EntityKind, Inventory, Position, SpawnSpec, Stats,
+    TICK_HZ,
 };
 
 /// NPCs vivos no cenário (o número do critério de aceite).
@@ -166,7 +167,7 @@ fn percentil(amostras: &[Duration], p: f64) -> f64 {
     micros(ordenadas[indice.min(ordenadas.len() - 1)])
 }
 
-fn resumo(nome: &str, medicao: &Medicao, orcamento_us: f64) {
+fn resumo(id: &str, nome: &str, medicao: &Medicao, orcamento_us: f64) {
     let total: Duration = medicao.amostras.iter().sum();
     let media = micros(total) / medicao.amostras.len() as f64;
     let p50 = percentil(&medicao.amostras, 50.0);
@@ -195,9 +196,83 @@ fn resumo(nome: &str, medicao: &Medicao, orcamento_us: f64) {
         "% do orçamento do tick: média {share_media:.3}% | p99 {share_p99:.3}% (teto {MAX_SHARE_PCT:.0}%)"
     );
     println!("hash FNV-1a do fluxo: 0x{:016x}", medicao.hash);
+    // Linha de contrato com `tools/dev/bench-gate.mjs` (regressão no CI):
+    // só chaves fixas, números já arredondados — o gate não faz parsing de prosa.
+    println!(
+        "BENCH_PONTO {{\"cenario\":\"{id}\",\"p50_us\":{p50:.2},\"p99_us\":{p99:.2},\"media_us\":{media:.2},\"share_p99_pct\":{share_p99:.3}}}"
+    );
     if share_media > MAX_SHARE_PCT || share_p99 > MAX_SHARE_PCT {
         eprintln!(
             "ESTOURO: IA em {share_media:.3}% (p99 {share_p99:.3}%) do orçamento — ajustar cadência/orçamento antes de fechar o critério"
+        );
+        std::process::exit(1);
+    }
+}
+
+/// Entidades por rodada do cenário ECS (FASE-03-2).
+const ECS_BATCH: u32 = 10_000;
+/// Rodadas medidas do cenário ECS.
+const ECS_ROUNDS: u32 = 40;
+/// Teto do cenário ECS: spawn + iteração + despawn de um lote ≤ 50% de um tick.
+const ECS_MAX_SHARE_PCT: f64 = 50.0;
+
+/// Baseline de estrutura de dados (FASE-03-2): spawn em lote, uma passada contígua nas
+/// posições (como o tick faz) e despawn em lote, `ECS_ROUNDS` vezes com o **mesmo** lote.
+///
+/// Não mede regra de jogo nenhuma — mede o custo de manter `Vec<Position>`/`Vec<Stats>`
+/// contíguos, que é o que o ADR-0004 troca por um crate de ECS.
+fn cenario_ecs(orcamento_us: f64) {
+    let specs: Vec<SpawnSpec> = (0..ECS_BATCH)
+        .map(|i| SpawnSpec {
+            kind: EntityKind::Monster,
+            position: Position {
+                x: i32::try_from(i % 100).expect("coordenada do grid"),
+                y: i32::try_from(i / 100).expect("coordenada do grid"),
+            },
+            stats: stats(),
+        })
+        .collect();
+    let mut store = ComponentStore::default();
+    let mut amostras = Vec::with_capacity(ECS_ROUNDS as usize);
+    for _ in 0..ECS_ROUNDS {
+        let inicio = Instant::now();
+        let ids = store.spawn_batch(&specs).expect("lote do cenário é válido");
+        let mut soma = 0i64;
+        for posicao in store.positions() {
+            soma += i64::from(posicao.x) + i64::from(posicao.y);
+        }
+        black_box(soma);
+        let removidos = store.despawn_batch(&ids);
+        amostras.push(inicio.elapsed());
+        assert_eq!(removidos, ECS_BATCH as usize, "lote inteiro despawnado");
+    }
+    assert_eq!(store.live_count(), 0, "nenhuma entidade viva ao fim");
+
+    let total: Duration = amostras.iter().sum();
+    let media = micros(total) / amostras.len() as f64;
+    let p50 = percentil(&amostras, 50.0);
+    let p99 = percentil(&amostras, 99.0);
+    let por_entidade = media * 1_000.0 / f64::from(ECS_BATCH);
+    let share_p99 = p99 / orcamento_us * 100.0;
+    println!("--- ECS: {ECS_BATCH} entidades por rodada (spawn + iteração contígua + despawn) ---");
+    println!(
+        "rodadas medidas: {} | p50: {p50:.2} µs | p99: {p99:.2} µs",
+        amostras.len()
+    );
+    println!(
+        "custo por entidade: {por_entidade:.3} ns | % do orçamento do tick (p99): {share_p99:.3}% (teto {ECS_MAX_SHARE_PCT:.0}%)"
+    );
+    println!(
+        "BENCH_PONTO {{\"cenario\":\"ecs_lote_10000\",\"p50_us\":{p50:.2},\"p99_us\":{p99:.2},\"ns_por_entidade\":{por_entidade:.3},\"share_p99_pct\":{share_p99:.3}}}"
+    );
+    println!(
+        "estado final: {} entidades vivas, {} índices no armazém",
+        store.live_count(),
+        store.len()
+    );
+    if share_p99 > ECS_MAX_SHARE_PCT {
+        eprintln!(
+            "ESTOURO: cenário ECS em {share_p99:.3}% do orçamento — rever o layout SoA antes de fechar o critério"
         );
         std::process::exit(1);
     }
@@ -222,6 +297,7 @@ fn main() {
     let mut com_alvos = Mundo::novo(PLAYERS);
     let medicao = medir(&mut com_alvos, WARMUP_TICKS + MEASURED_TICKS);
     resumo(
+        "ia_500_npcs_com_alvos",
         &format!("{NPCS} NPCs + {PLAYERS} jogadores (percepção com alvos)"),
         &medicao,
         orcamento_us,
@@ -231,10 +307,15 @@ fn main() {
     let mut sem_alvos = Mundo::novo(0);
     let medicao_vazia = medir(&mut sem_alvos, WARMUP_TICKS + MEASURED_TICKS);
     resumo(
+        "ia_500_npcs_sem_alvos",
         &format!("{NPCS} NPCs sem jogador (piso de custo)"),
         &medicao_vazia,
         orcamento_us,
     );
 
     println!("veredito: DENTRO do teto de {MAX_SHARE_PCT:.0}% — custo da IA medido, não estimado");
+
+    println!();
+    println!("=== ECS — spawn/despawn em lote e iteração contígua (FASE-03-2) ===");
+    cenario_ecs(orcamento_us);
 }

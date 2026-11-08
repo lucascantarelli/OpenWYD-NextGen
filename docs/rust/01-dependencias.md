@@ -19,10 +19,10 @@
 | ECS/DOD | `hecs` ou `bevy_ecs` | pendente (FASE-03) |
 | Arena allocator | `bumpalo` | pendente (FASE-03) |
 | Fixed-point | `fixed` (avaliar) | pendente (FASE-03/10) |
-| Async runtime | `tokio` (+ `tokio-uring` no Linux) | pendente (FASE-08) |
+| Async runtime | `tokio` (+ `tokio-uring` no Linux) | **adotado no `wyd-db` na FASE-04-3** (ADR-0021); `tokio-uring`/`wyd-net` seguem pendentes |
 | Concorrência lock-free | `crossbeam-channel` | pendente (FASE-03) |
 | Parse/serialização | `nom`, `zerocopy`/`rkyv` | pendente (FASE-08) |
-| Persistência | `sqlx` (+ `sqlx-cli`), `refinery`, `redis` | pendente (FASE-04) |
+| Persistência | `sqlx` 0.8 (adotado), `refinery`, `redis` | `sqlx` **adotado na FASE-04-3** (ADR-0021: pool + adapters `pg`); `refinery`/`redis` pendentes |
 | Scripting sandbox | `wasmtime` | pendente (FASE-03) |
 | Observabilidade | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23; exporter Prometheus próprio | **adotado na FASE-06-1** (ADR-0018) |
 | Qualidade/supply-chain | `cargo-audit`, `cargo-deny`, `cargo-tarpaulin`, `miri` | pendente (FASE-05/15) |
@@ -38,7 +38,10 @@
 
 
 - `hecs`/`bevy_ecs` (ECS): **manter como candidato**; ADR-0004 congela SoA manual até revisão com números. PoC futura fora de `crates/`: spawn + iteração de 10k entidades, SoA manual vs crate, com `cargo bench`.
-- `tokio`/`tokio-uring` (async): **manter como candidato**; ADR-0006 adia async real até rede vendor. PoC futura: echo TCP com `tokio` vs std, latência P50/P99 local.
+- `tokio`/`tokio-uring` (async): **`tokio` adotado no `wyd-db`** (FASE-04-3, ADR-0021), junto de
+  `sqlx` 0.8 com `default-features = false` + `runtime-tokio`/`postgres`/`tls-rustls-ring`.
+  `tokio-uring` e o runtime do `wyd-net` continuam pendentes, com a mesma regra: runtime entra como
+  implementação de porta, nunca dentro do tick.
 - `zerocopy`/`rkyv`/`nom` (serialização): **manter como candidato**; ADR-0005 congela parse manual `repr(C)` + offsets provados. PoC futura: parse de `HEADER` manual vs `zerocopy`, sem `unsafe` novo.
 - `wasmtime` (scripts): **descartar por ora**; sem caso de uso aberto nas issues; reabrir só com proposta de sistema de eventos (FASE-03/10).
 - `tracing`/`prometheus` (obs): **decidido na FASE-06-1 (ADR-0018)** — `tracing` + `tracing-subscriber`
@@ -49,7 +52,9 @@
   mais o fragmento de rede (`wyd_packets_total`, `wyd_packets_rejected_total{reason}`,
   `wyd_handshakes_total`, `wyd_connections_pending`, `wyd_sessions_open`). `Cargo.lock` passou de 7
   para 24 pacotes; `cargo deny`/`audit` verdes.
-- `sqlx`/`refinery`/`redis`: **manter**; bloqueado até FASE-04-3 com rede + ADR; até lá `psql -f` + `tests/constraints.rs`.
+- `sqlx`/`refinery`/`redis`: **`sqlx` adotado** (FASE-04-3, ADR-0021 — `Cargo.lock` cresceu com o
+  driver e o runtime, sem macro de query: SQL sempre com bind em `sqlx::query`); `refinery` continua
+  fora (migrations seguem por `psql -f`/`migrate-cycle.mjs`) e `redis` não tem necessidade medida.
 - `cargo-audit`/`cargo-deny`: **manter**; `deny.toml` + falha comprovada saem na FASE-05-1.
 - Evidência deste turno: `cargo test --workspace` verde, `clippy -D warnings` verde, `git status --short -- crates/ Cargo.toml Cargo.lock` sem diff (pesquisa não tocou no workspace).
 

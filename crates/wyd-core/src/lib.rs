@@ -31,8 +31,8 @@ pub fn tick_interval_ms() -> u64 {
 
 pub use ecs::{
     gem_effect_code, gem_value, AppliedGem, ComponentStore, Entity, EntityKind, Inventory, Item,
-    Position, Stats, BAG_SLOTS, EQUIP_SLOTS, GEM_EFFECT_ABSORB, GEM_EFFECT_DROP, GEM_EFFECT_EXP,
-    GEM_EFFECT_NONE, GEM_EFFECT_PIERCE, GEM_MAX_REFINE, GEM_MIN_REFINE,
+    Position, SpawnSpec, Stats, BAG_SLOTS, EQUIP_SLOTS, GEM_EFFECT_ABSORB, GEM_EFFECT_DROP,
+    GEM_EFFECT_EXP, GEM_EFFECT_NONE, GEM_EFFECT_PIERCE, GEM_MAX_REFINE, GEM_MIN_REFINE,
 };
 pub use ecs::{DomainEvent, DomainEvents, GemEffect, EVENT_QUEUE_CAPACITY};
 pub use error::CoreError;

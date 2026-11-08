@@ -22,6 +22,26 @@ O servidor emite o dialeto 7662, mas não há prova de ida-e-volta contra o bin�
 
 Os goldens provam o **codec**, não o cliente: bytes sintéticos (conta `GOLDEN`) com a matemática exata do CPSock.
 
+## Resultados desta rodada (2026-11-08)
+
+**A captura ao vivo continua NÃO executada** — e isso é medição, não opinião: o roteiro exige
+o cliente `client/` rodando contra um servidor que complete login → seleção → campo. O
+`wyd-net` existe, mas ainda não fecha o fluxo de jogo (FASE-07/08 e o gateway FASE-07-1 em
+andamento); sem servidor atendendo o handshake completo, o cliente não chega ao campo e o
+trace capturaria só a tentativa de conexão. Nenhum `.pcap` foi gerado nesta rodada.
+
+O que foi possível provar sem a VM, e agora está congelado por teste:
+
+| Prova | Onde | O que garante |
+|---|---|---|
+| Round-trip byte-exato dos 5 goldens C→S | `crates/wyd-protocol/tests/golden.rs` (9 testes) | corte → descortinado → checksum `Strict` → opcode → payload → **reselagem idêntica ao `wireHex`** |
+| Offsets do handshake × ADR-0020 | `golden_handshake_offsets_confirmam_a_adr_0020` | `Size` 116 B, `ClientVersion` i32 em **offset 92** com valor **12 000**, senha em 12, conta em 24, zero em 40, `db_need_save` em 96, `adapter_name` em 100 — se o layout ou o valor mudar, o gate da ADR deixa de valer e o teste acusa |
+| Gate do login sobre o golden | `crates/wyd-net/src/session/handshake.rs` (4 testes) | 12 000 aceito, 7640 recusado com erro tipado e métrica por versão |
+
+Ou seja: do handshake, **o que o servidor precisa reproduzir está provado byte a byte**;
+o que falta é a confirmação de que o **cliente** produz esses bytes ao vivo — exatamente o
+item bloqueado abaixo.
+
 ## O que falta (bloqueio declarado)
 
 Captura ao vivo (§6 de `depuracao.md`): exige servidor executável falando 7662 (crate `wyd-net`/`wyd-core` ainda não existem) + VM Windows com D3D9 + executor humano. Passos concretos quando desbloquear:
@@ -63,7 +83,7 @@ cargo test --workspace && cargo clippy --workspace -- -D warnings && cargo fmt -
 - [x] Codificar issue (roteiro + pipeline de goldens)
 - [x] Testar issue (`--gen`/`--check` + gate)
 - [x] Documentar issue
-- [ ] Captura ao vivo (bloqueada: servidor + VM)
+- [ ] Captura ao vivo (bloqueada: servidor que complete o login + VM; reavaliar após FASE-07)
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 

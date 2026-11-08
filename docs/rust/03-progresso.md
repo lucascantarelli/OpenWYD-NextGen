@@ -52,7 +52,7 @@
 |---|---|---|
 | FASE-04-1 modelagem | ✅ | `docs/arquitetura/modelo-banco.md` (ER, decisões) + `docs/arquitetura/banco-catalogo.md` gerado: **59 tabelas**, colunas/tipos/nulidade, PK/FK/CHECK/índices, fonte por tabela e 8 decisões provisórias `D-B01`..`D-B08`; mapa tabela legada → nova com pendências nomeadas. |
 | FASE-04-2 migrations | ✅ | 24 migrations reversíveis (0001–0024, uma por domínio, DDL 0001–0016 antes do seed 0017–0024, **sem `ALTER TABLE` no `up`**) + `seeds/dev.sql`; prova em três camadas: estrutural (`check-migrations.mjs`), contrato doc↔SQL (`tests/catalogo.rs`) e banco real — `verify-schema.mjs` (banco vazio → up → `information_schema` == catálogo) e `migrate-cycle.mjs` (up/down/up com contagens idênticas). Números em `crates/wyd-db/migrations/README.md`. |
-| FASE-04-3 persistência async | 🚧 | Base pronta (traits, `PoolConfig`, `DeliveryQueue`); resta impl `pg` + pool (rede + ADR). |
+| FASE-04-3 persistência async | ✅ | ADR-0021 (substitui parcialmente a ADR-0006): `tokio` + `sqlx` 0.8 no `wyd-db`. Pool com `acquire_timeout` e `SET LOCAL statement_timeout` (`pool/pg.rs`), adapters `Accounts`/`Characters`/`Grants` (`repo/pg.rs`) e fila de save com coalescência + dreno periódico/shutdown (`transfer/save.rs`). **Prova:** `cargo test --workspace` com todos os alvos verdes (0 failed); `cargo clippy --workspace --all-targets -- -D warnings` exit 0; integração real `tests/pg.rs` **6/6 ok** em Postgres 17 com 28 migrations (66 tabelas) + seed; `enqueue` no Hot Path (N=20 000, dreno real em paralelo) **p50 500 ns · p99 1 600 ns · max 257 µs** — p99 é 0,003% do tick de 50 ms. Runner embutido de migration (`sqlx::migrate!`/`refinery`) segue fora, por decisão. |
 
 ## Fases 5–15
 
@@ -96,6 +96,15 @@
 | 2026-11-07 | FASE-00-3 | `develop` confirmada como branch atual | `git branch --show-current` |
 | 2026-11-07 | FASE-01-1 | Planejamento Go restaurado do histórico (`roadmap/` estava vazio no arquivo) e inventariado | `git archive HEAD roadmap \| tar -x -C arquivo-Go-removido` → 138 arquivos |
 | 2026-11-07 | FASE-02-1/2/3 | Ciclo, checklist de revisão e grafo de dependências documentados | `docs/rust/02-execucao.md`, `roadmap-rust/index.md` |
+| 2026-11-08 | análise legado | Três contratos de porte escritos a partir de `origin/main`: [transporte CPSock](../arquitetura/contrato-transporte-cpsock.md), [dispatch por opcode](../arquitetura/contrato-dispatch-opcode.md) e [persistência](../arquitetura/contrato-persistencia.md) | 63 `case` × 61 rotas Go × 198 opcodes Rust; 56 tabelas legadas × 61 Rust; zero link quebrado |
+| 2026-11-08 | análise legado (conformidade) | Contratos alinhados às normas do projeto: cada um cita `AGENTS.md` e a skill aplicável (`.agents/skills/wyd-rust-net` / `wyd-rust-db` / `documentation-writer`), módulos renomeados para a árvore ADR-0002 (§11/§12) e política `Strict` de checksum restaurada | `grep` de skill por caminho existente em cada contrato; links 0 quebrados; módulos conferidos contra `estrutura-e-padroes.md` |
+| 2026-11-08 | D-T1 (transporte) | `MAX_PACKET_BYTES` deixa de duplicar 4096: passa a `wyd_protocol::MAX_MESSAGE_SIZE` (8192), ganha piso `MIN_PACKET_BYTES` (12) e `accepts_len` valida a faixa do CPSock | `cargo test -p wyd-net` (inclui `packet_range_matches_the_cpsock_contract`: 12 e 8192 aceitos, 11 e 8193 recusados) |
+| 2026-11-08 | D-T1 (fechamento de protocolo) | Auditoria da fonte única: só `wyd-protocol/src/wire/header.rs` define o teto (**8192**); `wyd-net` referencia `MAX_MESSAGE_SIZE`/`MIN_MESSAGE_SIZE` e não tem literal, buffer nem código de framing dimensionado por 4096. Teste de fronteira reexecutado nas duas pontas (8192/8193 e 12/11) e §10 do contrato de transporte passou de "defeito aberto" para "resolvido" | `cargo test -p wyd-net packet_range_matches_the_cpsock_contract` (ok) + `cargo test -p wyd-protocol frame` (8192 ok / 8193 erro) |
+| 2026-11-08 | U-P7 + ADR-0020 | Sete tabelas sem espelho separadas em jogo × portal (decisão em `modelo-banco.md` §8) e versão de cliente decidida por ADR | `docs/arquitetura/modelo-banco.md` §8; `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md` |
+| 2026-11-08 | D-D1 (fechamento do ADR de versão) | ADR-0020 consolidado como norma: `APP_VERSION = 7640` é **valor histórico** de um cliente específico (não conjunto aceito); o gate compara **igualdade** com `PROTOCOL_VERSION` (12 000, medido em `client/`). ADR ganhou a tabela "onde 7640 aparece" com arquivo:linha (definição em `wire/header.rs:31`, reexports, 3 testes, nada em launcher/portal) e a seção "como o servidor compara" (igualdade em `handshake.rs:72`, sem faixa/lista; `Tolerant` só em captura). Contradições de contrato corrigidas (`APP_VERSION` do legado × gate nosso e D-T2 marcado resolvido) | `cargo test -p wyd-net session::` 4/4 ok (aceita 12 000, recusa 7640 com `ClientVersionUnsupported`); `cargo test --workspace` 0 failed |
+| 2026-11-08 | U-P7 (fechamento de banco) | `modelo-banco.md` §8 reorganizada como norma: tabela de cinco colunas (nome, classificação, evidência por arquivo/consulta, implicação), fontes de evidência declaradas (inclui por que o cliente `client/` não é prova aqui e por que `blogal` nunca é fonte de requisito) e **regra** que define "sem espelho" como estado do schema — entrar, ficar fora, UNVERIFIED e sair. Conferido que as 5 de jogo são exatamente as de `0028` e que as 2 de portal não existem em `crates/wyd-db/migrations/` | `cargo test -p wyd-db` 6 suítes / 0 failed; `node tools/content/check-migrations.mjs` 28/66/146 ok; `banco-catalogo.md` lista as 5 em `0028` |
+| 2026-11-08 | FASE-04 (parcial) | `0028_estado_de_jogo` cria as 5 tabelas de estado: `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower`; `SCHEMA_VERSION` 27→28; catálogo regenerado (66 tabelas) | `check-migrations` 28/66 ok; `cargo test -p wyd-db --test catalogo` 3 ok; `migrations-apply` up/down/up |
+| 2026-11-08 | FASE-08 (parcial) | Gate de versão do login em `wyd-net::session::handshake` (`VersionGate`), erro tipado `NetError::ClientVersionUnsupported` e contador `wyd_client_version_total{version}` | `cargo test -p wyd-net --features metrics` (12 testes) |
 | 2026-11-07 | FASE-01-3 | Mapa de sucessão das 24 skills publicado | `docs/manual-técnico/skills.md` |
 | 2026-11-07 | FASE-13-1 | Template de ADR + rito; `0001` promovida a aceita | `docs/arquitetura/adr/0000-template.md`, `0001-hot-path-monolitico.md` |
 | 2026-11-07 | FASE-01-2 | 16 débitos C++ classificados e destinados (Go: 0 marcadores) | `docs/manual-técnico/auditoria-roadmap.md` §3.1 |
@@ -117,6 +126,7 @@
 | 2026-11-07 | FASE-13-2 | ADRs 0004/0005/0006 aceitas (ECS/serialização/async diferidos com gate de revisão); 7/7 conformes ao template | `docs/arquitetura/adr/000{4,5,6}-*.md` + links nas consumidoras |
 | 2026-11-08 | FASE-07-2 | Painel do jogador: `panel/*` + recuperação auditada, `/conta` no portal; SancRate do legado no banco (28 células) e refino `+10 → +11` corrigido para 3% com Lac | `crates/wyd-admin/{src/api/panel.rs,tests/painel.rs,src/transport/mod.rs}`, `crates/wyd-db/migrations/{0009_refino,0022_seed_refino,0025_seed_sanc_rate}.sql`, `wyd-portal/src/{server/panel.ts,app/(public)/conta,app/api/panel/recovery}` |
 | 2026-11-08 | FASE-06-1 | Telemetria: `tracing` + exporter Prometheus próprio; `/metrics` real com 40 ticks (`wyd_ticks_total 40`, histograma, `wyd_entities_active 104`), log estruturado com nível por `WYD_LOG`; contadores de rede atrás de feature (custo medido); CRC: lock 7→24, launcher/imagem inalterados | `crates/wyd-core/src/{metrics/,telemetry.rs}`, `crates/wyd-net/src/metrics.rs`, `crates/wyd-core/tests/telemetry.rs`, `crates/wyd-net/tests/metrics.rs`, `docs/arquitetura/adr/0018-telemetria-tracing.md` |
+| 2026-11-08 | Análise (legado→Rust) | Portabilidade medida: legado em `origin/main` = 116 arquivos C++/70.987 linhas + 484 Go/99.606 linhas; workspace Rust = 112 arquivos/18.242 linhas. De-para por subsistema, lacunas L1–L6 (transporte CPSock ausente, `sqlx`, dispatch por opcode, comércio/party/guilda/guerra/quests/eventos/refino) e prioridade de resgate do conhecimento de `docs/migration`/`docs/sistemas`/`docs/lore`/`docs/analysis` | `docs/manual-técnico/analise-portabilidade-legado.md`; `docs/cliente/referencia-wyd-global.md` |
 
 ## Pendências conhecidas
 
@@ -127,6 +137,30 @@
 - Captura ao vivo (08-6): structs S→C, offsets de campo do header e causa do freeze — exige
   `wyd-net`/`wyd-core` executáveis + VM com o jogo.
 - Validar spawn real em VM com o jogo (complemento da 08-7).
+- **ADR de RNG:** `wyd-sim`/`wyd-core` usam `XorShift64` semeado (ADR-0011), mas o legado exige a
+  ordem do LCG do MSVC para paridade de drop/crítico/refino (`docs/migration/game-rules.md`).
+  Declarar se perseguimos paridade byte-a-byte do original ou se o RNG novo é a verdade do
+  servidor — hoje a decisão está implícita (`analise-portabilidade-legado.md` §7.4).
+- ~~**Defeito de transporte D-T1**~~ — **fechado em 2026-11-08:** `MAX_PACKET_BYTES` passou a
+  `wyd_protocol::MAX_MESSAGE_SIZE` (8192), com `MIN_PACKET_BYTES` (12) e `accepts_len` validando a
+  faixa inteira ([contrato](../arquitetura/contrato-transporte-cpsock.md) §10).
+- **Versão de cliente (U3/D-D1) — resolvida:** [`ADR-0020`](../arquitetura/adr/0020-versao-de-cliente-no-login.md)
+  decide `APP_VERSION` 7640 como constante **histórica** (nunca comparada) e `PROTOCOL_VERSION`
+  = 12.000 (`wyd-protocol/src/lib.rs:40`, medido no cliente oficial `client/`) como valor de gate,
+  configurável no boot, com erro tipado + métrica por versão recebida.
+- **Opcode sem handler no C++ (U-C):** `_MSG_SplitItem` (0x02E5) tem constante, arquivo
+  `_MSG_SplitItem.cpp` e rota no Go, mas não está entre os 63 `case` de
+  `ProcessClientMessage.cpp` — decidir se é código morto ou caminho aninhado.
+- ~~**Persistência sem espelho (U-P7)**~~ — **resolvida e entregue** (migration `0028`); decisão em
+  [`modelo-banco.md`](../arquitetura/modelo-banco.md) §8 — cinco tabelas entram no `wyd-db`
+  (`character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`,
+  `guild_tower`) e duas são do Cold Path (`account_play_code`, `donate_topup_order`). O DDL fica
+  para a issue da FASE-04 (`0028_estado_de_jogo.sql`); nenhuma migration nasceu do contrato.
+- **Checksum: divergência consciente (D-T3).** O legado tolera divergência (`CPSock.cpp:457-464`);
+  a stack nova usa `Strict` na entrada de rede (`AGENTS.md` §3 invariante 2, `protocolo.md` §3,
+  `codec/checksum.rs:13-19`). `Tolerant` só em captura/diagnóstico.
+- Resgatar de `origin/main` o conhecimento P0/P1 (game-rules, parity-tests, data-formats,
+  handlers/58, protocol-spec) antes de qualquer limpeza de histórico.
 
 ## 2026-11-07 — Revisão total + reparos do arquivamento (este turno)
 - Inventário: 60/60 issues referenciadas no index (100% planejadas); painéis 23✅/5🚧 coerentes (antes da FASE-08-8).
@@ -206,6 +240,39 @@
 - 25 módulos do BFF reimportados (`@/server/grpc` → `@/server/admin-client`), `grpc.ts` removido; `@grpc/grpc-js`/`@grpc/proto-loader` fora do `package.json` e do lock; `docker/Dockerfile.portal` não copia `.proto`; `.env.example` documenta `WEB_API_ADDR` (URL) + `WEB_API_TOKEN`; README do portal reescrito para HTTP/JSON.
 - Prova: `npm run typecheck` 0, `npm run test -- --run` 118/118 (16 arquivos), `grep grpc` em `src/` = 0.
 - Pendência honesta: `StaticTokens` não valida HMAC (token de dev até a fiação cripto) e os 13 serviços ainda respondem 404 de transporte enquanto as rotas não existem.
+
+## 2026-11-08 — FASE-04-3: pool `sqlx`, adapters `pg` e save fora do tick
+
+- **Rede medida:** `index.crates.io/config.json` → 200 e download de `.crate` → 200. Isso derrubou a
+  premissa da ADR-0006 ("async bloqueado até rede/vendor") para o `wyd-db`; escrita a ADR-0021, que
+  substitui a ADR-0006 **só** nessa parte.
+- **Código:** `pool/pg.rs` (pool dimensionado, `acquire_timeout`, `SET LOCAL statement_timeout`,
+  mapeamento `sqlx::Error` → `DbError` com 23505/23503/23514/23502), `repo/pg.rs` (as três portas),
+  `transfer/save.rs` (`SavePolicy`, `SaveQueue`, `SaveDrain`, `FlushReport`).
+- **Hot Path intocado:** `SaveQueue::enqueue` é `try_send` síncrono — não há `await` possível no
+  tick, e o invariante 1 do `AGENTS.md` fica garantido por construção, não por disciplina.
+- **Ruptura pequena de API:** `Accounts::create`/`Characters::create` viraram `create_account` e
+  `create_character`. `PgBackend` implementa as duas portas, então dois `create` no mesmo tipo
+  obrigavam todo chamador a qualificar a trait (o compilador acusou E0034 em 15 sítios).
+  Fakes de `wyd-admin` (`src/api/{accounts,panel}.rs`, `tests/{contract,painel,unauthorized}.rs`)
+  acompanharam; `DbError` ganhou `NotFoundKey`, `SaveQueueFull` e `SaveTimeout` e o mapeamento
+  HTTP do portal cobre as três.
+- **Prova real:** Postgres 17 descartável (`postgres:17-alpine`, porta 55432), ups de 28 migrations
+  aplicados por `psql` (28 ok, 66 tabelas), `seeds/dev.sql` ok, `WYD_TEST_DSN=... cargo test -p wyd-db
+  --test pg -- --test-threads=1` → **6/6 ok**: contas (roundtrip + UNIQUE tipado), personagens
+  (CRUD, soft delete, ranking), grants (3 tipos + baixa idempotente), save (coalescência grava o
+  último, shutdown 2/2 sem perda, apagado conta como `missing`), constraints tipadas e custo do
+  `enqueue`.
+- **Custo medido no quente:** `enqueue` N=20 000 com dreno real em paralelo → p50 **500 ns**, p99
+  **1 600 ns**, max 257 µs (preempção do SO durante o flush concorrente). Orçamento: 50 ms/tick.
+- **Decisão que ficou aberta de propósito:** runner embutido de migration (`sqlx::migrate!` ou
+  `refinery`) **não** entrou — a aplicação continua por `tools/content/migrate-cycle.mjs`/`psql -f`,
+  que já prova up/down/up em banco real. Trocar exige issue própria.
+- **Gate:** `cargo fmt --all -- --check` exit 0, `cargo clippy --workspace --all-targets --
+  -D warnings` exit 0, `cargo build --workspace` exit 0, `cargo test --workspace` 36 suítes / 0
+  failed, `node tools/content/check-migrations.mjs` 28/66/146 ok.
+- **Desbloqueia:** FASE-03-4 (carga de conteúdo no boot), FASE-07-1 (BFF do portal) e FASE-15-2
+  (carga de banco).
 
 ## 2026-11-08 — FASE-03-4: inventário dos dados estáticos (itens/skills/NPCs)
 - `docs/arquitetura/modelo-banco.md` §6 (novo): procedência do conteúdo de jogo, com números conferidos no git — `origin/main` guarda `internal/migrations/seed_*.up.sql` (`item_catalog` 3.220, `skill_catalog` 151, `npc_template` 1.991, `npc_definition` 6.100, `npc_shop_item` 6.708, `world_item_seed` 49, `guild_zone` 5) e `0008_platform_content.up.sql` (`guard_spawn`, `level_item` por ordinal, `mob_merc`, `game_setting`, 52 retângulos de `Regions`, com `content_source_file` de proveniência).
@@ -626,3 +693,181 @@
 - **Aberto (por desenho):** fiação de jogo do refino (comando do cliente, consumo, evento) e
   o port dos NPCs de composição (Ailyn, Anct, Odin, Tiny, Agatha, Shany, Alquimia, Lindy,
   Ehre, Extracao) — inventário em `refino-auditoria.md` §4.
+
+## 2026-11-08 — FASE-03-4 entregue: conteúdo estático validado no boot (porta + loader)
+
+- **Regra vigente:** o conteúdo estático vem do PostgreSQL (ADR-0009) e o boot **falha
+  fechado**. `ContentTables::validate()` roda antes de abrir socket e devolve
+  `ContentError` com até 20 `{tabela, pk, coluna, motivo}`; `ContentCounts` vai para o log
+  junto da versão. Nenhum `.csv`/`.txt`/`.bin` é lido em runtime.
+- **O que o SQL não expressa e o Rust passa a cobrar:** `content_version.version >= 1`;
+  catálogo de itens e de skills não vazio; `item_index`/`skill_index` repetido; nome de
+  item vazio ou com caractere de controle; preço negativo; `game_setting` com seção/chave
+  vazia ou repetida; e a checagem **cruzada** de `skill_catalog.lineage_code` contra
+  `skill_lineage` (a FK só cobre o caso de seed íntegro — um truncamento parcial passaria).
+- **Fronteiras (DIP):** porta em `crates/wyd-core/src/ports/content.rs` (`ContentSource`
+  + tipos + validação pura, sem I/O); adapter em `crates/wyd-db/src/repo/content.rs` faz
+  **uma** transação de leitura (`content_version`, `item_catalog`, `skill_catalog`,
+  `game_setting`, `skill_lineage`), valida e só então devolve. `wyd-db` passou a depender
+  de `wyd-core` — sem ciclo (`wyd-core` só conhece `wyd-protocol`). Falha de leitura vira
+  issue com `tabela = "*"`: infraestrutura não é confundida com dado inconsistente.
+- **Evidência com o seed real** (`postgres:17-alpine`, 28 migrations aplicadas do zero):
+  `conteúdo v9 "Composição: 36 valores de Aylin/Compositor/Odin/pó em combine_value":
+  3220 itens, 154 skills, 25 settings, 13 linhagens`.
+- **Testes:** `crates/wyd-core/tests/content.rs` **7 passed, 0 failed** (sem banco:
+  índice repetido, nome em branco/controle, linhagem inexistente, catálogo vazio + versão
+  inválida, chave de setting repetida/vazia, teto de 20 com `truncated`);
+  `crates/wyd-db/tests/pg.rs` **7 passed, 0 failed** com banco, incluindo
+  `conteudo_estatico_carrega_e_aborta_com_dado_corrompido` (corrompe
+  `skill_catalog.name` com `U+0001`, exige o relatório apontando `skill_catalog`/`name`,
+  restaura a linha **antes** dos asserts e reconfirma o caminho válido).
+- **Gates desta entrega:** `cargo fmt --all -- --check` **0**;
+  `cargo clippy --workspace --all-targets -D warnings` **0**;
+  `cargo test --workspace` **0** (37 alvos com `test result: ok`, 0 failed).
+- **Aberto (por desenho):** o loader **não** está fiado no binário do servidor porque o
+  binário de mundo só nasce com o gateway (FASE-07-1 + FASE-06); NPC/loja/região entram
+  no mesmo relatório quando o tick consumir essas tabelas.
+
+## 2026-11-08 — Fechamento dos três entregáveis da missão (prova re-executada)
+
+- **`MAX_PACKET_BYTES` = 8192 (fonte única):** `crates/wyd-net/src/lib.rs:18` é
+  `wyd_protocol::MAX_MESSAGE_SIZE` e `crates/wyd-protocol/src/wire/header.rs:22` vale `8192`;
+  `MIN_PACKET_BYTES` é `MIN_MESSAGE_SIZE` (= `HEADER_SIZE` = 12). `accepts_len` aceita
+  exatamente `[12, 8192]`. **Prova:** `cargo test -p wyd-net --lib
+  tests::packet_range_matches_the_cpsock_contract -- --exact` → **1 passed, 0 failed** (afirma
+  `accepts_len(8192)`, rejeita 8193 e 11, aceita 12, e iguala as constantes a 8192/12); mais
+  `tests::rejects_empty_and_oversized_packets` → 1 passed (0, 11, 12, 8192, 8193). `wyd-net`
+  completo: **10 + 6 = 16 testes**, 0 falhas. **Nenhum outro teto no workspace:** `grep` por
+  `65_536|65536|64 KiB|65535|8191` em `crates/`, `docs/`, `tools/`, `fixtures/` e
+  `wyd-portal/src` só encontra capacidade de fila (`queue_capacity`) e domínio `u16` do portal.
+- **Sete tabelas sem espelho:** `docs/arquitetura/modelo-banco.md` §8, linhas 469-475 — cinco
+  **requisito do jogo** (`affect`→`character_affects`, `sapphire_balance`→`kingdom_cape_price`,
+  `daily_reward_claim`, `guild_relation`→`guild_relations`, `guild_tower_state`→`guild_tower`,
+  as cinco em `0028_estado_de_jogo.sql`) e duas **exclusivas do portal legado**
+  (`account_play_code`, `donate_topup_order`, ausentes do `wyd-db`), cada linha com evidência
+  arquivo:linha e consequência.
+- **ADR-0020 + índice:** `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md` (aceita,
+  implementada) decide 7640 como **valor histórico**, não conjunto aceito; o gate é igualdade
+  com `PROTOCOL_VERSION` = 12 000 medido em `client/`; o launcher do WYD Global é citado como
+  referência de terceiro. Índice criado em `docs/arquitetura/adr/README.md` (tabela 0001–0021,
+  linha 33 aponta a 0020) e `README.md` da raiz passa a linkar o índice.
+- **Gates:** `cargo fmt --all -- --check` **0**; `cargo clippy --workspace --all-targets --
+  -D warnings` **0**; `cargo test --workspace` **0** — 37 alvos, **422 testes passados**,
+  0 falhas.
+
+## 2026-11-08 — FASE-03-2 fechada: spawn/despawn em lote tudo-ou-nada + baseline SoA
+
+- **O que faltava** eram dois pontos do critério de aceite: operação em lote sobre os
+  componentes e o bench de iteração contígua. Spawn/despawn unitários já existiam desde a
+  FASE-03, e a escolha do ECS já estava na ADR-0004 (SoA manual até o bench mandar o contrário);
+  agora a decisão tem número.
+- **Lote na fronteira fria:** `ComponentStore::spawn_batch(&[SpawnSpec])` valida **todos** os
+  `Stats` antes da primeira escrita — um `Stats` inválido no meio do lote devolve
+  `CoreError::InvalidStats` e o armazém fica como estava (nem entidade, nem índice novo):
+  o mundo não sobe meio populado. `despawn_batch(&[Entity])` devolve quantos ids eram válidos e é
+  idempotente como `despawn` (id morto/geração antiga não conta). `SpawnSpec { kind, position,
+  stats }` é dado de entrada; inventário nasce vazio porque item inicial é entrega de conteúdo.
+- **Baseline medido** — `cargo bench -p wyd-core --bench tick` (release, 10 000 entidades por
+  rodada, 40 rodadas de spawn + uma passada contígua em `positions()` + despawn):
+  **p50 3 381,70 µs · p99 11 427,80 µs · 383,867 ns por entidade**, p99 = **22,856%** do
+  orçamento de um tick de 50 ms (teto do cenário: 50%). Estado final: 0 vivas e 10 000 índices no
+  armazém — índice é reciclado, não vaza. O cenário **falha** (exit 1) se passar de 50% do tick.
+- **Testes novos:** `spawn_em_lote_e_tudo_ou_nada` (lote recusado não cria entidade nem índice e
+  não deixa buraco entre as fatias) e `despawn_em_lote_conta_apenas_ids_vivos` (60 de 100, repetir
+  o lote morto devolve 0, o restante devolve 40), em `ecs/components.rs`. `cargo test -p wyd-core`:
+  todos os alvos `ok` (91 na lib + 63 nos testes de integração = 154 no crate).
+- **Baseline da IA (contexto, mesma execução):** 500 NPCs + 50 jogadores → média 196,59 µs/tick,
+  p99 362,60 µs (**0,725%** do tick); sem jogadores → média 31,78 µs, p99 53,20 µs (**0,106%**).
+- **Gates:** `fmt --all --check` 0, `clippy --workspace --all-targets -D warnings` 0,
+  `cargo test --workspace` 0 (ver saída do fechamento abaixo).
+
+## 2026-11-08 — Item de rede da missão: teto 8192 com fonte única e pre-check delegado
+
+- **O valor já estava certo** desde D-T1: `MAX_PACKET_BYTES` (`crates/wyd-net/src/lib.rs:18`) é
+  alias de `wyd_protocol::MAX_MESSAGE_SIZE` (`crates/wyd-protocol/src/wire/header.rs:22` = `8192`),
+  e `MIN_PACKET_BYTES` é `MIN_MESSAGE_SIZE` (= `HEADER_SIZE` = 12). **Não existe constante
+  duplicada** no workspace: `MAX_PACKET_BYTES`/`MIN_PACKET_BYTES` só aparecem no `wyd-net`, e
+  `portal`, `launcher`, `tools/` e `fixtures/` não têm nenhuma ocorrência de `8192`.
+- **O que faltava era a lógica duplicada:** `accepts_len` repetia `(12..=8192).contains(&len)` em
+  paralelo a `validate_size` (`wyd-protocol/src/wire/frame.rs:59`), que é a checagem usada pelo
+  **caminho real de leitura** (`split_frame` → `validate_size`). Agora `accepts_len` **delega** para
+  `validate_size` (`u16::try_from(len).is_ok_and(...)`, recusando o que nem cabe no campo `Size`),
+  então pre-check e enquadramento não podem divergir. Semântica confirmada na doc de planejamento:
+  `Size` é o tamanho **total do pacote** — os 12 B do `HEADER` estão **dentro** dele — válido em
+  `[12, 8192]` (`docs/arquitetura/protocolo.md` §1, `CPSock.h:38`, `CPSock.cpp:397-406`).
+- **Testes (todos passando, mensagem nomeia a borda):** `limites_nomeiam_qual_borda_falhou`
+  — aceita `8192` (“limite superior … maior pacote válido”), rejeita `8193` (“excede
+  MAX_PACKET_BYTES = 8192”), aceita `12` (“HEADER puro”), rejeita `11` (“não cabe o HEADER de
+  12 B”) e rejeita `u16::MAX + 1`; `pre_check_concorda_com_o_enquadramento_real` — compara
+  `accepts_len` com `validate_size` em `0, 11, 12, 13, 8191, 8192, 8193, 70 000`, monta um frame
+  **real** de 8192 B com `Header::encode` e prova `split_frame` → `8192`, e com `Size = 8193`
+  prova a recusa dos dois lados. Nenhum teste antigo foi afrouxado (`rejects_empty_and_oversized_packets`
+  e `packet_range_matches_the_cpsock_contract` seguem intactos).
+- **Docs reconciliadas:** `docs/rust/00-visao-estrutura.md` passou a dizer que
+  `MAX_PACKET_BYTES = 8192` é **alias** de `MAX_MESSAGE_SIZE` (fonte única);
+  `docs/arquitetura/contrato-transporte-cpsock.md` §10 (D-T1) já registrava a fonte e a prova.
+- **Prova de execução:** `cargo test -p wyd-net --lib` → **12 passed, 0 failed** (eram 10);
+  `cargo fmt --all -- --check` **0**; `cargo clippy --workspace --all-targets -D warnings` **0**;
+  `cargo test --workspace` **0** — 37 alvos, **426 testes passados**, 0 falhas.
+- **Os outros dois itens da missão já estavam fechados** e foram reverificados nesta rodada:
+  sete tabelas em `docs/arquitetura/modelo-banco.md` §8 (linhas 469-475: 5 jogo, 2 portal legado,
+  com evidência arquivo:linha e consequência) e ADR-0020 em
+  `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md` (7640 = histórico; gate por igualdade
+  com `PROTOCOL_VERSION` = 12 000 medido em `client/`), indexada em `docs/arquitetura/adr/README.md`.
+
+## 2026-11-08 — FASE-07-1 (paridade de rotas), FASE-08-6 (golden do handshake) e régua de bench no CI
+
+### FASE-07-1 — transporte fechado: nenhuma chamada do portal pode virar 404
+
+- `crates/wyd-admin/src/transport/mod.rs`: nova tabela `SERVICOS` com **16 serviços / 72
+  métodos** declarados por `wyd-portal/src/server/admin-client.ts`, já em `snake_case`
+  (mesmo `toSnake` do cliente) + `conhecido()`. Rota declarada sem handler → **`501`**
+  nomeando a rota e auditoria `admin.pending` com autor da sessão; `404` fica reservado a
+  contrato violado. Não criei valor novo em `AdminResult` (o portal mapeia desconhecido
+  para 500); `501` é falha de transporte, que o BFF já traduz em `502`.
+- `crates/wyd-admin/tests/contract.rs`: `cada_metodo_do_portal_tem_rota_no_control_plane`
+  extrai a superfície do TypeScript com `include_str!` (build quebra se o caminho mudar) e
+  falha se faltar rota, sobrar rota ou a contagem divergir (16/72);
+  `rota_do_portal_sem_handler_e_501_auditado_e_nunca_404` despacha as 72 rotas com staff e
+  exige `501`/`200` (nunca `404`), mensagem nomeando a rota e 72 pendências auditadas.
+- Pendência honesta: os 13 serviços ganharam **rota determinística**, não regra de negócio —
+  cada handler de domínio exige `api/<dominio>.rs` + porta de repositório. Nenhum escreve
+  estado vivo (AGENTS §3.7).
+
+### FASE-08-6 — o handshake está provado no servidor; a captura ao vivo segue bloqueada
+
+- **Nenhuma captura foi executada** (não houve VM nem servidor fechando login → campo); não
+  existe `.pcap` novo e nada foi inventado como "captura".
+- `crates/wyd-protocol/tests/golden.rs`: novo
+  `golden_handshake_offsets_confirmam_a_adr_0020` congela, contra os bytes do golden, o que a
+  ADR-0020 usa: `Size` 116, `ClientVersion` i32 no **offset 92** = **12 000**, senha 12,
+  conta 24, zero 40, `db_need_save` 96, `adapter_name` 100 — e confere que o frame claro
+  bate com o `payloadHex` fora o byte de `CheckSum` (que só existe após a selagem).
+- Os 5 goldens C→S seguem com round-trip byte-exato (corte → descortinado → checksum
+  `Strict` → opcode → payload → reselagem idêntica ao `wireHex`); o gate do login
+  (`wyd-net/src/session/handshake.rs`) aceita 12 000 e recusa 7640.
+
+### Bench no CI — falha em regressão, por cenário
+
+- `crates/wyd-core/benches/tick.rs` passou a imprimir uma linha de contrato por cenário:
+  `BENCH_PONTO {"cenario":"ia_500_npcs_com_alvos", …}`,
+  `ia_500_npcs_sem_alvos`, `ecs_lote_10000` (p50/p99 em µs, `ns_por_entidade` no ECS).
+- `tools/dev/bench-gate.mjs` roda `cargo bench -p wyd-core --bench tick`, lê essas linhas e
+  **falha** (exit 1) quando um cenário estoura o limite declarado — e também quando um
+  cenário deixa de reportar (bench que some não passa verde). Limites: IA com alvos
+  p50 ≤ 300 µs, IA sem alvos p50 ≤ 60 µs, ECS p50 ≤ 9 000 µs e ≤ 700 ns/entidade.
+- A régua usa **p50 e custo por entidade**, não p99: medindo 4 execuções seguidas na mesma
+  máquina, o p99 variou de 88,00 a 739,00 µs (IA) e de 7 480 a 14 408 µs (ECS) — régua em
+  p99 seria teste instável. O teto de p99 em % do orçamento continua cobrado pelo próprio
+  bench (IA ≤ 10% do tick pela ADR-0016, ECS ≤ 50% pela FASE-03-2), que sai com status 1.
+- Ligado ao CI (`.github/workflows/rust.yml`, job `bench`) e ao `make bench-gate`; o filtro
+  de `paths` do workflow passou a incluir `tools/dev/**`.
+- Medições desta rodada (release, Windows): IA com alvos p50 181,90–243,70 µs / p99
+  604,80–739,00 µs; IA sem alvos p50 24,40–41,10 µs; ECS p50 3 081,50–3 516,60 µs,
+  371,98–422,87 ns/entidade. Gate: **3/3 cenários dentro dos limites, exit 0**.
+
+### Gate final desta rodada
+
+`cargo fmt --all -- --check` **0**; `cargo clippy --workspace --all-targets -D warnings`
+**0**; `cargo test --workspace` **0** — 37 alvos, **429 testes passados**, 0 falhas;
+`cargo test -p wyd-protocol --test golden` 10/10; `node tools/dev/bench-gate.mjs` **0**.

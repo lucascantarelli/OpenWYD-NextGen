@@ -3,8 +3,8 @@
 //! O checksum é `soma(cifrado) - soma(claro)` com wrap de 8 bits, calculado por
 //! [`decode_in_place`](super::keyword::decode_in_place). O legado **tolerava**
 //! divergência (`CPSock.cpp:457-466`); a decisão da stack nova está registrada em
-//! `docs/arquitetura/protocolo.md` §3: entrada de rede usa [`Strict`], captura e
-//! diagnóstico usam [`Tolerant`].
+//! `docs/arquitetura/protocolo.md` §3: entrada de rede usa
+//! [`ChecksumPolicy::Strict`], captura e diagnóstico usam [`ChecksumPolicy::Tolerant`].
 
 use super::keyword::TransformError;
 

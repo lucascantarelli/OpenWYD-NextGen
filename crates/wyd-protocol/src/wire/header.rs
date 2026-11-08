@@ -22,7 +22,12 @@ pub const MIN_MESSAGE_SIZE: usize = HEADER_SIZE;
 pub const MAX_MESSAGE_SIZE: usize = 8192;
 /// Tick interno que o cliente nunca deve usar (`Basedef.h:232`).
 pub const SKIPCHECKTICK: u32 = 235_543_242;
-/// Versão declarada em `Basedef.h:102` (o cliente medido envia 12000 — ver `PROTOCOL_VERSION`).
+/// Versão declarada em `Basedef.h:102` — **constante histórica** do build de referência.
+///
+/// Não é critério de aceitação: o gate do login usa [`PROTOCOL_VERSION`], a versão
+/// medida no cliente oficial de `client/` (`docs/arquitetura/adr/0020-versao-de-cliente-no-login.md`).
+///
+/// [`PROTOCOL_VERSION`]: crate::PROTOCOL_VERSION
 pub const APP_VERSION: i32 = 7640;
 
 /// Erros de cabeçalho/enquadramento — nunca panic em bytes de rede.

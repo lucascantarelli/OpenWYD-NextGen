@@ -69,7 +69,7 @@ impl Accounts for FakeAccounts {
         }
     }
 
-    fn create(
+    fn create_account(
         &self,
         login: &str,
         role: Role,
@@ -136,7 +136,7 @@ impl Characters for FakeCharacters {
         async move { Ok(rows) }
     }
 
-    fn create(
+    fn create_character(
         &self,
         character: &Character,
     ) -> impl Future<Output = Result<Character, DbError>> + Send {
