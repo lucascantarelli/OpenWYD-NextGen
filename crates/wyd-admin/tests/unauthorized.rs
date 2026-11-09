@@ -9,8 +9,8 @@ use std::sync::Mutex;
 use std::task::{Context, Poll, Waker};
 
 use wyd_admin::{
-    find_account, request_grant, AdminError, AuditSink, DeliveryQueue, GrantKind, GrantReceipt,
-    GrantRequest, GrantService, Role, Session, VecSink,
+    find_account, request_grant, AdminError, AuditSink, GrantKind, GrantReceipt, GrantRequest,
+    GrantService, MemoryGrantQueue, Role, Session, VecSink,
 };
 use wyd_db::{Account, Accounts, DbError};
 
@@ -135,7 +135,7 @@ fn staff_grant_flow_is_audited_end_to_end() {
     let repo = FakeAccounts::new();
     let sink = VecSink::default();
     let service = GrantService::new();
-    service.attach_queue(DeliveryQueue::bounded(4).expect("fila válida"));
+    service.attach_queue(std::sync::Arc::new(MemoryGrantQueue::default()));
     let staff = Some(Session {
         account_id: 7,
         role: Role::Moderator,

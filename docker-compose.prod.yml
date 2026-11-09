@@ -3,6 +3,11 @@
 # Regras: sem porta de banco publicada, sem volume de código, limites de
 # recursos, restart sempre. Segredos vêm do `.env` do host (nunca commitado)
 # ou do gerenciador de segredos — nunca deste arquivo.
+#
+# Para produção que mantém o `.env` no host e quer o seed relendo a senha em
+# `docker compose restart`, acrescente o overlay opcional:
+#   -f docker-compose.prod-env.yml
+# Sem ele, o gateway segue no fallback de ambiente (segredos injetados).
 
 services:
   db:

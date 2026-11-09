@@ -97,6 +97,8 @@ export async function adminCall<Req extends object, Res extends AdminResponse>(
       moderator_id: session.accountId,
     } as Req,
     traceId,
+    // O gateway autoriza pelo papel desta conta; o token só autentica o BFF.
+    `${session.accountId}:${session.role}`,
   );
 
   const status = httpStatusFor(res.result);

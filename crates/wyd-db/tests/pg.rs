@@ -249,6 +249,79 @@ async fn grants_pendentes_sao_tipados_e_baixados() {
 }
 
 #[tokio::test]
+async fn enqueue_durável_e_idempotente_e_gold_entregue_uma_vez() {
+    let Some(backend) = backend().await else {
+        return;
+    };
+    let tag = suffix();
+    let account = backend
+        .create_account(&format!("q{tag}"), Role::Player)
+        .await
+        .expect("cria conta");
+    let hero = backend
+        .create_character(&character(account.id, 0, format!("Q{tag}"), 100))
+        .await
+        .expect("cria personagem");
+
+    let grant = Grant::Gold {
+        character_id: hero.id,
+        amount: 250,
+    };
+    let key = format!("k{tag}");
+    let (id, replay) = backend
+        .enqueue(&key, account.id, &grant)
+        .await
+        .expect("enfileira");
+    assert!(!replay, "primeira gravação não é replay");
+    let (again, replay) = backend
+        .enqueue(&key, account.id, &grant)
+        .await
+        .expect("replay");
+    assert!(replay, "mesma chave devolve replay");
+    assert_eq!(id, again, "mesma chave, mesma linha");
+
+    let linhas: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM delivery_queue WHERE idempotency_key = $1")
+            .bind(&key)
+            .fetch_one(backend.pool())
+            .await
+            .expect("conta linhas");
+    assert_eq!(linhas, 1, "retry não cria segunda entrega");
+
+    let antes = backend.list_by_account(account.id).await.expect("lista");
+    let gold_antes = antes[0].gold;
+    let (character_id, gold) = backend
+        .claim_gold(id)
+        .await
+        .expect("claim")
+        .expect("gold pendente entregue");
+    assert_eq!(character_id, hero.id);
+    assert_eq!(gold, gold_antes + 250, "gold creditado uma vez");
+    assert!(
+        backend.claim_gold(id).await.expect("reclaim").is_none(),
+        "a segunda baixa não entrega de novo"
+    );
+    let depois = backend.list_by_account(account.id).await.expect("relista");
+    assert_eq!(depois[0].gold, gold_antes + 250);
+
+    assert!(matches!(
+        backend
+            .enqueue(
+                &format!("x{tag}"),
+                account.id,
+                &Grant::Gold {
+                    character_id: i64::MAX,
+                    amount: 1
+                }
+            )
+            .await,
+        Err(DbError::NotFoundKey {
+            entity: "character"
+        })
+    ));
+}
+
+#[tokio::test]
 async fn save_grava_o_ultimo_snapshot_e_shutdown_nao_perde() {
     let Some(backend) = backend().await else {
         return;

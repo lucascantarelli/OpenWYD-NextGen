@@ -24,13 +24,16 @@ use wyd_server::session::SessionGate;
 const SENHA: &str = "SenhaForte1";
 const PIN: &str = "2468";
 
-fn dsn() -> String {
+/// DSN de teste, quando configurado.
+///
+/// Ausência **não** é panic: o teste imprime `skip:` e termina sem executar,
+/// como o gate de login (`tests/login.rs`).
+fn dsn() -> Option<String> {
     ["WYD_TEST_DATABASE_URL", "DATABASE_URL"]
         .iter()
         .filter_map(|var| std::env::var(var).ok())
         .map(|valor| valor.trim().to_string())
         .find(|valor| !valor.is_empty())
-        .expect("WYD_TEST_DATABASE_URL/DATABASE_URL para o teste de personagens")
 }
 
 fn runtime() -> Arc<tokio::runtime::Runtime> {
@@ -197,9 +200,15 @@ fn responde(stream: &mut TcpStream, frame: Vec<u8>) -> Opcode {
 
 #[test]
 fn cria_e_deleta_personagem_pelo_protocolo() {
+    let Some(dsn) = dsn() else {
+        eprintln!(
+            "skip: WYD_TEST_DATABASE_URL/DATABASE_URL ausente — teste de personagens não executado"
+        );
+        return;
+    };
     let rt = runtime();
     let backend = Arc::new(
-        rt.block_on(PgBackend::connect(&dsn(), PoolConfig::local()))
+        rt.block_on(PgBackend::connect(&dsn, PoolConfig::local()))
             .expect("banco"),
     );
     let porta = servidor(Arc::clone(&backend), Arc::clone(&rt));

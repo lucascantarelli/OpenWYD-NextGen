@@ -5,5 +5,5 @@
 pub mod grant_service;
 pub mod pin;
 
-pub use grant_service::GrantService;
+pub use grant_service::{GrantQueue, GrantService, GrantTrail, MemoryGrantQueue};
 pub use pin::{change_pin, valid_pin, PinError};

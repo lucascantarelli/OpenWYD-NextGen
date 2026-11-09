@@ -4,13 +4,17 @@
 
 pub mod accounts;
 pub mod catalog;
+pub mod economy;
 pub mod grants;
+pub mod moderation;
 pub mod panel;
 pub mod presence;
 
 pub use accounts::{create_account, find_account, AccountSummary};
 pub use catalog::items_json;
+pub use economy::economy_summary;
 pub use grants::{request_grant, GrantKind, GrantReceipt, GrantRequest};
+pub use moderation::{moderation, recent_audit, set_blocked, set_role, MAX_REASON};
 pub use panel::{
     own_account, own_characters, request_recovery, top_rankings, PanelAccount, PanelCharacter,
     RankingEntry, MAX_RANKING,

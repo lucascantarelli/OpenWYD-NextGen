@@ -19,7 +19,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use wyd_db::{PgBackend, PoolConfig};
+use wyd_db::{Grant, Grants, PgBackend, PoolConfig};
 use wyd_net::VersionGate;
 use wyd_server::channels::World;
 use wyd_server::metrics::ServiceMetrics;
@@ -110,6 +110,42 @@ fn run() -> Result<(), String> {
     );
 
     let runtime = Arc::new(runtime);
+
+    // Dreno de grants duráveis (FASE-07-4): o portal/admin enfileira na
+    // `delivery_queue`; este processo entrega ao personagem. Gold credita e baixa
+    // na mesma instrução (`claim_gold`). Item e nível seguem pendentes porque o
+    // inventário/nível do Hot Path ainda não consome a fila.
+    {
+        let drain_backend = backend.clone();
+        let drain_runtime = Arc::clone(&runtime);
+        std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(1));
+            match drain_runtime.block_on(Grants::pending(&drain_backend, 32)) {
+                Ok(linhas) => {
+                    for (id, grant) in linhas {
+                        if !matches!(grant, Grant::Gold { .. }) {
+                            continue;
+                        }
+                        match drain_runtime.block_on(Grants::claim_gold(&drain_backend, id)) {
+                            Ok(Some((character_id, gold))) => log(
+                                "info",
+                                "grant",
+                                &format!(
+                                    "delivered kind=gold queue={id} character={character_id} gold={gold}"
+                                ),
+                            ),
+                            Ok(None) => {}
+                            Err(error) => {
+                                log("error", "grant", &format!("queue={id} reason={error}"))
+                            }
+                        }
+                    }
+                }
+                Err(error) => log("warn", "grant_drain", &format!("reason={error}")),
+            }
+        });
+    }
+
     let cpsock_bind = bind("WYD_SERVER_CPSOCK_BIND", DEFAULT_CPSOCK)?;
     let cpsock_listener = TcpListener::bind(&cpsock_bind)
         .map_err(|error| format!("bind {cpsock_bind} falhou: {error}"))?;

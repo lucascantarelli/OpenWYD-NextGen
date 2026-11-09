@@ -41,7 +41,7 @@ export default async function PainelPage() {
 
   const services = [
     {
-      name: "Gateway e banco",
+      name: "Servidor e dados",
       detail: snapshot.presence.reachable
         ? `${snapshot.presence.channels.length} canais lidos`
         : snapshot.presence.error,
@@ -85,7 +85,7 @@ export default async function PainelPage() {
                   : `${firing.length} alertas ativos`}
             </Badge>
             <Badge tone={snapshot.presence.reachable ? "ok" : "warn"}>
-              {snapshot.presence.reachable ? "gateway conectado" : "gateway indisponível"}
+              {snapshot.presence.reachable ? "servidor conectado" : "servidor indisponível"}
             </Badge>
             <Badge tone="accent">sessão {roleLabel(session?.role ?? "player")}</Badge>
           </div>
@@ -144,7 +144,7 @@ export default async function PainelPage() {
           label="Itens no catálogo"
           value={fmtCoin(itemCount ?? 0)}
           pending={itemCount === null}
-          hint={itemCount === null ? "gateway indisponível" : "conteúdo carregado no servidor"}
+          hint={itemCount === null ? "servidor indisponível" : "conteúdo carregado no servidor"}
           icon={Package}
         />
       </div>

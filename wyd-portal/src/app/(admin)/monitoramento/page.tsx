@@ -89,7 +89,7 @@ export default async function MonitoramentoPage({
         </span>
         <span className="status" role="listitem">
           <span className={`dot ${snapshot.presence.reachable ? "dot--ok" : "dot--warn"}`} aria-hidden="true" />
-          Gateway <strong>{snapshot.presence.reachable ? "respondendo" : "indisponível"}</strong>
+          Servidor <strong>{snapshot.presence.reachable ? "respondendo" : "indisponível"}</strong>
         </span>
         <span className="status" role="listitem">
           <span
@@ -159,7 +159,7 @@ export default async function MonitoramentoPage({
           hint={`load 1 min: ${fmtInt(snapshot.host.load1)}`}
         />
         <Stat
-          label="Requisições ao gateway"
+          label="Requisições ao servidor"
           value={snapshot.reachable ? fmtInt(snapshot.gateway.requests) : "—"}
           pending={!snapshot.reachable}
           hint={snapshot.reachable ? `uptime ${fmtUptime(snapshot.gateway.uptimeSeconds)}` : "métricas indisponíveis"}
@@ -184,7 +184,7 @@ export default async function MonitoramentoPage({
               <p className="card__sub">Sessões ativas em cada canal.</p>
             </div>
             <Badge tone={snapshot.presence.reachable ? "ok" : "warn"}>
-              {snapshot.presence.reachable ? "banco" : "indisponível"}
+              {snapshot.presence.reachable ? "servidor" : "indisponível"}
             </Badge>
           </div>
           <div className="card__body card__body--flush">

@@ -35,17 +35,21 @@ O portal só tem tela para o que o contrato do gateway serve hoje
 | Rota | Acesso | Fonte |
 |---|---|---|
 | `/painel` | staff | `server_admin/list_channel_presence`, Prometheus, Loki, Grafana e `item_catalog/list_items` |
-| `/contas` | staff | `accounts/find` (busca exata) e `accounts/create` |
+| `/contas` | staff | `accounts/find`, `accounts/create` e moderação (`get_moderation`/`set_role`/`set_blocked`) |
 | `/itens` | staff | `item_catalog/list_items` (somente leitura) |
 | `/monitoramento` | staff | presença no banco, Prometheus, Loki e dashboards do Grafana |
+| `/auditoria` | admin | `audit_admin/recent` (`audit_log`, append-only) |
+| `/economia` | staff | `economy_admin/summary` (`city_tax_ledger` + `delivery_queue`) |
 | `/conta` | jogador | `panel/self`, `panel/characters`, `panel/rankings` e `account_web/change_numeric_pin` |
 | `/guias`, `/enciclopedia` | público | JSON versionado gerado de `docs/` e do catálogo |
 | `/login` | público | `account_web/verify_credentials` |
 
 Fora do escopo por falta de contrato no gateway: listagem paginada de contas,
-edição de personagem, conteúdo (NPC, mob, drop, preço, evento), economia e
-faturamento. Essas telas existiam sobre o servidor antigo e foram removidas —
-não há chamada para rota que o `wyd-admin` não exponha.
+edição de personagem, conteúdo (NPC, mob, drop, preço, evento) e faturamento
+(`donate_revenue_admin`). Essas telas existiam sobre o servidor antigo e foram
+removidas — não há chamada para rota que o `wyd-admin` não exponha. Economia
+existe no recorte que tem fonte auditada (imposto e concessões); receita de
+doacao continua sem contrato.
 
 ## Identidade e desenho
 

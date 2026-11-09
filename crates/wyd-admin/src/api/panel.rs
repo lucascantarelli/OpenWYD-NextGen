@@ -260,6 +260,14 @@ mod tests {
                 Ok(Vec::new())
             }
 
+            async fn search_by_name(
+                &self,
+                _term: &str,
+                _limit: usize,
+            ) -> Result<Vec<Character>, DbError> {
+                Ok(Vec::new())
+            }
+
             async fn create_character(&self, _character: &Character) -> Result<Character, DbError> {
                 Err(DbError::Transport {
                     op: "fake-não-cria",

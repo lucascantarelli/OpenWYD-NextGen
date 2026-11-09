@@ -38,6 +38,21 @@ fn dsn() -> Option<String> {
         .find(|valor| !valor.is_empty())
 }
 
+/// Pula **explicitamente** quando não há banco de teste.
+///
+/// O CI sem stack imprime `skip:` e o teste termina sem executar; não existe
+/// panic por DSN ausente, e a ausência nunca é confundida com sucesso silencioso.
+macro_rules! skip_sem_banco {
+    () => {
+        if dsn().is_none() {
+            eprintln!(
+                "skip: WYD_TEST_DATABASE_URL/DATABASE_URL ausente — teste de login do canal não executado"
+            );
+            return;
+        }
+    };
+}
+
 fn runtime() -> Arc<tokio::runtime::Runtime> {
     Arc::new(
         tokio::runtime::Builder::new_multi_thread()
@@ -92,12 +107,17 @@ fn servidor(dsn: &str) -> (u16, Arc<Authenticator>, Arc<PgBackend>) {
 }
 
 /// A conta é única por execução: a cerca e o bloqueio são por login.
+/// Sequência por processo: o relógio do Windows tem granularidade grossa e
+/// testes paralelos podiam gerar o mesmo `login` (violação de UNIQUE).
+static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn conta_unica() -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    format!("qa{:013}", nanos % 10_000_000_000_000)
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("qa{:011}{:02}", nanos % 100_000_000_000, seq % 100)
 }
 
 fn nova_conta(rt: &tokio::runtime::Runtime, backend: &PgBackend, conta: &str) {
@@ -278,6 +298,7 @@ fn entrada_sem_pin(conta: &str) -> (u16, Arc<PgBackend>, Arc<tokio::runtime::Run
 
 #[test]
 fn senha_e_pin_corretos_chegam_na_selecao() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let (porta, backend, rt) = entrada(&conta);
     let mut s = conectar(porta);
@@ -305,6 +326,7 @@ fn senha_e_pin_corretos_chegam_na_selecao() {
 
 #[test]
 fn senha_errada_e_recusada_sem_sessao() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let (porta, _backend, _rt) = entrada(&conta);
     let mut s = conectar(porta);
@@ -321,6 +343,7 @@ fn senha_errada_e_recusada_sem_sessao() {
 
 #[test]
 fn pin_errado_e_recusado_sem_sessao() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let (porta, _backend, _rt) = entrada(&conta);
     let mut s = conectar(porta);
@@ -342,6 +365,7 @@ fn pin_errado_e_recusado_sem_sessao() {
 
 #[test]
 fn primeira_entrada_cadastra_o_pin_e_so_depois_prossegue() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let (porta, backend, rt) = entrada_sem_pin(&conta);
     assert!(
@@ -383,6 +407,7 @@ fn primeira_entrada_cadastra_o_pin_e_so_depois_prossegue() {
 
 #[test]
 fn cinco_pins_errados_bloqueiam_a_conta() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let (porta, _backend, _rt) = entrada(&conta);
     for i in 0..5 {
@@ -410,6 +435,7 @@ fn cinco_pins_errados_bloqueiam_a_conta() {
 
 #[test]
 fn pin_e_senha_nunca_aparecem_no_log() {
+    skip_sem_banco!();
     let conta = conta_unica();
     let pin_secreto = "987654";
     let (porta, _backend, _rt) = entrada_sem_pin(&conta);
@@ -426,4 +452,38 @@ fn pin_e_senha_nunca_aparecem_no_log() {
     assert!(!linhas.contains(pin_secreto), "PIN novo não vaza no log");
     assert!(!linhas.contains(SENHA), "senha não vaza no log");
     assert!(!linhas.contains("$argon2"), "hash não vaza no log");
+}
+
+/// Bloqueio de moderação vale na entrada do canal (FASE-07-3).
+///
+/// Senha correta + conta bloqueada → nenhum `CNF` (recusa antes da sessão).
+/// Liberar volta a autenticar sem exigir novo cadastro de PIN.
+#[test]
+fn conta_bloqueada_e_recusada_e_volta_a_logar_apos_desbloqueio() {
+    skip_sem_banco!();
+    let conta = conta_unica();
+    let (porta, backend, rt) = entrada(&conta);
+    let id = rt
+        .block_on(backend.find_by_login(&conta))
+        .expect("conta")
+        .id;
+    rt.block_on(backend.set_blocked(&conta, true, "gate 07-3", id))
+        .expect("bloqueio");
+
+    let mut s = conectar(porta);
+    assert_eq!(
+        login(&mut s, &conta, SENHA),
+        None,
+        "conta bloqueada não recebe CNF"
+    );
+    drop(s);
+
+    rt.block_on(backend.set_blocked(&conta, false, "", id))
+        .expect("liberação");
+    let mut s = conectar(porta);
+    assert_eq!(
+        login(&mut s, &conta, SENHA),
+        Some(Opcode::CNFAccountLogin),
+        "desbloqueada volta a logar"
+    );
 }

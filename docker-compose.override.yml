@@ -14,9 +14,19 @@ services:
     # Em prod (docker-compose.prod.yml) não há publicação — só a rede `wyd`.
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-7600}:7600"   # contrato admin (ADR-0008/0022)
+    volumes:
+      # `.env` vivo (read-only): o seed lê a senha atual em qualquer reinício,
+      # inclusive `docker compose restart`, sem depender do ambiente congelado
+      # na criação do container. Segredo continua fora da imagem.
+      - type: bind
+        source: ./.env
+        target: /run/wyd/env
+        read_only: true
     environment:
-      # Dev: o seed do staff roda no boot do gateway (credencial default do `.env`).
+      # Dev: o seed do staff roda em todo boot do gateway quando há senha
+      # configurada; `WYD_SEED_STAFF=1` só exige que ela exista.
       # Trocar em qualquer ambiente que não seja a máquina local.
+      WYD_ENV_FILE: /run/wyd/env
       WYD_SEED_STAFF: ${WYD_SEED_STAFF:-1}
       PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
       PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-troque-aqui-dev}

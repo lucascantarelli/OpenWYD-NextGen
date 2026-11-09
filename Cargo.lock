@@ -1464,6 +1464,7 @@ name = "wyd-admin"
 version = "0.1.0"
 dependencies = [
  "argon2",
+ "sqlx",
  "tokio",
  "wyd-db",
  "wyd-protocol",

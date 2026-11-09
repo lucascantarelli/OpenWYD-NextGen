@@ -57,6 +57,12 @@ export const FONTES = {
     estado: 'confirmado',
     nota: 'Sem FK de propósito: auditoria não falha por integridade alheia.',
   },
+  account_moderation: {
+    dominio: 'moderação',
+    fonte: 'pre-release-rust.md FASE 7 §7.2',
+    estado: 'confirmado',
+    nota: 'Bloqueio com motivo + autor; recusado no login do portal e do jogo.',
+  },
   delivery_queue: {
     dominio: 'ponte web→jogo',
     fonte: 'modelo-banco.md §3.3',

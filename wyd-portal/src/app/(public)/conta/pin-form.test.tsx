@@ -12,9 +12,9 @@ import PinForm from "./pin-form";
  * formulário: o teste monta o `PinForm` e conversa com ele como o jogador.
  *
  * O que fica mockado é só a borda de rede (`fetch`). Assim o teste prova o que o
- * componente faz de verdade: mostra os textos do i18n, valida formato/confirmação,
- * envia o POST para `/api/panel/pin` com os quatro campos e exibe a mensagem que o
- * servidor devolveu — sem nunca calcular troca nem hash por conta própria.
+ * componente faz de verdade: os três estados da segunda senha, os textos do i18n,
+ * validação de formato/confirmação, o POST para `/api/panel/pin` e a mensagem de
+ * produto exibida em cada falha — sem nunca calcular troca nem hash por conta própria.
  */
 
 function resposta(status: number, body: unknown): Response {
@@ -64,10 +64,9 @@ afterEach(() => {
 });
 
 describe("PinForm da tela de conta", () => {
-  it("mostra os quatro campos e os textos do i18n", () => {
-    render(<PinForm login="jogador" />);
+  it("com a segunda senha definida, mostra os quatro campos", () => {
+    render(<PinForm login="jogador" defined={true} />);
 
-    expect(screen.getByText(TEXTO.pin.titulo)).toBeTruthy();
     expect(screen.getByText(TEXTO.pin.ajuda)).toBeTruthy();
     expect(screen.getByText(TEXTO.pin.ajudaSenha)).toBeTruthy();
     expect(screen.getByLabelText(TEXTO.pin.campoSenha)).toBeTruthy();
@@ -77,9 +76,29 @@ describe("PinForm da tela de conta", () => {
     expect(screen.getByRole("button", { name: TEXTO.pin.acao })).toBeTruthy();
   });
 
+  it("com a segunda senha ainda não definida, explica o caminho no cliente e não oferece troca", () => {
+    render(<PinForm login="jogador" defined={false} />);
+
+    expect(screen.getByText(TEXTO.pin.naoDefinidaTitulo)).toBeTruthy();
+    expect(screen.getByText(TEXTO.pin.naoDefinidaTexto)).toBeTruthy();
+    expect(screen.getByText(TEXTO.pin.passo1)).toBeTruthy();
+    expect(screen.getByText(TEXTO.pin.passo2)).toBeTruthy();
+    expect(screen.getByText(TEXTO.pin.passo3)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: TEXTO.pin.acao })).toBeNull();
+    expect(screen.queryByLabelText(TEXTO.pin.campoAtual)).toBeNull();
+  });
+
+  it("quando a consulta falha, diz isso em linguagem de produto e não inventa estado", () => {
+    render(<PinForm login="jogador" defined={null} />);
+
+    expect(screen.getByText(TEXTO.pin.consultaIndisponivel)).toBeTruthy();
+    expect(screen.queryByText(TEXTO.pin.naoDefinidaTitulo)).toBeNull();
+    expect(screen.queryByRole("button", { name: TEXTO.pin.acao })).toBeNull();
+  });
+
   it("envia POST /api/panel/pin com os quatro campos e mostra sucesso limpando os sensíveis", async () => {
     fetchMock.mockResolvedValue(resposta(200, { ok: true, changed: true }));
-    render(<PinForm login="jogador" />);
+    render(<PinForm login="jogador" defined={true} />);
 
     await preencher({ senha: "SenhaForte1", atual: "1357", novo: "8642", confirmacao: "8642" });
     await enviar();
@@ -107,7 +126,7 @@ describe("PinForm da tela de conta", () => {
   });
 
   it("recusa PIN fora de 4–6 dígitos sem chamar o servidor", async () => {
-    render(<PinForm login="jogador" />);
+    render(<PinForm login="jogador" defined={true} />);
 
     await preencher({ senha: "SenhaForte1", atual: "1357", novo: "12", confirmacao: "12" });
     await enviar();
@@ -117,7 +136,7 @@ describe("PinForm da tela de conta", () => {
   });
 
   it("recusa confirmação divergente sem chamar o servidor", async () => {
-    render(<PinForm login="jogador" />);
+    render(<PinForm login="jogador" defined={true} />);
 
     await preencher({ senha: "SenhaForte1", atual: "1357", novo: "8642", confirmacao: "8643" });
     await enviar();
@@ -126,37 +145,50 @@ describe("PinForm da tela de conta", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("mostra o bloqueio/PIN atual errado devolvido pelo servidor (0x0FDF)", async () => {
-    fetchMock.mockResolvedValue(resposta(400, { error: TEXTO.pin.atualInvalido }));
-    render(<PinForm login="jogador" />);
+  it("recusa nova senha igual à atual sem chamar o servidor", async () => {
+    render(<PinForm login="jogador" defined={true} />);
+
+    await preencher({ senha: "SenhaForte1", atual: "1357", novo: "1357", confirmacao: "1357" });
+    await enviar();
+
+    expect(await screen.findByText(TEXTO.pin.igualAoAtual)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("mostra o PIN atual errado/bloqueio como texto de produto quando a rota responde 422", async () => {
+    fetchMock.mockResolvedValue(resposta(422, { error: "PIN atual inválido ou conta bloqueada" }));
+    render(<PinForm login="jogador" defined={true} />);
 
     await preencher({ senha: "SenhaForte1", atual: "0000", novo: "8642", confirmacao: "8642" });
     await enviar();
 
     expect(await screen.findByText(TEXTO.pin.atualInvalido)).toBeTruthy();
+    // A mensagem crua do backend nunca chega à tela.
+    expect(screen.queryByText(/bloqueada por tentativas/i)).toBeNull();
     // Senha não some no erro (o jogador precisa reenviar), mas nada é persistido.
     expect((screen.getByLabelText(TEXTO.pin.campoSenha) as HTMLInputElement).value).toBe(
       "SenhaForte1",
     );
   });
 
-  it("mostra 'novo PIN igual ao atual' recusado pela rota", async () => {
-    fetchMock.mockResolvedValue(resposta(422, { error: TEXTO.pin.igualAoAtual }));
-    render(<PinForm login="jogador" />);
-
-    await preencher({ senha: "SenhaForte1", atual: "1357", novo: "1357", confirmacao: "1357" });
-    await enviar();
-
-    expect(await screen.findByText(TEXTO.pin.igualAoAtual)).toBeTruthy();
-  });
-
   it("mostra sessão expirada quando a rota responde 401", async () => {
     fetchMock.mockResolvedValue(resposta(401, { error: "sessão expirada" }));
-    render(<PinForm login="jogador" />);
+    render(<PinForm login="jogador" defined={true} />);
 
     await preencher({ senha: "SenhaForte1", atual: "1357", novo: "8642", confirmacao: "8642" });
     await enviar();
 
     expect(await screen.findByText(TEXTO.pin.sessaoExpirada)).toBeTruthy();
+  });
+
+  it("mostra indisponibilidade sem jargão quando a rota responde 503", async () => {
+    fetchMock.mockResolvedValue(resposta(503, { error: "servidor de jogo indisponível" }));
+    render(<PinForm login="jogador" defined={true} />);
+
+    await preencher({ senha: "SenhaForte1", atual: "1357", novo: "8642", confirmacao: "8642" });
+    await enviar();
+
+    expect(await screen.findByText(TEXTO.pin.indisponivel)).toBeTruthy();
+    expect(screen.queryByText(/servidor de jogo/i)).toBeNull();
   });
 });

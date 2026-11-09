@@ -1,0 +1,21 @@
+# Overlay OPCIONAL de PRODUÇÃO — para quem mantém o `.env` no host e quer que
+# o seed do staff releia a senha em `docker compose restart`.
+#
+#   TAG=1.0.0 docker compose \
+#     -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml up -d
+#
+# Sem este arquivo, o gateway usa o fallback do ambiente do processo (segredos
+# injetados pelo gerenciador de segredos); nesse caso, mudar o `.env` exige
+# `docker compose up -d` para recriar o container.
+#
+# O mount é read-only e o arquivo não entra na imagem: o segredo continua no host.
+
+services:
+  gateway:
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /run/wyd/env
+        read_only: true
+    environment:
+      WYD_ENV_FILE: /run/wyd/env

@@ -21,7 +21,10 @@ use wyd_admin::audit::{AuditEntry, AuditSink};
 use wyd_admin::auth::Session;
 use wyd_admin::metrics::GatewayMetrics;
 use wyd_admin::transport::{http, Router, StaticTokens};
-use wyd_db::{Account, Accounts, Characters, DbError, PgBackend, PoolConfig, Role, Sessions};
+use wyd_db::{
+    Account, AccountModeration, Accounts, AuditRow, AuditTrail, Characters, DbError, Economy,
+    EconomySummary, NewAuditEntry, PgBackend, PoolConfig, Role, Sessions,
+};
 
 /// Porta padrão do contrato (ADR-0008) também no binário.
 const DEFAULT_BIND: &str = "127.0.0.1:7600";
@@ -36,14 +39,14 @@ fn main() -> ExitCode {
     if std::env::args().skip(1).any(|arg| arg == "--seed-staff") {
         return seed_staff();
     }
-    // Com `WYD_SEED_STAFF=1` o seed roda no próprio boot do gateway: idempotente, sem
-    // container one-shot sobrando parado no `docker compose up`
+    // O seed de staff roda em todo boot: com `PORTAL_ADMIN_PASSWORD` no ambiente,
+    // reconcilia o hash do banco com a senha do `.env` (sem regravar quando já
+    // confere). `WYD_SEED_STAFF=1` só torna senha ausente um erro fatal.
+    // Sem container one-shot sobrando parado no `docker compose up`
     // (`docs/rust/05-stack-docker.md` §5). Falha aqui é erro de configuração do ambiente.
-    if std::env::var("WYD_SEED_STAFF").as_deref() == Ok("1") {
-        let seeded = seed_staff();
-        if seeded != ExitCode::SUCCESS {
-            return seeded;
-        }
+    let seeded = seed_staff();
+    if seeded != ExitCode::SUCCESS {
+        return seeded;
     }
     match run() {
         Ok(()) => ExitCode::SUCCESS,
@@ -125,6 +128,16 @@ impl Accounts for Blocking {
         async move { run_on(&rt, Accounts::find_by_id(&inner, id)) }
     }
 
+    fn pin_hash(
+        &self,
+        login: &str,
+    ) -> impl std::future::Future<Output = Result<Option<String>, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        async move { run_on(&rt, Accounts::pin_hash(&inner, &login)) }
+    }
+
     fn create_account(
         &self,
         login: &str,
@@ -134,6 +147,111 @@ impl Accounts for Blocking {
         let inner = self.inner.clone();
         let login = login.to_string();
         async move { run_on(&rt, Accounts::create_account(&inner, &login, role)) }
+    }
+
+    fn moderation_state<'a>(
+        &'a self,
+        login: &'a str,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        Box::pin(async move { run_on(&rt, Accounts::moderation_state(&inner, &login)) })
+    }
+
+    fn set_role<'a>(
+        &'a self,
+        login: &'a str,
+        role: Role,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        Box::pin(async move { run_on(&rt, Accounts::set_role(&inner, &login, role)) })
+    }
+
+    fn set_blocked<'a>(
+        &'a self,
+        login: &'a str,
+        blocked: bool,
+        reason: &'a str,
+        by: i64,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        let reason = reason.to_string();
+        Box::pin(async move {
+            run_on(
+                &rt,
+                Accounts::set_blocked(&inner, &login, blocked, &reason, by),
+            )
+        })
+    }
+}
+
+impl AuditTrail for Blocking {
+    fn record<'a>(
+        &'a self,
+        entry: &'a NewAuditEntry,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbError>> + Send + 'a>> {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        Box::pin(async move { run_on(&rt, AuditTrail::record(&inner, entry)) })
+    }
+
+    fn recent(
+        &self,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        Box::pin(async move { run_on(&rt, AuditTrail::recent(&inner, limit)) })
+    }
+}
+
+impl wyd_admin::GrantTrail for Blocking {
+    fn list_for_character(
+        &self,
+        character_id: i64,
+        limit: usize,
+    ) -> Result<Vec<wyd_db::QueuedGrantRow>, DbError> {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        run_on(
+            &rt,
+            wyd_db::Grants::list_for_character(&inner, character_id, limit),
+        )
+    }
+}
+
+impl wyd_admin::GrantQueue for Blocking {
+    fn enqueue(&self, key: &str, by: i64, grant: &wyd_db::Grant) -> Result<(i64, bool), DbError> {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let key = key.to_string();
+        let grant = grant.clone();
+        run_on(&rt, wyd_db::Grants::enqueue(&inner, &key, by, &grant))
+    }
+}
+
+impl Economy for Blocking {
+    fn summary(
+        &self,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<EconomySummary, DbError>> + Send + '_>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        Box::pin(async move { run_on(&rt, Economy::summary(&inner)) })
     }
 }
 
@@ -154,6 +272,17 @@ impl Characters for Blocking {
         let rt = std::sync::Arc::clone(&self.runtime);
         let inner = self.inner.clone();
         async move { run_on(&rt, Characters::top_by_level(&inner, limit)) }
+    }
+
+    fn search_by_name(
+        &self,
+        term: &str,
+        limit: usize,
+    ) -> impl std::future::Future<Output = Result<Vec<wyd_db::Character>, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let term = term.to_string();
+        async move { run_on(&rt, Characters::search_by_name(&inner, &term, limit)) }
     }
 
     fn create_character(
@@ -233,13 +362,17 @@ fn run() -> Result<(), String> {
         let record = login_runtime
             .block_on(wyd_db::Accounts::credentials(&login_backend, name))
             .ok()?;
-        wyd_admin::verify_password(password, &record.password_hash).then_some(
-            wyd_admin::transport::LoginOk {
-                account_id: record.account.id,
-                login: record.account.login,
-                role: record.account.role,
-            },
-        )
+        // Senha primeiro; bloqueio depois. Assim o `blocked` só é revelado a quem
+        // acertou a credencial — recusa de senha continua sem vazar existência.
+        if !wyd_admin::verify_password(password, &record.password_hash) {
+            return None;
+        }
+        Some(wyd_admin::transport::LoginOk {
+            account_id: record.account.id,
+            login: record.account.login,
+            role: record.account.role,
+            blocked: record.blocked,
+        })
     });
 
     // Presença por canal: uma consulta por canal (nunca agregado do grupo), no
@@ -278,10 +411,34 @@ fn run() -> Result<(), String> {
     // `poll_once` do roteador (ver `Blocking`).
     let accounts = Blocking::new(backend.clone(), std::sync::Arc::clone(&runtime));
     let characters = Blocking::new(backend.clone(), std::sync::Arc::clone(&runtime));
-    let router = Router::new(accounts, characters, StdoutSink, tokens)
+    // Trilha e economia usam o mesmo adaptador síncrono: o roteador não tem runtime.
+    let trilha: std::sync::Arc<dyn AuditTrail + Send + Sync> = std::sync::Arc::new(Blocking::new(
+        backend.clone(),
+        std::sync::Arc::clone(&runtime),
+    ));
+    let economia: std::sync::Arc<dyn Economy + Send + Sync> = std::sync::Arc::new(Blocking::new(
+        backend.clone(),
+        std::sync::Arc::clone(&runtime),
+    ));
+    let sink = PersistentSink::new(backend.clone(), std::sync::Arc::clone(&runtime));
+    let router = Router::new(accounts, characters, sink, tokens)
         .with_catalog(catalog)
         .with_login_check(login)
         .with_presence_check(presence)
+        .with_audit_trail(trilha)
+        .with_economy(economia)
+        // Fila durável de grants (migration 0032): o portal enfileira aqui e o
+        // servidor de jogo drena. Sem isto `grants/request` responde
+        // "fila de entrega não conectada" — estado antigo da fase 07-4.
+        .with_grant_queue(std::sync::Arc::new(Blocking::new(
+            backend.clone(),
+            std::sync::Arc::clone(&runtime),
+        )))
+        // Mesma conexão para a leitura da fila na tela de entregas.
+        .with_grant_trail(std::sync::Arc::new(Blocking::new(
+            backend.clone(),
+            std::sync::Arc::clone(&runtime),
+        )))
         // Troca de PIN do portal: mesma conexão CPSock do cliente (`0x0FDE` em duas
         // etapas). Sem `WYD_GAME_ADDR` o canal local do compose é o padrão.
         .with_game_address(
@@ -383,22 +540,103 @@ fn handle<A, C, S>(
     }
 }
 
-/// `--seed-staff`: cria/atualiza a conta de staff a partir de `PORTAL_ADMIN_*`.
+/// Decisão do seed: manter a credencial ou regravá-la.
+#[derive(Debug, PartialEq, Eq)]
+enum SeedPlan {
+    Keep,
+    Write,
+}
+
+/// Só mantém quando a conta é `admin` e o hash realmente autentica a senha.
+fn plan_seed(existing: Option<(Role, &str)>, password: &str) -> SeedPlan {
+    match existing {
+        Some((Role::Admin, hash)) if wyd_admin::verify_password(password, hash) => SeedPlan::Keep,
+        _ => SeedPlan::Write,
+    }
+}
+
+/// Conteúdo do `.env` atual, quando o compose o monta em `WYD_ENV_FILE`.
 ///
-/// Lê `PORTAL_ADMIN_USER` (padrão `admin`) e `PORTAL_ADMIN_PASSWORD`, calcula o
-/// hash argon2id e faz upsert com papel `admin`. Sem senha configurada e sem
-/// `WYD_SEED_STAFF=1`, não faz nada (stack de produção que não quer seed some).
-/// Com `WYD_SEED_STAFF=1` e senha ausente, falha: seed pedido e não aplicado é
-/// erro de configuração, não sucesso silencioso.
-fn seed_staff() -> ExitCode {
-    let obrigatorio = std::env::var("WYD_SEED_STAFF").as_deref() == Ok("1");
-    let user = std::env::var("PORTAL_ADMIN_USER")
+/// Arquivo configurado e ilegível é erro: cair para o ambiente antigo do
+/// container reintroduziria exatamente a senha defasada que este caminho evita.
+fn env_file_text() -> Result<Option<String>, String> {
+    let Some(path) = std::env::var("WYD_ENV_FILE")
         .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    else {
+        return Ok(None);
+    };
+    std::fs::read_to_string(path)
+        .map(Some)
+        .map_err(|_| "WYD_ENV_FILE definido mas ilegível".to_string())
+}
+
+/// Lê uma chave de um `.env` simples (`KEY=valor`, aspas opcionais).
+///
+/// Devolve `Some("")` quando a chave existe vazia e `None` quando está ausente;
+/// o chamador distingue os dois casos para não voltar ao ambiente antigo.
+fn parse_dotenv(text: &str, name: &str) -> Option<String> {
+    for raw in text.lines() {
+        let mut line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("export ") {
+            line = rest.trim_start();
+        }
+        let Some((key, raw_value)) = line.split_once('=') else {
+            continue;
+        };
+        if key.trim() != name {
+            continue;
+        }
+        let value = raw_value.trim();
+        let (value, quoted) = if value.len() >= 2
+            && ((value.starts_with('"') && value.ends_with('"'))
+                || (value.starts_with('\'') && value.ends_with('\'')))
+        {
+            (&value[1..value.len() - 1], true)
+        } else {
+            (value, false)
+        };
+        let value = if quoted {
+            value
+        } else {
+            value.split(" #").next().unwrap_or(value).trim_end()
+        };
+        return Some(value.to_string());
+    }
+    None
+}
+
+/// Cria/atualiza a conta de staff a partir de `PORTAL_ADMIN_*`.
+///
+/// Roda em todo boot do gateway (e em `--seed-staff`). Quando `WYD_ENV_FILE`
+/// aponta para o `.env` montado, lê a senha **atual** do arquivo em qualquer
+/// reinício, inclusive `docker compose restart`; sem o mount, usa o ambiente.
+/// Se a conta já existe com papel `admin` e a senha confere com o hash do banco,
+/// não escreve nada. Caso contrário, gera argon2id e faz upsert, depois relê e
+/// confirma o hash. Sem senha configurada e sem `WYD_SEED_STAFF=1`, não faz nada;
+/// com o flag e senha ausente, falha — seed pedido e não aplicado é erro.
+fn seed_staff() -> ExitCode {
+    let arquivo = match env_file_text() {
+        Ok(text) => text,
+        Err(reason) => {
+            log("error", "staff_seed", &format!("reason={reason}"));
+            return ExitCode::from(2);
+        }
+    };
+    // Com arquivo montado ele é a autoridade; sem mount, o ambiente do processo.
+    let valor = |nome: &str| match arquivo.as_deref() {
+        Some(texto) => parse_dotenv(texto, nome),
+        None => std::env::var(nome).ok(),
+    };
+    let obrigatorio = valor("WYD_SEED_STAFF").as_deref() == Some("1");
+    let user = valor("PORTAL_ADMIN_USER")
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "admin".to_string());
-    let senha = std::env::var("PORTAL_ADMIN_PASSWORD")
-        .ok()
-        .filter(|value| !value.trim().is_empty());
+    let senha = valor("PORTAL_ADMIN_PASSWORD").filter(|value| !value.trim().is_empty());
 
     let Some(senha) = senha else {
         if obrigatorio {
@@ -425,14 +663,6 @@ fn seed_staff() -> ExitCode {
         return ExitCode::from(2);
     };
 
-    let hash = match wyd_admin::hash_password(&senha) {
-        Ok(hash) => hash,
-        Err(error) => {
-            log("error", "staff_seed", &format!("reason={error}"));
-            return ExitCode::from(2);
-        }
-    };
-
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .worker_threads(1)
         .enable_all()
@@ -451,6 +681,31 @@ fn seed_staff() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    let atual = runtime.block_on(wyd_db::Accounts::credentials(&backend, &user));
+    let plano = match &atual {
+        Ok(record) => plan_seed(Some((record.account.role, &record.password_hash)), &senha),
+        Err(DbError::NotFoundKey { .. }) => plan_seed(None, &senha),
+        Err(error) => {
+            log("error", "staff_seed", &format!("reason={error}"));
+            return ExitCode::from(2);
+        }
+    };
+    if plano == SeedPlan::Keep {
+        log(
+            "info",
+            "staff_seed",
+            &format!("login={user} changed=false verified=true"),
+        );
+        return ExitCode::SUCCESS;
+    }
+
+    let hash = match wyd_admin::hash_password(&senha) {
+        Ok(hash) => hash,
+        Err(error) => {
+            log("error", "staff_seed", &format!("reason={error}"));
+            return ExitCode::from(2);
+        }
+    };
     match runtime.block_on(wyd_db::Accounts::set_credentials(
         &backend,
         &user,
@@ -458,11 +713,25 @@ fn seed_staff() -> ExitCode {
         Role::Admin,
     )) {
         Ok(account) => {
+            // Relê o banco: não basta o upsert ter sucesso, o hash gravado tem
+            // que autenticar a senha do `.env` neste boot.
+            let verificado = runtime
+                .block_on(wyd_db::Accounts::credentials(&backend, &user))
+                .map(|record| wyd_admin::verify_password(&senha, &record.password_hash))
+                .unwrap_or(false);
+            if !verificado {
+                log(
+                    "error",
+                    "staff_seed",
+                    "reason=hash_do_banco_nao_confere_com_PORTAL_ADMIN_PASSWORD",
+                );
+                return ExitCode::from(2);
+            }
             log(
                 "info",
                 "staff_seed",
                 &format!(
-                    "login={} id={} role={}",
+                    "login={} id={} role={} changed=true verified=true",
                     account.login,
                     account.id,
                     account.role.as_db()
@@ -513,14 +782,23 @@ fn log(level: &str, event: &str, fields: &str) {
     println!("level={level} event={event} {fields}");
 }
 
-/// Destino de auditoria do serviço: stdout estruturado do container (`docker logs`).
+/// Destino de auditoria do serviço: `audit_log` no Postgres **e** stdout.
 ///
-/// **Lacuna declarada (ADR-0022):** a tabela `audit_log` ainda não tem porta de escrita em
-/// `wyd-admin`; até ela existir o registro fica no log do container, nunca descartado.
-#[derive(Debug, Default)]
-struct StdoutSink;
+/// A trilha do banco é o que o painel lê (FASE-07-3); o stdout continua existindo
+/// para `docker logs`/Loki. Falha ao gravar no banco não engole a ação — fica
+/// registrada como erro no log do processo (append-only, sem retry inventado).
+struct PersistentSink {
+    backend: PgBackend,
+    runtime: std::sync::Arc<tokio::runtime::Runtime>,
+}
 
-impl AuditSink for StdoutSink {
+impl PersistentSink {
+    fn new(backend: PgBackend, runtime: std::sync::Arc<tokio::runtime::Runtime>) -> Self {
+        Self { backend, runtime }
+    }
+}
+
+impl AuditSink for PersistentSink {
     fn record(&self, entry: AuditEntry) {
         log(
             "info",
@@ -534,6 +812,23 @@ impl AuditSink for StdoutSink {
                 entry.detail
             ),
         );
+        let linha = NewAuditEntry {
+            actor_id: entry.actor_id,
+            actor_role: entry.actor_role,
+            action: entry.action.clone(),
+            target: entry.target.clone(),
+            detail: entry.detail.clone(),
+        };
+        if let Err(error) = self
+            .runtime
+            .block_on(AuditTrail::record(&self.backend, &linha))
+        {
+            log(
+                "error",
+                "audit_write_failed",
+                &format!("action={} reason={error}", entry.action),
+            );
+        }
     }
 }
 
@@ -554,5 +849,41 @@ mod tests {
         std::env::remove_var("DATABASE_URL");
         std::env::remove_var("WEB_API_TOKEN");
         assert!(Config::from_env().is_err());
+    }
+
+    #[test]
+    fn dotenv_lookup_handles_quotes_comments_and_empty_values() {
+        let text = "# comentário\nexport PORTAL_ADMIN_USER='admin'\nPORTAL_ADMIN_PASSWORD=\"senha # 123\"\nWYD_SEED_STAFF=0 # dev\nVAZIO=\n";
+        assert_eq!(
+            parse_dotenv(text, "PORTAL_ADMIN_USER").as_deref(),
+            Some("admin")
+        );
+        assert_eq!(
+            parse_dotenv(text, "PORTAL_ADMIN_PASSWORD").as_deref(),
+            Some("senha # 123")
+        );
+        assert_eq!(parse_dotenv(text, "WYD_SEED_STAFF").as_deref(), Some("0"));
+        assert_eq!(parse_dotenv(text, "VAZIO").as_deref(), Some(""));
+        assert_eq!(parse_dotenv(text, "AUSENTE"), None);
+    }
+
+    #[test]
+    fn seed_keeps_only_matching_admin_hash() {
+        let password = "senha-de-dev-123";
+        let hash = wyd_admin::hash_password(password).expect("hash");
+        assert_eq!(
+            plan_seed(Some((Role::Admin, &hash)), password),
+            SeedPlan::Keep
+        );
+        let outra = wyd_admin::hash_password("outra-senha-123").expect("hash");
+        assert_eq!(
+            plan_seed(Some((Role::Admin, &outra)), password),
+            SeedPlan::Write
+        );
+        assert_eq!(
+            plan_seed(Some((Role::Player, &hash)), password),
+            SeedPlan::Write
+        );
+        assert_eq!(plan_seed(None, password), SeedPlan::Write);
     }
 }

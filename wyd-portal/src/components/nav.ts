@@ -6,7 +6,14 @@
  * servido pelo backend: nada de item "em breve" nem rota morta.
  */
 
-export type NavIcon = "overview" | "accounts" | "monitoring" | "catalog";
+export type NavIcon =
+  | "overview"
+  | "accounts"
+  | "grants"
+  | "monitoring"
+  | "catalog"
+  | "audit"
+  | "economy";
 
 export interface NavItem {
   href: string;
@@ -28,6 +35,12 @@ export const NAV: readonly NavGroup[] = [
       { href: "/painel", label: "Visão geral", icon: "overview", hint: "Estado do servidor" },
       { href: "/contas", label: "Contas", icon: "accounts", hint: "Busca e criação de conta" },
       {
+        href: "/entregas",
+        label: "Entregas",
+        icon: "grants",
+        hint: "Conceder ouro e conferir a fila",
+      },
+      {
         href: "/monitoramento",
         label: "Monitoramento",
         icon: "monitoring",
@@ -39,6 +52,23 @@ export const NAV: readonly NavGroup[] = [
     group: "Conteúdo",
     items: [
       { href: "/itens", label: "Catálogo de itens", icon: "catalog", hint: "Itens do servidor" },
+    ],
+  },
+  {
+    group: "Governança",
+    items: [
+      {
+        href: "/auditoria",
+        label: "Auditoria",
+        icon: "audit",
+        hint: "Trilha de ações do staff (admin)",
+      },
+      {
+        href: "/economia",
+        label: "Economia",
+        icon: "economy",
+        hint: "Imposto e concessões com fonte auditada",
+      },
     ],
   },
 ] as const;

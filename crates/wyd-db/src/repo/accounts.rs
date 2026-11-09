@@ -4,9 +4,10 @@
 //! a implementação `pg` com `sqlx` chega na 04-3 (exige rede + ADR).
 
 use std::future::Future;
+use std::pin::Pin;
 
 use crate::error::DbError;
-use crate::model::{Account, Role};
+use crate::model::{Account, AccountModeration, Role};
 
 /// Credencial de login: a conta e o hash guardado.
 ///
@@ -16,6 +17,9 @@ use crate::model::{Account, Role};
 pub struct CredentialRecord {
     pub account: Account,
     pub password_hash: String,
+    /// Conta bloqueada pela moderação: a borda de autenticação recusa antes de
+    /// comparar a senha, tanto no jogo quanto no portal.
+    pub blocked: bool,
 }
 
 /// Operações sobre `accounts` (implementação `pg` futura; fakes em teste).
@@ -94,6 +98,42 @@ pub trait Accounts {
     fn pin_success(&self, login: &str) -> impl Future<Output = Result<(), DbError>> + Send {
         let _ = login;
         async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Estado de moderação pelo login (painel de staff).
+    ///
+    /// Fonte: `accounts` + `account_moderation` (0031). Conta sem linha de moderação
+    /// está liberada — ausência de bloqueio, nunca bloqueio implícito.
+    fn moderation_state<'a>(
+        &'a self,
+        login: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<AccountModeration, DbError>> + Send + 'a>> {
+        let _ = login;
+        Box::pin(async { Err(DbError::NotFoundKey { entity: "account" }) })
+    }
+
+    /// Troca o papel da conta (`UPDATE accounts`), devolvendo o estado novo.
+    ///
+    /// A permissão (só admin) é decidida na borda `wyd-admin`, não aqui.
+    fn set_role<'a>(
+        &'a self,
+        login: &'a str,
+        role: Role,
+    ) -> Pin<Box<dyn Future<Output = Result<AccountModeration, DbError>> + Send + 'a>> {
+        let _ = (login, role);
+        Box::pin(async { Err(DbError::NotFoundKey { entity: "account" }) })
+    }
+
+    /// Bloqueia/libera a conta com motivo e autor (id do staff na sessão).
+    fn set_blocked<'a>(
+        &'a self,
+        login: &'a str,
+        blocked: bool,
+        reason: &'a str,
+        by: i64,
+    ) -> Pin<Box<dyn Future<Output = Result<AccountModeration, DbError>> + Send + 'a>> {
+        let _ = (login, blocked, reason, by);
+        Box::pin(async { Err(DbError::NotFoundKey { entity: "account" }) })
     }
 
     /// Define/atualiza a credencial de uma conta (seed de staff, troca de senha).

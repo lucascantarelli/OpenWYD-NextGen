@@ -48,7 +48,13 @@ function withoutModerator(params: unknown): unknown {
   return rest;
 }
 
-async function call<Res>(service: string, method: string, params: unknown, traceId?: string): Promise<Res> {
+async function call<Res>(
+  service: string,
+  method: string,
+  params: unknown,
+  traceId?: string,
+  actor?: string,
+): Promise<Res> {
   const id = traceId && traceId.trim() !== "" ? traceId : newTraceId();
   const url = `${ADMIN_URL}/admin/v1/${service}/${method}`;
   let response: Response;
@@ -59,6 +65,8 @@ async function call<Res>(service: string, method: string, params: unknown, trace
         "content-type": "application/json",
         ...traceHeaders(id),
         ...(ADMIN_TOKEN ? { authorization: `Bearer ${ADMIN_TOKEN}` } : {}),
+        // Quem age: o gateway autoriza pelo papel deste ator, não pelo token.
+        ...(actor ? { "x-wyd-actor": actor } : {}),
       },
       body: JSON.stringify(withoutModerator(params)),
       signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
@@ -90,13 +98,13 @@ async function call<Res>(service: string, method: string, params: unknown, trace
   return envelope as Res;
 }
 
-type Handler = (req: unknown, traceId?: string) => Promise<unknown>;
+type Handler = (req: unknown, traceId?: string, actor?: string) => Promise<unknown>;
 
 /** Cria o objeto de serviço com um método por rota do contrato. */
 function svc<T extends object>(service: string, methods: readonly string[]): T {
   const built: Record<string, Handler> = {};
   for (const method of methods) {
-    built[method] = (req, traceId) => call(service, toSnake(method), req, traceId);
+    built[method] = (req, traceId, actor) => call(service, toSnake(method), req, traceId, actor);
   }
   return built as unknown as T;
 }
@@ -118,11 +126,31 @@ export interface CreateAccountResponse extends AdminEnvelope {
   account?: AccountSummary;
 }
 
-/** `accounts/*` — busca exata e criação administrativa. */
+/** Estado de moderação de uma conta (bloqueio + motivo + instante). */
+export interface AccountModerationWire {
+  account: AccountSummary;
+  blocked: boolean;
+  reason: string;
+  blocked_at_ms: number | null;
+}
+
+export interface ModerationResponse extends AdminEnvelope {
+  moderation?: AccountModerationWire;
+}
+
+/**
+ * `accounts/*` — busca, criação e moderação.
+ *
+ * `setRole`/`setBlocked` exigem staff com alcance (admin para papel e para
+ * staff); o backend relê o papel da sessão e audita toda escrita.
+ */
 export const accountsAdmin = svc<{
   find: Unary<{ login: string }, FindAccountResponse>;
   create: Unary<{ login: string; role: string }, CreateAccountResponse>;
-}>("accounts", ["find", "create"]);
+  getModeration: Unary<{ login: string }, ModerationResponse>;
+  setRole: Unary<{ login: string; role: string }, ModerationResponse>;
+  setBlocked: Unary<{ login: string; blocked: boolean; reason: string }, ModerationResponse>;
+}>("accounts", ["find", "create", "getModeration", "setRole", "setBlocked"]);
 
 /* ------------------------------- catálogo ------------------------------ */
 
@@ -181,6 +209,113 @@ export interface ListPresenceResponse extends AdminEnvelope {
 export const presenceAdmin = svc<{
   listChannelPresence: Unary<Record<string, never>, ListPresenceResponse>;
 }>("server_admin", ["listChannelPresence"]);
+
+/* ----------------------------- auditoria ------------------------------ */
+
+/** Linha da trilha append-only (`audit_log`, migration 0005). */
+export interface AuditRowWire {
+  at_ms: number;
+  actor_id: number;
+  actor_role: string;
+  action: string;
+  target: string;
+  detail: string;
+}
+
+export interface ListAuditResponse extends AdminEnvelope {
+  entries?: AuditRowWire[];
+}
+
+/** `audit_admin/recent` — últimas linhas da trilha (leitura de admin). */
+export const auditAdmin = svc<{
+  recent: Unary<{ limit: number }, ListAuditResponse>;
+}>("audit_admin", ["recent"]);
+
+/* ------------------------------ economia ------------------------------ */
+
+/** Imposto somado do livro-caixa por cidade. */
+export interface CityTaxWire {
+  city_code: string;
+  total: number;
+}
+
+/** Concessões por tipo na fila de entrega. */
+export interface GrantTotalWire {
+  kind: string;
+  count: number;
+  gold: number;
+}
+
+export interface EconomySummaryWire {
+  tax_by_city: CityTaxWire[];
+  grants: GrantTotalWire[];
+}
+
+export interface EconomyResponse extends AdminEnvelope {
+  economy?: EconomySummaryWire;
+}
+
+/** `economy_admin/summary` — números reais (livro-caixa + fila de entrega). */
+export const economyAdmin = svc<{
+  summary: Unary<Record<string, never>, EconomyResponse>;
+}>("economy_admin", ["summary"]);
+
+/* ---------------------------- personagens ----------------------------- */
+
+/** Personagem na tela de entregas: identidade + ouro atual (lido da fonte). */
+export interface CharacterWire {
+  id: number;
+  account_id: number;
+  name: string;
+  level: number;
+  gold: number;
+  class: number;
+  slot: number;
+}
+
+export interface SearchCharactersResponse extends AdminEnvelope {
+  characters?: CharacterWire[];
+}
+
+/** Linha da `delivery_queue` como o staff a confere (somente leitura). */
+export interface GrantRowWire {
+  id: number;
+  kind: string;
+  gold: number;
+  status: string;
+  idempotency_key: string | null;
+  created_by: number | null;
+  at_ms: number;
+}
+
+export interface ListCharacterGrantsResponse extends AdminEnvelope {
+  grants?: GrantRowWire[];
+}
+
+/** Recibo de `grants/request`: mesma chave devolve o mesmo `grant_id` com replay. */
+export interface GrantReceiptWire extends AdminEnvelope {
+  idempotency_key: string;
+  grant_id: number;
+  replay: boolean;
+}
+
+/** `character_admin/*` — busca de personagem e fila de entregas (staff). */
+export const characterAdmin = svc<{
+  searchCharacters: Unary<{ term: string; limit: number }, SearchCharactersResponse>;
+  listCharacterGrants: Unary<{ character_id: number; limit: number }, ListCharacterGrantsResponse>;
+}>("character_admin", ["searchCharacters", "listCharacterGrants"]);
+
+/** `grants/request` — enfileira o grant com chave de idempotência. */
+export const grantsAdmin = svc<{
+  request: Unary<
+    {
+      idempotency_key: string;
+      character_id: number;
+      kind: { type: string; amount: number };
+    },
+    GrantReceiptWire
+  >;
+}>("grants", ["request"]);
 
 export { promisify };
 export type { Unary };

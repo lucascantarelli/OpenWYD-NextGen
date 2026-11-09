@@ -19,6 +19,16 @@ pub trait Characters {
         limit: usize,
     ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send;
 
+    /// Personagens vivos cujo nome contém `term` (vazio = todos), por nome.
+    ///
+    /// Leitura de staff para a tela de entregas: devolve o destino com `gold`
+    /// atual, para a concessão ser conferida antes de enfileirar.
+    fn search_by_name(
+        &self,
+        term: &str,
+        limit: usize,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send;
+
     /// Cria validando invariantes (o banco impõe o resto).
     ///
     /// Nome sem ambiguidade com `Accounts::create_account` (mesmo adapter, duas portas).
