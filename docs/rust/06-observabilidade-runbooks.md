@@ -8,7 +8,7 @@ mapa de serviços é `docs/rust/05-stack-docker.md`.
 ## 1. Subir e derrubar
 
 ```bash
-make monitoring-config   # valida o override sem subir nada
+make stack-config        # valida o compose (base+dev e prod) sem subir nada
 make monitoring-rules    # promtool: config + regras + teste de disparo/resolução
 make monitoring-up       # Prometheus :9090, Grafana :3001, node-exporter :9100 (só loopback)
 make monitoring-check    # smoke: /-/ready, alvos, datasource e dashboard provisionados

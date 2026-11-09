@@ -28,7 +28,7 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 COPY --chown=node:node --from=build /app/.next/standalone ./
 COPY --chown=node:node --from=build /app/.next/static ./.next/static
-ENV WEB_API_ADDR=http://wyd-admin:7600
+# WEB_API_ADDR vem do runtime (compose: http://gateway:7600; dev no host: .env.local).
 # Auditoria em arquivo (AUDIT_LOG_DIR); o compose monta um volume aqui.
 RUN mkdir -p /var/log/wyd-portal && chown node:node /var/log/wyd-portal
 USER node

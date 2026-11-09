@@ -23,6 +23,7 @@
 | Concorrência lock-free | `crossbeam-channel` | pendente (FASE-03) |
 | Parse/serialização | `nom`, `zerocopy`/`rkyv` | pendente (FASE-08) |
 | Persistência | `sqlx` 0.8 (adotado), `refinery`, `redis` | `sqlx` **adotado na FASE-04-3** (ADR-0021: pool + adapters `pg`); `refinery`/`redis` pendentes |
+| Checksum de migration | `sha2` 0.10 | **adotado no `wyd-db`** (ADR-0024): hash do bloco `up` no ledger `schema_migrations`; já estava no grafo via `rustls` |
 | Scripting sandbox | `wasmtime` | pendente (FASE-03) |
 | Observabilidade | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23; exporter Prometheus próprio | **adotado na FASE-06-1** (ADR-0018) |
 | Qualidade/supply-chain | `cargo-audit`, `cargo-deny`, `cargo-tarpaulin`, `miri` | pendente (FASE-05/15) |
@@ -55,7 +56,9 @@
   para 24 pacotes; `cargo deny`/`audit` verdes.
 - `sqlx`/`refinery`/`redis`: **`sqlx` adotado** (FASE-04-3, ADR-0021 — `Cargo.lock` cresceu com o
   driver e o runtime, sem macro de query: SQL sempre com bind em `sqlx::query`); `refinery` continua
-  fora (migrations seguem por `psql -f`/`migrate-cycle.mjs`) e `redis` não tem necessidade medida.
+  fora (migrations aplicadas pelo runner `wyd_db::migrate`, ADR-0024) e `redis` não tem necessidade medida.
+- `sha2` (ADR-0024): dependência direta no `wyd-db` só para o checksum do bloco `up`; já existia no
+  grafo como transitiva de `rustls`, então não adiciona superfície nova de supply-chain.
 - `cargo-audit`/`cargo-deny`: **manter**; `deny.toml` + falha comprovada saem na FASE-05-1.
 - Evidência deste turno: `cargo test --workspace` verde, `clippy -D warnings` verde, `git status --short -- crates/ Cargo.toml Cargo.lock` sem diff (pesquisa não tocou no workspace).
 

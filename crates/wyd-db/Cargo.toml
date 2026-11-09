@@ -20,4 +20,6 @@ sqlx = { version = "0.8", default-features = false, features = [
     "postgres",
     "tls-rustls-ring",
 ] }
+# ADR-0024: checksum do bloco `up` do ledger de migrations (já no grafo via rustls).
+sha2 = { version = "0.10", default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }

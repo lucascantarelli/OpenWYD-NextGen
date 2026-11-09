@@ -14,6 +14,7 @@
 //! DSN real nunca versionado: vem de ambiente e só o esquema é validado aqui.
 
 pub mod error;
+pub mod migrate;
 pub mod model;
 pub mod pool;
 pub mod repo;
@@ -36,6 +37,7 @@ pub fn is_postgres_dsn(dsn: &str) -> bool {
 }
 
 pub use error::DbError;
+pub use migrate::{MigrationError, MigrationReport};
 pub use model::{
     Account, AccountModeration, AuditEntry, Character, Guild, GuildMember, Role, MAX_SLOTS,
 };

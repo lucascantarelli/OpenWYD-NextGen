@@ -63,8 +63,8 @@ retry de compra não duplica entrega.
 
 ## Evidência de execução (2026-11-09, stack viva)
 
-**Status:** 🚧 — o pré-requisito de "entrega rastreável sem duplicidade" está entregue e provado;
- a suíte Playwright e a compra na loja seguem abertas (ver bloqueio no fim).
+**Status:** ✅ — suíte Playwright versionada, tela de staff e entrega idempotente provadas na stack
+ (3/3). A compra na loja e a entrega de item/nível seguem abertas com motivo (fim do arquivo).
 
 - **Fila durável:** `delivery_queue` (migration 0006) ganhou `idempotency_key TEXT UNIQUE` e
   `created_by BIGINT REFERENCES accounts(id)`. `Grants::enqueue` resolve `account_id` pelo
@@ -85,17 +85,48 @@ retry de compra não duplica entrega.
   `enqueue_durável_e_idempotente_e_gold_entregue_uma_vez`), `cargo test -p wyd-db -p wyd-admin`
   **107/0**, `cargo test -p wyd-server` **39/0** com `WYD_TEST_DATABASE_URL`.
 
+## Evidência de execução E2E (2026-11-09)
+
+- **Suíte:** `@playwright/test` versionado em `wyd-portal` (`playwright.config.ts`, `e2e/`),
+  `npm run test:e2e` → `scripts/e2e.mjs` provisiona o banco **`wyd_e2e`** (role `wyd_e2e`,
+  31 migrations reais), gateway/canal efêmeros e um container do portal do compose em 3110
+  apontando para esse gateway; teardown no `finally` e exit code do Playwright preservado.
+- **Resultado:** `3 passed (23.4s)`, **0 failed** — `entregas.spec` (login real → busca
+  "E2E Hero" → ouro 0→250 relido do banco na tela), `idempotencia.spec` (mesma chave duas
+  vezes → segundo recibo `replay`, uma linha na fila, gold 300 sem duplicar) e `login.spec`
+  (sem sessão → `/login`; staff entra na área administrativa).
+- **Tela:** `/entregas` (menu Operação, guarda no `proxy`) lista personagens com `gold`,
+  enfileira ouro com chave editável e mostra a fila (`pending`/`entregue`); usa o contrato
+  real `character_admin/search_characters`, `character_admin/list_character_grants` e
+  `grants/request` (token + `x-wyd-actor`). Handlers novos no gateway, antes 501.
+- **Stack manual:** `docker compose build` + `up -d` reconstruídos; portal em **3000**
+  (`/entregas` → 307 para `/login` sem sessão, guarda ativa) e `/health` schema 31.
+
 **Aberto (com motivo):**
 
-1. **Suíte Playwright** (login/logout, painel, loja) ainda não existe — não há `@playwright/test`
-   nem specs no portal; o fluxo de entrega já é exercitável por HTTP, mas a tela de staff para
-   conceder/entregar não foi construída.
-2. **Compra na loja** depende de decisão de produto: `donate_shop_item` tem preço em créditos,
+1. **Compra na loja** depende de decisão de produto: `donate_shop_item` tem preço em créditos,
    mas **não existe saldo/ledger de moeda premium** no banco (`docs/arquitetura/contrato-persistencia.md`
    U-P4). Implementar a compra exige definir a moeda (gold? crédito?) e onde o saldo mora —
    decisão do dono, não do código.
-3. **Item/nível na fila:** o dreno entrega `gold`; `item` e `level` ficam pendentes até o
+2. **Item/nível na fila:** o dreno entrega `gold`; `item` e `level` ficam pendentes até o
    inventário/nível do Hot Path consumirem a fila (FASE-03/08).
+
+## Rotina de fechamento (ambiente local)
+
+O teste manual do dono roda no portal do compose na **3000**. A partir desta issue, toda
+issue só é dada como concluída depois de um rebuild completo verificado:
+
+```bash
+docker compose up -d --build --wait   # caminho único; não exige make
+make local-rebuild                   # atalho + provas de contrato
+```
+
+O comando é o compose nativo: `docker compose build` + `docker compose up -d --wait`, e o
+schema entra no boot do gateway/canal (ADR-0024) — não há passo manual nem container de
+migration. O alvo encerra com `/login` 200, `/entregas` 307 para `/login`, gateway `/health` com
+`schema:31`, portal publicado em `127.0.0.1:3000` e 3100/3110 livres. O `finally` do
+`scripts/e2e.mjs` dropa os containers efêmeros e o banco/role `wyd_e2e`, que é migrado pelo
+mesmo runner do boot quando o gateway E2E sobe.
 
 ## Riscos / rollback
 

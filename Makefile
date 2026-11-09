@@ -8,11 +8,11 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate banco-catalogo banco-verify stack-config stack-up stack-down stack-logs prod-env-smoke monitoring-config monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
-	@echo "         stack-config stack-up stack-down stack-logs db-migrate prod-env-smoke"
+	@echo "         stack-config stack-up stack-down stack-logs local-rebuild db-migrate db-reset prod-env-smoke"
 	@echo "         gateway-image gateway-smoke monitoring-check"
 	@echo "         portal-install portal-dev portal-test portal-build"
 
@@ -84,8 +84,11 @@ ci: check test-all bench-build audit deny ## espelho local do .github/workflows/
 stack-config: ## valida o compose (base+dev, prod e prod com .env vivo) sem subir nada
 	docker compose config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
 
-db-migrate: ## aplica as migrations no Postgres DA STACK (wyd-db) — sem dado não há saúde
-	node tools/dev/db-migrate.mjs
+db-migrate: ## aplica as migrations no banco da stack (mesmo runner do boot)
+	docker compose run --rm gateway --migrate
+
+db-reset: ## recria o schema do banco da stack do zero (DROP SCHEMA + série)
+	docker compose run --rm gateway --migrate --reset
 
 gateway-image: ## imagem do gateway HTTP/JSON do portal (ADR-0022, FASE-07-1)
 	docker build -f docker/Dockerfile.gateway -t wyd/gateway:$${TAG:-dev} \
@@ -109,6 +112,16 @@ gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-
 stack-up: ## sobe a stack de dev inteira (db + gateway + portal + canais + monitoramento)
 	docker compose up -d --build
 
+local-rebuild: ## rebuild completo do local na 3000 + migrations + prova de saúde (fechamento de issue)
+	docker compose build
+	docker compose up -d --wait --wait-timeout 180
+	docker compose ps
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login)" = "200" || { echo "FALHOU: /login != 200"; exit 1; }
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/entregas)" = "307" || { echo "FALHOU: /entregas != 307"; exit 1; }
+	@curl -fsS http://127.0.0.1:7600/health; echo
+	@curl -fsS http://127.0.0.1:7600/health | grep -q '"schema":31' || { echo "FALHOU: schema != 31"; exit 1; }
+	@if netstat -ano 2>/dev/null | grep LISTENING | grep -Eq ':(3100|3110)[[:space:]]'; then echo "FALHOU: porta de teste ocupada (3100/3110)"; exit 1; fi
+
 prod-env-smoke: ## smoke do overlay de produção com .env montado (não derruba o dev)
 	@docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
 	@docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml run --rm --no-deps gateway --seed-staff
@@ -118,9 +131,6 @@ stack-down: ## derruba a stack de dev (mantém o volume pgdata)
 
 stack-logs: ## segue os logs da stack
 	docker compose logs -f
-
-monitoring-config: ## valida o compose com o monitoramento (agora parte do `up`)
-	docker compose config --quiet
 
 # MSYS_NO_PATHCONV=1: sem isso o Git Bash no Windows converte /etc/prometheus em caminho
 # de host e o container recebe um workdir inválido. Em Linux a variável é inerte.

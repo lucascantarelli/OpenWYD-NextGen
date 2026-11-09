@@ -1483,6 +1483,7 @@ dependencies = [
 name = "wyd-db"
 version = "0.1.0"
 dependencies = [
+ "sha2",
  "sqlx",
  "tokio",
  "wyd-core",

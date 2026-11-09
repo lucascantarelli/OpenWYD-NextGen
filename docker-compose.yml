@@ -20,7 +20,6 @@ services:
     # one-shot de roles no stack novo — o Postgres sobe com o superusuário
     # de dev. NÃO usar assim em produção.
     image: postgres:17-alpine
-    container_name: wyd-db
     restart: unless-stopped
     env_file:
       - path: .env
@@ -51,7 +50,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.gateway
     image: wyd/gateway:${TAG:-dev}
-    container_name: wyd-gateway
     restart: unless-stopped
     env_file:
       - path: .env
@@ -92,7 +90,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.server
     image: wyd/server:${TAG:-dev}
-    container_name: wyd-canal-1
     restart: unless-stopped
     env_file:
       - path: .env
@@ -134,7 +131,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.portal
     image: wyd/portal:${TAG:-dev}
-    container_name: wyd-portal
     restart: unless-stopped
     env_file:
       - path: .env
@@ -164,7 +160,6 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.5.0
-    container_name: wyd-prometheus
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -174,14 +169,11 @@ services:
     volumes:
       - ./monitoring/prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
-    ports:
-      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     networks:
       - wyd
 
   grafana:
     image: grafana/grafana:12.2.0
-    container_name: wyd-grafana
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -202,8 +194,6 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
-    ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
     networks:
       - wyd
 
@@ -213,7 +203,6 @@ services:
     # nomeado com retenção de 14 d (`monitoring/loki/loki.yml`). Sem porta no
     # host: só o portal (server-side) e o Grafana consultam.
     image: grafana/loki:3.5.5
-    container_name: wyd-loki
     restart: unless-stopped
     command: ["-config.file=/etc/loki/loki.yml"]
     volumes:
@@ -227,7 +216,6 @@ services:
     # (read-only) e empurra para o Loki. Não há serviço de log caseiro: o portal
     # consulta o Loki, nunca o Docker.
     image: grafana/alloy:v1.9.2
-    container_name: wyd-alloy
     restart: unless-stopped
     command:
       - run
@@ -245,14 +233,11 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.9.1
-    container_name: wyd-node-exporter
     restart: unless-stopped
     command:
       - --path.rootfs=/host
     volumes:
       - /:/host:ro
-    ports:
-      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
     networks:
       - wyd
 networks:

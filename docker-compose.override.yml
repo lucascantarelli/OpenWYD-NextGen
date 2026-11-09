@@ -53,7 +53,6 @@ services:
     # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
     # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
     image: wyd/server:${TAG:-dev}
-    container_name: wyd-canal-2
     restart: unless-stopped
     env_file:
       - path: .env
@@ -86,6 +85,20 @@ services:
         max-file: "5"
     networks:
       - wyd
+
+  # Observabilidade: as portas só existem em DEV (loopback). Sem este override o
+  # compose de produção não publica Prometheus/Grafana/node-exporter.
+  prometheus:
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  grafana:
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+
+  node-exporter:
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
 
   portal:
     ports:

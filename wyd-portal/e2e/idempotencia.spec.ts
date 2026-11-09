@@ -9,14 +9,15 @@ import { characterId, grantsOf, login } from "./support";
  */
 test("repetir a mesma chave não duplica entrega nem ouro", async ({ page }) => {
   await login(page);
-  await page.goto("/entregas");
+  const key = "e2e-idem-fixa";
+  // A chave vem da URL: o refresh do server action não a regenera.
+  await page.goto(`/entregas?key=${key}`);
 
   const row = page.getByTestId(/^char-/).filter({ hasText: "E2E Gêmeo" });
   await expect(row).toBeVisible();
   const id = characterId(await row.getAttribute("data-testid"));
 
-  const key = `e2e-idem-${id}`;
-  await row.getByLabel("Chave de idempotência").fill(key);
+  await expect(row.getByLabel("Chave de idempotência")).toHaveValue(key);
   await row.getByLabel("Ouro").fill("300");
 
   await row.getByRole("button", { name: "Conceder ouro" }).click();

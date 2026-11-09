@@ -159,8 +159,8 @@ cliente.
 | # | Funcionalidade | Estado | Evidência (código + prova) |
 |---|---|---|---|
 | 11.1 | BFF do portal com `adminCall` | ✅ | `wyd-portal/src/server/admin.ts`; vitest (145 testes) |
-| 11.2 | Grants via `delivery_queue` | 🚧 | `0006_delivery_queue.sql` com `idempotency_key` UNIQUE; `grants/request` grava durável (replay devolve o mesmo `grant_id`) e o canal drena gold (`event=grant delivered`, gold 100+123+7 → 230 na stack). Item/nível pendentes no inventário/nível do Hot Path |
-| 11.3 | Painel de staff | ✅ | login do portal, busca/criação de conta, moderação (papel + bloqueio com motivo), `/auditoria` e `/economia` (07-3); **provado na stack** com HTTP real por papel, efeito em `account_moderation`/`audit_log` e login bloqueado/liberado no portal e no jogo |
+| 11.2 | Grants via `delivery_queue` | ✅ | `0006_delivery_queue.sql` com `idempotency_key` UNIQUE; `grants/request` grava durável; tela `/entregas` enfileira ouro e mostra a fila; canal drena gold (`event=grant delivered`). **E2E real:** `npm run test:e2e` 3/3 (gold 0→250 pela tela; mesma chave → replay, 1 linha, gold 300). Item/nível seguem pendentes no inventário/nível do Hot Path |
+| 11.3 | Painel de staff | ✅ | login do portal, busca/criação de conta, moderação (papel + bloqueio com motivo), `/auditoria`, `/economia` (07-3) e `/entregas` (07-4); **provado na stack** com HTTP real por papel, efeito em `account_moderation`/`audit_log` e login bloqueado/liberado no portal e no jogo; E2E Playwright 3/3 |
 | 11.4 | Auditoria administrativa | ✅ | `0005_auditoria.sql`, `crates/wyd-admin`; `tests/contract.rs` |
 | 11.5 | Identidade visual única | ✅ | `docs/arquitetura/identidade.tokens`, `branding.rs`, `gui.rs`; `crates/wyd-launcher/tests/identidade.rs` |
 | 11.6 | Launcher: manifesto, patch atômico, bootstrap | ✅ | `crates/wyd-launcher/src/{manifest,patch,bootstrap}.rs`; testes unitários no crate + `tests/serverlist_paridade.rs` |

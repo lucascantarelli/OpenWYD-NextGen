@@ -190,7 +190,9 @@ O transporte já existia; faltava o **serviço**. Agora existe binário e ele ro
   sem SQL saindo do adapter.
 - `docker/Dockerfile.gateway` + serviço `gateway` no compose (db saudável, sem porta na base),
   `portal` com `depends_on: gateway` e `WEB_API_TOKEN`.
-- `tools/dev/db-migrate.mjs` prepara o banco da stack (o db do compose sobe vazio de propósito).
+- O schema entra no boot do próprio gateway/canal (ADR-0024): o `db` sobe vazio de propósito e
+  o runner `wyd_db::migrate` aplica a série antes de abrir o pool (ver
+  `docs/rust/05-stack-docker.md` §5).
 
 **Ainda aberto nesta issue:** handlers de domínio das 13 rotas de conteúdo/painel (seguem
 `501` auditado) e escrita de auditoria em `audit_log` (hoje stdout estruturado do container).
