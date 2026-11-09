@@ -1,6 +1,9 @@
 -- 0006_delivery_queue: grants do wyd-portal/admin para dreno do servidor (única ponte web→jogo).
 -- Convenção: -- migrate:up / -- migrate:down (ver docs/arquitetura/modelo-banco.md §4).
 -- Grant pendente impede apagar conta/personagem (RESTRICT: falha explícita, sem item órfão).
+-- `idempotency_key` (FASE-07-4) é a chave do pedido do portal: UNIQUE garante que
+-- duplo clique/retry devolve a MESMA entrega em vez de enfileirar duas.
+-- `created_by` registra o staff autor; `account_id`/`character_id` são o destino.
 
 -- migrate:up
 CREATE TABLE delivery_queue (
@@ -16,6 +19,8 @@ CREATE TABLE delivery_queue (
     status          TEXT NOT NULL DEFAULT 'pending',
     attempts        INTEGER NOT NULL DEFAULT 0,
     claimed_at      TIMESTAMPTZ,
+    idempotency_key TEXT UNIQUE,
+    created_by      BIGINT REFERENCES accounts (id) ON DELETE SET NULL,
     CONSTRAINT delivery_queue_kind CHECK (kind IN ('item', 'gold', 'level')),
     CONSTRAINT delivery_queue_status CHECK (status IN ('pending', 'claimed', 'failed')),
     CONSTRAINT delivery_queue_attempts CHECK (attempts >= 0),

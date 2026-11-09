@@ -94,12 +94,16 @@ pub fn log_panel(
     });
 }
 
-/// Registra tentativa negada de conta autenticada sem papel.
-pub fn log_denied(sink: &impl AuditSink, account_id: i64, action: &str, detail: &str) {
+/// Registra tentativa negada de conta autenticada sem o papel necessário.
+///
+/// O papel vem da sessão, não de um `Player` fixo: a linha `auth.denied:*`
+/// precisa dizer **quem** tentou (`3:moderator`), senão a revisão não distingue
+/// um jogador de um moderador que estourou o próprio alcance.
+pub fn log_denied(sink: &impl AuditSink, account_id: i64, role: Role, action: &str, detail: &str) {
     sink.record(AuditEntry {
         at_ms: now_ms(),
         actor_id: account_id,
-        actor_role: Role::Player,
+        actor_role: role,
         action: format!("auth.denied:{action}"),
         target: String::new(),
         detail: detail.to_string(),
@@ -125,5 +129,25 @@ mod tests {
         assert_eq!(entries[0].actor_id, 3);
         assert_eq!(entries[0].actor_role, Role::Admin);
         assert!(entries[0].at_ms > 0);
+    }
+
+    #[test]
+    fn negacao_preserva_o_papel_de_quem_tentou() {
+        let sink = VecSink::default();
+        log_denied(
+            &sink,
+            3,
+            Role::Moderator,
+            "accounts.set_role",
+            "papel além do alcance",
+        );
+        let entries = sink.entries();
+        assert_eq!(entries[0].action, "auth.denied:accounts.set_role");
+        assert_eq!(
+            entries[0].actor_role,
+            Role::Moderator,
+            "papel real na trilha"
+        );
+        assert_eq!(entries[0].actor_id, 3);
     }
 }

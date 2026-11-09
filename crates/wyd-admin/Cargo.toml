@@ -23,3 +23,11 @@ tokio = { version = "1", features = ["rt-multi-thread"] }
 # AGENTS §3.6: senha de login só com hash resistente (argon2id). Entra na borda
 # de autenticação (`auth/password.rs`), nunca no Hot Path.
 argon2 = "0.5"
+
+[dev-dependencies]
+# Limpeza da conta descartável do teste de boot do seed (mesmo driver do wyd-db).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-rustls-ring",
+] }

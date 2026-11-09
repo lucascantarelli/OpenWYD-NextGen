@@ -64,6 +64,7 @@ impl Accounts for FakeAccounts {
                 role: Role::Admin,
             },
             password_hash: self.hash.clone(),
+            blocked: false,
         });
         async move { found.ok_or(DbError::NotFoundKey { entity: "account" }) }
     }
@@ -77,6 +78,10 @@ impl Characters for NoCharacters {
     }
 
     async fn top_by_level(&self, _limit: usize) -> Result<Vec<Character>, DbError> {
+        Ok(Vec::new())
+    }
+
+    async fn search_by_name(&self, _term: &str, _limit: usize) -> Result<Vec<Character>, DbError> {
         Ok(Vec::new())
     }
 
@@ -110,6 +115,7 @@ fn router(hash: &str) -> Router<FakeAccounts, NoCharacters, VecSink> {
                 account_id: 42,
                 login: "admin".to_string(),
                 role: Role::Admin,
+                blocked: false,
             }
         })
     });

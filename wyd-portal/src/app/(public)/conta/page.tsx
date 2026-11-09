@@ -97,7 +97,7 @@ export default async function ContaPage() {
           <div className="card__body">
             {personagens === null ? (
               <div className="empty">
-                <strong>Serviço de personagens indisponível</strong>
+                <strong>Não foi possível carregar seus personagens</strong>
                 <p>Não foi possível ler a lista agora. Tente recarregar em instantes.</p>
               </div>
             ) : personagens.length === 0 ? (
@@ -172,7 +172,7 @@ export default async function ContaPage() {
                   <dd className="mono">#{conta.id}</dd>
                 </dl>
               ) : (
-                <p className="muted small">Serviço de contas indisponível.</p>
+                <p className="muted small">Não foi possível carregar os dados da conta agora.</p>
               )}
             </div>
           </section>

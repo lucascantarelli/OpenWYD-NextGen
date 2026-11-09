@@ -65,8 +65,9 @@ services:
       # CPSock do canal de jogo: a troca de PIN do portal abre uma conexão real e
       # faz o `0x0FDE` em duas etapas (nada de hash escrito pelo gateway).
       WYD_GAME_ADDR: ${WYD_GAME_ADDR:-wyd-canal-1:8281}
-      # Seed da conta de staff roda no boot do gateway (idempotente), não num
-      # container one-shot: `WYD_SEED_STAFF=1` + `PORTAL_ADMIN_*` no `.env`.
+      # Seed da conta de staff roda em todo boot do gateway (idempotente), não
+      # num container one-shot: com `PORTAL_ADMIN_PASSWORD` definida ele
+      # reconcilia o hash do banco; `WYD_SEED_STAFF=1` só exige a presença.
       WYD_SEED_STAFF: ${WYD_SEED_STAFF:-0}
       PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
       PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-}

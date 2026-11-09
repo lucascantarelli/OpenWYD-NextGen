@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, LayoutDashboard, Package, Users } from "lucide-react";
+import { Activity, Coins, Gift, LayoutDashboard, Package, ScrollText, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,8 +9,11 @@ import { NAV, PUBLIC_LINKS, type NavIcon } from "./nav";
 const ICONS: Record<NavIcon, typeof Activity> = {
   overview: LayoutDashboard,
   accounts: Users,
+  grants: Gift,
   monitoring: Activity,
   catalog: Package,
+  audit: ScrollText,
+  economy: Coins,
 };
 
 export function Sidebar() {

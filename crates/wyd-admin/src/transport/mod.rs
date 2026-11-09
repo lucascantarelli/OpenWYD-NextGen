@@ -14,19 +14,24 @@ pub mod json;
 use std::future::Future;
 use std::io::BufReader;
 use std::net::{TcpListener, TcpStream};
+use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
-use wyd_db::{Accounts, CatalogSnapshot, Characters, DeliveryQueue, Role};
+use wyd_db::{
+    AccountModeration, Accounts, AuditRow, AuditTrail, CatalogSnapshot, Characters, Economy,
+    EconomySummary, Role,
+};
 
 use crate::api::{
-    create_account, find_account, own_account, own_characters, request_grant, request_recovery,
-    top_rankings, AccountSummary, ChannelPresence, GrantKind, GrantRequest, PanelAccount,
-    PanelCharacter, RankingEntry,
+    create_account, economy_summary, find_account, moderation, own_account, own_characters,
+    recent_audit, request_grant, request_recovery, set_blocked, set_role, top_rankings,
+    AccountSummary, ChannelPresence, GrantKind, GrantRequest, PanelAccount, PanelCharacter,
+    RankingEntry,
 };
 use crate::audit::{log_action, log_denied, log_panel, AuditSink};
 use crate::auth::{Session, StaffSession};
 use crate::error::AdminError;
-use crate::service::GrantService;
+use crate::service::{GrantService, GrantTrail};
 
 /// Porta do contrato no loopback (ADR-0008).
 pub const ADMIN_PORT: u16 = 7600;
@@ -48,11 +53,15 @@ pub const SERVICOS: &[(&str, &[&str])] = &[
         &[
             "list_accounts",
             "get_account",
+            "get_moderation",
             "set_role",
             "set_blocked",
             "create_account",
         ],
     ),
+    // Trilha de auditoria (somente leitura, append-only) e economia auditada.
+    ("audit_admin", &["recent"]),
+    ("economy_admin", &["summary"]),
     ("account_web", &["verify_credentials", "change_numeric_pin"]),
     (
         "attribute_map_admin",
@@ -294,6 +303,39 @@ pub struct LoginOk {
     pub account_id: i64,
     pub login: String,
     pub role: Role,
+    /// Senha correta, mas moderação bloqueou a conta.
+    ///
+    /// Só quem acertou a senha vê essa distinção: senha errada e conta
+    /// inexistente continuam na mesma recusa genérica.
+    pub blocked: bool,
+}
+
+/// Header com o ator autenticado pelo BFF (`id:role`).
+///
+/// O token de staff autentica o **processo** (portal); o ator é a conta de
+/// staff que fez a chamada, derivada do cookie assinado no portal. Sem o header
+/// vale a identidade do próprio token (serviço). Header malformado é `400`:
+/// cair para o serviço mascararia bug de fiação e ampliaria privilégio.
+const ACTOR_HEADER: &str = "x-wyd-actor";
+
+/// Resolve o ator declarado pelo BFF (ou `None` quando o header está ausente).
+fn actor_from(request: &http::Request) -> Result<Option<Session>, ()> {
+    let Some(raw) = request.header(ACTOR_HEADER) else {
+        return Ok(None);
+    };
+    let Some((id, role)) = raw.split_once(':') else {
+        return Err(());
+    };
+    let Ok(account_id) = id.trim().parse::<i64>() else {
+        return Err(());
+    };
+    let Some(role) = role_from_str(role.trim()) else {
+        return Err(());
+    };
+    if account_id <= 0 {
+        return Err(());
+    }
+    Ok(Some(Session { account_id, role }))
 }
 
 /// Presença por canal já resolvida pelo **binário**.
@@ -317,6 +359,12 @@ pub struct Router<A, C, S> {
     catalog: Option<CatalogSnapshot>,
     login: Option<LoginCheck>,
     presence: Option<PresenceCheck>,
+    /// Trilha de auditoria do banco (leitura do painel de staff).
+    audit_trail: Option<Arc<dyn AuditTrail + Send + Sync>>,
+    /// Fontes reais da economia (`city_tax_ledger`, `delivery_queue`).
+    economy: Option<Arc<dyn Economy + Send + Sync>>,
+    /// Leitura da fila de entregas para a tela de staff (somente leitura).
+    grant_trail: Option<Arc<dyn GrantTrail>>,
     /// `host:porta` do CPSock do servidor de jogo (troca de PIN pelo portal).
     game: Option<String>,
     max_body: usize,
@@ -335,9 +383,19 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             catalog: None,
             login: None,
             presence: None,
+            audit_trail: None,
+            economy: None,
+            grant_trail: None,
             game: None,
             max_body: http::MAX_BODY,
         }
+    }
+
+    /// Liga a leitura da fila de entregas (tela de staff; nunca escreve).
+    #[must_use]
+    pub fn with_grant_trail(mut self, trail: Arc<dyn GrantTrail>) -> Self {
+        self.grant_trail = Some(trail);
+        self
     }
 
     /// Liga a verificação de login (gateway monta com o pool; testes com fake).
@@ -351,6 +409,22 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
     #[must_use]
     pub fn with_presence_check(mut self, check: PresenceCheck) -> Self {
         self.presence = Some(check);
+        self
+    }
+
+    /// Liga a trilha de auditoria (`audit_log`) para leitura no painel.
+    ///
+    /// Sem ela a rota responde `503`: o painel nunca mostra trilha inventada.
+    #[must_use]
+    pub fn with_audit_trail(mut self, trail: Arc<dyn AuditTrail + Send + Sync>) -> Self {
+        self.audit_trail = Some(trail);
+        self
+    }
+
+    /// Liga as fontes reais da economia (livro-caixa e fila de entrega).
+    #[must_use]
+    pub fn with_economy(mut self, economy: Arc<dyn Economy + Send + Sync>) -> Self {
+        self.economy = Some(economy);
         self
     }
 
@@ -386,9 +460,9 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         &self.audit
     }
 
-    /// Conecta a fila de entrega dos grants (uma vez, na configuração).
+    /// Conecta a fila durável dos grants (uma vez, na configuração).
     #[must_use]
-    pub fn with_queue(self, queue: DeliveryQueue) -> Self {
+    pub fn with_grant_queue(self, queue: std::sync::Arc<dyn crate::service::GrantQueue>) -> Self {
         self.grants.attach_queue(queue);
         self
     }
@@ -411,6 +485,11 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         let Some(session) = self.tokens.authenticate(token) else {
             return Reply::transport(401, trace, "sessão de staff inválida");
         };
+        let session = match actor_from(request) {
+            Ok(Some(actor)) => actor,
+            Ok(None) => session,
+            Err(()) => return Reply::transport(400, trace, "x-wyd-actor inválido"),
+        };
         let Ok(body) = std::str::from_utf8(&request.body) else {
             return Reply::transport(400, trace, "corpo não é UTF-8");
         };
@@ -424,7 +503,18 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("accounts", "find") => self.accounts_find(session, &params, trace),
             ("accounts", "create") => self.accounts_create(session, &params, trace),
             ("accounts", "recovery") => self.accounts_recovery(session, &params, trace),
+            ("accounts", "get_moderation") => self.accounts_moderation(session, &params, trace),
+            ("accounts", "set_role") => self.accounts_set_role(session, &params, trace),
+            ("accounts", "set_blocked") => self.accounts_set_blocked(session, &params, trace),
+            ("audit_admin", "recent") => self.audit_recent(session, &params, trace),
+            ("economy_admin", "summary") => self.economy_summary(session, trace),
             ("grants", "request") => self.grants_request(session, &params, trace),
+            ("character_admin", "search_characters") => {
+                self.character_search(session, &params, trace)
+            }
+            ("character_admin", "list_character_grants") => {
+                self.character_grants(session, &params, trace)
+            }
             ("panel", "self") => self.panel_self(session, &params, trace),
             ("panel", "characters") => self.panel_characters(session, &params, trace),
             ("panel", "rankings") => self.panel_rankings(session, &params, trace),
@@ -448,6 +538,7 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
                 log_denied(
                     &self.audit,
                     session.account_id,
+                    session.role,
                     "server.presence",
                     "sem papel de staff",
                 );
@@ -553,6 +644,24 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             );
             return recusa();
         };
+        if account.blocked {
+            log_panel(
+                &self.audit,
+                Session {
+                    account_id: account.account_id,
+                    role: account.role,
+                },
+                "auth.login",
+                &account.login,
+                "conta bloqueada",
+            );
+            // Senha certa + bloqueio: responde `blocked` para o portal explicar
+            // sem transformar a recusa em vazamento para quem não tem a senha.
+            return Reply::ok(
+                trace,
+                ",\"ok\":false,\"account_id\":0,\"blocked\":true,\"role\":\"\"",
+            );
+        }
         log_panel(
             &self.audit,
             Session {
@@ -697,6 +806,121 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         }
     }
 
+    fn accounts_moderation(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(login) = params.get("login").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo login obrigatório");
+        };
+        match poll_once(moderation(
+            Some(session),
+            login,
+            &self.accounts,
+            &self.audit,
+        )) {
+            Some(Ok(estado)) => Reply::ok(
+                trace,
+                &format!(",\"moderation\":{}", moderation_json(&estado)),
+            ),
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `accounts/set_role` — só admin; o papel novo vem do corpo, o autor da sessão.
+    fn accounts_set_role(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(login) = params.get("login").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo login obrigatório");
+        };
+        let Some(role) = params.get("role").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo role obrigatório");
+        };
+        let Some(role) = role_from_str(role) else {
+            return Reply::business(trace, RESULT_INVALID, "role inválido");
+        };
+        match poll_once(set_role(
+            Some(session),
+            login,
+            role,
+            &self.accounts,
+            &self.audit,
+        )) {
+            Some(Ok(estado)) => Reply::ok(
+                trace,
+                &format!(",\"moderation\":{}", moderation_json(&estado)),
+            ),
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `accounts/set_blocked` — bloqueio com motivo; liberação sem motivo.
+    fn accounts_set_blocked(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(login) = params.get("login").and_then(json::Json::as_str) else {
+            return Reply::business(trace, RESULT_INVALID, "campo login obrigatório");
+        };
+        let Some(blocked) = params.get("blocked").and_then(json::Json::as_bool) else {
+            return Reply::business(trace, RESULT_INVALID, "campo blocked obrigatório");
+        };
+        let reason = params
+            .get("reason")
+            .and_then(json::Json::as_str)
+            .unwrap_or("");
+        match poll_once(set_blocked(
+            Some(session),
+            login,
+            blocked,
+            reason,
+            &self.accounts,
+            &self.audit,
+        )) {
+            Some(Ok(estado)) => Reply::ok(
+                trace,
+                &format!(",\"moderation\":{}", moderation_json(&estado)),
+            ),
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `audit_admin/recent` — últimas linhas da trilha (admin).
+    fn audit_recent(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(trail) = &self.audit_trail else {
+            return Reply::transport(503, trace, "trilha de auditoria não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let limit = usize::try_from(limit).unwrap_or(0);
+        match poll_once(recent_audit(
+            Some(session),
+            limit,
+            trail.as_ref(),
+            &self.audit,
+        )) {
+            Some(Ok(linhas)) => Reply::ok(trace, &format!(",\"entries\":{}", audit_json(&linhas))),
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `economy_admin/summary` — imposto por cidade e concessões por tipo.
+    fn economy_summary(&self, session: Session, trace: &str) -> Reply {
+        let Some(economy) = &self.economy else {
+            return Reply::transport(503, trace, "economia não montada no gateway");
+        };
+        match poll_once(economy_summary(
+            Some(session),
+            economy.as_ref(),
+            &self.audit,
+        )) {
+            Some(Ok(resumo)) => {
+                Reply::ok(trace, &format!(",\"economy\":{}", economy_json(&resumo)))
+            }
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
     fn accounts_create(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
         let Some(login) = params.get("login").and_then(json::Json::as_str) else {
             return Reply::business(trace, RESULT_INVALID, "campo login obrigatório");
@@ -750,6 +974,77 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
                 Reply::ok(trace, &extras)
             }
             Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `character_admin/search_characters` — staff busca personagens por nome.
+    ///
+    /// Devolve o destino com `gold` atual: a tela de entregas confere antes de
+    /// enfileirar e depois relê para provar o efeito no jogo.
+    fn character_search(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let staff = match StaffSession::require(session) {
+            Ok(staff) => staff,
+            Err(error) => return Reply::from_error(trace, &error),
+        };
+        let term = params
+            .get("term")
+            .and_then(json::Json::as_str)
+            .unwrap_or("");
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(20)
+            .clamp(1, 100);
+        let limit = usize::try_from(limit).unwrap_or(20);
+        match poll_once(self.characters.search_by_name(term, limit)) {
+            Some(Ok(rows)) => {
+                log_action(
+                    &self.audit,
+                    &staff,
+                    "character.search",
+                    if term.is_empty() { "*" } else { term },
+                    &format!("{} personagem(ns)", rows.len()),
+                );
+                Reply::ok(
+                    trace,
+                    &format!(",\"characters\":{}", characters_search_json(&rows)),
+                )
+            }
+            Some(Err(error)) => Reply::from_error(trace, &AdminError::from(error)),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `character_admin/list_character_grants` — fila do personagem (somente leitura).
+    fn character_grants(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let staff = match StaffSession::require(session) {
+            Ok(staff) => staff,
+            Err(error) => return Reply::from_error(trace, &error),
+        };
+        let Some(character_id) = params.get("character_id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo character_id obrigatório");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(20)
+            .clamp(1, 50);
+        let limit = usize::try_from(limit).unwrap_or(20);
+        let Some(trail) = &self.grant_trail else {
+            return Reply::transport(503, trace, "fila de entrega não montada no gateway");
+        };
+        match trail.list_for_character(character_id, limit) {
+            Ok(rows) => {
+                log_action(
+                    &self.audit,
+                    &staff,
+                    "grants.list",
+                    &format!("char:{character_id}"),
+                    &format!("{} entrega(s)", rows.len()),
+                );
+                Reply::ok(trace, &format!(",\"grants\":{}", grants_rows_json(&rows)))
+            }
+            Err(error) => Reply::from_error(trace, &AdminError::from(error)),
         }
     }
 }
@@ -887,6 +1182,54 @@ fn characters_json(characters: &[PanelCharacter]) -> String {
     json::Json::Arr(items).render()
 }
 
+fn characters_search_json(characters: &[wyd_db::Character]) -> String {
+    let items = characters
+        .iter()
+        .map(|c| {
+            json::Json::Obj(vec![
+                ("id".to_string(), json::Json::Num(c.id as f64)),
+                (
+                    "account_id".to_string(),
+                    json::Json::Num(c.account_id as f64),
+                ),
+                ("name".to_string(), json::Json::Str(c.name.clone())),
+                ("level".to_string(), json::Json::Num(c.level as f64)),
+                ("gold".to_string(), json::Json::Num(c.gold as f64)),
+                ("class".to_string(), json::Json::Num(c.class as f64)),
+                ("slot".to_string(), json::Json::Num(c.slot as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
+}
+
+fn grants_rows_json(rows: &[wyd_db::QueuedGrantRow]) -> String {
+    let items = rows
+        .iter()
+        .map(|g| {
+            json::Json::Obj(vec![
+                ("id".to_string(), json::Json::Num(g.id as f64)),
+                ("kind".to_string(), json::Json::Str(g.kind.clone())),
+                ("gold".to_string(), json::Json::Num(g.gold as f64)),
+                ("status".to_string(), json::Json::Str(g.status.clone())),
+                (
+                    "idempotency_key".to_string(),
+                    g.idempotency_key
+                        .clone()
+                        .map_or(json::Json::Null, json::Json::Str),
+                ),
+                (
+                    "created_by".to_string(),
+                    g.created_by
+                        .map_or(json::Json::Null, |v| json::Json::Num(v as f64)),
+                ),
+                ("at_ms".to_string(), json::Json::Num(g.at_ms as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
+}
+
 fn rankings_json(entries: &[RankingEntry]) -> String {
     let items = entries
         .iter()
@@ -915,6 +1258,86 @@ fn presence_json(channels: &[ChannelPresence]) -> String {
         })
         .collect();
     json::Json::Arr(items).render()
+}
+
+fn moderation_json(estado: &AccountModeration) -> String {
+    let conta = json::Json::Obj(vec![
+        ("id".to_string(), json::Json::Num(estado.account.id as f64)),
+        (
+            "login".to_string(),
+            json::Json::Str(estado.account.login.clone()),
+        ),
+        (
+            "role".to_string(),
+            json::Json::Str(estado.account.role.as_db().to_string()),
+        ),
+    ]);
+    let blocked_at = match estado.blocked_at_ms {
+        Some(ms) => json::Json::Num(ms as f64),
+        None => json::Json::Null,
+    };
+    json::Json::Obj(vec![
+        ("account".to_string(), conta),
+        ("blocked".to_string(), json::Json::Bool(estado.blocked)),
+        ("reason".to_string(), json::Json::Str(estado.reason.clone())),
+        ("blocked_at_ms".to_string(), blocked_at),
+    ])
+    .render()
+}
+
+fn audit_json(linhas: &[AuditRow]) -> String {
+    let items = linhas
+        .iter()
+        .map(|linha| {
+            json::Json::Obj(vec![
+                ("at_ms".to_string(), json::Json::Num(linha.at_ms as f64)),
+                (
+                    "actor_id".to_string(),
+                    json::Json::Num(linha.actor_id as f64),
+                ),
+                (
+                    "actor_role".to_string(),
+                    json::Json::Str(linha.actor_role.clone()),
+                ),
+                ("action".to_string(), json::Json::Str(linha.action.clone())),
+                ("target".to_string(), json::Json::Str(linha.target.clone())),
+                ("detail".to_string(), json::Json::Str(linha.detail.clone())),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
+}
+
+fn economy_json(resumo: &EconomySummary) -> String {
+    let cidades = resumo
+        .tax_by_city
+        .iter()
+        .map(|cidade| {
+            json::Json::Obj(vec![
+                (
+                    "city_code".to_string(),
+                    json::Json::Str(cidade.city_code.clone()),
+                ),
+                ("total".to_string(), json::Json::Num(cidade.total as f64)),
+            ])
+        })
+        .collect();
+    let grants = resumo
+        .grants
+        .iter()
+        .map(|grant| {
+            json::Json::Obj(vec![
+                ("kind".to_string(), json::Json::Str(grant.kind.clone())),
+                ("count".to_string(), json::Json::Num(grant.count as f64)),
+                ("gold".to_string(), json::Json::Num(grant.gold as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Obj(vec![
+        ("tax_by_city".to_string(), json::Json::Arr(cidades)),
+        ("grants".to_string(), json::Json::Arr(grants)),
+    ])
+    .render()
 }
 
 fn account_json(account: &AccountSummary) -> String {

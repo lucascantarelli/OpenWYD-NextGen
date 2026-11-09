@@ -39,7 +39,7 @@ pub(super) fn staff_or_deny(
         Some(s) => match StaffSession::require(s) {
             Ok(staff) => Ok(staff),
             Err(e) => {
-                log_denied(sink, s.account_id, action, "sem papel de staff");
+                log_denied(sink, s.account_id, s.role, action, "sem papel de staff");
                 Err(e)
             }
         },
@@ -72,6 +72,7 @@ pub async fn create_account(
         log_denied(
             sink,
             staff.moderator_id(),
+            staff.role(),
             "accounts.create",
             "papel além do alcance",
         );

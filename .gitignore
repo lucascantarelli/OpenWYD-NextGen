@@ -26,6 +26,11 @@
 /site/
 /tmp/
 
+# Playwright (FASE-07-4): relatórios/traces nunca versionados
+/wyd-portal/test-results/
+/wyd-portal/playwright-report/
+/wyd-portal/blob-report/
+
 # Rust (workspace; sem Go no repo desde 2026-11)
 /target/
 **/*.rs.bk

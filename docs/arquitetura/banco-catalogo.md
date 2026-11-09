@@ -11,9 +11,9 @@
 
 ## 1. Resumo
 
-- migrations: **30** · última versão: **30**
-- tabelas: **68** · colunas: **506** · índices: **32** · funções: **1**
-- domínios: **16** · tabelas com dado provisório: **24**
+- migrations: **31** · última versão: **31**
+- tabelas: **69** · colunas: **519** · índices: **33** · funções: **1**
+- domínios: **17** · tabelas com dado provisório: **24**
 
 | Domínio | Tabelas |
 |---|---|
@@ -26,6 +26,7 @@
 | economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | inventário | `character_items`, `vault_items` |
+| moderação | `account_moderation` |
 | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone`, `map_definition`, `teleport_route` |
 | personagem | `characters` |
 | ponte web→jogo | `delivery_queue` |
@@ -201,7 +202,7 @@
 - **Fonte:** modelo-banco.md §3.3
 - **Nota:** Única escrita do Cold Path no estado de jogo; o servidor drena.
 - **PK:** `id`
-- **FK:** `account_id` → `accounts` · `character_id` → `characters`
+- **FK:** `account_id` → `accounts` · `character_id` → `characters` · `created_by` → `accounts`
 - **CHECK:** `delivery_queue_kind`, `delivery_queue_status`, `delivery_queue_attempts`, `delivery_queue_item_coherent`, `delivery_queue_gold_coherent`, `delivery_queue_level_coherent`
 - **UNIQUE de tabela:** —
 - **Índices:** `delivery_queue_pending_idx` (status) WHERE status = 'pending';
@@ -220,6 +221,8 @@
 | `status` | `text` | não |
 | `attempts` | `integer` | não |
 | `claimed_at` | `timestamp with time zone` | sim |
+| `idempotency_key` | `text` | sim |
+| `created_by` | `bigint` | sim |
 
 ### `content_version`
 
@@ -1500,6 +1503,25 @@
 | `renewed_at` | `timestamp with time zone` | não |
 | `released_at` | `timestamp with time zone` | sim |
 
+### `account_moderation`
+
+- **Arquivo:** `0031_moderacao.sql` · **Domínio:** moderação · **Estado:** confirmado
+- **Fonte:** pre-release-rust.md FASE 7 §7.2
+- **Nota:** Bloqueio com motivo + autor; recusado no login do portal e do jogo.
+- **PK:** `account_id`
+- **FK:** `account_id` → `accounts` · `blocked_by` → `accounts`
+- **CHECK:** `account_moderation_reason`, `account_moderation_blocked_at`
+- **UNIQUE de tabela:** —
+- **Índices:** `account_moderation_blocked_idx` (account_id) WHERE blocked;
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `account_id` | `bigint` | não |
+| `blocked` | `boolean` | não |
+| `reason` | `text` | não |
+| `blocked_by` | `bigint` | sim |
+| `blocked_at` | `timestamp with time zone` | sim |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1582,6 +1604,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0028 | `0028_estado_de_jogo.sql` | DDL | `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower` |
 | 0029 | `0029_canal_de_servidor.sql` | DDL | `server_channel` |
 | 0030 | `0030_sessao_unica.sql` | DDL | `character_session` |
+| 0031 | `0031_moderacao.sql` | DDL | `account_moderation` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

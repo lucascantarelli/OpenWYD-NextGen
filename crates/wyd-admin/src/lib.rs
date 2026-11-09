@@ -36,7 +36,7 @@ pub use auth::{
     StaffSession, MIN_PASSWORD_LEN,
 };
 pub use error::AdminError;
-pub use service::GrantService;
+pub use service::{GrantQueue, GrantService, GrantTrail, MemoryGrantQueue};
 pub use transport::{
     Authenticator, LoginCheck, LoginOk, PresenceCheck, Reply, Router, StaticTokens, ADMIN_PORT,
 };

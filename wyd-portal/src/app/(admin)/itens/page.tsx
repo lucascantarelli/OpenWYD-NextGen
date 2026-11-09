@@ -41,7 +41,7 @@ export default async function ItemsPage() {
             <div className="empty">
               <PackageSearch size={22} strokeWidth={1.6} aria-hidden="true" />
               <strong>Catálogo indisponível</strong>
-              <p>O gateway não respondeu à leitura do catálogo. Tente outra vez em instantes.</p>
+              <p>O servidor não respondeu à leitura do catálogo. Tente outra vez em instantes.</p>
             </div>
           </div>
         </div>
@@ -52,7 +52,7 @@ export default async function ItemsPage() {
           <div className="card__body">
             <div className="empty">
               <PackageSearch size={22} strokeWidth={1.6} aria-hidden="true" />
-              <strong>O gateway está no ar, mas sem catálogo</strong>
+              <strong>Nenhum catálogo carregado no servidor</strong>
               <p>
                 O conteúdo é cargado do Postgres no boot do servidor. Sem `item_catalog`
                 preenchido, a lista fica vazia.

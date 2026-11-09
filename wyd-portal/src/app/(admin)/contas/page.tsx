@@ -3,22 +3,28 @@ import { Search, ShieldAlert, UserRound } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { RetryButton } from "@/components/RetryButton";
 import { roleLabel, roleTone, type Role } from "@/lib/role";
-import { findAccount, type AccountSummary } from "@/server/accounts";
+import {
+  findAccount,
+  getAccountModeration,
+  type AccountModerationView,
+  type AccountSummary,
+} from "@/server/accounts";
 import { AdminError } from "@/server/errors";
 import { getSession } from "@/server/session";
 
 import { CreateAccountDialog } from "./create-account-dialog";
+import { ModerationPanel } from "./moderation-panel";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Contas · WYD2" };
 
 /**
- * Contas: busca exata por login e criação administrativa.
+ * Contas: busca exata, criação e moderação.
  *
- * O contrato do gateway expõe `accounts/find` e `accounts/create` — não há
- * listagem paginada. A tela mostra o que existe: uma conta por busca, com papel
- * lido do banco, e a criação com papel explícito.
+ * O contrato expõe `accounts/find`, `accounts/create` e a moderação
+ * (`get_moderation`/`set_role`/`set_blocked`). A tela mostra o que existe: uma
+ * conta por busca, com papel e bloqueio lidos do banco, e ações confirmadas.
  */
 export default async function AccountsPage({
   searchParams,
@@ -31,15 +37,20 @@ export default async function AccountsPage({
   const session = await getSession();
 
   let account: AccountSummary | null = null;
+  let moderation: AccountModerationView | null = null;
   let error: string | null = null;
   if (login !== "") {
     try {
       account = await findAccount(login);
+      if (account) moderation = await getAccountModeration(login);
     } catch (err) {
       error =
-        err instanceof AdminError ? err.message : "não foi possível consultar a conta no gateway";
+        err instanceof AdminError ? err.message : "não foi possível consultar a conta agora";
     }
   }
+
+  const targetRole = (moderation?.account.role ?? account?.role ?? "player") as Role;
+  const targetIsStaff = targetRole === "moderator" || targetRole === "admin";
 
   return (
     <>
@@ -47,7 +58,9 @@ export default async function AccountsPage({
         <div>
           <p className="page-head__eyebrow">Operação</p>
           <h1 className="page-head__title">Contas</h1>
-          <p className="page-head__sub">Busca exata por login. O papel e o bloqueio valem no jogo e são conferidos a cada login.
+          <p className="page-head__sub">
+            Busca exata por login. O papel e o bloqueio valem no jogo e no portal e são conferidos a
+            cada login.
           </p>
         </div>
         <div className="page-head__actions">
@@ -100,31 +113,61 @@ export default async function AccountsPage({
       )}
 
       {!error && account !== null && (
-        <div className="card">
-          <div className="card__head">
-            <div>
-              <h2 className="card__title">{account.login}</h2>
-              <p className="card__sub">Conta #{account.id}</p>
+        <>
+          <div className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">{account.login}</h2>
+                <p className="card__sub">Conta #{account.id}</p>
+              </div>
+              <div className="ui-actions" style={{ display: "flex", gap: 8 }}>
+                {moderation?.blocked ? <Badge tone="danger">bloqueada</Badge> : null}
+                <Badge tone={roleTone(account.role)}>{roleLabel(account.role)}</Badge>
+              </div>
             </div>
-            <Badge tone={roleTone(account.role)}>{roleLabel(account.role)}</Badge>
+            <div className="card__body">
+              <dl className="kv">
+                <dt>Login</dt>
+                <dd className="mono">{account.login}</dd>
+                <dt>Identificador</dt>
+                <dd className="mono">{account.id}</dd>
+                <dt>Papel</dt>
+                <dd>{roleLabel(account.role)}</dd>
+                <dt>Acesso</dt>
+                <dd>
+                  {moderation?.blocked
+                    ? "bloqueado pela moderação"
+                    : ["moderator", "admin"].includes(account.role as Role)
+                      ? "painel administrativo"
+                      : "jogo e área do jogador"}
+                </dd>
+                {moderation?.blocked ? (
+                  <>
+                    <dt>Motivo</dt>
+                    <dd>{moderation.reason || "não informado"}</dd>
+                    <dt>Bloqueada em</dt>
+                    <dd>
+                      {moderation.blockedAt
+                        ? new Date(moderation.blockedAt).toLocaleString("pt-BR")
+                        : "—"}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            </div>
           </div>
-          <div className="card__body">
-            <dl className="kv">
-              <dt>Login</dt>
-              <dd className="mono">{account.login}</dd>
-              <dt>Identificador</dt>
-              <dd className="mono">{account.id}</dd>
-              <dt>Papel</dt>
-              <dd>{roleLabel(account.role)}</dd>
-              <dt>Acesso</dt>
-              <dd>
-                {["moderator", "admin"].includes(account.role as Role)
-                  ? "painel administrativo"
-                  : "jogo e área do jogador"}
-              </dd>
-            </dl>
-          </div>
-        </div>
+
+          {session ? (
+            <ModerationPanel
+              login={account.login}
+              role={targetRole}
+              blocked={moderation?.blocked ?? false}
+              canManageRoles={session.role === "admin"}
+              targetIsStaff={targetIsStaff}
+              actorRole={session.role}
+            />
+          ) : null}
+        </>
       )}
 
       {!error && login === "" && (

@@ -9,9 +9,11 @@
 //! o servidor drena — a única ponte permitida (`AGENTS.md` §3.7).
 
 use crate::error::DbError;
-use crate::model::{Account, Character, Role};
+use crate::model::{Account, AccountModeration, Character, Role};
 use crate::pool::pg::{map_error, PgBackend};
 use crate::repo::accounts::CredentialRecord;
+use crate::repo::audit::{AuditRow, AuditTrail, NewAuditEntry};
+use crate::repo::economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 use crate::repo::sessions::ClaimOutcome;
 use crate::repo::{Accounts, Characters, Grant, Grants, Sessions};
 
@@ -64,12 +66,19 @@ impl Accounts for PgBackend {
     }
 
     async fn credentials(&self, login: &str) -> Result<CredentialRecord, DbError> {
-        let row =
-            sqlx::query("SELECT id, login, role, password_hash FROM accounts WHERE login = $1")
-                .bind(login)
-                .fetch_optional(self.pool())
-                .await
-                .map_err(map_error("accounts.credentials", "accounts"))?;
+        // O bloqueio de moderação entra na mesma consulta da credencial: a borda de
+        // autenticação não decide sozinha se a conta pode entrar.
+        let row = sqlx::query(
+            "SELECT a.id, a.login, a.role, a.password_hash, \
+             COALESCE(m.blocked, false) AS blocked \
+             FROM accounts a \
+             LEFT JOIN account_moderation m ON m.account_id = a.id \
+             WHERE a.login = $1",
+        )
+        .bind(login)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("accounts.credentials", "accounts"))?;
         let Some(row) = row else {
             return Err(DbError::NotFoundKey { entity: "account" });
         };
@@ -78,9 +87,13 @@ impl Accounts for PgBackend {
                 .map_err(|_| DbError::Transport {
                     op: "accounts.credentials.decode",
                 })?;
+        let blocked: bool = row.try_get("blocked").map_err(|_| DbError::Transport {
+            op: "accounts.credentials.blocked",
+        })?;
         Ok(CredentialRecord {
             account: account_row(&row)?,
             password_hash,
+            blocked,
         })
     }
 
@@ -206,6 +219,97 @@ impl Accounts for PgBackend {
         .map_err(map_error("accounts.set_credentials", "accounts"))?;
         account_row(&row)
     }
+
+    fn moderation_state<'a>(
+        &'a self,
+        login: &'a str,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            let sql =
+                format!("SELECT {MODERATION_COLUMNS} FROM {MODERATION_FROM} WHERE a.login = $1");
+            let row = sqlx::query(&sql)
+                .bind(login)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("accounts.moderation_state", "accounts"))?;
+            let Some(row) = row else {
+                return Err(DbError::NotFoundKey { entity: "account" });
+            };
+            moderation_row(&row)
+        })
+    }
+
+    fn set_role<'a>(
+        &'a self,
+        login: &'a str,
+        role: Role,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            // Uma instrução: o UPDATE e a leitura do estado novo na mesma foto.
+            let sql = format!(
+                "WITH alvo AS (\
+                   UPDATE accounts SET role = $2 WHERE login = $1 RETURNING id, login, role\
+                 ) \
+                 SELECT {MODERATION_COLUMNS} FROM alvo a \
+                 LEFT JOIN account_moderation m ON m.account_id = a.id"
+            );
+            let row = sqlx::query(&sql)
+                .bind(login)
+                .bind(role.as_db())
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("accounts.set_role", "accounts"))?;
+            let Some(row) = row else {
+                return Err(DbError::NotFoundKey { entity: "account" });
+            };
+            moderation_row(&row)
+        })
+    }
+
+    fn set_blocked<'a>(
+        &'a self,
+        login: &'a str,
+        blocked: bool,
+        reason: &'a str,
+        by: i64,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<AccountModeration, DbError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            // `blocked`/`reason`/`blocked_at` saem do `RETURNING` do upsert, não da
+            // tabela: no PostgreSQL todas as sub-instruções de um `WITH` veem o
+            // mesmo snapshot, então reler `account_moderation` aqui devolveria o
+            // estado **anterior** (bloqueio respondia `blocked:false`).
+            let sql = "WITH alvo AS (SELECT id FROM accounts WHERE login = $1), \
+                 gravado AS (\
+                   INSERT INTO account_moderation (account_id, blocked, reason, blocked_by, blocked_at) \
+                   SELECT id, $2, $3, $4, CASE WHEN $2 THEN now() ELSE NULL END FROM alvo \
+                   ON CONFLICT (account_id) DO UPDATE \
+                   SET blocked = EXCLUDED.blocked, reason = EXCLUDED.reason, \
+                       blocked_by = EXCLUDED.blocked_by, blocked_at = EXCLUDED.blocked_at \
+                   RETURNING account_id, blocked, reason, \
+                     (EXTRACT(EPOCH FROM blocked_at) * 1000)::bigint AS blocked_at_ms\
+                 ) \
+                 SELECT a.id, a.login, a.role, g.blocked, g.reason, g.blocked_at_ms \
+                 FROM accounts a JOIN gravado g ON g.account_id = a.id";
+            let row = sqlx::query(sql)
+                .bind(login)
+                .bind(blocked)
+                .bind(reason)
+                .bind(by)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("accounts.set_blocked", "accounts"))?;
+            let Some(row) = row else {
+                return Err(DbError::NotFoundKey { entity: "account" });
+            };
+            moderation_row(&row)
+        })
+    }
 }
 
 /// Marca de conta criada sem credencial (primeiro login define a senha).
@@ -296,6 +400,21 @@ impl Characters for PgBackend {
             .fetch_all(self.pool())
             .await
             .map_err(map_error("characters.top_by_level", "characters"))?;
+        rows.iter().map(character_row).collect()
+    }
+
+    async fn search_by_name(&self, term: &str, limit: usize) -> Result<Vec<Character>, DbError> {
+        let sql = format!(
+            "SELECT {CHARACTER_COLUMNS} FROM characters \
+             WHERE deleted_at IS NULL AND name ILIKE '%' || $1 || '%' \
+             ORDER BY name ASC LIMIT $2"
+        );
+        let rows = sqlx::query(&sql)
+            .bind(term)
+            .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("characters.search_by_name", "characters"))?;
         rows.iter().map(character_row).collect()
     }
 
@@ -401,6 +520,127 @@ impl Grants for PgBackend {
         }
         Ok(())
     }
+
+    async fn enqueue(&self, key: &str, by: i64, grant: &Grant) -> Result<(i64, bool), DbError> {
+        let (kind, character_id, item_id, qty, gold_amount, level_delta) = match grant {
+            Grant::Item {
+                character_id,
+                item_id,
+                qty,
+            } => (
+                "item",
+                *character_id,
+                Some(*item_id),
+                Some(*qty),
+                None,
+                None,
+            ),
+            Grant::Gold {
+                character_id,
+                amount,
+            } => ("gold", *character_id, None, None, Some(*amount), None),
+            Grant::Level {
+                character_id,
+                delta,
+            } => ("level", *character_id, None, None, None, Some(*delta)),
+        };
+        // A conta vem do personagem (nunca do corpo do pedido): o grant pertence a
+        // quem é dono do destino. Personagem inexistente/apagado é `404` de domínio.
+        let conta =
+            sqlx::query("SELECT account_id FROM characters WHERE id = $1 AND deleted_at IS NULL")
+                .bind(character_id)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("grants.enqueue", "characters"))?;
+        let Some(conta) = conta else {
+            return Err(DbError::NotFoundKey {
+                entity: "character",
+            });
+        };
+        let account_id: i64 = conta
+            .try_get("account_id")
+            .map_err(|_| DbError::Transport {
+                op: "grants.enqueue.decode",
+            })?;
+        let inserido = sqlx::query(
+            "INSERT INTO delivery_queue \
+               (kind, account_id, character_id, item_id, qty, gold_amount, level_delta, \
+                idempotency_key, created_by) \
+             VALUES ($1, $2, $3, $4::int, $5::int, $6, $7::int, $8, $9) \
+             ON CONFLICT (idempotency_key) DO NOTHING \
+             RETURNING id",
+        )
+        .bind(kind)
+        .bind(account_id)
+        .bind(character_id)
+        .bind(item_id)
+        .bind(qty)
+        .bind(gold_amount)
+        .bind(level_delta)
+        .bind(key)
+        .bind(by)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("grants.enqueue", "delivery_queue"))?;
+        if let Some(row) = inserido {
+            let id = row.try_get("id").map_err(|_| DbError::Transport {
+                op: "grants.enqueue.decode",
+            })?;
+            return Ok((id, false));
+        }
+        // Conflito: a chave já existia **antes** deste pedido — replay.
+        let existente = sqlx::query("SELECT id FROM delivery_queue WHERE idempotency_key = $1")
+            .bind(key)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("grants.enqueue", "delivery_queue"))?;
+        let Some(row) = existente else {
+            return Err(DbError::NotFoundKey {
+                entity: "delivery_queue",
+            });
+        };
+        let id = row.try_get("id").map_err(|_| DbError::Transport {
+            op: "grants.enqueue.decode",
+        })?;
+        Ok((id, true))
+    }
+
+    async fn claim_gold(&self, id: i64) -> Result<Option<(i64, i64)>, DbError> {
+        let row = sqlx::query(
+            "WITH alvo AS (\
+               UPDATE delivery_queue \
+               SET status = 'claimed', claimed_at = now() \
+               WHERE id = $1 AND status = 'pending' AND kind = 'gold' \
+               RETURNING character_id, gold_amount\
+             ) \
+             UPDATE characters c \
+             SET gold = c.gold + alvo.gold_amount, updated_at = now() \
+             FROM alvo WHERE c.id = alvo.character_id \
+             RETURNING c.id, c.gold",
+        )
+        .bind(id)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("grants.claim_gold", "delivery_queue"))?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let character_id = row.try_get("id").map_err(|_| DbError::Transport {
+            op: "grants.claim_gold.decode",
+        })?;
+        let gold = row.try_get("gold").map_err(|_| DbError::Transport {
+            op: "grants.claim_gold.decode",
+        })?;
+        Ok(Some((character_id, gold)))
+    }
+
+    async fn list_for_character(
+        &self,
+        character_id: i64,
+        limit: usize,
+    ) -> Result<Vec<crate::repo::QueuedGrantRow>, DbError> {
+        self.queued_for_character(character_id, limit).await
+    }
 }
 
 fn grant_row(row: &PgRow) -> Result<(i64, Grant), DbError> {
@@ -446,6 +686,206 @@ fn grant_row(row: &PgRow) -> Result<(i64, Grant), DbError> {
         _ => return Err(coherent("delivery_queue_kind")),
     };
     Ok((id, grant))
+}
+
+/// Colunas do estado de moderação, na ordem de todo `SELECT` deste módulo.
+const MODERATION_COLUMNS: &str = "a.id, a.login, a.role, COALESCE(m.blocked, false) AS blocked, \
+     COALESCE(m.reason, '') AS reason, \
+     (EXTRACT(EPOCH FROM m.blocked_at) * 1000)::bigint AS blocked_at_ms";
+
+/// `FROM` comum: conta + moderação (linha ausente = conta liberada).
+const MODERATION_FROM: &str = "accounts a LEFT JOIN account_moderation m ON m.account_id = a.id";
+
+fn moderation_row(row: &PgRow) -> Result<AccountModeration, DbError> {
+    let blocked: bool = row.try_get("blocked").map_err(|_| DbError::Transport {
+        op: "moderation.decode",
+    })?;
+    let reason: String = row.try_get("reason").map_err(|_| DbError::Transport {
+        op: "moderation.decode",
+    })?;
+    let blocked_at_ms: Option<i64> =
+        row.try_get("blocked_at_ms")
+            .map_err(|_| DbError::Transport {
+                op: "moderation.decode",
+            })?;
+    Ok(AccountModeration {
+        account: account_row(row)?,
+        blocked,
+        reason,
+        blocked_at_ms: blocked_at_ms.and_then(|ms| u64::try_from(ms).ok()),
+    })
+}
+
+impl AuditTrail for PgBackend {
+    fn record<'a>(
+        &'a self,
+        entry: &'a NewAuditEntry,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbError>> + Send + 'a>> {
+        Box::pin(async move {
+            // `actor` mantém a coluna TEXT da 0005: `id:role`, separável na leitura.
+            let actor = format!("{}:{}", entry.actor_id, entry.actor_role.as_db());
+            sqlx::query(
+                "INSERT INTO audit_log (actor, action, target, detail) VALUES ($1, $2, $3, $4)",
+            )
+            .bind(actor)
+            .bind(&entry.action)
+            .bind(&entry.target)
+            .bind(&entry.detail)
+            .execute(self.pool())
+            .await
+            .map_err(map_error("audit.record", "audit_log"))?;
+            Ok(())
+        })
+    }
+
+    fn recent(
+        &self,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+    > {
+        Box::pin(async move {
+            // `actor` legado (`system`) não tem id: a máscara evita cast inválido.
+            let rows = sqlx::query(
+                "SELECT (EXTRACT(EPOCH FROM at) * 1000)::bigint AS at_ms, \
+                 CASE WHEN actor ~ '^[0-9]+:' THEN split_part(actor, ':', 1)::bigint ELSE 0 END AS actor_id, \
+                 CASE WHEN actor ~ '^[0-9]+:' THEN split_part(actor, ':', 2) ELSE actor END AS actor_role, \
+                 action, target, detail \
+                 FROM audit_log ORDER BY at DESC, id DESC LIMIT $1",
+            )
+            .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("audit.recent", "audit_log"))?;
+            rows.iter()
+                .map(|row| {
+                    let at_ms: i64 = row.try_get("at_ms").map_err(|_| DbError::Transport {
+                        op: "audit.recent.decode",
+                    })?;
+                    Ok(AuditRow {
+                        at_ms: u64::try_from(at_ms).unwrap_or(0),
+                        actor_id: row.try_get("actor_id").map_err(|_| DbError::Transport {
+                            op: "audit.recent.decode",
+                        })?,
+                        actor_role: row.try_get("actor_role").map_err(|_| DbError::Transport {
+                            op: "audit.recent.decode",
+                        })?,
+                        action: row.try_get("action").map_err(|_| DbError::Transport {
+                            op: "audit.recent.decode",
+                        })?,
+                        target: row.try_get("target").map_err(|_| DbError::Transport {
+                            op: "audit.recent.decode",
+                        })?,
+                        detail: row.try_get("detail").map_err(|_| DbError::Transport {
+                            op: "audit.recent.decode",
+                        })?,
+                    })
+                })
+                .collect()
+        })
+    }
+}
+
+impl PgBackend {
+    async fn queued_for_character(
+        &self,
+        character_id: i64,
+        limit: usize,
+    ) -> Result<Vec<crate::repo::QueuedGrantRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, kind, item_id, qty, gold_amount, level_delta, status, \
+                    idempotency_key, created_by, \
+                    (extract(epoch FROM created_at) * 1000)::bigint AS at_ms \
+             FROM delivery_queue WHERE character_id = $1 ORDER BY id DESC LIMIT $2",
+        )
+        .bind(character_id)
+        .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("grants.list_for_character", "delivery_queue"))?;
+        let op = "grants.list_for_character.decode";
+        let decode = |_| DbError::Transport { op };
+        rows.iter()
+            .map(|row| {
+                Ok(crate::repo::QueuedGrantRow {
+                    id: row.try_get("id").map_err(decode)?,
+                    kind: row.try_get("kind").map_err(decode)?,
+                    item_id: row.try_get("item_id").map_err(decode)?,
+                    qty: row.try_get("qty").map_err(decode)?,
+                    gold: row
+                        .try_get::<Option<i64>, _>("gold_amount")
+                        .map_err(decode)?
+                        .unwrap_or(0),
+                    level_delta: row.try_get("level_delta").map_err(decode)?,
+                    status: row.try_get("status").map_err(decode)?,
+                    idempotency_key: row.try_get("idempotency_key").map_err(decode)?,
+                    created_by: row.try_get("created_by").map_err(decode)?,
+                    at_ms: row.try_get("at_ms").map_err(decode)?,
+                })
+            })
+            .collect()
+    }
+}
+
+impl Economy for PgBackend {
+    fn summary(
+        &self,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<EconomySummary, DbError>> + Send + '_>,
+    > {
+        Box::pin(async move {
+            let cidades = sqlx::query(
+                "SELECT city_code, COALESCE(SUM(amount), 0)::bigint AS total \
+                 FROM city_tax_ledger GROUP BY city_code ORDER BY city_code",
+            )
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("economy.tax", "city_tax_ledger"))?;
+            let tax_by_city = cidades
+                .iter()
+                .map(|row| {
+                    Ok(CityTaxTotal {
+                        city_code: row.try_get("city_code").map_err(|_| DbError::Transport {
+                            op: "economy.tax.decode",
+                        })?,
+                        total: row.try_get("total").map_err(|_| DbError::Transport {
+                            op: "economy.tax.decode",
+                        })?,
+                    })
+                })
+                .collect::<Result<Vec<_>, DbError>>()?;
+
+            let grants = sqlx::query(
+                "SELECT kind, count(*)::bigint AS total, \
+                 COALESCE(SUM(gold_amount), 0)::bigint AS gold \
+                 FROM delivery_queue GROUP BY kind ORDER BY kind",
+            )
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("economy.grants", "delivery_queue"))?;
+            let grants = grants
+                .iter()
+                .map(|row| {
+                    Ok(GrantTotal {
+                        kind: row.try_get("kind").map_err(|_| DbError::Transport {
+                            op: "economy.grants.decode",
+                        })?,
+                        count: row.try_get("total").map_err(|_| DbError::Transport {
+                            op: "economy.grants.decode",
+                        })?,
+                        gold: row.try_get("gold").map_err(|_| DbError::Transport {
+                            op: "economy.grants.decode",
+                        })?,
+                    })
+                })
+                .collect::<Result<Vec<_>, DbError>>()?;
+
+            Ok(EconomySummary {
+                tax_by_city,
+                grants,
+            })
+        })
+    }
 }
 
 impl Sessions for PgBackend {

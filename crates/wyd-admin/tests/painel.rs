@@ -10,7 +10,7 @@ use std::io::Cursor;
 use std::sync::Mutex;
 
 use wyd_admin::transport::{http, json, Router, StaticTokens};
-use wyd_admin::{DeliveryQueue, Role, Session, VecSink};
+use wyd_admin::{MemoryGrantQueue, Role, Session, VecSink};
 use wyd_db::{Account, Accounts, Character, Characters, DbError};
 
 struct FakeAccounts {
@@ -66,6 +66,25 @@ impl Accounts for FakeAccounts {
                 entity: "account",
                 id,
             })
+        }
+    }
+
+    fn pin_hash(
+        &self,
+        login: &str,
+    ) -> impl Future<Output = Result<Option<String>, DbError>> + Send {
+        let exists = self
+            .rows
+            .lock()
+            .expect("fake acessível")
+            .values()
+            .any(|a| a.login == login);
+        async move {
+            if exists {
+                Ok(None)
+            } else {
+                Err(DbError::NotFoundKey { entity: "account" })
+            }
         }
     }
 
@@ -137,6 +156,22 @@ impl Characters for FakeCharacters {
         async move { Ok(rows) }
     }
 
+    fn search_by_name(
+        &self,
+        term: &str,
+        limit: usize,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send {
+        let needle = term.to_lowercase();
+        let mut rows: Vec<Character> = self
+            .rows
+            .iter()
+            .filter(|c| c.name.to_lowercase().contains(&needle))
+            .cloned()
+            .collect();
+        rows.truncate(limit);
+        async move { Ok(rows) }
+    }
+
     fn create_character(
         &self,
         character: &Character,
@@ -169,7 +204,7 @@ fn router() -> Router<FakeAccounts, FakeCharacters, VecSink> {
         VecSink::default(),
         tokens(),
     )
-    .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
+    .with_grant_queue(std::sync::Arc::new(MemoryGrantQueue::default()))
 }
 
 fn dispatch(
@@ -211,7 +246,7 @@ fn sem_token_e_401_sem_auditoria() {
 #[test]
 fn jogador_le_a_propria_conta_no_painel() {
     let router = router();
-    let (status, _, body) = dispatch(
+    let (status, raw, body) = dispatch(
         &router,
         "/admin/v1/panel/self",
         Some("player"),
@@ -219,6 +254,10 @@ fn jogador_le_a_propria_conta_no_painel() {
     );
     assert_eq!(status, 200);
     assert_eq!(result_of(&body), 1);
+    assert!(
+        raw.contains("\"pin_defined\":false"),
+        "conta sem PIN precisa distinguir 'não definida': {raw}"
+    );
     assert_eq!(
         body.get("account")
             .and_then(|a| a.get("login"))

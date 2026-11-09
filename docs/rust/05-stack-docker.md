@@ -103,9 +103,32 @@ make db-migrate      # node tools/dev/db-migrate.mjs
 efêmero): aqui o alvo é o banco que o gateway consome. Sem ele, o gateway não acha `content_version`
 no boot e falha com erro tipado — de propósito, porque health sem catálogo mentiria.
 
-**Seed de staff (2026-11-08):** roda no **boot do gateway** quando `WYD_SEED_STAFF=1`
-(`PORTAL_ADMIN_USER`/`PORTAL_ADMIN_PASSWORD` do `.env`); `--seed-staff` continua no binário para
-uso manual/CI. Não existe mais serviço one-shot `staff-seed` no compose: um job que termina deixa
+**Seed de staff (2026-11-08, revisto em 2026-11-09):** roda no **boot do gateway** sempre que
+`PORTAL_ADMIN_PASSWORD` está definida (`PORTAL_ADMIN_USER`/`PORTAL_ADMIN_PASSWORD` do `.env`).
+Se a conta já existe com papel `admin` e a senha confere com o hash, não regrava; se mudou,
+gera argon2id, faz upsert e relê para confirmar. `WYD_SEED_STAFF=1` só torna a **ausência** de
+senha um erro fatal. `--seed-staff` continua no binário para uso manual/CI.
+No dev, o gateway monta o `.env` do host em `/run/wyd/env` (`WYD_ENV_FILE`, read-only) e o seed lê
+esse arquivo **a cada boot**: editar `PORTAL_ADMIN_*` e rodar `docker compose restart gateway` já
+reaplica a senha, sem esperar recriação do container. Em produção, o mesmo mount é opt-in pelo
+overlay `docker-compose.prod-env.yml`:
+
+```bash
+TAG=1.0.0 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  -f docker-compose.prod-env.yml up -d
+```
+
+Sem o overlay (segredos injetados pelo gerenciador de segredos), o fallback é o ambiente do
+processo; nesse caso mudanças no `.env` exigem `docker compose up -d`.
+
+**Smoke do overlay (sem derrubar o dev):** com a stack de dev no ar, `make prod-env-smoke` valida o
+compose de produção com o overlay e roda um container one-off (`docker compose run --rm --no-deps
+gateway --seed-staff`). Ele usa o `.env` montado e o banco da stack, e só sai com `0` se o seed
+confirmar o hash (`verified=true`). Não sobe portal/canais, não publica porta e não para o stack.
+
+O job de CI `seed-boot`
+sobe um Postgres efêmero, aplica só `0001_contas` e roda `cargo test -p wyd-admin --test seed`
+em toda pull request. Não existe mais serviço one-shot `staff-seed` no compose: um job que termina deixa
 um container parado em `docker compose ps` (estado normal de job, mas vira ruído e some do `up`
 se alguém filtrar por "Up"). Seed no boot do processo que já tem `DATABASE_URL` e argon2id é
 idempotente, não precisa de imagem extra e não roda no `initdb` do Postgres — o `entrypoint`

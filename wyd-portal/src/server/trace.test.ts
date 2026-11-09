@@ -40,7 +40,15 @@ describe("trace", () => {
     const res = await promisify(fn)({ value: 7 }, id);
 
     expect(res).toEqual({ result: 7 });
-    expect(fn).toHaveBeenCalledWith({ value: 7 }, id);
+    expect(fn).toHaveBeenCalledWith({ value: 7 }, id, undefined);
+  });
+
+  it("promisify encaminha o ator do BFF como terceiro argumento", async () => {
+    const fn = vi.fn(async () => ({ result: 1 }));
+
+    await promisify(fn)({ value: 1 }, undefined, "7:moderator");
+
+    expect(fn).toHaveBeenCalledWith({ value: 1 }, undefined, "7:moderator");
   });
 
   it("promisify gera chamada sem trace quando não recebe nenhum", async () => {
@@ -48,6 +56,6 @@ describe("trace", () => {
 
     await promisify(fn)({});
 
-    expect(fn).toHaveBeenCalledWith({}, undefined);
+    expect(fn).toHaveBeenCalledWith({}, undefined, undefined);
   });
 });

@@ -185,7 +185,7 @@
   padding: var(--space-2) var(--space-3);
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   color: var(--text);
   font: inherit;
 }
@@ -197,12 +197,12 @@
 }
 
 .guias__search button,
-.guias__cta {
+a.guias__cta {
   padding: var(--space-2) var(--space-4);
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  color: var(--on-accent, #fff);
+  border-radius: var(--radius-sm);
+  color: var(--accent-ink);
   font: inherit;
   cursor: pointer;
   text-decoration: none;

@@ -281,11 +281,13 @@ crates/wyd-db/
 │   │   └── audit.rs
 │   ├── repo/             # traits (portas) + implementação pg
 │   │   ├── mod.rs
-│   │   ├── accounts.rs   # porta: create_account/find_by_login/find_by_id
+│   │   ├── accounts.rs   # porta: create_account/find_by_login/find_by_id + moderação (ADR-0023)
 │   │   ├── characters.rs # porta: list/create_character/top_by_level/soft_delete
 │   │   ├── grants.rs     # leitura de delivery_queue (Cold Path)
 │   │   ├── content.rs    # carga única no boot + validação (ADR-0009)
-│   │   └── pg.rs         # executado (04-3): impl das três portas sobre sqlx
+│   │   ├── audit.rs      # trilha append-only: record/recent (ADR-0023)
+│   │   ├── economy.rs    # imposto + concessões com fonte real (ADR-0023)
+│   │   └── pg.rs         # executado (04-3): impl das portas sobre sqlx
 │   ├── pool/
 │   │   ├── mod.rs
 │   │   ├── config.rs     # pool dimensionado, timeouts, transações curtas
@@ -312,6 +314,8 @@ crates/wyd-admin/
 │   ├── api/              # endpoints por domínio (nunca estado vivo)
 │   │   ├── mod.rs
 │   │   ├── accounts.rs
+│   │   ├── moderation.rs # papel/bloqueio + trilha (ADR-0023)
+│   │   ├── economy.rs    # estatísticas com fonte auditada (ADR-0023)
 │   │   └── grants.rs     # intenções → delivery_queue (idempotente)
 │   ├── transport/        # Cold Path: HTTP/1.1 + JSON em loopback (ADR-0008)
 │   │   ├── mod.rs        # roteador servico/metodo → api/*, envelope + trace_id

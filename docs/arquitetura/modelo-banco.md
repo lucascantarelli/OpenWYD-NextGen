@@ -43,6 +43,7 @@ audit_log (append-only, sem FK para nunca bloquear escrita)
 | `guilds` | `id` | `master_character_id → characters` DEFERRABLE | `name` não-vazio | `UNIQUE(name)` |
 | `guild_members` | `(guild_id, character_id)` | ambas CASCADE | `rank 0–9` | `UNIQUE(character_id)` (um clã por char) |
 | `audit_log` | `id` | — (nunca bloqueia) | `action` não-vazia | `idx(at)` |
+| `account_moderation` | `account_id` | `account_id`/`blocked_by → accounts` | `blocked` exige `reason` e `blocked_at` coerentes | parcial `WHERE blocked` |
 | `delivery_queue` | `id` | `account_id/character_id` SET NULL (grant sobrevive a delete? não: RESTRICT — ver §4) | coerência por `kind` (item/gold/level) | parcial `WHERE status='pending'` |
 | `character_affects` | `(character_id, type)` | `character_id → characters` CASCADE | `level ≥ 0`, `time ≥ 0` | `idx(character_id)` (= PK) |
 | `kingdom_cape_price` | `id` | — | `id = 1`, `version ≥ 1`, `hekalotia_cost`/`akelonia_cost` 4–32 | — (linha única) |
@@ -191,7 +192,7 @@ nenhum `ALTER TABLE` no `up`. Verificação em três camadas:
 `node tools/content/check-migrations.mjs` (ordem/FK/down/INSERT, sem banco),
 `cargo test -p wyd-db` (`tests/catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
 e `node tools/content/verify-schema.mjs` (banco vazio → `up` → `information_schema` ↔ catálogo).
-Números atuais: **24 arquivos, 59 tabelas, 457 colunas, 140 `INSERT`s**, sem problema.
+Números atuais: **31 arquivos, 69 tabelas, 517 colunas, 147 `INSERT`s**, sem problema.
 
 | Migração | Domínio | Objetos |
 |---|---|---|
@@ -211,6 +212,7 @@ Números atuais: **24 arquivos, 59 tabelas, 457 colunas, 140 `INSERT`s**, sem pr
 | `0014_eventos.sql` | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | `0015_arena.sql` | arena | `arena`, `arena_match`, `arena_round`, `arena_score` |
 | `0016_progressao.sql` | progressão | `character_status` (atributos, pontos, fama), `character_lineage` (maestria), `character_skills` (aprendidas) |
+| `0031_moderacao.sql` | moderação | `account_moderation` (bloqueio com motivo/autor; ADR-0023) |
 | `0017_seed_taxonomia.sql` | seed | 20 sistemas, 6 classes, 13 linhagens, 16 categorias de item |
 | `0018_seed_item_catalog.sql` (gerado) | seed | 3.220 itens + 55 símbolos `EF_*` |
 | `0019_seed_skill_catalog.sql` (gerado) | seed | 151 skills |

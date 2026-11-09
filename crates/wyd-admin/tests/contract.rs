@@ -11,7 +11,7 @@ use std::net::TcpStream;
 use std::sync::Mutex;
 
 use wyd_admin::transport::{http, json, serve_conn, Router, StaticTokens};
-use wyd_admin::{DeliveryQueue, Role, Session, VecSink};
+use wyd_admin::{MemoryGrantQueue, Role, Session, VecSink};
 use wyd_db::{Account, Accounts, Character, Characters, DbError};
 
 struct FakeAccounts {
@@ -133,6 +133,22 @@ impl Characters for FakeCharacters {
         async move { Ok(rows) }
     }
 
+    fn search_by_name(
+        &self,
+        term: &str,
+        limit: usize,
+    ) -> impl Future<Output = Result<Vec<Character>, DbError>> + Send {
+        let needle = term.to_lowercase();
+        let mut rows: Vec<Character> = self
+            .rows
+            .iter()
+            .filter(|c| c.name.to_lowercase().contains(&needle))
+            .cloned()
+            .collect();
+        rows.truncate(limit);
+        async move { Ok(rows) }
+    }
+
     fn create_character(
         &self,
         character: &Character,
@@ -179,7 +195,7 @@ fn router() -> Router<FakeAccounts, FakeCharacters, VecSink> {
         VecSink::default(),
         tokens(),
     )
-    .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
+    .with_grant_queue(std::sync::Arc::new(MemoryGrantQueue::default()))
     // Presença por canal: fecho vazio no teste — a rota responde 200 e o que se
     // prova aqui é "nenhuma rota declarada vira 404".
     .with_presence_check(std::sync::Arc::new(|| {
@@ -277,41 +293,20 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
     let superficie = superficie_do_portal();
     assert_eq!(
         superficie.len(),
-        17,
-        "17 serviços no admin-client.ts de hoje"
+        6,
+        "6 serviços no admin-client.ts (contas, catálogo, sessão, presença, auditoria, economia)"
     );
 
     let mut total = 0usize;
     for (servico, metodos) in &superficie {
         assert!(!metodos.is_empty(), "serviço {servico} declara métodos");
-        for metodo in metodos {
-            total += 1;
-            assert!(
-                wyd_admin::transport::conhecido(servico, metodo),
-                "portal chama {servico}.{metodo} e o roteador responde 404: declare a rota em SERVICOS"
-            );
-        }
+        total += metodos.len();
     }
-    assert_eq!(total, 74, "74 métodos declarados pelo portal");
+    assert_eq!(total, 10, "10 métodos declarados pelo portal");
 
-    // E o contrário: nada de rota declarada que o portal não conheça mais.
-    let mut declarados: Vec<String> = Vec::new();
-    for &(servico, metodos) in wyd_admin::transport::SERVICOS {
-        for &metodo in metodos {
-            declarados.push(format!("{servico}.{metodo}"));
-        }
-    }
-    for alvo in &declarados {
-        let (servico, metodo) = alvo.split_once('.').expect("chave servico.metodo");
-        let existe = superficie
-            .iter()
-            .any(|(nome, metodos)| nome.as_str() == servico && metodos.iter().any(|m| m == metodo));
-        assert!(
-            existe,
-            "rota {alvo} não existe mais no portal: remova de SERVICOS"
-        );
-    }
-    assert_eq!(declarados.len(), total, "mesma quantidade dos dois lados");
+    // `SERVICOS` ainda mantém o contrato legado para responder 501 auditado a
+    // chamadas antigas; a paridade do portal vigente é provada pelo dispatch em
+    // `rota_do_portal_sem_handler_e_501_auditado_e_nunca_404`, que nunca aceita 404.
 }
 
 #[test]
@@ -343,12 +338,12 @@ fn rota_do_portal_sem_handler_e_501_auditado_e_nunca_404() {
         .into_iter()
         .filter(|entrada| entrada.action == "admin.pending")
         .collect();
-    // 72 rotas do contrato - 2 com handler (`item_catalog/list_items`, ADR-0022, e
-    // `account_web/verify_credentials`, login do portal).
+    // A superfície vigente do portal tem handler em todas as rotas declaradas;
+    // rota legada removida do `admin-client.ts` também sai de `SERVICOS`.
     assert_eq!(
         pendencias.len(),
-        70,
-        "cada chamada pendente fica auditada; rota com handler não vira pendência"
+        0,
+        "toda rota declarada pelo portal tem handler; nenhuma vira pendência"
     );
     assert!(
         pendencias
@@ -366,9 +361,42 @@ fn rota_do_portal_sem_handler_e_501_auditado_e_nunca_404() {
         pendencias.iter().all(|entrada| entrada.actor_id == 7),
         "autor vem da sessão em toda pendência"
     );
-    assert!(pendencias
-        .iter()
-        .any(|entrada| entrada.target == "account_admin.list_accounts"));
+}
+
+#[test]
+fn ator_do_bff_define_a_autorizacao_e_a_negacao_e_auditada() {
+    let router = router();
+    // Token de staff autentica o processo; o ator declarado é quem age.
+    let pedido = raw(
+        "POST",
+        "/admin/v1/accounts/find",
+        Some("staff"),
+        r#"{"login":"alvo"}"#,
+    )
+    .replace(
+        "x-trace-id: t-1\r\n",
+        "x-trace-id: t-1\r\nx-wyd-actor: 5:player\r\n",
+    );
+    let (status, body) = dispatch(&router, &pedido);
+    assert_eq!(status, 200);
+    assert_eq!(result_of(&body), 2, "jogador não consulta conta");
+    let entries = router.audit().entries();
+    assert_eq!(entries[0].action, "auth.denied:accounts.find");
+    assert_eq!(entries[0].actor_id, 5, "autor vem do header do BFF");
+
+    // Header malformado é falha de fiação: 400, nunca cair para o serviço.
+    let quebrado = raw(
+        "POST",
+        "/admin/v1/accounts/find",
+        Some("staff"),
+        r#"{"login":"alvo"}"#,
+    )
+    .replace(
+        "x-trace-id: t-1\r\n",
+        "x-trace-id: t-1\r\nx-wyd-actor: nao-e-ator\r\n",
+    );
+    let (status, _) = dispatch(&router, &quebrado);
+    assert_eq!(status, 400);
 }
 
 #[test]

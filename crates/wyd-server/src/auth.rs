@@ -23,6 +23,8 @@ pub enum AuthError {
     UnknownAccount,
     /// Senha de login não confere.
     BadPassword,
+    /// Conta bloqueada pela moderação (motivo vive no painel, não vai ao cliente).
+    Blocked,
     /// PIN fora da política (não numérico ou fora de 4..=6 dígitos).
     PinFormat,
     /// PIN não confere.
@@ -41,6 +43,7 @@ impl core::fmt::Display for AuthError {
         match self {
             Self::UnknownAccount => write!(f, "conta inexistente"),
             Self::BadPassword => write!(f, "senha de login não confere"),
+            Self::Blocked => write!(f, "conta bloqueada pela moderação"),
             Self::PinFormat => write!(f, "PIN fora da política de dígitos"),
             Self::BadPin => write!(f, "senha numérica não confere"),
             Self::Locked { segundos } => {
@@ -102,6 +105,10 @@ impl Authenticator {
                 DbError::NotFound { .. } | DbError::NotFoundKey { .. } => AuthError::UnknownAccount,
                 outro => AuthError::Db(outro.to_string()),
             })?;
+        // Bloqueio de moderação vale no jogo: recusa antes de comparar a senha.
+        if registro.blocked {
+            return Err(AuthError::Blocked);
+        }
         if verify_password(&senha, &registro.password_hash) {
             Ok(())
         } else {

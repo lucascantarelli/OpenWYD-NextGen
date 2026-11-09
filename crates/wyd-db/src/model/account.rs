@@ -1,4 +1,8 @@
-//! Conta de acesso — espelho da tabela `accounts` (migration 0001).
+//! Conta de acesso — espelho da tabela `accounts` (migration 0001) + moderação.
+//!
+//! O bloqueio vive em `account_moderation` (migration 0031): identidade e estado
+//! disciplinar são coisas diferentes, e o motivo do bloqueio só existe quando há
+//! bloqueio.
 
 use crate::error::DbError;
 
@@ -27,6 +31,17 @@ pub struct Account {
     pub id: i64,
     pub login: String,
     pub role: Role,
+}
+
+/// Conta + estado de moderação (leitura do painel de staff).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountModeration {
+    pub account: Account,
+    pub blocked: bool,
+    /// Motivo declarado pelo staff; vazio quando não há bloqueio.
+    pub reason: String,
+    /// Instante do bloqueio em ms UTC; `None` quando a conta está liberada.
+    pub blocked_at_ms: Option<u64>,
 }
 
 impl Account {
