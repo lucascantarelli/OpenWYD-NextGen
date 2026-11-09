@@ -67,7 +67,17 @@ Qualquer contribuição que copie lógica dele exige reavaliação desta ADR ant
 ```
 wyd-launcher check <dir-do-jogo> <manifesto>   # exit 0 = íntegro; relatório por arquivo senão
 wyd-launcher launch <dir-do-jogo> <manifesto>  # check → patch → verify → spawn
+wyd-launcher serverlist <registro> <dir>       # serverlist.bin + .txt + sn.bin (atômico, com .bak)
+wyd-launcher branding <dir>                    # Launcher.bmp + Launcher.hat da identidade única
+wyd-launcher gui <dir>                         # LauncherGUI.html (contrato visual da GUI Tauri)
 ```
+
+`serverlist` e `branding` escrevem só **dados por ambiente** e **skin** — nunca o
+`WYD.exe` —, sempre com backup `.bak` e `tmp` + rename no mesmo diretório. Os nomes de
+servidor do `sn.bin` e as cores da skin saem de `docs/arquitetura/identidade.tokens`, a mesma
+fonte que o portal referencia em `globals.css`; o launcher não tem paleta nem nome próprios e
+`crates/wyd-launcher/tests/identidade.rs` + `wyd-portal/src/identidade.test.ts` quebram se um
+lado divergir.
 
 Erros tipados, sem `panic` em input (manifestos corrompidos são o caso normal, não exceção).
 SHA-256 em `std` puro + vetores NIST (decisão offline, sem dependência externa).
@@ -78,3 +88,65 @@ SHA-256 em `std` puro + vetores NIST (decisão offline, sem dependência externa
 - [x] patch atômico com rollback comprovado por teste (falha no meio restaura tudo; fonte corrompida não toca em nada)
 - [x] `launch` só inicia com `verify` verde; executável ausente = erro tipado, sem spawn (dry-run + erro verificados; spawn real pendente de ambiente com jogo)
 - [x] nenhum binário do cliente versionado; licença respeitada
+
+## 8. Identidade única e superfície de entrada (2026-11-09)
+
+A paleta/espaçamento/tipografia e os nomes de canal vivem **só** em
+`docs/arquitetura/identidade.tokens` (`chave = valor`, parser estrito). O portal aponta para os
+mesmos valores em `globals.css`, o launcher embute o arquivo (`include_str!`) e o gerador Node lê
+`servidor.N`; não existe paleta paralela em Rust nem `NextGen` fixo no gerador. Três testes
+seguram isso: `tests/identidade.rs` (tokens × CSS, `sn.bin`/`Launcher.bmp` instalados × gerados),
+`identidade.rs` no portal (vitest) e `tests/serverlist_paridade.rs` (bytes Rust × Node).
+
+O que é customizável hoje, por arquivo:
+
+| Arquivo | Origem | Decodificável |
+|---|---|---|
+| `Launcher.hat` | gerado (`branding::hat`) | sim — HTML puro |
+| `Launcher.bmp` | gerado (`branding::bmp`) | sim — BMP 24 bpp 598×369 |
+| `sn.bin` | gerado (`snbin::build`) | sim — leiaute medido em `formatos.md` §3 |
+| `serverlist.bin` | gerado (`serverlist::generate`) | sim — `formatos.md` §4 |
+| `NUI/*.wyt`, `UI/*.wyt` | externos (cliente 7662) | **não** — magic `WT10`, sem decoder |
+
+Sem IP privado, sem segredo e sem binário do cliente no git: a skin e os `.bin` são artefatos de
+ambiente, regerados por comando.
+
+## 9. Densidade de pixel: por que a arte parece "ampliada" (medição de 2026-11-09)
+
+A queixa de "imagem grande com zoom" tem causa medida, e **não** é o formato `.wyt`.
+
+O `.wyt` é raster cru, BGRA/BGR sem compressão, com largura e altura em `u16` no cabeçalho
+(`docs/cliente/formatos.md` §1). Nada no arquivo amarra o tamanho de exibição: quem decide o
+retângulo é o `.exe`.
+
+Medição desta passada, com o `ServerList.wyt` re-tematizado instalado (`client/NUI/ServerList.wyt`):
+
+| Medida | Valor |
+|---|---|
+| Asset | 287×280 px, 32 bpp, **duas colunas de 140 px** (runs `140@3` e `140@144`) |
+| Desenhado na tela | colunas de **183 px** e **180 px** (runs `183@332` e `180@516`, captura 1030×788) |
+| Fator | **≈1,29× de ampliação horizontal** (140 → 181) |
+
+Ou seja: cada pixel autorado cobre ~1,7 pixel de tela. O cliente **amplia** a textura para um
+retângulo fixo do binário — é exatamente o "pegamos uma imagem e demos zoom".
+
+### O que isso permite
+
+1. **Podemos autorar com mais densidade.** O retângulo de desenho não vem do cabeçalho do `.wyt`
+   (ele desenha 287 px de asset em ~364 px de tela), então uma textura 2× (574×560, cada coluna com
+   280 px) continua sendo desenhada no mesmo lugar e o cliente a **reduz** — redução preserva
+   detalhe, ampliação inventa pixel. É o caminho para arte moderna sem tocar no layout.
+2. **Limites reais** (não bloqueiam): D3D9 aceita texturas até 8192 px e NPOT; o custo é memória —
+   BGRA sem compressão, então 287×280 = 314 KB, 2× = 1,25 MB, 4× = 5 MB. Contra um teto de VRAM de
+   qualquer GPU atual, isso é irrelevante.
+3. **O que continua limitado**: o canvas do jogo é fixo em 1024×768 e o texto/HUD é desenhado pelo
+   `.exe` com fonte própria — aumentar a textura não aumenta a fonte nem o HUD. Densidade maior
+   melhora molduras, fundos, ícones e ilustrações; não corrige a tipografia.
+4. **O que não fazer**: pegar o asset de 287 px e "ampliar" no gerador. Isso só interpola (é o que o
+   `retheme` faz hoje, de propósito, ao trocar a paleta) e nunca ganha detalhe.
+
+**Teste pendente (1 captura):** instalar um `ServerList.wyt` 2× e conferir que o painel continua no
+mesmo retângulo. Hoje não foi possível: o `WYD.exe` em execução (PID 8552) é protegido — `taskkill`,
+`Stop-Process` e `WM_CLOSE` são negados — e o cliente só recarrega textura ao iniciar. Quando ele
+sair, o roteiro é: gerar 2×, capturar, medir as colunas (esperado: 181 px, mesma posição) e comparar
+a nitidez com `tmp/cliente/depois.png`.

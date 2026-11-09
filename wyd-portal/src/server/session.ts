@@ -1,9 +1,9 @@
 /**
  * Sessão do portal em cookie httpOnly assinado (HS256, 8h).
  *
- * O `role` guardado aqui é **dica de UI**: quem autoriza de verdade é o web-api,
- * que relê `account.role` em toda RPC admin (web.proto:VerifyCredentialsResponse).
- * Nunca coloque senha, hash ou token de jogo no cookie.
+ * O `role` guardado aqui é **dica de UI**: quem autoriza de verdade é o gateway,
+ * que relê o papel da conta em toda chamada administrativa. Nunca coloque senha,
+ * hash ou token de jogo no cookie.
  */
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
@@ -67,8 +67,8 @@ export async function getSession(): Promise<Session | null> {
  * Sessão de staff ou erro tipado (401 sem sessão, 403 para `player`).
  *
  * Usado **só** no server, via `adminCall`: o papel guardado no cookie é dica de
- * UI; o web-api revalida `account.role` em toda RPC e pode responder
- * `FORBIDDEN` mesmo com cookie válido.
+ * UI; o gateway revalida o papel em toda chamada e pode responder `FORBIDDEN`
+ * mesmo com cookie válido.
  */
 export async function requireStaff(): Promise<Session> {
   const session = await getSession();

@@ -1,8 +1,8 @@
 /**
  * Erros do BFF: **um** tipo com status HTTP + mensagem pronta para o usuário.
  *
- * Regra da casa (issue 21): nenhuma action/page monta `{ error }` na mão. Ela
- * lança `AdminError` (ou deixa a falha de transporte subir) e a rota chama
+ * Regra da casa: nenhuma action/page monta `{ error }` na mão. Ela lança
+ * `AdminError` (ou deixa a falha de transporte subir) e a rota chama
  * `toResponse`. Assim o browser nunca recebe stack, DSN, caminho de arquivo ou
  * nome de tabela.
  */

@@ -1,4 +1,5 @@
-import { fmtCoin } from "@/lib/format";
+import { PackageSearch } from "lucide-react";
+
 import { getCatalog, type Catalog } from "@/server/catalog";
 
 import { ItemBrowser } from "./item-browser";
@@ -8,11 +9,10 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Catálogo de itens · WYD2" };
 
 /**
- * Catálogo somente leitura dos 3.220 itens do `ItemList.csv`.
+ * Catálogo somente leitura dos itens carregados do banco pelo gateway.
  *
- * Dois estados de exceção são distintos de propósito: web-api fora (não há
- * como ler) e catálogo **vazio** (serviço no ar sem `-content`). O segundo é
- * erro de configuração do servidor e diz exatamente o que subir.
+ * Dois estados de exceção são distintos de propósito: gateway fora (não há como
+ * ler) e catálogo vazio (gateway no ar sem conteúdo carregado).
  */
 export default async function ItemsPage() {
   let catalog: Catalog | null = null;
@@ -24,48 +24,46 @@ export default async function ItemsPage() {
 
   return (
     <>
-      <h1 className="ui-page-title">Catálogo de itens</h1>
-      <p className="ui-page-sub">
-        Leitura de <code>tmserver/content/Common/ItemList.csv</code> via{" "}
-        <code>ItemCatalogService.ListItems</code>. Somente leitura: preços são a issue 24 e a edição
-        do catálogo é a 33.
-      </p>
+      <div className="page-head">
+        <div>
+          <p className="page-head__eyebrow">Conteúdo</p>
+          <h1 className="page-head__title">Catálogo de itens</h1>
+          <p className="page-head__sub">
+            Índice, nome de catálogo e nome de exibição, direto do conteúdo carregado no servidor.
+            Leitura pura: nada aqui altera item, preço ou inventário.
+          </p>
+        </div>
+      </div>
 
       {catalog === null && (
-        <div className="ui-card ui-empty">
-          <strong>Catálogo indisponível</strong>
-          <p>
-            O portal não conseguiu falar com o web-api (<code>:7600</code>). Confira se o serviço
-            está no ar: <code>docker compose ps webserver</code> e{" "}
-            <code>docker compose logs --tail 20 webserver</code>.
-          </p>
+        <div className="card">
+          <div className="card__body">
+            <div className="empty">
+              <PackageSearch size={22} strokeWidth={1.6} aria-hidden="true" />
+              <strong>Catálogo indisponível</strong>
+              <p>O gateway não respondeu à leitura do catálogo. Tente outra vez em instantes.</p>
+            </div>
+          </div>
         </div>
       )}
 
       {catalog !== null && catalog.items.length === 0 && (
-        <div className="ui-card ui-empty">
-          <strong>O web-api está no ar, mas sem catálogo</strong>
-          <p>
-            O serviço sobe sem itens quando não recebe a árvore de conteúdo. Suba com{" "}
-            <code>-content /content</code> (o <code>docker-compose.yaml</code> já faz isso) e
-            reinicie o <code>webserver</code>. Enquanto o <code>ItemList.csv</code> não for lido, a
-            lista fica vazia — não é erro do portal.
-          </p>
+        <div className="card">
+          <div className="card__body">
+            <div className="empty">
+              <PackageSearch size={22} strokeWidth={1.6} aria-hidden="true" />
+              <strong>O gateway está no ar, mas sem catálogo</strong>
+              <p>
+                O conteúdo é cargado do Postgres no boot do servidor. Sem `item_catalog`
+                preenchido, a lista fica vazia.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
       {catalog !== null && catalog.items.length > 0 && (
-        <>
-          <p className="ui-field__hint" style={{ marginBottom: 10 }}>
-            {fmtCoin(catalog.items.length)} itens · pack de ícones{" "}
-            {catalog.iconPackVersion ? catalog.iconPackVersion.slice(0, 8) : "ausente (fallback)"}
-          </p>
-          <ItemBrowser
-            items={catalog.items}
-            iconPackVersion={catalog.iconPackVersion}
-            catalogVersion={catalog.catalogVersion}
-          />
-        </>
+        <ItemBrowser items={catalog.items} catalogVersion={catalog.catalogVersion} />
       )}
     </>
   );

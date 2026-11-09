@@ -3,9 +3,12 @@
 //! Nesta entrega o processo serve o que o cliente precisa **antes** do mundo:
 //!
 //! - `cpsock`: listener `:8281` que aceita `INITCODE`, desofusca o frame, aplica o gate de
-//!   versão (ADR-0020) e responde `_MSG_CNFAccountLogin`;
-//! - `status`: `GET /serv00.htm` no `:80` com o CSV de canais lido do Postgres — é o que
-//!   popula o seletor de canais do cliente;
+//!   versão (ADR-0020), abre a **sessão única** da conta (`session`, índice parcial no
+//!   `character_session`), responde `_MSG_CNFAccountLogin` e atende a **seleção de
+//!   personagem** (`_MSG_CreateCharacter`/`_MSG_DeleteCharacter`/`_MSG_CharacterLogin`) sem
+//!   derrubar a conexão; `characters` é a porta que traduz esses pacotes no Postgres;
+//! - `status`: `GET /serv00.htm` no `:80` com os números dos canais lidos do Postgres e a
+//!   sonda UDP do `:8281` — é o que popula e valida o seletor de canais do cliente;
 //! - `metrics`: `GET /metrics` no `:9898` (contrato da FASE-06-1) com o fragmento de rede
 //!   (`wyd_packets_*`, `wyd_handshakes_total`, `wyd_sessions_open`, versão de cliente) e os
 //!   gauges do serviço.
@@ -13,11 +16,18 @@
 //! O que ainda **não** existe aqui: tick do `wyd-core`, autenticação de conta e pacotes de
 //! cena (`ESCENE_FIELD`). Cada um entra pela issue dona; nenhum deles é simulado.
 
+pub mod auth;
 pub mod channels;
+pub mod characters;
 pub mod cpsock;
+pub mod logs;
 pub mod metrics;
+pub mod personagens;
+pub mod session;
 pub mod status;
 
-pub use channels::{render_status_csv, status_url, World};
+pub use channels::{render_status_body, status_url, World};
+pub use characters::{SelectionError, SelectionStore};
 pub use cpsock::{serve_listener, HandshakeError, HandshakeOk};
 pub use metrics::ServiceMetrics;
+pub use session::{SessionError, SessionGate, SessionLease};

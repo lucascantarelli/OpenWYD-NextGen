@@ -53,7 +53,7 @@ Endereço local: `http://127.0.0.1:3000` (login em `/login`). Telas (rotas reais
 | Eventos / Diária | `/eventos`, `/diaria` | agenda e recompensa diária |
 | Loja / Faturamento | `/loja`, `/faturamento` | itens de loja e receita |
 | Config | `/config` | parâmetros de jogo (com auditoria) |
-| Logs | `/logs` | quem fez o quê, quando |
+| Monitoramento | `/monitoramento` | saúde da stack, alertas, presença por canal e volume de log; linha a linha fica no Grafana (`wyd-logs`) |
 
 **O que o portal não faz:** não altera personagem em tempo real. Presente, item ou gold
 entram por uma fila auditada que o servidor aplica no próximo login — se o jogador estiver

@@ -27,8 +27,8 @@ pub fn is_admin_path(path: &str) -> bool {
 
 pub use api::{
     create_account, find_account, own_account, own_characters, request_grant, request_recovery,
-    top_rankings, AccountSummary, GrantKind, GrantReceipt, GrantRequest, PanelAccount,
-    PanelCharacter, RankingEntry,
+    top_rankings, AccountSummary, ChannelPresence, GrantKind, GrantReceipt, GrantRequest,
+    PanelAccount, PanelCharacter, PresenceSnapshot, RankingEntry,
 };
 pub use audit::{log_action, log_denied, AuditEntry, AuditSink, VecSink};
 pub use auth::{
@@ -37,7 +37,9 @@ pub use auth::{
 };
 pub use error::AdminError;
 pub use service::GrantService;
-pub use transport::{Authenticator, LoginCheck, LoginOk, Reply, Router, StaticTokens, ADMIN_PORT};
+pub use transport::{
+    Authenticator, LoginCheck, LoginOk, PresenceCheck, Reply, Router, StaticTokens, ADMIN_PORT,
+};
 pub use wyd_db::{DeliveryQueue, Grant, QueuedGrant, Role};
 
 /// Executor mínimo para testes: futuros prontos, sem runtime.

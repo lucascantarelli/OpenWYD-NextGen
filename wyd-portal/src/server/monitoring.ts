@@ -1,18 +1,30 @@
 /**
- * Leitura de métricas para a aba de monitoramento (Prometheus no mesmo compose).
+ * Foto do monitoramento para a área de admin.
  *
- * Duas regras da casa:
+ * Uma página, três fontes, cada uma independente:
  *
- * 1. **server-only**: o browser nunca fala com o Prometheus (que só existe na
- *    rede `wyd`); a página renderiza no servidor e recebe números já prontos.
- * 2. **degrada sozinho**: Prometheus fora do ar devolve `reachable: false` com o
- *    motivo, nunca uma tela de erro — monitoramento quebrado não pode derrubar o
- *    painel que o administrador usa para descobrir que algo quebrou.
+ * - **Prometheus** (`PROMETHEUS_URL`): métricas do motor, do gateway, do host e os
+ *   alertas avaliados pelas regras de `monitoring/prometheus/alerts.yml`;
+ * - **Loki** (`LOKI_URL`): volume/erros de log por serviço (o pipeline que substituiu
+ *   o sidecar caseiro de logs);
+ * - **Gateway** (`server_admin/list_channel_presence`): presença viva por canal, lida
+ *   de `character_session` — a única fonte que sobrevive a restart de processo;
+ * - **Grafana** (`GRAFANA_URL`): saúde + catálogo de dashboards para embed.
+ *
+ * Regras: server-only (o browser não fala com Prometheus/Loki), staff obrigatório e
+ * degradação por fonte — painel de monitoramento não pode cair junto com o monitorado.
  */
-import { isStaff } from "./session";
-import { getSession } from "./session";
+import { adminCall } from "./admin";
+import { presenceAdmin } from "./admin-client";
+import { getGrafanaEmbeds, type GrafanaEmbed, type GrafanaHealth } from "./grafana";
+import { getLogStats, type LogStats } from "./loki";
+import { getSession, isStaff } from "./session";
 
 const PROM_URL = (process.env.PROMETHEUS_URL ?? "http://prometheus:9090").replace(/\/+$/, "");
+/** URL que o browser usa só para "abrir no Prometheus" (loopback no dev). */
+export const PROMETHEUS_PUBLIC_URL = (
+  process.env.PROMETHEUS_PUBLIC_URL ?? "http://127.0.0.1:9090"
+).replace(/\/+$/, "");
 const TIMEOUT_MS = 3_000;
 
 /** Amostra escalar de uma query instantânea (`/api/v1/query`). */
@@ -36,8 +48,31 @@ export interface JobHealth {
   up: boolean;
 }
 
+/** Alerta ativo/pendente vindo de `/api/v1/alerts`. */
+export interface StackAlert {
+  name: string;
+  severity: string;
+  state: string;
+  summary: string;
+  activeAt: string;
+}
+
+/** Presença viva por canal (banco, não métrica do processo). */
+export interface ChannelPresenceView {
+  channel: number;
+  host: string;
+  online: number;
+}
+
+export interface PresenceSnapshotView {
+  reachable: boolean;
+  error: string;
+  total: number;
+  channels: ChannelPresenceView[];
+}
+
 export interface MonitoringSnapshot {
-  /** O Prometheus respondeu. `false` = números ausentes, com `error` preenchido. */
+  /** O Prometheus respondeu. `false` = números do motor ausentes, com `error`. */
   reachable: boolean;
   error: string;
   collectedAt: string;
@@ -46,6 +81,10 @@ export interface MonitoringSnapshot {
   gateway: { requests: number; uptimeSeconds: number | null };
   host: { cpuPercent: number | null; memoryPercent: number | null; load1: number | null };
   status: { requests: number; channelsPublished: number | null };
+  alerts: StackAlert[];
+  presence: PresenceSnapshotView;
+  logs: LogStats;
+  grafana: { health: GrafanaHealth; dashboards: GrafanaEmbed[] };
 }
 
 async function query(expr: string): Promise<Sample[]> {
@@ -55,14 +94,14 @@ async function query(expr: string): Promise<Sample[]> {
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new Error(`prometheus ${response.status}`);
+    throw new Error(`métricas responderam ${response.status}`);
   }
   const body = (await response.json()) as {
     status?: string;
     data?: { result?: { metric?: Record<string, string>; value?: [number, string] }[] };
   };
   if (body.status !== "success") {
-    throw new Error("prometheus recusou a consulta");
+    throw new Error("consulta de métricas recusada");
   }
   return (body.data?.result ?? []).map((row) => ({
     labels: row.metric ?? {},
@@ -79,34 +118,91 @@ function first(samples: Sample[]): number | null {
   return samples.length > 0 ? samples[0]!.value : null;
 }
 
+/** Alertas avaliados pelo Prometheus (firing + pending), mais graves primeiro. */
+async function getAlerts(): Promise<StackAlert[]> {
+  try {
+    const response = await fetch(`${PROM_URL}/api/v1/alerts`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!response.ok) return [];
+    const body = (await response.json()) as {
+      data?: {
+        alerts?: {
+          labels?: Record<string, string>;
+          annotations?: Record<string, string>;
+          state?: string;
+          activeAt?: string;
+        }[];
+      };
+    };
+    const rank = (severity: string) => (severity === "critical" ? 0 : severity === "warning" ? 1 : 2);
+    return (body.data?.alerts ?? [])
+      .map((alert) => ({
+        name: alert.labels?.alertname ?? "?",
+        severity: alert.labels?.severity ?? "info",
+        state: alert.state ?? "?",
+        summary: alert.annotations?.summary ?? "",
+        activeAt: alert.activeAt ?? "",
+      }))
+      .sort((a, b) => rank(a.severity) - rank(b.severity) || a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Foto do monitoramento no momento da renderização.
+ * Presença por canal via gateway (leitura auditada).
  *
- * Cada família de métrica falha isolada: se só o node-exporter cair, os canais
- * continuam aparecendo e o campo do host fica `null`.
+ * O `adminCall` injeta o `moderator_id` da sessão e audita a chamada; o gateway
+ * responde `result` 1..5 como qualquer rota do contrato. Erro aqui não derruba a
+ * página: `reachable:false` + motivo.
  */
-export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
-  const session = await getSession();
-  const empty: MonitoringSnapshot = {
+async function getPresence(): Promise<PresenceSnapshotView> {
+  try {
+    const res = await adminCall(presenceAdmin.listChannelPresence, {}, { action: "server.presence" });
+    const channels = (res.channels ?? []).map((row) => ({
+      channel: row.channel,
+      host: row.host,
+      online: row.online,
+    }));
+    return {
+      reachable: true,
+      error: "",
+      total: channels.reduce((acc, row) => acc + row.online, 0),
+      channels: channels.sort((a, b) => a.channel - b.channel),
+    };
+  } catch (error) {
+    return {
+      reachable: false,
+      error: error instanceof Error ? error.message : "gateway indisponível",
+      total: 0,
+      channels: [],
+    };
+  }
+}
+
+/** Métricas do Prometheus (motor, gateway, host e estado dos alvos). */
+async function getPrometheusSnapshot(): Promise<
+  Omit<MonitoringSnapshot, "collectedAt" | "alerts" | "presence" | "logs" | "grafana">
+> {
+  const empty = {
     reachable: false,
-    error: "sessão de staff expirada",
-    collectedAt: new Date().toISOString(),
-    channels: [],
-    otherJobs: [],
+    error: "métricas indisponíveis",
+    channels: [] as ChannelHealth[],
+    otherJobs: [] as JobHealth[],
     gateway: { requests: 0, uptimeSeconds: null },
     host: { cpuPercent: null, memoryPercent: null, load1: null },
     status: { requests: 0, channelsPublished: null },
   };
-  if (!session || !isStaff(session.role)) return empty;
 
   let up: Sample[];
   try {
     up = await query("up");
   } catch (error) {
-    return {
-      ...empty,
-      error: error instanceof Error ? error.message : "prometheus indisponível",
-    };
+    // O motivo técnico fica no log do servidor; a tela recebe texto legível.
+    console.info("[monitoramento] métricas:", error instanceof Error ? error.message : error);
+    return { ...empty, error: "métricas indisponíveis" };
   }
 
   /** Lê uma query opcional: falha vira valor neutro, sem derrubar o resto. */
@@ -156,7 +252,6 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
   return {
     reachable: true,
     error: "",
-    collectedAt: new Date().toISOString(),
     channels,
     otherJobs: up
       .filter((sample) => sample.labels.job !== "wyd-server")
@@ -172,5 +267,51 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
       requests: total(statusRequests),
       channelsPublished: first(channelsPublished),
     },
+  };
+}
+
+/**
+ * Foto completa no momento da renderização.
+ *
+ * As quatro fontes falham isoladas: Prometheus fora não apaga presença do banco
+ * nem o painel de logs, e vice-versa.
+ */
+export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
+  const session = await getSession();
+  if (!session || !isStaff(session.role)) {
+    return {
+      reachable: false,
+      error: "sessão de staff expirada",
+      collectedAt: new Date().toISOString(),
+      channels: [],
+      otherJobs: [],
+      gateway: { requests: 0, uptimeSeconds: null },
+      host: { cpuPercent: null, memoryPercent: null, load1: null },
+      status: { requests: 0, channelsPublished: null },
+      alerts: [],
+      presence: { reachable: false, error: "sessão de staff expirada", total: 0, channels: [] },
+      logs: { reachable: false, error: "sessão de staff expirada", services: [], totalLines15m: 0 },
+      grafana: {
+        health: { reachable: false, error: "sessão de staff expirada", version: "", database: "" },
+        dashboards: [],
+      },
+    };
+  }
+
+  const [prometheus, alerts, presence, logs, grafana] = await Promise.all([
+    getPrometheusSnapshot(),
+    getAlerts(),
+    getPresence(),
+    getLogStats(),
+    getGrafanaEmbeds(),
+  ]);
+
+  return {
+    ...prometheus,
+    collectedAt: new Date().toISOString(),
+    alerts,
+    presence,
+    logs,
+    grafana,
   };
 }

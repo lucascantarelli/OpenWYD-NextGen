@@ -187,40 +187,57 @@ export function channelRowCount(sn) {
 }
 
 /**
+ * Nomes de servidor da identidade única (`docs/arquitetura/identidade.tokens`).
+ *
+ * O gerador **não** tem nome próprio: a chave `servidor.<slot>` é a única fonte e é a mesma
+ * que o `wyd-launcher` (Rust) embute para escrever o `sn.bin`. Divergência entre os dois lados
+ * quebra `crates/wyd-launcher/tests/identidade.rs`.
+ */
+export function identidadeServers(file = 'docs/arquitetura/identidade.tokens') {
+  const nomes = {};
+  if (!fs.existsSync(file)) return nomes;
+  for (const raw of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const linha = raw.trim();
+    if (!linha || linha.startsWith('#')) continue;
+    const [chave, ...resto] = linha.split('=');
+    if (!chave || resto.length === 0) continue;
+    const achado = chave.trim().match(/^servidor\.(\d+)$/);
+    if (achado) nomes[Number(achado[1])] = resto.join('=').trim();
+  }
+  return nomes;
+}
+
+/**
  * Gera `sn.bin` no leiaute medido: slot 0 preservado como cabeçalho reservado
  * (nome e `0xd6` iniciais, contador = canais + 1) e um slot por grupo usado, com
  * `contador = grupo + 1` — é o que faz aquele slot desenhar o grupo no `.bin`.
  *
- * Os nomes já existentes são preservados; só se o slot estiver sem nome o gerador
- * escreve `NextGen`. Sem o slot 0 intacto o cliente monta `"Canal N Grupp"`, e com
- * o contador do cabeçalho errado sobra a linha `Inexistente` no fim da lista.
+ * O nome de cada slot vem de `names` (identidade única); slot com grupo e sem nome é erro,
+ * nunca um `NextGen` inventado. Sem o slot 0 intacto o cliente monta `"Canal N Grupp"`, e
+ * com o contador do cabeçalho errado sobra `Inexistente` no fim da lista.
  */
-export function buildSn(groups, previous) {
+export function buildSn(groups, previous, names = {}) {
   const SLOTS = 11;
   const NAME_LEN = 9;
   const COUNTER_OFFSET = 99;
   const buf = Buffer.alloc(143, 0);
-  if (previous) {
-    for (let slot = 0; slot < SLOTS; slot += 1) {
-      const nome = previous.names[slot] ?? '';
-      if (slot === 0) {
-        buf[0] = previous.firstByte;
-        buf.write(nome.slice(1, NAME_LEN), 1, 'latin1');
-      } else {
-        buf.write(nome.slice(0, NAME_LEN - 1), slot * NAME_LEN, 'latin1');
-      }
-    }
-  } else {
-    buf[0] = 0xd6;
-    buf.write('eserved', 1, 'latin1');
-  }
+  // Slot 0 é o cabeçalho reservado: primeiro byte medido (`0xd6`) e o resto de `Reserved`.
+  buf[0] = previous?.firstByte ?? 0xd6;
+  buf.write('eserved', 1, 'latin1');
   const canais = previous ? channelRowCount(previous) : 2;
   buf.writeInt32LE(canais + 1, COUNTER_OFFSET);
   for (const group of [...groups].sort((a, b) => a - b)) {
     // Slot do servidor = grupo do `.bin`; o contador é `grupo + 1` (medido).
     const slot = group;
     if (slot < 1 || slot >= SLOTS) continue;
-    if (buf[slot * NAME_LEN] === 0) buf.write('NextGen', slot * NAME_LEN, 'latin1');
+    const nome = names[slot];
+    if (!nome) {
+      throw new Error(`identidade sem servidor.${slot} (docs/arquitetura/identidade.tokens)`);
+    }
+    if (Buffer.byteLength(nome, 'latin1') > NAME_LEN - 1) {
+      throw new Error(`servidor.${slot} "${nome}" não cabe em 8 caracteres`);
+    }
+    buf.write(nome, slot * NAME_LEN, 'latin1');
     buf.writeInt32LE(group + 1, COUNTER_OFFSET + slot * 4);
   }
   return buf;
@@ -259,7 +276,22 @@ export function renderSelect(sn, grid) {
  * canais 1..N na ordem, nenhum host vazio). Devolve a lista de problemas — vazia
  * significa que o que o cliente vai desenhar é exatamente o esperado.
  */
-export function checkInstalled(sn, grid, { server = 'NextGen', hosts = [] } = {}) {
+/**
+ * Hosts esperados, lidos do registro que gera o `.bin` (`serverlist-servers.txt`), na ordem dos
+ * canais do grupo desenhado. Endereço de canal é **dado de ambiente** (o host muda com a rede):
+ * fixar IP aqui só produz `FALHA` falso quando a máquina troca de endereço.
+ */
+export function expectedHosts(sn, grid, registryPath) {
+  if (!registryPath || !fs.existsSync(registryPath)) return [];
+  const grupo = renderSelect(sn, grid)[0]?.group;
+  if (grupo === undefined) return [];
+  return parseList(fs.readFileSync(registryPath, 'utf8'))
+    .filter((e) => e.group === grupo && e.channel > 0)
+    .sort((a, b) => a.channel - b.channel)
+    .map((e) => e.addr);
+}
+
+export function checkInstalled(sn, grid, { server = null, hosts = [] } = {}) {
   const problemas = [];
   const linhas = renderSelect(sn, grid);
   if (linhas.length !== 1) {
@@ -267,7 +299,7 @@ export function checkInstalled(sn, grid, { server = 'NextGen', hosts = [] } = {}
   }
   const linha = linhas[0];
   if (linha) {
-    if (linha.server !== server) {
+    if (server && linha.server !== server) {
       problemas.push(`nome do servidor "${linha.server}" != "${server}"`);
     }
     const canais = linha.channels.map((c) => c.channel);
@@ -305,9 +337,14 @@ if (isMain) {
       const sn = parseSn(fs.readFileSync(path.join(checkDir, 'sn.bin')));
       const grid = decode(fs.readFileSync(path.join(checkDir, 'serverlist.bin')));
       const hosts = flag('--hosts', '').split(',').filter(Boolean);
+      const nomes = identidadeServers();
+      const primeira = renderSelect(sn, grid)[0];
       const { problemas, linhas } = checkInstalled(sn, grid, {
-        server: flag('--server', 'NextGen'),
-        hosts: hosts.length > 0 ? hosts : ['192.168.100.3', '192.168.100.4'],
+        server: flag('--server') ?? (primeira ? (nomes[primeira.group] ?? null) : null),
+        hosts:
+          hosts.length > 0
+            ? hosts
+            : expectedHosts(sn, grid, flag('--registry', 'tools/client/serverlist-servers.txt')),
       });
       for (const linha of linhas) {
         console.log(`servidor "${linha.server}" (grupo ${linha.group})`);
@@ -350,7 +387,7 @@ if (isMain) {
     if (snOut) {
       const grupos = [...new Set(entries.map((e) => e.group))].sort((a, b) => a - b);
       const anterior = fs.existsSync(snOut) ? parseSn(fs.readFileSync(snOut)) : null;
-      fs.writeFileSync(snOut, buildSn(grupos, anterior));
+      fs.writeFileSync(snOut, buildSn(grupos, anterior, identidadeServers()));
       console.log(`${snOut}: ${grupos.length} servidor(es) → grupos ${grupos.join(', ')}`);
     }
     console.log(`${output}: ${entries.length} entradas, ${bin.length} bytes`);

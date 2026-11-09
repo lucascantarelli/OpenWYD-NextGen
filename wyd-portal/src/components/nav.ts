@@ -1,35 +1,19 @@
 /**
- * Fonte única do menu do portal. Nenhuma tela/rota é hardcoded na sidebar:
- * as issues 22–40 só trocam `soon: true` por `soon: false` quando a tela nasce.
+ * Fonte única do menu administrativo.
+ *
+ * Só entram aqui telas que existem no contrato atual do `wyd-admin`
+ * (`crates/wyd-admin/src/transport/mod.rs`). Menu não anuncia o que ainda não é
+ * servido pelo backend: nada de item "em breve" nem rota morta.
  */
 
-export type NavIcon =
-  | "gauge"
-  | "package"
-  | "swords"
-  | "store"
-  | "percent"
-  | "map"
-  | "sparkles"
-  | "sliders"
-  | "users"
-  | "activity"
-  | "receipt"
-  | "tag"
-  | "terminal"
-  | "compass"
-  | "route"
-  | "user"
-  | "castle"
-  | "flask"
-  | "book";
+export type NavIcon = "overview" | "accounts" | "monitoring" | "catalog";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: NavIcon;
-  /** Rota ainda não implementada: aparece como "em breve", sem link morto. */
-  soon?: boolean;
+  /** Texto curto do `title`/tooltip; a sidebar não repete o rótulo. */
+  hint?: string;
 }
 
 export interface NavGroup {
@@ -39,48 +23,37 @@ export interface NavGroup {
 
 export const NAV: readonly NavGroup[] = [
   {
-    group: "Visão",
-    items: [{ href: "/painel", label: "Visão geral", icon: "gauge" }],
+    group: "Operação",
+    items: [
+      { href: "/painel", label: "Visão geral", icon: "overview", hint: "Estado do servidor" },
+      { href: "/contas", label: "Contas", icon: "accounts", hint: "Busca e criação de conta" },
+      {
+        href: "/monitoramento",
+        label: "Monitoramento",
+        icon: "monitoring",
+        hint: "Métricas, logs e presença",
+      },
+    ],
   },
   {
     group: "Conteúdo",
     items: [
-      { href: "/itens", label: "Catálogo de itens", icon: "package" },
-      { href: "/precos", label: "Preços globais", icon: "tag" },
-      { href: "/mobs", label: "Mobs e stats", icon: "swords" },
-      { href: "/npcs", label: "NPCs e lojas", icon: "store" },
-      { href: "/drops", label: "Drops", icon: "percent" },
-      { href: "/diaria", label: "Recompensa diária", icon: "sparkles" },
-      { href: "/refino", label: "Refino e combine", icon: "flask", soon: true },
-      { href: "/skills", label: "Skills", icon: "book", soon: true },
-    ],
-  },
-  {
-    group: "Mundo",
-    items: [
-      { href: "/atlas", label: "Atlas do mundo", icon: "compass" },
-      { href: "/teleportes", label: "Teleportes", icon: "route" },
-      { href: "/mapa", label: "Mapa de colisão", icon: "map" },
-      { href: "/eventos", label: "Eventos globais", icon: "sparkles" },
-      { href: "/config", label: "Rates e flags", icon: "sliders" },
-    ],
-  },
-  {
-    group: "Operação",
-    items: [
-      { href: "/contas", label: "Contas e papéis", icon: "users" },
-      { href: "/monitoramento", label: "Monitoramento", icon: "activity" },
-      { href: "/loja", label: "Loja de donate", icon: "tag" },
-      { href: "/faturamento", label: "Faturamento", icon: "receipt" },
-      { href: "/personagens", label: "Personagens", icon: "user" },
-      { href: "/guildas", label: "Guildas", icon: "swords" },
-      { href: "/castelo", label: "Castelo e Kefra", icon: "castle" },
-      { href: "/logs", label: "Logs dos containers", icon: "terminal" },
+      { href: "/itens", label: "Catálogo de itens", icon: "catalog", hint: "Itens do servidor" },
     ],
   },
 ] as const;
 
-/** Rotas do shell que exigem sessão (usado pelo proxy e pela sidebar). */
-export const SHELL_ROUTES: readonly string[] = NAV.flatMap((g) =>
-  g.items.map((i) => i.href),
+/** Rotas do shell que exigem sessão de staff (usado pelo proxy e pela sidebar). */
+export const SHELL_ROUTES: readonly string[] = NAV.flatMap((group) =>
+  group.items.map((item) => item.href),
 );
+
+/**
+ * Área do jogador e documentação: públicas por desenho, por isso ficam fora de
+ * `NAV`/`SHELL_ROUTES` (o `matcher` do proxy não deve barrar leitura pública).
+ */
+export const PUBLIC_LINKS: readonly { href: string; label: string }[] = [
+  { href: "/conta", label: "Minha conta" },
+  { href: "/guias", label: "Guias" },
+  { href: "/enciclopedia", label: "Enciclopédia" },
+] as const;

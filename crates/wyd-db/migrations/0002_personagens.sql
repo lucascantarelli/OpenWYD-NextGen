@@ -16,6 +16,12 @@ CREATE TABLE characters (
     exp         BIGINT NOT NULL DEFAULT 0,
     hp          INTEGER NOT NULL DEFAULT 1,
     mp          INTEGER NOT NULL DEFAULT 0,
+    -- Atributos que o `STRUCT_SELCHAR` mostra (ver layout provisório no captura-selchar.md):
+    -- sem coluna, o servidor zerava ouro/PvP e espelhava os máximos de HP/MP.
+    gold        BIGINT NOT NULL DEFAULT 0,
+    hp_max      INTEGER NOT NULL DEFAULT 1,
+    mp_max      INTEGER NOT NULL DEFAULT 0,
+    pvp_points  INTEGER NOT NULL DEFAULT 0,
     pos_x       INTEGER NOT NULL DEFAULT 0,
     pos_y       INTEGER NOT NULL DEFAULT 0,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -31,7 +37,11 @@ CREATE TABLE characters (
     CONSTRAINT characters_level CHECK (level >= 1),
     CONSTRAINT characters_exp CHECK (exp >= 0),
     CONSTRAINT characters_hp CHECK (hp >= 0),
-    CONSTRAINT characters_mp CHECK (mp >= 0)
+    CONSTRAINT characters_mp CHECK (mp >= 0),
+    CONSTRAINT characters_gold CHECK (gold >= 0),
+    CONSTRAINT characters_hp_max CHECK (hp_max >= 0),
+    CONSTRAINT characters_mp_max CHECK (mp_max >= 0),
+    CONSTRAINT characters_pvp_points CHECK (pvp_points >= 0)
 );
 CREATE INDEX characters_account_idx ON characters (account_id);
 CREATE UNIQUE INDEX characters_name_unique ON characters (name) WHERE deleted_at IS NULL;

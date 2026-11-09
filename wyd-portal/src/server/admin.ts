@@ -1,17 +1,17 @@
 /**
- * O **único** caminho para chamar RPC admin do web-api.
+ * O **único** caminho para chamar RPC admin do gateway.
  *
  * `adminCall` faz quatro coisas de uma vez, e é por isso que ninguém deve falar
- * com o cliente gRPC direto numa page:
+ * com o cliente HTTP direto numa page:
  *
  * 1. exige sessão de staff (`requireStaff`);
  * 2. injeta `moderator_id` **da sessão** — nunca do corpo da request;
- * 3. aplica deadline de 10s na RPC;
+ * 3. aplica deadline de 10s na chamada;
  * 4. mapeia `AdminResult` → HTTP e registra auditoria — com o `trace_id` da
- *    chamada, o mesmo que o web-api registra (OBS-02).
+ *    chamada, o mesmo que o gateway registra.
  *
  * `AdminResult` viaja no corpo, com `result: 1..5`; só falha de transporte é
- * erro gRPC (`docs/integrations/npc-admin-nextjs.md §4.1`).
+ * erro HTTP (`crates/wyd-admin/src/transport/mod.rs`).
  */
 import { ADMIN_RESULT, httpStatusFor, isOk, messageFor } from "./admin-result";
 import { logAudit } from "./audit";
@@ -37,8 +37,8 @@ type WithoutModerator<Req> = Omit<Req, "moderator_id" | "moderatorId">;
  *
  * O tipo `WithoutModerator` só protege quem compila: a Server Action recebe
  * JSON do browser, e um `moderator_id`/`moderatorId` plantado ali sobreviveria ao
- * spread e chegaria à RPC. O web-api usa `keepCase`, mas quem garante a autoria
- * é este ponto — o corpo do browser nunca escolhe o moderador.
+ * spread e chegaria à chamada. Quem garante a autoria é este ponto — o corpo do
+ * browser nunca escolhe o moderador.
  */
 function withoutModerator(req: object): Record<string, unknown> {
   const { moderator_id: _snake, moderatorId: _camel, ...rest } = req as Record<string, unknown>;
@@ -48,9 +48,8 @@ function withoutModerator(req: object): Record<string, unknown> {
 }
 
 /**
- * Resposta admin vista pelo `adminCall`. Alguns serviços (contas, issue 32)
- * devolvem `message` com a recusa de negócio ("última conta admin ativa");
- * quando ela existe, é mais útil que o texto genérico do `AdminResult`.
+ * Resposta admin vista pelo `adminCall`. O gateway devolve `message` com a recusa
+ * de negócio; quando ela existe, é mais útil que o texto genérico.
  */
 type AdminResponse = { result: number; message?: string };
 

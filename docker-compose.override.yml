@@ -25,9 +25,19 @@ services:
     # Canal 1 (normal): o cliente disca 8281 fixo no IP da célula do .bin, então a
     # publicação é por IP, não só por porta. O status `serv00.htm` sai no :80 deste
     # canal — é a resposta que popula a coluna Canal nos dois canais.
+    # Dois conjuntos de endereço, de propósito: o cliente **já aberto** pode estar com o
+    # `serverlist.bin` antigo (IPs de LAN) enquanto o arquivo em disco já foi regenerado
+    # para loopback. Publicar nos dois evita exigir restart do cliente para ele achar o canal.
+    # `127.0.0.1`/`127.0.0.2` são endereços de loopback do host (`WYD_CANAL*_IP` guarda o da LAN).
     ports:
       - "${WYD_CANAL1_IP:-192.168.100.3}:8281:8281"
+      # Sonda UDP de status na mesma 8281: sem ela o cliente não dá o canal como
+      # acessível e o Conectar nem abre o TCP (4 bytes, resposta em eco).
+      - "${WYD_CANAL1_IP:-192.168.100.3}:8281:8281/udp"
       - "${WYD_CANAL1_IP:-192.168.100.3}:80:8080"
+      - "127.0.0.1:8281:8281"
+      - "127.0.0.1:8281:8281/udp"
+      - "127.0.0.1:80:8080"
 
   server-canal-2:
     # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
@@ -49,12 +59,21 @@ services:
         condition: service_healthy
     ports:
       - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281"
+      - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281/udp"
+      - "127.0.0.2:8281:8281"
+      - "127.0.0.2:8281:8281/udp"
     healthcheck:
       test: ["CMD", "/usr/local/bin/wyd-server", "--healthcheck"]
       interval: 10s
       timeout: 5s
       start_period: 10s
       retries: 5
+    # Mesma retenção do canal 1: o login manual deste canal não some por rotação.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     networks:
       - wyd
 

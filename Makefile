@@ -98,8 +98,8 @@ server-image: ## imagem do monolito de jogo (um container POR canal, ADR-0022)
 		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
 
 server-smoke: ## handshake + serv00.htm dos DOIS canais (exige stack-up)
-	@curl -fsS http://192.168.100.3/serv00.htm; echo
-	@curl -fsS http://192.168.100.3/health; echo
+	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/serv00.htm; echo
+	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/health; echo
 	@cargo test -p wyd-server --test handshake -- --nocapture
 
 gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-up)

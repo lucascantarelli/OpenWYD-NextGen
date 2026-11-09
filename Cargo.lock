@@ -1466,6 +1466,7 @@ dependencies = [
  "argon2",
  "tokio",
  "wyd-db",
+ "wyd-protocol",
 ]
 
 [[package]]

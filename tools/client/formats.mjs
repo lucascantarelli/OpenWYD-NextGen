@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadKeywordTable, transform } from './keytable.mjs';
+import { parseWyt as decodificarWyt } from './wyt.mjs';
 
 const head = (buf, n = 64) =>
   buf
@@ -90,24 +91,26 @@ function findSamples(root, dir, extension, limit = 2) {
 }
 
 function parseWyt(buf) {
-  if (buf.length < 24) return { magic: null, recognised: false };
-  const magic = buf.toString('latin1', 0, 4);
-  if (magic !== 'WT10') return { magic, recognised: false };
-  return {
-    magic,
-    recognised: true,
-    version: buf.readUInt32LE(4),
-    candidateWidth: buf.readUInt16LE(16),
-    candidateHeight: buf.readUInt16LE(18),
-    field20: buf.readUInt32LE(20),
-    notes: [
-      'magic "WT10" confirmado em todas as amostras (0..3)',
-      'versão 0x00020000 constante em todas as amostras (@4)',
-      'pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime',
-      '@20 varia (24 ou 2080) — sem significado comprovado',
-      'layout de controles permanece opaco',
-    ],
-  };
+  try {
+    const wyt = decodificarWyt(buf);
+    return {
+      magic: 'WT10',
+      recognised: true,
+      version: wyt.versao,
+      width: wyt.largura,
+      height: wyt.altura,
+      bits: wyt.bits,
+      pixelsOffset: wyt.pixelsOffset,
+      notes: [
+        'raster puro: cabeçalho de 22 B + largura*altura*(bits/8) + 8 B finais',
+        'fórmula confirmada em 256/259 amostras de client/NUI + client/UI (NUI 8/8)',
+        'texto, fontes e controles são desenhados pelo .exe; o arquivo só tem pixels',
+        'decoder/export: tools/client/wyt.mjs (--png, --bmp, --scan)',
+      ],
+    };
+  } catch (e) {
+    return { magic: buf.toString('latin1', 0, 4), recognised: false, motivo: e.message };
+  }
 }
 
 function parseMsa(buf) {

@@ -56,7 +56,9 @@ o build distribuído não depende de injeção em runtime para desativá-las.
 `http://54.207.102.145/update` — é o alvo de atualização legado, não o servidor de jogo.
 `client/WYD.log` registra `Error in Init Render Target Texture` e
 `Reading Error : mesh\mega001.msa` — evidência de que erro de render/asset é **local**,
-não de rede.
+não de rede. A mensagem de render target é **não fatal**: com ela no log o cliente segue até a
+tela de login, desenha o *server select* e conclui o handshake (prova em
+`docs/rust/03-progresso.md`, 2026-11-09).
 
 ## 3. Dados de configuração e catálogos (raiz da pasta)
 

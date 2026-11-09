@@ -1,5 +1,9 @@
+import { AlertTriangle, ScrollText } from "lucide-react";
+
+import { Badge } from "@/components/Badge";
 import { Stat } from "@/components/Stat";
 
+import { GRAFANA_PUBLIC_URL } from "@/server/grafana";
 import { getMonitoringSnapshot } from "@/server/monitoring";
 
 export const dynamic = "force-dynamic";
@@ -23,150 +27,344 @@ const fmtUptime = (seconds: number | null): string => {
   return `${h}h ${m}m`;
 };
 
+const fmtWhen = (iso: string): string => {
+  if (!iso) return "—";
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return "—";
+  return when.toLocaleString("pt-BR");
+};
+
+const severityTone = (severity: string): "danger" | "warn" | "neutral" =>
+  severity === "critical" ? "danger" : severity === "warning" ? "warn" : "neutral";
+
 /**
- * Monitoramento da stack, lido do Prometheus (mesmo compose, rede interna).
+ * Monitoramento: porta de entrada da observabilidade.
  *
- * A página é servidor puro: o browser não conhece `prometheus:9090`. Quando o
- * Prometheus está fora, o cartão de aviso explica — e o resto do painel continua
- * funcionando, porque quem monitora não pode depender de o monitorado estar vivo.
+ * Prometheus responde pelas métricas e alertas, Loki pelos logs, o gateway pela
+ * presença viva no banco e o Grafana renderiza os dashboards provisionados. Cada
+ * fonte falha isolada.
  */
-export default async function MonitoramentoPage() {
+export default async function MonitoramentoPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const snapshot = await getMonitoringSnapshot();
+  const params = await searchParams;
+  const dashParam =
+    typeof params.dash === "string"
+      ? params.dash
+      : Array.isArray(params.dash)
+        ? params.dash[0]
+        : undefined;
+  const dashboards = snapshot.grafana.dashboards;
+  const selected = dashboards.find((dashboard) => dashboard.uid === dashParam) ?? dashboards[0];
+
+  const onlineChannels = snapshot.channels.filter((channel) => channel.up).length;
+  const presenceTotal = snapshot.presence.reachable ? snapshot.presence.total : null;
+  const firing = snapshot.alerts.filter((alert) => alert.state === "firing");
+  const errors15m = snapshot.logs.services.reduce((acc, row) => acc + row.errors, 0);
+  const warnings15m = snapshot.logs.services.reduce((acc, row) => acc + row.warnings, 0);
 
   return (
     <>
-      <h1 className="ui-page-title">Monitoramento</h1>
-      <p className="ui-page-sub">
-        Métricas raspadas do Prometheus da própria stack. Cada canal publica em{" "}
-        <code>:9898/metrics</code>; o gateway, em <code>:7600/metrics</code>. Os números são a
-        última amostra (15 s de intervalo).
-      </p>
-
-      {!snapshot.reachable ? (
-        <div className="ui-card" style={{ marginBottom: 20 }}>
-          <strong>Prometheus indisponível</strong>
-          <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: 13 }}>
-            {snapshot.error}. Confira <code>docker compose ps wyd-prometheus</code> e{" "}
-            <code>PROMETHEUS_URL</code>. Sem ele esta página não inventa número.
+      <div className="page-head">
+        <div>
+          <p className="page-head__eyebrow">Operação</p>
+          <h1 className="page-head__title">Monitoramento</h1>
+          <p className="page-head__sub">
+            Saúde da stack, presença por canal e logs recentes.
           </p>
         </div>
-      ) : (
-        <>
-          <div className="ui-stats">
-            <Stat
-              label="Canais no ar"
-              value={`${snapshot.channels.filter((c) => c.up).length}/${snapshot.channels.length}`}
-              hint={
-                snapshot.channels.length === 0
-                  ? "nenhum alvo wyd-server registrado"
-                  : snapshot.channels.map((c) => `canal ${c.canal}`).join(", ")
-              }
-            />
-            <Stat
-              label="Handshakes (total)"
-              value={fmtInt(snapshot.channels.reduce((acc, c) => acc + c.handshakes, 0))}
-              hint="conexões CPSock aceitas desde o boot"
-            />
-            <Stat
-              label="Sessões abertas"
-              value={fmtInt(snapshot.channels.reduce((acc, c) => acc + c.sessions, 0))}
-              hint="somatório dos canais"
-            />
-            <Stat
-              label="Pedidos de status"
-              value={fmtInt(snapshot.status.requests)}
-              hint={`coluna Canal · ${fmtInt(snapshot.status.channelsPublished)} canais publicados`}
-            />
-          </div>
+      </div>
 
-          <div className="ui-stats">
-            <Stat
-              label="CPU do host"
-              value={fmtPercent(snapshot.host.cpuPercent)}
-              hint="média de 5 min (node-exporter)"
-            />
-            <Stat
-              label="Memória em uso"
-              value={fmtPercent(snapshot.host.memoryPercent)}
-              hint="disponível / total do nó"
-            />
-            <Stat label="Load 1 min" value={fmtInt(snapshot.host.load1)} hint="fila de execução" />
-            <Stat
-              label="Gateway"
-              value={fmtInt(snapshot.gateway.requests)}
-              hint={`requisições · uptime ${fmtUptime(snapshot.gateway.uptimeSeconds)}`}
-            />
-          </div>
+      <div className="monitor-strip" role="list" aria-label="Estado das fontes">
+        <span className="status" role="listitem">
+          <span className={`dot ${snapshot.reachable ? "dot--ok" : "dot--danger"}`} aria-hidden="true" />
+          Métricas <strong>{snapshot.reachable ? "no ar" : "fora"}</strong>
+        </span>
+        <span className="status" role="listitem">
+          <span className={`dot ${snapshot.logs.reachable ? "dot--ok" : "dot--danger"}`} aria-hidden="true" />
+          Logs <strong>{snapshot.logs.reachable ? "ingerindo" : "fora"}</strong>
+        </span>
+        <span className="status" role="listitem">
+          <span className={`dot ${snapshot.presence.reachable ? "dot--ok" : "dot--warn"}`} aria-hidden="true" />
+          Gateway <strong>{snapshot.presence.reachable ? "respondendo" : "indisponível"}</strong>
+        </span>
+        <span className="status" role="listitem">
+          <span
+            className={`dot ${snapshot.grafana.health.reachable ? "dot--ok" : "dot--danger"}`}
+            aria-hidden="true"
+          />
+          Painéis <strong>{snapshot.grafana.health.reachable ? "no ar" : "fora"}</strong>
+        </span>
+        <span className="status" role="listitem">
+          <span
+            className={`dot ${!snapshot.reachable ? "dot--warn" : firing.length === 0 ? "dot--ok" : "dot--danger"}`}
+            aria-hidden="true"
+          />
+          Alertas <strong>{snapshot.reachable ? `${firing.length} disparando` : "indisponível"}</strong>
+        </span>
+      </div>
 
-          <div className="ui-card" style={{ marginBottom: 20 }}>
-            <h2 style={{ fontSize: 14, margin: "0 0 10px" }}>Canais</h2>
-            <div className="ui-table-scroll">
-              <table className="ui-table">
-                <thead>
-                  <tr>
-                    <th>Canal</th>
-                    <th>Alvo</th>
-                    <th className="ui-align-right">Handshakes</th>
-                    <th className="ui-align-right">Sessões</th>
-                    <th className="ui-align-right">Memória</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {snapshot.channels.length === 0 ? (
+      {!snapshot.reachable && (
+        <div className="banner" style={{ marginBottom: 16 }}>
+          <AlertTriangle size={16} strokeWidth={1.8} aria-hidden="true" />
+          <span>
+            <strong>Métricas indisponíveis.</strong> A presença por canal continua sendo lida do
+            servidor.
+          </span>
+        </div>
+      )}
+
+      <div className="stats">
+        <Stat label="Jogadores online" value={fmtInt(presenceTotal)} hint="sessões ativas agora" />
+        <Stat
+          label="Canais no ar"
+          value={snapshot.reachable ? `${onlineChannels}/${snapshot.channels.length}` : "—"}
+          pending={!snapshot.reachable}
+          hint={
+            snapshot.reachable
+              ? `${fmtInt(snapshot.channels.reduce((acc, c) => acc + c.handshakes, 0))} handshakes`
+              : "métricas indisponíveis"
+          }
+        />
+        <Stat
+          label="Alertas ativos"
+          value={snapshot.reachable ? fmtInt(firing.length) : "—"}
+          pending={!snapshot.reachable}
+          hint={
+            snapshot.reachable
+              ? `${snapshot.alerts.length - firing.length} pendentes`
+              : "métricas indisponíveis"
+          }
+        />
+        <Stat
+          label="Logs em 15 min"
+          value={fmtInt(snapshot.logs.reachable ? snapshot.logs.totalLines15m : null)}
+          pending={!snapshot.logs.reachable}
+          hint={
+            snapshot.logs.reachable
+              ? `${fmtInt(errors15m)} erros · ${fmtInt(warnings15m)} avisos`
+              : "logs indisponíveis"
+          }
+        />
+      </div>
+
+      <div className="stats">
+        <Stat label="CPU do host" value={fmtPercent(snapshot.host.cpuPercent)} hint="média de 5 min" />
+        <Stat
+          label="Memória do host"
+          value={fmtPercent(snapshot.host.memoryPercent)}
+          hint={`load 1 min: ${fmtInt(snapshot.host.load1)}`}
+        />
+        <Stat
+          label="Requisições ao gateway"
+          value={snapshot.reachable ? fmtInt(snapshot.gateway.requests) : "—"}
+          pending={!snapshot.reachable}
+          hint={snapshot.reachable ? `uptime ${fmtUptime(snapshot.gateway.uptimeSeconds)}` : "métricas indisponíveis"}
+        />
+        <Stat
+          label="Pedidos de status"
+          value={snapshot.reachable ? fmtInt(snapshot.status.requests) : "—"}
+          pending={!snapshot.reachable}
+          hint={
+            snapshot.reachable
+              ? `${fmtInt(snapshot.status.channelsPublished)} canais publicados`
+              : "métricas indisponíveis"
+          }
+        />
+      </div>
+
+      <div className="monitor-grid">
+        <section className="card">
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">Presença por canal</h2>
+              <p className="card__sub">Sessões ativas em cada canal.</p>
+            </div>
+            <Badge tone={snapshot.presence.reachable ? "ok" : "warn"}>
+              {snapshot.presence.reachable ? "banco" : "indisponível"}
+            </Badge>
+          </div>
+          <div className="card__body card__body--flush">
+            {!snapshot.presence.reachable ? (
+              <p className="ui-field__error" style={{ padding: 20, margin: 0 }}>
+                {snapshot.presence.error}
+              </p>
+            ) : snapshot.presence.channels.length === 0 ? (
+              <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                Nenhum canal habilitado.
+              </p>
+            ) : (
+              <div className="ui-table-scroll">
+                <table className="ui-table">
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="ui-table__empty">
-                        Nenhum alvo <code>wyd-server</code> em <code>targets/wyd-server.json</code>.
-                      </td>
+                      <th>Canal</th>
+                      <th>Host do cliente</th>
+                      <th className="ui-align-right">Online</th>
+                      <th className="ui-align-right">Memória</th>
                     </tr>
-                  ) : (
-                    snapshot.channels.map((channel) => (
-                      <tr key={channel.canal}>
-                        <td>canal {channel.canal}</td>
-                        <td>
-                          {channel.up ? (
-                            "no ar"
-                          ) : (
-                            <span style={{ color: "var(--danger, #c0392b)" }}>fora do ar</span>
-                          )}
-                        </td>
-                        <td className="ui-align-right">{fmtInt(channel.handshakes)}</td>
-                        <td className="ui-align-right">{fmtInt(channel.sessions)}</td>
-                        <td className="ui-align-right">{fmtMb(channel.memoryBytes)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {snapshot.presence.channels.map((channel) => {
+                      const metric = snapshot.channels.find(
+                        (candidate) => candidate.canal === String(channel.channel),
+                      );
+                      return (
+                        <tr key={channel.channel}>
+                          <td>canal {channel.channel}</td>
+                          <td>
+                            <span className="mono">{channel.host}</span>
+                          </td>
+                          <td className="ui-align-right">{fmtInt(channel.online)}</td>
+                          <td className="ui-align-right">{fmtMb(metric?.memoryBytes ?? null)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
+          <div className="card__foot">
+            Cada canal é um processo e enxerga só a própria fatia.
+          </div>
+        </section>
 
-          <div className="ui-card">
-            <h2 style={{ fontSize: 14, margin: "0 0 10px" }}>Demais alvos</h2>
-            <div className="ui-table-scroll">
-              <table className="ui-table">
-                <thead>
-                  <tr>
-                    <th>Job</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {snapshot.otherJobs.map((job) => (
-                    <tr key={job.job}>
-                      <td>{job.job}</td>
-                      <td>{job.up ? "no ar" : "fora do ar"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <section className="card">
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">Alertas</h2>
+              <p className="card__sub">Regras avaliadas continuamente.</p>
             </div>
-            <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 12 }}>
-              Coletado em {new Date(snapshot.collectedAt).toLocaleString("pt-BR")}. Prometheus fica só
-              na rede <code>wyd</code>; o Grafana (dashboards prontos) escuta em{" "}
-              <code>127.0.0.1:3001</code> na máquina host.
-            </p>
+            <Badge tone={!snapshot.reachable ? "neutral" : firing.length === 0 ? "ok" : "danger"}>
+              {!snapshot.reachable
+                ? "indisponível"
+                : firing.length === 0
+                  ? "estável"
+                  : `${firing.length} ativos`}
+            </Badge>
           </div>
-        </>
+          <div className="card__body card__body--flush">
+            {snapshot.alerts.length === 0 ? (
+              <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                {snapshot.reachable
+                  ? "Nenhum alerta ativo ou pendente."
+                  : "Alertas indisponíveis no momento."}
+              </p>
+            ) : (
+              <ul className="alert-list">
+                {snapshot.alerts.map((alert) => (
+                  <li
+                    key={`${alert.name}-${alert.activeAt}`}
+                    className={
+                      alert.severity === "critical"
+                        ? "alert alert--critical"
+                        : alert.state === "firing"
+                          ? "alert"
+                          : "alert alert--ok"
+                    }
+                  >
+                    <span className="alert__bar" aria-hidden="true" />
+                    <div>
+                      <p className="alert__name">{alert.name}</p>
+                      <p className="alert__summary">{alert.summary || "sem resumo"}</p>
+                    </div>
+                    <div style={{ display: "grid", gap: 4, justifyItems: "end" }}>
+                      <Badge tone={severityTone(alert.severity)}>{alert.severity}</Badge>
+                      <span className="muted small">{fmtWhen(alert.activeAt)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">
+              <ScrollText size={15} strokeWidth={1.8} aria-hidden="true" /> Logs por serviço
+            </h2>
+            <p className="card__sub">Volume, erros e avisos nos últimos 15 minutos.</p>
+          </div>
+          <Badge tone={snapshot.logs.reachable ? "ok" : "danger"}>
+            {snapshot.logs.reachable ? "no ar" : "fora"}
+          </Badge>
+        </div>
+        <div className="card__body card__body--flush">
+          {!snapshot.logs.reachable ? (
+            <p className="ui-field__error" style={{ padding: 20, margin: 0 }}>
+              {snapshot.logs.error}
+            </p>
+          ) : snapshot.logs.services.length === 0 ? (
+            <p className="muted small" style={{ padding: 20, margin: 0 }}>
+              Nenhuma linha nos últimos 15 minutos.
+            </p>
+          ) : (
+            snapshot.logs.services.map((row) => (
+              <div className="log-row" key={row.service}>
+                <span className="mono">{row.service}</span>
+                <span className="log-row__counts">
+                  <span>
+                    <strong style={{ color: "var(--danger)" }}>{fmtInt(row.errors)}</strong> erros
+                  </span>
+                  <span>
+                    <strong style={{ color: "var(--warn)" }}>{fmtInt(row.warnings)}</strong> avisos
+                  </span>
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="card" style={{ marginBottom: 12 }}>
+        <div className="card__head">
+          <div>
+            <h2 className="card__title">Dashboards</h2>
+            <p className="card__sub">Painéis operacionais embutidos nesta tela.</p>
+          </div>
+          {snapshot.grafana.health.reachable ? (
+            <a href={selected?.openUrl ?? GRAFANA_PUBLIC_URL} target="_blank" rel="noreferrer">
+              Abrir em nova aba
+            </a>
+          ) : null}
+        </div>
+        <div className="card__body card__body--flush">
+          {!snapshot.grafana.health.reachable ? (
+            <p className="ui-field__error" style={{ padding: 20, margin: 0 }}>
+              {snapshot.grafana.health.error}
+            </p>
+          ) : dashboards.length === 0 ? (
+            <p className="muted small" style={{ padding: 20, margin: 0 }}>
+              Nenhum dashboard provisionado.
+            </p>
+          ) : (
+            <div className="embed-tabs" role="tablist" aria-label="Dashboards">
+              {dashboards.map((dashboard) => (
+                <a
+                  key={dashboard.uid}
+                  className="chip"
+                  href={`/monitoramento?dash=${encodeURIComponent(dashboard.uid)}`}
+                  aria-current={dashboard.uid === selected?.uid ? "page" : undefined}
+                >
+                  {dashboard.title}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {selected && snapshot.grafana.health.reachable && (
+        <div className="embed">
+          <iframe title={selected.title} src={selected.embedUrl} loading="lazy" />
+        </div>
       )}
     </>
   );

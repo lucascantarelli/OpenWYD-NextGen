@@ -30,6 +30,8 @@ ADR-0022). Sem binário, não há serviço: o compose não antecipa o que a issu
 | `gateway` | `docker/Dockerfile.gateway` (multi-stage, distroless non-root) | Gateway HTTP/JSON do portal (`:7600`, ADR-0022): `GET /health` faz `SELECT 1` no Postgres, `GET /metrics` publica `wyd_gateway_requests_total{result}` + `wyd_gateway_uptime_seconds`, `POST /admin/v1/{servico}/{metodo}` serve o contrato já existente. `--healthcheck` é o próprio binário (imagem sem shell). Sobe depois do `db` saudável |
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
 | `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd`. FASE-12-1 ✅ — dashboards/alertas/runbooks em `monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
+| `loki` | `grafana/loki:3.5.5` | **Logs duráveis** (2026-11-09): grava em volume `wyd-loki-data` com retenção de 14 d (`monitoring/loki/loki.yml`). Sem porta no host — só o portal (server-side) e o Grafana consultam `loki:3100`. Resolve o problema do `json-file`: o stdout do Docker morre quando o container é recriado, o Loki não |
+| `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
 Comandos: `make stack-config` (valida base+prod sem subir), `make stack-up`,
 `make stack-down`, `make stack-logs`. Imagens `wyd/<serviço>:${TAG:-dev}`,
@@ -60,20 +62,31 @@ Cadeia normativa (skill `wyd-rust-obs`, FASE-06-1 → FASE-12-1):
 2. **Exposição**: `MetricsServer` serve `GET /metrics` em texto Prometheus 0.0.4
    (endereço decidido pelo binário, default `127.0.0.1:9898`); o fragmento do `wyd-net`
    entra por `Metrics::render(extra)`. Dashboard só consulta o que 06-1 expõe.
-3. **Coleta/visualização** (FASE-12-1 ✅): override
-   no próprio `docker-compose.yml` (Prometheus v3.5.0 +
-   Grafana 12.2.0 + node-exporter v1.9.1, imagens oficiais com tag fixa), configs em
-   `monitoring/` (`prometheus.yml`, `alerts.yml`, `alerts.test.yml`, alvos por
-   arquivo, provisioning e dashboard `wyd-saude.json`). Alvos do motor ficam vazios
-   por arquivo até existir binário de servidor — nenhum alerta por ausência estrutural.
-   Runbooks: `docs/rust/06-observabilidade-runbooks.md`. `make monitoring-up` (atalho —
-   o `up` normal já sobe tudo),
+3. **Coleta/visualização** (FASE-12-1 ✅): no próprio `docker-compose.yml`
+   (Prometheus v3.5.0 + Grafana 12.2.0 + node-exporter v1.9.1 + Loki 3.5.5 + Alloy v1.9.2,
+   imagens oficiais com tag fixa), configs em `monitoring/` (`prometheus.yml`,
+   `alerts.yml`, `alerts.test.yml`, alvos por arquivo, `loki/loki.yml`,
+   `alloy/config.alloy`, provisioning e dashboards `wyd-saude.json` + `wyd-logs.json`).
+   Alvos do motor ficam vazios por arquivo até existir binário de servidor — nenhum
+   alerta por ausência estrutural. Runbooks: `docs/rust/06-observabilidade-runbooks.md`.
+   `make monitoring-up` (atalho — o `up` normal já sobe tudo),
    `make monitoring-rules` (promtool: config + regras + teste de disparo).
-4. **Saúde do BFF**: `/api/health` do portal (200 com contagem do catálogo,
+4. **Logs duráveis** (2026-11-09): `containers → Alloy (socket read-only) → Loki
+   (volume `wyd-loki-data`, 14 d) → BFF do portal`. O sidecar caseiro `logpipe`, o
+   modo `docker compose logs -f` e a própria tela `/logs` (com o SSE `/api/logs/<container>`
+   e `/api/logs/status`) foram **removidos**: o stdout do Docker é por container e
+   sumia a cada recriação, e o portal não deve ter o socket do Docker. O portal consulta
+   `LOKI_URL` server-side (`wyd-portal/src/server/loki.ts`) só para o agregado do
+   `/monitoramento`; a leitura linha a linha é o Grafana (datasource Loki provisionado,
+   dashboard `wyd-logs`) — e `docker compose logs` para o stdout vivo.
+   **Auditoria de login:** `query_range` sem `start` cobre **só 1 h**; use `since=12h`
+   (ou `start`/`end` em ns) para procurar handshake antigo — o Loki retém 14 d. Um login
+   de 3 h atrás passa despercebido por consulta sem janela explícita.
+5. **Saúde do BFF**: `/api/health` do portal (200 com contagem do catálogo,
    502 sem backend) + volume de auditoria `portal-audit` (`/var/log/wyd-portal`).
-5. **Gates**: `cargo fmt --check` + `clippy -D warnings` + `cargo test
-   --workspace` (skill `wyd-rust-toolchain`) e `docker compose config`
-   (base e prod). Sem logpipe/sidecar no desenho novo até a FASE-12 definir.
+6. **Gates**: `cargo fmt --check` + `clippy -D warnings` + `cargo test
+   --workspace` (skill `wyd-rust-toolchain`), `npx tsc --noEmit` + `vitest` no portal e
+   `docker compose config` (base e prod). O portal nunca monta o socket do Docker.
 
 ## 5. Banco da stack (conteúdo real, não schema vazio)
 
@@ -85,7 +98,7 @@ make db-migrate      # node tools/dev/db-migrate.mjs
 # ou, para recriar do zero: node tools/dev/db-migrate.mjs --reset
 ```
 
-`tools/dev/db-migrate.mjs` aplica os 28 arquivos em ordem no container `wyd-db` (usuário/banco de
+`tools/dev/db-migrate.mjs` aplica os 30 arquivos em ordem no container `wyd-db` (usuário/banco de
 `POSTGRES_USER`/`POSTGRES_DB`). Ele **não** é o runner de ciclo (`tools/content/migrate-cycle.mjs`, container
 efêmero): aqui o alvo é o banco que o gateway consome. Sem ele, o gateway não acha `content_version`
 no boot e falha com erro tipado — de propósito, porque health sem catálogo mentiria.
@@ -99,9 +112,16 @@ idempotente, não precisa de imagem extra e não roda no `initdb` do Postgres �
 do banco só executa em volume vazio (`/docker-entrypoint-initdb.d`), então nunca serviria um
 volume já existente, que é o caso desta stack.
 
-Contagens observadas após aplicar (2026-11-08): **67 tabelas** (a `0029` trouxe `server_channel`),
+Contagens observadas após aplicar (2026-11-09, banco recriado do zero com as 30 migrations):
+**68 tabelas** (a `0029` trouxe `server_channel`, a `0030` trouxe `character_session`),
 `item_catalog` 3.220, `server_channel` 3 linhas (canal 0 = status, 1 = normal, 2 = verde),
 `content_version` 1.
+
+**Contas de teste (2026-11-09):** além da conta default `admin` do `.env`, o banco recriado tem
+`test1` (admin), `test2`/`test3` (moderator) e `test4`/`test5` (player), todas com a senha
+`test123` (hash argon2id individual, gerado com os mesmos parâmetros do gateway). A senha de
+teste não passa da política de força mínima do seed (`MIN_PASSWORD_LEN = 8`), então o cadastro foi
+feito por SQL com hash válido — o portal continua aplicando a política para contas reais.
 
 ## 6. Canais (dois mundos, um banco)
 
@@ -109,6 +129,19 @@ Contagens observadas após aplicar (2026-11-08): **67 tabelas** (a `0029` trouxe
 |---|---|---|---|
 | 1 | `wyd-canal-1` | `192.168.100.3:8281` | normal (cidadania, guildas, torre) |
 | 2 | `wyd-canal-2` | `192.168.100.4:8281` | verde/novato — mesma cidade e mesmo banco |
+
+O endereço de cada canal vem de `WYD_CANAL1_IP`/`WYD_CANAL2_IP` (`.env`) e cada canal é publicado
+**também** em loopback (`127.0.0.1` no canal 1, `127.0.0.2` no canal 2), de propósito: um cliente
+já aberto pode estar com o `serverlist.bin` de uma configuração anterior e não deve precisar de
+restart para achar o canal. Em 2026-11-09 a máquina perdeu os IPs de LAN `192.168.100.3/.4`
+(passou a ter `192.168.100.7`) e as publicações ficaram órfãs; a recuperação foi **local e sem
+rota nova**: os dois IPs voltaram como alias `/32` no adaptador de loopback do Windows
+(`netsh interface ipv4 add address "Loopback Pseudo-Interface 1" 192.168.100.3 255.255.255.255`,
+idem `.4`) — máscara /32 porque `192.168.100.0/24` no loopback quebraria a LAN. O
+`client/serverlist.bin` acompanha o registro canônico `tools/client/serverlist-servers.txt`
+regenerado pelo launcher (`cargo run -p wyd-launcher -- serverlist … client/`), nunca edição do
+`.bin`; se a máquina trocar de LAN de novo, é o registro + `WYD_CANAL*_IP` que mudam, não o
+binário do cliente.
 
 Regras: canal novo = linha em `server_channel` + container + célula no `serverlist.bin` (launcher),
 **sem build**. O status `:80` do canal 1 é a única porta pública de status e serve **todos** os canais;

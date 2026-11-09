@@ -233,6 +233,12 @@ if (mode === '--gen') {
   const results = [];
   for (const file of files) {
     const document = JSON.parse(fs.readFileSync(path.join(ROOT, file), 'utf8'));
+    // Artefato de captura (`captura-live.mjs`) mora na mesma pasta, mas não é golden de
+    // pacote: `frames[]` em vez de `payloadHex`/`wireHex`. Validar aqui daria falso negativo.
+    if (document.frames || !document.wireHex) {
+      console.log(`skip ${file}: artefato de captura, não golden`);
+      continue;
+    }
     const errors = checkFixture(document, table, opcodeMap);
     results.push({
       id: document.id,

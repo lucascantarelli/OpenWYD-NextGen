@@ -61,6 +61,7 @@ fn character(account_id: i64, id: i64, name: String, hp: i64) -> Character {
         mp: 20,
         pos_x: 2100,
         pos_y: 2200,
+        ..Character::default()
     }
 }
 

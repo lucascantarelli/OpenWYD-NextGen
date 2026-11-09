@@ -1,8 +1,15 @@
+import { KeyRound, LifeBuoy, Swords } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Badge } from "@/components/Badge";
+import { LogoutButton } from "@/components/LogoutButton";
+import { TEXTO } from "@/lib/i18n";
+import { roleLabel, roleTone } from "@/lib/role";
 import { getPanelAccount, getPanelCharacters, getPanelRankings } from "@/server/panel";
 import { getSession } from "@/server/session";
 
+import PinForm from "./pin-form";
 import RecoveryForm from "./recovery-form";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +30,10 @@ function fmtClass(code: number): string {
 }
 
 /**
- * Painel do jogador (FASE-07-2): conta, personagens e ranking.
+ * Área do jogador: conta, personagens, ranking e credenciais.
  *
  * Toda leitura passa por `server/panel`, que injeta o `account_id` do cookie de
- * sessão — a página nunca aceita id vindo da URL. Cada bloco falha sozinho para
- * o painel não cair inteiro com o backend fora.
+ * sessão — a página nunca aceita id vindo da URL. Cada bloco falha sozinho.
  */
 export default async function ContaPage() {
   const session = await getSession();
@@ -40,80 +46,179 @@ export default async function ContaPage() {
   ]);
 
   return (
-    <main style={{ maxWidth: 880, margin: "0 auto", padding: "64px 24px", display: "grid", gap: 32 }}>
-      <header>
-        <h1 style={{ fontSize: 24, marginBottom: 4 }}>Minha conta</h1>
-        <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>
-          Sessão #{session.accountId} · papel {session.role}
-        </p>
+    <>
+      <header className="sitebar">
+        <Link className="brand" href="/conta" aria-label="WYD2">
+          <span className="brand__mark" aria-hidden="true">
+            W
+          </span>
+          <span className="brand__text">
+            <span className="brand__name">WYD2</span>
+            <span className="brand__tag">Área do jogador</span>
+          </span>
+        </Link>
+        <nav className="sitebar__links" aria-label="Área do jogador">
+          <Link href="/conta" aria-current="page">
+            Minha conta
+          </Link>
+          <Link href="/guias">Guias</Link>
+          <Link href="/enciclopedia">Enciclopédia</Link>
+          {session.role === "admin" || session.role === "moderator" ? (
+            <Link href="/painel">Administração</Link>
+          ) : null}
+        </nav>
+        <LogoutButton />
       </header>
 
-      <section>
-        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Conta</h2>
-        {conta ? (
-          <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", fontSize: 13 }}>
-            <dt style={{ color: "var(--muted)" }}>Login</dt>
-            <dd style={{ margin: 0 }}>{conta.login}</dd>
-            <dt style={{ color: "var(--muted)" }}>Papel</dt>
-            <dd style={{ margin: 0 }}>{conta.role}</dd>
-          </dl>
-        ) : (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>Serviço de contas indisponível.</p>
-        )}
-      </section>
+      <main className="page page--narrow">
+        <div className="player-hero">
+          <div>
+            <h1>{conta ? `Olá, ${conta.login}.` : "Minha conta"}</h1>
+            <p>
+              Seus personagens, o ranking do servidor e as credenciais que o jogo pede na entrada.
+            </p>
+          </div>
+          <div className="chips">
+            <span className="status">sessão #{session.accountId}</span>
+            <Badge tone={roleTone(session.role)}>{roleLabel(session.role)}</Badge>
+          </div>
+        </div>
 
-      <section>
-        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Personagens</h2>
-        {personagens === null ? (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>Serviço de personagens indisponível.</p>
-        ) : personagens.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>Nenhum personagem nesta conta.</p>
-        ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "var(--muted)" }}>
-                <th style={{ padding: "6px 4px" }}>Slot</th>
-                <th style={{ padding: "6px 4px" }}>Nome</th>
-                <th style={{ padding: "6px 4px" }}>Classe</th>
-                <th style={{ padding: "6px 4px" }}>Nível</th>
-              </tr>
-            </thead>
-            <tbody>
-              {personagens.map((character) => (
-                <tr key={character.id} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ padding: "6px 4px" }}>{character.slot}</td>
-                  <td style={{ padding: "6px 4px" }}>{character.name}</td>
-                  <td style={{ padding: "6px 4px" }}>{fmtClass(character.class)}</td>
-                  <td style={{ padding: "6px 4px" }}>{character.level}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+        <section className="card" style={{ marginBottom: 16 }}>
+          <div className="card__head">
+            <div>
+              <h2 className="card__title">
+                <Swords size={15} strokeWidth={1.8} aria-hidden="true" /> Personagens
+              </h2>
+              <p className="card__sub">Vínculo de conta, classe e nível.</p>
+            </div>
+            <Badge>{personagens === null ? "indisponível" : `${personagens.length} na conta`}</Badge>
+          </div>
+          <div className="card__body">
+            {personagens === null ? (
+              <div className="empty">
+                <strong>Serviço de personagens indisponível</strong>
+                <p>Não foi possível ler a lista agora. Tente recarregar em instantes.</p>
+              </div>
+            ) : personagens.length === 0 ? (
+              <div className="empty">
+                <strong>Nenhum personagem nesta conta</strong>
+                <p>Crie o primeiro personagem no cliente, na tela de seleção.</p>
+              </div>
+            ) : (
+              <div className="character-grid" style={{ padding: 0 }}>
+                {personagens.map((character) => (
+                  <article className="character" key={character.id}>
+                    <span className="character__slot">Slot {character.slot}</span>
+                    <span className="character__name">{character.name}</span>
+                    <span className="character__meta">
+                      {fmtClass(character.class)} · nível {character.level}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
-      <section>
-        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Ranking</h2>
-        {ranking === null ? (
-          <p style={{ color: "var(--muted)", fontSize: 13 }}>Ranking indisponível.</p>
-        ) : (
-          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, display: "grid", gap: 4 }}>
-            {ranking.map((entry) => (
-              <li key={`${entry.rank}-${entry.name}`}>
-                {entry.name} · {fmtClass(entry.class)} · nível {entry.level}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+        <div className="grid-2">
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">Ranking</h2>
+                <p className="card__sub">Top 10 por nível, sem dado de conta.</p>
+              </div>
+            </div>
+            <div className="card__body card__body--flush">
+              {ranking === null ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Ranking indisponível.
+                </p>
+              ) : ranking.length === 0 ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Nenhum personagem no ranking ainda.
+                </p>
+              ) : (
+                <ol className="rank-list">
+                  {ranking.map((entry) => (
+                    <li className="rank" key={`${entry.rank}-${entry.name}`}>
+                      <span className="rank__pos">#{entry.rank}</span>
+                      <span className="rank__name">{entry.name}</span>
+                      <span className="rank__meta">
+                        {fmtClass(entry.class)} · {entry.level}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </section>
 
-      <section>
-        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Recuperar acesso</h2>
-        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 0 }}>
-          A solicitação é registrada para a equipe; a resposta não confirma se a conta existe.
-        </p>
-        <RecoveryForm />
-      </section>
-    </main>
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">Conta</h2>
+                <p className="card__sub">Identidade usada no login do jogo.</p>
+              </div>
+            </div>
+            <div className="card__body">
+              {conta ? (
+                <dl className="kv">
+                  <dt>Login</dt>
+                  <dd className="mono">{conta.login}</dd>
+                  <dt>Papel</dt>
+                  <dd>{roleLabel(conta.role)}</dd>
+                  <dt>Sessão</dt>
+                  <dd className="mono">#{conta.id}</dd>
+                </dl>
+              ) : (
+                <p className="muted small">Serviço de contas indisponível.</p>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="grid-2">
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">
+                  <KeyRound size={15} strokeWidth={1.8} aria-hidden="true" /> Senha numérica
+                </h2>
+                <p className="card__sub">Criada no cliente, no primeiro acesso; trocada aqui ou no jogo.</p>
+              </div>
+              <Badge tone={!conta ? "neutral" : conta.pin_defined ? "ok" : "warn"}>
+                {!conta
+                  ? TEXTO.pin.estadoIndisponivel
+                  : conta.pin_defined
+                    ? TEXTO.pin.estadoDefinida
+                    : TEXTO.pin.estadoNaoDefinida}
+              </Badge>
+            </div>
+            <div className="card__body">
+              {conta ? (
+                <PinForm login={conta.login} defined={conta.pin_defined} />
+              ) : (
+                <p className="muted small">{TEXTO.pin.consultaIndisponivel}</p>
+              )}
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">
+                  <LifeBuoy size={15} strokeWidth={1.8} aria-hidden="true" /> Recuperar acesso
+                </h2>
+                <p className="card__sub">Pedido registrado para a equipe.</p>
+              </div>
+            </div>
+            <div className="card__body">
+              <RecoveryForm />
+            </div>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

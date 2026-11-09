@@ -1,22 +1,33 @@
+import type { LucideIcon } from "lucide-react";
+
 export function Stat({
   label,
   value,
   hint,
   pending,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   hint?: string;
-  /** Sem dados ainda: mostra "—" e o motivo em `hint`. */
+  /** Sem leitura: mostra "—" e o motivo em `hint`. */
   pending?: boolean;
+  icon?: LucideIcon;
 }) {
   return (
-    <div className="ui-stat">
-      <div className="ui-stat__label">{label}</div>
-      <div className="ui-stat__value" aria-busy={pending || undefined}>
+    <div className="stat">
+      <div className="stat__top">
+        <div className="stat__label">{label}</div>
+        {Icon ? (
+          <span className="stat__icon" aria-hidden="true">
+            <Icon size={16} strokeWidth={1.7} />
+          </span>
+        ) : null}
+      </div>
+      <div className="stat__value" aria-busy={pending || undefined}>
         {pending ? "—" : value}
       </div>
-      {hint && <div className="ui-stat__hint">{hint}</div>}
+      {hint ? <div className="stat__hint">{hint}</div> : null}
     </div>
   );
 }

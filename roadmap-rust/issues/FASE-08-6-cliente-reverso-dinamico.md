@@ -42,6 +42,62 @@ Ou seja: do handshake, **o que o servidor precisa reproduzir está provado byte 
 o que falta é a confirmação de que o **cliente** produz esses bytes ao vivo — exatamente o
 item bloqueado abaixo.
 
+## Checklist de captura — aba de cidadania/atributos (2026-11-09)
+
+A segunda aba da seleção do cliente de referência mostra mais do que as quatro linhas do 7662:
+cidadania, atributos e estado do personagem. Para o servidor Rust preencher isso, faltam **bytes**,
+não decisão: cada campo abaixo já tem verdade no nosso banco (`crates/wyd-db/migrations/0002_personagens.sql`)
+ou na base de conhecimento, mas nenhum tem offset confirmado no corpo de `CNFAccountLogin` (2008 B)
+ou de `CNFCharacterLogin`. Nada aqui vira tipo antes da captura (invariante 5).
+
+### `STRUCT_SELCHAR` (840 B no 7662; 904 B no fork v769 — `superficie-conhecida.md` §6)
+
+| # | Campo da aba | Nossa verdade hoje | O que a captura precisa provar |
+|---|---|---|---|
+| 1 | nome | `characters.name` (≤ 16 B no `Create/Delete`) | offset, encoding e tamanho do campo no struct (não no pacote C→S) |
+| 2 | classe (4 classes) | `characters.class` 0..=3 | offset e largura (byte vs short); índice de cada classe |
+| 3 | nível | `characters.level` | offset/largura; `STRUCT_SCORE.Level` é int no 7662 e short no v769 |
+| 4 | EXP atual e próximo nível | `characters.exp` | offset/largura (i64 no banco, provavelmente 32 bits no fio) |
+| 5 | HP/MP atuais e máximos | `characters.hp`/`mp` | se os máximos vêm no selchar ou só no `STRUCT_MOB` |
+| 6 | tier / camada (Mortal→Nightmare) | `characters.tier` + `arch_of_id` | se o cliente 7662 conhece o campo ou se é extensão nossa (não inventar) |
+| 7 | cidadania (`Citizen = ServerIndex + 1`) | derivada do canal, `docs/wyd/canais-e-cidadania.md` §2 | offset, tipo e se o cliente desenha reino pelo id ou por tabela |
+| 8 | guilda (id + nome) | `0004_guildas.sql` | layout do par id/nome e limite de bytes do nome |
+| 9 | posição (mapa/x/y) | `characters.pos_x/pos_y` | se o selchar traz posição (provável: só `STRUCT_MOB`) |
+| 10 | PvP/PK e kills | fora do banco ainda | existência do campo e faixa (o cliente pinta o nome por ele) |
+| 11 | equipamento visível (arma/armadura/escudo/capa) | `0003_inventario.sql` (`STRUCT_ITEM` 4 B + efeitos) | quais slots o selchar carrega e em que ordem |
+| 12 | atributos base (str/dex/int/con) e pontos livres | fora do banco (progressão é FASE-10) | quantos bytes por atributo e se vêm no selchar |
+| 13 | bônus/efeitos ativos (buff, drop, EXP) | fora do banco | se existe máscara de flags e onde |
+| 14 | data de criação / último acesso | `characters.created_at`/`updated_at` | se o cliente mostra e de que campo lê |
+
+### `STRUCT_MOB` (corpo de `CNFCharacterLogin`, tamanho desconhecido no 7662)
+
+| # | Campo | Nossa verdade hoje | O que a captura precisa provar |
+|---|---|---|---|
+| 1 | tamanho total do struct e do pacote | `pacotes.md`: `STRUCT_MOB + cauda` **PENDENTE** | `Size` real do frame e se há cauda variável |
+| 2 | `STRUCT_SCORE` (nível, str/dex/int/con, HP/MP, resistências) | fórmula é FASE-10 | ordem e largura de cada membro |
+| 3 | inventário/equipamento | `0003_inventario.sql` | `MAX_EQUIP` 16 (7662) vs 18 (v769) — não misturar |
+| 4 | moedas (gold) | `0010_economia.sql` | posição do campo e tipo |
+| 5 | guilda/cidadania no mob | `0004_guildas.sql` | duplicação em relação ao selchar (qual o cliente usa para desenhar) |
+| 6 | posição e direção iniciais | `characters.pos_x/pos_y` | offsets e ordem (x,y vs y,x) |
+
+**Runbook operacional:** [`docs/cliente/captura-selchar.md`](../../docs/cliente/captura-selchar.md) —
+apontar o cliente para o proxy, capturar dois estados, rodar `tools/client/diff-captura.mjs` e
+congelar o achado (corpo do PIN mascarado na conversão).
+
+### Protocolo de captura (ordem mínima, sem inventar)
+
+1. Subir canal com um personagem de cada classe/tier e **variar um campo por vez** no banco
+   (nível, exp, cidadania, classe) entre dois logins.
+2. Capturar `CNFAccountLogin` (0x010A) e `CNFCharacterLogin` (0x0114) nos dois estados e fazer
+   **diff de bytes** — o campo que mudou junto com o valor é o campo (correlação, não palpite).
+3. Congelar cada achado como golden em `fixtures/cliente/` com `captura.mjs --check`, marcando
+   CONFIRMADO só o que o diff provou; o resto continua UNVERIFIED.
+4. Só então abrir issue de corpo de pacote (`payload/`) com offsets e teste de ida-e-volta.
+
+Aceite da captura: os 14 campos do selchar classificados (confirmado/ausente naquele build) e o
+tamanho exato de `STRUCT_MOB`; qualquer campo que o cliente 7662 não tenha fica registrado como
+"não existe neste build", não como "não implementado".
+
 ## O que falta (bloqueio declarado)
 
 Captura ao vivo (§6 de `depuracao.md`): exige servidor executável falando 7662 (crate `wyd-net`/`wyd-core` ainda não existem) + VM Windows com D3D9 + executor humano. Passos concretos quando desbloquear:

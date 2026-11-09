@@ -20,11 +20,11 @@ use wyd_db::{Accounts, CatalogSnapshot, Characters, DeliveryQueue, Role};
 
 use crate::api::{
     create_account, find_account, own_account, own_characters, request_grant, request_recovery,
-    top_rankings, AccountSummary, GrantKind, GrantRequest, PanelAccount, PanelCharacter,
-    RankingEntry,
+    top_rankings, AccountSummary, ChannelPresence, GrantKind, GrantRequest, PanelAccount,
+    PanelCharacter, RankingEntry,
 };
-use crate::audit::{log_panel, AuditSink};
-use crate::auth::Session;
+use crate::audit::{log_action, log_denied, log_panel, AuditSink};
+use crate::auth::{Session, StaffSession};
 use crate::error::AdminError;
 use crate::service::GrantService;
 
@@ -53,7 +53,7 @@ pub const SERVICOS: &[(&str, &[&str])] = &[
             "create_account",
         ],
     ),
-    ("account_web", &["verify_credentials"]),
+    ("account_web", &["verify_credentials", "change_numeric_pin"]),
     (
         "attribute_map_admin",
         &["get_attribute_map_info", "transform_attribute_map"],
@@ -170,6 +170,9 @@ pub const SERVICOS: &[(&str, &[&str])] = &[
             "set_tower_owner",
         ],
     ),
+    // Leitura auditada da área de monitoramento: presença viva por canal. Nunca
+    // escrita — o portal não toca estado de personagem (AGENTS.md invariante 7).
+    ("server_admin", &["list_channel_presence"]),
 ];
 
 /// `true` quando o contrato do portal declara `servico/metodo`.
@@ -293,6 +296,14 @@ pub struct LoginOk {
     pub role: Role,
 }
 
+/// Presença por canal já resolvida pelo **binário**.
+///
+/// O roteador não tem runtime (ADR-0006): o gateway passa um fecho que lê
+/// `character_session` com `block_on` e devolve uma linha por canal. O roteador só
+/// autentica (staff), audita e serializa — nada de SQL no Cold Path do transporte.
+pub type PresenceCheck =
+    std::sync::Arc<dyn Fn() -> Result<Vec<ChannelPresence>, String> + Send + Sync>;
+
 /// Roteador do contrato: `servico/metodo` → `api/*`.
 ///
 /// Sem `derive(Debug)` de propósito: `login` é `Arc<dyn Fn>` e imprimir fecho
@@ -305,6 +316,9 @@ pub struct Router<A, C, S> {
     tokens: StaticTokens,
     catalog: Option<CatalogSnapshot>,
     login: Option<LoginCheck>,
+    presence: Option<PresenceCheck>,
+    /// `host:porta` do CPSock do servidor de jogo (troca de PIN pelo portal).
+    game: Option<String>,
     max_body: usize,
 }
 
@@ -320,6 +334,8 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             tokens,
             catalog: None,
             login: None,
+            presence: None,
+            game: None,
             max_body: http::MAX_BODY,
         }
     }
@@ -328,6 +344,23 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
     #[must_use]
     pub fn with_login_check(mut self, check: LoginCheck) -> Self {
         self.login = Some(check);
+        self
+    }
+
+    /// Liga a leitura de presença por canal (fecho com o pool, como o login).
+    #[must_use]
+    pub fn with_presence_check(mut self, check: PresenceCheck) -> Self {
+        self.presence = Some(check);
+        self
+    }
+
+    /// Endereço CPSock do servidor de jogo usado pela troca de PIN do portal.
+    ///
+    /// Sem ele `account_web/change_pin` responde `503`: o gateway não inventa um
+    /// caminho alternativo para gravar hash sem passar pelo servidor.
+    #[must_use]
+    pub fn with_game_address(mut self, address: impl Into<String>) -> Self {
+        self.game = Some(address.into());
         self
     }
 
@@ -397,8 +430,91 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("panel", "rankings") => self.panel_rankings(session, &params, trace),
             ("item_catalog", "list_items") => self.catalog_list_items(session, trace),
             ("account_web", "verify_credentials") => self.verify_credentials(&params, trace),
+            ("account_web", "change_numeric_pin") => self.change_pin(&params, trace),
+            ("server_admin", "list_channel_presence") => self.presence_list(session, trace),
             _ if conhecido(service, method) => self.pending(session, service, method, trace),
             _ => Reply::transport(404, trace, "método desconhecido"),
+        }
+    }
+
+    /// `server_admin/list_channel_presence` — leitura de presença por canal.
+    ///
+    /// Staff obrigatório; a leitura entra na trilha de auditoria. É **somente leitura**:
+    /// a origem é `character_session`, mantida pelo servidor de jogo, não por aqui.
+    fn presence_list(&self, session: Session, trace: &str) -> Reply {
+        let staff = match StaffSession::require(session) {
+            Ok(staff) => staff,
+            Err(error) => {
+                log_denied(
+                    &self.audit,
+                    session.account_id,
+                    "server.presence",
+                    "sem papel de staff",
+                );
+                return Reply::from_error(trace, &error);
+            }
+        };
+        let Some(check) = &self.presence else {
+            return Reply::transport(503, trace, "presença por canal não montada no gateway");
+        };
+        match check() {
+            Ok(channels) => {
+                log_action(
+                    &self.audit,
+                    &staff,
+                    "server.presence",
+                    "channels",
+                    "leitura",
+                );
+                Reply::ok(
+                    trace,
+                    &format!(",\"channels\":{}", presence_json(&channels)),
+                )
+            }
+            Err(_) => Reply::transport(503, trace, "banco indisponível para presença"),
+        }
+    }
+
+    /// `account_web/change_pin` — troca de PIN do portal pelo fluxo do jogo.
+    ///
+    /// O gateway abre uma conexão CPSock real e faz `0x0FDE` em duas etapas
+    /// (`change_numeric` 1 com o PIN atual, 2 com o novo), como o cliente 7662. A
+    /// senha da conta é exigida porque o `0x0FDE` só existe depois do `AccountLogin`;
+    /// não há atalho que grave hash sem passar pelo servidor de jogo.
+    fn change_pin(&self, params: &json::Json, trace: &str) -> Reply {
+        let Some(address) = &self.game else {
+            return Reply::transport(503, trace, "servidor de jogo não configurado no gateway");
+        };
+        let campo = |nome: &str| params.get(nome).and_then(json::Json::as_str);
+        let (Some(login), Some(senha), Some(atual), Some(novo)) = (
+            campo("login"),
+            campo("password"),
+            campo("current_pin"),
+            campo("new_pin"),
+        ) else {
+            return Reply::transport(
+                400,
+                trace,
+                "login, password, current_pin e new_pin são obrigatórios",
+            );
+        };
+        use crate::service::pin::PinError;
+        match crate::service::pin::change_pin(address, login, senha, atual, novo) {
+            Ok(()) => Reply::ok(trace, ",\"changed\":true"),
+            Err(PinError::InvalidPin) => {
+                Reply::transport(422, trace, "PIN deve ter de 4 a 6 dígitos")
+            }
+            Err(PinError::Rejected) => Reply::transport(
+                400,
+                trace,
+                "PIN atual inválido ou conta bloqueada por tentativas",
+            ),
+            Err(PinError::Unavailable) => {
+                Reply::transport(503, trace, "servidor de jogo indisponível")
+            }
+            Err(PinError::Protocol) => {
+                Reply::transport(502, trace, "resposta inesperada do servidor de jogo")
+            }
         }
     }
 
@@ -747,6 +863,10 @@ fn panel_account_json(account: &PanelAccount) -> String {
             "role".to_string(),
             json::Json::Str(account.role.as_db().to_string()),
         ),
+        (
+            "pin_defined".to_string(),
+            json::Json::Bool(account.pin_defined),
+        ),
     ])
     .render()
 }
@@ -776,6 +896,21 @@ fn rankings_json(entries: &[RankingEntry]) -> String {
                 ("name".to_string(), json::Json::Str(e.name.clone())),
                 ("class".to_string(), json::Json::Num(e.class as f64)),
                 ("level".to_string(), json::Json::Num(e.level as f64)),
+            ])
+        })
+        .collect();
+    json::Json::Arr(items).render()
+}
+
+fn presence_json(channels: &[ChannelPresence]) -> String {
+    let items = channels
+        .iter()
+        .map(|c| {
+            json::Json::Obj(vec![
+                ("group_id".to_string(), json::Json::Num(c.group_id as f64)),
+                ("channel".to_string(), json::Json::Num(c.channel as f64)),
+                ("host".to_string(), json::Json::Str(c.host.clone())),
+                ("online".to_string(), json::Json::Num(c.online as f64)),
             ])
         })
         .collect();

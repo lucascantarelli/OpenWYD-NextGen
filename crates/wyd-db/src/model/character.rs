@@ -6,7 +6,7 @@ use crate::error::DbError;
 pub const MAX_SLOTS: i64 = 3;
 
 /// Personagem (posição incluída: o save/pos mora aqui, não no tick).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Character {
     pub id: i64,
     pub account_id: i64,
@@ -19,6 +19,17 @@ pub struct Character {
     pub mp: i64,
     pub pos_x: i64,
     pub pos_y: i64,
+    /// Ouro do personagem (migration 0031); gasto/ganho passam pelo servidor.
+    pub gold: i64,
+    /// Máximo de HP/MP (0031): sem eles a barra da seleção nascia com máximo 0.
+    pub hp_max: i64,
+    pub mp_max: i64,
+    /// Pontos de PvP (0031); ranking/season consome depois.
+    pub pvp_points: i64,
+    /// Guilda vem de `guild_members`/`guilds` (0004), preenchida no roster;
+    /// `create`/`top_by_level` devolvem `None`/vazio.
+    pub guild_id: Option<i64>,
+    pub guild_name: String,
 }
 
 impl Character {
@@ -57,6 +68,9 @@ mod tests {
             mp: 10,
             pos_x: 2100,
             pos_y: 2100,
+            hp_max: 100,
+            mp_max: 10,
+            ..Character::default()
         }
     }
 

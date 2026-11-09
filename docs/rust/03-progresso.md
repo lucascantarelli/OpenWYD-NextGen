@@ -1,7 +1,9 @@
 # Progresso da execução — roadmap-rust
 
 > Documento vivo. Atualizado a **cada issue** executada (regra em
-> `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-08 (banco remodelado e catalogado 0001–0024,
+> `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-09 (log de login dos canais provado
+> durável em Loki através da recriação dos containers, com correção do agrupamento de métricas
+> por `container`; banco remodelado e catalogado 0001–0024,
 > `wyd-sim` organizado por sistema com unidades e determinismo provado — ADR-0011 —, e gema no
 > inventário do core).
 
@@ -67,7 +69,7 @@
 | FASE-07-3 painel admin | ⬜ | Depende de 07-1. |
 | FASE-07-4 E2E Playwright | ⬜ | Depende de 07-2, 07-3. |
 | FASE-08-1 tabela do protocolo | ✅ | Reorganizado na árvore §3 (`wire/`, `codec/`, `payload/`, `error.rs`, `tests/`); `protocolo.md` publicado (HEADER, ofuscação, 198 opcodes gerados, 16 payloads, UNVERIFIED); gate verde (32 lib + 4 integração). |
-| FASE-08-2 parsers | ✅ | `repr(C)` + offsets provados; `inspect` (tamanho → opcode) + `require_ported` (gate UNVERIFIED); 9 goldens contra `fixtures/cliente/*.json` (ida-volta byte-idêntica); zero `unsafe`; sem deps novas (zerocopy/nom diferidos p/ 13-2). |
+| FASE-08-2 parsers | ✅ | `repr(C)` + offsets provados; `inspect` (tamanho → opcode) + `require_ported` (gate UNVERIFIED); 9 goldens contra `fixtures/cliente/*.json` (ida-volta byte-idêntica); zero `unsafe`; sem deps novas (zerocopy/nom diferidos p/ 13-2). **Seleção de personagem no canal** (`_MSG_CreateCharacter`/`_MSG_DeleteCharacter`/`_MSG_CharacterLogin`) com autoridade no Postgres e sessão que sobrevive ao handshake (`crates/wyd-server/src/{characters.rs,cpsock.rs}`, `tests/selecao.rs`). |
 | FASE-08-3 distribuição | ✅ | `distribuicao.rs` + `update`/`--dry-run`; 27/27 testes; gate verde; e2e em tmp (aplica+backup+check verde, adulterado recusado exit 1). |
 | FASE-08-4 dossiê do cliente | ✅ | `docs/cliente/` publicado (README, inventário, superfície conhecida, plano de RE); baseline de `WYD.exe` 7662 com SHA-256 `04c9d2a1…` e PE32/i386; skill `wyd-client-reverso`. Desassemble é 08-5/08-6. |
 | FASE-08-5 RE estático | ✅ | `tools/client/` (7 módulos) + `docs/cliente/gerado/` (PE, strings, evidência, formatos); **6/6 âncoras** e **3/3 patches** confirmados por bytes + objdump; os 3 sites de checksum já estão `EB` no disco; `.wyt`/`.msa`/`sn.bin` com estrutura inicial; `serverlist.bin` opaco. T2 (structs) movido para 08-6. |
@@ -91,6 +93,25 @@
 
 | Data | Issue | O que mudou | Evidência |
 |---|---|---|---|
+| 2026-11-09 | FASE-12-1 (durabilidade do log de login) | **Prova ponta a ponta de que o log dos canais sobrevive à recriação do container.** Cadeia: `container → Alloy (socket RO) → Loki (volume wyd-loki-data, 14 d) → BFF do portal`. Linhas reais de `event=login` geradas pelo `_MSG_AccountLogin` do cliente 7662: **00:45:03Z** `account=test1 channel=1 session=5` e **00:45:04Z** `account=test2 channel=2 session=6`. Recriação só dos canais (`docker compose up -d --force-recreate server server-canal-2`) na janela **00:45:44Z–00:46:02Z**, com os containers iniciados em 00:45:51Z/00:45:52Z. Depois do ciclo o `json-file` tem **0** linhas `event=login` e o Loki devolve **as mesmas duas**, idênticas; o endpoint de log do portal (`/api/logs/<container>` → `src/server/loki.ts`, sessão de staff) devolve exatamente as mesmas linhas com o timestamp ISO do Loki — `diff` antes×depois vazio nos dois canais, conta/canal/sessão/timestamp intactos. **Defeito encontrado e corrigido no caminho:** as métricas do Loki eram agrupadas por `service` (nome do serviço no compose, `server`, `portal`…) e comparadas com a whitelist de `container` (`wyd-canal-1`…), então `/api/logs/status` respondia "sem linhas (5m)" para todos; agora agrupa por `container` e exibe nome curto (`logLabel`), com `ok:true` e 9/10 serviços `registrando`. Neste ciclo ainda não havia linha de login do dono no durável — ela aparece 3 h depois, em **2026-11-08T23:08:51Z** (linha seguinte), e a investigação inicial de 1 h não a via por causa da janela padrão do `query_range` | `docker logs wyd-canal-1 \| grep -c event=login` = **0** após recriar; Loki `{job="docker", container="wyd-canal-1"} \|= "event=login"` → `account=test1 group=1 channel=1 version=12000 session=5`; SSE `/api/logs/wyd-canal-2` → `data: 2026-11-09T00:45:04.339Z … account=test2 … session=6`; `diff` dos arquivos antes×depois → `IDENTICO_1`/`IDENTICO_2`; `/api/logs/status` `ok:true`; `test1..test5` http=200 (admin, moderator×2, player×2) e `admin` default http=200 `role:admin`; `/monitoramento` renderiza `presença · banco` com `canal 1: 0 · canal 2: 0` (sessões de prova já liberadas) e `loki · ingerindo`; `cargo fmt --check` 0, `clippy -D warnings` 0, `cargo test --workspace` **477 ok / 0 falhas**, `npx tsc --noEmit` 0, `npx vitest run` 0, `docker compose config` dev e prod 0, Grafana `/api/health` `database:ok` (12.2.0), Prometheus `/-/ready` 200 |
+| 2026-11-09 | FASE-08-1 (login com a conta do dono) | **Existe linha de `event=login` com a conta do dono no durável; a atribuição ao `client/` está refutada (ver fim da célula).** `account=s79331058442700` no **canal 1**, `session=8`, em **2026-11-08T23:08:51Z** — 3 h antes da consulta, dentro da janela de 12 h e **fora da janela padrão de 1 h** do `query_range` (motivo de o vigia de 1 h ter concluído "nenhum handshake": o login já existia). Linhas cruas: `event=session result=open account=s79331058442700 group=1 channel=1 id=8`, `event=login result=accepted account=s79331058442700 group=1 channel=1 version=12000 channels=2 session=8` e, no canal 2, `event=login result=conflict account=s79331058442700 group=1 channel=2 origin_channel=1 version=12000 reason=conta já tem sessão viva no canal 1` (o cliente tentou os dois canais; a cerca de sessão recusou o segundo com a sessão viva no primeiro — comportamento correto). O handshake é aceito **sem senha**: `handle_connection`/`handshake` validam INITCODE, frame, checksum, opcode `AccountLogin`, gate de versão e a cerca de sessão, e não consultam `accounts` — a autenticação de conta é FASE-08-2, então a conta do dono (ausente de `accounts`, que só tem `admin` e `test1..test5`) entra como qualquer outro nome. Nada de `character_session` para essa conta: a instância do canal que atendeu em 23:08 é anterior à recriação de 00:45 e não gravava a sessão no banco | `docker run --rm --network wyd alpine:latest sh -c "wget -qO- 'http://loki:3100/loki/api/v1/query_range?query=%7Bjob%3D%22docker%22%7D%20%7C%3D%20%22event%3Dlogin%22&limit=200&direction=backward&since=12h'"` → 3 linhas de `s79331058442700` + 4 de `test1..test4`; ns convertido com `date -u -d @<segundos>` → `2026-11-08T23:08:51Z`; `docker exec wyd-db psql -U wyd -d wyd -tAc "select id, login, role from accounts order by id"` → `admin`, `test1..test5` (conta do dono ausente); `select account_login from character_session` → só `test1..test4`; `client/serverlist.txt` confirma os dois canais (`192.168.100.3:8281`, `192.168.100.4:8281`) e `docker port` publica ambos, aceitando TCP do host. **Proveniência (conclusão honesta):** essa linha **não** veio deste `client/` — o `WYD.log` da pasta não tinha nenhuma execução entre 19:33 local (22:33Z) e 22:45 local (01:45Z de 11-09), enquanto o login é de 20:08 local (23:08Z); o handshake CPSock não registra `peer`, e o único `peer` do host (`172.18.0.1` no `/serv00.htm`) não distingue launcher de cliente. Ou seja: **refutada** como prova do `client/` e **não confirmada** quanto à origem (outra cópia/máquina na LAN ficou indeterminado) |
+| 2026-11-09 | FASE-08-6 (handshake pelo `client/WYD.exe`) | **Primeiro `event=login` gerado por uma execução datada do `client/`.** `account=admin group=1 channel=1 version=12000 channels=2 session=9` em **2026-11-09T01:53:03Z** (= 22:53:03 local, UTC-3), com `event=session result=open account=admin group=1 channel=1 id=9` e `event=handshake result=accepted version=12000 channels=2 kw=194 session=9` na mesma janela. A execução é a do `WYD.log` iniciada em **22:45:56 local = 01:45:56Z** (PID 20084, `Start-Process` com `-WorkingDirectory client`), cuja tela de login (formulário com a conta `admin` já preenchida) foi submetida ~7 min depois. **`Error in Init Render Target Texture` é não fatal:** a janela renderiza o *server select* (`NextGen` na coluna Servidor) e o cliente **concluiu o handshake** — medido por captura da janela e pelo par sessão+handshake no Loki, não por inferência; o script de automação por mouse/teclado foi bloqueado pelo antivírus (AMSI) e o clique em Conectar não abriu TCP, então o caminho provado é o login pelo formulário. | `docker run --rm --network wyd alpine:latest sh -c "wget -qO- 'http://loki:3100/loki/api/v1/query_range?query=%7Bjob%3D%22docker%22%7D%20%7C%3D%20%22event%3Dlogin%22&limit=50&direction=backward&since=12h'"` → ns `1794189183373118311` → `date -u -d @1794189183` = **2026-11-09T01:53:03Z**; `client/WYD.log` → `11/08 22:45:56 - VertexShader HW Accel Enabled` + `22:45:57 - Error in Init Render Target Texture` (execução que gerou a sessão); `node tools/client/serverlist.mjs --check client` → 1 servidor `NextGen`, canal 1 `192.168.100.3`, canal 2 `192.168.100.4` |
+| 2026-11-09 | FASE-12-1 (ruído do healthcheck do Postgres) | **Fim do `FATAL: database "admin" does not exist` a cada 10 s.** Causa no compose: o healthcheck chamava `pg_isready -U ${POSTGRES_USER:-wyd}` sem `-d`, e com `POSTGRES_USER=admin` o `pg_isready` tenta o banco de mesmo nome do usuário — que não existe (o banco é `wyd`). Correção: `-d ${POSTGRES_DB:-wyd}`, validada em `docker compose config` e aplicada ao recriar o `db`. Efeito colateral tratado: com o `db` recriado, os canais ficaram com o pool apontando para o container antigo (listener aceitava TCP mas nenhum `event=status` saía) e o gateway ficou fora até `docker compose up -d` — ambos reerguidos e verificados | `docker inspect wyd-db --format '{{json .Config.Healthcheck.Test}}'` → `["CMD-SHELL","pg_isready -U admin -d wyd"]`; `docker logs --since 2m wyd-db \| grep -c 'database "admin" does not exist'` → **0**; `docker ps` → `wyd-db`, `wyd-gateway`, `wyd-portal` e os dois canais healthy; `curl -o /dev/null -w %{http_code} http://127.0.0.1:7600/health` → 200 |
+| 2026-11-09 | FASE-08-6 (canais em loopback depois da troca de IP) | **Stack novamente acessível ao cliente.** A máquina passou a ter `192.168.100.7` no lugar de `192.168.100.3/.4`, então as publicações do override (`${WYD_CANAL1_IP:-192.168.100.3}` e `${WYD_CANAL2_IP:-192.168.100.4}`) ficaram órfãs: `docker port` vazio, nenhum listener no host, `serv00.htm` e `:8281` em timeout — o cliente não tinha para onde discar. Correção na origem: os dois IPs voltaram como alias **/32 no adaptador de loopback** (`netsh interface ipv4 add address "Loopback Pseudo-Interface 1" 192.168.100.3 255.255.255.255`, idem `.4`) — /32 de propósito, para não criar rota `192.168.100.0/24` que quebraria a LAN (o Wi-Fi está em `192.168.100.7/24`); o override passou a publicar **os dois conjuntos** (`${WYD_CANAL1_IP:-192.168.100.3}` + `127.0.0.1`, `\${WYD_CANAL2_IP:-192.168.100.4}` + `127.0.0.2`), o `.env` voltou a `.3/.4` e o `client/serverlist.bin` foi **regenerado pelo launcher** a partir do registro (sem editar o `.bin`). Assim o cliente **já aberto** (que leu o `.bin` antigo) e um cliente novo encontram o canal | `Get-NetIPAddress` → `192.168.100.3 Loopback Pseudo-Interface 1 /32` e `192.168.100.4 … /32`; `docker port wyd-canal-1` → `8080/tcp -> 127.0.0.1:80`, `8080/tcp -> 192.168.100.3:80`, `8281/tcp+udp` em `127.0.0.1` e `192.168.100.3`; `docker port wyd-canal-2` → `8281/tcp+udp` em `127.0.0.2` e `192.168.100.4`; `curl http://192.168.100.3/serv00.htm` → `200` com `0\n0\n` (4 B), idem `127.0.0.1`; eco UDP `1,2,3,4` e TCP aberto em `.3`, `.4`, `127.0.0.1`, `127.0.0.2`; `--print client/serverlist.bin` → `1 1 192.168.100.3` / `1 2 192.168.100.4`; `--check client` → `ok` |
+| 2026-11-09 | FASE-08-1 (handshake vivo nos DOIS endereços do `.bin`) | **Prova de que o cliente em execução não precisa ser reiniciado**: o handshake real foi aceito em `192.168.100.3:8281` (canal 1) e `192.168.100.4:8281` (canal 2), exatamente os hosts que o `serverlist.bin` carregado pelo cliente usa | `WYD_LIVE_CPSOCK=192.168.100.3:8281 WYD_LIVE_ACCOUNT=test1 cargo test -p wyd-server --test handshake handshake_contra_servidor_vivo` → `1 passed`; `docker logs wyd-canal-1` → `event=session result=open account=test1 group=1 channel=1 id=15`, `event=login result=accepted account=test1 group=1 channel=1 version=12000 channels=2 session=15`, `event=handshake result=accepted version=12000 channels=2 kw=11 session=15`; canal 2 (`.4`) → mesmas linhas com `channel=2 … id=16`/`session=16`; `character_session` 15 e 16 com `released_at` preenchido; `select count(*) … where released_at is null` → `0` |
+| 2026-11-09 | FASE-08-1 (qual cliente rodou: o nosso não foi executado) | Terceira checagem depois do aviso de login, agora pelo lado do binário. **Nenhum arquivo novo** em `client/`: os mais recentes são `serverlist.txt`/`serverlist.bin` de `08:13:01` local (escritos pelo launcher nesta sessão) e `client/WYD.log` com último run às `07:44:44` local (`10:44Z`), terminando em `Error in Init Render Target Texture`. Zero processos com nome casando `WYD*`/`*launcher*` (`Get-CimInstance Win32_Process`), zero conexões com porta remota `8280–8290` (`Get-NetTCPConnection`) e, no Loki, apenas as duas recusas de TCP vazio que eu mesmo gerei (`11:33:54.352Z` no canal 1, `.354Z` no canal 2). O launcher global da referência autorizada (`C:\Users\Canta\AppData\Local\wyd_launcher`) tem **outro** executável (`With Your Destiny.exe`, 438 792 B) que aponta para o servidor oficial/privado — esse tráfego nunca passa pelos nossos binds. Conclusão: não falta servidor nem config do nosso cliente (`client/serverlist.txt` = `.3/.4:8281` casa com os binds publicados); falta **executar o cliente deste repositório** (`D:\dolorestec\wyd2\OpenWYD\client\WYD.exe`), selecionar `NextGen` e clicar em Conectar | `Get-ChildItem client -File \| Where LastWriteTime -gt (Get-Date).AddMinutes(-60)` → só `serverlist.bin`/`serverlist.txt` `08:13:01` e `WYD.log` `07:44:44`; `Get-CimInstance Win32_Process` filtrado por `WYD`/`launcher` → vazio; `Get-NetTCPConnection` com `RemotePort 8280..8290` → vazio; Loki 25 min → `2026-11-09T11:33:54.352Z wyd-canal-1` e `…354Z wyd-canal-2` `event=handshake result=rejected reason=io: failed to fill whole buffer`; `docker logs --since 10m` dos dois canais → só essas recusas; `character_session` abertas = `0` |
+| 2026-11-09 | FASE-08-1 (login real do cliente `WYD.exe` capturado: `account=admin`, sessão 17) | **O cliente deste repositório conectou.** Janela `2026-11-09T11:24:08Z → 11:39:08Z` devolveu só duas linhas `event=(login\|session)`, e elas são o login novo: `event=session result=open account=admin group=1 channel=1 id=17` às `11:38:11.315Z` e `event=login result=accepted account=admin group=1 channel=1 version=12000 channels=2 session=17` às `11:38:11.316Z`, seguidas de `event=handshake result=accepted version=12000 channels=2 kw=241 session=17`. A conta veio como **`admin`** (não `s79331058442700`) — registrado como chegou, sem normalizar: é o login digitado no cliente. `kw=241` (contra `kw=11` das minhas sondas) é a assinatura de que o frame é do cliente real, não da sonda. Correlação no mesmo instante: `character_session` id **17**, `account_login=admin`, `group_id=1`, `channel=1`, `client_version=12000`, `opened_at=2026-11-09 11:38:11.304682+00`, `released_at=2026-11-09 11:38:11.727829+00` (a sessão fecha ~423 ms depois, porque a seleção de personagem ainda não existe — FASE-08-2), e o stdout de `wyd-canal-1` traz as mesmas linhas da conta/sessão. Veio um **segundo** login idêntico pelo canal 2: `character_session` id **18**, `admin`, `channel=2`, `opened_at=2026-11-09 11:39:17.576041+00`, `released_at=2026-11-09 11:39:18.100069+00`, com `2026-11-09T11:39:17.612Z \| wyd-canal-2 \| level=info event=login result=accepted account=admin group=1 channel=2 version=12000 channels=2 session=18` — o cliente tentou os dois canais, como faz ao listar o servidor. O processo foi provado do lado do cliente: `WYD.exe` **PID 23392**, criado `09/11/2026 08:37:40` local (`11:37:40Z`), `client/WYD.log` reescrito no mesmo segundo, e socket `192.168.100.4:64389 → 192.168.100.4:8281` em `CloseWait` pertencente a esse PID — o cliente discou para os nossos binds, não para o servidor oficial do launcher global | Consulta Loki exata: `{job="docker"} \|~ "event=(login\|session)"`, `limit=300`, `direction=backward`, `start=2026-11-09T11:24:08Z`, `end=2026-11-09T11:39:08Z` → 2 linhas (as duas citadas). `docker logs --since 15m wyd-canal-1` → `level=info event=session result=open account=admin group=1 channel=1 id=17`; `level=info event=login result=accepted account=admin group=1 channel=1 version=12000 channels=2 session=17`; `level=info event=handshake result=accepted version=12000 channels=2 kw=241 session=17`. `select … from character_session order by id desc limit 5` → `17\|admin\|1\|1\|12000\|2026-11-09 11:38:11.304682+00\|2026-11-09 11:38:11.727829+00`; agregado `min_id=5 max_id=17 total=10 abertas=0` (após o segundo login: `total=11 abertas=0`); `select … where id >= 17` → `17\|admin\|1\|1\|12000\|2026-11-09 11:38:11.304682+00\|2026-11-09 11:38:11.727829+00` e `18\|admin\|1\|2\|12000\|2026-11-09 11:39:17.576041+00\|2026-11-09 11:39:18.100069+00`. `Get-CimInstance Win32_Process` → `23392 WYD.exe` criado `09/11/2026 08:37:40`; `Get-NetTCPConnection` → `192.168.100.4:64389 → 192.168.100.4:8281 CloseWait 23392`; `docker ps` → `wyd-db`, `wyd-gateway`, `wyd-portal`, `wyd-canal-1`, `wyd-canal-2` todos `healthy` |
+| 2026-11-09 | FASE-08-2 (seleção de personagem no canal) | **A sessão não fecha mais no handshake.** Causa medida no código: o laço antigo lia só o `HEADER` de 12 B e **retornava no primeiro pacote** — o cliente era desconectado e a conta liberada antes de escolher personagem; opcode desconhecido também fechava. Agora `serve_selection` consome o frame inteiro (`Size` → corpo, sem dessincronizar o próximo), renova a cerca a cada pacote e atende `_MSG_CreateCharacter`/`_MSG_DeleteCharacter`/`_MSG_CharacterLogin` por `characters.rs`: a conta vem do `_MSG_AccountLogin` e slot/nome só escolhem **entre** os personagens dela (autoridade no Postgres, sem criação sem dono e sem seleção alheia). Nome/classe/slot são validados antes do banco (1..=16 ASCII imprimível, classe 0–3, slot 0–3) e o `DeleteCharacter` exige o nome que veio no pacote; a senha de 12 B **não** é conferida (`password_checked=false` no log) porque pertence à autenticação de conta, que ainda não existe. Pacote ainda não portado (`_MSG_Ping`, guerra, chat) é **tolerado** (`result=tolerated`) e a conexão continua; só `Size` inválido e falha de I/O encerram. As confirmações continuam **só de cabeçalho** (`Size=12`) com o opcode de sucesso ou o `*Fail` do domínio, porque `STRUCT_SELCHAR`/`STRUCT_MOB` seguem UNVERIFIED (invariante 5) — por isso a tela do 7662 ainda não desenha a lista completa: o blob é do corpo do `CNFAccountLogin`, que só fecha com a captura da 08-6. A conta do dono ganhou linha em `accounts` (id 9, `NO_CREDENTIAL`, sem senha) porque criar personagem exige dono; autenticação segue pendente. | `cargo test -p wyd-server --test selecao` 4/4 (sessão viva depois de pacote tolerado e de duas recusas sem banco; `Size=8193` fecha; `KeyWord` ecoado na resposta); `WYD_LIVE_CPSOCK=127.0.0.1:8281 WYD_LIVE_ACCOUNT=s79331058442700 cargo test -p wyd-server --test selecao selecao_contra_servidor_vivo` → `1 passed`; canal 1 (imagem `sha256:899c630c…`): `event=session result=open account=s79331058442700 group=1 channel=1 id=19`, `event=login result=accepted account=s79331058442700 group=1 channel=1 version=12000 channels=2 session=19`, `event=character result=ok action=create … slot=3 name=QA846587000 class=0 id=1`, `action=select … level=1 force=1`, `stage=in_game`, `action=delete … password_checked=false`; `character_session` 19 aberta `11:58:19.831Z` e liberada `11:58:19.880Z` (nenhuma viva sobra); `characters` id 1 com `deleted_at` preenchido (soft-delete, nenhum resíduo vivo); Loki `{job="docker"} \|= "event=login"` devolve a mesma linha de `s79331058442700 channel=1 session=19`. |
+| 2026-11-09 | FASE-08-1 (varredura total calibrada: login da conta real existe; `character_session` foi apagada pelo reseed) | Calibração primeiro, porque era o furo: o relógio do host e o do Loki **não divergem** — a mesma linha (`session=16`, canal 2) aparece em `docker logs --timestamps` como `2026-11-09T11:14:36.692153810Z` e o Loki guardou `1794222876697578885` ns = `2026-11-09T11:14:36.697Z` (≈5 ms), então a janela curta anterior não cortava nada por fuso. Varredura **sem corte** (`2026-11-01T00:00:00Z` → `11:31:52Z`, limit 5000): 12 linhas de `event=login`, contas `s79331058442700` (3), `test1` (5), `test2`, `test3`, `test4`, `admin` (1 cada); intervalo real `2026-11-08T23:08:51.100Z` → `2026-11-09T11:14:36.692Z`. O login do capitão **está registrado**: sessão 8 no canal 1 e 10 no canal 2, com a recusa de conflito entre eles. O que falta é a row de `character_session`: o banco foi **re-semeado às 00:07Z** (`accounts` id 1 em `00:07:28Z`; `test1..test5` em `00:11:29Z`), então hoje `character_session` id 8 é `test4`/canal 2 (`00:47:13Z`) e o stdout dos canais rotacionou (`json-file` 10m×5). O handshake **não autentica** (`cpsock::handshake` cerca por `account_login`, TEXT CHECK 1..16 — 15 caracteres cabem), logo a conta apagada não bloqueia o próximo login; quando FASE-08-2 autenticar, a row em `accounts` volta a ser obrigatória | Loki `{job="docker"} \|= "s79331058442700"` (08/11 22:00Z→09/11 01:00Z, forward): `2026-11-08T23:08:51.100Z \| wyd-canal-1 \| level=info event=session result=open account=s79331058442700 group=1 channel=1 id=8`; `2026-11-08T23:08:51.100Z \| wyd-canal-1 \| level=info event=login result=accepted account=s79331058442700 group=1 channel=1 version=12000 channels=2 session=8`; `2026-11-08T23:08:51.132Z \| wyd-canal-2 \| level=warn event=login result=conflict account=s79331058442700 group=1 channel=2 origin_channel=1 version=12000 reason=conta já tem sessão viva no canal 1`; `2026-11-08T23:08:51.561Z \| wyd-canal-2 \| level=info event=login result=accepted account=s79331058442700 group=1 channel=2 version=12000 channels=2 session=10`; `select id, account_login, channel, opened_at from character_session where id=8` → `8\|test4\|2\|2026-11-09 00:47:13.263392+00`; `docker logs wyd-canal-1 \| grep 'session=8'` → vazio (rotação) |
+| 2026-11-09 | FASE-08-6 (endereço do cliente × binds do servidor: nada divergente, cliente não discou) | Comparação feita dos dois lados. **Cliente:** `client/serverlist.txt` = `http://192.168.100.3/serv00.htm`, `192.168.100.3:8281`, `192.168.100.4:8281`, e `--print client/serverlist.bin` devolve as mesmas células. **Servidor:** publica `8281/tcp+udp` e `:80` em `192.168.100.3` (canal 1) e `192.168.100.4` (canal 2), além de `127.0.0.1`/`127.0.0.2`. **Rota:** `/32` de `.3` e `.4` na `Loopback Pseudo-Interface 1`, com `192.168.100.0/24` na Wi-Fi — host e cliente escolhem o alias. Não há lado divergente; a divergência que existia (cliente em `.3/.4`, binds em loopback) foi corrigida e reverificada (handshake aceito nos dois IPs). A ausência de conexão é **medida**, não falta de log: um TCP vazio em `.3:8281`/`.4:8281` gera `event=handshake result=rejected reason=io: failed to fill whole buffer` nos dois canais, e na janela de 20 min não há nenhuma linha dessas nem `event=login` de conta ≠ `test1` (só 2 de sonda). O cliente que rodou hoje (`client/WYD.log`, mtime `07:44` local = `10:44Z`) parou em `Error in Init Render Target Texture`, antes de falar com a rede | `Get-NetRoute` → `192.168.100.3/32 Loopback Pseudo-Interface 1 0.0.0.0`, `192.168.100.4/32 Loopback Pseudo-Interface 1 0.0.0.0`, `192.168.100.0/24 Wi-Fi`; `TcpClient` em `.3` e `.4` → `conectou=True` e ambos os canais logam `level=warn event=handshake result=rejected reason=io: failed to fill whole buffer`; Loki 20 min → `2 account=test1`; `tail -30 client/WYD.log` → `11/09 07:44:44 - Error in Init Render Target Texture` |
+| 2026-11-09 | FASE-08-1 (tentativa de login real: nenhum pacote chegou ao servidor) | Capitão informou o login por volta de `11:29Z`, mas a evidência mostra que **nada alcançou o canal**: nenhum processo do cliente (`Get-Process` filtrado por `wyd\|launcher\|game` → vazio) e `netstat` só com os listeners do Docker — zero conexões para `8281`. Os dois canais, nas últimas `0h30`, só registram `event=tcp service=status peer=127.0.0.1` (healthcheck interno do container), sem nenhum `event=tcp` de host, sem `handshake` e sem `session`. Conclusão medida: o cliente não chegou a discar para o servidor; a linha `event=login` da conta real continua sem existir no Loki | `netstat -ano \| grep ':8281'` → `192.168.100.3:8281 LISTENING`, `127.0.0.1:8281`/`127.0.0.2:8281` e UDP nos quatro binds, **nenhum `ESTABLISHED`**; `docker logs --since 30m wyd-canal-1 \| tail -25` → só `event=tcp service=status`; Loki `{job="docker"} \|= "event=login"` em `2026-11-09T11:04:28Z → 11:29:28Z` (limit 100) → 3 linhas, todas `account=test1` (sessões 14, 15, 16); `released_at is null` → `0` |
+| 2026-11-09 | FASE-08-1 (login do capitão: ainda ausente, cliente fechado) | Canal alcançável e handshake aceito nos dois endereços, mas **nenhuma linha de conta real entrou**: a janela limitada (40 min) só tem `account=test1` (as quatro linhas são da sonda) e `Get-Process WYD` → `0`, ou seja, o cliente não estava em execução durante a observação. Falta **só** a ação do capitão: abrir `client/WYD.exe` (o `.bin` em disco e os publishes agora apontam para `192.168.100.3/.4`, então não há nada a regenerar nem reiniciar antes), selecionar `NextGen` na coluna Servidor e clicar em Conectar. Nada pendente do lado do servidor | Loki `{job="docker"} \|= "event=login"`, janela `2026-11-09T10:35:00Z → 11:15:00Z` (limit 60, backward) → `4 account=test1`, zero outras contas; `character_session … order by id desc` → id 16/15/14 (`test1`), todas liberadas; `released_at is null` → `0`; `docker ps` → `wyd-db`, `wyd-gateway`, `wyd-portal`, `wyd-canal-1`, `wyd-canal-2` todos `healthy` |
+| 2026-11-09 | FASE-08-1 (janela ampla: nenhuma sessão do capitão) | **Varredura de 2026-11-08T00:00:00Z a 2026-11-09T10:54:12Z** por `event=login`, `event=session` e `event=handshake` (`limit=200`, `direction=forward`). Todos os `event=login` da janela: `23:08:51Z s79331058442700 c1 s8` + `23:08:51Z s79331058442700 c2 conflict orig=1` + `23:08:51Z s79331058442700 c2 s10`; `00:45:03Z test1 c1 s5`; `00:45:04Z test2 c2 s6`; `00:47:12Z test3 c1 s7`; `00:47:13Z test4 c2 s8`; `01:53:03Z admin c1 s9`; `10:50:49Z test1 c1 s13`. Depois de `2026-11-09T01:53Z` **não existe login de conta diferente de `test1`**: a única linha posterior é a sonda de protocolo. Distinção exigida: **provado por medição** = a sonda `test1` (grupo 1, canal 1, sessão 13, `version=12000`, `channels=2`) com linha no Loki, no stdout do canal e em `character_session`; **provado por código** = o caminho INITCODE → `_MSG_AccountLogin` → checksum `Strict` → gate de versão → cerca de sessão → `_MSG_CNFAccountLogin` (`crates/wyd-server/src/cpsock.rs::handshake`); **depende só do capitão** = a sessão dele pelo cliente gráfico, que não ocorreu nesta janela (a última é de `2026-11-08T23:08:51Z`, sessão 8, e a atribuição ao `client/` segue refutada). | Query (janela explícita): `curl -sG 'http://loki:3100/loki/api/v1/query_range' --data-urlencode 'query={job="docker"} \|= "event=login"' --data-urlencode "start=${S}000000000" --data-urlencode "end=${E}000000000" --data 'limit=200&direction=forward'`; labels do stream: `{"container":"wyd-canal-1","detected_level":"info","job":"docker","service":"server","service_name":"server"}`; `docker logs --since 3m wyd-canal-1` → `event=session result=open account=test1 ... id=13`, `event=login result=accepted account=test1 group=1 channel=1 version=12000 channels=2 session=13`, `event=handshake result=accepted version=12000 channels=2 kw=11 session=13`; `select ... from character_session where account_login='test1'` → `13,test1,1,1,12000,10:50:49.648Z,10:50:49.712Z` |
+| 2026-11-09 | FASE-08-6 (origem da coluna Canal) | **O canal do server select vem do dado real do servidor — nenhum rótulo foi reescrito no `.bin`.** Cadeia medida: Postgres `server_channel` = `(1,0,http://192.168.100.3/serv00.htm)`, `(1,1,192.168.100.3)`, `(1,2,192.168.100.4)` → `client/serverlist.bin` com as células 1..2 iguais a esses **hosts** → `client/sn.bin` com `contadores[0]=3` (= 2 canais + cabeçalho, logo o cliente desenha **2 linhas** de canal: `tools/client/serverlist.mjs:184-196`) e slot 1 `NextGen` contador 2 = grupo 1 → `/serv00.htm` com **um número por canal de jogo na ordem do banco** (`crates/wyd-server/src/channels.rs::render_status_body` + `crates/wyd-server/src/status.rs::online_por_canal`, filtrado por grupo **e** canal). No binário: GET da célula 0 e `sscanf` de 10 destinos em `0x46d9d6` (formato `"%d\n…"` em `0x6143b8`); célula de host do grupo lida em `0x46dae2` (`g_pServerList` = grupo × `0x2c0` + canal × `0x40`); rótulo = nome do `sn.bin` + índice (`0x46d6ce`–`0x46dc76`, `docs/cliente/formatos.md` §3–§4). Conclusão: **provado por código** que o canal vem dos dados reais e casa com `group=1`/`channel=1` do handshake; **provado por medição** que o endpoint e o `.bin`/`sn.bin` publicam exatamente 2 canais; **depende só do capitão** ver a coluna preenchida, porque a lista de canais só é desenhada com o servidor selecionado na janela (`0x46daf8` compara o grupo da linha com o grupo exibido) e a entrada sintética está bloqueada (UIPI/AMSI) | `docker exec wyd-db psql -U wyd -d wyd -tAc "select group_id, channel, host, status_url, enabled from server_channel order by group_id, channel"` → `1\|0\|192.168.100.3\|http://192.168.100.3/serv00.htm\|t`, `1\|1\|192.168.100.3\|\|t`, `1\|2\|192.168.100.4\|\|t`; `node tools/client/serverlist.mjs --print client/serverlist.bin` → `1 0 http://192.168.100.3/serv00.htm` / `1 1 192.168.100.3` / `1 2 192.168.100.4`; `node tools/client/serverlist.mjs --sn client/sn.bin` → `slot 0: contador=3`, `slot 1: nome="NextGen" contador=2 → grupo 1 · 1=192.168.100.3 2=192.168.100.4`; `curl -s http://192.168.100.3/serv00.htm` → `0\n0\n` |
+| 2026-11-09 | FASE-08-1 (handshake vivo com conta real) | **Login com conta real de `accounts`, sem automação de GUI.** O teste vivo que já existia (`crates/wyd-server/tests/handshake.rs::handshake_contra_servidor_vivo`, gated por `WYD_LIVE_CPSOCK`) ganhou `WYD_LIVE_ACCOUNT` para usar conta real do banco em vez de nome sintético. Contra o canal 1: `event=session result=open account=test1 group=1 channel=1 id=13` → `event=login result=accepted account=test1 group=1 channel=1 version=12000 channels=2 session=13` → `event=handshake result=accepted version=12000 channels=2 kw=11 session=13`, e a **mesma linha no Loki em 2026-11-09T10:50:49Z**. `character_session` id 13 (`test1`, grupo 1, canal 1, versão 12000) aberta em `10:50:49.648Z` e liberada em `10:50:49.712Z` ao fechar o socket — **nenhuma sessão viva sobra**. Isso prova o caminho de servidor que o botão Conectar dispara (INITCODE + `_MSG_AccountLogin` ofuscado + checksum `Strict` + gate de versão + cerca de sessão + `_MSG_CNFAccountLogin`); o que **não** está provado é o clique no server select do próprio cliente: a entrada sintética continua bloqueada (UIPI/AMSI) e a coluna Canal do cliente só desenha com o servidor selecionado na janela | `WYD_LIVE_CPSOCK=192.168.100.3:8281 WYD_LIVE_ACCOUNT=test1 cargo test -p wyd-server --test handshake handshake_contra_servidor_vivo -- --nocapture` → `1 passed`; `docker logs --since 3m wyd-canal-1` → as três linhas acima; Loki `{job="docker"} \|= "event=login"` com janela explícita (`start` = 1 h atrás, `end` = agora) → `2026-11-09T10:50:49Z ... account=test1 group=1 channel=1 version=12000 channels=2 session=13`; SQL `select id, account_login, group_id, channel, client_version, opened_at, released_at from character_session where account_login='test1' order by id desc` → `13,test1,1,1,12000,10:50:49.648Z,10:50:49.712Z` |
+| 2026-11-09 | FASE-12-1 (embed do Grafana) | **O dashboard deixou de parecer “outra página dentro”.** Antes eram até 4 iframes de 320 px, cada um com borda/raio e o chrome do Grafana (menu lateral, breadcrumb, barra de tempo/variáveis); desde o Grafana 11.3 o `kiosk` sozinho não esconde mais esses controles. Agora: **um** embed de altura útil (`clamp(560px, calc(100vh - 240px), 1200px)`), sem moldura dupla, fundo `#111217` (o do tema dark, sem flash branco) e seleção do dashboard por chips (`?dash=<uid>`, server-side, sem JS). URL de embed: `kiosk=true` + `_dash.hideTimePicker` + `_dash.hideVariables` + `_dash.hideLinks` + `orgId=1` + `theme=dark` + `refresh=30s`. **Medido no Grafana 12.2.0 desta stack: `kiosk=tv` não esconde a navegação** (menu, breadcrumb e busca continuam no iframe); `kiosk=true` esconde menu, navbar e breadcrumb | Captura de `http://127.0.0.1:3001/d/wyd-saude?...&kiosk=tv` → menu Home/Dashboards/Alerting + breadcrumb (`tmp/grafana-kiosk.png`); a mesma URL com `kiosk=true` → `nav`/`header` ausentes no DOM (`preview_evaluate`) e só os painéis (`tmp/grafana-kiosk2.png`); `npx tsc --noEmit` 0; `npx vitest run` 137/137; `docker compose up -d --build portal` 0 e container **healthy**; `grep ui-embed` no `.next` confirma o markup novo no bundle |
+| 2026-11-09 | FASE-08-6 (server select: coluna Canal) | **Hipótese do contador refutada por medida.** Injetando uma sessão viva de sonda (`character_session` grupo 1 / canal 1, `client_version` 12000) o `/serv00.htm` passou a responder `1\n0\n` e o cliente **fez o GET** (`online=1/0` no Loki), mas a coluna Canal continuou **vazia** — logo o cliente não esconde a linha por contador `0`. Contrato do endpoint está correto (`HTTP 200`, `content-length: 4`, corpo `0\n0\n`) e o eco UDP de 4 B responde. Desmontagem (`objdump`, build 7662): `0x46d9d6` faz `sscanf` com formato `"%d\n%d\n…%d\n"` (10 destinos, VA `0x6143b8`) e a rotina itera as 10 células de host do grupo (`0x46dae2`), comparando o grupo da linha com o **grupo selecionado** (`0x46daf8`) — a coluna depende da seleção na janela. Bloqueio honesto: entrada sintética não chega ao cliente (UIPI/proteção — `taskkill` responde “Acesso negado”) e o antivírus (AMSI) bloqueia os scripts de automação, então **o clique em Conectar não foi exercitado** | Sonda: `insert into character_session (account_login, group_id, channel, client_version, opened_at, released_at) values ('probe', 1, 1, 12000, now(), null)` → `curl -s http://192.168.100.3/serv00.htm` = `1\n0\n`; Loki `{container="wyd-canal-1"} |= "event=status"` → `online=1/0`; captura `tmp/canal-probe.jpg` (coluna Servidor com `NextGen`, coluna Canal vazia); sonda removida (`DELETE 1`, `/serv00.htm` volta a `0\n0\n`, `select count(*) from character_session where released_at is null` = 0) |
+| 2026-11-09 | FASE-12-1 (fim da tela `/logs`) | **A tela antiga de log dos containers sai do portal.** Removidos: rota `(admin)/logs` (`page.tsx` + `logs-view.tsx`), SSE `GET /api/logs/<container>`, `GET /api/logs/status`, o módulo `src/server/docker.ts` (só fazia o mascaramento de ANSI/DSN dessa tela), o item de menu, os links em `/painel`, `/monitoramento` e no formulário de NPC e a linha `/logs/:path*` do matcher do `proxy.ts`. `src/server/loki.ts` ficou só com o agregado que o monitoramento consome (`getLogStats` + `logLabel`), agrupando por `container`; sem endpoint, nenhum texto do browser chega a LogQL. A leitura linha a linha passa a ser o Grafana (datasource Loki provisionado, dashboard `wyd-logs`) e `docker compose logs` para o stdout vivo | `grep -rn 'api/logs\|href="/logs"\|Logs dos containers' wyd-portal/src` → só o comentário histórico em `loki.ts`; `npx tsc --noEmit` 0 (após limpar `.next/types` obsoleto das rotas apagadas); `npx vitest run` 137/137; `docker compose up -d --build portal` 0 e `next build` sem a rota (`/logs` e `/api/logs/status` → 404 com e sem cookie); `/painel` e `/monitoramento` 200, com o bloco `Pipeline de logs (Loki)` e sem link para `/logs` no menu |
 | 2026-11-07 | FASE-00-1 | Caches Go limpos (`go clean` exit 0) | `go clean -cache -modcache -testcache` |
 | 2026-11-07 | FASE-00-2 | VS Code verificado: rust-analyzer + clippy; zero extensão Go | `code --list-extensions` |
 | 2026-11-07 | FASE-00-3 | `develop` confirmada como branch atual | `git branch --show-current` |
@@ -923,3 +944,397 @@ linhas `Inexistente`) — a coluna Canal é alimentada pelo `serv00.htm` real. *
 gráfico ainda não foi provada:** o clique em Conectar não gerou nenhum `accept` nos containers
 (log sem `handshake`), então o cliente está discando outro destino/porta; o diagnóstico seguinte é
 captura de socket do próprio `WYD.exe`, não ajuste especulativo no servidor.
+
+## 2026-11-08 — canais: o `Inexistente` era o separador do `serv00.htm`
+
+A linha extra `Inexistente` não vinha do `serverlist.bin` (que já estava certo: grupo 1, célula 0
+com a URL de status e células 1–2 com `192.168.100.3`/`.4`) e sim do **separador** do corpo
+publicado. Entregue:
+
+- `crates/wyd-server/src/channels.rs` (`render_status_body`): um número **por linha** (`0\n0\n`) em
+  vez de lista com vírgula. O `sscanf("%d")` do cliente pula espaço/quebra de linha entre as
+  conversões e **para na vírgula**, então `0,0` alimentava só o primeiro destino e o segundo ficava
+  `-1` → `Inexistente`;
+- `docs/cliente/formatos.md` §4/§4.1: corpo numérico com quebra de linha, a rotina `strtok` por
+  vírgula marcada como **não** usada pela tela de seleção, e as referências externas conferidas;
+- leitura dos binários de referência: `w2pp-OpenWYD` 7040 B (grupo 0, células 0 e 1 com IP) +
+  `serverlist.txt` `<grupo> <canal> <ip>` + `serv00.htm` de 20 B (dez linhas `1`);
+  `open-wyd/ows-clientdata` 7040 B (3 grupos × 3 células) e `sn.bin` em texto; cliente real
+  WYD Global/Raidhut 7044 B (**4 bytes de cabeçalho** + 7040, outra cifra — nenhum deslocamento da
+  nossa tabela decodifica) com `sn.bin` de 143 B igual ao nosso, `Global` no slot 1 e contador 2.
+
+**Provas:** `curl http://192.168.100.3/serv00.htm` devolve `0\n0\n` (4 B); o *server select* do
+`client/WYD.exe` desenha **`NextGen`** na coluna Servidor e **`NextGen-1` + `NextGen-2`** na coluna
+Canal (`target/prova-linhas-canal1-3-canal-selecionado.jpg`,
+`target/prova-v3-canal1-2-canal-selecionado.jpg`); `WYD_LIVE_CPSOCK` contra `.3:8281` e `.4:8281`
+→ `event=handshake result=accepted version=12000 channels=2` nos **dois** containers (5/5 testes de
+integração por canal); `cargo fmt --check`, `cargo clippy -p wyd-server --all-targets -D warnings`
+e `cargo test -p wyd-server` (12 testes) em 0.
+
+**Prova no cliente gráfico (login manual, 2026-11-08):** o teste humano entrou nos **dois** canais e
+cada container registrou o par login+handshake:
+
+| Container | Conta | Log |
+|---|---|---|
+| `wyd-canal-1` | `test` | `22:25:53 event=login account=test version=12000` + `event=handshake result=accepted … kw=11` |
+| `wyd-canal-2` | `test` | `22:25:54 event=login account=test version=12000` + `event=handshake result=accepted … kw=11` |
+| `wyd-canal-1` | `admin` | `22:35:25 event=login account=admin …` + `accepted … kw=165` |
+| `wyd-canal-2` | `admin` | `22:36:14 event=login account=admin …` + `accepted … kw=79` |
+
+Isto fecha o que faltava: o `Conectar` do cliente **dialoga com os dois canais**. A automação de
+mouse continua sem alcançar os botões do `WYD.exe` (o botão `Fechar`, cujo efeito é encerrar o
+processo, não fecha por `mouse_event`, `PostMessage` nem `SendMessage`, embora a seleção na lista
+mude com o cursor sobre a linha) — hipótese: filtro de entrada de
+`JProtectDll.dll`/`ClientPatch.dll`. Por isso a prova é o login manual acima mais os testes vivos
+(`WYD_LIVE_CPSOCK`), não clique sintético.
+
+## 2026-11-08 — sessão única por conta entre canais (migration 0030)
+
+Cada canal é processo e mundo separado, mas o personagem é um só no Postgres do grupo: dava para
+entrar no canal 1 e no canal 2 ao mesmo tempo. Entregue:
+
+- `crates/wyd-db/migrations/0030_sessao_unica.sql`: `character_session` (conta, personagem
+  opcional, grupo/canal, versão, `opened_at`/`renewed_at`/`released_at`) com os índices parciais
+  `character_session_uma_por_conta` e `character_session_uma_por_personagem`; `SCHEMA_VERSION` 30
+  e catálogo regenerado (68 tabelas, 506 colunas, 30 migrations);
+- `crates/wyd-db/src/repo/sessions.rs` + adapter `pg`: `claim_session` (libera a órfã pelo TTL e
+  insere; conflito devolve o canal ocupado), `renew_session`, `release_session` idempotente e
+  `live_sessions`;
+- `crates/wyd-server/src/session.rs`: `SessionGate`/`SessionLease` (claim, renovação e liberação
+  no `Drop`), TTL mínimo de 30 s;
+- `crates/wyd-server/src/cpsock.rs`: a cerca entra **depois** do gate de versão;
+  `HandshakeError::Session` recusa sem `CNF` e loga `event=session result=open|conflict`; a conexão
+  passou a ser segurada (`MAX_IDLE_ROUNDS` × `WYD_SERVER_SESSION_IDLE_SECS`) para a sessão viver
+  enquanto o cliente está do outro lado;
+- `main.rs`: `WYD_SERVER_GROUP_ID` (default 1), `WYD_SERVER_SESSION_IDLE_SECS` (120) e
+  `WYD_SERVER_SESSION_STALE_SECS` (180).
+
+**Provas:** `cargo fmt --check` 0; `cargo clippy --workspace --all-targets -D warnings` 0;
+`cargo test --workspace` 0 (nenhuma falha); `cargo test -p wyd-db --test catalogo` 3/3; teste vivo
+novo `crates/wyd-server/tests/sessao_unica.rs` contra `.3:8281` e `.4:8281` → **ok**: canal 1 abre
+(`event=session result=open account=… channel=1`), canal 2 recusa
+(`result=conflict … channel=2 reason=conta já tem sessão viva no canal 1`) e, depois que o socket
+do canal 1 cai, o canal 2 aceita a mesma conta; ambos os containers `healthy` com
+`event=session group=1 channel=N idle=120s stale=180s`.
+
+**Comportamento de jogo (pesquisa):** canal é mundo separado e o jogador **transita** entre eles
+mantendo os dados (guia do WYD Global/Raidhut: escolher canal no login; sistema de guildas fala em
+"migração de servidor" entre canais). No legado a troca existia como `_MSG_DBServerChange`
+(`0x0814`) / `_MSG_DBCNFServerChange` (`0x052A`) porque **cada canal tinha o próprio DB**; aqui os
+canais dividem um Postgres, então trocar de canal é relogar — nada é copiado, nada se perde.
+A pasta `.deprecated-go` citada nas instruções **não existe** na árvore nem no histórico do git
+(removida em 2026-11, `AGENTS.md` §0); a referência usada foi o legado C++ do `w2pp-OpenWYD`
+(`Source/Code/DBSrv`) e a tabela de opcodes já congelada em
+`crates/wyd-protocol/src/wire/generated/opcode_table.rs`.
+
+**Ainda não provado no cliente gráfico:** "jogador do canal 1 não vê o do canal 2" só vira
+observação visual quando existir pacote de cena (`ESCENE_FIELD`): hoje o processo não tem tick nem
+mundo, só handshake/sessão. O que está provado é o isolamento estrutural (um `World` por processo,
+sem IPC) e a cerca por conta; o efeito visível no cliente hoje é a segunda entrada ser recusada.
+(2026-11-08: a presença passou a ser publicada e conferida por canal — ver a última entrada.)
+
+**Isolamento dos canais (2026-11-08):** canal é **processo**, não flag — `wyd-canal-1` e
+`wyd-canal-2` rodam a mesma imagem e o mesmo Postgres, mas cada um monta o próprio `World` em
+memória (`crates/wyd-server/src/channels.rs`) e não existe IPC nem registro compartilhado; a única
+tabela comum é `character_session` (cerca de conta), sempre consultada **escopada por grupo e
+canal** (ver a entrada de 2026-11-08 sobre presença por canal). Dois clientes em canais diferentes **não se veem**: são instâncias de mundo
+separadas, como manda `docs/wyd/canais-e-cidadania.md` §5 ("um processo por canal, mesmo banco").
+Hoje o isolamento é total por construção porque o mundo ainda não existe (só handshake +
+`_MSG_CNFAccountLogin`); quando o tick/scene entrar, continua separado pelo mesmo motivo. O que
+exige cuidado **não** é a visibilidade e sim o banco comum: sem arbitragem de sessão (FASE-08-2) o
+**mesmo personagem** pode ficar logado nos dois canais ao mesmo tempo — o `cpsock` hoje nem
+autentica a conta, apenas registra o nome que veio no pacote.
+
+## 2026-11-08 — login manual rastreável e presença por canal (isolamento entre canais)
+
+Pedido: confirmar nos logs dos **dois** containers o login feito manualmente pelo cliente (não as
+conexões de teste), explicar eventual recusa da cerca e provar que canal 1 e canal 2 são mundos
+separados. Resultado dos dois itens:
+
+**1) Login manual — onde está e por que não está no `docker logs` de agora.** As linhas existem e
+estão registradas na entrada anterior deste documento, capturadas na hora: `22:25:53` e `22:25:54`
+para a conta `test`, `22:35:25` e `22:36:14` para `admin`, cada container com `event=login` +
+`event=handshake result=accepted` (este é o pacote de confirmação que o cliente recebe). O que
+aconteceu depois: os dois containers foram **recriados às 22:54:13Z** (rebuild da imagem que trouxe
+a cerca de sessão) e o driver `json-file` guarda log **por container** — recriar abre um stream novo.
+Não foi rotação nem nível de log: o stream antigo deixou de existir. O log atual só contém as
+conexões dos testes vivos (`s78609152345400`, `l969163000`), nunca o login humano.
+
+Para que um login manual seja rastreável sem depender do nome do container:
+
+- `crates/wyd-server/src/cpsock.rs`: `event=login` passou a ser auto-descritivo —
+  `result=accepted|conflict account=<conta> group=<grupo> channel=<canal> version=<versão>
+  channels=<n> session=<id>`; a recusa da cerca emite **a mesma linha** com `result=conflict` e
+  `origin_channel=<canal onde a sessão viva está>` (antes só saía `event=session result=conflict`,
+  sem conta, e o `channel=` não distinguia origem de destino);
+- `docker-compose.yml` + `docker-compose.override.yml`: `logging` json-file com `max-size=10m` e
+  `max-file=5` nos dois serviços (rotação não come a janela recente). Recriar container continua
+  abrindo stream novo — auditoria de longo prazo exige exportar o log para fora da máquina.
+
+Formato novo comprovado no ar (teste vivo `tests/sessao_unica.rs`, 23:08:51Z, conta sintética):
+
+| Container | Linha de log |
+|---|---|
+| `wyd-canal-1` | `23:08:51.100713 level=info event=login result=accepted account=s79331058442700 group=1 channel=1 version=12000 channels=2 session=8` |
+| `wyd-canal-2` | `23:08:51.132607 level=warn event=login result=conflict account=s79331058442700 group=1 channel=2 origin_channel=1 version=12000 reason=conta já tem sessão viva no canal 1` |
+| `wyd-canal-2` | `23:08:51.561703 level=info event=login result=accepted account=s79331058442700 group=1 channel=2 version=12000 channels=2 session=10` |
+
+O próximo login manual sai exatamente nesse formato: `account=` do jogador, `group`/`channel` do
+processo que aceitou e `session=` da linha em `character_session`.
+
+**2) Isolamento de mundo — provado no que existe hoje, sem vazamento encontrado.** Canal é
+processo, não flag: `World` é montado por processo (`channels.rs`), `cpsock` só escreve no próprio
+socket, métricas (`wyd_sessions_open`) são por processo e não há IPC, fila ou broadcast entre
+containers. A única leitura cruzada possível é o banco comum, e ela passou a ser **por canal**:
+
+- `crates/wyd-server/src/status.rs`: novo `online_por_canal` consulta `live_sessions(group, channel)`
+  para **cada** canal; o `serv00.htm` deixa de publicar `ONLINE_PER_CHANNEL = 0` fixo e passa a
+  publicar a contagem real daquele canal (`render_status_body(world, &online)`), e o `/health`
+  devolve `group`, `channel` e `online` **do processo**;
+- nenhuma consulta de presença era global antes (não havia `count(*)` do grupo), então o defeito
+  encontrado foi de **contrato** — o `serv00.htm` publicava `0` fixo e não provava nada; o risco de
+  virar agregado do grupo ficou fixado por teste;
+- `crates/wyd-db/tests/sessions.rs` (novo, gated por `WYD_TEST_DSN`): sessão no canal 1 aparece em
+  `live_sessions(1,1)` e **não** em `live_sessions(1,2)` nem em `live_sessions(2,1)`; conta repetida
+  no canal 2 devolve `Conflict { channel: 1 }`; liberar devolve a presença do canal à linha de base.
+  Uma consulta sem `channel` (o vazamento plausível) quebra esse teste.
+
+Evidência viva (23:08Z, sessão viva **só** no canal 2 — linha sintética `prova_online_c2` inserida e
+removida depois, para não depender de cliente):
+
+| Prova | Resultado |
+|---|---|
+| `curl http://192.168.100.3/serv00.htm` (publicado pelo canal 1) | `0\n1\n` — linha 1 conta o canal 1 (0), linha 2 conta o canal 2 (1) |
+| `curl http://192.168.100.3/health` (canal 1) | `{"ok":true,"database":"up","channels":2,"group":1,"channel":1,"online":0,"schema":30}` |
+| `/health` do canal 2 (rede interna) | `{"ok":true,"database":"up","channels":2,"group":1,"channel":2,"online":1,"schema":30}` |
+| `event=status` do canal 1 | `path=/serv00.htm bytes=4 online=0/1`, e `online=0/0` depois da limpeza |
+
+Ou seja: o canal 1 mede **0** enquanto o canal 2 tem jogador, e vice-versa — cada processo só lê a
+própria fatia de `character_session`. A visibilidade de **entidade** (um personagem aparecendo na
+tela do outro) ainda não é observável porque não existe `ESCENE_FIELD`/tick; o que se prova hoje é o
+isolamento estrutural (processos separados, sem IPC) mais a presença escopada por canal.
+
+**Comportamento esperado no trânsito (sessão única):** entrar no canal 1 abre `character_session`
+(grupo 1, canal 1); tentar a mesma conta no canal 2 é recusado com `result=conflict` e
+`origin_channel=1`, sem `CNF` ao cliente; sair (socket cai) libera a sessão no `Drop` do
+`SessionLease` e a mesma conta entra no canal 2 — nada é copiado, os dados vêm do banco (relog, não
+teleporte). Ociosidade é renovada por `renewed_at`; processo morto libera pelo TTL
+(`WYD_SERVER_SESSION_STALE_SECS`, 180 s).
+
+**Provas/gates:** `cargo fmt --check` 0; `cargo clippy --workspace --all-targets -D warnings` 0;
+`cargo test --workspace` 0 falhas; `WYD_TEST_DSN=… cargo test -p wyd-db --test sessions` 1/1;
+teste vivo `sessao_unica` 1/1 contra `.3:8281`/`.4:8281`; os dois containers `healthy` com a imagem
+nova.
+
+## 2026-11-09 — observabilidade padrão de mercado, presença auditável e banco do zero
+
+Quatro entregas na mesma rodada. Contexto: o login manual do cliente continua sem linha nova nos
+logs (só as conexões sintéticas dos testes aparecem) — as quatro tentativas humanas de 22:25/22:35Z
+seguem registradas na entrada anterior, perdidas quando os containers foram recriados às 22:54Z.
+Com o banco recriado abaixo, o próximo login manual cai nas contas de teste e a linha sai no formato
+`event=login result=accepted account=… group=… channel=… session=…`; conferir com
+`docker logs -t wyd-canal-1 | grep event=login` (idem canal 2).
+
+**1) Logs duráveis, sem serviço caseiro.** O `logpipe` (sidecar próprio com o socket do Docker) e o
+modo `docker compose logs -f` foram **removidos**. Novo caminho, padrão da stack Grafana:
+`containers → Alloy (socket read-only) → Loki (volume wyd-loki-data, retenção 14 d) → BFF do portal`.
+O motivo é o defeito que o pedido apontou: stdout do Docker é por container e morre na recriação —
+exatamente no deploy em que o log importa. Arquivos: `monitoring/loki/loki.yml`,
+`monitoring/alloy/config.alloy`, serviços `loki`/`alloy` no compose, volume `wyd-loki-data`.
+Prova no ar: `/loki/api/v1/labels` devolve `container`, `job`, `service`; `query_range` traz linhas
+dos dois canais e do Postgres; `up{job="loki"}` = 1 no Prometheus (job novo `loki`).
+O portal consulta `LOKI_URL` server-side (`wyd-portal/src/server/loki.ts`) com whitelist de
+containers, janela `\d+[mhd]`, `tail` 1..1000 e escape de string LogQL — nada cru do browser
+(essa tela e os endpoints foram **removidos em 2026-11-09**, ver registro de execução).
+
+**2) Monitoramento profissional na área de admin.** `/monitoramento` passou a ser um único painel
+com: saúde da stack (badges de canal/gateway/loki/grafana/presença/alertas), KPIs (presença no banco,
+canais, sessões, status, CPU/memória/load, gateway, volume de log 15 min), **presença por canal**,
+**alertas** (firing/pending de `alerts.yml`), **pipeline de logs** (erros/avisos por serviço) e
+**dashboards do Grafana embutidos** (embed único em kiosk na loopback, acesso anônimo `Viewer`; em 2026-11-09 virou `kiosk=true` + `_dash.hide*` e iframe de altura útil, sem moldura dupla). Dashboards
+provisionados: `wyd-saude` e o novo `wyd-logs` (`monitoring/grafana/dashboards/wyd-logs.json`), com
+datasource Loki ao lado do Prometheus (`monitoring/grafana/provisioning/datasources/loki.yml`).
+Cada fonte degrada isolada: Prometheus fora não apaga presença/logs.
+**Causa do 502 do portal encontrada e corrigida:** o compose repassava `WEB_API_ADDR` do `.env`
+(`http://127.0.0.1:7600`, valor para rodar no host) para dentro do container, onde loopback é ele
+mesmo — `/api/health` respondia 502 e o login web falhava. Agora o compose fixa
+`WEB_API_ADDR: http://gateway:7600`; `/api/health` = 200 com `items: 3220`.
+
+**3) Presença por canal auditável.** Nova rota de contrato
+`server_admin/list_channel_presence` (`crates/wyd-admin/src/api/presence.rs` + `PresenceCheck` no
+transporte + fiação no `wyd-gateway`): staff obrigatório, leitura **por canal** de
+`character_session` (nunca agregado do grupo) e registro em auditoria (`server.presence`). O portal
+consome via `adminCall` (`presenceAdmin` no `admin-client.ts`), então o `moderator_id` vem da sessão.
+Nenhuma escrita: o portal só enxerga a foto. Prova: com uma sessão viva só no canal 2, a rota
+devolveu `channel:1 online:0 / channel:2 online:1`; removida a linha, volta a 0/0. Testes unitários:
+presença de um canal não aparece no outro e `player` não lê presença.
+
+**4) Banco do zero + 5 contas de teste.** `DROP SCHEMA public CASCADE` seguido das **30 migrations**
+(68 tabelas, `server_channel` 3 linhas, `content_version` 1). Conta default `admin` recriada pelo
+seed do gateway (`WYD_SEED_STAFF=1`). Contas novas: `test1` (admin), `test2`/`test3` (moderator),
+`test4`/`test5` (player) — ids 2..6, `password_hash` argon2id individual (97 bytes, `$argon2id$v=19$…`).
+A senha pedida (`test123`, 7 caracteres) não passa do `MIN_PASSWORD_LEN = 8` do seed, então o hash
+foi gerado com os **mesmos parâmetros** (`Argon2::default()`) por um utilitário descartável em
+`tmp/hashgen` (pasta ignorada) e gravado por SQL; a política de força continua valendo para contas
+reais. Prova: `account_web/verify_credentials` devolve `ok:true` com o papel certo para as cinco e
+`ok:false` com senha errada. Login web pelo portal: `test1` → 200 `role:admin`; `test4` → 200
+(entra no painel do jogador) mas `/monitoramento` = 307.
+
+**Provas/gates:** `cargo fmt --check` 0; `cargo clippy --workspace --all-targets -D warnings` 0;
+`cargo test --workspace` 0 falhas (contrato do portal ajustado para 17 serviços/73 métodos e rota de
+presença montada no fake); `npx tsc --noEmit` 0; `npx vitest run` 137/137; `docker compose config`
+(dev e prod) 0; containers `wyd-loki`/`wyd-alloy`/`wyd-grafana`/`wyd-gateway`/`wyd-portal` saudáveis.
+
+---
+
+### Identidade única (portal + launcher + cliente) — 2026-11-09
+
+**1) Uma definição só.** `docs/arquitetura/identidade.tokens` (13 cores, `espaco.1..7`, `raio`,
+`raio.pequeno`, `tipografia.*`, `servidor.1 = WYD`) é a fonte; o parser estrito vive em
+`crates/wyd-launcher/src/identidade.rs` (`chave = valor`, nome de servidor ≤ 8 caracteres) e o
+binário o embute com `include_str!` — não há literal de cor nem nome de servidor em Rust. O portal
+tem os mesmos valores em `globals.css`; a cor do embed do Grafana virou `cor.embed`/`--embed`
+(era `#111217` solto na linha 650). Guardas: `crates/wyd-launcher/tests/identidade.rs`
+(tokens × CSS + proibição de qualquer hex de 6 dígitos fora da identidade) e
+`wyd-portal/src/identidade.test.ts` (5 testes).
+
+**2) Skin e nomes gerados da identidade.** `crates/wyd-launcher/src/branding.rs` gera
+`Launcher.bmp` 598×369 24 bpp (gradiente `cor.surface`→`cor.bg`, faixa `cor.accent`, wordmark) e
+`Launcher.hat` com `bgcolor = cor.bg`; `snbin.rs` escreve os 143 B medidos com o nome do slot
+vindo de `servidor.N`. Comandos novos: `wyd-launcher branding <dir>` e o `sn.bin` passou a sair do
+`serverlist`. O gerador Node (`tools/client/serverlist.mjs`) lê `servidor.N` do mesmo arquivo —
+`NextGen` fixo foi removido; slot com grupo e sem nome agora é erro.
+
+**3) Aplicado e lido de volta no `client/`.** `client/Launcher.bmp` = 662.778 B, `Launcher.hat` =
+268 B (`bgcolor="#0f1115"`, `img Launcher.bmp`), ambos com `.bak`; `client/sn.bin` =
+`d6 65 73 65 72 76 65 64 00 | 57 59 44` e contadores `[3, 2, 0…]` (slot 0 = canais+1, slot 1 =
+grupo 1). Strings servidas conferidas: `curl http://127.0.0.1/serv00.htm` → `30 0a 30 0a` (`0\n0\n`)
+e `server_channel` no banco = grupo 1 com canais 0/1/2 em `192.168.100.3` (status + canal 1) e
+`192.168.100.4` (canal 2) — a ordem que o `sn.bin`/`serverlist.bin` desenham.
+
+**4) Bloqueio declarado.** A moldura da tela de entrada dentro do `WYD.exe`
+(`NUI/ServerList.wyt` 321.470 B, `main.wyt` 739.230 B, `mainchat/mainparts/ccmode/popup/iconon/
+iconoff.wyt`, `UI/*.wyt`) tem magic `WT10` e nenhum decoder nosso confirma nada além do magic
+(`tools/client/formats.mjs` → `recognised: false`). `strings client/wyd.exe` mostra `sn.bin`,
+`UI\minimap.wyt`, `%s%02d%02d.wyt`, `mesh\*.wyt`, mas não a string `NUI\ServerList.wyt`; trocar
+esses arquivos seria às cegas e não foi feito. A segunda aba de atributos/cidadania continua
+dependente da captura de `STRUCT_SELCHAR`/`STRUCT_MOB` (FASE-08-6).
+
+**Provas/gates desta passada:** `cargo fmt --all --check` 0; `cargo clippy --workspace
+--all-targets -D warnings` 0; `cargo test --workspace` 0 falhas (launcher: 45 unitários +
+4 de identidade + paridade Rust×Node); `npx vitest run src/identidade.test.ts` 5/5.
+Nada commitado.
+
+---
+
+### `.wyt` decodificado, checklist da 2ª aba e GUI/login na identidade — 2026-11-09
+
+**1) O `.wyt` não era opaco: é raster puro.** `tools/client/wyt.mjs` (novo) lê o magic `WT10` e
+prova o leiaute `22 B de cabeçalho + largura*altura*(bits/8) + 8 B finais` em **256/259** arquivos de
+`client/NUI` + `client/UI` (`NUI` 8/8); as 3 exceções (`NewAmul` 8 bpp, `hanui`/`joyui` 16 bpp) são
+recusadas com erro, não chutadas. Dimensões reais medidas: `NUI/ServerList.wyt` **287×280 32 bpp**
+(80.360 pixels, 12.273 cores, alfa 100%), `NUI/main.wyt` 616×300, `UI/PCK_Background.wyt` 800×600.
+Prova visual: `node tools/client/wyt.mjs client/NUI/ServerList.wyt --png tmp/wyt/ServerList.png`
+reproduziu a moldura e as duas colunas de slots da tela de entrada (texto não está no arquivo — é
+desenhado pelo `.exe`). Relatório: `docs/cliente/gerado/wyt.json`. `formats.mjs` passou a delegar ao
+decoder (`analyse.mjs` → `wyt 4/4`). Docs: `formatos.md` §1, `superficie-conhecida.md` §5, `mapa.md`.
+
+**2) FASE-08-6 com checklist fechado.** A issue ganhou a seção de captura: 14 campos de
+`STRUCT_SELCHAR` (nome, classe, nível, EXP, HP/MP, tier, cidadania, guilda, posição, PvP/PK, equip,
+atributos, buffs, datas) e 6 de `STRUCT_MOB` (tamanho do frame, `STRUCT_SCORE`, inventário, gold,
+guilda/cidadania, posição) — cada um com a verdade que já temos (`0002_personagens.sql`,
+`canais-e-cidadania.md`) e o que o diff de bytes precisa provar. Método: variar **um** campo no
+banco, capturar `0x010A`/`0x0114` nos dois estados e correlacionar; nada vira tipo antes disso.
+
+**3) Login e GUI na mesma identidade.** `crates/wyd-launcher/src/gui.rs` (novo) gera
+`LauncherGUI.html` (4.948 B) — login, canais da identidade e botão Jogar — com **só** `cor.*`,
+`espaco.1..7`, `raio*`, `tipografia.*` e `servidor.N`; teste conta os hex do HTML e reprova qualquer
+cor fora das 13 da identidade (e qualquer `http(s)://`). CLI: `wyd-launcher gui <dir> [--dry-run]`.
+No portal, a tela de login trocou estilo inline por classes (`.login-*`) declaradas em
+`globals.css` com `--space-*`, `--title-size` e `--legend-size`; `identidade.tokens` ganhou
+`tipografia.titulo = 22` e `tipografia.legenda = 13`. Teste vitest novo: login sem hex nem
+`style={{`, classes presentes no CSS.
+
+**Provas/gates desta passada:** `cargo fmt --all` 0; `cargo clippy --workspace --all-targets -D
+warnings` 0; `cargo test --workspace` 0 falhas (49 suítes `ok`; launcher 47 unitários + 4 de
+identidade + paridade Rust×Node); `npx tsc --noEmit` 0; `npx vitest run src/identidade.test.ts` 6/6;
+`wyt.mjs --scan` NUI 8/8 e UI 248/251. Nada commitado.
+
+---
+
+## Passada 2026-11-09 — entrada do jogo: mecânica de carga do NUI, senha numérica e mapa de funcionalidades
+
+**1) A tela de seleção agora está na identidade, com prova visual em arquivo.** O caminho de carga
+foi fechado por evidência: `client/UI/UITextureList.bin` (tabela de 779 entradas, 23 com "NUI")
+lista `NUI\ServerList.wyt`, e o `.exe` monta o caminho com `%s\%s` (string em VA `0x613378`,
+referenciada em `0x438340`) — não existe literal "NUI" nem "UITextureList" no binário. O re-tema é
+feito em Rust (`crates/wyd-launcher/src/wyt.rs`, CLI `wyd-launcher retheme <origem> <destino>`), com
+rampa de luminância montada só de `cor.bg`/`cor.surface-2`/`cor.border-strong`/`cor.accent`, alfa e
+trailer preservados e instalação atômica com `.bak`. Capturas reais da janela (título "WYD CDK",
+1030×788): `tmp/cliente/antes.png` (original) e `tmp/cliente/depois.png` (tema) — 72% dos pixels do
+frame diferem (o número inclui a animação do cenário, que muda entre sessões); o que prova a troca é
+o painel: moldura de madeira/dourado → navy com filetes dourados, no mesmo retângulo. Nada commitado.
+
+**2) Densidade de pixel medida (respondendo "por que parece ampliado").** `ServerList.wyt` é
+287×280 com duas colunas de 140 px; na tela as mesmas colunas aparecem com 181 px — **ampliação
+≈1,29×**. O retângulo de desenho é do `.exe`, não do cabeçalho: logo o `.wyt` aceita arte mais densa
+(2×, 4×) e o cliente reduz, sem mudar layout. Registro em `docs/cliente/customizacao.md` §9 e
+`formatos.md` §6.
+
+**3) Senha numérica pesquisada e mapeada.** É a segunda credencial (só dígitos) cadastrada na
+primeira entrada, na tela de personagem, e validada a cada login; troca no painel da conta e
+recuperação por e-mail (FAQ WYD Global). No fio é `_MSG_AccountSecure` `0x0FDE` / `_MSG_AccountSecureFail`
+`0x0FDF`, corpo de 32 B já tipado em `payload/auth.rs`; o `wyd2encdec` publica pacotes de exemplo dos
+dois opcodes. Doc novo: `docs/wyd/senha-numerica.md`.
+
+**4) Mapa de funcionalidades criado.** `docs/rust/08-checklist-funcionalidades.md` com 13 áreas
+(entrada/conta, personagem, mundo, combate, itens, skills, economia, guildas, quests/eventos,
+social, admin/cliente), estado ✅/🚧/⬜/⛔ e evidência por linha. Achado importante do mapa: o login
+**não verifica a senha** (`account_password` não é comparado com `accounts.password_hash`) e a senha
+numérica **não tem handler** — os dois primeiros itens da fila.
+
+---
+
+## Passada 2026-11-09 — portal reformulado sobre o contrato real do `wyd-admin`
+
+**1) Funcionalidade legada removida, não escondida.** O portal carregava telas e
+serviços do servidor antigo (`npc_admin`, `drop_admin`, `donate_admin`,
+`daily_reward_admin`, `world_state_admin`, `character_admin`…) que o gateway não
+expõe. Foram removidos: 22 páginas administrativas (atlas, castelo, config,
+diária, drops, eventos, faturamento, guildas, loja, mapa, mobs, NPCs, preços,
+teleportes, personagens, detalhe de conta e detalhe de item), os componentes e
+bibliotecas correspondentes, as rotas `/api/atlas`, `/api/mapa`, `/api/items` e
+`/api/search`, o cliente de serviços legados e o cadastro de contas por lista.
+Restaram apenas telas com fonte no contrato: `/painel`, `/contas`, `/itens`,
+`/monitoramento`, `/conta` (jogador), `/guias` e `/enciclopedia`.
+
+**2) Identidade e shell refeitos.** `globals.css` foi reescrito como sistema de
+componentes sobre `docs/arquitetura/identidade.tokens` (obsidiana + ouro velho):
+rail de navegação, topbar com blur, cabeçalho de página, hero com números,
+cards em camadas, KPIs com ícone, tabelas densas, chips de status, diálogo e
+formulários. Ícones passaram a `lucide-react`. O menu virou fonte única sem item
+“em breve”; o teste de paridade da identidade continua verde. A tela de login
+virou painel dividido e a área do jogador ganhou barra própria.
+
+**3) Mentira de implementação saiu da UI.** `/monitoramento` não mostra mais
+“Coletado em …”, não cita `issue`, `0x0FDE`, `prometheus:9090` nem caminho de
+arquivo; o rodapé técnico e o link morto para `/logs` foram removidos. Os textos
+descrevem estado e consequência, não a implementação.
+
+**4) Senha numérica explicada corretamente.** O texto agora diz que a segunda
+senha é por conta, pedida no cliente depois do login, **criada na primeira
+entrada na tela de personagem** e trocada pelo fluxo de duas etapas do `0x0FDE`
+tanto no cliente quanto no portal; o portal só troca uma senha existente e não
+finge criar a primeira. Mesmas regras: 4–6 dígitos, 5 falhas → 10 minutos,
+hash só no servidor, nada de PIN/senha em log ou browser.
+
+**5) Contrato do BFF reduzido e alinhado.** `admin-client.ts` declara só
+`accounts/find`, `accounts/create`, `item_catalog/list_items`,
+`account_web/verify_credentials` e `server_admin/list_channel_presence`.
+`/contas` virou busca exata + criação com papel (a listagem paginada não existe
+no gateway); `/itens` mostra só os campos do payload real (índice, nome,
+exibição); `/api/health` separa portal vivo de gateway fora. README reescrito
+com a tabela de telas e as referências de desenho consultadas.
+
+**Provas/gates desta passada:** `npx tsc --noEmit` 0; `npx vitest run` 79/79;
+`npm run build` 0 (22 rotas). Nada commitado.

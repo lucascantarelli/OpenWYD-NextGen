@@ -340,6 +340,7 @@ mod tests {
             mp: 10,
             pos_x: 2100,
             pos_y: 2100,
+            ..Character::default()
         }
     }
 

@@ -83,8 +83,28 @@ impl ServiceMetrics {
             "wyd_status_health_failures_total {}\n",
             self.health_failures.load(Ordering::Relaxed)
         ));
+        out.push_str("# HELP wyd_ip_limit_refusals_total Conexões recusadas por limite de IP.\n");
+        out.push_str("# TYPE wyd_ip_limit_refusals_total counter\n");
+        out.push_str(&format!(
+            "wyd_ip_limit_refusals_total {}\n",
+            ip_limit_refusals()
+        ));
         out
     }
+}
+
+/// Recusas por limite de IP desde o start (contador do processo de jogo).
+static IP_LIMIT_REFUSALS: AtomicU64 = AtomicU64::new(0);
+
+/// Conta uma recusa por limite de IP e devolve o total (para o log agregado).
+pub fn ip_limit_refused() -> u64 {
+    IP_LIMIT_REFUSALS.fetch_add(1, Ordering::Relaxed) + 1
+}
+
+/// Total de recusas por limite de IP (também no `/metrics`).
+#[must_use]
+pub fn ip_limit_refusals() -> u64 {
+    IP_LIMIT_REFUSALS.load(Ordering::Relaxed)
 }
 
 /// Serve `/metrics` para sempre no listener de métricas.
