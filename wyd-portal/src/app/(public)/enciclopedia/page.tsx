@@ -49,8 +49,8 @@ export default async function EnciclopediaPage({ searchParams }: Props) {
       <h1>Enciclopédia de itens</h1>
       <p>
         {ENCYCLOPEDIA_COUNT.toLocaleString("pt-BR")} itens do catálogo. O grau e os efeitos vêm do
-        <code>ItemList</code> do servidor; o que não está provado aparece como “não classificado”
-        em vez de rótulo inventado.
+        cadastro do servidor; o que ainda não tem classificação aparece assim, sem rótulo
+        inventado.
       </p>
 
       <form className="guias__search" method="get" role="search">

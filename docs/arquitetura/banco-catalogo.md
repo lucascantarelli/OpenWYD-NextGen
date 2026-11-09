@@ -11,13 +11,13 @@
 
 ## 1. Resumo
 
-- migrations: **29** · última versão: **29**
-- tabelas: **67** · colunas: **497** · índices: **32** · funções: **1**
-- domínios: **16** · tabelas com dado provisório: **23**
+- migrations: **30** · última versão: **30**
+- tabelas: **68** · colunas: **506** · índices: **32** · funções: **1**
+- domínios: **16** · tabelas com dado provisório: **24**
 
 | Domínio | Tabelas |
 |---|---|
-| acesso | `accounts` |
+| acesso | `accounts`, `character_session` |
 | arena | `arena`, `arena_match`, `arena_round`, `arena_score` |
 | auditoria | `audit_log` |
 | canal de servidor | `server_channel` |
@@ -43,7 +43,7 @@
 - **Nota:** Hash de senha/PIN opaco (argon2id); nada em texto plano.
 - **PK:** `id`
 - **FK:** —
-- **CHECK:** `accounts_login_nonempty`, `accounts_role`
+- **CHECK:** `accounts_login_nonempty`, `accounts_role`, `accounts_pin_failures`
 - **UNIQUE de tabela:** —
 - **Índices:** `accounts_login_unique` (login) UNIQUE ;
 
@@ -53,6 +53,8 @@
 | `login` | `text` | não |
 | `password_hash` | `text` | não |
 | `pin_hash` | `text` | sim |
+| `pin_failures` | `smallint` | não |
+| `pin_locked_until` | `timestamp with time zone` | sim |
 | `role` | `text` | não |
 | `created_at` | `timestamp with time zone` | não |
 | `last_login_at` | `timestamp with time zone` | sim |
@@ -64,7 +66,7 @@
 - **Nota:** `tier`/`arch_of_id` vêm das camadas CONFIRMADAS de progressão (D-B02).
 - **PK:** `id`
 - **FK:** `account_id` → `accounts` · `arch_of_id` → `characters`
-- **CHECK:** `characters_slot`, `characters_name_nonempty`, `characters_tier`, `characters_arch_not_self`, `characters_level`, `characters_exp`, `characters_hp`, `characters_mp`
+- **CHECK:** `characters_slot`, `characters_name_nonempty`, `characters_tier`, `characters_arch_not_self`, `characters_level`, `characters_exp`, `characters_hp`, `characters_mp`, `characters_gold`, `characters_hp_max`, `characters_mp_max`, `characters_pvp_points`
 - **UNIQUE de tabela:** —
 - **Índices:** `characters_account_idx` (account_id) ; · `characters_name_unique` (name) UNIQUE WHERE deleted_at IS NULL;
 
@@ -81,6 +83,10 @@
 | `exp` | `bigint` | não |
 | `hp` | `integer` | não |
 | `mp` | `integer` | não |
+| `gold` | `bigint` | não |
+| `hp_max` | `integer` | não |
+| `mp_max` | `integer` | não |
+| `pvp_points` | `integer` | não |
 | `pos_x` | `integer` | não |
 | `pos_y` | `integer` | não |
 | `created_at` | `timestamp with time zone` | não |
@@ -1471,6 +1477,29 @@
 | `enabled` | `boolean` | não |
 | `note` | `text` | não |
 
+### `character_session`
+
+- **Arquivo:** `0030_sessao_unica.sql` · **Domínio:** acesso · **Estado:** provisorio
+- **Fonte:** docs/wyd/canais-e-cidadania.md §5 + migration 0030
+- **Nota:** Cerca de sessão por `account_login` (a autenticação da FASE-08-2 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.
+- **PK:** `id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_session_release_after_open`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `account_login` | `text` | não |
+| `character_id` | `bigint` | sim |
+| `group_id` | `smallint` | não |
+| `channel` | `smallint` | não |
+| `client_version` | `integer` | não |
+| `opened_at` | `timestamp with time zone` | não |
+| `renewed_at` | `timestamp with time zone` | não |
+| `released_at` | `timestamp with time zone` | sim |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1552,6 +1581,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0027 | `0027_seed_combine.sql` | seed | — |
 | 0028 | `0028_estado_de_jogo.sql` | DDL | `character_affects`, `kingdom_cape_price`, `daily_reward_claim`, `guild_relations`, `guild_tower` |
 | 0029 | `0029_canal_de_servidor.sql` | DDL | `server_channel` |
+| 0030 | `0030_sessao_unica.sql` | DDL | `character_session` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

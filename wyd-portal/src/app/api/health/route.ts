@@ -3,24 +3,22 @@ import { itemCatalog, promisify, type ListItemsResponse } from "@/server/admin-c
 export const dynamic = "force-dynamic";
 
 /**
- * Prova viva do caminho portal → gRPC → web-api.
- * 200 com a contagem real do catálogo; 502 quando o web-api não responde.
+ * Saúde do portal (liveness) e do caminho até o gateway.
+ *
+ * O endpoint nunca devolve 502 por causa do backend: portal no ar e gateway fora
+ * são estados diferentes, e quem monitora precisa distinguir os dois.
  */
 export async function GET() {
+  let gateway: "up" | "down" = "down";
+  let items: number | null = null;
   try {
     const res = await promisify<Record<string, never>, ListItemsResponse>(
       itemCatalog.listItems.bind(itemCatalog),
     )({});
-    return Response.json({
-      ok: true,
-      items: res.items?.length ?? 0,
-      catalogVersion: res.catalog_version ?? "",
-      iconPackVersion: res.icon_pack_version ?? "",
-    });
+    gateway = "up";
+    items = res.items?.length ?? 0;
+    return Response.json({ ok: true, gateway, items });
   } catch {
-    return Response.json(
-      { ok: false, error: "web-api indisponível" },
-      { status: 502 },
-    );
+    return Response.json({ ok: true, gateway, items });
   }
 }

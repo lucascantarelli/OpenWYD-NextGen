@@ -4,21 +4,14 @@ import { jwtVerify } from "jose";
 import { SESSION_COOKIE, sessionKey } from "@/server/session-key";
 
 /**
- * Guarda de rota do portal: valida presença + assinatura do cookie, sem gRPC
- * (o proxy roda no edge). A autorização real continua no web-api e, para a UI,
- * no `(admin)/layout.tsx`.
+ * Guarda de rota do portal: valida presença + assinatura do cookie (o proxy roda
+ * no edge, sem backend). A autorização real continua no `wyd-admin` e, para a
+ * UI, no `(admin)/layout.tsx`.
  *
- * Next 16 renomeou a convenção `middleware.ts` para `proxy.ts`; o arquivo e o
- * export seguem o nome novo, senão o build avisa que a convenção está obsoleta.
- *
- * O `matcher` do Next precisa ser literal, então a lista não pode ser derivada
- * em runtime — antes havia aqui um array `GUARDED` morto (`void GUARDED`) que
- * prometia cobrir as rotas e não cobria nada. `/precos` e `/atlas` ficaram de
- * fora do matcher por isso; ao criar uma rota nova, acrescente-a aqui e teste
- * com `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/<rota>`
- * sem cookie (esperado 307 para /login).
+ * O `matcher` do Next precisa ser literal: ao criar uma tela administrativa nova,
+ * acrescente-a aqui. `proxy.test.ts` compara o matcher com as páginas em disco e
+ * com o menu, então rota esquecida reprova o teste.
  */
-
 export async function proxy(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (token) {
@@ -37,26 +30,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/painel/:path*",
-    "/npcs/:path*",
-    "/mobs/:path*",
-    "/itens/:path*",
-    "/precos/:path*",
-    "/atlas/:path*",
-    "/teleportes/:path*",
-    "/personagens/:path*",
-    "/drops/:path*",
-    "/mapa/:path*",
-    "/eventos/:path*",
-    "/loja/:path*",
-    "/diaria/:path*",
-    "/faturamento/:path*",
-    "/contas/:path*",
-    "/guildas/:path*",
-    "/castelo/:path*",
-    "/config/:path*",
-    "/logs/:path*",
-    "/monitoramento/:path*",
-  ],
+  matcher: ["/painel/:path*", "/contas/:path*", "/itens/:path*", "/monitoramento/:path*"],
 };

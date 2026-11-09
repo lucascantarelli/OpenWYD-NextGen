@@ -1,55 +1,91 @@
-# Portal de administração (WYD2)
+# Portal (WYD2)
 
-Next.js 15 (App Router) como **BFF puro** sobre o `wyd-admin` via **HTTP/1.1 +
-JSON em loopback** (`:7600`, ADR-0008). O browser nunca fala com o backend nem
-vê o token de staff.
+Next.js 16 (App Router) como **BFF puro** sobre o `wyd-admin` via HTTP/1.1 + JSON
+em loopback (`:7600`, ADR-0008). O browser nunca fala com o gateway nem vê o
+token de staff.
 
 ```bash
-cd portal
+cd wyd-portal
 npm install
-npm run dev          # http://127.0.0.1:3000  (login: conta com role moderator/admin)
+npm run dev          # http://127.0.0.1:3000
 npm run typecheck    # tsc --noEmit
 npm test             # vitest
+npm run build        # next build (standalone)
 ```
 
-Variáveis de ambiente:
+## Variáveis de ambiente
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `WEB_API_ADDR` | `http://127.0.0.1:7600` | URL do `wyd-admin` (loopback na v1) |
+| `WEB_API_ADDR` | `http://127.0.0.1:7600` | URL do `wyd-admin` (loopback) |
 | `WEB_API_TOKEN` | — | token de staff (`authorization: Bearer`), processo→processo |
-| `SESSION_SECRET` | — | assinatura HS256 do cookie `wyd_session` |
+| `SESSION_SECRET` | — | assinatura HS256 do cookie `wyd_session` (>= 32 caracteres) |
 | `AUDIT_LOG_DIR` | — | opcional: grava `audit-YYYY-MM-DD.ndjson` além do log do processo |
+| `PROMETHEUS_URL` | `http://prometheus:9090` | leitura de métricas e alertas (server-side) |
+| `PROMETHEUS_PUBLIC_URL` | `http://127.0.0.1:9090` | link “abrir no Prometheus” |
+| `LOKI_URL` | `http://loki:3100` | agregado de logs por serviço (server-side) |
+| `GRAFANA_URL` | `http://grafana:3000` | saúde e catálogo de dashboards |
+| `GRAFANA_PUBLIC_URL` | `http://127.0.0.1:3001` | link “abrir no Grafana” |
+
+## Telas
+
+O portal só tem tela para o que o contrato do gateway serve hoje
+(`crates/wyd-admin/src/transport/mod.rs`). Menu não anuncia rota sem contrato.
+
+| Rota | Acesso | Fonte |
+|---|---|---|
+| `/painel` | staff | `server_admin/list_channel_presence`, Prometheus, Loki, Grafana e `item_catalog/list_items` |
+| `/contas` | staff | `accounts/find` (busca exata) e `accounts/create` |
+| `/itens` | staff | `item_catalog/list_items` (somente leitura) |
+| `/monitoramento` | staff | presença no banco, Prometheus, Loki e dashboards do Grafana |
+| `/conta` | jogador | `panel/self`, `panel/characters`, `panel/rankings` e `account_web/change_numeric_pin` |
+| `/guias`, `/enciclopedia` | público | JSON versionado gerado de `docs/` e do catálogo |
+| `/login` | público | `account_web/verify_credentials` |
+
+Fora do escopo por falta de contrato no gateway: listagem paginada de contas,
+edição de personagem, conteúdo (NPC, mob, drop, preço, evento), economia e
+faturamento. Essas telas existiam sobre o servidor antigo e foram removidas —
+não há chamada para rota que o `wyd-admin` não exponha.
+
+## Identidade e desenho
+
+`docs/arquitetura/identidade.tokens` é a **fonte única** de cor, espaço, raio e
+tipografia. `src/app/globals.css` consome os tokens; `src/identidade.test.ts`
+reprova cor fora da identidade, token ausente e divergência de valor. A mesma
+identidade gera os assets do launcher.
+
+O desenho é obsidiana + ouro velho: superfícies em camadas, luz âmbar no topo da
+página, tipografia densa e números tabulares. Componentes pequenos e reusados
+(`Stat`, `Badge`, `DataTable`, `Dialog`, `Field`, `Toast`) e ícones `lucide-react`.
+
+Referências consultadas para a reformulação (2026-11-09):
+
+| Referência | O que foi observado |
+|---|---|
+| [WYD International](https://wyd-international.com/home) | painel do jogador, ranking, busca de personagem e lista de drops como navegação pública |
+| [DarkCMS Painel](https://darkmucms.online/painel.html) | separação entre área do jogador e área de staff, com papéis; painel em Next.js |
+| [GameCP Admin Dashboard](https://devsbr-org.github.io/admin-dashboard) | KPIs de contas/personagens/online e log de ações administrativas na primeira tela |
+| [Palworld Server Dashboard](https://palworld-server-dashboard.vercel.app/docs) | painel self-hosted com saúde do servidor, jogadores e visão restrita para moderador |
+| [Game Admin Panel (Dribbble)](https://dribbble.com/shots/26221693--Game-Admin-Panel-Dashboard-UI-Design) | tema escuro, hierarquia de KPIs, moderação e economia sem poluição visual |
+
+O que foi adotado: navegação curta por domínio, KPIs com fonte explícita,
+status por serviço, tabelas densas e área do jogador separada da administração.
+O que foi descartado: cards decorativos sem dado real, gráficos inventados e
+qualquer número que o backend não forneça.
 
 ## Regra: toda ação admin passa por `adminCall`
 
-`src/server/admin.ts` é o único caminho para RPC de escrita/admin. Ele exige
+`src/server/admin.ts` é o único caminho para chamada administrativa. Ele exige
 sessão de staff, injeta `moderator_id` **da sessão** (nunca do corpo), aplica
-deadline de 10s, mapeia `AdminResult` → HTTP e registra auditoria.
+deadline de 10 s, mapeia `AdminResult` → HTTP e registra auditoria.
 
 ```ts
-// src/app/api/npcs/[id]/route.ts
-import { adminCall } from "@/server/admin";
-import { toResponse } from "@/server/errors";
-import { npcAdmin } from "@/server/admin-client";
-
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const res = await adminCall(
-      npcAdmin.deleteNpc.bind(npcAdmin),
-      { npc_id: Number(id) },
-      { action: "npc.delete", target: `npc:${id}` },
-    );
-    return Response.json({ ok: true, npcId: res.npc_id ?? Number(id) });
-  } catch (err) {
-    return toResponse(err);
-  }
-}
+// src/app/(admin)/contas/actions.ts
+const account = await createAccount({ login, role });
 ```
 
-**Não** chame o cliente admin direto de uma page ou action: sem `adminCall`
-não há `moderator_id` da sessão, nem mapeamento de `CONTENT_OWNED`, nem auditoria.
+**Não** chame `admin-client` direto de uma page ou action: sem `adminCall` não há
+`moderator_id` da sessão, nem mapeamento de `CONTENT_OWNED`, nem auditoria.
 
 ## `AdminResult` → HTTP
 
@@ -62,97 +98,70 @@ não há `moderator_id` da sessão, nem mapeamento de `CONTENT_OWNED`, nem audit
 | `INVALID` (3) | 422 | dados inválidos para esta ação |
 | `NOT_FOUND` (4) | 404 | o registro não existe mais |
 | `CONTENT_OWNED` (5) | 409 | este item é conteúdo versionado: oculte em vez de apagar |
-| `UNSPECIFIED` (0) / desconhecido | 500 | resultado desconhecido do web-api |
+| `UNSPECIFIED` (0) / desconhecido | 500 | resultado desconhecido do serviço de administração |
 
 Falha de transporte (conexão recusada, timeout de 10 s ou 5xx) → **502**
-"serviço de administração indisponível". Stack, DSN e caminho nunca vão para o
+“serviço de administração indisponível”. Stack, DSN e caminho nunca vão para o
 browser: `toResponse` só devolve `{ error }` com `cache-control: no-store`.
+
+## Senha numérica (“segunda senha”)
+
+A senha numérica é **por conta**, pedida no cliente depois do login, na tela de
+personagem. O primeiro cadastro acontece ali: o jogador digita os dígitos e o
+servidor grava o hash. Nas entradas seguintes, o mesmo pacote apenas valida.
+
+- **Cliente:** cria na primeira entrada e troca pelo fluxo de duas etapas do
+  `0x0FDE` (`change_numeric` 1 com a atual, 2 com a nova) — `docs/wyd/senha-numerica.md`.
+- **Portal:** `/conta` oferece a troca da senha **existente**. O BFF chama
+  `account_web/change_numeric_pin`; o gateway abre uma conexão CPSock real e
+  repete o mesmo fluxo do cliente. Nada de hash no portal.
+- **Regras:** 4 a 6 dígitos; 5 erros bloqueiam a conta por 10 minutos; PIN, senha e
+  hash nunca entram em log, resposta de erro ou browser storage.
+
+Se a conta ainda não tem senha numérica, a tela do portal não finge “criar”: a
+criação é do primeiro acesso no cliente, e a mensagem diz isso.
 
 ## Estrutura
 
 ```
-src/server/admin-client.ts cliente HTTP/JSON do wyd-admin (server-only) + tipos
-src/server/promisify.ts    fachada da chamada admin (deadline no cliente)
-src/server/admin.ts        adminCall (sessão + moderator_id + resultado + auditoria)
-src/server/admin-result.ts AdminResult → HTTP/mensagem (puro)
-src/server/errors.ts       AdminError + toResponse
-src/server/audit.ts        trilha de auditoria (console + ndjson opcional)
-src/server/session.ts      cookie httpOnly HS256, getSession/requireStaff
-src/server/catalog.ts      cache do catálogo de itens
-src/server/guias.ts        leitura de /guias (JSON gerado a partir de docs/)
-scripts/build-guias.mjs    gerador do conteúdo de /guias (npm run guias)
+src/app/(admin)/            shell administrativo (sidebar, topbar, guarda de UX)
+src/app/(public)/           login, área do jogador, guias e enciclopédia
+src/app/api/               rotas do BFF (auth, painel, health)
+src/components/             componentes de UI sem regra de negócio
+src/lib/                    formatação, papéis e textos (i18n)
+src/server/admin-client.ts  cliente HTTP/JSON do wyd-admin + tipos do contrato
+src/server/admin.ts         adminCall (sessão + moderator_id + resultado + auditoria)
+src/server/accounts.ts      busca e criação de conta
+src/server/catalog.ts       catálogo de itens (cache curto de processo)
+src/server/panel.ts         painel do jogador (account_id da sessão)
+src/server/monitoring.ts    foto de Prometheus/Loki/presença/Grafana
+src/server/session.ts       cookie httpOnly HS256, getSession/requireStaff
+src/proxy.ts                guarda de rota (matcher literal, coberto por teste)
+scripts/build-guias.mjs     gerador de /guias a partir de docs/ (npm run guias)
 ```
 
-## Rodando no Docker (stack completa)
+## Docker
 
-O compose da raiz sobe o portal junto com o web-api:
+O compose da raiz sobe o portal junto com o gateway:
 
 ```bash
 docker compose up -d --build portal   # http://localhost:3000
 ```
 
-A imagem (`docker/Dockerfile.portal`) usa o output `standalone` do Next. O contexto de build é a
-**raiz do repositório** (compose: `context: .`). No container, `WEB_API_ADDR=http://wyd-admin:7600`
-e `AUDIT_LOG_DIR` vêm do compose;
-`SESSION_SECRET` tem default apenas de desenvolvimento (>= 32 caracteres em produção).
+A imagem (`docker/Dockerfile.portal`) usa o output `standalone` do Next, com
+contexto de build na raiz do repositório. No container,
+`WEB_API_ADDR=http://wyd-admin:7600`; `SESSION_SECRET` tem default apenas de
+desenvolvimento (>= 32 caracteres em produção).
 
-### Guias públicos (`/guias`)
+## Guias e enciclopédia
 
-`/guias` e `/guias/<slug>` publicam a documentação escrita em `docs/guias/` (jogador e
-administrador), `docs/sistemas/` e `docs/lore/` (história, guerras, reinos) — **os mesmos arquivos**
-que alimentam o site mkdocs, sem cópia paralela. A rota é pública de propósito: não entra no
-`matcher` do middleware nem no menu administrativo.
+`/guias` publica a documentação de `docs/` gerada por `npm run guias`
+(`src/content/guias.json`, versionado). `/enciclopedia` lê o catálogo estático
+gerado por `tools/content/` — são rotas públicas e não passam pelo gateway.
 
-- `npm run guias` (ou `make guias`) gera `src/content/guias.json`, que é **versionado**. A imagem
-  copia só `wyd-portal/`, então `docs/` não existe dentro do container — gerar no build do Next não
-  funcionaria.
-- O gerador reescreve link relativo para `/guias/<slug>`, converte `!!! tipo` (admonition do mkdocs)
-  em citação — o `marked` não conhece essa sintaxe — e mantém como texto o link que sai do conjunto
-  publicado, porque link morto é pior que texto.
-- `src/server/guias.ts` expõe `listGuias`/`getGuia`/`groupGuias`; as páginas são estáticas
-  (`generateStaticParams`), então o conteúdo só muda quando o JSON é regenerado.
-- CI: `_portal.yml` roda `npm run guias` e `git diff --exit-code`; `docs/` alterado sem regenerar
-  reprova o pipeline (`make guias-check` reproduz local).
+## Monitoramento
 
-### Logs ao vivo (`/logs`, issue 40)
-
-O portal **não** monta o socket do Docker. No compose, quem fala com a Engine API é o sidecar
-**`logpipe`** (`logpipe/`, Go stdlib): monta `/var/run/docker.sock` **read-only** e expõe só
-`/status` e `/logs/<serviço>` na rede interna — sem escrita, sem `exec`, sem acesso a arquivos,
-com `read_only`, `no-new-privileges` e `group_add: 0` para ler o socket rodando nonroot. O portal
-autentica a sessão e repassa o stream em SSE (`/api/logs/<serviço>`, `/api/logs/status`), com
-`redact` de ANSI/DSN/segredo antes de qualquer linha chegar ao browser.
-
-Serviços aceitos: `db`, `portal` e o alvo `all` (o servidor de jogo entra com a FASE-07).
-Nada vem cru do browser: whitelist fixa, `tail` 1..2000 e `since` só no formato `10m`. Sem
-`LOG_PIPE_URL` (ex.: `make portal-dev` no host), o BFF volta ao `docker compose logs -f` local.
-
-### Contas, papéis e banimento (`/contas`, issue 32)
-
-Lista com cursor keyset (`apos`), filtro por prefixo de login, papel e estado de bloqueio; o detalhe
-traz a conta, o motivo do bloqueio e a **auditoria** (`account_admin_audit`: quem, quando, antes →
-depois e o motivo digitado). Criar conta já com papel é coisa de `admin`.
-
-Toda escrita é `action → adminCall → admin-client`, com `moderator_id` vindo da sessão. As
-regras **não** moram na UI nem no transporte: `crates/wyd-admin/src/api/accounts.rs` as aplica —
-ninguém altera o próprio papel/bloqueio, a última conta admin ativa é protegida e `moderator` só
-bloqueia `player`. O backend responde `INVALID` com uma explicação ("esta é a última conta admin
-ativa — promova outra antes") e o `adminCall` repassa essa mensagem à tela.
-
-Nada aqui toca personagem: `account.role` e `account.is_blocked` são lidos no **próximo login**.
-A conta nunca é apagada e senha/PIN não são redefinidos por esta tela (fora do escopo da issue).
-
-### Faturamento (`/faturamento`, issue 31)
-
-Leitura pura do `DonateRevenueAdminService` — nada escreve, nem linha de auditoria no banco — e
-restrita a `admin`: `moderator` cai em `/sem-permissao`, porque receita e dados de pagador são
-informação financeira. A janela (7/30/90 dias ou intervalo digitado) é interpretada em
-`America/Sao_Paulo` e enviada em segundos Unix; a tela exibe a janela que o **servidor** aplicou.
-Dinheiro (`gross_cents`, BRL) e donate (`credits`) nunca se somam, e `pending_cents` tem cartão
-próprio com o aviso de que não é receita. Pedidos saem em CSV client-side (100 linhas por carga) e
-a busca de conta usa `/api/search/accounts`, a mesma do `Combobox` do crédito manual em `/loja`.
-
-A escolha de qual compose usar é `W2PP_COMPOSE_DIR` (default: o diretório pai de `wyd-portal/`).
-
-A tela exige sessão de `moderator`/`admin` — `player` recebe 403, e sem sessão a resposta é 401
-antes de qualquer conexão com o Docker (logpipe ou CLI).
+Uma página, quatro fontes independentes: Prometheus (métricas e alertas), Loki
+(volume e erros por serviço), gateway (presença viva por canal, lida de
+`character_session`) e Grafana (dashboards em kiosk). Cada bloco falha sozinho.
+O portal nunca escreve estado vivo do jogo.

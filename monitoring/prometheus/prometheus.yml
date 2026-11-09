@@ -11,6 +11,8 @@ global:
   evaluation_interval: 15s
   external_labels:
     stack: wyd
+    # Origem por serviço: o Grafana usa isto nas queries cruzadas.
+    # (Prometheus e Loki são datasources distintos, ligados por `job`/`service`.)
 
 rule_files:
   - /etc/prometheus/alerts.yml
@@ -31,6 +33,11 @@ scrape_configs:
   - job_name: wyd-gateway
     static_configs:
       - targets: ["gateway:7600"]
+
+  # Loki: saúde do pipeline de logs (o portal mostra o estado do coletor).
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
 
   # Motor de jogo: alvo descoberto por arquivo, NÃO fixo no YAML.
   #

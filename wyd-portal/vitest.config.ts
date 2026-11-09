@@ -13,6 +13,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // `.tsx` entra por causa do teste de componente da tela de conta (jsdom por
+    // arquivo, via `@vitest-environment jsdom` no topo do teste).
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

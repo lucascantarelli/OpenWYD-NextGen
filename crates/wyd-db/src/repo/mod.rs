@@ -7,9 +7,11 @@ pub mod characters;
 pub mod content;
 pub mod grants;
 pub mod pg;
+pub mod sessions;
 
 pub use accounts::{Accounts, CredentialRecord};
 pub use characters::Characters;
 pub use content::{CatalogItemRow, CatalogSnapshot, ServerChannel};
 pub use grants::{Grant, Grants};
 pub use pg::NO_CREDENTIAL;
+pub use sessions::{ClaimOutcome, Sessions};

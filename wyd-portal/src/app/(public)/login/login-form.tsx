@@ -41,14 +41,14 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-      <label style={{ display: "grid", gap: 4 }}>
-        <span style={{ color: "var(--muted)", fontSize: 13 }}>Usuário</span>
+    <form onSubmit={onSubmit} className="login-form">
+      <label className="login-field">
+        <span>Usuário</span>
         <input
           name="name"
           className="ui-input"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(event) => setName(event.target.value)}
           autoComplete="username"
           autoFocus
           required
@@ -56,14 +56,14 @@ export default function LoginForm() {
         />
       </label>
 
-      <label style={{ display: "grid", gap: 4 }}>
-        <span style={{ color: "var(--muted)", fontSize: 13 }}>Senha</span>
+      <label className="login-field">
+        <span>Senha</span>
         <input
           name="pass"
           className="ui-input"
           type="password"
           value={pass}
-          onChange={(e) => setPass(e.target.value)}
+          onChange={(event) => setPass(event.target.value)}
           autoComplete="current-password"
           required
           maxLength={64}
@@ -71,7 +71,7 @@ export default function LoginForm() {
       </label>
 
       {error && (
-        <p role="alert" style={{ color: "var(--danger)", margin: 0, fontSize: 13 }}>
+        <p role="alert" className="login-error">
           {error}
         </p>
       )}

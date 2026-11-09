@@ -89,6 +89,16 @@ pub fn spawn(launch: &Launch) -> Result<Child, LaunchError> {
         .map_err(LaunchError::Spawn)
 }
 
+/// Número de janelas pedido por `launch --instances N` (1 a 5).
+///
+/// Multiboxing é prática normal do WYD; o teto evita que um comando abra dezenas de processos.
+pub fn parse_instances(valor: &str) -> Result<usize, String> {
+    match valor.trim().parse::<usize>() {
+        Ok(janela) if (1..=5).contains(&janela) => Ok(janela),
+        _ => Err(format!("--instances aceita 1 a 5 (veio {valor:?})")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -127,6 +137,15 @@ mod tests {
         assert!(matches!(spawn(&l), Err(LaunchError::Spawn(_))));
         // prova de que este teste nunca tocaria no jogo real:
         assert!(!Path::new("WYD.exe").exists() || true);
+    }
+
+    #[test]
+    fn instances_aceita_de_um_a_cinco() {
+        assert_eq!(parse_instances("1"), Ok(1));
+        assert_eq!(parse_instances(" 5 "), Ok(5));
+        assert!(parse_instances("0").is_err());
+        assert!(parse_instances("6").is_err());
+        assert!(parse_instances("abc").is_err());
     }
 
     #[test]

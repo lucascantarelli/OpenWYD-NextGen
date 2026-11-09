@@ -14,6 +14,7 @@ sistema agora tem passo a passo, taxa e lacuna própria. O conteúdo completo es
 | Moedas, fontes/drenos de ouro, imposto, mercado | [`economia.md`](economia.md) |
 | Progressão e camadas | [`progressao.md`](progressao.md) |
 | Classes, linhagens e skills | [`classes.md`](classes.md) |
+| Senha numérica (segunda senha) do login | [`senha-numerica.md`](senha-numerica.md) |
 
 ## O que continua valendo daqui
 
@@ -22,6 +23,9 @@ sistema agora tem passo a passo, taxa e lacuna própria. O conteúdo completo es
 `refino`, `replecao`, `mix`, `craft`, `drop`, `loja`, `donate`, `teleporte`, `armazem`,
 `combate`, `guilda`, `guerra_guilda`, `castelo`, `reino`, `quest`, `evento`, `mundo`,
 `progressao`, `skill`, `montaria`.
+
+O estado de implementação de cada um desses sistemas (✅/🚧/⬜/⛔, com evidência) fica em
+[`docs/rust/08-checklist-funcionalidades.md`](../rust/08-checklist-funcionalidades.md).
 
 Regra que não mudou: **`NULL` significa "não sabemos"** — classificação parcial é intencional,
 e o portal deve exibir "não classificado" em vez de rótulo inventado.

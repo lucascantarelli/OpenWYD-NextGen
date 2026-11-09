@@ -1,58 +1,64 @@
 "use client";
 
+import { Activity, LayoutDashboard, Package, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Badge } from "./Badge";
-import { Icon } from "./Icon";
-import { NAV } from "./nav";
+import { NAV, PUBLIC_LINKS, type NavIcon } from "./nav";
+
+const ICONS: Record<NavIcon, typeof Activity> = {
+  overview: LayoutDashboard,
+  accounts: Users,
+  monitoring: Activity,
+  catalog: Package,
+};
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="ui-sidebar" aria-label="Navegação principal">
-      <div className="ui-sidebar__brand">
-        WYD2 <span>administração</span>
-      </div>
+    <aside className="rail" aria-label="Navegação principal">
+      <Link className="brand" href="/painel" aria-label="WYD2 — visão geral">
+        <span className="brand__mark" aria-hidden="true">
+          W
+        </span>
+        <span className="brand__text">
+          <span className="brand__name">WYD2</span>
+          <span className="brand__tag">Administração</span>
+        </span>
+      </Link>
 
-      {NAV.map((group) => (
-        <nav key={group.group} className="ui-nav-group" aria-label={group.group}>
-          <div className="ui-nav-group__title">{group.group}</div>
-          {group.items.map((item) => {
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-            if (item.soon) {
+      <nav className="nav" aria-label="Administração">
+        {NAV.map((group) => (
+          <div key={group.group} className="nav__group">
+            <div className="nav__label">{group.group}</div>
+            {group.items.map((item) => {
+              const Icon = ICONS[item.icon];
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
-                <span
+                <Link
                   key={item.href}
-                  className="ui-nav-item ui-nav-item--soon"
-                  aria-disabled="true"
-                  title={`${item.label} — em breve`}
+                  href={item.href}
+                  className="nav__item"
+                  aria-current={active ? "page" : undefined}
+                  title={item.hint ?? item.label}
                 >
-                  <Icon name={item.icon} />
-                  <span className="ui-nav-item__label">{item.label}</span>
-                  <Badge>em breve</Badge>
-                </span>
+                  <Icon size={17} strokeWidth={1.7} aria-hidden="true" />
+                  <span className="nav__text">{item.label}</span>
+                </Link>
               );
-            }
+            })}
+          </div>
+        ))}
+      </nav>
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="ui-nav-item"
-                aria-current={active ? "page" : undefined}
-                title={item.label}
-              >
-                <Icon name={item.icon} />
-                <span className="ui-nav-item__label">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      ))}
+      <div className="rail__foot">
+        {PUBLIC_LINKS.map((link) => (
+          <Link key={link.href} href={link.href}>
+            {link.label}
+          </Link>
+        ))}
+      </div>
     </aside>
   );
 }

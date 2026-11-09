@@ -1,0 +1,59 @@
+# identidade.tokens — fonte ÚNICA da identidade visual do projeto.
+#
+# Formato estrito: `chave = valor`, uma por linha, `#` comenta. Chave fora de
+# [a-z0-9.-], linha sem `=` e chave repetida REPROVAM (errar é melhor que adivinhar).
+#
+# Consumidores (não duplique valores em nenhum deles):
+#   - crates/wyd-launcher  → `identidade.rs` (include_str!): skin da entrada
+#     (`Launcher.bmp`/`Launcher.hat`) e nomes de servidor do `sn.bin`.
+#   - wyd-portal/src/app/globals.css → teste de paridade
+#     `wyd-portal/src/app/identidade.test.ts` quebra se o CSS divergir daqui.
+#   - crates/wyd-launcher/tests/identidade.rs → compara este arquivo com o CSS do
+#     portal e com os assets/sn.bin instalados em `client/`.
+#
+# Unidade: `espaco.*` e `raio*` são pixels; tipografia.tamanho é px e
+# tipografia.altura é adimensional (line-height).
+
+# --- paleta (contrato com wyd-portal/src/app/globals.css) ---
+cor.bg = #0f1115
+cor.surface = #171a21
+cor.surface-2 = #1d212a
+cor.border = #2b313d
+cor.border-strong = #3a4250
+cor.border-control = #707b8d
+cor.text = #e9edf4
+cor.muted = #a3adbd
+cor.accent = #c8a24a
+cor.accent-ink = #1a1408
+cor.ok = #55b97c
+cor.warn = #d9a441
+cor.danger = #e06a6a
+# Fundo de embed externo (painel Grafana dentro do portal): é o tema dark do próprio
+# Grafana, declarado aqui para que nenhuma cor exista fora da identidade.
+cor.embed = #111217
+
+# --- escala de espaço (base 4, série de Fibonacci) ---
+espaco.1 = 4
+espaco.2 = 8
+espaco.3 = 12
+espaco.4 = 20
+espaco.5 = 32
+espaco.6 = 52
+espaco.7 = 84
+
+# --- forma e tipografia ---
+raio = 8
+raio.pequeno = 6
+tipografia.familia = ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif
+# Escala tipográfica das telas: corpo em `tipografia.tamanho`, título e legenda abaixo.
+tipografia.titulo = 22
+tipografia.legenda = 13
+tipografia.tamanho = 14
+tipografia.altura = 1.5
+tipografia.mono = ui-monospace, "Cascadia Mono", Consolas, monospace
+
+# --- servidores desenhados na tela de entrada (client/sn.bin) ---
+# O slot é o grupo do `serverlist.bin` (1..=10) e o cliente monta o rótulo como
+# `sprintf("%s-%d", nome, canal)` (docs/cliente/formatos.md §3). O campo tem 9 B,
+# então o nome cabe em no máximo 8 caracteres ASCII imprimível.
+servidor.1 = WYD

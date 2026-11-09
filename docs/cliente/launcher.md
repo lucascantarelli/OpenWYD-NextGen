@@ -122,5 +122,53 @@ repetido, grade fora de 10×11/11 canais); sucesso → `0`. `serverlist` é o me
 (gerar + instalar), útil quando só a lista mudou.
 
 A instalação é **atômica com backup**: escreve `serverlist.bin.tmp` no mesmo diretório, copia o
-arquivo anterior para `serverlist.bin.bak` quando difere e só então `rename` por cima; conteúdo
-idêntico não é reescrito (evita reescrever por reescrita e evita backup inútil).
+arquivo anterior para `serverlist.bin.bak` quando difere e só então `rename` por cima;conteúdo idêntico não é reescrito (evita reescrever por reescrita e evita backup inútil).
+
+## 9. Identidade única e a tela de entrada (2026-11-09)
+
+Antes desta data o launcher só tinha `serverlist`/`launch`; a skin e os nomes de servidor eram
+editados à mão. Agora existe **uma** definição de identidade e ela é consumida por três lados:
+
+| Lado | Como consome |
+|---|---|
+| Portal | `wyd-portal/src/app/globals.css` declara as variáveis `--bg/--surface/--accent/--space-*` com os valores de `docs/arquitetura/identidade.tokens` |
+| Launcher (Rust) | `include_str!` do mesmo arquivo em `crates/wyd-launcher/src/identidade.rs` (parser estrito, `chave = valor`); nenhum literal de cor ou nome em Rust |
+| Gerador Node | `tools/client/serverlist.mjs` lê `servidor.N` do arquivo (`identidadeServers()`); não existe mais o nome fixo `NextGen` |
+
+Guarda de divergência: `crates/wyd-launcher/tests/identidade.rs` compara os tokens com o CSS e
+proíbe qualquer cor de 6 dígitos no CSS fora da identidade; `wyd-portal/src/identidade.test.ts`
+faz a mesma checagem do lado do portal. Mexer num valor sem mexer no outro quebra o gate.
+
+Dois comandos escrevem a partir da identidade:
+
+```bash
+cargo run -p wyd-launcher -- serverlist tools/client/serverlist-servers.txt client/  # + sn.bin
+cargo run -p wyd-launcher -- branding client/                                      # Launcher.bmp + .hat
+```
+
+**Cadeia da tela de entrada, arquivo por arquivo** (medida nesta máquina):
+
+1. `WYDLauncher.exe` — carrega `%s/Launcher.hat` (string do próprio binário) e não abre o jogo
+   antes de `check` verde;
+2. `client/Launcher.hat` — HTML de 268 B: `bgcolor="#0f1115"` (= `cor.bg`) e `<img src="Launcher.bmp">`;
+3. `client/Launcher.bmp` — BMP 598×369, 24 bpp, 662.778 B, gerado por `branding::bmp()`
+   (gradiente `cor.surface` → `cor.bg`, faixa `cor.accent`, wordmark WYD);
+4. `client/sn.bin` — 143 B: `d6` + `eserved` no slot 0, `WYD` no slot 1 (identidade), contadores
+   `[3, 2, 0…]` (cabeçalho = canais + 1, slot = grupo + 1). É o que dá nome à linha do servidor
+   na seleção de canais;
+5. `client/serverlist.bin` — 7.040 B, gerado do registro `tools/client/serverlist-servers.txt`
+   (grupo 1: status `http://192.168.100.3/serv00.htm`, canal 1 `192.168.100.3`, canal 2 `192.168.100.4`).
+
+A moldura que o `WYD.exe` desenha por cima (`NUI/ServerList.wyt` 321.470 B = **287×280 32 bpp**,
+`NUI/main.wyt` 616×300, `mainchat/mainparts/ccmode/popup/iconon/iconoff.wyt`, `UI/*.wyt`) **é
+decodificável desde 2026-11-09**: `tools/client/wyt.mjs` lê o cabeçalho de 22 B e o raster
+(`22 + w*h*bpp + 8 = tamanho`, confirmado em 256/259 amostras) e exporta PNG/BMP — a prova visual
+é `tmp/wyt/ServerList.png` (moldura ornamental + duas colunas de slots, sem texto: o texto é
+desenhado pelo `.exe`).
+
+O que continua faltando não é o formato, é a **carga**: `strings client/wyd.exe` mostra `sn.bin`,
+`UI\minimap.wyt`, `%s%02d%02d.wyt` e `mesh\*.wyt`, mas nenhuma string literal
+`NUI\ServerList.wyt` — o caminho até esse diretório passa por um `%s` montado em runtime. Antes de
+substituir o arquivo no `client/` é preciso provar esse caminho (ou aceitar o teste com o cliente
+aberto). A segunda aba de cidadania/atributos continua dependente da captura de
+`STRUCT_SELCHAR`/`STRUCT_MOB` (FASE-08-6) — checklist de campos na issue.

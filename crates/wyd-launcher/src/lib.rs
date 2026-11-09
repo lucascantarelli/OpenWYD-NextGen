@@ -5,11 +5,16 @@
 //! especificação em `docs/cliente/customizacao.md`.
 
 pub mod bootstrap;
+pub mod branding;
 pub mod distribuicao;
+pub mod gui;
+pub mod identidade;
 pub mod manifest;
 pub mod patch;
 pub mod serverlist;
 pub mod sha256;
+pub mod snbin;
+pub mod wyt;
 
 /// Nome do binario do launcher.
 pub const LAUNCHER_NAME: &str = "wyd-launcher";

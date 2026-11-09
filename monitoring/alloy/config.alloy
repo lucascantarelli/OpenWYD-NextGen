@@ -1,0 +1,52 @@
+// Alloy — coletor oficial da Grafana para os logs dos containers.
+//
+// Substitui o sidecar caseiro de logs: nada de código próprio no caminho de
+// coleta. Descobre os containers pelo socket do Docker (montado read-only),
+// rotula por serviço do compose e empurra para o Loki. Recriar um container
+// só abre um stream novo; o histórico já ingerido continua no Loki.
+//
+// O socket é a única superfície privilegiada e fica restrita a este serviço —
+// o portal nunca o vê (AGENTS.md: browser e BFF não falam com o Docker).
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "15s"
+}
+
+discovery.relabel "compose" {
+  targets = discovery.docker.containers.targets
+
+  // Nome do container sem a barra inicial: `wyd-canal-1`.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  // Serviço do compose (`server`, `server-canal-2`, `gateway`, ...).
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  // Só o projeto desta stack entra no Loki.
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex         = "wyd"
+    action        = "keep"
+  }
+}
+
+loki.source.docker "logs" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.compose.output
+  labels        = { job = "docker" }
+  relabel_rules = discovery.relabel.compose.rules
+  forward_to    = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

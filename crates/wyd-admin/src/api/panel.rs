@@ -20,6 +20,11 @@ pub struct PanelAccount {
     pub id: i64,
     pub login: String,
     pub role: Role,
+    /// A conta já tem segunda senha gravada (`pin_hash` preenchido).
+    ///
+    /// A conta nasce sem PIN: o jogador cria o primeiro no cliente. O portal só
+    /// troca um PIN existente, então precisa saber qual dos dois fluxos oferecer.
+    pub pin_defined: bool,
 }
 
 /// Personagem na lista do painel.
@@ -67,6 +72,7 @@ pub async fn own_account(
     let session = require_session(session)?;
     let account_id = check_account(account_id)?;
     let account = repo.find_by_id(account_id).await?;
+    let pin_defined = repo.pin_hash(&account.login).await?.is_some();
     log_panel(
         sink,
         session,
@@ -78,6 +84,7 @@ pub async fn own_account(
         id: account.id,
         login: account.login,
         role: account.role,
+        pin_defined,
     })
 }
 

@@ -48,6 +48,54 @@ pub trait Accounts {
         async { Err(DbError::NotFoundKey { entity: "account" }) }
     }
 
+    /// Hash da senha numérica (PIN) da conta; `None` = primeira entrada, ainda não cadastrado.
+    ///
+    /// Conta inexistente é `NotFoundKey` — a borda de autenticação traduz para a mesma recusa.
+    fn pin_hash(
+        &self,
+        login: &str,
+    ) -> impl Future<Output = Result<Option<String>, DbError>> + Send {
+        let _ = login;
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Grava o hash do PIN (Argon2id calculado na borda, nunca texto plano).
+    fn set_pin_hash(
+        &self,
+        login: &str,
+        pin_hash: &str,
+    ) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = (login, pin_hash);
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Estado do bloqueio do PIN: `(falhas acumuladas, segundos restantes)`.
+    ///
+    /// Persistido em `accounts` — reiniciar o processo do canal não zera tentativas.
+    fn pin_guard(&self, login: &str) -> impl Future<Output = Result<(i64, i64), DbError>> + Send {
+        let _ = login;
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Soma uma falha de PIN e arma o bloqueio ao atingir `limite`.
+    ///
+    /// Devolve `(falhas, segundos de bloqueio)`; `0` segundos = ainda não bloqueado.
+    fn pin_failure(
+        &self,
+        login: &str,
+        limite: i64,
+        segundos: i64,
+    ) -> impl Future<Output = Result<(i64, i64), DbError>> + Send {
+        let _ = (login, limite, segundos);
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
+    /// Zera falhas e bloqueio (PIN correto ou troca concluída).
+    fn pin_success(&self, login: &str) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = login;
+        async { Err(DbError::NotFoundKey { entity: "account" }) }
+    }
+
     /// Define/atualiza a credencial de uma conta (seed de staff, troca de senha).
     ///
     /// `password_hash` já vem calculado (argon2id); a porta não decide algoritmo.

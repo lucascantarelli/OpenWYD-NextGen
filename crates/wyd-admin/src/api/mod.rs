@@ -6,6 +6,7 @@ pub mod accounts;
 pub mod catalog;
 pub mod grants;
 pub mod panel;
+pub mod presence;
 
 pub use accounts::{create_account, find_account, AccountSummary};
 pub use catalog::items_json;
@@ -14,3 +15,4 @@ pub use panel::{
     own_account, own_characters, request_recovery, top_rankings, PanelAccount, PanelCharacter,
     RankingEntry, MAX_RANKING,
 };
+pub use presence::{list_channel_presence, ChannelPresence, PresenceSnapshot};

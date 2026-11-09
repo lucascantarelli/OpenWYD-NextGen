@@ -4,7 +4,7 @@ const MIN_LENGTH = 32;
 
 /**
  * Lê `SESSION_SECRET` do ambiente. Falha alto e cedo: um segredo curto ou vazio
- * permitiria forjar o cookie de sessão (issue 19, riscos).
+ * permitiria forjar o cookie de sessão.
  */
 export function sessionKey(): Uint8Array {
   const raw = process.env.SESSION_SECRET ?? "";

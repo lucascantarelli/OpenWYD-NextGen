@@ -2,8 +2,8 @@
  * Enciclopédia pública de itens — leitura do JSON gerado por
  * `tools/content/gen-enciclopedia.mjs` (`node tools/content/gen-enciclopedia.mjs`).
  *
- * Não passa pelo web-api de propósito: é conteúdo estático e a rota é pública. O
- * catálogo administrativo (com edição de efeitos) continua em `/itens`, atrás de sessão.
+ * Não passa pelo gateway de propósito: é conteúdo estático e a rota é pública. O
+ * catálogo administrativo (`/itens`) é outra leitura, atrás de sessão.
  */
 import raw from "@/content/itens.json";
 

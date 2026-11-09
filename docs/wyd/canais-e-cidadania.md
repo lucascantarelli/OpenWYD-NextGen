@@ -110,6 +110,27 @@ Crescer depois é barato e **não exige build novo**: uma linha
 **10 servidores** (grupos); cada canal precisa de IP próprio porque o cliente fixa a porta 8281.
 Quais linhas *aparecem* é decisão do `sn.bin` do cliente (`%s-%d` por slot), não do servidor.
 
+### 5.2 Sessão única e trânsito entre canais
+
+Canal é mundo separado, mas o personagem é **um só** e mora no Postgres do grupo. Três regras
+saem daí (implementadas em 2026-11-08):
+
+- **uma sessão viva por conta** — `character_session` (migration `0030`): o índice parcial
+  `character_session_uma_por_conta` recusa a segunda entrada enquanto a primeira vive, em
+  qualquer canal do grupo. É o `_MSG_DBAlreadyPlaying` do legado resolvido por constraint, não
+  por checagem em memória (canais são processos distintos);
+- **trânsito é relogar, sem perder nada** — sair libera a sessão (`released_at`) e a entrada no
+  outro canal relê o personagem do banco; nada é copiado. O legado precisava de
+  `_MSG_DBServerChange` (`0x0814`) / `_MSG_DBCNFServerChange` (`0x052A`) porque **cada canal tinha
+  o próprio DB**; com um Postgres por grupo, trocar de canal não move dado;
+- **sessão órfã não prende jogador** — `renewed_at` é renovado enquanto o cliente está conectado;
+  processo que morre sem liberar tem a sessão retomada após `WYD_SERVER_SESSION_STALE_SECS`
+  (default 180 s).
+
+O isolamento entre canais continua por construção: cada processo tem o próprio `World` e não há
+IPC nem estado de mundo compartilhado — o banco compartilha identidade e persistência, **não** a
+cena.
+
 ## 6. Fontes
 
 - Cliente oficial `client/7662`: `serverlist.bin`, `sn.bin` (nomes + contadores) — `docs/cliente/formatos.md` §4.

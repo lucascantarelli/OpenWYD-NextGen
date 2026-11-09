@@ -1,9 +1,9 @@
 /**
- * `AdminResult` → HTTP + mensagem. Módulo **puro** (nenhum import): é o mapa
- * que o bug #257 mostrou ser perigoso quando incompleto — `CONTENT_OWNED` é um
- * resultado esperado de `DeleteNpc`, não um erro interno.
+ * `AdminResult` → HTTP + mensagem. Módulo **puro** (nenhum import): é o mapa que
+ * separa recusa de negócio esperada de falha interna. `CONTENT_OWNED`, por
+ * exemplo, é resultado esperado — não erro 500.
  *
- * Fonte do enum: `api/web/v1/web.proto:253`.
+ * Fonte: `RESULT_*` em `crates/wyd-admin/src/transport/mod.rs`.
  */
 export const ADMIN_RESULT = {
   UNSPECIFIED: 0,
@@ -24,7 +24,7 @@ const HTTP: Record<number, number> = {
 };
 
 const MESSAGE: Record<number, string> = {
-  [ADMIN_RESULT.UNSPECIFIED]: "resultado desconhecido do web-api",
+  [ADMIN_RESULT.UNSPECIFIED]: "resultado desconhecido do serviço de administração",
   [ADMIN_RESULT.FORBIDDEN]: "sua conta não tem permissão para esta ação",
   [ADMIN_RESULT.INVALID]: "dados inválidos para esta ação",
   [ADMIN_RESULT.NOT_FOUND]: "o registro não existe mais",

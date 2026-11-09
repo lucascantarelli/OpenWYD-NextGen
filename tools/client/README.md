@@ -24,7 +24,8 @@ offset de outro build não é evidência.
 | `strings.mjs` | indexar strings ASCII/UTF-16 e classificar | `extractStrings`, `classify`, `indexStrings` |
 | `keytable.mjs` | tabela `pKeyWord[512]` e transformação CPSock | `loadKeywordTable`, `transform` (mesmas regras de `crates/wyd-protocol`) |
 | `evidence.mjs` | confirmar/refutar endereços herdados | `ANCHORS`, `PATCH_SITES`, `analyseEvidence`, `disassemble` |
-| `formats.mjs` | estrutura inicial de `.wyt`, `.msa`, `sn.bin`, `serverlist.bin` | `analyseFormats` |
+| `formats.mjs` | estrutura de `.msa`, `sn.bin`, `serverlist.bin` e delegação ao `wyt.mjs` | `analyseFormats` |
+| `wyt.mjs` | decodificar/exportar `.wyt` (magic `WT10`, **raster puro**: 22 B + `w*h*bpp` + 8 B) | `parseWyt`, `toPng`, `toBmp`, `analisarRaster`; CLI `--png/--bmp/--json/--scan` |
 | `serverlist.mjs` | gerar/inspecionar `serverlist.bin` (grade 10×11×64, ofuscação própria) | CLI `--in/--out` e `--print`; dados em `serverlist-servers.txt` |
 | `extract-tables.mjs` | tabelas de dados (`ItemList.bin`, `SkillData.bin`): XOR, registro e perfil de colunas | CLI única; grava `docs/cliente/gerado/tabelas.json` |
 | `analyse.mjs` | orquestrar e gravar artefatos | CLI única; nada de lógica de análise aqui |
@@ -50,6 +51,7 @@ offset de outro build não é evidência.
 | `formatos.json` | amostras de `.wyt`/`.msa`, `sn.bin`, `serverlist.bin` (a decodificação correta está em `docs/cliente/formatos.md` §4 e em `serverlist.mjs`) |
 | `ancoras.txt` | desassemble das âncoras e dos patches (quando `objdump` existe) |
 | `goldens.json` | resultado da validação de `fixtures/cliente/*.json` |
+| `wyt.json` | as 8 telas de `client/NUI`: dimensões, bpp, offset, raster e top cores (`wyt.mjs --json`) |
 
 ## Limitações registradas
 

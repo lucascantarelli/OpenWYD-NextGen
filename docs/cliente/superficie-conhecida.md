@@ -70,7 +70,7 @@ Estrutura inicial documentada em `docs/cliente/formatos.md`:
 
 | Formato | O que ficou comprovado | O que seguiu opaco |
 |---|---|---|
-| `.wyt` | magic `WT10`, versão `0x00020000`, candidatos a largura/altura, campo @20 variável | controles, fontes, sprites, eventos |
+| `.wyt` | magic `WT10`; **raster puro**: 22 B de cabeçalho + `w*h*(24\|32 bpp)` + 8 B finais (256/259 amostras) | textos, fontes, controles e eventos (desenhados pelo `.exe`, não pelo arquivo) |
 | `.msa` | `0x112` @0, `0x20` @4, `1` @8, nome de textura ASCII @34 | geometria, esqueleto, animação |
 | `sn.bin` | 13 nomes NUL-separados a partir do offset 1 | primeiro byte `0xd6` |
 | `serverlist.bin` | CPSock/XOR não se aplicam (falso positivo); formato real decodificado: grade `10×11×64` com soma de tabela própria — ver `formatos.md` §4 | — (fechado em 2026-11-08) |

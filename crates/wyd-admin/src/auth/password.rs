@@ -45,6 +45,19 @@ pub fn hash_password(password: &str) -> Result<String, PasswordError> {
         .map_err(|_| PasswordError::HashFailed)
 }
 
+/// Hash de **segredo curto** (PIN de 4..6 dígitos): mesmo Argon2id, mas sem a política de
+/// tamanho da senha de login — PIN tem 4 a 6 caracteres por contrato do cliente.
+pub fn hash_secret(segredo: &str) -> Result<String, PasswordError> {
+    if segredo.is_empty() {
+        return Err(PasswordError::TooShort);
+    }
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(segredo.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|_| PasswordError::HashFailed)
+}
+
 /// `true` só quando a senha confere com um hash argon2 válido.
 ///
 /// Hash ausente/marcador (`NO_CREDENTIAL`, que não começa com `$argon2`) ou

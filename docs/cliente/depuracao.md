@@ -74,6 +74,10 @@ Critério de fechamento: tail com `Size` anômalo para o `Type` (encoder culpado
 
 ## 6. O que falta para a captura ao vivo
 
-- Servidor executável falando o dialeto 7662 (crate `wyd-net`/`wyd-core` ainda não existem).
+- ~~Servidor executável falando o dialeto 7662~~ — o canal Rust já sobe (`wyd-server`, `:8281`)
+  com login (senha + senha numérica) e seleção de personagem.
 - VM Windows 32-bit com D3D9 funcional e o jogo instalável.
 - Executor humano para jogar o roteiro do §3–§4.
+- Instrumentos prontos: proxy e conversão em `tools/client/captura-live.mjs`, diff em
+  `tools/client/diff-captura.mjs`. Roteiro completo, com a variação de campo a campo, em
+  [`captura-selchar.md`](captura-selchar.md).

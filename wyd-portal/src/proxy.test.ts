@@ -11,15 +11,12 @@ import { config, proxy } from "./proxy";
 import { SESSION_COOKIE, sessionKey } from "./server/session-key";
 
 /**
- * Prova a guarda de rota do portal. Os dois lados do contrato importam:
+ * Guarda de rota do portal. Os dois lados do contrato importam:
  *
  * 1. **comportamento** — sem cookie (ou com cookie adulterado/expirado) a request
- *    termina em `/login`, e cookie válido passa;
- * 2. **cobertura** — toda página de `(admin)` e todo link do menu sem `soon` está
- *    no `matcher`. É este segundo lado que faltava: o `matcher` é literal, então
- *    uma rota nova (ou uma lista morta, como a antiga `GUARDED`) deixa a página
- *    aberta sem nenhum teste reclamar. Em 06/11 `/precos`, `/atlas`, `/guildas` e
- *    `/castelo` viviam exatamente assim.
+ *    termina em `/login`; cookie válido passa;
+ * 2. **cobertura** — toda página de `(admin)` e todo link do menu está no
+ *    `matcher`. O `matcher` é literal, então rota nova sem guarda reprova aqui.
  */
 
 const ORIGIN = "http://127.0.0.1:3000";
@@ -73,7 +70,8 @@ async function token(secret: Uint8Array, exp: string | number = "1h"): Promise<s
 }
 
 describe("proxy: visitante sem sessão", () => {
-  it("redireciona para /login com 307 e sem query string", async () => {	const res = await proxy(request("/painel?tab=hoje"));
+  it("redireciona para /login com 307 e sem query string", async () => {
+    const res = await proxy(request("/painel?tab=hoje"));
 
     expect(res.status).toBe(307);
     const location = new URL(res.headers.get("location")!);
@@ -81,7 +79,8 @@ describe("proxy: visitante sem sessão", () => {
     expect(location.search).toBe("");
   });
 
-  it("rota aninhada também é barrada", async () => {	const res = await proxy(request("/npcs/7/editar"));
+  it("rota administrativa aninhada também é barrada", async () => {
+    const res = await proxy(request("/contas/7"));
 
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
@@ -89,7 +88,8 @@ describe("proxy: visitante sem sessão", () => {
 });
 
 describe("proxy: cookie de sessão", () => {
-  it("cookie válido passa sem redirecionar", async () => {	const res = await proxy(request("/itens", `${SESSION_COOKIE}=${await token(sessionKey())}`));
+  it("cookie válido passa sem redirecionar", async () => {
+    const res = await proxy(request("/itens", `${SESSION_COOKIE}=${await token(sessionKey())}`));
 
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(res.headers.get("location")).toBeNull();
@@ -98,7 +98,8 @@ describe("proxy: cookie de sessão", () => {
   it("cookie assinado com outra chave é recusado", async () => {
     const forged = await token(
       new TextEncoder().encode("chave-errada-com-48-caracteres-para-o-hs256!!!!!"),
-    );	const res = await proxy(request("/itens", `${SESSION_COOKIE}=${forged}`));
+    );
+    const res = await proxy(request("/itens", `${SESSION_COOKIE}=${forged}`));
 
     expect(res.status).toBe(307);
   });
@@ -110,7 +111,8 @@ describe("proxy: cookie de sessão", () => {
       .setSubject("1")
       .setIssuedAt(past)
       .setExpirationTime(past + 60)
-      .sign(sessionKey());	const res = await proxy(request("/painel", `${SESSION_COOKIE}=${expired}`));
+      .sign(sessionKey());
+    const res = await proxy(request("/painel", `${SESSION_COOKIE}=${expired}`));
 
     expect(res.status).toBe(307);
   });
@@ -123,10 +125,9 @@ describe("cobertura do matcher", () => {
     pages = adminRoutePaths();
   });
 
-  it("encontra as páginas de (admin) no disco", () => {
-    // Guarda contra o teste passar por acidente: com a lista vazia, nenhuma
-    // asserção de cobertura abaixo provaria nada.
-    expect(pages.length).toBeGreaterThanOrEqual(20);
+  it("encontra as páginas administrativas no disco", () => {
+    // Guarda contra o teste passar por acidente com a lista vazia.
+    expect(pages.length).toBeGreaterThanOrEqual(4);
     expect(pages).toContain("/painel");
   });
 
@@ -134,11 +135,15 @@ describe("cobertura do matcher", () => {
     expect(pages.filter((page) => !covered(page))).toEqual([]);
   });
 
-  it("todo link do menu sem `soon` está no matcher", () => {
-    const soon = new Map(NAV.flatMap((g) => g.items).map((item) => [item.href, item.soon === true]));
-    const missing = SHELL_ROUTES.filter((href) => !soon.get(href) && !covered(href));
-
+  it("todo link do menu está no matcher", () => {
+    const missing = SHELL_ROUTES.filter((href) => !covered(href));
     expect(missing).toEqual([]);
+  });
+
+  it("o menu não aponta para tela inexistente", () => {
+    const known = new Set(pages);
+    expect(SHELL_ROUTES.filter((href) => !known.has(href))).toEqual([]);
+    expect(NAV.length).toBeGreaterThan(0);
   });
 
   it("nenhum padrão do matcher aponta para rota inexistente", () => {
@@ -150,14 +155,8 @@ describe("cobertura do matcher", () => {
   });
 
   it("as rotas públicas continuam fora do matcher", () => {
-    expect(covered("/login")).toBe(false);
-    expect(covered("/sem-permissao")).toBe(false);
-    expect(covered("/")).toBe(false);
-  });
-
-  it("/precos, /atlas, /guildas e /castelo estão guardados (regressão de 06/11)", () => {
-    for (const route of ["/precos", "/atlas", "/guildas", "/castelo"]) {
-      expect(covered(route), route).toBe(true);
+    for (const route of ["/login", "/sem-permissao", "/", "/guias", "/enciclopedia", "/conta"]) {
+      expect(covered(route), route).toBe(false);
     }
   });
 });

@@ -12,20 +12,32 @@ Amostras: `NUI/ServerList.wyt`, `NUI/ccmode.wyt`, `UI/AutoTrade.wyt`, `UI/Combin
 57 54 31 30  00 00 02 00  00 00 00 00  00 00 00 00
 68 02 2c 01  20 08 00 00  00 ff 00 00  00 ff 00 00
 W  T  1  0      versão       zeros        zeros
-                largura? altura?  ?
+                largura  altura  bpp
 ```
 
 | Offset | Campo | Evidência |
 |---:|---|---|
 | 0–3 | magic **`WT10`** | idêntico nas 4 amostras |
 | 4 | versão **`0x00020000`** | constante nas 4 amostras |
-| 16 | candidato a **largura** | `0x0268`=616, `0x0040`=64, `0x00dc`=220, `0x00e4`=228 |
-| 18 | candidato a **altura** | `0x012c`=300, `0x0040`=64, `0x00c7`=199, `0x0139`=313 |
-| 20 | desconhecido | 24 em duas amostras, 2080 (`0x820`) em duas |
-| 24+ | máscaras/cores | padrão `00 ff 00 00` repetido em algumas telas |
+| 16 | **largura** em pixels | `0x0268`=616 (`main`), `0x011f`=287 (`ServerList`), `0x00e4`=228 (`Combine102`) |
+| 18 | **altura** em pixels | `0x012c`=300, `0x0118`=280, `0x0139`=313 |
+| 20 | **bits por pixel** (byte): 24 ou 32 | 32 = BGRA, 24 = BGR; os arquivos de 32 bpp têm `0x08` em @21 |
+| 22 | início dos **pixels**, `largura*altura*(bits/8)` bytes | raster sem compressão |
+| fim−8 | marcador final `00`×8 | idêntico nas 256 amostras que fecham a fórmula |
 
-**Opaco:** tabela de controles, fontes, sprites, texto e âncoras — nada disso foi interpretado.
-`largura/altura` são hipótese coerente (o par varia por tela), **não validadas em runtime**.
+**Prova (2026-11-09): o `.wyt` é raster puro, não contêiner de controles.**
+
+| Verificação | Resultado |
+|---|---|
+| fórmula `22 + largura*altura*(bits/8) + 8 = tamanho` | fecha em **256/259** `.wyt` de `client/NUI` + `client/UI` (`NUI` 8/8) |
+| dimensões reais | `NUI/ServerList.wyt` 287×280 32 bpp; `NUI/main.wyt` 616×300 32 bpp; `UI/PCK_Background.wyt` 800×600 24 bpp |
+| é imagem, não ruído | `ServerList.wyt`: 80.360 pixels, 12.273 cores distintas, alfa 100% opaco |
+| conversão para imagem | `node tools/client/wyt.mjs client/NUI/ServerList.wyt --png tmp/wyt/ServerList.png` → moldura e duas colunas de slots legíveis |
+| exceções | `UI/NewAmul.wyt` (8 bpp) e `UI/hanui.wyt`/`UI/joyui.wyt` (16 bpp) — o decoder **recusa** com erro, não chuta |
+
+O que o arquivo **não** contém: texto, fontes, posição de controle e eventos — o `WYD.exe` desenha
+tudo por cima. Trocar pixel muda o desenho, não o layout. Relatório das 8 telas de `NUI`:
+`docs/cliente/gerado/wyt.json`; ferramenta: `tools/client/wyt.mjs` (`--png`, `--bmp`, `--scan`).
 
 ## 2. `.msa` — malha
 
@@ -85,8 +97,18 @@ node tools/client/serverlist.mjs --sn client/sn.bin --bin client/serverlist.bin 
 node tools/client/serverlist.mjs --check client                                # o que o cliente vai desenhar
 ```
 
+Os **nomes** dos slots vêm de `docs/arquitetura/identidade.tokens` (`servidor.<slot>`), não de
+constante no gerador: o mesmo arquivo alimenta `wyd-launcher` (Rust) e portal, e
+`crates/wyd-launcher/tests/identidade.rs` compara o `sn.bin` instalado com o gerado da
+identidade. Nome com mais de 8 caracteres reprova (o campo tem 9 B com NUL).
+
 Estado atual de `client/sn.bin`: slot 0 reservado com contador 3 (2 canais + cabeçalho), slot 1
-`NextGen` com contador 2 → grupo 1 com canal 1 (`192.168.100.3`) e canal 2 (`192.168.100.4`).
+`WYD` (identidade) com contador 2 → grupo 1 com canal 1 (`192.168.100.3`) e canal 2 (`192.168.100.4`). O
+**host** de cada canal vem da célula do `.bin`, não do `sn.bin`; quem define é o registro de origem
+(`tools/client/serverlist-servers.txt`) e o launcher regenera o `.bin`. Em 2026-11-09 a máquina
+perdeu temporariamente esses IPs de LAN: os canais foram publicados também em loopback
+(`127.0.0.1`/`127.0.0.2`) e os dois endereços antigos voltaram como alias `/32` no adaptador de
+loopback do Windows — assim um cliente já aberto com o `.bin` anterior conecta sem restart.
 
 ## 4. `serverlist.bin` — **decodificado** (2026-11-08)
 
@@ -146,23 +168,55 @@ Duas rotinas consomem esse texto:
 
 | Rotina | O que faz | Evidência |
 |---|---|---|
-| `0x46d7xx` | `strtok(corpo, ",")` e grava **campo a campo** nas células seguintes do grupo (`%s`) | `0x46d8b1` (`push $0x2c`), `0x46d9c4` |
+| `0x46d7xx` | `strtok(corpo, ",")` e grava **campo a campo** nas células seguintes do grupo (`%s`) — caminho que **não** governa a tela de seleção (ver abaixo) | `0x46d8b1` (`push $0x2c`), `0x46d9c4` |
 | `0x4b013b` | `sscanf(corpo, "%d", …)` com 11 destinos inicializados em `-1` | `0x4b017d`, `0x4b01d9`/`0x4b01e5` |
 
-Logo o corpo é uma **lista separada por vírgula**: campo de texto alimenta as células de canal do
-grupo e campo numérico alimenta o contador do rótulo (`"%s : %d/%d"`, `0x60f838`). Resposta
-vazia ou inalcançável deixa a célula como veio do `.bin`, e o canal aparece vazio/`Inexistente` —
-o sintoma já medido com URL acima de 32 caracteres.
+A rotina `0x46d7xx` (`strtok` por vírgula) **não** governa o *server select*: medida contra o
+cliente real, uma resposta com vírgula (`0,0`) preenche **só** o primeiro destino, porque o
+`sscanf` de `0x46d9d6` para na vírgula. Quem decide as linhas da coluna Canal é o caminho
+numérico descrito a seguir. Resposta vazia ou inalcançável deixa a célula como veio do `.bin`, e
+o canal aparece vazio/`Inexistente` — o sintoma já medido com URL acima de 32 caracteres.
 
-**Servido pelo Rust desde 2026-11-08:** o `tmserver` (`crates/wyd-server`, ADR-0022 §7) responde
-`GET :80/serv00.htm` com o CSV dos hosts dos canais habilitados, lido da tabela `server_channel`
-(migration `0029`). Com dois canais o corpo é `192.168.100.3,192.168.100.4`; a URL de status em si
-vem da linha `channel = 0` e continua com teto de 32 caracteres.
+**O corpo é NUMÉRICO, não a lista de hosts (medido em 2026-11-08).** A rotina do *server select*
+(`0x46d6ce`–`0x46de80`) busca a célula 0 do grupo exibido (`0x5429e9`, o mesmo `GET` de 0x400 B) e
+consome o corpo com `sscanf(corpo, "%d", …)` em **10 destinos inicializados em `-1`**
+(`0x46d9d6`–`0x46da54`). Cada destino é o contador da linha de canal daquele grupo e a linha cujo
+contador continua `-1` é trocada por `Inexistente` (`0x46ddc0`–`0x46ddd0`). O host de cada canal
+**não** vem do `serv00.htm`: vem da célula do `serverlist.bin` (§4).
 
-**UNVERIFIED (pendente de prova dinâmica):** a ordem exata campo↔canal e quantos numéricos o
-corpo precisa. A leitura estática mostra *que* o corpo é CSV consumido por `strtok`/`sscanf`, não
-fecha o leiaute. A prova é um servidor de probe no `:80` + cliente no *server select*, comparando
-corpo servido × coluna desenhada.
+Consequência de contrato: com dois canais o corpo é **um número por linha** — a contagem de
+jogadores online **daquele** canal (sem ninguém conectado, `0\n0\n`). O número não é agregado do
+grupo: cada linha conta `character_session` filtrada por grupo e canal, então nenhum canal publica
+a presença do outro (`crates/wyd-server/src/status.rs::online_por_canal`). O separador importa: `sscanf("%d")` pula espaço/quebra de linha
+entre as conversões, mas **para em vírgula**, então `0,0` e `192.168.100.3,192.168.100.4` deixam
+todos os destinos depois do primeiro em `-1` e a coluna Canal desenha **um canal real e o seguinte
+como `Inexistente`**. É exatamente o sintoma corrigido em `crates/wyd-server/src/channels.rs`
+(`render_status_body`).
+
+Servidor de referência do mesmo cliente 7662 (`w2pp-OpenWYD`, `Release/Common/serv00.htm`,
+20 B): dez linhas de `1` (`31 0a` repetido) — confirma o leiaute de um número por linha, tantos
+quantos canais o servidor publica.
+
+**Referências externas conferidas em 2026-11-08** (o `.bin` de 7040 B é consenso entre elas):
+
+| Fonte | `serverlist.bin` | O que mostra |
+|---|---|---|
+| `w2pp-OpenWYD` (mesmo alvo 7662) | 7040 B | grupo 0 com as células 0 e 1 preenchidas por IP; `Release/Common/serverlist.txt` no formato `<grupo> <canal> <ip>` |
+| `open-wyd/ows-clientdata` | 7040 B | 3 grupos × 3 células (todas no mesmo IP) e `sn.bin` em texto |
+| cliente real WYD Global/Raidhut (`%LOCALAPPDATA%\wyd_launcher`) | **7044 B** | 4 bytes de cabeçalho + 7040, cifrado com outra tabela (nenhum deslocamento da nossa decodifica) — referência de tamanho, não de leiaute |
+
+O `sn.bin` do cliente real tem o **mesmo formato de 143 B** daqui (11 slots de 13 bytes) e traz
+`Global` no slot 1 com contador 2 — um servidor, dois canais, exatamente o arranjo deste
+repositório.
+
+**Sonda UDP de status (`:8281`).** O cliente manda um datagrama de **4 bytes** (`01 02 03 04`) para
+o host do canal e só considera o canal acessível quando o mesmo datagrama volta (captura
+`target/teste-udp.json`); sem resposta o `Conectar` não abre o TCP. O canal Rust responde em eco
+(`crates/wyd-server/src/status.rs`, `serve_udp`) na mesma porta do CPSock — TCP e UDP convivem.
+
+**UNVERIFIED:** a semântica de cada número além de "contador da linha" (o rótulo `"%s : %d/%d"`
+em `0x60f838` sugere atual/máximo) e o efeito visual dos contadores acima de 500
+(`0x46db8b` compara com `0x1f4`). A prova de renderização é o cliente no *server select*.
 
 ## 5. O que ficou explicitamente opaco
 
@@ -172,3 +226,11 @@ corpo servido × coluna desenhada.
 - ~~`serverlist.bin`~~: **decodificado** em 2026-11-08 (§4) — grade 10×11×64 com soma da tabela
   estática; nomes/contadores em `sn.bin`.
 - `cdata.bin`, `object.bin`, `curse.bin`, `itemicon.bin`, `minimap.dat`: não analisados nesta passada.
+
+## 6. Densidade de pixel na exibição
+
+O arquivo não carrega escala: o `.exe` desenha o raster em um retângulo fixo. Medição com o
+`ServerList.wyt` (287×280, duas colunas de 140 px) na tela de 1030×788: as colunas aparecem com
+181 px — **ampliação de ~1,29×**, ou seja, a arte é autorada abaixo da densidade exibida. Detalhe,
+limites e o teste de textura 2× estão em
+[`customizacao.md` §9](customizacao.md#9-densidade-de-pixel-por-que-a-arte-parece-ampliada-medição-de-2026-11-09).

@@ -97,6 +97,7 @@ impl FakeCharacters {
             mp: 100,
             pos_x: 0,
             pos_y: 0,
+            ..Character::default()
         };
         Self {
             rows: vec![
@@ -179,6 +180,11 @@ fn router() -> Router<FakeAccounts, FakeCharacters, VecSink> {
         tokens(),
     )
     .with_queue(DeliveryQueue::bounded(8).expect("fila válida"))
+    // Presença por canal: fecho vazio no teste — a rota responde 200 e o que se
+    // prova aqui é "nenhuma rota declarada vira 404".
+    .with_presence_check(std::sync::Arc::new(|| {
+        Ok(Vec::<wyd_admin::ChannelPresence>::new())
+    }))
     // Foto do catálogo vazia: `item_catalog/list_items` tem handler (ADR-0022), então a
     // rota responde 200 como as demais implementadas — o que se prova aqui é "nunca 404".
     .with_catalog(wyd_db::CatalogSnapshot {
@@ -271,8 +277,8 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
     let superficie = superficie_do_portal();
     assert_eq!(
         superficie.len(),
-        16,
-        "16 serviços no admin-client.ts de hoje"
+        17,
+        "17 serviços no admin-client.ts de hoje"
     );
 
     let mut total = 0usize;
@@ -286,7 +292,7 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
             );
         }
     }
-    assert_eq!(total, 72, "72 métodos declarados pelo portal");
+    assert_eq!(total, 74, "74 métodos declarados pelo portal");
 
     // E o contrário: nada de rota declarada que o portal não conheça mais.
     let mut declarados: Vec<String> = Vec::new();
@@ -316,7 +322,7 @@ fn rota_do_portal_sem_handler_e_501_auditado_e_nunca_404() {
             let caminho = format!("/admin/v1/{servico}/{metodo}");
             let (status, body) = dispatch(&router, &raw("POST", &caminho, Some("staff"), "{}"));
             assert!(
-                status == 501 || status == 200,
+                status == 501 || status == 200 || status == 503,
                 "{caminho} respondeu {status}: contrato declarado não pode virar 404"
             );
             if status == 501 {

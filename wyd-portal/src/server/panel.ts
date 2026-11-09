@@ -21,6 +21,8 @@ export interface PanelAccount {
   id: number;
   login: string;
   role: string;
+  /** A conta já tem segunda senha; `false` significa que o jogador ainda vai criá-la no cliente. */
+  pin_defined: boolean;
 }
 
 export interface PanelCharacter {
@@ -119,6 +121,36 @@ export async function getPanelRankings(limit = 10, traceId?: string): Promise<Ra
   const safe = Number.isInteger(limit) && limit > 0 && limit <= 100 ? limit : 10;
   const res = await call<Envelope>("panel/rankings", { limit: safe }, traceId);
   return res.ranking ?? [];
+}
+
+export interface ChangePinInput {
+  password: string;
+  currentPin: string;
+  newPin: string;
+}
+
+/**
+ * Troca o PIN pelo portal — **sempre** pelo servidor de jogo.
+ *
+ * O gateway executa o `0x0FDE` em duas etapas (`change_numeric` 1 com o PIN atual,
+ * 2 com o novo); o portal não grava hash nem decide se o PIN vale. `login` vem de
+ * `getPanelAccount` (sessão), nunca do corpo do browser.
+ */
+export async function changeNumericPin(
+  login: string,
+  input: ChangePinInput,
+  traceId?: string,
+): Promise<void> {
+  await call<Envelope>(
+    "account_web/change_numeric_pin",
+    {
+      login,
+      password: input.password,
+      current_pin: input.currentPin,
+      new_pin: input.newPin,
+    },
+    traceId,
+  );
 }
 
 /** Solicitação de recuperação: resposta idêntica exista ou não o login. */

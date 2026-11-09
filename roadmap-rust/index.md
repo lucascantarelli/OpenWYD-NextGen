@@ -97,5 +97,9 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-15-3-bots-carga.md` | 15 | Bots jogáveis e carga (`crates/wyd-bots`) | ⬜ |
 | `issues/FASE-15-2-carga-banco-release.md` | 15 | Carga + banco + release + relatório | ⬜ |
 
+**Mapa de funcionalidades (checklist viva do jogo):** o que cada sistema, item e skill precisa ter,
+com estado e evidência por linha, fica em [`docs/rust/08-checklist-funcionalidades.md`](../docs/rust/08-checklist-funcionalidades.md).
+O roadmap abaixo organiza o trabalho; o mapa diz o que já existe de verdade.
+
 Critério global de conclusão (pre-release-rust §16): workspace estável, sem warnings de
 clippy, sem data races, fórmulas críticas cobertas por testes e alta performance determinística.

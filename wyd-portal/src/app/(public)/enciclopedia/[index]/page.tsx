@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { gradeLabel, gradeTone } from "@/lib/item";
 import { Badge } from "@/components/Badge";
 import { getItem } from "@/server/enciclopedia";
 
@@ -10,6 +9,18 @@ import "../../guias/guias.css";
 interface Props {
   params: Promise<{ index: string }>;
 }
+
+const GRADE_LABEL: Record<number, string> = {
+  1: "comum",
+  2: "raro",
+  3: "lendário",
+  4: "único",
+};
+
+const gradeLabel = (grade: number): string => GRADE_LABEL[grade] ?? `grau ${grade}`;
+
+const gradeTone = (grade: number): "accent" | "warn" | "danger" =>
+  grade >= 4 ? "danger" : grade === 3 ? "warn" : "accent";
 
 export async function generateMetadata({ params }: Props) {
   const { index } = await params;

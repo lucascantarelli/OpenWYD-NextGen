@@ -2,15 +2,18 @@
 //!
 //! Duas superfícies consomem esta foto:
 //!
-//! - `GET :80/serv00.htm` — corpo CSV que o cliente lê com `strtok`/`sscanf`
-//!   (`docs/cliente/formatos.md` §4.1). O formato medido no probe é a lista de hosts dos
-//!   canais `1..10`, separada por vírgula, sem espaços: `192.168.100.3,192.168.100.4`;
+//! - `GET :80/serv00.htm` — corpo com **um número por canal de jogo** (jogadores online
+//!   naquele canal), um por linha: `0\n0\n`. O cliente lê o corpo com
+//!   `sscanf(corpo, "%d", …)` em 10 destinos inicializados em `-1` (`WYD.exe`
+//!   0x46d9d6–0x46da54, ver `docs/cliente/formatos.md` §4.1): cada número é o contador da
+//!   linha do canal e o destino que continua `-1` é desenhado como `Inexistente`. O
+//!   separador tem de ser espaço/quebra de linha (vírgula para o `sscanf`). Os **hosts**
+//!   não vêm daqui — vêm da célula do `serverlist.bin`;
 //! - handshake CPSock — o servidor registra quantos canais publicou e recusa subir com a
 //!   tabela vazia (health sem canal mentiria sobre "servidor pronto").
 //!
 //! O corpo tem teto de **1.023 caracteres**: o cliente faz UMA `InternetReadFile` de `0x400`
-//! bytes. Lista maior é truncada por canal inteiro (nunca corta host no meio) e o corte vai
-//! para o log.
+//! bytes. Lista maior é truncada por canal inteiro e o corte vai para o log.
 
 use wyd_db::ServerChannel;
 
@@ -62,29 +65,28 @@ impl World {
     }
 }
 
-/// Corpo CSV de `serv00.htm`: hosts dos canais de jogo, na ordem do banco.
+/// Corpo de `serv00.htm`: **um número por canal de jogo**, na ordem do banco, separados
+/// por quebra de linha — a contagem de sessões vivas **daquele canal** (`character_session`
+/// filtrada por grupo e canal), nunca um total do grupo: um canal não enxerga a presença do
+/// outro (`docs/wyd/canais-e-cidadania.md` §5.2).
 ///
-/// Sem espaços e sem quebra de linha — o cliente lê o corpo inteiro de uma vez e o consome
-/// com `strtok(",")`; CRLF entraria no último campo.
+/// O separador não é vírgula: o cliente faz `sscanf(corpo, "%d")` (10 destinos) e o
+/// `sscanf` pula espaços/quebras de linha entre as conversões, mas **para no primeiro
+/// caractere que não seja número nem espaço** — com vírgula só o primeiro canal é lido e
+/// os demais ficam em `-1` (`Inexistente`). É o que o servidor de referência serve
+/// (`w2pp-OpenWYD`, `Release/Common/serv00.htm`): um valor por linha.
 #[must_use]
-pub fn render_status_csv(world: &World) -> String {
+pub fn render_status_body(world: &World, online: &[u64]) -> String {
     let mut corpo = String::new();
-    for canal in world.game_channels() {
-        if canal.host.is_empty() {
-            continue;
-        }
-        let extra = if corpo.is_empty() {
-            canal.host.len()
-        } else {
-            canal.host.len() + 1
-        };
-        if corpo.len() + extra > MAX_STATUS_BODY {
+    for (indice, _) in world.game_channels().enumerate() {
+        // Presença do canal_i, na mesma ordem de `game_channels()`; canal sem leitura é 0.
+        let valor = online.get(indice).copied().unwrap_or(0).to_string();
+        // Valor + '\n': o `sscanf` do cliente pula espaço/quebra de linha entre números.
+        if corpo.len() + valor.len() + 1 > MAX_STATUS_BODY {
             break;
         }
-        if !corpo.is_empty() {
-            corpo.push(',');
-        }
-        corpo.push_str(&canal.host);
+        corpo.push_str(&valor);
+        corpo.push('\n');
     }
     corpo
 }
@@ -110,14 +112,14 @@ mod tests {
     }
 
     #[test]
-    fn csv_tem_so_os_hosts_de_jogo_na_ordem_do_banco() {
+    fn corpo_tem_um_numero_por_canal_de_jogo() {
         let world = World::new(vec![
             canal(1, 0, "192.168.100.3", "http://192.168.100.3/serv00.htm"),
             canal(1, 1, "192.168.100.3", ""),
             canal(1, 2, "192.168.100.4", ""),
         ])
         .expect("foto válida");
-        assert_eq!(render_status_csv(&world), "192.168.100.3,192.168.100.4");
+        assert_eq!(render_status_body(&world, &[0, 0]), "0\n0\n");
         assert_eq!(status_url(&world), "http://192.168.100.3/serv00.htm");
         assert_eq!(world.game_channel_count(), 2);
     }
@@ -127,18 +129,30 @@ mod tests {
         let mut desligado = canal(1, 2, "192.168.100.4", "");
         desligado.enabled = false;
         let world = World::new(vec![canal(1, 1, "10.0.0.1", ""), desligado]).expect("foto válida");
-        assert_eq!(render_status_csv(&world), "10.0.0.1");
+        assert_eq!(render_status_body(&world, &[0]), "0\n");
     }
 
     #[test]
     fn corpo_respeita_o_teto_de_uma_leitura_do_cliente() {
-        // 11 canais de 100 chars: 10 caberiam em 1023, o 11º não.
-        let canais: Vec<ServerChannel> = (1..=10)
-            .map(|i| canal(1, i, &format!("{i:0>100}"), ""))
-            .collect();
+        let canais: Vec<ServerChannel> = (1..=10).map(|i| canal(1, i, "10.0.0.1", "")).collect();
         let world = World::new(canais).expect("foto válida");
-        let corpo = render_status_csv(&world);
+        let corpo = render_status_body(&world, &[0; 10]);
         assert!(corpo.len() <= MAX_STATUS_BODY, "corpo {} B", corpo.len());
+        assert_eq!(corpo, "0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n");
+    }
+
+    #[test]
+    fn contagem_de_um_canal_nao_aparece_no_outro() {
+        // A presença é por canal: o número da linha 1 é do canal 1 e o da linha 2 é do canal 2.
+        // Um total do grupo nas duas linhas (vazamento de presença) quebraria este teste.
+        let world = World::new(vec![
+            canal(1, 0, "192.168.100.3", "http://192.168.100.3/serv00.htm"),
+            canal(1, 1, "192.168.100.3", ""),
+            canal(1, 2, "192.168.100.4", ""),
+        ])
+        .expect("foto válida");
+        assert_eq!(render_status_body(&world, &[0, 3]), "0\n3\n");
+        assert_eq!(render_status_body(&world, &[2, 0]), "2\n0\n");
     }
 
     #[test]

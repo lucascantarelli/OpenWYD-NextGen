@@ -12,7 +12,8 @@ use crate::error::DbError;
 use crate::model::{Account, Character, Role};
 use crate::pool::pg::{map_error, PgBackend};
 use crate::repo::accounts::CredentialRecord;
-use crate::repo::{Accounts, Characters, Grant, Grants};
+use crate::repo::sessions::ClaimOutcome;
+use crate::repo::{Accounts, Characters, Grant, Grants, Sessions};
 
 use sqlx::postgres::PgRow;
 use sqlx::Row;
@@ -83,6 +84,105 @@ impl Accounts for PgBackend {
         })
     }
 
+    async fn pin_hash(&self, login: &str) -> Result<Option<String>, DbError> {
+        let row = sqlx::query("SELECT pin_hash FROM accounts WHERE login = $1")
+            .bind(login)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("accounts.pin_hash", "accounts"))?;
+        let Some(row) = row else {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        };
+        row.try_get::<Option<String>, _>("pin_hash")
+            .map_err(|_| DbError::Transport {
+                op: "accounts.pin_hash.decode",
+            })
+    }
+
+    async fn pin_guard(&self, login: &str) -> Result<(i64, i64), DbError> {
+        let row = sqlx::query(
+            "SELECT pin_failures::bigint AS falhas, \
+             COALESCE(GREATEST(EXTRACT(EPOCH FROM (pin_locked_until - now()))::bigint, 0), 0) AS restante \
+             FROM accounts WHERE login = $1",
+        )
+        .bind(login)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("accounts.pin_guard", "accounts"))?;
+        let Some(row) = row else {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        };
+        let falhas: i64 = row.try_get("falhas").map_err(|_| DbError::Transport {
+            op: "accounts.pin_guard.falhas",
+        })?;
+        let restante: i64 = row.try_get("restante").map_err(|_| DbError::Transport {
+            op: "accounts.pin_guard.restante",
+        })?;
+        Ok((falhas, restante))
+    }
+
+    async fn pin_failure(
+        &self,
+        login: &str,
+        limite: i64,
+        segundos: i64,
+    ) -> Result<(i64, i64), DbError> {
+        let row = sqlx::query(
+            "UPDATE accounts SET \
+               pin_failures = pin_failures + 1, \
+               pin_locked_until = CASE \
+                 WHEN pin_failures + 1 >= $2 THEN now() + ($3 * interval '1 second') \
+                 ELSE pin_locked_until END \
+             WHERE login = $1 \
+             RETURNING pin_failures::bigint AS falhas, \
+               COALESCE(GREATEST(EXTRACT(EPOCH FROM (pin_locked_until - now()))::bigint, 0), 0) AS restante",
+        )
+        .bind(login)
+        .bind(i16::try_from(limite).unwrap_or(i16::MAX))
+        .bind(segundos)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("accounts.pin_failure", "accounts"))?;
+        let Some(row) = row else {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        };
+        Ok((
+            row.try_get("falhas").map_err(|_| DbError::Transport {
+                op: "accounts.pin_failure.falhas",
+            })?,
+            row.try_get("restante").map_err(|_| DbError::Transport {
+                op: "accounts.pin_failure.restante",
+            })?,
+        ))
+    }
+
+    async fn pin_success(&self, login: &str) -> Result<(), DbError> {
+        let feito = sqlx::query(
+            "UPDATE accounts SET pin_failures = 0, pin_locked_until = NULL WHERE login = $1",
+        )
+        .bind(login)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("accounts.pin_success", "accounts"))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        }
+        Ok(())
+    }
+
+    async fn set_pin_hash(&self, login: &str, pin_hash: &str) -> Result<(), DbError> {
+        let feito = sqlx::query("UPDATE accounts SET pin_hash = $2 WHERE login = $1")
+            .bind(login)
+            .bind(pin_hash)
+            .execute(self.pool())
+            .await
+            .map_err(map_error("accounts.set_pin_hash", "accounts"))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFoundKey { entity: "account" });
+        }
+        Ok(())
+    }
+
     async fn set_credentials(
         &self,
         login: &str,
@@ -146,7 +246,8 @@ fn role_from_db(role: &str) -> Result<Role, DbError> {
 
 /// Colunas do personagem na ordem usada por todo `SELECT`/`RETURNING` deste módulo.
 const CHARACTER_COLUMNS: &str =
-    "id, account_id, slot, name, class, level, exp, hp, mp, pos_x, pos_y";
+    "id, account_id, slot, name, class, level, exp, hp, mp, pos_x, pos_y, \
+     gold, hp_max, mp_max, pvp_points";
 
 impl Characters for PgBackend {
     async fn list_by_account(&self, account_id: i64) -> Result<Vec<Character>, DbError> {
@@ -159,7 +260,30 @@ impl Characters for PgBackend {
             .fetch_all(self.pool())
             .await
             .map_err(map_error("characters.list_by_account", "characters"))?;
-        rows.iter().map(character_row).collect()
+        let mut personagens: Vec<Character> =
+            rows.iter().map(character_row).collect::<Result<_, _>>()?;
+        // Guilda é relação (`guild_members`), não coluna: um SELECT só para a conta.
+        let guildas = sqlx::query(
+            "SELECT gm.character_id, g.id, g.name FROM guild_members gm \
+             JOIN guilds g ON g.id = gm.guild_id \
+             JOIN characters c ON c.id = gm.character_id \
+             WHERE c.account_id = $1 AND c.deleted_at IS NULL",
+        )
+        .bind(account_id)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error(
+            "characters.list_by_account.guilds",
+            "guild_members",
+        ))?;
+        for linha in &guildas {
+            let id: i64 = linha.get("character_id");
+            if let Some(personagem) = personagens.iter_mut().find(|p| p.id == id) {
+                personagem.guild_id = Some(linha.get("id"));
+                personagem.guild_name = linha.get("name");
+            }
+        }
+        Ok(personagens)
     }
 
     async fn top_by_level(&self, limit: usize) -> Result<Vec<Character>, DbError> {
@@ -179,8 +303,10 @@ impl Characters for PgBackend {
         character.validate()?;
         let sql = format!(
             "INSERT INTO characters \
-             (account_id, slot, name, class, level, exp, hp, mp, pos_x, pos_y) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING {CHARACTER_COLUMNS}"
+             (account_id, slot, name, class, level, exp, hp, mp, pos_x, pos_y, \
+              gold, hp_max, mp_max, pvp_points) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \
+             RETURNING {CHARACTER_COLUMNS}"
         );
         let row = sqlx::query(&sql)
             .bind(character.account_id)
@@ -193,6 +319,10 @@ impl Characters for PgBackend {
             .bind(i32::try_from(character.mp).unwrap_or(0))
             .bind(i32::try_from(character.pos_x).unwrap_or(0))
             .bind(i32::try_from(character.pos_y).unwrap_or(0))
+            .bind(character.gold)
+            .bind(i32::try_from(character.hp_max).unwrap_or(0))
+            .bind(i32::try_from(character.mp_max).unwrap_or(0))
+            .bind(i32::try_from(character.pvp_points).unwrap_or(0))
             .fetch_one(self.pool())
             .await
             .map_err(map_error("characters.create_character", "characters"))?;
@@ -233,6 +363,11 @@ fn character_row(row: &PgRow) -> Result<Character, DbError> {
         mp: i64::from(row.try_get::<i32, _>("mp").map_err(decode)?),
         pos_x: i64::from(row.try_get::<i32, _>("pos_x").map_err(decode)?),
         pos_y: i64::from(row.try_get::<i32, _>("pos_y").map_err(decode)?),
+        gold: row.try_get("gold").map_err(decode)?,
+        hp_max: i64::from(row.try_get::<i32, _>("hp_max").map_err(decode)?),
+        mp_max: i64::from(row.try_get::<i32, _>("mp_max").map_err(decode)?),
+        pvp_points: i64::from(row.try_get::<i32, _>("pvp_points").map_err(decode)?),
+        ..Character::default()
     })
 }
 
@@ -311,4 +446,121 @@ fn grant_row(row: &PgRow) -> Result<(i64, Grant), DbError> {
         _ => return Err(coherent("delivery_queue_kind")),
     };
     Ok((id, grant))
+}
+
+impl Sessions for PgBackend {
+    async fn claim_session(
+        &self,
+        login: &str,
+        group_id: i16,
+        channel: i16,
+        client_version: i32,
+        stale_after_secs: i64,
+    ) -> Result<ClaimOutcome, DbError> {
+        // Uma transação: primeiro libera a sessão órfã (dono parou de renovar), depois tenta
+        // abrir. O índice parcial `character_session_uma_por_conta` é quem decide o conflito —
+        // nenhuma checagem em memória pode substituí-lo, porque são processos diferentes.
+        let mut tx = self
+            .pool()
+            .begin()
+            .await
+            .map_err(map_error("sessions.begin", "character_session"))?;
+
+        sqlx::query(
+            "UPDATE character_session SET released_at = now() \
+             WHERE account_login = $1 AND released_at IS NULL \
+               AND renewed_at < now() - make_interval(secs => $2)",
+        )
+        .bind(login)
+        .bind(stale_after_secs)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("sessions.expire", "character_session"))?;
+
+        let aberta = sqlx::query(
+            "INSERT INTO character_session (account_login, group_id, channel, client_version) \
+             VALUES ($1, $2, $3, $4) \
+             ON CONFLICT (account_login) WHERE released_at IS NULL DO NOTHING \
+             RETURNING id",
+        )
+        .bind(login)
+        .bind(group_id)
+        .bind(channel)
+        .bind(client_version)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("sessions.claim", "character_session"))?;
+
+        if let Some(row) = aberta {
+            let id: i64 = row.try_get("id").map_err(|_| DbError::Transport {
+                op: "sessions.decode",
+            })?;
+            tx.commit()
+                .await
+                .map_err(map_error("sessions.commit", "character_session"))?;
+            return Ok(ClaimOutcome::Acquired { id });
+        }
+
+        // Conflito: quem está vivo hoje nesta conta (só o canal entra no log/recusa).
+        let viva = sqlx::query(
+            "SELECT channel FROM character_session \
+             WHERE account_login = $1 AND released_at IS NULL ORDER BY id DESC LIMIT 1",
+        )
+        .bind(login)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("sessions.conflict", "character_session"))?;
+        tx.commit()
+            .await
+            .map_err(map_error("sessions.commit", "character_session"))?;
+
+        let channel = viva
+            .map(|row| row.try_get::<i16, _>("channel"))
+            .transpose()
+            .map_err(|_| DbError::Transport {
+                op: "sessions.decode",
+            })?
+            .unwrap_or(channel);
+        Ok(ClaimOutcome::Conflict { channel })
+    }
+
+    async fn renew_session(&self, id: i64) -> Result<(), DbError> {
+        sqlx::query(
+            "UPDATE character_session SET renewed_at = now() WHERE id = $1 AND released_at IS NULL",
+        )
+        .bind(id)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("sessions.renew", "character_session"))?;
+        Ok(())
+    }
+
+    async fn release_session(&self, id: i64) -> Result<(), DbError> {
+        // Idempotente de propósito: a liberação roda no `Drop` do dono e pode repetir.
+        sqlx::query(
+            "UPDATE character_session SET released_at = now() \
+             WHERE id = $1 AND released_at IS NULL",
+        )
+        .bind(id)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("sessions.release", "character_session"))?;
+        Ok(())
+    }
+
+    async fn live_sessions(&self, group_id: i16, channel: i16) -> Result<u64, DbError> {
+        let row = sqlx::query(
+            "SELECT count(*) AS total FROM character_session \
+             WHERE group_id = $1 AND channel = $2 AND released_at IS NULL",
+        )
+        .bind(group_id)
+        .bind(channel)
+        .fetch_one(self.pool())
+        .await
+        .map_err(map_error("sessions.live", "character_session"))?;
+        let total: i64 = row.try_get("total").map_err(|_| DbError::Transport {
+            op: "sessions.decode",
+        })?;
+        Ok(u64::try_from(total).unwrap_or(0))
+    }
 }

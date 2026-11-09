@@ -164,8 +164,14 @@ crates/wyd-launcher/
 │   ├── patch.rs          # apply/rollback atômico (PatchError)
 │   ├── bootstrap.rs      # plan/describe/spawn (LaunchError)
 │   ├── sha256.rs         # digest em std puro (integridade, não anti-adversário)
-│   └── distribuicao.rs   # pacote + HMAC + resume + update (DistError)
-└── tests/                # PREVISTO (integração da CLI; hoje testes em cada módulo)
+│   ├── distribuicao.rs   # pacote + HMAC + resume + update (DistError)
+│   ├── serverlist.rs     # serverlist.bin/txt da grade 10×11×64 (ServerlistError)
+│   ├── snbin.rs          # sn.bin: nomes vindos de `identidade.tokens` (143 B medidos)
+│   ├── identidade.rs     # parser da fonte única `docs/arquitetura/identidade.tokens`
+│   ├── branding.rs       # Launcher.bmp/.hat gerados da identidade (escrita atômica)
+│   └── gui.rs            # LauncherGUI.html (contrato visual da GUI Tauri, só da identidade)
+└── tests/                # serverlist_paridade.rs (bytes Rust × Node); identidade.rs
+                          # (identidade × globals.css; assets instalados × gerados)
 ```
 
 Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,

@@ -101,6 +101,7 @@ impl FakeCharacters {
             mp: 100,
             pos_x: 0,
             pos_y: 0,
+            ..Character::default()
         };
         Self {
             rows: vec![

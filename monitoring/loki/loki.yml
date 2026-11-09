@@ -1,0 +1,54 @@
+# Loki — destino durável dos logs dos containers (FASE-12).
+#
+# Por que Loki e não um coletor caseiro: o log do Docker morre com o container
+# (`json-file` é por container e recriar abre stream novo). Aqui o Alloy lê o
+# socket do Docker e empurra para o Loki, que grava em volume nomeado com
+# retenção — o histórico sobrevive a `docker compose up -d` que troca imagem.
+#
+# Sem `auth_enabled`: o Loki só existe na rede `wyd` (o portal o consulta
+# server-side). Nenhuma porta publicada no host.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    # TSDB + schema v13 (formato atual); `from` no passado para aceitar o
+    # histórico do volume em qualquer restart.
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 14 dias de retenção (o compactor aplica; `docker logs` continua limitado a
+  # 5×10 MB por container, o histórico longo é aqui).
+  retention_period: 336h
+  allow_structured_metadata: true
+  reject_old_samples: false
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false

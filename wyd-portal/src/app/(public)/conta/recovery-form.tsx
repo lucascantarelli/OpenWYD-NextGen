@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-/** Formulário de recuperação: só envia o login; a resposta é genérica por desenho. */
+/** Recuperação: envia só o login; a resposta é a mesma exista ou não a conta. */
 export default function RecoveryForm() {
   const [login, setLogin] = useState("");
   const [pending, setPending] = useState(false);
@@ -29,24 +29,26 @@ export default function RecoveryForm() {
   }
 
   return (
-    <form onSubmit={submit} style={{ display: "grid", gap: 8, maxWidth: 360 }}>
-      <label htmlFor="recovery-login" style={{ fontSize: 13, color: "var(--muted)" }}>
-        Login da conta
+    <form onSubmit={submit} className="ui-form">
+      <label className="ui-field">
+        <span className="ui-field__label">Login da conta</span>
+        <input
+          className="ui-input"
+          value={login}
+          maxLength={16}
+          minLength={1}
+          required
+          autoComplete="username"
+          onChange={(event) => setLogin(event.target.value)}
+        />
       </label>
-      <input
-        id="recovery-login"
-        value={login}
-        maxLength={16}
-        minLength={1}
-        required
-        onChange={(event) => setLogin(event.target.value)}
-        style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)" }}
-      />
-      <button type="submit" disabled={pending} style={{ padding: "8px 12px", borderRadius: 6 }}>
-        {pending ? "Enviando…" : "Solicitar recuperação"}
-      </button>
+      <div className="ui-form__actions">
+        <button type="submit" className="ui-btn" disabled={pending}>
+          {pending ? "Enviando…" : "Solicitar recuperação"}
+        </button>
+      </div>
       {message ? (
-        <p role="status" style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+        <p role="status" className="ui-field__hint">
           {message}
         </p>
       ) : null}

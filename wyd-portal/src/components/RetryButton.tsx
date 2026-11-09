@@ -4,12 +4,11 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 /**
- * Ação de recuperação dos estados de erro (issue 47).
+ * Ação de recuperação dos estados de erro.
  *
  * Toda tela que falha ao carregar precisa de um caminho de volta: a mensagem
  * sozinha deixa o operador sem saída. `router.refresh()` reexecuta o server
- * component — para as leituras cacheadas por processo no BFF, é também o que
- * traz dados novos depois de um restart de serviço.
+ * component e traz dados novos depois de um restart de serviço.
  */
 export function RetryButton({ label = "tentar de novo" }: { label?: string }) {
   const router = useRouter();

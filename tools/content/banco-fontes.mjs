@@ -15,6 +15,12 @@ export const FONTES = {
     estado: 'confirmado',
     nota: 'Hash de senha/PIN opaco (argon2id); nada em texto plano.',
   },
+  character_session: {
+    dominio: 'acesso',
+    fonte: 'docs/wyd/canais-e-cidadania.md §5 + migration 0030',
+    estado: 'provisorio',
+    nota: 'Cerca de sessão por `account_login` (a autenticação da FASE-08-2 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.',
+  },
   characters: {
     dominio: 'personagem',
     fonte: 'modelo-banco.md §2 + docs/wyd/progressao.md §1 (camadas e Arch)',

@@ -20,7 +20,7 @@ revalidação em [`inventario.md`](inventario.md).
 | 6 âncoras de hook + instrução exata | ✅ CONFIRMADO | `analise-estatica.md` §3, `superficie-conhecida.md` §3 |
 | 3 sites de checksum (já `EB` no disco) | ✅ CONFIRMADO | `superficie-conhecida.md` §2 |
 | Tabela CPSock + INITCODE no binário | ✅ CONFIRMADO | `analise-estatica.md` §5 |
-| `.wyt` (magic, versão, dimensões candidatas) | ✅ parcial | `formatos.md` §1 |
+| `.wyt` (cabeçalho 22 B + raster BGRA/BGR + 8 B) | ✅ decodificado: 256/259 amostras | `formatos.md` §1, `tools/client/wyt.mjs` |
 | `.msa` (versão, textura @34) | ✅ parcial | `formatos.md` §2 |
 | `sn.bin` (13 nomes, 1º byte opaco) | ✅ parcial | `formatos.md` §3 |
 | `serverlist.bin` (codificação) | ✅ decodificado: grade `10×11×64` + tabela própria | `formatos.md` §4, `tools/client/serverlist.mjs` |

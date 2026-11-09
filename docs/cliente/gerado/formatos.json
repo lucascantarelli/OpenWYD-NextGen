@@ -10,15 +10,15 @@
       "magic": "WT10",
       "recognised": true,
       "version": 131072,
-      "candidateWidth": 287,
-      "candidateHeight": 280,
-      "field20": 554502176,
+      "width": 287,
+      "height": 280,
+      "bits": 32,
+      "pixelsOffset": 22,
       "notes": [
-        "magic \"WT10\" confirmado em todas as amostras (0..3)",
-        "versão 0x00020000 constante em todas as amostras (@4)",
-        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
-        "@20 varia (24 ou 2080) — sem significado comprovado",
-        "layout de controles permanece opaco"
+        "raster puro: cabeçalho de 22 B + largura*altura*(bits/8) + 8 B finais",
+        "fórmula confirmada em 256/259 amostras de client/NUI + client/UI (NUI 8/8)",
+        "texto, fontes e controles são desenhados pelo .exe; o arquivo só tem pixels",
+        "decoder/export: tools/client/wyt.mjs (--png, --bmp, --scan)"
       ]
     },
     {
@@ -31,15 +31,15 @@
       "magic": "WT10",
       "recognised": true,
       "version": 131072,
-      "candidateWidth": 64,
-      "candidateHeight": 64,
-      "field20": 24,
+      "width": 64,
+      "height": 64,
+      "bits": 24,
+      "pixelsOffset": 22,
       "notes": [
-        "magic \"WT10\" confirmado em todas as amostras (0..3)",
-        "versão 0x00020000 constante em todas as amostras (@4)",
-        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
-        "@20 varia (24 ou 2080) — sem significado comprovado",
-        "layout de controles permanece opaco"
+        "raster puro: cabeçalho de 22 B + largura*altura*(bits/8) + 8 B finais",
+        "fórmula confirmada em 256/259 amostras de client/NUI + client/UI (NUI 8/8)",
+        "texto, fontes e controles são desenhados pelo .exe; o arquivo só tem pixels",
+        "decoder/export: tools/client/wyt.mjs (--png, --bmp, --scan)"
       ]
     },
     {
@@ -52,15 +52,15 @@
       "magic": "WT10",
       "recognised": true,
       "version": 131072,
-      "candidateWidth": 220,
-      "candidateHeight": 199,
-      "field20": 24,
+      "width": 220,
+      "height": 199,
+      "bits": 24,
+      "pixelsOffset": 22,
       "notes": [
-        "magic \"WT10\" confirmado em todas as amostras (0..3)",
-        "versão 0x00020000 constante em todas as amostras (@4)",
-        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
-        "@20 varia (24 ou 2080) — sem significado comprovado",
-        "layout de controles permanece opaco"
+        "raster puro: cabeçalho de 22 B + largura*altura*(bits/8) + 8 B finais",
+        "fórmula confirmada em 256/259 amostras de client/NUI + client/UI (NUI 8/8)",
+        "texto, fontes e controles são desenhados pelo .exe; o arquivo só tem pixels",
+        "decoder/export: tools/client/wyt.mjs (--png, --bmp, --scan)"
       ]
     },
     {
@@ -73,15 +73,15 @@
       "magic": "WT10",
       "recognised": true,
       "version": 131072,
-      "candidateWidth": 228,
-      "candidateHeight": 313,
-      "field20": 2080,
+      "width": 228,
+      "height": 313,
+      "bits": 32,
+      "pixelsOffset": 22,
       "notes": [
-        "magic \"WT10\" confirmado em todas as amostras (0..3)",
-        "versão 0x00020000 constante em todas as amostras (@4)",
-        "pares @16/@18 variam por tela (616x300, 64x64, 220x199, 228x313): candidatos a largura/altura, não validados em runtime",
-        "@20 varia (24 ou 2080) — sem significado comprovado",
-        "layout de controles permanece opaco"
+        "raster puro: cabeçalho de 22 B + largura*altura*(bits/8) + 8 B finais",
+        "fórmula confirmada em 256/259 amostras de client/NUI + client/UI (NUI 8/8)",
+        "texto, fontes e controles são desenhados pelo .exe; o arquivo só tem pixels",
+        "decoder/export: tools/client/wyt.mjs (--png, --bmp, --scan)"
       ]
     }
   ],
@@ -134,24 +134,16 @@
   "snBin": {
     "file": "client/sn.bin",
     "size": 143,
-    "sha256": "d3a77d512aab9eb2",
-    "entropia": 2.8981,
-    "headHex": "d6 65 73 65 72 76 65 64 00 4e 65 78 74 47 65 6e 00 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e 65 78 74 47 65 6e 32 00 4e",
-    "headAscii": ".eserved.nova geração..nova geração2.nova geração2.nova geração2.Nex",
+    "sha256": "6ab77fae68f77b29",
+    "entropia": 0.7426,
+    "headHex": "d6 65 73 65 72 76 65 64 00 57 59 44 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+    "headAscii": ".eserved.WYD....................................",
     "firstByte": "0xd6",
-    "namesCount": 13,
+    "namesCount": 4,
     "names": [
       ".eserved",
-      "nova geração",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
-      "nova geração2",
+      "WYD",
+      ".",
       "."
     ],
     "notes": [
@@ -163,22 +155,22 @@
   "serverlist": {
     "file": "client/serverlist.bin",
     "size": 7040,
-    "sha256": "b0aafae959128a86",
-    "entropia": 3.9424,
-    "headHex": "41 28 1e 23 db df fb d5 00 d6 01 d5 fa dc ed d5 03 d4 ff d7 ff 17 31 16 41 d4 f7 d2 2d 18 30 a4 c1 a4 bf a4 be a4 bd a4 bc a4 bb a4 ba a4 b8 a4 b7 a4 b5 a4 b2 a4 b1 a4 a9 a4 a7 a4 a4 a4 a1 a4",
-    "headAscii": "A(.#..................1.A...-.0.................",
+    "sha256": "d835aef985d72566",
+    "entropia": 3.6564,
+    "headHex": "d9 b4 aa b3 a1 b0 cc a4 c7 a4 d3 a4 c4 a4 bf a4 d3 a4 d1 a4 d0 a4 cc a4 cb a4 c7 a4 c5 a4 c3 a4 c1 a4 bf a4 be a4 bd a4 bc a4 bb a4 ba a4 b8 a4 b7 a4 b5 a4 b2 a4 b1 a4 a9 a4 a7 a4 a4 a4 a1 a4",
+    "headAscii": "................................................",
     "best": {
       "method": "cpsock-decode",
       "keyWord": 0,
       "from": 4,
       "score": {
-        "printable": 0.0953,
-        "alnum": 0.0729,
+        "printable": 0.0942,
+        "alnum": 0.0739,
         "hasToken": false,
-        "score": 0.1099,
+        "score": 0.109,
         "meaningful": false
       },
-      "preview": "A(.#..w.6.......A...='..E....4@.....P.......p.............7.......F.....g.?...3.............e..."
+      "preview": "......H...................g.........P.......p.............7.......F.....g.?...3.............e..."
     },
     "top5": [
       {
@@ -186,65 +178,65 @@
         "keyWord": 0,
         "from": 4,
         "score": {
-          "printable": 0.0953,
-          "alnum": 0.0729,
+          "printable": 0.0942,
+          "alnum": 0.0739,
           "hasToken": false,
-          "score": 0.1099,
+          "score": 0.109,
           "meaningful": false
         },
-        "preview": "A(.#..w.6.......A...='..E....4@.....P.......p.............7.......F.....g.?...3.............e..."
+        "preview": "......H...................g.........P.......p.............7.......F.....g.?...3.............e..."
       },
       {
         "method": "cpsock-decode",
         "keyWord": 0,
         "from": 0,
         "score": {
-          "printable": 0.1031,
-          "alnum": 0.075,
+          "printable": 0.1024,
+          "alnum": 0.0746,
           "hasToken": false,
-          "score": 0.1181,
+          "score": 0.1173,
           "meaningful": false
         },
-        "preview": "G7.*........8...A....'.......%D.S.......r.............A.......=.....A.8...G.............k......."
+        "preview": "..&...................l.........S.......r.............A.......=.....A.8...G.............k......."
       },
       {
         "method": "cpsock-decode",
         "keyWord": 1,
         "from": 4,
         "score": {
-          "printable": 0.1026,
-          "alnum": 0.0541,
+          "printable": 0.1024,
+          "alnum": 0.055,
           "hasToken": false,
           "score": 0.1134,
           "meaningful": false
         },
-        "preview": "A(.#..g..............&=.G...3.<...+.L.............a...........]................................."
+        "preview": "......8.......[...................+.L.............a...........]................................."
       },
       {
         "method": "cpsock-decode",
         "keyWord": 1,
         "from": 0,
         "score": {
-          "printable": 0.075,
-          "alnum": 0.0511,
+          "printable": 0.0744,
+          "alnum": 0.051,
           "hasToken": false,
-          "score": 0.0852,
+          "score": 0.0846,
           "meaningful": false
         },
-        "preview": "O;.'.................,=.G....'..O.............d...........c....................................."
+        "preview": "..........o.................../.O.............d...........c....................................."
       },
       {
         "method": "cpsock-decode",
         "keyWord": 2,
         "from": 4,
         "score": {
-          "printable": 0.0962,
-          "alnum": 0.0523,
+          "printable": 0.0943,
+          "alnum": 0.0509,
           "hasToken": false,
-          "score": 0.1066,
+          "score": 0.1045,
           "meaningful": false
         },
-        "preview": "A(.#................)%e.....;'................0...................................e......._....."
+        "preview": "............\\...........].....................0...................................e......._....."
       }
     ],
     "interpreted": false,

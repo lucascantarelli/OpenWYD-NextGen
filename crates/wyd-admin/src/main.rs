@@ -21,7 +21,7 @@ use wyd_admin::audit::{AuditEntry, AuditSink};
 use wyd_admin::auth::Session;
 use wyd_admin::metrics::GatewayMetrics;
 use wyd_admin::transport::{http, Router, StaticTokens};
-use wyd_db::{PgBackend, PoolConfig, Role};
+use wyd_db::{Account, Accounts, Characters, DbError, PgBackend, PoolConfig, Role, Sessions};
 
 /// Porta padrão do contrato (ADR-0008) também no binário.
 const DEFAULT_BIND: &str = "127.0.0.1:7600";
@@ -77,6 +77,102 @@ impl Config {
             database_url,
             token,
         })
+    }
+}
+
+/// Portas de banco do roteador: o gateway é **síncrono** (ADR-0006), então cada leitura
+/// roda no runtime que o binário já mantém e o futuro chega pronto ao `poll_once`.
+///
+/// Sem este adaptador o roteador polaria um futuro `sqlx` fora de contexto de runtime e o
+/// processo morria com "this functionality requires a Tokio context" ao abrir qualquer página
+/// do portal que lê conta/personagem (`panel/self`, `panel/characters`, `panel/rankings`).
+struct Blocking {
+    inner: PgBackend,
+    runtime: std::sync::Arc<tokio::runtime::Runtime>,
+}
+
+impl Blocking {
+    fn new(inner: PgBackend, runtime: std::sync::Arc<tokio::runtime::Runtime>) -> Self {
+        Self { inner, runtime }
+    }
+}
+
+/// Roda a operação no runtime e devolve o resultado já pronto.
+fn run_on<T: Send>(
+    runtime: &std::sync::Arc<tokio::runtime::Runtime>,
+    future: impl std::future::Future<Output = T>,
+) -> T {
+    runtime.block_on(future)
+}
+
+impl Accounts for Blocking {
+    fn find_by_login(
+        &self,
+        login: &str,
+    ) -> impl std::future::Future<Output = Result<Account, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        async move { run_on(&rt, Accounts::find_by_login(&inner, &login)) }
+    }
+
+    fn find_by_id(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<Account, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        async move { run_on(&rt, Accounts::find_by_id(&inner, id)) }
+    }
+
+    fn create_account(
+        &self,
+        login: &str,
+        role: Role,
+    ) -> impl std::future::Future<Output = Result<Account, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        async move { run_on(&rt, Accounts::create_account(&inner, &login, role)) }
+    }
+}
+
+impl Characters for Blocking {
+    fn list_by_account(
+        &self,
+        account_id: i64,
+    ) -> impl std::future::Future<Output = Result<Vec<wyd_db::Character>, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        async move { run_on(&rt, Characters::list_by_account(&inner, account_id)) }
+    }
+
+    fn top_by_level(
+        &self,
+        limit: usize,
+    ) -> impl std::future::Future<Output = Result<Vec<wyd_db::Character>, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        async move { run_on(&rt, Characters::top_by_level(&inner, limit)) }
+    }
+
+    fn create_character(
+        &self,
+        character: &wyd_db::Character,
+    ) -> impl std::future::Future<Output = Result<wyd_db::Character, DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let character = character.clone();
+        async move { run_on(&rt, Characters::create_character(&inner, &character)) }
+    }
+
+    fn soft_delete(
+        &self,
+        id: i64,
+    ) -> impl std::future::Future<Output = Result<(), DbError>> + Send {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        async move { run_on(&rt, Characters::soft_delete(&inner, id)) }
     }
 }
 
@@ -146,9 +242,54 @@ fn run() -> Result<(), String> {
         )
     });
 
-    let router = Router::new(backend.clone(), backend.clone(), StdoutSink, tokens)
+    // Presença por canal: uma consulta por canal (nunca agregado do grupo), no
+    // banco que o servidor de jogo mantém. O roteador só autentica e audita.
+    let presence_backend = backend.clone();
+    let presence_runtime = std::sync::Arc::clone(&runtime);
+    let presence: wyd_admin::transport::PresenceCheck = std::sync::Arc::new(move || {
+        let canais = presence_runtime
+            .block_on(presence_backend.server_channels())
+            .map_err(|_| "server_channel indisponível".to_string())?;
+        let mut lista = Vec::new();
+        for canal in canais.into_iter().filter(|c| c.enabled) {
+            let (Ok(grupo), Ok(numero)) =
+                (i16::try_from(canal.group_id), i16::try_from(canal.channel))
+            else {
+                continue;
+            };
+            // `channel = 0` é a linha de status do grupo, não um mundo.
+            if numero <= 0 {
+                continue;
+            }
+            let online = presence_runtime
+                .block_on(presence_backend.live_sessions(grupo, numero))
+                .map_err(|_| "character_session indisponível".to_string())?;
+            lista.push(wyd_admin::ChannelPresence {
+                group_id: canal.group_id,
+                channel: canal.channel,
+                host: canal.host,
+                online,
+            });
+        }
+        Ok(lista)
+    });
+
+    // Os dois ports usam o mesmo pool, mas cada futuro roda no runtime antes do
+    // `poll_once` do roteador (ver `Blocking`).
+    let accounts = Blocking::new(backend.clone(), std::sync::Arc::clone(&runtime));
+    let characters = Blocking::new(backend.clone(), std::sync::Arc::clone(&runtime));
+    let router = Router::new(accounts, characters, StdoutSink, tokens)
         .with_catalog(catalog)
-        .with_login_check(login);
+        .with_login_check(login)
+        .with_presence_check(presence)
+        // Troca de PIN do portal: mesma conexão CPSock do cliente (`0x0FDE` em duas
+        // etapas). Sem `WYD_GAME_ADDR` o canal local do compose é o padrão.
+        .with_game_address(
+            std::env::var("WYD_GAME_ADDR")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "127.0.0.1:8281".to_string()),
+        );
     let metrics = GatewayMetrics::new();
 
     let listener = TcpListener::bind(&config.bind)
@@ -171,13 +312,17 @@ fn run() -> Result<(), String> {
 }
 
 /// Atende uma conexão do serviço: health, métricas ou rota do contrato.
-fn handle(
+fn handle<A, C, S>(
     stream: TcpStream,
-    router: &Router<PgBackend, PgBackend, StdoutSink>,
+    router: &Router<A, C, S>,
     metrics: &GatewayMetrics,
     backend: &PgBackend,
     runtime: &tokio::runtime::Runtime,
-) {
+) where
+    A: Accounts,
+    C: Characters,
+    S: AuditSink,
+{
     let _ = stream.set_read_timeout(Some(Duration::from_secs(15)));
     let Ok(read_half) = stream.try_clone() else {
         return;

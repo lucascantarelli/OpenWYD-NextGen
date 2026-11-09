@@ -103,6 +103,8 @@ pub enum ServerlistError {
     SizeMismatch { found: usize, expected: usize },
     /// Falha de E/S na leitura, geração ou instalação.
     Io(String),
+    /// A identidade única (`docs/arquitetura/identidade.tokens`) recusou o nome de servidor.
+    Identidade(String),
 }
 
 impl fmt::Display for ServerlistError {
@@ -153,6 +155,7 @@ impl fmt::Display for ServerlistError {
                 write!(f, "arquivo com {found} bytes; esperado {expected}")
             }
             Self::Io(e) => write!(f, "erro de E/S: {e}"),
+            Self::Identidade(e) => write!(f, "identidade: {e}"),
         }
     }
 }
