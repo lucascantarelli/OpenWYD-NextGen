@@ -25,6 +25,10 @@ LABEL org.opencontainers.image.title="wyd-server" \
       org.opencontainers.image.revision="${WYD_COMMIT}" \
       org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
 COPY --from=builder /out/wyd-server /usr/local/bin/wyd-server
+# Série de migrations no próprio artefato (ADR-0024): o canal também aplica o
+# schema no boot (idempotente e serializado por advisory lock).
+COPY --from=builder /src/crates/wyd-db/migrations /migrations
+ENV MIGRATIONS_DIR=/migrations
 USER nonroot:nonroot
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
     CMD ["/usr/local/bin/wyd-server", "--healthcheck"]

@@ -25,7 +25,7 @@ ADR-0022). Sem binário, não há serviço: o compose não antecipa o que a issu
 
 | Serviço | Imagem | Papel |
 |---|---|---|
-| `db` | `postgres:17-alpine` (oficial) | Postgres 17; schema via `crates/wyd-db/migrations/` (FASE-04). Sem one-shot de roles no stack novo: sobe com superusuário de dev — **não usar em produção** |
+| `db` | `postgres:17-alpine` (oficial) | Postgres 17; sobe **vazio** (imagem oficial, sem Dockerfile). Sem one-shot de roles no stack novo: superusuário de dev — **não usar em produção**. Schema aplicado no boot do gateway/canal (ADR-0024) |
 | `server` (por canal: `wyd-canal-1`, `wyd-canal-2`) | `docker/Dockerfile.server` (multi-stage, distroless non-root) | Monólito de jogo: CPSock `:8281`, status `:8080` (publicado como `:80`) e `/metrics` `:9898`. **Um container por canal**, mesma imagem `wyd/server:${TAG}` e mesmo Postgres; canal vem de `server_channel` (migration `0029`) e de `WYD_SERVER_CHANNEL`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281 |
 | `gateway` | `docker/Dockerfile.gateway` (multi-stage, distroless non-root) | Gateway HTTP/JSON do portal (`:7600`, ADR-0022): `GET /health` faz `SELECT 1` no Postgres, `GET /metrics` publica `wyd_gateway_requests_total{result}` + `wyd_gateway_uptime_seconds`, `POST /admin/v1/{servico}/{metodo}` serve o contrato já existente. `--healthcheck` é o próprio binário (imagem sem shell). Sobe depois do `db` saudável |
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
@@ -34,8 +34,9 @@ ADR-0022). Sem binário, não há serviço: o compose não antecipa o que a issu
 | `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
 Comandos: `make stack-config` (valida base+prod sem subir), `make stack-up`,
-`make stack-down`, `make stack-logs`. Imagens `wyd/<serviço>:${TAG:-dev}`,
-containers `wyd-<serviço>`, rede/volume `wyd_*`.
+`make stack-down`, `make stack-logs`. Imagens `wyd/<serviço>:${TAG:-dev}`, containers com o
+nome do projeto (`wyd-<serviço>-<n>` — sem `container_name` fixo, para permitir stack paralela
+com `-p`), rede/volume `wyd_*`.
 
 ## 3. Alvo (quando cada binário existir, pela issue dona)
 
@@ -88,20 +89,35 @@ Cadeia normativa (skill `wyd-rust-obs`, FASE-06-1 → FASE-12-1):
    --workspace` (skill `wyd-rust-toolchain`), `npx tsc --noEmit` + `vitest` no portal e
    `docker compose config` (base e prod). O portal nunca monta o socket do Docker.
 
-## 5. Banco da stack (conteúdo real, não schema vazio)
+## 5. Banco da stack (schema aplicado no boot, sem passo manual)
 
-O `db` do compose sobe **sem** schema. Aplicar a série é passo explícito e idempotente-por-reset:
+O `db` sobe **vazio** e o schema entra no **boot do processo** (ADR-0024): `wyd-gateway` e
+`wyd-server` chamam `wyd_db::migrate::run` antes de abrir o pool. Restart é no-op; banco novo é
+migrado na primeira subida. Não existe job/serviço de migration — `docker compose up -d` não
+deixa container parado.
 
 ```bash
-make stack-up        # db + gateway + portal (db fica healthy)
-make db-migrate      # node tools/dev/db-migrate.mjs
-# ou, para recriar do zero: node tools/dev/db-migrate.mjs --reset
+docker compose up -d --build --wait   # caminho único: build + up + saúde (não exige make)
+make stack-up        # up completo (gateway e canais migram no próprio boot)
+make local-rebuild   # atalho + provas de contrato (/login 200, /entregas 307, /health 31)
+make db-migrate      # = docker compose run --rm gateway --migrate
+make db-reset        # = docker compose run --rm gateway --migrate --reset
 ```
 
-`tools/dev/db-migrate.mjs` aplica os 30 arquivos em ordem no container `wyd-db` (usuário/banco de
-`POSTGRES_USER`/`POSTGRES_DB`). Ele **não** é o runner de ciclo (`tools/content/migrate-cycle.mjs`, container
-efêmero): aqui o alvo é o banco que o gateway consome. Sem ele, o gateway não acha `content_version`
-no boot e falha com erro tipado — de propósito, porque health sem catálogo mentiria.
+Regras do runner (`crates/wyd-db/src/migrate.rs`), as mesmas em qualquer caminho:
+
+- **ledger** `schema_migrations(version, checksum, applied_at)`: reexecutar não reaplica;
+- **advisory lock de sessão**: gateway e canal subindo juntos não migram ao mesmo tempo;
+- **uma transação por arquivo**: falhou, nada daquele arquivo fica;
+- **checksum** do bloco `up`: arquivo já aplicado que mudou de conteúdo é erro, não skip;
+- **baseline**: volume anterior ao ledger com schema completo é marcado como aplicado
+  (o `--reset` recria do zero);
+- **integridade**: ao fim exige `item_catalog` (o gateway depende dele).
+
+As imagens copiam `crates/wyd-db/migrations` para `/migrations` (distroless não tem o repo);
+`MIGRATIONS_DIR` sobrescreve o caminho. O runner **não** substitui
+`tools/content/migrate-cycle.mjs` (`make migrations-apply`), que prova up → down → up num
+Postgres efêmero.
 
 **Seed de staff (2026-11-08, revisto em 2026-11-09):** roda no **boot do gateway** sempre que
 `PORTAL_ADMIN_PASSWORD` está definida (`PORTAL_ADMIN_USER`/`PORTAL_ADMIN_PASSWORD` do `.env`).
@@ -135,8 +151,9 @@ idempotente, não precisa de imagem extra e não roda no `initdb` do Postgres �
 do banco só executa em volume vazio (`/docker-entrypoint-initdb.d`), então nunca serviria um
 volume já existente, que é o caso desta stack.
 
-Contagens observadas após aplicar (2026-11-09, banco recriado do zero com as 30 migrations):
-**68 tabelas** (a `0029` trouxe `server_channel`, a `0030` trouxe `character_session`),
+Contagens observadas após aplicar (2026-11-09, banco recriado do zero com as 31 migrations):
+**70 tabelas** — 69 do schema de jogo (`0029` trouxe `server_channel`, `0030`
+`character_session`, `0031` a moderação) + a ledger `schema_migrations` do runner (ADR-0024),
 `item_catalog` 3.220, `server_channel` 3 linhas (canal 0 = status, 1 = normal, 2 = verde),
 `content_version` 1.
 

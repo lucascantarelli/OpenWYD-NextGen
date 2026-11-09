@@ -18,21 +18,17 @@
  *   npm run test:e2e -- --grep login
  */
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-
-import { blocos } from "../../tools/content/banco-parse.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const PORTAL = path.join(ROOT, "wyd-portal");
-const MIGRATIONS = path.join(ROOT, "crates", "wyd-db", "migrations");
-
-const DB_CONTAINER = process.env.WYD_STACK_CONTAINER ?? "wyd-db";
-const DB_USER = process.env.POSTGRES_USER ?? "wyd";
 const DB_NAME = "wyd_e2e";
 const GATEWAY = "wyd-gateway-e2e";
 const GAME = "wyd-server-e2e";
+const PORTAL_CONTAINER = "wyd-portal-e2e";
 const GATEWAY_PORT = 7601;
+// 3110: a 3000 é do compose (teste manual). O E2E usa a MESMA imagem do portal.
+const PORTAL_PORT = 3110;
 const TOKEN = "e2e-token-do-gateway";
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "e2e-admin-pass-123";
@@ -71,16 +67,34 @@ function run(cmd, args, options = {}) {
   return result;
 }
 
+/** Usuário do Postgres da stack, lido do container (sem `container_name` fixo). */
+let cachedStackUser;
+function stackUser() {
+  if (cachedStackUser) return cachedStackUser;
+  const probe = spawnSync(
+    "docker",
+    ["compose", "exec", "-T", "db", "printenv", "POSTGRES_USER"],
+    { cwd: ROOT, encoding: "utf8" },
+  );
+  cachedStackUser =
+    probe.status === 0 && probe.stdout.trim()
+      ? probe.stdout.trim()
+      : (process.env.POSTGRES_USER ?? "wyd");
+  return cachedStackUser;
+}
+
+/** psql na stack via compose (o container agora tem nome do projeto, não fixo). */
 function psql(database, sql) {
   return run(
     "docker",
     [
+      "compose",
       "exec",
-      "-i",
-      DB_CONTAINER,
+      "-T",
+      "db",
       "psql",
       "-U",
-      DB_USER,
+      stackUser(),
       "-d",
       database,
       "-v",
@@ -91,7 +105,7 @@ function psql(database, sql) {
       "-f",
       "-",
     ],
-    { input: sql },
+    { cwd: ROOT, input: sql },
   ).stdout.trim();
 }
 
@@ -113,6 +127,7 @@ async function waitHttp(url, label) {
 }
 
 async function provision() {
+  removeContainer(PORTAL_CONTAINER);
   removeContainer(GATEWAY);
   removeContainer(GAME);
 
@@ -126,22 +141,8 @@ async function provision() {
   psql("postgres", `CREATE ROLE ${E2E_ROLE} LOGIN PASSWORD '${E2E_PASSWORD}';`);
   psql("postgres", `CREATE DATABASE ${DB_NAME} OWNER ${E2E_ROLE};`);
 
-  const files = readdirSync(MIGRATIONS)
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-  for (const file of files) {
-    const sql = blocos(readFileSync(path.join(MIGRATIONS, file), "utf8"), file).up;
-    psqlTcp(sql);
-  }
-  console.log(`banco ${DB_NAME}: ${files.length} migrations aplicadas`);
-
-  psqlTcp(
-    `INSERT INTO accounts (login, password_hash, role) VALUES ('e2e-player', 'x', 'player');
-     INSERT INTO characters (account_id, slot, name, class, level, hp, mp, hp_max, mp_max, gold)
-       SELECT id, 0, 'E2E Hero', 0, 50, 500, 50, 500, 50, 0 FROM accounts WHERE login = 'e2e-player';
-     INSERT INTO characters (account_id, slot, name, class, level, hp, mp, hp_max, mp_max, gold)
-       SELECT id, 1, 'E2E Gêmeo', 0, 50, 500, 50, 500, 50, 0 FROM accounts WHERE login = 'e2e-player';`,
-  );
+  // Sem passo de migration no teste: o gateway abaixo aplica a série no próprio
+  // boot (ADR-0024), no banco efêmero do role dedicado. A seed vem depois.
 
   const dsn = E2E_DSN;
   run("docker", [
@@ -158,6 +159,16 @@ async function provision() {
   await waitHttp(`http://127.0.0.1:${GATEWAY_PORT}/health`, GATEWAY);
   console.log(`gateway E2E: saudável em 127.0.0.1:${GATEWAY_PORT}`);
 
+  // Só depois do boot: o gateway é quem migra o banco efêmero (ADR-0024), então
+  // `accounts`/`characters` já existem quando a seed do roteiro roda.
+  psqlTcp(
+    `INSERT INTO accounts (login, password_hash, role) VALUES ('e2e-player', 'x', 'player');
+     INSERT INTO characters (account_id, slot, name, class, level, hp, mp, hp_max, mp_max, gold)
+       SELECT id, 0, 'E2E Hero', 0, 50, 500, 50, 500, 50, 0 FROM accounts WHERE login = 'e2e-player';
+     INSERT INTO characters (account_id, slot, name, class, level, hp, mp, hp_max, mp_max, gold)
+       SELECT id, 1, 'E2E Gêmeo', 0, 50, 500, 50, 500, 50, 0 FROM accounts WHERE login = 'e2e-player';`,
+  );
+
   run("docker", [
     "run", "-d", "--rm", "--name", GAME, "--network", "wyd",
     "-e", `DATABASE_URL=${dsn}`,
@@ -169,11 +180,48 @@ async function provision() {
   ]);
   // O dreno do canal roda a cada 1 s; dois segundos cobrem boot + primeira volta.
   await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Portal do compose (imagem `wyd/portal:dev`), apontando ao gateway efêmero
+  // pelo DNS interno da rede `wyd`. Nada de `next dev`: sem lock e sem tocar a 3000.
+  run("docker", [
+    "run", "-d", "--rm", "--name", PORTAL_CONTAINER, "--network", "wyd",
+    "-p", `127.0.0.1:${PORTAL_PORT}:3000`,
+    "--tmpfs", "/var/log/wyd-portal",
+    "-e", "NODE_ENV=production",
+    "-e", "PORT=3000",
+    "-e", "SESSION_SECRET=e2e-session-secret-com-32-caracteres-ok!!",
+    "-e", `WEB_API_ADDR=http://${GATEWAY}:7600`,
+    "-e", `WEB_API_TOKEN=${TOKEN}`,
+    "-e", "PROMETHEUS_URL=http://prometheus:9090",
+    "-e", "LOKI_URL=http://loki:3100",
+    "wyd/portal:dev",
+  ]);
+  await waitHttp(`http://127.0.0.1:${PORTAL_PORT}/login`, PORTAL_CONTAINER);
+  console.log(`portal E2E: saudável em 127.0.0.1:${PORTAL_PORT}`);
+}
+
+/** Remove banco/role efêmeros: E2E encerrado não deixa schema nem credencial no volume. */
+function dropE2eDatabase() {
+  try {
+    psql(
+      "postgres",
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+         WHERE datname = '${DB_NAME}' AND pid <> pg_backend_pid();`,
+    );
+    psql("postgres", `DROP DATABASE IF EXISTS ${DB_NAME};`);
+    psql("postgres", `DROP ROLE IF EXISTS ${E2E_ROLE};`);
+  } catch (error) {
+    console.error(
+      `limpeza do banco E2E: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 function teardown() {
+  removeContainer(PORTAL_CONTAINER);
   removeContainer(GATEWAY);
   removeContainer(GAME);
+  dropE2eDatabase();
 }
 
 async function main() {

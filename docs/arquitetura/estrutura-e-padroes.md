@@ -265,13 +265,14 @@ crates/wyd-net/
 
 ```
 crates/wyd-db/
-├── Cargo.toml            # sqlx/refinery só via ADR
+├── Cargo.toml            # sqlx/sha2 só via ADR (0021/0024)
 ├── migrations/
 │   └── NNNN_descricao.sql # versionadas, reversíveis (up/down testado)
 ├── seeds/                # PREVISTO: dev.sql versionado; prod nunca versiona segredo
 ├── src/
 │   ├── lib.rs            # fachada (scheme, versão do schema)
 │   ├── error.rs          # DbError (sem DSN/segredo em Display)
+│   ├── migrate.rs        # executado (ADR-0024): série no boot, ledger e advisory lock
 │   ├── model/
 │   │   ├── mod.rs
 │   │   ├── account.rs

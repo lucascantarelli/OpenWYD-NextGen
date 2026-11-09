@@ -73,7 +73,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-07-1-gateway.md` | 7 | Transporte + contrato + binário `wyd-gateway` em Docker (ADR-0008; [ADR-0022](../docs/arquitetura/adr/0022-binarios-de-servico.md)) | 🚧 |
 | `issues/FASE-07-2-painel-usuario.md` | 7 | Painel do jogador | ✅ |
 | `issues/FASE-07-3-painel-admin.md` | 7 | Painel de staff auditável | ✅ |
-| `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, loja, painel) | 🚧 |
+| `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, painel, entrega idempotente) | ✅ |
 | `issues/FASE-08-1-tabela-protocolo.md` | 8 | Tabela do protocolo com UNVERIFIED | ✅ |
 | `issues/FASE-08-2-parsers.md` | 8 | `wyd-protocol` zero-copy + golden | ✅ |
 | `issues/FASE-08-3-launcher.md` | 8 | Distribuição do launcher/patch (updater substituto) | ✅ |

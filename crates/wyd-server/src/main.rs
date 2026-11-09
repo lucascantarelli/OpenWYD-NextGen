@@ -87,6 +87,14 @@ fn run() -> Result<(), String> {
         .enable_all()
         .build()
         .map_err(|_| "runtime tokio indisponível".to_string())?;
+
+    // Schema no boot (ADR-0024): canal novo migra; restart é no-op. O advisory lock
+    // de sessão serializa com o gateway/canal 2 subindo ao mesmo tempo.
+    let report = runtime
+        .block_on(wyd_db::migrate::run(&database_url))
+        .map_err(|error| format!("schema: {error}"))?;
+    log("info", "schema", &report.to_string());
+
     let backend = runtime
         .block_on(PgBackend::connect(&database_url, PoolConfig::local()))
         .map_err(|error| format!("banco recusou a conexão: {error}"))?;

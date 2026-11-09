@@ -32,21 +32,25 @@ const DEFAULT_BIND: &str = "127.0.0.1:7600";
 const DEFAULT_HEALTHCHECK: &str = "127.0.0.1:7600";
 
 fn main() -> ExitCode {
-    if std::env::args().skip(1).any(|arg| arg == "--healthcheck") {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let flag = |name: &str| args.iter().any(|arg| arg == name);
+    if flag("--healthcheck") {
         return healthcheck();
     }
-    // `--seed-staff` continua existindo para uso manual/one-shot (CI, reparo de conta).
-    if std::env::args().skip(1).any(|arg| arg == "--seed-staff") {
-        return seed_staff();
+    // Operação/CI: aplica o schema e sai. Não existe job one-shot no compose
+    // (ADR-0024): este mesmo caminho roda no boot do gateway.
+    if flag("--migrate") {
+        return migrate_only(flag("--reset"));
     }
-    // O seed de staff roda em todo boot: com `PORTAL_ADMIN_PASSWORD` no ambiente,
-    // reconcilia o hash do banco com a senha do `.env` (sem regravar quando já
-    // confere). `WYD_SEED_STAFF=1` só torna senha ausente um erro fatal.
-    // Sem container one-shot sobrando parado no `docker compose up`
-    // (`docs/rust/05-stack-docker.md` §5). Falha aqui é erro de configuração do ambiente.
-    let seeded = seed_staff();
-    if seeded != ExitCode::SUCCESS {
-        return seeded;
+    // `--seed-staff` continua existindo para uso manual/one-shot (CI, reparo de conta):
+    // migra antes, porque num banco novo a tabela de contas ainda não existe.
+    if flag("--seed-staff") {
+        let migrated = migrate_only(false);
+        return if migrated == ExitCode::SUCCESS {
+            seed_staff()
+        } else {
+            migrated
+        };
     }
     match run() {
         Ok(()) => ExitCode::SUCCESS,
@@ -318,6 +322,19 @@ fn run() -> Result<(), String> {
         .enable_all()
         .build()
         .map_err(|_| "runtime tokio indisponível".to_string())?;
+
+    // Schema no boot (ADR-0024): banco novo é migrado aqui, restart é no-op.
+    // O advisory lock do runner serializa com o canal subindo ao mesmo tempo.
+    let report = runtime
+        .block_on(wyd_db::migrate::run(&config.database_url))
+        .map_err(|error| format!("schema: {error}"))?;
+    log("info", "schema", &report.to_string());
+
+    // Seed de staff depois do schema, no mesmo boot e idempotente (ADR-0024 §5).
+    let seeded = seed_staff();
+    if seeded != ExitCode::SUCCESS {
+        return Err("seed do staff falhou (ver log staff_seed)".to_string());
+    }
 
     let backend = runtime
         .block_on(PgBackend::connect(
@@ -619,6 +636,36 @@ fn parse_dotenv(text: &str, name: &str) -> Option<String> {
 /// não escreve nada. Caso contrário, gera argon2id e faz upsert, depois relê e
 /// confirma o hash. Sem senha configurada e sem `WYD_SEED_STAFF=1`, não faz nada;
 /// com o flag e senha ausente, falha — seed pedido e não aplicado é erro.
+/// `--migrate`: aplica a série e sai; `--reset` recria o schema `public` (dev).
+fn migrate_only(reset: bool) -> ExitCode {
+    let Some(database_url) = std::env::var("DATABASE_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    else {
+        log("error", "schema", "reason=DATABASE_URL ausente");
+        return ExitCode::from(2);
+    };
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1)
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(_) => return ExitCode::from(2),
+    };
+    let dir = wyd_db::migrate::dir_from_env();
+    match runtime.block_on(wyd_db::migrate::run_dir(&database_url, &dir, reset)) {
+        Ok(report) => {
+            log("info", "schema", &report.to_string());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            log("error", "schema", &format!("reason={error}"));
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn seed_staff() -> ExitCode {
     let arquivo = match env_file_text() {
         Ok(text) => text,

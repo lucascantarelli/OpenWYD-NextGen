@@ -26,6 +26,10 @@ LABEL org.opencontainers.image.title="wyd-gateway" \
       org.opencontainers.image.revision="${WYD_COMMIT}" \
       org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
 COPY --from=builder /out/wyd-gateway /usr/local/bin/wyd-gateway
+# Série de migrations no próprio artefato (ADR-0024): distroless não tem o repo,
+# e o boot aplica o schema antes de abrir o pool.
+COPY --from=builder /src/crates/wyd-db/migrations /migrations
+ENV MIGRATIONS_DIR=/migrations
 USER nonroot:nonroot
 # Sem shell: o healthcheck é o próprio binário (ADR-0022 §3).
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \

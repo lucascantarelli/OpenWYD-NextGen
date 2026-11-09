@@ -43,6 +43,11 @@ export default async function EntregasPage({
   const term = (Array.isArray(rawTerm) ? rawTerm[0] ?? "" : rawTerm ?? "").trim();
   const rawChar = params.char;
   const selected = Number(Array.isArray(rawChar) ? rawChar[0] : rawChar ?? "");
+  // Chave explícita na URL: reenviar depois de um refresh usa a MESMA chave.
+  const rawKey = params.key;
+  const keyParam = (Array.isArray(rawKey) ? rawKey[0] : rawKey ?? "").trim();
+  const initialKey =
+    keyParam.length >= 8 && keyParam.length <= 64 ? keyParam : undefined;
 
   let characters: CharacterWire[] = [];
   let grants: GrantRowWire[] = [];
@@ -130,7 +135,7 @@ export default async function EntregasPage({
                         <td>{character.level}</td>
                         <td data-testid={`gold-${character.id}`}>{fmtInt(character.gold)}</td>
                         <td>
-                          <GrantForm characterId={character.id} />
+                          <GrantForm characterId={character.id} initialKey={initialKey} />
                           <Link
                             className="muted"
                             href={`/entregas?term=${encodeURIComponent(term)}&char=${character.id}`}

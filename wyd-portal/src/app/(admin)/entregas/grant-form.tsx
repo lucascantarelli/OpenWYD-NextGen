@@ -12,10 +12,18 @@ import { grantGoldAction, type GrantGoldState } from "./actions";
  * chave é um retry seguro (o gateway devolve o mesmo `grant_id` com replay), e
  * o staff vê a chave que está sendo usada.
  */
-export function GrantForm({ characterId }: { characterId: number }) {
-  const [initialKey] = useState(
+export function GrantForm({
+  characterId,
+  initialKey,
+}: {
+  characterId: number;
+  /** Chave vinda da URL (`?key=`), para retry seguro sobreviver ao refresh. */
+  initialKey?: string;
+}) {
+  const [fallbackKey] = useState(
     () => `portal-${characterId}-${Math.random().toString(36).slice(2, 10)}`,
   );
+  const defaultKey = initialKey ?? fallbackKey;
   const [state, formAction, pending] = useActionState<GrantGoldState, FormData>(
     grantGoldAction,
     { status: "idle" },
@@ -42,7 +50,7 @@ export function GrantForm({ characterId }: { characterId: number }) {
           className="ui-input"
           name="key"
           type="text"
-          defaultValue={initialKey}
+          defaultValue={defaultKey}
           minLength={8}
           maxLength={64}
           required

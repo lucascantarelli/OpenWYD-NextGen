@@ -58,14 +58,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
-      # Só `accounts` é necessário: o seed roda antes de o gateway carregar o
-      # catálogo, e o teste prova a credencial, não a stack inteira.
-      - name: Aplicar schema mínimo de contas
-        run: |
-          awk '/^-- migrate:up/{flag=1;next}/^-- migrate:down/{flag=0}flag' \
-            crates/wyd-db/migrations/0001_contas.sql > /tmp/0001_contas.sql
-          docker exec -i "${{ job.services.postgres.id }}" \
-            psql -U postgres -d wyd -v ON_ERROR_STOP=1 < /tmp/0001_contas.sql
+      # Mesmo runner do boot (ADR-0024): `--migrate` aplica a série e sai. O CI não
+      # mantém parsing próprio de `-- migrate:up/down`.
+      - name: Aplicar a série de migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
+          MIGRATIONS_DIR: crates/wyd-db/migrations
+        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
       - name: Teste de boot com WYD_SEED_STAFF=0
         env:
           WYD_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
