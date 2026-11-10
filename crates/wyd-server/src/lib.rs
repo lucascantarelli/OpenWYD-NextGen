@@ -23,7 +23,9 @@
 pub mod auth;
 pub mod channels;
 pub mod characters;
+pub mod config;
 pub mod cpsock;
+pub mod gameplay;
 pub mod logs;
 pub mod metrics;
 pub mod personagens;
@@ -33,6 +35,7 @@ pub mod world;
 
 pub use channels::{render_status_body, status_url, World};
 pub use characters::{SelectionError, SelectionStore};
+pub use config::{ConfigSource, GameConfig, LiveConfig, PgConfigSource, ReloadOutcome};
 pub use cpsock::{serve_listener, HandshakeError, HandshakeOk};
 pub use metrics::ServiceMetrics;
 pub use session::{SessionError, SessionGate, SessionLease};

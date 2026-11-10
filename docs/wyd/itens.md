@@ -183,6 +183,76 @@ Fonte: central Kersef (refino e repleção) + regra de classificação do gerado
 
 ---
 
+### 5.1 Os três baldes dos 1.532 sem `kind` (2026-11-10)
+
+Medido no banco real pela view `item_bucket` (migration `0039`), **não** estimado:
+
+| Balde | Linhas | Critério |
+|---|---:|---|
+| **real** | **1.414** | nome não é de entidade não-item, **ou** o índice é usado em loja, prêmio de nível, seed de mundo, doação, recompensa diária, override de drop, refino de gema, equipamento de monstro ou teleporte |
+| **ruído** | **96** | nome igual a NPC (72) ou classe (24) **e** preço 0 **e** `unique_id` 0 **e** nenhum uso em tabela |
+| **placeholder** | **22** | nome normalizado `noname` (12), `not used` (7), `n a` (3) — é como o cliente marca o slot vazio |
+
+Nada é decidido por "parece lixo": o balde `ruido` exige **nome que exista** em `npc_definition`,
+`npc_template`, `region`, `game_class` ou `mob_template_stat`, preço zero, `unique_id` zero e
+ausência em todas as tabelas que consomem item. As 310 linhas **sem uso conhecido** continuam
+`real`: item real rebaixado a ruído some do jogo, ruído tratado como real ocupa um slot a mais.
+
+Consulta reexecutável (o número tem de bater com a tabela acima):
+
+```sql
+select b.bucket, b.reason, count(*)
+  from item_catalog c join item_bucket b using (item_index)
+ where c.kind is null
+ group by 1, 2 order by 3 desc;
+```
+
+Saída de 2026-11-10: `real 1414` · `ruido 96` · `placeholder 22`, com as razões
+`preco-ou-unique 703`, `usado-em-tabela 401`, `sem-uso-conhecido 310`, `nome-de-npc 72`,
+`nome-de-classe 24`, `nome-placeholder 22` — 1.532 nas duas somas.
+
+### 5.2 Lista de aglutináveis: teto e fonte por item (`item_stack_cap`)
+
+O teto **não** é `EF_AMOUNT` (ver `sistemas/aglutinacao.md`). A view decide o teto e cada linha
+diz **por quê**:
+
+| Fonte | Teto | Itens | Exemplo |
+|---|---:|---:|---|
+| `catalogo:aglutinavel` | 120 | 368 | `400 Poção_de_Cura`, `412 Poeira_de_Oriharucon` |
+| `legado:ef_amount` | 120 | 53 | `416 Antídoto` (pack 5), `3373 Ração_de_Cavalo(P)` (100) |
+| `familia:material` | 120 | 2 | `419`/`420 Resto_de_Oriharucon`/`Lactolerium` |
+| `catalogo:nao_aglutinavel` | 1 | 1.320 | `831 Garra` |
+| `default:sem-prova` | 1 | 1.359 | equipamento sem `stackable` |
+| `catalogo:ruido` + `placeholder` | 1 | 118 | `1 TransKnight`, `2433 N/A` |
+
+Os 94 com `EF_AMOUNT` fecham: **53** por `legado:ef_amount`, **35** já eram `stackable` (entram
+por `catalogo:aglutinavel`) e **6** são placeholder (`not_used`/`N/A`) — 94 no total. Dos 1.532 sem
+`kind`, **55** passaram a teto 120 (53 packs + 2 restos) e 1.477 continuam em 1.
+
+Auditoria de qualquer item:
+
+```sql
+select c.item_index, c.name, c.kind, c.stackable, s.cap, s.contained, s.source
+  from item_catalog c join item_stack_cap s using (item_index)
+ where c.item_index in (400, 412, 416, 419, 420, 429, 831, 2433);
+```
+
+### 5.3 Configuração errada que a classificação revelou
+
+| Item | Problema |
+|---|---|
+| `400` e `406` | mesmo nome `Poção_de_Cura_M.`; o 406 é de **mana** (preço 400, igual ao 401) |
+| `416 Antídoto` | real e com `EF_AMOUNT 5`, mas `kind`/`stackable` nulos |
+| `419`/`420 Resto_*` | reais e com preço, mas `fields` sem nenhum efeito — o import perdeu os `EF_*` |
+| `3385 not_used` | placeholder com preço 50.000 e `EF_AMOUNT 20` |
+| `2433`–`2435 N/A` | placeholder com `EF_AMOUNT 5` |
+| `4045 NONAME` | placeholder com preço 4.000.000 |
+
+Registrado em `roadmap-rust/issues/FASE-03-15-classificacao-baldes-e-teto.md`; nada foi "corrigido"
+por chute no catálogo.
+
+---
+
 ## 6. Onde cada item nasce (visão macro)
 
 | Origem | O que entrega | Detalhe |
@@ -204,8 +274,11 @@ Fonte: central Kersef (refino e repleção) + regra de classificação do gerado
 2. **Consumo atômico.** Poção/pergaminho: debitar e aplicar no mesmo commit.
 3. **Item de quest não vendável.** `Coração do Kefra` (`EF_NOTRADE` ausente, mas
    `sell_to_npc = false`) é caso explícito.
-4. **Pack/unpack de poeira** como receita (`pack_recipe`), não como hack de inventário.
-5. **Empilhamento por `kind`** e teto por item (`max_stack`), nunca global.
+4. **Pack/unpack de poeira** como receita (`pack_recipe`), não como hack de inventário.5. **Empilhamento por item, não por `kind`**, e **teto ≠ `EF_AMOUNT`**: o teto de pilha é
+   **120** para item aglutinável (`STACK_CAP`) e **1** para o resto; o `EF_AMOUNT` do template é
+   **conteúdo de pack** (10 poeiras no pack, 5/10/20 no kit, 120 na `Carry` do `BaseMob`).
+   Moeda de Ouro de evento usa 100 por decisão de servidor. Ver
+   `sistemas/aglutinacao.md` (a distinção completa) e `sistemas/drops.md` §8 (depósito do loot).
 
 ## 8. Lacunas
 
@@ -215,3 +288,7 @@ Fonte: central Kersef (refino e repleção) + regra de classificação do gerado
 | bônus exato por grade (8% é afirmação de guia) | **UNVERIFIED** |
 | stats de todas as 3.220 linhas | dado existe; semântica de coluna não |
 | quais itens são "impossível de refinar" | lista não publicada; vem do cliente |
+| teto de pilha por item | **120** (`STACK_CAP`, regra do jogo) para aglutinável, **1** para o resto — **não** é `EF_AMOUNT`: esse é conteúdo de pack (94 linhas, valores 5/10/20/100/1/120, com `fields` em **array**, não objeto). Ver `sistemas/aglutinacao.md` |
+| linhas sem `kind` | **resolvido** (§5.1): 1.414 real · 96 ruído · 22 placeholder, pela view `item_bucket` (migration `0039`). Os reais incluem `416 Antídoto`, `419 Resto_de_Oriharucon` e `4141 Lactolerium_100` |
+| itens reais que continuam em teto 1 | 1.477 dos sem `kind` (equipamento, medalha, selo). Reavaliar quando um deles aparecer em receita/NPC que exija pilha |
+| teto de 120 no código do cliente/servidor | **UNVERIFIED**: campo de quantidade é 1 byte (255 possível), então 120 é limite de projeto, não de estrutura |

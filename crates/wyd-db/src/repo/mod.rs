@@ -5,6 +5,7 @@
 pub mod accounts;
 pub mod audit;
 pub mod characters;
+pub mod config;
 pub mod content;
 pub mod economy;
 pub mod grants;
@@ -14,7 +15,10 @@ pub mod sessions;
 pub use accounts::{Accounts, CredentialRecord};
 pub use audit::{AuditRow, AuditTrail, NewAuditEntry};
 pub use characters::Characters;
-pub use content::{CatalogItemRow, CatalogSnapshot, ServerChannel, SkillRule, SkillRules};
+pub use config::{AccessoryRuleRow, ConfigRateRow, DropConfigRow, NpcConfigRow, RouteConfigRow};
+pub use content::{
+    CatalogItemRow, CatalogSnapshot, ServerChannel, SkillRule, SkillRules, StackCapRow,
+};
 pub use economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 pub use grants::{Grant, Grants, QueuedGrantRow};
 pub use pg::NO_CREDENTIAL;

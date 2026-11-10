@@ -85,6 +85,7 @@ crates/wyd-protocol/
 │       ├── character.rs       # Create/Delete/CharacterLogin
 │       ├── movement.rs        # Action
 │       ├── combat.rs          # Attack<N> (13/1/2 alvos)
+│       ├── scene.rs           # CreateMob, RemoveMob (entidades na vista — ADR-0025)
 │       ├── inventory.rs       # UseItem, TradingItem, ApplyBonus
 │       ├── commerce.rs        # Buy, Sell, Trade
 │       └── ui.rs              # MessagePanel, UpdateWeather
@@ -450,14 +451,23 @@ crates/wyd-server/
 │   ├── lib.rs            # fachada: invariantes do processo em //!
 │   ├── main.rs           # boot: env → migrations → pool → listeners → loops; `--healthcheck`
 │   ├── cpsock.rs         # aceite CPSock, handshake, cerca de sessão, limite por IP, seleção
+│   │                     # e dispatch de `_MSG_UseItem` → `SelectionStore::use_item`,
+│   │                     # `_MSG_Attack*` → `SelectionStore::attack` e `_MSG_Action` → diálogo
 │   ├── auth.rs           # senha (Argon2id) + PIN numérico com bloqueio persistido
 │   ├── characters.rs     # Create/Delete/CharacterLogin com autoridade no Postgres
 │   ├── personagens.rs    # STRUCT_SELCHAR/STRUCT_MOB a partir do banco
 │   ├── world.rs          # tick do canal (03-7): Engine do core, grade, métricas reais e parada
-│   │                     # limpa; entrada/saída do personagem e save (03-8)
+│   │                     # limpa; entrada/saída do personagem e save (03-8); NPC do snapshot
+│   │                     # (`sync_npcs`), golpe autoritativo e diálogo por `_MSG_Action`
 │   ├── session.rs        # sessão única por conta entre canais (0030)
 │   ├── channels.rs       # World: canais habilitados e papéis (normal/verde)
 │   ├── status.rs         # `/serv00.htm` + `/health` + sonda UDP :8281
+│   ├── config.rs         # snapshot de config (FASE-07-6): revisão, carga fora do tick
+│   │                     # e troca atômica; falha mantém o último snapshot bom; NPC carrega
+│   │                     # o STRUCT_MOB do `npc_template` (EXP/nível/atributos do spawn)
+│   ├── gameplay.rs       # refino/loot/EXP (07-6): lê o snapshot na chamada; `use_item` é o
+│   │                     # handler do `_MSG_UseItem`; `exp_reward` é o multiplicador do abate;
+│   │                     # loot ainda sem evento de morte
 │   ├── logs.rs           # log estruturado do processo (event=...)
 │   └── metrics.rs        # métricas do processo (uptime, canais, status, IP-limit)
 └── tests/
@@ -467,8 +477,43 @@ crates/wyd-server/
     ├── pin_*.rs          # persistência e troca do PIN entre processos
     ├── personagens_crud.rs / selchar.rs / selecao.rs
     ├── sessao_unica.rs / limite_ip.rs / status_udp.rs
+    ├── config_recarga.rs # revisão → snapshot atômico, reset, falha mantém o último bom e
+    │                       # NPC/template que a recarga materializa
+    ├── config_gameplay.rs # refino/loot/EXP leem o snapshot na chamada; goldens do `wyd-sim`
+    │                       # e `_MSG_AttackOne` real creditando EXP × multiplicador
     └── portal_pin.rs     # troca de PIN pelo portal contra banco real
 ```
+
+**EXP ligada ao fio (2026-11-10).** `_MSG_Attack`/`AttackOne`/`AttackTwo` chegam por
+`cpsock::dispatch` → `SelectionStore::attack` → `Engine::attack_at` (dano do servidor por
+`wyd_core::systems::combat`) e, no abate, `gain_exp` → `Gameplay::exp_reward` (multiplicador
+`exp` do snapshot). `_MSG_Action` abre diálogo com o `display_name` de `npc_definition`
+(`MessagePanel`). NPCs nascem de `npc_specs(&GameConfig, mapa)` e são reconciliados a cada
+revisão. O que **continua** sem resolvedor é caixa/pickup e o sorteio de loot no abate.
+
+**Loot sem call site (2026-11-10).** `Gameplay::loot` só aparece em
+`crates/wyd-server/tests/config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
+nominal do que **não** resolve morte/caixa/pickup:
+
+- `wyd_sim::resolve_attack` / `AttackOutcome` — só `hit`/`crit`/`damage`; não recebe HP e não
+  devolve morte nem callback de loot.
+- `wyd_sim::TICK_PHASES` — `"deaths"` é um rótulo da ordem do tick, não uma função.
+- `wyd_sim::formula::drop::{drops, effective_rate, gem_bonus}` — `drops(rate, roll)` é só o
+  predicado `roll <= rate` por item; não conhece monstro, tabela, kill ou caixa.
+- `wyd_sim::formula::accessory::attempt` — refino de acessório, não abertura de caixa.
+- `wyd_sim::formula::progression::{grant_exp, exp_to_next}` — EXP, não loot.
+- `wyd_core::systems::combat::attack` — devolve `Hit { remaining_hp, .. }`, sem evento de
+  morte e sem tabela de drop.
+- `wyd_core::systems::npc::decide` — intenção de movimento/ataque de NPC, não diálogo, gift
+  ou pickup.
+- `wyd_server::world::{Command, Engine::step}` — comandos `Enter`/`Leave`/`Snapshots`,
+  `SyncNpcs`/`Attack`/`Talk`; o `step` só drena eventos, não resolve morte/loot.
+- `cpsock::dispatch` — trata `CreateCharacter`, `DeleteCharacter`, `CharacterLogin`,
+  `CharacterLogout`, `UseItem`, `ApplyBonus`, `Attack*` e `Action`; caixa, pickup e teleporte
+  caem em `outro` tolerado. O abate credita EXP (`gain_exp` → `exp_reward`) mas **não**
+  rola loot: a tabela de drop continua sem call site de produção.
+
+Código legado C++/Go não está na árvore compilada; `origin/main` é referência histórica.
 
 Regras que esta árvore carrega:
 

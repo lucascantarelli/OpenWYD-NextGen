@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 use wyd_admin::transport::http;
 
 use crate::channels::World;
+use crate::config::LiveConfig;
 
 /// Contadores do processo de jogo.
 #[derive(Debug)]
@@ -30,6 +31,7 @@ pub struct ServiceMetrics {
     health_failures: AtomicU64,
     channels: u64,
     engine: OnceLock<Arc<wyd_core::Metrics>>,
+    config: OnceLock<Arc<LiveConfig>>,
 }
 
 impl ServiceMetrics {
@@ -41,12 +43,18 @@ impl ServiceMetrics {
             health_failures: AtomicU64::new(0),
             channels: channels as u64,
             engine: OnceLock::new(),
+            config: OnceLock::new(),
         }
     }
 
     /// Anexa o registro do motor da thread de tick (idempotente: a primeira vez vale).
     pub fn attach_engine(&self, engine: Arc<wyd_core::Metrics>) {
         let _ = self.engine.set(engine);
+    }
+
+    /// Anexa o snapshot de configuração viva (idempotente).
+    pub fn attach_config(&self, config: Arc<LiveConfig>) {
+        let _ = self.config.set(config);
     }
 
     pub fn status_served(&self) {
@@ -65,6 +73,9 @@ impl ServiceMetrics {
         let mut out = wyd_net::NET.render_prometheus();
         if let Some(engine) = self.engine.get() {
             out.push_str(&engine.render(""));
+        }
+        if let Some(config) = self.config.get() {
+            out.push_str(&config.render_metrics());
         }
         out.push_str(
             "# HELP wyd_server_uptime_seconds Segundos desde o start do servidor de jogo.\n",

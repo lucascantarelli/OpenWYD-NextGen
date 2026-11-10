@@ -267,6 +267,42 @@ export const FONTES = {
     estado: 'provisorio',
     nota: 'Taxa/custo por (família, chave) lidos pelos handlers de composição. Onde código e arquivo divergem (Celestial 35 × 5), `notes` diz qual vale — não há número inventado.',
   },
+  refine_rate_override: {
+    dominio: 'refino',
+    fonte: '0037_config_editavel.sql + docs/wyd/sistemas/refino.md §2',
+    estado: 'confirmado',
+    nota: 'Camada de edição do staff sobre `refine_rate`; o loader lê `COALESCE(override, base)` e reset apaga a linha, sem reescrever o seed.',
+  },
+  sanc_rate_override: {
+    dominio: 'refino',
+    fonte: '0037_config_editavel.sql + docs/wyd/sistemas/refino.md §2',
+    estado: 'confirmado',
+    nota: 'Edição da célula (pó × refino atual) em percentual 0..100; o servidor recalcula em bps ao montar o snapshot.',
+  },
+  combine_value_override: {
+    dominio: 'refino',
+    fonte: '0037_config_editavel.sql + CompRate.txt',
+    estado: 'provisorio',
+    nota: 'Edição de taxa/custo por (família, chave); a semântica de composição ainda é provisória, então a tabela não vira gate.',
+  },
+  accessory_refine_rule: {
+    dominio: 'refino',
+    fonte: '0037_config_editavel.sql + 0038_seed_acessorio_refino.sql + guia Bahamut/Kersef',
+    estado: 'provisorio',
+    nota: 'Sistema posterior ao 7662: passo, taxa e modo de falha por receita; amuleto/ankh/pedra aceitam linha, mas o seed não inventa regra publicada.',
+  },
+  config_revision: {
+    dominio: 'configuração',
+    fonte: '0037_config_editavel.sql',
+    estado: 'confirmado',
+    nota: 'Linha única (`id = 1`); toda escrita de config incrementa `version` na mesma transação e é o sinal de recarga do servidor.',
+  },
+  config_change: {
+    dominio: 'configuração',
+    fonte: '0037_config_editavel.sql',
+    estado: 'confirmado',
+    nota: 'Trilha por mudança: domínio, alvo, valor anterior/novo, autor e motivo; não substitui o audit_log genérico.',
+  },
   city: {
     dominio: 'economia',
     fonte: 'docs/wyd/economia.md + decisoes-servidor.md §3',

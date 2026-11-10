@@ -25,11 +25,15 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use wyd_core::systems::combat::{self as combat_system, AttackRules, DamageModel};
 use wyd_core::{
-    ComponentStore, CoreError, Entity, Grid, GridConfig, Inventory, Metrics, Scheduler,
-    SchedulerConfig, SpawnSpec, Stats, Tick,
+    ComponentStore, CoreError, Entity, EntityKind, Grid, GridConfig, Inventory, Metrics, Position,
+    Scheduler, SchedulerConfig, SpawnSpec, Stats, Tick,
 };
 use wyd_db::{Character, SaveQueue, SaveRequest};
+use wyd_sim::formula::damage::{damage_chain, DamageInput};
+
+use crate::config::GameConfig;
 
 /// Variável que escolhe a frequência do tick.
 pub const ENV_TICK_HZ: &str = "WYD_TICK_HZ";
@@ -49,6 +53,21 @@ const MAX_SLEEP: Duration = Duration::from_millis(10);
 const COMMAND_TIMEOUT: Duration = Duration::from_millis(2_000);
 /// Comandos aplicados por volta da thread (não deixa a fila crescer sem limite).
 const COMMANDS_PER_TURN: usize = 64;
+
+/// Distância máxima (Chebyshev) entre o personagem e o NPC clicado para abrir diálogo.
+///
+/// É validação **do servidor** sobre o `TargetX/TargetY` do `_MSG_Action`; o cliente não
+/// define alcance.
+pub const TALK_RANGE_TILES: u32 = 5;
+/// Alcance do golpe corpo a corpo validado no servidor (não vem do `_MSG_Attack`).
+pub const ATTACK_RANGE_TILES: u32 = 2;
+/// Intervalo mínimo entre dois golpes da mesma entidade.
+pub const ATTACK_COOLDOWN_MS: u64 = 800;
+/// Regras de combate do canal (constantes válidas por construção).
+const ATTACK_RULES: AttackRules = AttackRules {
+    range_tiles: ATTACK_RANGE_TILES,
+    cooldown_ms: ATTACK_COOLDOWN_MS,
+};
 
 /// Frequência pedida no ambiente (default 20), já validada pelo contrato do scheduler.
 pub fn tick_hz_from_env() -> Result<u32, String> {
@@ -153,6 +172,98 @@ impl SaveSink for SaveQueueSink {
     }
 }
 
+/// Um NPC/monstro materializado no mundo a partir de `npc_definition` do snapshot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpcSpec {
+    pub id: i32,
+    pub name: String,
+    /// Nome do registro em `npc_template`: é a chave da tabela de drop do abate.
+    pub template: String,
+    pub position: Position,
+    pub stats: Stats,
+    pub kind: EntityKind,
+    /// EXP do template; 0 = NPC sem combate.
+    pub exp: i64,
+    pub merchant: i16,
+    /// Aparência do template (`STRUCT_MOB.Equip[i].sIndex`): o cliente desenha o mob por ela.
+    pub equip: [u16; 16],
+    /// `STRUCT_MOB.CurrentScore.AttackRun`: velocidade da animação de andar no cliente.
+    pub attack_run: u8,
+    /// `STRUCT_MOB.CurrentScore.Direction`: direção inicial da criatura.
+    pub direction: u8,
+}
+
+/// NPC como o cliente precisa vê-lo: `_MSG_CreateMob` é montado a partir daqui.
+///
+/// Sai do mundo vivo (posição autoritativa), não da foto do snapshot: a recarga pode já ter
+/// movido o NPC e a cena que vale é a do motor.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpcView {
+    pub id: i32,
+    pub name: String,
+    pub position: Position,
+    pub level: u16,
+    pub hp: u32,
+    pub max_hp: u32,
+    pub attack: u32,
+    pub defense: u32,
+    /// `STRUCT_SCORE.Merchant` do template: NPC de loja tem nome sempre visível.
+    pub merchant: u8,
+    pub attack_run: u8,
+    pub direction: u8,
+    pub equip: [u16; 16],
+}
+
+/// Foto da cena de NPCs + a geração que a produziu.
+///
+/// A geração só sobe quando `sync_npcs` materializa ou remove alguma criatura: a sessão
+/// compara o número e busca a foto só quando ela mudou (nada de varrer 6 100 NPCs por
+/// pacote).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SceneSnapshot {
+    pub generation: u64,
+    pub npcs: Vec<NpcView>,
+}
+
+/// Resultado de reconciliar o mundo com uma foto de `npc_definition`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NpcSync {
+    pub spawned: usize,
+    pub removed: usize,
+    pub kept: usize,
+    /// Definicoes que o motor recusou (posição fora do mapa/Stats inválido).
+    pub rejected: usize,
+}
+
+/// Quem respondeu ao clique de `_MSG_Action` (dado de `npc_definition`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TalkTarget {
+    pub id: i32,
+    pub name: String,
+    pub merchant: i16,
+    pub exp: i64,
+}
+
+/// Resultado de um golpe aceito: dano do servidor e a EXP que o abate libera.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttackOutcome {
+    pub target_npc: i32,
+    /// Template do alvo (`npc_template.template_name`), usado para resolver o loot.
+    pub template: String,
+    pub damage: u32,
+    pub remaining_hp: u32,
+    pub killed: bool,
+    /// EXP base do template (o multiplicador entra depois, na sessão).
+    pub exp: i64,
+}
+
+/// Estado vivo de um NPC: entidade no armazém + a definição que a originou.
+#[derive(Debug, Clone)]
+struct NpcLive {
+    entity: Entity,
+    spec: NpcSpec,
+}
+
 /// Comando aceito pela thread do tick.
 pub enum Command {
     /// Encarna o personagem lido do banco (a leitura acontece na borda, fora do tick).
@@ -167,6 +278,28 @@ pub enum Command {
     },
     /// Foto de todos os vivos (save periódico/shutdown).
     Snapshots { reply: SyncSender<Vec<LiveState>> },
+    /// Materializa a foto de `npc_definition` (boot e cada recarga de configuração).
+    SyncNpcs {
+        specs: Vec<NpcSpec>,
+        reply: SyncSender<NpcSync>,
+    },
+    /// Foto da cena de NPCs (o que o cliente deve ver) + geração.
+    Npcs { reply: SyncSender<SceneSnapshot> },
+    /// Golpe corpo a corpo contra o NPC/monstro mais próximo do ponto clicado.
+    Attack {
+        attacker: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+        reply: SyncSender<Result<Option<AttackOutcome>, CoreError>>,
+    },
+    /// Clique de `_MSG_Action`: quem está no ponto, dentro do alcance do personagem.
+    Talk {
+        speaker: Entity,
+        x: i32,
+        y: i32,
+        reply: SyncSender<Option<TalkTarget>>,
+    },
 }
 
 /// Dono do mundo deste processo — um por canal, nenhum mutex global.
@@ -180,6 +313,10 @@ pub struct Engine {
     interval_ms: u64,
     live: HashMap<u32, LiveState>,
     by_character: HashMap<i64, Entity>,
+    /// NPCs vivos por id de `npc_definition` (o mapa que a recarga reconcilia).
+    npcs: HashMap<i32, NpcLive>,
+    /// Sobe a cada `sync_npcs` que materializou/removeu criatura: a borda difunde o delta.
+    npcs_generation: u64,
 }
 
 impl core::fmt::Debug for Engine {
@@ -209,6 +346,8 @@ impl Engine {
             interval_ms: config.interval_ms(),
             live: HashMap::new(),
             by_character: HashMap::new(),
+            npcs: HashMap::new(),
+            npcs_generation: 0,
         })
     }
 
@@ -252,7 +391,179 @@ impl Engine {
         }
         self.live.remove(&entity.index);
         self.by_character.retain(|_, atual| *atual != entity);
+        self.npcs.retain(|_, npc| npc.entity != entity);
         self.store.despawn(entity)
+    }
+
+    /// Reconcilia o mundo com a foto de `npc_definition` do snapshot.
+    ///
+    /// Operação fria (boot e recarga de configuração), nunca por tick com tamanho variável.
+    /// NPC que sumiu ou mudou de posição/Stats sai e volta a nascer; o que não mudou fica
+    /// com a mesma entidade. Recusa do motor (posição fora do mapa) é contada, não silenciada.
+    pub fn sync_npcs(&mut self, specs: Vec<NpcSpec>) -> NpcSync {
+        let mut report = NpcSync::default();
+        let mut querem: HashMap<i32, NpcSpec> =
+            specs.into_iter().map(|spec| (spec.id, spec)).collect();
+        let existentes: Vec<i32> = self.npcs.keys().copied().collect();
+        for id in existentes {
+            let manter = match (self.npcs.get(&id), querem.get(&id)) {
+                (Some(atual), Some(novo)) => {
+                    novo.position == atual.spec.position && novo.stats == atual.spec.stats
+                }
+                _ => false,
+            };
+            if manter {
+                querem.remove(&id);
+                report.kept += 1;
+                continue;
+            }
+            if let Some(atual) = self.npcs.remove(&id) {
+                self.despawn(atual.entity);
+                report.removed += 1;
+            }
+        }
+        for (id, spec) in querem {
+            match self.spawn(SpawnSpec {
+                kind: spec.kind,
+                position: spec.position,
+                stats: spec.stats,
+            }) {
+                Ok(entity) => {
+                    self.npcs.insert(id, NpcLive { entity, spec });
+                    report.spawned += 1;
+                }
+                Err(_) => report.rejected += 1,
+            }
+        }
+        if report.spawned > 0 || report.removed > 0 {
+            self.npcs_generation = self.npcs_generation.wrapping_add(1);
+        }
+        report
+    }
+
+    /// Cena atual: cada NPC vivo com a posição que o motor conhece, ordenada por id.
+    ///
+    /// A ordem determinística importa para o delta da borda: duas leituras iguais devolvem a
+    /// mesma lista, então a sessão só emite o que realmente mudou.
+    #[must_use]
+    pub fn scene_snapshot(&self) -> SceneSnapshot {
+        let mut npcs: Vec<NpcView> = self
+            .npcs
+            .values()
+            .filter_map(|npc| {
+                let position = self.store.position_of(npc.entity)?;
+                Some(NpcView {
+                    id: npc.spec.id,
+                    name: npc.spec.name.clone(),
+                    position,
+                    level: npc.spec.stats.level,
+                    hp: npc.spec.stats.hp,
+                    max_hp: npc.spec.stats.max_hp,
+                    attack: npc.spec.stats.attack,
+                    defense: npc.spec.stats.defense,
+                    merchant: u8::try_from(npc.spec.merchant).unwrap_or(0),
+                    attack_run: npc.spec.attack_run,
+                    direction: npc.spec.direction,
+                    equip: npc.spec.equip,
+                })
+            })
+            .collect();
+        npcs.sort_by_key(|npc| npc.id);
+        SceneSnapshot {
+            generation: self.npcs_generation,
+            npcs,
+        }
+    }
+
+    /// NPC/monstro mais próximo do ponto clicado, dentro de `range` tiles.
+    ///
+    /// Desempate pelo menor id — a mesma regra determinística usada na IA. `only_monster`
+    /// separa combate (`_MSG_Attack`) de diálogo (`_MSG_Action`).
+    fn npc_near(&self, x: i32, y: i32, range: u32, only_monster: bool) -> Option<&NpcLive> {
+        self.npcs
+            .values()
+            .filter(|npc| !only_monster || npc.spec.kind == EntityKind::Monster)
+            .filter_map(|npc| {
+                let posicao = self.store.position_of(npc.entity)?;
+                let distancia = posicao.x.abs_diff(x).max(posicao.y.abs_diff(y));
+                (distancia <= range).then_some((distancia, npc.spec.id, npc))
+            })
+            .min_by_key(|(distancia, id, _)| (*distancia, *id))
+            .map(|(_, _, npc)| npc)
+    }
+
+    /// Golpe corpo a corpo autoritativo no ponto clicado.
+    ///
+    /// `Ok(None)` = não há criatura de combate no alcance (o cliente não escolhe alvo fora
+    /// do alcance). O dano sai de [`TemplateDamage`] sobre os `Stats` das duas entidades; o
+    /// cliente só diz **onde** golpeou. Abate devolve a EXP do template, que a sessão aplica
+    /// com o multiplicador do snapshot.
+    pub fn attack_at(
+        &mut self,
+        attacker: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+    ) -> Result<Option<AttackOutcome>, CoreError> {
+        let Some((entity, npc_id, exp, template)) =
+            self.npc_near(x, y, ATTACK_RANGE_TILES, true).map(|npc| {
+                (
+                    npc.entity,
+                    npc.spec.id,
+                    npc.spec.exp,
+                    npc.spec.template.clone(),
+                )
+            })
+        else {
+            return Ok(None);
+        };
+        let golpe = combat_system::attack(
+            &mut self.store,
+            attacker,
+            entity,
+            now_ms,
+            ATTACK_RULES,
+            &TemplateDamage,
+        )?;
+        let killed = golpe.remaining_hp == 0;
+        // Morte real: a criatura sai do mundo no mesmo comando. Deixá-la no mapa com HP 0
+        // seria um cadáver que o cliente desenha e o jogador não consegue mais golpear; a
+        // geração sobe para a borda emitir `_MSG_RemoveMob` (tipo morte). O loot do abate é
+        // resolvido na sessão, com a tabela do snapshot e o sorteio do momento.
+        if killed {
+            self.despawn(entity);
+            self.npcs_generation = self.npcs_generation.wrapping_add(1);
+        }
+        Ok(Some(AttackOutcome {
+            target_npc: npc_id,
+            template,
+            damage: golpe.amount,
+            remaining_hp: golpe.remaining_hp,
+            killed,
+            exp: if killed { exp } else { 0 },
+        }))
+    }
+
+    /// Quem o personagem clicou em `_MSG_Action`, se houver NPC no alcance.
+    pub fn talk_at(&self, speaker: Entity, x: i32, y: i32) -> Option<TalkTarget> {
+        let posicao = self.store.position_of(speaker)?;
+        let distancia = posicao.x.abs_diff(x).max(posicao.y.abs_diff(y));
+        if distancia > TALK_RANGE_TILES {
+            return None;
+        }
+        let npc = self.npc_near(x, y, TALK_RANGE_TILES, false)?;
+        Some(TalkTarget {
+            id: npc.spec.id,
+            name: npc.spec.name.clone(),
+            merchant: npc.spec.merchant,
+            exp: npc.spec.exp,
+        })
+    }
+
+    /// Quantos NPCs vivem neste mundo (observabilidade/teste).
+    #[must_use]
+    pub fn npc_actors(&self) -> usize {
+        self.npcs.len()
     }
 
     /// Encarna o personagem persistido como entidade `Player` na posição salva.
@@ -320,6 +631,29 @@ impl Engine {
             }
             Command::Snapshots { reply } => {
                 let _ = reply.send(self.snapshots());
+            }
+            Command::Npcs { reply } => {
+                let _ = reply.send(self.scene_snapshot());
+            }
+            Command::SyncNpcs { specs, reply } => {
+                let _ = reply.send(self.sync_npcs(specs));
+            }
+            Command::Attack {
+                attacker,
+                x,
+                y,
+                now_ms,
+                reply,
+            } => {
+                let _ = reply.send(self.attack_at(attacker, x, y, now_ms));
+            }
+            Command::Talk {
+                speaker,
+                x,
+                y,
+                reply,
+            } => {
+                let _ = reply.send(self.talk_at(speaker, x, y));
             }
         }
     }
@@ -397,16 +731,18 @@ fn stats_from(character: &Character) -> Result<Stats, EnterWorldError> {
         .map_err(|_| EnterWorldError::InvalidState(format!("hp_max {}", character.hp_max)))?;
     let max_mp = u32::try_from(character.mp_max)
         .map_err(|_| EnterWorldError::InvalidState(format!("mp_max {}", character.mp_max)))?;
+    // Ataque/defesa correntes do `STRUCT_MOB` da classe (`CurrentScore.Damage`/`Ac`): é o
+    // valor que o próprio login envia ao cliente, não uma fórmula nova. Equipamento e bônus
+    // entram na FASE-10.
+    let modelo = crate::personagens::template_mob(character.class);
     let stats = Stats {
         level: nivel,
         hp,
         max_hp,
         mp,
         max_mp,
-        // Ataque/defesa do personagem vêm de equipamento + fórmula (FASE-10); até lá o
-        // componente nasce com zero — valor explícito, não estimativa.
-        attack: 0,
-        defense: 0,
+        attack: u32::try_from(modelo.current_score.damage.max(0)).unwrap_or(0),
+        defense: u32::try_from(modelo.current_score.ac.max(0)).unwrap_or(0),
     };
     stats
         .validate()
@@ -462,6 +798,121 @@ impl EngineHandle {
         self.call(|reply| Command::Snapshots { reply }, COMMAND_TIMEOUT)
             .unwrap_or_default()
     }
+
+    /// Materializa a foto de NPCs do snapshot (boot e recarga).
+    #[must_use]
+    pub fn sync_npcs(&self, specs: Vec<NpcSpec>) -> NpcSync {
+        self.call(|reply| Command::SyncNpcs { specs, reply }, COMMAND_TIMEOUT)
+            .unwrap_or_default()
+    }
+
+    /// Cena vigente do motor (NPCs com posição autoritativa + geração).
+    #[must_use]
+    pub fn npcs(&self) -> SceneSnapshot {
+        self.call(|reply| Command::Npcs { reply }, COMMAND_TIMEOUT)
+            .unwrap_or_default()
+    }
+
+    /// Golpe autoritativo no ponto clicado. `None` = sem criatura no alcance.
+    pub fn attack(
+        &self,
+        attacker: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+    ) -> Result<Option<AttackOutcome>, CoreError> {
+        match self.call(
+            |reply| Command::Attack {
+                attacker,
+                x,
+                y,
+                now_ms,
+                reply,
+            },
+            COMMAND_TIMEOUT,
+        ) {
+            Some(resultado) => resultado,
+            None => Err(CoreError::EntityNotAlive {
+                index: attacker.index,
+                generation: attacker.generation,
+            }),
+        }
+    }
+
+    /// NPC clicado por `_MSG_Action` (fora do alcance devolve `None`).
+    #[must_use]
+    pub fn talk(&self, speaker: Entity, x: i32, y: i32) -> Option<TalkTarget> {
+        self.call(
+            |reply| Command::Talk {
+                speaker,
+                x,
+                y,
+                reply,
+            },
+            COMMAND_TIMEOUT,
+        )
+        .flatten()
+    }
+}
+
+/// Dano do canal: `attack` do atacante contra o `defense` do alvo na cadeia portada do
+/// `wyd-sim` (`DamageInput`/`damage_chain`), com piso 1 para o golpe nunca ser nulo.
+///
+/// O piso é regra de andamento do canal, não balanceamento: ambos os lados podem nascer com
+/// ataque 0 antes da FASE-10 e um golpe de 0 travaria o combate para sempre.
+struct TemplateDamage;
+
+impl DamageModel for TemplateDamage {
+    fn damage(&self, attacker: Stats, defender: Stats) -> u32 {
+        let entrada = DamageInput {
+            base: attacker.attack,
+            defense: defender.defense,
+            ..DamageInput::new(0)
+        };
+        damage_chain(&entrada).max(1)
+    }
+}
+
+/// Materializa `npc_definition` do snapshot como pedidos de spawn do mapa dado.
+///
+/// Nome do diálogo: `display_name` (texto do portal); template só preenche quando ele está
+/// vazio. Criatura de combate é a que tem `Exp` no template e não é comerciante.
+pub fn npc_specs(config: &GameConfig, map_id: i16) -> Vec<NpcSpec> {
+    config
+        .npcs_on_map(map_id)
+        .map(|npc| NpcSpec {
+            id: npc.id,
+            name: if npc.display_name.is_empty() {
+                npc.name.clone()
+            } else {
+                npc.display_name.clone()
+            },
+            template: npc.template_name.clone(),
+            position: Position {
+                x: i32::from(npc.pos_x),
+                y: i32::from(npc.pos_y),
+            },
+            stats: Stats {
+                level: npc.level,
+                hp: npc.hp,
+                max_hp: npc.max_hp,
+                mp: 0,
+                max_mp: 0,
+                attack: npc.attack,
+                defense: npc.defense,
+            },
+            kind: if npc.monster {
+                EntityKind::Monster
+            } else {
+                EntityKind::Npc
+            },
+            exp: npc.exp,
+            merchant: npc.merchant,
+            equip: npc.equip,
+            attack_run: npc.attack_run,
+            direction: npc.direction,
+        })
+        .collect()
 }
 
 /// Thread do tick com parada limpa — sem `unsafe`, sem `tokio` no laço.
@@ -647,6 +1098,119 @@ mod tests {
             Err(EnterWorldError::Core(CoreError::OutOfBounds { .. }))
         ));
         assert_eq!(engine.players(), 1, "só o personagem válido entrou");
+    }
+
+    /// NPC de teste: `exp > 0` vira `Monster`, senão `Npc` de loja/diálogo.
+    fn npc(id: i32, name: &str, x: i32, y: i32, exp: i64) -> NpcSpec {
+        NpcSpec {
+            id,
+            name: name.to_string(),
+            template: name.to_string(),
+            position: Position { x, y },
+            stats: Stats {
+                level: 1,
+                hp: if exp > 0 { 1 } else { 10 },
+                max_hp: if exp > 0 { 1 } else { 10 },
+                mp: 0,
+                max_mp: 0,
+                attack: 1,
+                defense: 0,
+            },
+            kind: if exp > 0 {
+                EntityKind::Monster
+            } else {
+                EntityKind::Npc
+            },
+            exp,
+            merchant: if exp > 0 { 0 } else { 1 },
+            equip: [0; 16],
+            attack_run: 82,
+            direction: 3,
+        }
+    }
+
+    #[test]
+    fn npc_do_snapshot_nasce_e_a_recarga_move_sem_duplicar() {
+        let mut engine = engine();
+        let aylin = npc(7, "Aylin", 40, 40, 0);
+        let primeiro = engine.sync_npcs(vec![aylin.clone()]);
+        assert_eq!((primeiro.spawned, primeiro.rejected), (1, 0));
+        assert_eq!(engine.npc_actors(), 1);
+
+        // Mesma foto: mantém a entidade (nada de duplicar no mapa).
+        let segundo = engine.sync_npcs(vec![aylin.clone()]);
+        assert_eq!((segundo.spawned, segundo.kept), (0, 1));
+        assert_eq!(engine.npc_actors(), 1);
+
+        // Posição nova: nasce outra entidade e a antiga sai.
+        let movido = NpcSpec {
+            position: Position { x: 50, y: 60 },
+            ..aylin
+        };
+        let terceiro = engine.sync_npcs(vec![movido]);
+        assert_eq!((terceiro.spawned, terceiro.removed), (1, 1));
+
+        // Foto vazia (NPC desabilitado no portal) tira todos do mundo.
+        let vazio = engine.sync_npcs(Vec::new());
+        assert_eq!(vazio.removed, 1);
+        assert_eq!(engine.npc_actors(), 0);
+    }
+
+    #[test]
+    fn dialogo_exige_alcance_e_usa_o_nome_da_definicao() {
+        let mut engine = engine();
+        engine.sync_npcs(vec![npc(7, "Aylin", 40, 40, 0)]);
+        let jogador = engine.enter(&personagem(1, 42, 40)).expect("entrada");
+
+        let alvo = engine.talk_at(jogador, 40, 40).expect("NPC no alcance");
+        assert_eq!(
+            (alvo.id, alvo.name.as_str(), alvo.merchant),
+            (7, "Aylin", 1)
+        );
+
+        // `TargetX/TargetY` longe do personagem não abre diálogo nenhum.
+        assert_eq!(engine.talk_at(jogador, 90, 90), None);
+        // Ponto sem NPC no alcance também não.
+        assert_eq!(engine.talk_at(jogador, 50, 50), None);
+    }
+
+    #[test]
+    fn abate_usa_a_exp_do_template_e_npc_sem_combate_nao_e_alvo() {
+        let mut engine = engine();
+        engine.sync_npcs(vec![
+            npc(1_000, "Orc Cavaleiro", 41, 40, 5_000),
+            npc(7, "Aylin", 70, 70, 0),
+        ]);
+        let jogador = engine.enter(&personagem(1, 40, 40)).expect("entrada");
+
+        // `Npc` de loja nunca é alvo de `_MSG_Attack`: clicar nele não acha criatura.
+        assert_eq!(
+            engine.attack_at(jogador, 70, 70, 1_000).expect("sem erro"),
+            None,
+            "NPC sem EXP não entra em combate"
+        );
+
+        // O monstro cai no golpe do servidor e libera a EXP que o template declara.
+        let golpe = engine
+            .attack_at(jogador, 41, 40, 1_000)
+            .expect("sem erro")
+            .expect("monstro no alcance");
+        assert!(golpe.killed);
+        assert_eq!((golpe.target_npc, golpe.exp), (1_000, 5_000));
+        assert_eq!(golpe.remaining_hp, 0);
+
+        // Morte tira a criatura do mundo: não sobra cadáver no mapa nem alvo para um
+        // segundo golpe, e a cena publica a remoção pela geração nova.
+        assert_eq!(
+            engine.attack_at(jogador, 41, 40, 9_000).expect("sem erro"),
+            None,
+            "o NPC abatido deixa de existir no mundo"
+        );
+        assert_eq!(engine.npc_actors(), 1, "só o NPC de loja continua vivo");
+        let cena = engine.scene_snapshot();
+        assert_eq!(cena.npcs.len(), 1);
+        assert!(cena.npcs.iter().all(|npc| npc.id == 7));
+        assert_eq!(cena.generation, 2, "o abate incrementa a geração da cena");
     }
 
     #[test]

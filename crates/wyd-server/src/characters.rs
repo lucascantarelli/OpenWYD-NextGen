@@ -28,9 +28,12 @@ use wyd_db::{
     SkillRules, MAX_SLOTS, SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN, SKILL_TIER_COIN,
     SKILL_TIER_POSITIONS, SPECIAL_LINEAGE_SKILL, SPECIAL_MAX, SPECIAL_MAX_LINEAGE, SPECIAL_SLOTS,
 };
-use wyd_protocol::ApplyBonus;
+use wyd_protocol::{ApplyBonus, UseItem};
+use wyd_sim::roll::XorShift64;
 use wyd_sim::{grant_exp, ExpTable, LevelState};
 
+use crate::config::LiveConfig;
+use crate::gameplay::{Gameplay, LootError, LootResolution, RefineUse, UseItemRolls};
 use crate::personagens::{kill_mark_row, template_items, template_mob, Mob};
 use crate::world::{EngineHandle, SaveSink};
 
@@ -200,6 +203,10 @@ pub enum SelectionError {
     Bonus(String),
     /// Ganho de EXP recusado (valor não positivo).
     Exp(String),
+    /// `_MSG_UseItem` recusado (pó, alvo ou taxa do snapshot).
+    UseItem(String),
+    /// Combate/Diálogo recusados pelo mundo (`_MSG_Attack`/`_MSG_Action`).
+    Combat(String),
     /// Conta com os quatro slots ocupados (criação não sobrescreve personagem).
     Full,
 }
@@ -219,6 +226,8 @@ impl core::fmt::Display for SelectionError {
             Self::Layout(motivo) => write!(f, "payload inválido: {motivo}"),
             Self::Bonus(motivo) => write!(f, "bônus recusado: {motivo}"),
             Self::Exp(motivo) => write!(f, "EXP recusada: {motivo}"),
+            Self::UseItem(motivo) => write!(f, "uso de item recusado: {motivo}"),
+            Self::Combat(motivo) => write!(f, "combate recusado: {motivo}"),
             Self::Full => write!(f, "conta sem slot livre em 0..={MAX_SLOTS}"),
         }
     }
@@ -231,6 +240,7 @@ pub struct SelectionStore {
     backend: Arc<PgBackend>,
     runtime: Arc<tokio::runtime::Runtime>,
     world: Option<WorldBridge>,
+    gameplay: Option<Arc<Gameplay>>,
 }
 
 /// Ponte para o mundo vivo (FASE-03-8): entrada/saída por comando e save pela fila.
@@ -271,6 +281,7 @@ impl SelectionStore {
             backend,
             runtime,
             world: None,
+            gameplay: None,
         }
     }
 
@@ -279,6 +290,126 @@ impl SelectionStore {
     pub fn with_world(mut self, handle: EngineHandle, saves: Arc<dyn SaveSink>) -> Self {
         self.world = Some(WorldBridge { handle, saves });
         self
+    }
+
+    /// Liga a seleção ao snapshot de configuração viva (multiplicador de EXP).
+    ///
+    /// Sem snapshot (teste/legado), a EXP entra integral: o default é neutro, nunca zero.
+    #[must_use]
+    pub fn with_config(mut self, config: Arc<LiveConfig>) -> Self {
+        self.gameplay = Some(Arc::new(Gameplay::new(config)));
+        self
+    }
+
+    /// Resolvedor de refino/loot do processo (lê o snapshot na hora da chamada).
+    ///
+    /// O handler de `_MSG_UseItem` usa [`Self::use_item`]; morte/loot ainda não têm
+    /// evento no processo, e nenhum deles inventa layout aqui.
+    #[must_use]
+    pub fn gameplay(&self) -> Option<&Arc<Gameplay>> {
+        self.gameplay.as_ref()
+    }
+
+    /// `_MSG_UseItem` de refino: resolve no snapshot vigente e grava o inventário.
+    ///
+    /// A mutação acontece numa cópia; o banco é gravado antes de a sessão passar a ver o
+    /// novo estado. Falha de banco devolve erro e deixa `selected.items` como estava.
+    pub fn use_item(
+        &self,
+        selected: &mut Selected,
+        packet: &UseItem,
+        rolls: UseItemRolls,
+    ) -> Result<RefineUse, SelectionError> {
+        let gameplay = self.gameplay.as_ref().ok_or(SelectionError::Unavailable)?;
+        let mut items = selected.items.clone();
+        let resultado = gameplay
+            .use_item(&mut items, packet, rolls)
+            .map_err(|error| SelectionError::UseItem(error.to_string()))?;
+        self.runtime
+            .block_on(self.backend.replace_items(selected.character.id, &items))
+            .map_err(map_db)?;
+        selected.items = items;
+        Ok(resultado)
+    }
+
+    /// `_MSG_Attack` de corpo a corpo: o cliente aponta **onde**, o servidor calcula o dano.
+    ///
+    /// O golpe passa pelo motor (`combat::attack` com `Stats` autoritativos); no abate a EXP
+    /// do template entra por [`Self::gain_exp`], que aplica o multiplicador do snapshot. Sem
+    /// criatura no alcance devolve `Ok(None)` — não há dano nem recompensa.
+    pub fn attack(
+        &self,
+        selected: &Selected,
+        entity: Entity,
+        target_x: i32,
+        target_y: i32,
+        now_ms: u64,
+        die: &mut XorShift64,
+    ) -> Result<Option<AttackReport>, SelectionError> {
+        let bridge = self.world.as_ref().ok_or(SelectionError::Unavailable)?;
+        let resultado = bridge
+            .handle
+            .attack(entity, target_x, target_y, now_ms)
+            .map_err(|error| SelectionError::Combat(error.to_string()))?;
+        let Some(golpe) = resultado else {
+            return Ok(None);
+        };
+        if !golpe.killed {
+            return Ok(Some(AttackReport {
+                target_npc: golpe.target_npc,
+                template: golpe.template,
+                damage: golpe.damage,
+                remaining_hp: golpe.remaining_hp,
+                killed: false,
+                base_exp: 0,
+                granted_exp: 0,
+                levels: 0,
+                mob: None,
+                loot: None,
+            }));
+        }
+        let ganho = self.gain_exp(selected, golpe.exp)?;
+        // O abate resolve o loot **agora**: tabela do template no snapshot vigente e os rolls
+        // do `die` desta sessão. Sem resolvedor no processo (teste/legado) não há sorteio —
+        // nunca um drop inventado.
+        let loot = self
+            .gameplay
+            .as_ref()
+            .map(|gameplay| gameplay.loot_at_death(&golpe.template, die));
+        Ok(Some(AttackReport {
+            target_npc: golpe.target_npc,
+            template: golpe.template,
+            damage: golpe.damage,
+            remaining_hp: golpe.remaining_hp,
+            killed: true,
+            base_exp: golpe.exp,
+            granted_exp: ganho.granted,
+            levels: ganho.levels,
+            mob: Some(ganho.mob),
+            loot,
+        }))
+    }
+
+    /// `_MSG_Action` de diálogo: quem está no ponto clicado, do snapshot de `npc_definition`.
+    ///
+    /// O alcance é validado no mundo contra a posição **autoritativa** do personagem; o
+    /// `PosX/PosY` que o cliente manda no pacote não autoriza nada.
+    pub fn talk(
+        &self,
+        entity: Entity,
+        target_x: i32,
+        target_y: i32,
+    ) -> Result<Option<crate::world::TalkTarget>, SelectionError> {
+        let bridge = self.world.as_ref().ok_or(SelectionError::Unavailable)?;
+        Ok(bridge.handle.talk(entity, target_x, target_y))
+    }
+
+    /// Cena de NPCs do mundo vivo (o que o cliente deve ver), com a geração do motor.
+    ///
+    /// `None` = processo sem mundo (teste/legado): a sessão não emite `_MSG_CreateMob`.
+    #[must_use]
+    pub fn npc_scene(&self) -> Option<crate::world::SceneSnapshot> {
+        self.world.as_ref().map(|bridge| bridge.handle.npcs())
     }
 
     /// Encarna o personagem no mundo. `Ok(None)` = processo sem mundo (teste/legado).
@@ -574,6 +705,28 @@ pub struct ExpGain {
     pub mob: Mob,
     pub progression: Progression,
     pub levels: u32,
+    /// EXP de fato creditada (base já com o multiplicador do snapshot).
+    pub granted: i64,
+}
+
+/// Resultado de um `_MSG_Attack` aceito: o dano do servidor e, no abate, a EXP creditada.
+#[derive(Debug, Clone)]
+pub struct AttackReport {
+    pub target_npc: i32,
+    /// Template do alvo (chave da tabela de drop).
+    pub template: String,
+    pub damage: u32,
+    pub remaining_hp: u32,
+    pub killed: bool,
+    /// EXP do template, antes do multiplicador.
+    pub base_exp: i64,
+    /// EXP creditada depois do multiplicador (0 sem abate).
+    pub granted_exp: i64,
+    pub levels: u32,
+    /// `Mob` já com a progressão nova (enviado em `UpdateEtc`/`UpdateScore`).
+    pub mob: Option<Mob>,
+    /// Loot do abate resolvido no instante da morte (`None` sem abate ou sem resolvedor).
+    pub loot: Option<Result<LootResolution, LootError>>,
 }
 
 impl SelectionStore {
@@ -638,6 +791,12 @@ impl SelectionStore {
         if amount <= 0 {
             return Err(SelectionError::Exp(format!("valor não positivo: {amount}")));
         }
+        // Multiplicador de EXP vem do snapshot publicado (portal → revisão → `wyd-config`),
+        // pela mesma função que o relatório do abate usa. Sem resolvedor o valor é neutro.
+        let amount = match &self.gameplay {
+            Some(gameplay) => gameplay.exp_reward(amount),
+            None => amount,
+        };
         let personagem = &selected.character;
         let mut progression = self
             .runtime
@@ -696,6 +855,7 @@ impl SelectionStore {
         Ok(ExpGain {
             mob,
             levels: u32::from(depois.level.saturating_sub(antes.level)),
+            granted: amount,
             progression,
         })
     }

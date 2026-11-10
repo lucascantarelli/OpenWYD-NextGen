@@ -22,6 +22,7 @@ código tem de cumprir.
 | `canais-e-cidadania.md` | **servidor × canal**, cidadania (Kibita, bônus, `/getout`), canal verde/novato e guildas donas de cidade por canal |
 | `fontes.md` | **de onde vem cada afirmação** e onde cada site engana |
 | `referencia-externa-2026-11.md` | pesquisa de 2026-11-09: fontes, confirmações, lacunas e perguntas abertas |
+| `pesquisa-internet-2026-11-10.md` | pesquisa de 2026-11-10: criação de Arch/Celestial, Sephira Soul, velocidade e golpe duplo, CP/C.Point, montarias, chat/Trombeta, cash — com **divergências** (D-1…D-10, incl. um falso positivo corrigido), perguntas P-9…P-14 e fontes abertas × descartadas (§7.1/§7.2) |
 
 ## Confiança
 

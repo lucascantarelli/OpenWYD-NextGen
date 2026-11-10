@@ -55,6 +55,8 @@ const MANUAL_ORDER = [
   "sistemas/quests",
   "sistemas/eventos",
   "fontes",
+  "referencia-externa-2026-11",
+  "pesquisa-internet-2026-11-10",
 ];
 
 /**

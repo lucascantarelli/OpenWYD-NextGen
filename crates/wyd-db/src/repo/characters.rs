@@ -66,6 +66,20 @@ pub trait Characters {
         async { Ok(()) }
     }
 
+    /// Substitui o inventário do personagem em uma transação (refino/consumo de pó).
+    ///
+    /// Diferente de [`Self::insert_items`], que só materializa o template na criação, este
+    /// caminho troca o conjunto inteiro: linhas consumidas somem e o refino novo é gravado.
+    /// Default para os fakes do Cold Path, que não têm inventário persistido.
+    fn replace_items(
+        &self,
+        character_id: i64,
+        items: &[ItemRow],
+    ) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = (character_id, items);
+        async { Ok(()) }
+    }
+
     /// `ShortSkill[16]` persistido; `None` = personagem sem linha (anterior à 0033).
     fn short_skill(
         &self,

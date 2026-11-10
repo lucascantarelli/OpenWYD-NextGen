@@ -12,6 +12,7 @@ export type NavIcon =
   | "grants"
   | "monitoring"
   | "catalog"
+  | "config"
   | "audit"
   | "economy";
 
@@ -52,6 +53,12 @@ export const NAV: readonly NavGroup[] = [
     group: "Conteúdo",
     items: [
       { href: "/itens", label: "Catálogo de itens", icon: "catalog", hint: "Itens do servidor" },
+      {
+        href: "/configuracoes",
+        label: "Configurações",
+        icon: "config",
+        hint: "Taxas, drops, NPC e teleportes",
+      },
     ],
   },
   {

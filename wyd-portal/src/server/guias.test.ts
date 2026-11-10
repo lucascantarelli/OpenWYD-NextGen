@@ -61,7 +61,7 @@ describe("conteúdo de guias", () => {
 describe("manual de WYD", () => {
   const slugs = listGuias().map((guia) => guia.slug);
 
-  it("publica os 17 documentos na ordem de leitura", () => {
+  it("publica os 23 documentos na ordem de leitura", () => {
     expect(slugs).toEqual([
       "manual",
       "manual-lore",
@@ -78,8 +78,14 @@ describe("manual de WYD", () => {
       "manual-sistemas-quests",
       "manual-sistemas-eventos",
       "manual-fontes",
+      "manual-referencia-externa-2026-11",
+      "manual-pesquisa-internet-2026-11-10",
+      "manual-canais-e-cidadania",
       "manual-decisoes-servidor",
+      "manual-multiconta",
+      "manual-senha-numerica",
       "manual-sistemas-battle-royale",
+      "manual-sistemas-refino-auditoria",
     ]);
   });
 

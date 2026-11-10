@@ -34,7 +34,7 @@ additionals", "Armas Ancient", "Sistema de Refinação +12 a +15"; WYD Internati
 | **Pedra do Sábio (Wise Man's Stone)** | obrigatória no +10 |
 | **Pó de Ori em barra / resto** | receitas de NPC (10 restos + 1kk → Jephi, Azran) |
 
-**CONFIRMADO**. Armaduras **e** armas refinam; **escudos refinam**; **acessórios não**.
+**CONFIRMADO**. Armaduras **e** armas refinam; **escudos refinam**; **acessórios não** — no original. Refino de **brinco** é sistema posterior, de servidor (§7.3).
 
 ### Taxas
 
@@ -97,20 +97,27 @@ em passos de 5 pontos percentuais:
 
 Cada nível de refino do item dá bônus percentual na **composição** (não no refino):
 
-| Refino do insumo | Bônus |
-|---|---|
-| +0 | 1% |
-| +1 | 1% |
-| +2 | 2% |
-| +3 | 3% |
-| +4 | 4% |
-| +5 | 5% |
-| +6 | 6% |
-| +7 | 7% |
-| +8 | 8% |
-| +9 | **10%** |
+A tabela **muda por servidor**, e as duas publicadas são internamente coerentes com o próprio
+exemplo:
 
-Exemplo oficial: 4 itens refino abençoado +9 = **40% de bônus**. **CONFIRMADO**.
+| Refino do insumo | Kersef / WYD Global (**default**) | WYD International (variante) |
+|---|---|---|
+| +0 | **2%** | 1% |
+| +1 | **3%** | 1% |
+| +2 | **4%** | 2% |
+| +3 | **5%** | 3% |
+| +4 | **6%** | 4% |
+| +5 | **7%** | 5% |
+| +6 | **8%** | 6% |
+| +7 | **10%** | 7% |
+| +8 | **12%** | 8% |
+| +9 | **15%** | **10%** |
+
+Exemplo de cada lado: 4 refinações **+9** valem **60%** no Kersef (15% × 4) e **40%** no WYD Int
+(10% × 4). **CONFIRMADO** nas duas centrais (artigo "Refining System +12 to +15", EN e PT, e
+"Server Information"). O **default documentado** para o 7662 é a tabela do Kersef — a mesma que [`itens.md`](../itens.md)
+já publica ("2% a 15%"). O seed atual (`BLESSING_BONUS_BPS`, `wyd-sim`) **ainda** usa a coluna do
+WYD Int; a troca é o P-10 do dossiê, registrada na auditoria (D-R6).
 
 ---
 
@@ -240,10 +247,16 @@ Exemplo oficial: 4 reforços +10 = **+48%** → total **53%**. **CONFIRMADO**.
 
 | Passo | Taxa |
 |---|---|
-| +11 → +12 | **4%** |
+| +11 → +12 | **5%** |
 | +12 → +13 | **3%** |
 | +13 → +14 | **2%** |
 | +14 → +15 | **1%** |
+
+> **Só o +12 muda entre as fontes abertas:** o guia da era oficial (2009) publica **5%**; as
+> centrais atuais (Kersef EN **e** PT, WYD Int, 2022–2025) publicam **4%**. +13/+14/+15 são
+> **3/2/1%** em todas. Como o alvo do projeto é o build **7662**, o **default documentado** é **5%**; o **4%**
+> fica como variante de servidor moderno. O seed atual (`migrations/0022_seed_refino.sql`,
+> `PLUS12_BASE_BPS`) **ainda** grava **400 bps**; a troca é o P-10, registrada em D-R4.
 
 ### Bônus por insumo
 
@@ -252,7 +265,9 @@ Exemplo oficial: 4 reforços +10 = **+48%** → total **53%**. **CONFIRMADO**.
 | **Pedra secreta** | **+1%** cada |
 | **Refinação abençoada** | **+2% a +15%** conforme o refino (tabela do §2) |
 
-Exemplo oficial: +11→+12 com 4 pedras secretas = 4% + 4% = **8%**. **CONFIRMADO**.
+Exemplo da central (base 4%): +11→+12 com 4 pedras secretas = 4% + 4% = **8%**. Com o default documentado de
+**5%**, a mesma tentativa dá **9%**. **CONFIRMADO** (exemplo da central) e **configurável**
+(taxa).
 
 ### Consequência de falha (é aqui que o jogador perde tudo)
 
@@ -265,6 +280,12 @@ Exemplo oficial: +11→+12 com 4 pedras secretas = 4% + 4% = **8%**. **CONFIRMAD
 
 > Emblema da Proteção é o item mais valioso do jogo por isso: ele transforma "perdi o item"
 > em "perdi 1 nível". O banco precisa guardar `protection_used` na tentativa para auditoria.
+
+> **Número que faltava para o Pacote de Lac** (`[C]` WYD Int, guia 47): se a **taxa total** da
+> tentativa ficar **abaixo de 5%**, a falha tem **20% de chance de destruir o item**.
+>
+> **Divergência nova (D-10):** o bônus do **Emblema da Proteção** é **+1% cada** no Kersef e
+> **+10% cada** no WYD Int. Mesma função, valor dez vezes maior — é `game_setting`, não constante.
 
 ---
 
@@ -329,6 +350,27 @@ Resultado: **item celestial selado +4**. **CONFIRMADO**.
 > +10, com repleção e com imbuir. Modelar como uma tabela `item_instance` com três colunas
 > separadas evita o bug de "refinar apaga a repleção".
 
+### Brinco (sistema posterior ao original — D-8)
+
+Nenhuma fonte da era oficial (2009–2011) descreve refino de brinco: o guia de refino de 2009 cobre
+armas/armaduras e o +10/+11, e **não** lista acessório. O que existe são **duas implementações de
+servidor**, com regras incompatíveis e nenhuma relação com o build 7662:
+
+| Servidor | Passos | Taxa | Falha |
+|---|---|---|---|
+| **WYD International** (patch 2025-02) | +9→+10 / +10→+11 | **15% / 10%** | **destrói o brinco**; aplica efeito fixo de absorção |
+| **WYD Global** (Bahamut) | +0→+9 / +9→+11 | **40% / 5%** | **não destrói**: consome materiais e devolve 10% de chance de Bahamut Tear |
+
+No 7662 isso é **UNVERIFIED**: não há regra do original para portar. No nosso banco virou dado
+explícito, não constante: `accessory_refine_rule(kind, recipe, step_from, rate_bps, fail_mode,
+fail_bonus_bps, gold_cost, material_name, material_qty, content_source)`, semeada pela
+migration `0038` com as receitas do Bahamut (brinco, colar e cinto). O portal edita a taxa em
+`/configuracoes`; a regra pura está em `crates/wyd-sim/src/formula/accessory.rs`.
+
+**Amuleto, ankh e pedra espiritual** não têm regra publicada na era oficial nem no guia aberto
+do Bahamut: a tabela aceita a linha, mas o seed não inventa passo nem taxa. O portal mostra o
+acessório como “sem regra” até existir fonte — é a mesma política do UNVERIFIED.
+
 ---
 
 ## 8. Modelo de dado para o servidor
@@ -366,4 +408,8 @@ refine_attempt (id, item_instance_id, npc, items_used, rng_roll, success, destro
 | fórmula do refino sobre atributos (1,9× no +9) | **CONFIRMADO** como afirmação, sem tabela por peça |
 | se absorção/perfuração acima de +10 escala linear | **SIM: 40 × (nível − 9)** → +10 = 40 … +15 = 240 |
 | `+10 → +11` no legado | **15%** fixo em código (100% no Âmago) — divergente dos 3% publicados |
-| chance de destruição com Pacote de Lac (+12..+15) | "pequena chance", **sem número** |
+| taxa do **+12** | **5%** (guia da era oficial, 2009) vs **4%** (centrais atuais) — configurável, default 5% |
+| bônus de **refinação abençoada** | **2…15%** (Kersef) vs **1…10%** (WYD Int) — configurável, default 2…15% |
+| bônus do **Emblema da Proteção** | **+1%** (Kersef) vs **+10%** (WYD Int) — D-10 |
+| chance de destruição com Pacote de Lac (+12..+15) | **20%** quando a taxa total fica **abaixo de 5%** (WYD Int) |
+| refino de **brinco** | **não existe no original**; WYD Int 15/10% (destrói) vs WYD Global 5% (não destrói) — de servidor, fora do código |

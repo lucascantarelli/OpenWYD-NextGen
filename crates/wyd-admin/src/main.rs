@@ -17,6 +17,7 @@ use std::net::{TcpListener, TcpStream};
 use std::process::ExitCode;
 use std::time::Duration;
 
+use wyd_admin::api::{ConfigStore, DropEdit, DropRow, NpcRow, RatesSnapshot, RouteRow};
 use wyd_admin::audit::{AuditEntry, AuditSink};
 use wyd_admin::auth::Session;
 use wyd_admin::metrics::GatewayMetrics;
@@ -110,6 +111,172 @@ fn run_on<T: Send>(
     future: impl std::future::Future<Output = T>,
 ) -> T {
     runtime.block_on(future)
+}
+
+/// Configuração editável: mesma ponte síncrona das outras portas.
+///
+/// O roteador não tem runtime; cada método aqui roda o futuro `sqlx` no runtime do
+/// binário e devolve o valor já pronto. Erro de banco vira `AdminError` pelo mapeamento
+/// padrão (sem vazar SQL/DSN).
+impl ConfigStore for Blocking {
+    fn rates_snapshot(&self) -> Result<RatesSnapshot, wyd_admin::AdminError> {
+        let (rates, accessories) = run_on(&self.runtime, self.inner.config_rates())
+            .map_err(wyd_admin::AdminError::from)?;
+        let revision = run_on(&self.runtime, self.inner.config_revision())
+            .map_err(wyd_admin::AdminError::from)?;
+        Ok(RatesSnapshot {
+            revision,
+            rates,
+            accessories,
+        })
+    }
+
+    fn set_rate(
+        &self,
+        domain: &str,
+        key: &str,
+        value: i64,
+        source: &str,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_set_rate(domain, key, value, source, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn reset_rate(
+        &self,
+        domain: &str,
+        key: &str,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_reset_rate(domain, key, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn drops(
+        &self,
+        template: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<DropRow>, wyd_admin::AdminError> {
+        let rows = run_on(&self.runtime, self.inner.config_drops(template, limit))
+            .map_err(wyd_admin::AdminError::from)?;
+        Ok(rows
+            .into_iter()
+            .map(|row| DropRow {
+                template_name: row.template_name,
+                item_index: row.item_index,
+                item_name: row.item_name,
+                weight: row.weight,
+                min_qty: row.min_qty,
+                max_qty: row.max_qty,
+                source: row.source,
+            })
+            .collect())
+    }
+
+    fn set_drop(&self, edit: &DropEdit, actor: i64) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_set_drop(
+                &edit.template_name,
+                edit.item_index,
+                edit.weight,
+                (edit.min_qty, edit.max_qty),
+                &edit.source,
+                actor,
+            ),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn reset_drop(
+        &self,
+        template: &str,
+        item_index: i32,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_reset_drop(template, item_index, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn npc(&self, id: i32) -> Result<Option<NpcRow>, wyd_admin::AdminError> {
+        let row = run_on(&self.runtime, self.inner.config_npc(id))
+            .map_err(wyd_admin::AdminError::from)?;
+        Ok(row.map(|row| NpcRow {
+            id: row.id,
+            slug: row.slug,
+            display_name: row.display_name,
+            map_id: row.map_id,
+            pos_x: row.pos_x,
+            pos_y: row.pos_y,
+            enabled: row.enabled,
+            merchant: row.merchant,
+        }))
+    }
+
+    fn set_npc(
+        &self,
+        id: i32,
+        map_id: i16,
+        pos_x: i16,
+        pos_y: i16,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_set_npc(id, map_id, pos_x, pos_y, enabled, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn routes(&self, limit: i64) -> Result<Vec<RouteRow>, wyd_admin::AdminError> {
+        let rows = run_on(&self.runtime, self.inner.config_routes(limit))
+            .map_err(wyd_admin::AdminError::from)?;
+        Ok(rows
+            .into_iter()
+            .map(|row| RouteRow {
+                id: row.id,
+                from_map_id: row.from_map_id,
+                from_x: row.from_x,
+                from_y: row.from_y,
+                to_map_id: row.to_map_id,
+                to_x: row.to_x,
+                to_y: row.to_y,
+                npc_id: row.npc_id,
+                cost_gold: row.cost_gold,
+                req_level: row.req_level,
+                enabled: row.enabled,
+            })
+            .collect())
+    }
+
+    fn set_route(
+        &self,
+        id: i32,
+        cost_gold: Option<i32>,
+        req_level: Option<i16>,
+        enabled: Option<bool>,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_set_route(id, cost_gold, req_level, enabled, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
 }
 
 impl Accounts for Blocking {
@@ -437,6 +604,10 @@ fn run() -> Result<(), String> {
         backend.clone(),
         std::sync::Arc::clone(&runtime),
     ));
+    let config_store: std::sync::Arc<dyn ConfigStore> = std::sync::Arc::new(Blocking::new(
+        backend.clone(),
+        std::sync::Arc::clone(&runtime),
+    ));
     let sink = PersistentSink::new(backend.clone(), std::sync::Arc::clone(&runtime));
     let router = Router::new(accounts, characters, sink, tokens)
         .with_catalog(catalog)
@@ -444,6 +615,7 @@ fn run() -> Result<(), String> {
         .with_presence_check(presence)
         .with_audit_trail(trilha)
         .with_economy(economia)
+        .with_config(config_store)
         // Fila durável de grants (migration 0032): o portal enfileira aqui e o
         // servidor de jogo drena. Sem isto `grants/request` responde
         // "fila de entrega não conectada" — estado antigo da fase 07-4.

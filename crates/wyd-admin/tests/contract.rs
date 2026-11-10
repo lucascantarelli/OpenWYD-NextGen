@@ -293,8 +293,8 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
     let superficie = superficie_do_portal();
     assert_eq!(
         superficie.len(),
-        8,
-        "8 serviços no admin-client.ts (contas, catálogo, sessão, presença, auditoria, economia, personagens, grants)"
+        12,
+        "12 serviços no admin-client.ts (contas, catálogo, sessão, presença, auditoria, economia, personagens, grants, taxas, drops, NPC, teleporte)"
     );
 
     let mut total = 0usize;
@@ -302,7 +302,7 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
         assert!(!metodos.is_empty(), "serviço {servico} declara métodos");
         total += metodos.len();
     }
-    assert_eq!(total, 13, "13 métodos declarados pelo portal");
+    assert_eq!(total, 25, "25 métodos declarados pelo portal");
 
     // `SERVICOS` ainda mantém o contrato legado para responder 501 auditado a
     // chamadas antigas; a paridade do portal vigente é provada pelo dispatch em

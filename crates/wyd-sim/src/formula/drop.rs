@@ -5,6 +5,11 @@
 //! item ponderado — distribuição "mais justa" e errada. O módulo só implementa a regra certa:
 //! é o chamador quem itera as linhas chamando [`drops`] uma vez por item.
 //!
+//! **Caixa no chão** (`docs/wyd/sistemas/drops.md` §8, regra de projeto do servidor): o drop
+//! vai direto para o inventário; o que não coube vira caixa, reservada ao matador por
+//! [`GROUND_EXCLUSIVE_MS`], aberta a qualquer jogador depois disso e removida em
+//! [`GROUND_DECAY_MS`]. [`GroundLoot`] é a janela pura — sem timer, calculada na leitura.
+//!
 //! **Hipótese (D-08):** bônus de taxa (gema de diamante, +8%) entra como percentual sobre a
 //! taxa e satura na escala do roll. A fonte diz que o bônus existe e é aplicado depois do
 //! roll para bônus de canal, com teto — o teto aqui é `DROP_ROLL_MAX`, o topo da própria
@@ -16,6 +21,82 @@ use crate::units::Bps;
 
 /// Topo da escala de drop do original (`1` = 0,0001%).
 pub const DROP_ROLL_MAX: u32 = 1_000_000;
+
+/// Janela em que a caixa no chão pertence a **quem matou** (`docs/wyd/sistemas/drops.md` §8).
+///
+/// É regra de projeto do servidor, não número do original: o drop moderno vai direto para o
+/// inventário e só vira caixa quando não coube; a caixa nasce reservada por 30 s.
+pub const GROUND_EXCLUSIVE_MS: u64 = 30_000;
+
+/// Tempo de vida total da caixa no chão: depois disso ela some, com ou sem dono.
+pub const GROUND_DECAY_MS: u64 = 180_000;
+
+/// Estado da janela de posse de uma caixa no chão.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LootAccess {
+    /// Só o dono pode pegar (janela exclusiva).
+    OwnerOnly,
+    /// Qualquer jogador pode pegar.
+    Open,
+    /// Passou do decay: a caixa não existe mais.
+    Gone,
+}
+
+/// Caixa no chão: dono e instante da queda (ms do processo).
+///
+/// `owner` é o id de personagem de quem matou; `dropped_at_ms` vem do relógio do processo —
+/// **nunca** do cliente. A janela é calculada na leitura, então não há timer por caixa.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GroundLoot {
+    pub owner: u64,
+    pub dropped_at_ms: u64,
+}
+
+impl GroundLoot {
+    #[must_use]
+    pub fn new(owner: u64, dropped_at_ms: u64) -> Self {
+        Self {
+            owner,
+            dropped_at_ms,
+        }
+    }
+
+    /// Quanto tempo a caixa está no chão. Relógio que anda para trás conta como instante zero
+    /// (caixa recém-caída), nunca como caixa expirada.
+    #[must_use]
+    pub fn age_ms(&self, now_ms: u64) -> u64 {
+        now_ms.saturating_sub(self.dropped_at_ms)
+    }
+
+    /// Instante em que a caixa some.
+    #[must_use]
+    pub fn expires_at_ms(&self) -> u64 {
+        self.dropped_at_ms.saturating_add(GROUND_DECAY_MS)
+    }
+
+    /// Janela vigente, independente de quem pergunta.
+    #[must_use]
+    pub fn access(&self, now_ms: u64) -> LootAccess {
+        let idade = self.age_ms(now_ms);
+        if idade >= GROUND_DECAY_MS {
+            LootAccess::Gone
+        } else if idade < GROUND_EXCLUSIVE_MS {
+            LootAccess::OwnerOnly
+        } else {
+            LootAccess::Open
+        }
+    }
+
+    /// O jogador `viewer` pode pegar agora?
+    #[must_use]
+    pub fn can_take(&self, viewer: u64, now_ms: u64) -> bool {
+        match self.access(now_ms) {
+            LootAccess::OwnerOnly => viewer == self.owner,
+            LootAccess::Open => true,
+            LootAccess::Gone => false,
+        }
+    }
+}
 
 /// Bônus de drop da gema de diamante (`+8%` sobre a taxa — Kersef, *Refining +10*).
 pub const GEM_DROP_BONUS: Bps = Bps::new(800);
@@ -56,7 +137,6 @@ pub fn drops(rate: u32, roll: u32) -> Result<bool, SimError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn roll_equal_to_rate_drops_and_one_above_does_not() {
         assert_eq!(drops(1_000, 1_000), Ok(true));
@@ -97,5 +177,39 @@ mod tests {
         assert_eq!(gem_bonus(GemEffect::Exp), Bps::ZERO);
         assert_eq!(gem_bonus(GemEffect::Absorb), Bps::ZERO);
         assert_eq!(DIAMOND_ITEM, 3386);
+    }
+
+    #[test]
+    fn caixa_fica_exclusiva_por_trinta_segundos() {
+        let caixa = GroundLoot::new(7, 1_000);
+        assert_eq!(caixa.access(1_000), LootAccess::OwnerOnly);
+        assert_eq!(caixa.access(30_999), LootAccess::OwnerOnly);
+        assert!(caixa.can_take(7, 30_999), "dono pega na janela");
+        assert!(
+            !caixa.can_take(8, 30_999),
+            "outro jogador não pega na janela"
+        );
+    }
+
+    #[test]
+    fn caixa_abre_para_todos_depois_da_janela_e_some_no_decay() {
+        let caixa = GroundLoot::new(7, 1_000);
+        assert_eq!(caixa.access(31_000), LootAccess::Open);
+        assert!(caixa.can_take(8, 31_000), "liberada para qualquer jogador");
+        assert_eq!(caixa.access(180_999), LootAccess::Open);
+        assert_eq!(caixa.access(181_000), LootAccess::Gone);
+        assert!(
+            !caixa.can_take(7, 181_000),
+            "dono também não pega depois do decay"
+        );
+        assert_eq!(caixa.expires_at_ms(), 181_000);
+    }
+
+    #[test]
+    fn relogio_que_anda_para_tras_nao_expera_a_caixa() {
+        let caixa = GroundLoot::new(7, 50_000);
+        assert_eq!(caixa.age_ms(49_000), 0);
+        assert_eq!(caixa.access(49_000), LootAccess::OwnerOnly);
+        assert!(caixa.can_take(7, 49_000));
     }
 }

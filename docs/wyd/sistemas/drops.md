@@ -160,3 +160,77 @@ drop_claim (character_id, monster_id, item_index, killed_at)  -- se usar guarant
 | tabela completa monstro→item | parcial (drop lists de servidores) |
 | se `DropItem` é multiplicador ou toggle | **é PESO**: 2º argumento comparado ao roll; 4º é flag. `DropItem(item, 14500000, 0, 1)` em servidor prova que não é probabilidade absoluta |
 | efeito exato de `double = 200` | **percentual de EXP: 200 = 200% (2×)** — `/gm +set double` liga/desliga EXP dobrada |
+
+## 8. Drop direto no inventário, caixa no chão e aglutinação
+
+Regra **do nosso servidor** (decisão de projeto do mantenedor, 2026-11-10 — o original deixa tudo
+no chão; a versão moderna entrega no inventário). O sorteio do §1 não muda: um roll por item,
+escala 1..1.000.000.
+
+1. **O drop vai direto para o inventário de quem matou.**
+2. **Só o que não coube vira caixa no chão.** "Não coube" = nenhuma pilha do mesmo item abaixo do
+   teto **e** nenhum slot livre.
+3. **A caixa nasce reservada ao matador por 30 s.** Outro jogador não consegue pegar nessa janela.
+4. **Depois de 30 s ela abre para qualquer jogador** — inclusive para quem matou.
+5. **Aos 3 min ela some**, com ou sem dono. Não há timer por caixa: a janela é calculada na
+   leitura, a partir do instante da queda (`dropped_at_ms`, relógio do processo — nunca do
+   cliente).
+6. Dono que morre ou sai não estende a reserva: a janela corre igual.
+
+| Regra | Onde | Prova |
+|---|---|---|
+| depósito: pilha → slot livre → sobra | `crates/wyd-core/src/systems/inventory.rs::deposit` | 5 testes: completa pilha, derrama em slot livre, mochila cheia devolve sobra, item sem aglutinação ocupa 1 slot por unidade, item vazio não entra |
+| janela da caixa: dono 30 s → aberta → some em 3 min | `crates/wyd-sim/src/formula/drop.rs::GroundLoot` / `LootAccess` | 3 testes: 29 999 ms exclusivo, 31 000 ms aberto, 181 000 ms `Gone`, relógio para trás não expira |
+
+**O que falta para o fio:** `_MSG_CreateItem` (0x026E, 30 B packed), `_MSG_GetItem` (0x0270,
+28 B), `_MSG_CNFGetItem` (0x0171) e `_MSG_DecayItem` (0x016F). Layout e direção já provados no
+binário — ver `docs/cliente/pacotes.md`. Falta a **faixa de ids de caixa** (UNVERIFIED).
+
+### Aglutinação — teto por item, nunca global
+
+O WYD **não** agrupa item igual por padrão: set, arma e peça têm uma instância por slot (refino,
+Anct, gema e ADD distinguem duas peças "iguais"). O que agrupa é **item classificado como
+aglutinável**, e o teto é **do item** — **não** é o `EF_AMOUNT` (esse é conteúdo de pack; a
+distinção completa está em `sistemas/aglutinacao.md`):
+
+| Item | Teto por slot | Fonte |
+|---|---|---|
+| Poção (Poderosa, Grande, Divina…) | **120** | regra de agrupamento do jogo + "120x Poção Poderosa"; 120 no `BaseMob` (401/406) prova que cabe |
+| Moeda de Ouro (evento) | **100** | guia WYD Brazuca: "cada slot pode acumular até 100 unidades" |
+| Pack de poeira (Lac/Ori) | **10** | loja: "Pack … contém 10 unidades" |
+| Resto de Ori/Lac, poeira, joia (Coral, Garnet, Esmeralda, Diamante) | agrupa | drop lists + refino; teto item a item a confirmar |
+| Set, arma, escudo, elmo, bota, luva, calça, capa, acessório | **1** (não agrupa) | uma instância por slot |
+
+**Estado real do catálogo** (`item_catalog`, medido em 2026-11-10):
+
+| Medida | Valor |
+|---|---|
+| `stackable = true` | **368** (ammo 12, cash 97, consumable 62, container 38, material 95, quest 64) |
+| `stackable = false` | **1.320** (weapon 371, armor 360, boots 194, gloves 179, helmet 117, accessory 46, cloak 25, shield 22, cosmetic 6) |
+| `stackable` nulo | **1.532** — e **todas** essas linhas também estão sem `kind` |
+| linhas com `EF_AMOUNT` no `fields` | **94** |
+
+As 1.532 sem `kind` **misturam três coisas**: ruído (índices 1/6/7/8/9 com nome de classe,
+`TransKnight`/`Foema`), **item real não classificado** (`416 Antídoto`, `419 Resto_de_Oriharucon`,
+`4141 Lactolerium_100`) e placeholder (`not_used`). Separar os três é a primeira tarefa da
+FASE-03-12 — sem isso, a regra "sem classificação ⇒ teto 1" transformaria poeira real em item não
+empilhável.
+
+Duas consequências para o código, medidas agora:
+
+1. **`ItemRules::max_stack` de produção existe agora** (`inventory::StackCaps`: aglutinável = 120,
+   resto = 1, conteúdo de pack em mapa separado), com testes. Falta **alimentá-la do banco**: a
+   consulta `item_stack_caps` precisa ler `fields` como **array** (`fields ? 'EF_AMOUNT'` funciona,
+   `->>` devolve NULL em todas as linhas) — item 3 da FASE-03-12.
+2. **`EF_AMOUNT` é conteúdo de pack, não teto.** O legado multiplica o preço pelo `EF_AMOUNT`
+   com o comentário *"itens no pack"*; no catálogo os 94 valores são 5 (37×), 10 (24×), 20 (12×),
+   100 (15×), 1 (3×) e 120 (3×) — kits, pacotes e restos ".x N". Em poção, `effects[0]` é a **cura**
+   (50/200/300): derivar pilha daí seria errado por dois motivos independentes.
+
+### Bags / expansão de inventário
+
+`BAG_SLOTS` = 64 fixos (`Carry[64]` do legado): 64 é o **tamanho do array no fio**, não limite de
+jogo. Servidores que vendem expansão usam a "Bolsa do Andarilho" (item de conveniência); o WYD
+Brazuca declara "inventário LIVRE (não temos bolsa do andarilho)". **UNVERIFIED:** como o 7662
+representa slot extra — o `STRUCT_MOB` tem 64 posições de `Carry`, então expansão provavelmente é
+convenção de servidor sobre o mesmo array, não campo novo. Nada de código hoje aceita slot > 63.

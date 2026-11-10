@@ -20,6 +20,19 @@ pub struct CatalogItemRow {
     pub name: String,
 }
 
+/// Teto de pilha e conteúdo de pack de um item (view `item_stack_cap`, migration `0039`).
+///
+/// `cap` já vem decidido (120 para aglutinável, 1 para o resto); `contained` é o `EF_AMOUNT`
+/// do template — **quantas unidades o pack carrega**, nunca o teto de pilha.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StackCapRow {
+    pub item_index: u32,
+    pub cap: u32,
+    pub contained: Option<u32>,
+    /// Por que este item tem este teto (`catalogo:aglutinavel`, `legado:ef_amount`, …).
+    pub source: String,
+}
+
 /// Foto do catálogo servida pelo gateway (`item_catalog/list_items`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogSnapshot {
@@ -104,6 +117,44 @@ impl PgBackend {
             });
         }
         Ok(CatalogSnapshot { version, items })
+    }
+
+    /// Lê o teto de pilha por item da view `item_stack_cap` (migration `0039`).
+    ///
+    /// A view deriva o teto do catálogo e da classificação (`item_bucket`), então um item novo
+    /// entra no teto sem migração de dado. `item_catalog.fields` é **array plano**, não objeto:
+    /// `fields->>'EF_AMOUNT'` devolve NULL em toda linha, e a view extrai pelo par
+    /// rótulo→valor (`EF_AMOUNT` seguido do valor).
+    ///
+    /// Falha vira `Transport { op }` sem SQL nem DSN na mensagem, como as demais leituras.
+    pub async fn item_stack_caps(&self) -> Result<Vec<StackCapRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT item_index, cap, contained, source FROM item_stack_cap ORDER BY item_index",
+        )
+        .fetch_all(self.pool())
+        .await
+        .map_err(|_| DbError::Transport {
+            op: "catalog.stack_caps",
+        })?;
+
+        let mut caps = Vec::with_capacity(rows.len());
+        for row in &rows {
+            use sqlx::Row;
+            caps.push(StackCapRow {
+                item_index: row
+                    .try_get::<i32, _>("item_index")
+                    .unwrap_or_default()
+                    .max(0) as u32,
+                cap: row.try_get::<i32, _>("cap").unwrap_or_default().max(1) as u32,
+                contained: row
+                    .try_get::<Option<i32>, _>("contained")
+                    .ok()
+                    .flatten()
+                    .map(|v| v.max(0) as u32),
+                source: row.try_get("source").unwrap_or_default(),
+            });
+        }
+        Ok(caps)
     }
 }
 
