@@ -543,7 +543,43 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("drop_admin", "upsert_drop_rate") => self.config_set_drop(session, &params, trace),
             ("drop_admin", "reset_drop_rate") => self.config_reset_drop(session, &params, trace),
             ("npc_admin", "get_npc") => self.config_npc(session, &params, trace),
+            ("npc_admin", "list_npcs") => self.config_npc_page(session, &params, trace),
             ("npc_admin", "upsert_npc") => self.config_set_npc(session, &params, trace),
+            ("mob_admin", "list_mob_templates") => {
+                self.config_mob_templates(session, &params, trace)
+            }
+            ("item_effect_admin", "list_effects") => self.config_effects(session, &params, trace),
+            ("daily_reward_admin", "list_reward_items") => {
+                self.config_daily_list(session, &params, trace)
+            }
+            ("daily_reward_admin", "upsert_reward_item") => {
+                self.config_daily_upsert(session, &params, trace)
+            }
+            ("daily_reward_admin", "delete_reward_item") => {
+                self.config_daily_delete(session, &params, trace)
+            }
+            ("donate_admin", "list_shop_items") => self.config_donate_list(session, &params, trace),
+            ("donate_admin", "upsert_shop_item") => {
+                self.config_donate_upsert(session, &params, trace)
+            }
+            ("donate_admin", "set_shop_item_enabled") => {
+                self.config_donate_enabled(session, &params, trace)
+            }
+            ("donate_admin", "delete_shop_item") => {
+                self.config_donate_delete(session, &params, trace)
+            }
+            ("donate_admin", "credit_donate_balance") => {
+                self.config_donate_credit(session, &params, trace)
+            }
+            ("world_event_admin", "get_world_event_config") => {
+                self.config_event_get(session, trace)
+            }
+            ("world_event_admin", "set_world_event_config") => {
+                self.config_event_set(session, &params, trace)
+            }
+            ("account_admin", "list_accounts") => self.config_account_list(session, &params, trace),
+            ("account_admin", "get_account") => self.config_account_get(session, &params, trace),
+            ("character_admin", "grant_item") => self.character_grant_item(session, &params, trace),
             ("teleport_admin", "list_routes") => self.config_routes(session, &params, trace),
             ("teleport_admin", "upsert_route") => self.config_set_route(session, &params, trace),
             ("teleport_admin", "set_route_enabled") => {
@@ -934,6 +970,454 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
                 &format!(",\"npc\":{}", crate::api::npc::npc_json(&npc)),
             ),
             Ok(None) => Reply::business(trace, RESULT_NOT_FOUND, "NPC não encontrado"),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `npc_admin/list_npcs` — NPCs em páginas por id (só leitura).
+    fn config_npc_page(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after_id = params
+            .get("after_id")
+            .and_then(json::Json::as_i64)
+            .and_then(|id| i32::try_from(id).ok());
+        match crate::api::npc::list_npcs(
+            Some(session),
+            limit,
+            after_id,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"npcs\":{}", crate::api::npcs_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `mob_admin/list_mob_templates` — templates de mob em páginas por nome (só leitura).
+    fn config_mob_templates(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after = params.get("after").and_then(json::Json::as_str);
+        match crate::api::mob::list_mob_templates(
+            Some(session),
+            limit,
+            after,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(
+                    ",\"mob_templates\":{}",
+                    crate::api::mob_templates_json(&rows)
+                ),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `item_effect_admin/list_effects` — efeitos de item em páginas por nome (só leitura).
+    fn config_effects(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after = params.get("after").and_then(json::Json::as_str);
+        match crate::api::item_effect::list_effects(
+            Some(session),
+            limit,
+            after,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"effects\":{}", crate::api::effects_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `daily_reward_admin/list_reward_items` — recompensas em páginas por id.
+    fn config_daily_list(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after_id = params
+            .get("after_id")
+            .and_then(json::Json::as_i64)
+            .and_then(|id| i32::try_from(id).ok());
+        match crate::api::daily::list_rewards(
+            Some(session),
+            limit,
+            after_id,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"rewards\":{}", crate::api::daily::rewards_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `daily_reward_admin/upsert_reward_item` — cria ou substitui recompensa.
+    fn config_daily_upsert(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let edit = crate::api::DailyEdit {
+            id: params
+                .get("id")
+                .and_then(json::Json::as_i64)
+                .and_then(|id| i32::try_from(id).ok()),
+            day: params
+                .get("day")
+                .and_then(json::Json::as_i64)
+                .and_then(|day| i16::try_from(day).ok()),
+            item_index: params
+                .get("item_index")
+                .and_then(json::Json::as_i64)
+                .and_then(|item| i32::try_from(item).ok()),
+            gold: params.get("gold").and_then(json::Json::as_i64).unwrap_or(0),
+            qty: params
+                .get("qty")
+                .and_then(json::Json::as_i64)
+                .and_then(|qty| i16::try_from(qty).ok())
+                .unwrap_or(1),
+            account_wide: params
+                .get("account_wide")
+                .and_then(json::Json::as_bool)
+                .unwrap_or(true),
+        };
+        match crate::api::daily::upsert_reward(Some(session), &edit, store.as_ref(), &self.audit) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `daily_reward_admin/delete_reward_item` — remove recompensa.
+    fn config_daily_delete(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let Some(id) = params
+            .get("id")
+            .and_then(json::Json::as_i64)
+            .and_then(|id| i32::try_from(id).ok())
+        else {
+            return Reply::business(trace, RESULT_INVALID, "campo id obrigatório");
+        };
+        match crate::api::daily::delete_reward(Some(session), id, store.as_ref(), &self.audit) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/list_shop_items` — vitrine em páginas por id.
+    fn config_donate_list(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after_id = params
+            .get("after_id")
+            .and_then(json::Json::as_i64)
+            .and_then(|id| i32::try_from(id).ok());
+        match crate::api::donate::list_shop_items(
+            Some(session),
+            limit,
+            after_id,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(
+                    ",\"shop_items\":{}",
+                    crate::api::donate::shop_items_json(&rows)
+                ),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/upsert_shop_item` — cria ou substitui item da vitrine.
+    fn config_donate_upsert(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(item_index), Some(price_credits)) = (
+            params
+                .get("item_index")
+                .and_then(json::Json::as_i64)
+                .and_then(|item| i32::try_from(item).ok()),
+            params
+                .get("price_credits")
+                .and_then(json::Json::as_i64)
+                .and_then(|preco| i32::try_from(preco).ok()),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "item_index e price_credits obrigatórios",
+            );
+        };
+        let edit = crate::api::DonateEdit {
+            id: params
+                .get("id")
+                .and_then(json::Json::as_i64)
+                .and_then(|id| i32::try_from(id).ok()),
+            item_index,
+            price_credits,
+            duration_days: params
+                .get("duration_days")
+                .and_then(json::Json::as_i64)
+                .and_then(|d| i16::try_from(d).ok()),
+            enabled: params
+                .get("enabled")
+                .and_then(json::Json::as_bool)
+                .unwrap_or(true),
+        };
+        match crate::api::donate::upsert_shop_item(
+            Some(session),
+            &edit,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/set_shop_item_enabled` — liga/desliga item da vitrine.
+    fn config_donate_enabled(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(id), Some(enabled)) = (
+            params
+                .get("id")
+                .and_then(json::Json::as_i64)
+                .and_then(|id| i32::try_from(id).ok()),
+            params.get("enabled").and_then(json::Json::as_bool),
+        ) else {
+            return Reply::business(trace, RESULT_INVALID, "id e enabled obrigatórios");
+        };
+        match crate::api::donate::set_shop_item_enabled(
+            Some(session),
+            id,
+            enabled,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/delete_shop_item` — remove item da vitrine.
+    fn config_donate_delete(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let Some(id) = params
+            .get("id")
+            .and_then(json::Json::as_i64)
+            .and_then(|id| i32::try_from(id).ok())
+        else {
+            return Reply::business(trace, RESULT_INVALID, "campo id obrigatório");
+        };
+        match crate::api::donate::delete_shop_item(Some(session), id, store.as_ref(), &self.audit) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/credit_donate_balance` — credita saldo na conta, idempotente.
+    fn config_donate_credit(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(account_id), Some(credits), Some(key)) = (
+            params.get("account_id").and_then(json::Json::as_i64),
+            params.get("credits").and_then(json::Json::as_i64),
+            params.get("idempotency_key").and_then(json::Json::as_str),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "account_id, credits e idempotency_key obrigatórios",
+            );
+        };
+        match crate::api::donate::credit_balance(
+            Some(session),
+            account_id,
+            credits,
+            key,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(receipt) => {
+                let key = json::quote(&receipt.idempotency_key);
+                Reply::ok(
+                    trace,
+                    &format!(
+                        ",\"idempotency_key\":{key},\"credit_id\":{},\"replay\":{}",
+                        receipt.credit_id, receipt.replay
+                    ),
+                )
+            }
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `world_event_admin/get_world_event_config` — eventos com horários.
+    fn config_event_get(&self, session: Session, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        match crate::api::event::get_config(Some(session), store.as_ref(), &self.audit) {
+            Ok(full) => Reply::ok(
+                trace,
+                &format!(",\"events\":{}", crate::api::event_config_json(&full)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `world_event_admin/set_world_event_config` — liga/desliga um evento.
+    fn config_event_set(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(code), Some(enabled)) = (
+            params.get("code").and_then(json::Json::as_str),
+            params.get("enabled").and_then(json::Json::as_bool),
+        ) else {
+            return Reply::business(trace, RESULT_INVALID, "code e enabled obrigatórios");
+        };
+        match crate::api::event::set_enabled(
+            Some(session),
+            code,
+            enabled,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `account_admin/list_accounts` — contas em páginas por id, sem segredo.
+    fn config_account_list(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let after_id = params.get("after_id").and_then(json::Json::as_i64);
+        match crate::api::accounts::list_accounts(
+            Some(session),
+            limit,
+            after_id,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(
+                    ",\"accounts\":{}",
+                    crate::api::accounts::accounts_json(&rows)
+                ),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `account_admin/get_account` — uma conta por id, sem segredo.
+    fn config_account_get(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let Some(id) = params.get("id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo id obrigatório");
+        };
+        match crate::api::accounts::get_account(Some(session), id, store.as_ref(), &self.audit) {
+            Ok(Some(account)) => Reply::ok(
+                trace,
+                &format!(
+                    ",\"account\":{}",
+                    crate::api::accounts::account_json(&account)
+                ),
+            ),
+            Ok(None) => Reply::business(trace, RESULT_NOT_FOUND, "conta não encontrada"),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `character_admin/grant_item` — enfileira item na `delivery_queue` (fila, não mutação).
+    ///
+    /// O `kind` é sempre item: ouro/nível continuam em `grants/request`. A entrega acontece
+    /// no dreno do servidor (`claim_item` → slot livre de `Carry`); mochila cheia deixa a
+    /// linha pendente, nunca duplica nem perde.
+    fn character_grant_item(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let (Some(key), Some(character_id), Some(item_id), Some(qty)) = (
+            params.get("idempotency_key").and_then(json::Json::as_str),
+            params.get("character_id").and_then(json::Json::as_i64),
+            params.get("item_id").and_then(json::Json::as_i64),
+            params.get("qty").and_then(json::Json::as_i64),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "idempotency_key, character_id, item_id e qty obrigatórios",
+            );
+        };
+        let request = crate::api::GrantRequest {
+            idempotency_key: key.to_string(),
+            character_id,
+            kind: crate::api::GrantKind::Item { item_id, qty },
+        };
+        match crate::api::request_grant(Some(session), request, &self.grants, &self.audit) {
+            Ok(receipt) => {
+                let key = json::quote(&receipt.idempotency_key);
+                let grant_id = receipt.grant_id;
+                let replay = receipt.replay;
+                Reply::ok(
+                    trace,
+                    &format!(
+                        ",\"idempotency_key\":{key},\"grant_id\":{grant_id},\"replay\":{replay}"
+                    ),
+                )
+            }
             Err(error) => Reply::from_error(trace, &error),
         }
     }

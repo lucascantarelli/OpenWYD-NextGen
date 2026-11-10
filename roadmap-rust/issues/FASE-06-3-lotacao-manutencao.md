@@ -64,19 +64,35 @@ métrica de recusa incrementa.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
+- [x] Codificar issue
+- [x] Testar issue
+- [x] Revisar issue
+- [x] Documentar issue
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Lotação conta sessão viva, não conexão TCP.
-- [ ] Manutenção recusa entrada nova e preserva sessão em andamento.
-- [ ] Recusa é observável (log estruturado + métrica declarada).
-- [ ] Nenhum teste depende de `sleep` arbitrário.
+- [x] Lotação conta sessão viva, não conexão TCP.
+- [x] Manutenção recusa entrada nova e preserva sessão em andamento.
+- [x] Recusa é observável (log estruturado + métrica declarada).
+- [x] Nenhum teste depende de `sleep` arbitrário.
+
+## Evidência (2026-11-10)
+
+- Implementação: `0040_capacidade_canal.sql` (tabela + seed 1000 por canal 1–10,
+  a série proíbe `ALTER TABLE` no `up`), `ChannelCapacity` + `Sessions::channel_capacity`
+  (`wyd-db`, com `FakeSessions` permissivo), `ChannelPolicy`/`PolicyOverrides` +
+  gates em `SessionGate::claim` (`wyd-server/src/session.rs`), motivos
+  `canal_lotado`/`manutencao` no `cpsock` e em `wyd-net/src/metrics.rs`, env
+  `WYD_SERVER_MAX_PLAYERS`/`WYD_SERVER_MAINTENANCE` (vazio = banco) com aviso de boot
+  quando o teto < 10, `maintenance` no `/health` (`serv00.htm` mantém os números do
+  contrato `sscanf`), env nos dois composes do canal.
+- `cargo test -p wyd-server --test lotacao`: 5/5 ok (seed 1000, teto 1 recusa a 2ª e
+  libera ao sair, manutenção recusa sem derrubar a viva, env, métricas).
+- Gates: `cargo fmt --check` 0 · `cargo clippy -D warnings` 0 ·
+  `cargo test --workspace --all-targets` 0 · `check-migrations` ok (40/81) ·
+  `check-issue-status` ok.
 
 ## Riscos / rollback
 

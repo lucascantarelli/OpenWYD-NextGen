@@ -245,6 +245,43 @@ pub fn powder_roll_succeeds(rate_bps: u16, roll: u8) -> bool {
     rate_bps != 0 && u16::from(roll) * 100 <= rate_bps
 }
 
+/// Efeito que carrega nível + piedade/gema no `STRUCT_ITEM` (`ItemEffect.h:100`).
+///
+/// É o par que o cliente lê para desenhar o `+N`: o `SendItem` do refino o carrega
+/// com o `cValue` de [`encode_sanc_cvalue`], nunca um texto.
+pub const EF_SANC: u8 = 43;
+
+/// Base do `cValue` de item +10 (`gemBase`, `Basedef.cpp:2294-2308`).
+///
+/// Cada nível acima de +10 ocupa 4 valores, um por índice de gema (0..=3).
+pub const SANC_GEM_BASE: u8 = 230;
+
+/// Empacota nível + auxiliar no `cValue` do par EF_SANC (`BASE_SetItemSanc`).
+///
+/// Abaixo de +10, `cValue = nível + 10×piedade` (piedade 0..=20); de +10 em diante,
+/// `cValue = 230 + (nível−10)×4 + gema` (gema 0..=3). O caminho de pó zera a piedade
+/// no sucesso e só a acumula na falha qualificada, então o `aux` aqui é piedade
+/// (< +10) ou índice de gema (10+); o refino de pó nunca minta gema, sempre 0.
+///
+/// Fora de 0..=15 o nível satura nos extremos em vez de zerar como o legado (o `encode`
+/// do legado com nível inválido apaga o item para +0 — aqui quem chama já validou contra
+/// [`REFINE_MAX`], então saturar é só defesa, nunca comportamento).
+#[must_use]
+pub fn encode_sanc_cvalue(level: u8, aux: u8) -> u8 {
+    let level = if level > REFINE_MAX {
+        REFINE_MAX
+    } else {
+        level
+    };
+    if level >= 10 {
+        let gem = if aux > 3 { 3 } else { aux };
+        SANC_GEM_BASE + (level - 10) * 4 + gem
+    } else {
+        let pity = if aux > PITY_MAX { PITY_MAX } else { aux };
+        level + pity * 10
+    }
+}
+
 /// O que acontece com o item quando o refino com pó falha.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowderFailure {
@@ -595,6 +632,29 @@ mod tests {
         assert!(pity_weight(0) == Some(5));
         assert_eq!(pity_weight(9), Some(0));
         assert_eq!(pity_weight(10), None);
+    }
+
+    #[test]
+    fn sanc_cvalue_packs_level_plus_ten_times_pity() {
+        // Abaixo de +10: cValue = nível + 10×piedade (golden do empacotamento).
+        assert_eq!(encode_sanc_cvalue(0, 0), 0);
+        assert_eq!(encode_sanc_cvalue(5, 0), 5);
+        assert_eq!(encode_sanc_cvalue(5, 3), 35);
+        assert_eq!(encode_sanc_cvalue(9, 20), 209);
+        assert_eq!(encode_sanc_cvalue(0, 20), 200);
+        // Piedade acima do teto satura, nunca estoura o byte.
+        assert_eq!(encode_sanc_cvalue(9, 255), 209);
+    }
+
+    #[test]
+    fn sanc_cvalue_gem_form_above_nine() {
+        // +10 em diante: 230 + (nível−10)×4 + gema (gema sempre 0 no pó).
+        assert_eq!(encode_sanc_cvalue(10, 0), 230);
+        assert_eq!(encode_sanc_cvalue(10, 2), 232);
+        assert_eq!(encode_sanc_cvalue(11, 0), 234);
+        assert_eq!(encode_sanc_cvalue(15, 0), 250);
+        assert_eq!(encode_sanc_cvalue(15, 3), 253);
+        assert_eq!(encode_sanc_cvalue(12, 9), 241, "gema satura em 3");
     }
 
     #[test]

@@ -15,9 +15,14 @@ pub mod sessions;
 pub use accounts::{Accounts, CredentialRecord};
 pub use audit::{AuditRow, AuditTrail, NewAuditEntry};
 pub use characters::Characters;
-pub use config::{AccessoryRuleRow, ConfigRateRow, DropConfigRow, NpcConfigRow, RouteConfigRow};
+pub use config::{
+    AccessoryRuleRow, AccountListRow, ConfigRateRow, DailyRewardEdit, DailyRewardRow,
+    DonateItemRow, DropConfigRow, EffectRow, EventScheduleRow, MobTemplateRow, NpcConfigRow,
+    NpcListRow, RouteConfigRow, WorldEventRow,
+};
 pub use content::{
-    CatalogItemRow, CatalogSnapshot, ServerChannel, SkillRule, SkillRules, StackCapRow,
+    CatalogItemRow, CatalogSnapshot, ChannelCapacity, ChannelRole, ServerChannel, SkillRule,
+    SkillRules, StackCapRow,
 };
 pub use economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 pub use grants::{Grant, Grants, QueuedGrantRow};

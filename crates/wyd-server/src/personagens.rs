@@ -32,6 +32,7 @@
 //! origem de cada campo está em `docs/wyd/classes.md` §1.
 
 use wyd_db::{Character, ItemRow, CARRY_FIRST_SLOT};
+use wyd_sim::formula::refine::{encode_sanc_cvalue, EF_SANC};
 
 /// `sizeof(STRUCT_SCORE)`.
 pub const SCORE_LEN: usize = 48;
@@ -302,9 +303,21 @@ impl Item {
     /// uma unidade — é o `3d 78` (amount 120) que o `BaseMob` traz no 401/406. O kill mark
     /// recebe os três efeitos fixos que o legado grava em `Carry[KILL_MARK]`. Equipamento
     /// sem refino/anct/gema não tem efeito no fio: no `BaseMob`, `Equip[1..6]` só tem
-    /// `sIndex`, e refino/Ancient/gema continuam estado da linha (FASE-10 codifica no fio).
+    /// `sIndex`; Ancient/gema continuam estado da linha (FASE-10 codifica no fio).
     #[must_use]
     pub fn from_row(row: &ItemRow) -> Self {
+        Self::from_row_with_pity(row, 0)
+    }
+
+    /// `STRUCT_ITEM` com o par EF_SANC do refino (`FASE-03-16`).
+    ///
+    /// O legado empacota nível + piedade no próprio item
+    /// (`cValue = nível + 10×piedade`, `Basedef.cpp:2282`); o par entra no primeiro slot
+    /// livre ou que já seja sanc (regra do `Bootstrap`, `_MSG_UseItem.cpp:814-840`), sem
+    /// deslocar `EF_AMOUNT`. Nível 0 sem piedade não escreve par — o fio fica idêntico ao
+    /// de [`Self::from_row`]. `gem` é sempre 0 no caminho de pó (nunca se minta gema).
+    #[must_use]
+    pub fn from_row_with_pity(row: &ItemRow, pity: u8) -> Self {
         let index = i16::try_from(row.item_id).unwrap_or(0);
         if index == 0 {
             return Self::default();
@@ -319,7 +332,7 @@ impl Item {
                 ],
             };
         }
-        let effects = if row.qty > 1 {
+        let mut effects = if row.qty > 1 {
             [
                 [EF_AMOUNT, u8::try_from(row.qty).unwrap_or(u8::MAX)],
                 [0, 0],
@@ -328,6 +341,16 @@ impl Item {
         } else {
             [[0, 0], [0, 0], [0, 0]]
         };
+        let level = row.refine.clamp(0, 15) as u8;
+        if level > 0 || pity > 0 {
+            let par = [EF_SANC, encode_sanc_cvalue(level, pity)];
+            if let Some(livre) = effects
+                .iter()
+                .position(|slot| *slot == [0, 0] || slot[0] == EF_SANC)
+            {
+                effects[livre] = par;
+            }
+        }
         Self { index, effects }
     }
 
@@ -349,6 +372,14 @@ impl Item {
             out[base] = par[0];
             out[base + 1] = par[1];
         }
+    }
+
+    /// Os 8 bytes do `STRUCT_ITEM` no fio (`sIndex` + 3 pares).
+    #[must_use]
+    pub fn to_bytes(self) -> [u8; ITEM_LEN] {
+        let mut out = [0u8; ITEM_LEN];
+        self.encode_into(&mut out);
+        out
     }
 }
 
@@ -1305,5 +1336,45 @@ mod tests {
         assert!(base_mob(4).is_none());
         let mob = template_mob(9);
         assert_eq!(mob, Mob::default(), "BASE_ClearMob, nunca valor inventado");
+    }
+
+    fn linha(item_id: i64, refine: i64, qty: i64) -> ItemRow {
+        ItemRow {
+            slot: 16,
+            item_id,
+            qty,
+            refine,
+            ..ItemRow::default()
+        }
+    }
+
+    #[test]
+    fn item_sem_refino_nem_piedade_nao_tem_par_sanc() {
+        let item = Item::from_row_with_pity(&linha(3_367, 0, 1), 0);
+        assert_eq!(item.effects, [[0, 0], [0, 0], [0, 0]]);
+        assert_eq!(
+            item,
+            Item::from_row(&linha(3_367, 0, 1)),
+            "fio idêntico ao antigo"
+        );
+    }
+
+    #[test]
+    fn item_refinado_carrega_sanc_com_piedade() {
+        // +7 com 3 de piedade: cValue = 7 + 30 = 37 no primeiro slot.
+        let item = Item::from_row_with_pity(&linha(3_367, 7, 1), 3);
+        assert_eq!(item.effects[0], [EF_SANC, 37]);
+        assert_eq!(item.to_bytes()[2..4], [EF_SANC, 37]);
+    }
+
+    #[test]
+    fn sanc_nao_desloca_amount_e_item_mais_dez_usa_gema_zero() {
+        // Pilha com EF_AMOUNT: o par sanc vai para o primeiro slot livre.
+        let item = Item::from_row_with_pity(&linha(3_367, 4, 5), 2);
+        assert_eq!(item.effects[0][0], EF_AMOUNT, "amount fica no slot 0");
+        assert_eq!(item.effects[1], [EF_SANC, 24], "+4 com 2 de piedade");
+        // +11 do pó: 230 + 4 + gema 0.
+        let onze = Item::from_row_with_pity(&linha(3_367, 11, 1), 0);
+        assert_eq!(onze.effects[0], [EF_SANC, 234]);
     }
 }

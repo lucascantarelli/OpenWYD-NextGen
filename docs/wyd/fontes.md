@@ -26,6 +26,7 @@ para servidor e até entre patches do mesmo servidor.
 |---|---|---|---|
 | `feedback.kersef.com` (WYD Global / RaidHut, PT-BR e EN) | **A/B** | sistemas completos: refino, repleção, god, skills 9–12, Arch, guild, guerra de reinos, Pista de Runas, mapa de Armia com coordenadas | artigos PT e EN do **mesmo** sistema às vezes divergem no custo (ex.: +10 com 30 Lac+5kk vs Pedra do Sábio+50kk) — são versões de servidor diferentes |
 | `wydglobal.raidhut.com` (notícias/eventos) | **B** | eventos sazonais, tabelas de recompensa, NPCs com coordenada, missões numeradas | é o servidor **atual**; muita coisa não existe no 7662 |
+| `wyd.ongame.com.br` via Wayback Machine (Guia Básico/Intermediário/Avançado, ~2010–2012) | **A** | mecânica da era 7.x: grupo/XP, skills, guilda, cidadania, refino +1~+11, replation, ancient, montaria, chat, C.C. | número é de época; confrontar com o cliente 7662 antes de virar regra — detalhe em `ongame-guia.md` |
 | `droplist.raidhut.com` | **B** | **drop list pesquisável por mapa, monstro e item**, com nomes em PT-BR | reflete o balanceamento atual do Global |
 | `en.wikipedia.org/wiki/With_Your_Destiny` | **A** (visão geral) | lore, reinos, modos de guerra, 1000 jogadores, 1500 níveis | rasíssimo em mecânica; não cite para número |
 

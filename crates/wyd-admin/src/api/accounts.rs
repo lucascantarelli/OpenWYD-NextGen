@@ -4,12 +4,18 @@
 //! auditoria com autor. Troca de papel/bloqueio exigem métodos de escrita no
 //! repo `pg` (04-3) + coluna de bloqueio — documentados como pendência, não
 //! improvisados aqui.
+//!
+//! Listagem e detalhe (`list_accounts`/`get_account`, FASE-07-6) devolvem o mesmo
+//! `AccountSummary` da busca: id, login e papel — nunca hash, PIN ou segredo.
 
-use wyd_db::{Account, Accounts, Role};
+use wyd_db::{Account, AccountListRow, Accounts, Role};
 
 use crate::audit::{log_action, log_denied, AuditSink};
 use crate::auth::{may_change_role, Session, StaffSession};
 use crate::error::AdminError;
+use crate::transport::json;
+
+use super::rates::ConfigStore;
 
 /// Resumo devolvido ao BFF (sem hash, sem segredo).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +96,80 @@ pub async fn create_account(
         &format!("papel {}", role.as_db()),
     );
     Ok(account.into())
+}
+
+/// Teto de contas por leitura.
+pub const MAX_LIMIT: i64 = 200;
+
+impl From<AccountListRow> for AccountSummary {
+    fn from(row: AccountListRow) -> Self {
+        let role = match row.role.as_str() {
+            "moderator" => Role::Moderator,
+            "admin" => Role::Admin,
+            _ => Role::Player,
+        };
+        Self {
+            id: row.id,
+            login: row.login,
+            role,
+        }
+    }
+}
+
+/// Lista contas em páginas por id, sem segredo (só leitura, sem auditoria de leitura).
+pub fn list_accounts(
+    session: Option<Session>,
+    limit: i64,
+    after_id: Option<i64>,
+    store: &dyn ConfigStore,
+    sink: &impl AuditSink,
+) -> Result<Vec<AccountSummary>, AdminError> {
+    let _staff = staff_or_deny(session, sink, "config.accounts")?;
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(AdminError::InvalidInput {
+            reason: "limite de contas fora da faixa",
+        });
+    }
+    if after_id.is_some_and(|id| id < 0) {
+        return Err(AdminError::InvalidInput {
+            reason: "cursor de conta inválido",
+        });
+    }
+    store.accounts(limit, after_id)
+}
+
+/// Uma conta por id, sem segredo.
+pub fn get_account(
+    session: Option<Session>,
+    id: i64,
+    store: &dyn ConfigStore,
+    sink: &impl AuditSink,
+) -> Result<Option<AccountSummary>, AdminError> {
+    let _staff = staff_or_deny(session, sink, "config.account")?;
+    if id <= 0 {
+        return Err(AdminError::InvalidInput {
+            reason: "conta inválida",
+        });
+    }
+    store.account(id)
+}
+
+/// JSON de uma conta (sem segredo).
+#[must_use]
+pub fn account_json(account: &AccountSummary) -> String {
+    format!(
+        "{{\"id\":{},\"login\":{},\"role\":{}}}",
+        account.id,
+        json::quote(&account.login),
+        json::quote(account.role.as_db())
+    )
+}
+
+/// Lista JSON de contas.
+#[must_use]
+pub fn accounts_json(rows: &[AccountSummary]) -> String {
+    let itens: Vec<String> = rows.iter().map(account_json).collect();
+    format!("[{}]", itens.join(","))
 }
 
 #[cfg(test)]

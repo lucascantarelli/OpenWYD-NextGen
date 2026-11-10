@@ -80,11 +80,20 @@ fn segunda_conexao_do_mesmo_ip_e_recusada_e_volta_ao_sair() {
         .write_all(&INITCODE.to_le_bytes())
         .expect("initcode");
     drop(primeira);
-    // Sem a primeira, a vaga volta e uma nova conexão não é recusada.
-    let mut terceira = conecta(porta);
-    let mut buffer = [0u8; 1];
-    if let Ok(0) = terceira.read(&mut buffer) {
-        panic!("vaga não voltou após a primeira conexão sair");
-    }
+    // Sem a primeira, a vaga volta e uma nova conexão não é recusada. A liberação acontece na
+    // thread do accept (depois do EOF), então a espera é **observada** com prazo: recusar de
+    // novo não é erro — continuar recusando depois do prazo é.
+    let limite = std::time::Instant::now() + Duration::from_secs(5);
+    let mut terceira = loop {
+        let mut tentativa = conecta(porta);
+        if !recusada(&mut tentativa) {
+            break tentativa;
+        }
+        assert!(
+            std::time::Instant::now() < limite,
+            "vaga não voltou após a primeira conexão sair"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    };
     let _ = terceira.write_all(&INITCODE.to_le_bytes());
 }

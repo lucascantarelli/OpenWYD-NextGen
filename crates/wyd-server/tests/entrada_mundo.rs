@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use wyd_core::Metrics;
 use wyd_db::{Accounts, Character, Characters, PgBackend, PoolConfig, Role, SavePolicy, SaveQueue};
-use wyd_server::world::{Engine, EngineThread, SaveQueueSink, SaveSink};
+use wyd_server::world::{ActorSkin, Engine, EngineThread, SaveQueueSink, SaveSink};
 
 fn dsn() -> Option<String> {
     let valor = ["WYD_TEST_DATABASE_URL", "DATABASE_URL"]
@@ -84,14 +84,25 @@ fn entrar_e_sair_salva_posicao_e_vitais_no_banco() {
     let engine = Engine::new(20, Arc::clone(&metrics)).expect("motor");
     let (mut tick, handle) = EngineThread::spawn(engine, 10).expect("thread do tick");
 
-    let entity = handle.enter(&personagem).expect("entrada no mundo");
+    let skin = ActorSkin {
+        name: {
+            let mut nome = [0u8; 16];
+            nome[..7].copy_from_slice(b"Teste01");
+            nome
+        },
+        equip: [0; 16],
+        guild: 0,
+        attack_run: 82,
+        direction: 0,
+    };
+    let entity = handle.enter(&personagem, &skin).expect("entrada no mundo");
     let vivos = handle.snapshots();
     assert_eq!(vivos.len(), 1, "uma entidade viva");
     assert_eq!(vivos[0].character_id, personagem.id);
     assert_eq!((vivos[0].x, vivos[0].y), (640, 480), "posição do banco");
 
     // Duplicado no mesmo processo é recusa tipada, sem segunda entidade.
-    assert!(handle.enter(&personagem).is_err());
+    assert!(handle.enter(&personagem, &skin).is_err());
     assert_eq!(handle.snapshots().len(), 1);
 
     let estado = handle.leave(entity).expect("estado final");

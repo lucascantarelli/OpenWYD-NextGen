@@ -33,7 +33,7 @@ use wyd_sim::roll::XorShift64;
 use wyd_sim::{grant_exp, ExpTable, LevelState};
 
 use crate::config::LiveConfig;
-use crate::gameplay::{Gameplay, LootError, LootResolution, RefineUse, UseItemRolls};
+use crate::gameplay::{Gameplay, LootError, LootResolution, RefineUse, UseItemError, UseItemRolls};
 use crate::personagens::{kill_mark_row, template_items, template_mob, Mob};
 use crate::world::{EngineHandle, SaveSink};
 
@@ -285,6 +285,19 @@ impl SelectionStore {
         }
     }
 
+    /// Piedade persistida do slot de inventário (`refine_pity`, FASE-03-16).
+    ///
+    /// Slot fora do inventário persistido cai no `default` da porta (0): vale para o
+    /// mundo ligado e para o modo sem porta, que responde como antes.
+    fn pity_of(&self, character_id: i64, slot: i64) -> u8 {
+        if !(0..=127).contains(&slot) {
+            return 0;
+        }
+        self.runtime
+            .block_on(self.backend.refine_pity(character_id, slot))
+            .unwrap_or(0)
+    }
+
     /// Liga a seleção ao mundo do canal (sem porta, a seleção só responde como antes).
     #[must_use]
     pub fn with_world(mut self, handle: EngineHandle, saves: Arc<dyn SaveSink>) -> Self {
@@ -314,6 +327,8 @@ impl SelectionStore {
     ///
     /// A mutação acontece numa cópia; o banco é gravado antes de a sessão passar a ver o
     /// novo estado. Falha de banco devolve erro e deixa `selected.items` como estava.
+    /// FASE-03-16: a resolução recebe a piedade persistida do alvo, o catálogo veta
+    /// `EF_NOSANC` sem mutação e a piedade resultante é gravada junto com os itens.
     pub fn use_item(
         &self,
         selected: &mut Selected,
@@ -322,11 +337,41 @@ impl SelectionStore {
     ) -> Result<RefineUse, SelectionError> {
         let gameplay = self.gameplay.as_ref().ok_or(SelectionError::Unavailable)?;
         let mut items = selected.items.clone();
+        let alvo = items
+            .iter()
+            .find(|linha| linha.slot == i64::from(packet.dest_pos))
+            .ok_or(SelectionError::UseItem(
+                UseItemError::EmptyTarget {
+                    slot: i64::from(packet.dest_pos),
+                }
+                .to_string(),
+            ))?;
+        if self
+            .runtime
+            .block_on(
+                self.backend
+                    .item_has_effect(i32::try_from(alvo.item_id).unwrap_or(0), "EF_NOSANC"),
+            )
+            .map_err(map_db)?
+        {
+            return Err(SelectionError::UseItem(
+                UseItemError::BlockedByCatalog {
+                    item_index: alvo.item_id,
+                }
+                .to_string(),
+            ));
+        }
+        let slot_persistido = alvo.slot;
+        let pity = self.pity_of(selected.character.id, slot_persistido);
         let resultado = gameplay
-            .use_item(&mut items, packet, rolls)
+            .use_item(&mut items, packet, rolls, pity)
             .map_err(|error| SelectionError::UseItem(error.to_string()))?;
         self.runtime
-            .block_on(self.backend.replace_items(selected.character.id, &items))
+            .block_on(self.backend.replace_items(
+                selected.character.id,
+                &items,
+                &[(slot_persistido, resultado.resolution.next_pity)],
+            ))
             .map_err(map_db)?;
         selected.items = items;
         Ok(resultado)
@@ -357,6 +402,7 @@ impl SelectionStore {
         if !golpe.killed {
             return Ok(Some(AttackReport {
                 target_npc: golpe.target_npc,
+                target_scene: golpe.target_scene,
                 template: golpe.template,
                 damage: golpe.damage,
                 remaining_hp: golpe.remaining_hp,
@@ -372,12 +418,17 @@ impl SelectionStore {
         // O abate resolve o loot **agora**: tabela do template no snapshot vigente e os rolls
         // do `die` desta sessão. Sem resolvedor no processo (teste/legado) não há sorteio —
         // nunca um drop inventado.
+        // Cidadania (FASE-03-10): hoje ela é **derivada do canal** (não persistida, checklist
+        // 2.1), então quem está neste mundo é cidadão dele e o bônus de drop do canal vale. O
+        // parâmetro fica explícito para o dia em que `MobExtra.Citizen` for gravado: visitante
+        // de outro reino entra com `false` e cai na taxa do legado.
         let loot = self
             .gameplay
             .as_ref()
-            .map(|gameplay| gameplay.loot_at_death(&golpe.template, die));
+            .map(|gameplay| gameplay.loot_at_death(&golpe.template, die, true));
         Ok(Some(AttackReport {
             target_npc: golpe.target_npc,
+            target_scene: golpe.target_scene,
             template: golpe.template,
             damage: golpe.damage,
             remaining_hp: golpe.remaining_hp,
@@ -404,21 +455,26 @@ impl SelectionStore {
         Ok(bridge.handle.talk(entity, target_x, target_y))
     }
 
-    /// Cena de NPCs do mundo vivo (o que o cliente deve ver), com a geração do motor.
+    /// Cena do mundo vivo (NPCs + personagens), com a geração do motor.
     ///
     /// `None` = processo sem mundo (teste/legado): a sessão não emite `_MSG_CreateMob`.
     #[must_use]
-    pub fn npc_scene(&self) -> Option<crate::world::SceneSnapshot> {
-        self.world.as_ref().map(|bridge| bridge.handle.npcs())
+    pub fn scene(&self) -> Option<crate::world::SceneSnapshot> {
+        self.world.as_ref().map(|bridge| bridge.handle.scene())
     }
 
-    /// Encarna o personagem no mundo. `Ok(None)` = processo sem mundo (teste/legado).
-    pub fn enter_world(&self, character: &Character) -> Result<Option<Entity>, SelectionError> {
+    /// Encarna o personagem no mundo com a aparência do login. `Ok(None)` = processo sem
+    /// mundo (teste/legado).
+    pub fn enter_world(
+        &self,
+        character: &Character,
+        skin: &crate::world::ActorSkin,
+    ) -> Result<Option<Entity>, SelectionError> {
         match &self.world {
             None => Ok(None),
             Some(bridge) => bridge
                 .handle
-                .enter(character)
+                .enter(character, skin)
                 .map(Some)
                 .map_err(|error| SelectionError::World(error.to_string())),
         }
@@ -713,6 +769,8 @@ pub struct ExpGain {
 #[derive(Debug, Clone)]
 pub struct AttackReport {
     pub target_npc: i32,
+    /// Id do alvo na cena (`MobID`): é ele que vai no `_MSG_RemoveMob` de morte.
+    pub target_scene: u16,
     /// Template do alvo (chave da tabela de drop).
     pub template: String,
     pub damage: u32,

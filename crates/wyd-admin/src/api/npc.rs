@@ -12,6 +12,34 @@ use crate::transport::json;
 use super::accounts::staff_or_deny;
 use super::rates::{ConfigStore, NpcRow};
 
+/// Teto de NPCs por leitura (a definição tem 6.100 linhas; sem paginação o portal trava).
+pub const MAX_LIMIT: i64 = 200;
+
+/// Lista NPCs em páginas por id (só leitura, FASE-07-5).
+///
+/// Sem escrita em `audit_log`: leitura pura não é ação auditável (a negação de acesso
+/// continua auditada por `staff_or_deny`). `after_id` é o cursor (`None` = primeira página).
+pub fn list_npcs(
+    session: Option<Session>,
+    limit: i64,
+    after_id: Option<i32>,
+    store: &dyn ConfigStore,
+    sink: &impl AuditSink,
+) -> Result<Vec<NpcRow>, AdminError> {
+    let _staff = staff_or_deny(session, sink, "config.npcs")?;
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(AdminError::InvalidInput {
+            reason: "limite de NPCs fora da faixa",
+        });
+    }
+    if after_id.is_some_and(|id| id < 0) {
+        return Err(AdminError::InvalidInput {
+            reason: "cursor de NPC inválido",
+        });
+    }
+    store.npcs(limit, after_id)
+}
+
 /// Leitura de um NPC por id.
 pub fn get_npc(
     session: Option<Session>,
@@ -65,6 +93,13 @@ pub fn set_npc(
         &format!("map={map_id} x={pos_x} y={pos_y} enabled={enabled} (revisão {revision})"),
     );
     Ok(revision)
+}
+
+/// Lista JSON de NPCs.
+#[must_use]
+pub fn npcs_json(rows: &[NpcRow]) -> String {
+    let itens: Vec<String> = rows.iter().map(npc_json).collect();
+    format!("[{}]", itens.join(","))
 }
 
 /// JSON de um NPC.

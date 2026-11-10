@@ -18,6 +18,21 @@ wire_payload!(
     ]
 );
 
+// `_MSG_SendItem` (0x0182, S→C): atualiza um slot do inventário no cliente.
+// Corpo de 12 B (`inv_type`@12, `slot`@14, `STRUCT_ITEM`@16), frame de 24 B.
+// Layout provado em duas fontes independentes: o handler do 7662 (`0x5104f1`:
+// `Equip` em `inv_type == 0`, `Carry` em `== 1`, cópia de 8 B de `+0x10` para
+// `base+slot*8`) e o legado (`EncodeSendItemBody`: `invType@12`, `Slot@14`,
+// `item@16`, `HEADER.ID` = conexão). `inv_type` segue `ITEM_PLACE_*`
+// (`Basedef.h:146`: 0 equipamento, 1 mochila, 2 baú) e `slot` é o índice relativo
+// ao lugar (0..63 na mochila). `sIndex` 0 limpa o slot.
+wire_payload!(
+    SendItem,
+    SendItem,
+    24,
+    [(12, inv_type, u16), (14, slot, u16), (16, item, [u8; 8])]
+);
+
 wire_payload!(
     TradingItem,
     TradingItem,
@@ -70,6 +85,22 @@ mod tests {
         };
         assert_eq!(TradingItem::WIRE_LEN, 20);
         assert_eq!(round_trip(trading), trading);
+    }
+
+    #[test]
+    fn send_item_round_trip_com_struct_item() {
+        let pacote = SendItem {
+            inv_type: 1,
+            slot: 3,
+            item: [0x2f, 0x0d, 43, 37, 0, 0, 0, 0],
+        };
+        assert_eq!(SendItem::WIRE_LEN, 24);
+        assert_eq!(round_trip(pacote), pacote);
+        let mut cru = vec![0u8; SendItem::WIRE_LEN];
+        pacote.encode_into(&mut cru).expect("encode");
+        assert_eq!(&cru[12..14], &[1, 0], "inv_type Carry@12");
+        assert_eq!(&cru[14..16], &[3, 0], "slot@14");
+        assert_eq!(&cru[16..24], &[0x2f, 0x0d, 43, 37, 0, 0, 0, 0]);
     }
 
     #[test]

@@ -15,7 +15,8 @@
 //! O corpo tem teto de **1.023 caracteres**: o cliente faz UMA `InternetReadFile` de `0x400`
 //! bytes. Lista maior é truncada por canal inteiro e o corte vai para o log.
 
-use wyd_db::ServerChannel;
+use crate::session::PolicyOverrides;
+use wyd_db::{ChannelRole, ServerChannel};
 
 /// Teto do corpo de `serv00.htm` (uma leitura de `0x400` B com NUL no fim).
 pub const MAX_STATUS_BODY: usize = 1023;
@@ -97,6 +98,103 @@ pub fn status_url(world: &World) -> &str {
     world.status_url().unwrap_or("")
 }
 
+/// Sobrescritas de política do canal por processo (FASE-06-3): o banco é a fonte,
+/// o env sobrescreve. `WYD_SERVER_MAX_PLAYERS` fixa o teto de sessões vivas;
+/// `WYD_SERVER_MAINTENANCE` (`1`/`true`/`yes`/`on` liga, qualquer outro valor não vazio
+/// desliga) recusa entrada nova sem derrubar sessão viva. Ausente, vazio ou com parse que
+/// falha = env ignorado (vale o banco), nunca `panic!`.
+#[must_use]
+pub fn policy_overrides_from_env() -> PolicyOverrides {
+    let limpo = |nome: &str| {
+        std::env::var(nome)
+            .ok()
+            .map(|texto| texto.trim().to_string())
+            .filter(|texto| !texto.is_empty())
+    };
+    let max_players = limpo("WYD_SERVER_MAX_PLAYERS").and_then(|texto| texto.parse::<u32>().ok());
+    let maintenance = limpo("WYD_SERVER_MAINTENANCE").map(|texto| {
+        matches!(
+            texto.to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    });
+    PolicyOverrides {
+        max_players,
+        maintenance,
+    }
+}
+
+/// Env que fixa o papel do canal por processo (`normal`/`verde`), sobrescrevendo o banco.
+///
+/// Existe para operação e teste (subir o mesmo build como canal novato sem migração nova);
+/// valor desconhecido é **ignorado** — vale o banco —, nunca `panic!`.
+pub const ROLE_ENV: &str = "WYD_SERVER_CHANNEL_ROLE";
+
+/// Papel lido do env, se houver valor reconhecido.
+#[must_use]
+pub fn role_overrides_from_env() -> Option<ChannelRole> {
+    std::env::var(ROLE_ENV)
+        .ok()
+        .map(|texto| texto.trim().to_string())
+        .filter(|texto| !texto.is_empty())
+        .and_then(|texto| ChannelRole::parse(&texto))
+}
+
+/// Papel efetivo do processo: env sobrescreve o banco; sem nenhum dos dois, `normal`.
+#[must_use]
+pub fn effective_role(db: Option<ChannelRole>, env: Option<ChannelRole>) -> ChannelRole {
+    env.or(db).unwrap_or_default()
+}
+
+/// Regras que o papel do canal decide (FASE-03-10).
+///
+/// O papel é do **processo**, não do jogador (`docs/wyd/canais-e-cidadania.md` §3): o canal
+/// verde é o canal novato do legado — PvP desligado e loja pessoal aberta. Canal normal segue
+/// a regra completa, em que o mapa decide o PvP. Nada aqui olha mapa, `AttributeMap` ou
+/// personagem: a política é do canal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChannelRules {
+    role: ChannelRole,
+}
+
+impl ChannelRules {
+    #[must_use]
+    pub const fn new(role: ChannelRole) -> Self {
+        Self { role }
+    }
+
+    #[must_use]
+    pub const fn role(self) -> ChannelRole {
+        self.role
+    }
+
+    /// Nome do papel como aparece no `/health`, no log e no banco.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        self.role.as_db()
+    }
+
+    /// PvP permitido neste ponto do mundo?
+    ///
+    /// Canal verde nunca permite, mesmo em mapa de PvP; canal normal só onde o mapa permite
+    /// (`map_allows_pvp`). O `attribute` do mapa continua sendo a fonte da zona — o canal só
+    /// pode **restringir**, nunca liberar além dele.
+    #[must_use]
+    pub const fn pvp_allowed(self, map_allows_pvp: bool) -> bool {
+        match self.role {
+            ChannelRole::Normal => map_allows_pvp,
+            ChannelRole::Verde => false,
+        }
+    }
+
+    /// Loja pessoal é permitida? Sim nos dois papéis: no canal verde ela é parte da regra do
+    /// novato, no normal é serviço comum de cidade.
+    #[must_use]
+    pub const fn personal_shop_allowed(self) -> bool {
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +257,53 @@ mod tests {
     fn sem_canal_de_jogo_a_foto_e_recusada() {
         assert!(World::new(vec![canal(1, 0, "10.0.0.1", "http://x/serv00.htm")]).is_err());
         assert!(World::new(Vec::new()).is_err());
+    }
+
+    #[test]
+    fn papel_verde_desliga_pvp_e_mantem_loja() {
+        let verde = ChannelRules::new(ChannelRole::Verde);
+        assert!(!verde.pvp_allowed(true), "canal verde nunca liga PvP");
+        assert!(!verde.pvp_allowed(false));
+        assert!(verde.personal_shop_allowed(), "loja pessoal segue aberta");
+        assert_eq!(verde.as_str(), "verde");
+
+        let normal = ChannelRules::new(ChannelRole::Normal);
+        assert!(normal.pvp_allowed(true), "canal normal segue o mapa");
+        assert!(!normal.pvp_allowed(false), "mapa sem PvP continua sem");
+        assert!(normal.personal_shop_allowed());
+        assert_eq!(normal.role(), ChannelRole::Normal);
+    }
+
+    #[test]
+    fn env_sobrescreve_o_banco_e_valor_ruim_cai_no_default() {
+        // Banco "normal" + env "verde" = verde (teste/operação sem migração nova).
+        assert_eq!(
+            effective_role(Some(ChannelRole::Normal), Some(ChannelRole::Verde)),
+            ChannelRole::Verde
+        );
+        // Sem env vale o banco; sem banco nem env, `normal` (nada muda).
+        assert_eq!(
+            effective_role(Some(ChannelRole::Verde), None),
+            ChannelRole::Verde
+        );
+        assert_eq!(effective_role(None, None), ChannelRole::Normal);
+        assert_eq!(ChannelRole::parse(" VERDE "), Some(ChannelRole::Verde));
+        assert_eq!(ChannelRole::parse("novato"), None);
+    }
+
+    #[test]
+    fn env_de_papel_invalido_nao_derruba_o_processo() {
+        std::env::set_var(ROLE_ENV, "novato");
+        assert_eq!(
+            role_overrides_from_env(),
+            None,
+            "valor desconhecido vale o banco"
+        );
+        std::env::set_var(ROLE_ENV, " Verde ");
+        assert_eq!(role_overrides_from_env(), Some(ChannelRole::Verde));
+        std::env::set_var(ROLE_ENV, "  ");
+        assert_eq!(role_overrides_from_env(), None, "env vazio vale o banco");
+        std::env::remove_var(ROLE_ENV);
+        assert_eq!(role_overrides_from_env(), None);
     }
 }

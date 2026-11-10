@@ -12,7 +12,7 @@ use crate::auth::Session;
 use crate::error::AdminError;
 use crate::transport::json;
 
-use super::accounts::staff_or_deny;
+use super::accounts::{staff_or_deny, AccountSummary};
 
 /// Teto do texto de fonte/nota aceito do staff.
 pub const MAX_SOURCE: usize = 160;
@@ -51,6 +51,19 @@ pub trait ConfigStore: Send + Sync {
 
     fn npc(&self, id: i32) -> Result<Option<NpcRow>, AdminError>;
 
+    /// Página de NPCs por id para a lista do portal (FASE-07-5, só leitura).
+    fn npcs(&self, limit: i64, after_id: Option<i32>) -> Result<Vec<NpcRow>, AdminError>;
+
+    /// Templates de mob por nome para a lista do portal (FASE-07-5, só leitura).
+    fn mob_templates(
+        &self,
+        limit: i64,
+        after: Option<&str>,
+    ) -> Result<Vec<MobTemplateRow>, AdminError>;
+
+    /// Efeitos de item por nome para a lista do portal (FASE-07-5, só leitura).
+    fn effects(&self, limit: i64, after: Option<&str>) -> Result<Vec<EffectRow>, AdminError>;
+
     fn set_npc(
         &self,
         id: i32,
@@ -62,6 +75,75 @@ pub trait ConfigStore: Send + Sync {
     ) -> Result<i64, AdminError>;
 
     fn routes(&self, limit: i64) -> Result<Vec<RouteRow>, AdminError>;
+
+    /// Recompensas diárias em páginas por id (FASE-07-6, só leitura).
+    fn daily_rewards(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<DailyRewardRow>, AdminError>;
+
+    /// Cria (`id = None`) ou substitui uma recompensa diária (auditado).
+    fn upsert_daily_reward(&self, edit: &DailyEdit, actor: i64) -> Result<i64, AdminError>;
+
+    /// Remove uma recompensa diária (auditado).
+    fn delete_daily_reward(&self, id: i32, actor: i64) -> Result<i64, AdminError>;
+
+    /// Loja de donate em páginas por id (FASE-07-6, só leitura).
+    fn donate_items(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<DonateItemRow>, AdminError>;
+
+    /// Cria (`id = None`) ou substitui um item da loja (auditado).
+    fn upsert_donate_item(&self, edit: &DonateEdit, actor: i64) -> Result<i64, AdminError>;
+
+    /// Liga/desliga um item da loja (auditado).
+    fn set_donate_item_enabled(
+        &self,
+        id: i32,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, AdminError>;
+
+    /// Remove um item da loja (auditado).
+    fn delete_donate_item(&self, id: i32, actor: i64) -> Result<i64, AdminError>;
+
+    /// Eventos de mundo com estado (FASE-07-6, só leitura).
+    fn world_events(&self) -> Result<Vec<WorldEventRow>, AdminError>;
+
+    /// Horários de todos os eventos (FASE-07-6, só leitura).
+    fn event_schedules(&self) -> Result<Vec<EventScheduleRow>, AdminError>;
+
+    /// Liga/desliga um evento (auditado; efeito no próximo leitor do dado).
+    fn set_world_event_enabled(
+        &self,
+        code: &str,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, AdminError>;
+
+    /// Contas em páginas por id, sem segredo (FASE-07-6, só leitura).
+    fn accounts(
+        &self,
+        limit: i64,
+        after_id: Option<i64>,
+    ) -> Result<Vec<AccountSummary>, AdminError>;
+
+    /// Uma conta por id, sem segredo.
+    fn account(&self, id: i64) -> Result<Option<AccountSummary>, AdminError>;
+
+    /// Credita saldo de donate na carteira da conta, idempotente por chave.
+    ///
+    /// Devolve `(razão, replay)`: mesma chave = mesmo razão, sem crédito duplo.
+    fn credit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        actor: i64,
+    ) -> Result<(i64, bool), AdminError>;
 
     fn set_route(
         &self,
@@ -82,6 +164,90 @@ pub struct DropEdit {
     pub min_qty: i16,
     pub max_qty: i16,
     pub source: String,
+}
+
+/// Template de mob exposto ao portal (nome recuperado quando existe).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobTemplateRow {
+    pub template_name: String,
+    pub name: String,
+    pub source_size: i16,
+}
+
+/// Efeito de item exposto ao portal (símbolo `EF_*`, sem código numérico).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EffectRow {
+    pub name: String,
+    pub label: String,
+    pub category: String,
+    pub description: String,
+    pub confirmed: bool,
+}
+
+/// Recompensa diária exposta ao portal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DailyRewardRow {
+    pub id: i32,
+    pub day: Option<i16>,
+    pub item_index: Option<i32>,
+    pub gold: i64,
+    pub qty: i16,
+    pub account_wide: bool,
+}
+
+/// Edição de recompensa diária (`id = None` cria).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DailyEdit {
+    pub id: Option<i32>,
+    pub day: Option<i16>,
+    pub item_index: Option<i32>,
+    pub gold: i64,
+    pub qty: i16,
+    pub account_wide: bool,
+}
+
+/// Item da loja de donate exposto ao portal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateItemRow {
+    pub id: i32,
+    pub item_index: i32,
+    pub price_credits: i32,
+    pub duration_days: Option<i16>,
+    pub enabled: bool,
+}
+
+/// Edição de item da loja (`id = None` cria).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateEdit {
+    pub id: Option<i32>,
+    pub item_index: i32,
+    pub price_credits: i32,
+    pub duration_days: Option<i16>,
+    pub enabled: bool,
+}
+
+/// Evento de mundo com estado.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorldEventRow {
+    pub code: String,
+    pub name: String,
+    pub kind: String,
+    pub enabled: bool,
+    pub requires_city: bool,
+    pub description: String,
+}
+
+/// Horário de um evento.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventScheduleRow {
+    pub id: i32,
+    pub event_code: String,
+    pub weekday: i16,
+    pub start_time: String,
+    pub duration_minutes: i16,
+    pub timezone: String,
+    pub every_n_weeks: i16,
+    pub enabled: bool,
 }
 
 /// Linha de drop exposta ao portal.
@@ -347,6 +513,22 @@ mod tests {
             Ok(None)
         }
 
+        fn npcs(&self, _limit: i64, _after_id: Option<i32>) -> Result<Vec<NpcRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn mob_templates(
+            &self,
+            _limit: i64,
+            _after: Option<&str>,
+        ) -> Result<Vec<MobTemplateRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn effects(&self, _limit: i64, _after: Option<&str>) -> Result<Vec<EffectRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
         fn set_npc(
             &self,
             _id: i32,
@@ -372,6 +554,86 @@ mod tests {
             _actor: i64,
         ) -> Result<i64, AdminError> {
             Ok(13)
+        }
+
+        fn daily_rewards(
+            &self,
+            _limit: i64,
+            _after_id: Option<i32>,
+        ) -> Result<Vec<DailyRewardRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn upsert_daily_reward(&self, _edit: &DailyEdit, _actor: i64) -> Result<i64, AdminError> {
+            Ok(14)
+        }
+
+        fn delete_daily_reward(&self, _id: i32, _actor: i64) -> Result<i64, AdminError> {
+            Ok(15)
+        }
+
+        fn donate_items(
+            &self,
+            _limit: i64,
+            _after_id: Option<i32>,
+        ) -> Result<Vec<DonateItemRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn upsert_donate_item(&self, _edit: &DonateEdit, _actor: i64) -> Result<i64, AdminError> {
+            Ok(16)
+        }
+
+        fn set_donate_item_enabled(
+            &self,
+            _id: i32,
+            _enabled: bool,
+            _actor: i64,
+        ) -> Result<i64, AdminError> {
+            Ok(17)
+        }
+
+        fn delete_donate_item(&self, _id: i32, _actor: i64) -> Result<i64, AdminError> {
+            Ok(18)
+        }
+
+        fn world_events(&self) -> Result<Vec<WorldEventRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn event_schedules(&self) -> Result<Vec<EventScheduleRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn set_world_event_enabled(
+            &self,
+            _code: &str,
+            _enabled: bool,
+            _actor: i64,
+        ) -> Result<i64, AdminError> {
+            Ok(19)
+        }
+
+        fn accounts(
+            &self,
+            _limit: i64,
+            _after_id: Option<i64>,
+        ) -> Result<Vec<AccountSummary>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn account(&self, _id: i64) -> Result<Option<AccountSummary>, AdminError> {
+            Ok(None)
+        }
+
+        fn credit_donate(
+            &self,
+            _account_id: i64,
+            _credits: i64,
+            _key: &str,
+            _actor: i64,
+        ) -> Result<(i64, bool), AdminError> {
+            Ok((20, false))
         }
     }
 

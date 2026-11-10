@@ -319,11 +319,20 @@ crates/wyd-admin/
 │   ├── lib.rs            # fachada + ADMIN_SCOPE
 │   ├── error.rs          # AdminError (401/403/422 por variante)
 │   ├── api/              # endpoints por domínio (nunca estado vivo)
-│   │   ├── mod.rs
+│   │   ├── mod.rs        # só declara e reexporta; cada domínio no seu módulo
 │   │   ├── accounts.rs
-│   │   ├── moderation.rs # papel/bloqueio + trilha (ADR-0023)
+│   │   ├── catalog.rs    # `list_items` da foto do banco (ADR-0022)
+│   │   ├── drop.rs       # pesos de drop: leitura sem auditoria, escrita auditada
 │   │   ├── economy.rs    # estatísticas com fonte auditada (ADR-0023)
-│   │   └── grants.rs     # intenções → delivery_queue (idempotente)
+│   │   ├── grants.rs     # intenções → delivery_queue (idempotente)
+│   │   ├── item_effect.rs # `list_effects`: símbolo EF_*, sem código inventado (07-5)
+│   │   ├── mob.rs        # `list_mob_templates` de `npc_template` (07-5)
+│   │   ├── moderation.rs # papel/bloqueio + trilha (ADR-0023)
+│   │   ├── npc.rs        # `get_npc`/`set_npc` + `list_npcs` paginado (07-5)
+│   │   ├── panel.rs      # painel do jogador (conta, personagens, ranking)
+│   │   ├── presence.rs   # presença por canal (só leitura)
+│   │   ├── rates.rs      # `ConfigStore` (porta) + taxas/editáveis
+│   │   └── teleport.rs   # `list_routes` + política de rota
 │   ├── transport/        # Cold Path: HTTP/1.1 + JSON em loopback (ADR-0008)
 │   │   ├── mod.rs        # roteador servico/metodo → api/*, envelope + trace_id
 │   │   ├── http.rs       # HTTP/1.1 mínimo em std (limite de corpo, close)
@@ -340,7 +349,11 @@ crates/wyd-admin/
 │       └── grant_service.rs # regra + idempotência por transação rastreável
 └── tests/
     ├── unauthorized.rs   # sem sessão → 401; sem papel → 403
-    └── contract.rs       # rota→método, envelope AdminResult, limites (ADR-0008)
+    ├── contract.rs       # rota→método, envelope AdminResult, limites (ADR-0008)
+    ├── conteudo.rs       # 07-5: listas paginadas (fake + Postgres semeado)
+    ├── painel.rs         # painel do jogador
+    ├── login.rs          # credenciais/pin pelo Cold Path
+    └── seed.rs           # regressão do seed de staff em boot real
 ```
 
 Transporte decidido na **ADR-0008** (HTTP/1.1 + JSON em loopback); `.proto` não

@@ -25,6 +25,8 @@ pub struct NetMetrics {
     rejected_ip: AtomicU64,
     rejected_total: AtomicU64,
     rejected_timeout: AtomicU64,
+    rejected_full: AtomicU64,
+    rejected_maintenance: AtomicU64,
     handshakes: AtomicU64,
     pending: AtomicU64,
     sessions: AtomicU64,
@@ -49,6 +51,8 @@ impl NetMetrics {
             rejected_ip: AtomicU64::new(0),
             rejected_total: AtomicU64::new(0),
             rejected_timeout: AtomicU64::new(0),
+            rejected_full: AtomicU64::new(0),
+            rejected_maintenance: AtomicU64::new(0),
             handshakes: AtomicU64::new(0),
             pending: AtomicU64::new(0),
             sessions: AtomicU64::new(0),
@@ -107,7 +111,8 @@ impl NetMetrics {
         self.packets.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Pacote recusado; `reason` espelha `Deny` (`rate`, `ip`, `total`, `timeout`).
+    /// Pacote recusado; `reason` espelha `Deny` (`rate`, `ip`, `total`, `timeout`) mais as
+    /// recusas de canal da FASE-06-3 (`canal_lotado`, `manutencao`).
     #[inline]
     pub fn packet_rejected(&self, reason: &str) {
         #[cfg(feature = "metrics")]
@@ -117,6 +122,8 @@ impl NetMetrics {
                 "rate" => self.rejected_rate.fetch_add(1, Ordering::Relaxed),
                 "ip" => self.rejected_ip.fetch_add(1, Ordering::Relaxed),
                 "total" => self.rejected_total.fetch_add(1, Ordering::Relaxed),
+                "canal_lotado" => self.rejected_full.fetch_add(1, Ordering::Relaxed),
+                "manutencao" => self.rejected_maintenance.fetch_add(1, Ordering::Relaxed),
                 _ => self.rejected_timeout.fetch_add(1, Ordering::Relaxed),
             };
         }
@@ -193,6 +200,8 @@ impl NetMetrics {
             ("ip", &self.rejected_ip),
             ("total", &self.rejected_total),
             ("timeout", &self.rejected_timeout),
+            ("canal_lotado", &self.rejected_full),
+            ("manutencao", &self.rejected_maintenance),
         ] {
             out.push_str(&format!(
                 "wyd_packets_rejected_total{{reason=\"{motivo}\"}} {}\n",

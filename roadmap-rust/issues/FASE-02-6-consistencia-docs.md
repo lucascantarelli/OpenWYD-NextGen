@@ -76,6 +76,13 @@ Saída esperada: `docs: N issues, M crates, K migrations — consistente`.
 - [x] Comparação `ItemList.bin` do Global: registro de 172 B e cabeçalho de 4 B confirmados por contagem (14.500 registros, resto 0); campos individuais NÃO DECODIFICADOS (ver `docs/rust/03-progresso.md` Fase 2).
 - Escopo da FASE-02-6 fechado nesta frente. Pendência exata: decodificar os campos do `ItemList.bin` do Global (correlação com ids/nomes).
 
+## Andamento (2026-11-10, fechamento)
+
+- [x] Deriva `0039_classificacao_e_teto` resolvida: `DOCUMENTED` 39/80 em `check-migrations.mjs`, `banco-catalogo.md` alinhado (resumo + linha 0039); `check-migrations.mjs` exit 0.
+- [x] 4 issues da pesquisa no índice **e** no painel (03-16, 06-4, 08-10, 10-4); `check-issue-status.mjs` exit 0 (só no índice: avisos de ⬜/⛔ sem linha no painel, sem divergência de status).
+- [x] Parágrafo pós-fila do índice atualizado (fila 2026-11-09 preservada como histórico; lista de abertos inclui as 4 novas; 08-10 herda o bloqueio da 08-6).
+- [x] Prova negativa refeita: `DOCUMENTED` 39→38 temporário → exit 1; restaurado → exit 0.
+
 ## Subtasks
 
 - [ ] Codificar issue

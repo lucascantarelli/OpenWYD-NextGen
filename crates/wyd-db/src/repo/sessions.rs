@@ -16,6 +16,7 @@
 use std::future::Future;
 
 use crate::error::DbError;
+use crate::repo::content::{ChannelCapacity, ChannelRole};
 
 /// Resultado de uma tentativa de abrir sessão.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,4 +73,18 @@ pub trait Sessions {
         group_id: i16,
         channel: i16,
     ) -> impl Future<Output = Result<u64, DbError>> + Send;
+
+    /// Lotação e manutenção do canal (FASE-06-3); linha ausente = [`ChannelCapacity::permissive`].
+    fn channel_capacity(
+        &self,
+        group_id: i16,
+        channel: i16,
+    ) -> impl Future<Output = Result<ChannelCapacity, DbError>> + Send;
+
+    /// Papel do canal (FASE-03-10); linha ausente = `None` (o chamador assume `normal`).
+    fn channel_role(
+        &self,
+        group_id: i16,
+        channel: i16,
+    ) -> impl Future<Output = Result<Option<ChannelRole>, DbError>> + Send;
 }
