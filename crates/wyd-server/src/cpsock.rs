@@ -37,20 +37,20 @@ use wyd_protocol::wire::header::{Header, HEADER_SIZE};
 use wyd_protocol::wire::opcode::Opcode;
 use wyd_protocol::{
     AccountLogin, AccountSecure, ApplyBonus, CharacterLogin, CreateCharacter, DeleteCharacter,
-    UseItem,
+    SendItem, UseItem,
 };
 
 use crate::auth::{Authenticator, PinOutcome};
 use crate::personagens::{
     account_login_body, cargo_items, character_login_body, delete_character_body,
-    new_character_body, Mob, ID_DELETE_CHARACTER, ID_NEW_CHARACTER, ID_SCENE, ID_SELCHAR,
+    new_character_body, Item, Mob, ID_DELETE_CHARACTER, ID_NEW_CHARACTER, ID_SCENE, ID_SELCHAR,
 };
 
 use crate::channels::World;
 use crate::characters::{LoginSnapshot, Selected, SelectionError, SelectionStore};
 use crate::gameplay::UseItemRolls;
 use crate::session::{SessionError, SessionGate, SessionLease};
-use crate::world::NpcView;
+use crate::world::{plan_scene, SceneMob};
 use wyd_sim::XorShift64;
 
 /// Timeout de leitura do handshake: conexão muda não segura thread.
@@ -81,20 +81,23 @@ enum Stage {
         selected: Box<Selected>,
         /// `HEADER.ID` que o cliente conhece para o próprio mob (`ClientID` do login).
         client_id: u16,
-        /// NPCs que esta sessão já recebeu (`_MSG_CreateMob`) e a geração que os produziu.
+        /// Entidades que esta sessão já recebeu (`_MSG_CreateMob`) e a geração que as produziu.
         scene: Scene,
     },
 }
 
 /// Cena já emitida ao cliente nesta sessão.
 ///
-/// Guardar o conjunto (e não só a geração) é o que permite emitir **delta** na recarga:
-/// quem saiu vira `_MSG_RemoveMob`, quem entrou/mudou vira `_MSG_CreateMob`, e nada é
-/// reenviado sem necessidade — nem fica mob órfão no cliente.
+/// Guardar o conjunto (e não só a geração) é o que permite emitir **delta** na recarga e na
+/// entrada/saída de jogador: quem saiu vira `_MSG_RemoveMob`, quem entrou vira
+/// `_MSG_CreateMob`, e nada é reenviado sem necessidade — nem fica mob órfão no cliente.
+/// (Entidade que só mudou de posição não é reenviada: o pacote de movimento não está provado,
+/// resíduo declarado na FASE-03-9.)
 #[derive(Debug, Clone, Default)]
 struct Scene {
     generation: u64,
-    npcs: std::collections::BTreeMap<i32, NpcView>,
+    /// Id de cena → é personagem? O `RemoveType` da saída depende disso (logout × fora de vista).
+    mobs: std::collections::BTreeMap<u16, bool>,
 }
 
 impl Stage {
@@ -673,10 +676,19 @@ fn open_session(
             Ok(Some(lease))
         }
         Err(error) => {
-            NET.packet_rejected("session");
+            // Lotação/manutenção (FASE-06-3) têm motivo próprio na métrica; a origem é
+            // o próprio canal, que é quem recusa.
+            let motivo = match &error {
+                SessionError::Capacity { .. } => "canal_lotado",
+                SessionError::Maintenance => "manutencao",
+                _ => "session",
+            };
+            NET.packet_rejected(motivo);
             let origem = match &error {
                 SessionError::Conflict { channel } => *channel,
-                SessionError::Db(_) => 0,
+                SessionError::Capacity { .. } | SessionError::Maintenance | SessionError::Db(_) => {
+                    0
+                }
             };
             log(
                 "warn",
@@ -744,7 +756,20 @@ fn serve_selection(
                 }
                 continue;
             }
-            Err(_) => return stage.entity(),
+            // Queda sem pacote de saída (FIN, reset): a sessão cai aqui também — o
+            // `Drop` do `SessionLease` libera a conta e o `leave_world` do chamador
+            // enfileira o save. O motivo `socket` distingue do `explicit` no log.
+            Err(_) => {
+                log(
+                    "info",
+                    "logout",
+                    &format!(
+                        "result=ok reason=socket account={account} stage={}",
+                        stage.as_str()
+                    ),
+                );
+                return stage.entity();
+            }
         }
         let Some(frame) = read_frame(stream, &head, account) else {
             return stage.entity();
@@ -928,10 +953,26 @@ fn dispatch(
             match resultado {
                 Ok((detalhe, selected)) => {
                     let personagem = &selected.character;
+                    // `STRUCT_MOB` do personagem escolhido: equipamento e mochila
+                    // de `character_items`, nunca do template da classe. A montagem vem antes
+                    // da entrada no mundo porque a mesma aparência vira `_MSG_CreateMob` na
+                    // cena dos outros personagens do canal (FASE-03-9).
+                    let mut mob = Mob::from_persisted(personagem, &selected.items);
+                    // Atributos, pontos e `LearnedSkill` vêm do banco (`character_scores`
+                    // + `character_learned_skill`), não do template da classe.
+                    crate::characters::apply_progression(&mut mob, &selected.progression);
+                    let skin = crate::world::ActorSkin {
+                        name: mob.name,
+                        equip: mob.equip.map(|item| u16::try_from(item.index).unwrap_or(0)),
+                        guild: mob.guild,
+                        attack_run: mob.current_score.attack_run,
+                        direction: mob.current_score.direction,
+                    };
                     // Encarna no mundo **antes** de confirmar: recusa do motor vira
-                    // `CharacterLoginFail` e o personagem não fica pela metade.
+                    // `CharacterLoginFail` e o personagem não fica pela metade. A cena de quem
+                    // já está no canal recebe o `_MSG_CreateMob` na varredura seguinte.
                     let entrada = match selection {
-                        Some(store) => store.enter_world(personagem),
+                        Some(store) => store.enter_world(personagem, &skin),
                         None => Ok(None),
                     };
                     match entrada {
@@ -955,12 +996,6 @@ fn dispatch(
                                     )
                                 ),
                             );
-                            // `STRUCT_MOB` do personagem escolhido: equipamento e mochila
-                            // de `character_items`, nunca do template da classe.
-                            let mut mob = Mob::from_persisted(personagem, &selected.items);
-                            // Atributos, pontos e `LearnedSkill` vêm do banco (`character_scores`
-                            // + `character_learned_skill`), não do template da classe.
-                            crate::characters::apply_progression(&mut mob, &selected.progression);
                             let client_id = entity
                                 .map_or(0, |entidade| u16::try_from(entidade.index).unwrap_or(0));
                             let corpo = character_login_body(
@@ -1021,12 +1056,37 @@ fn dispatch(
             reply(stream, key_word, Opcode::CNFCharacterLogout);
             false
         }
+        // `_MSG_MessageWhisper` (0x0334, C→J) é o canal do `/getout`, que no legado zera a
+        // cidadania (`_MSG_MessageWhisper.cpp:57-64`). O **corpo** do sussurro não tem layout
+        // provado na árvore (invariante 5): sem captura do cliente 7662 não se lê comando nem
+        // nome, e tratar o pacote como `/getout` seria inventar layout. Tolerar e seguir deixa
+        // a sessão viva; a cidadania, derivada do canal, não teria o que zerar hoje.
+        Opcode::MessageWhisper => {
+            log(
+                "info",
+                "citizen",
+                &format!(
+                    "result=tolerated action=getout account={account} reason=layout_unverified stage={}",
+                    stage.as_str()
+                ),
+            );
+            true
+        }
         // `_MSG_UseItem` de refino: `SourType/SourPos` = pó, `DestType/DestPos` = alvo
         // (`Basedef.h:146-148`; `_MSG_UseItem.cpp:42-152`). O legado consome o pó, aplica
-        // `BASE_SetItemSanc` e devolve `SendItem`; aqui a taxa vem do snapshot vivo e o
-        // inventário é gravado antes de a sessão passar a ver o novo estado.
+        // `BASE_SetItemSanc` e devolve `SendItem` (0x0182) com o alvo; aqui a taxa vem
+        // do snapshot vivo, a piedade da tabela `refine_pity` e o inventário é gravado
+        // antes de a sessão passar a ver o novo estado.
         Opcode::UseItem => {
-            let (Stage::InGame { selected, .. }, Some(store)) = (&mut *stage, selection) else {
+            let (
+                Stage::InGame {
+                    selected,
+                    client_id,
+                    ..
+                },
+                Some(store),
+            ) = (&mut *stage, selection)
+            else {
                 log(
                     "warn",
                     "use_item",
@@ -1056,36 +1116,60 @@ fn dispatch(
                 roll: (die.next_u64() % 100) as u8,
                 pity_roll: (die.next_u64() % 4) as u8,
             };
+            let client_id = *client_id;
             match store.use_item(selected.as_mut(), &packet, rolls) {
-                Ok(outcome) => log(
-                    "info",
-                    "use_item",
-                    &format!(
-                        "result=refined account={account} powder={:?} slot={} target={} from=+{} to=+{} rate_bps={} success={} destroyed={} powder_left={}",
-                        outcome.powder,
-                        outcome.source_slot,
-                        outcome.target_slot,
-                        outcome.resolution.from_level,
-                        outcome.resolution.to_level,
-                        outcome.resolution.rate_bps,
-                        outcome.resolution.success,
-                        outcome.destroyed,
-                        outcome.powder_left
-                    ),
-                ),
-                Err(error) => log(
-                    "warn",
-                    "use_item",
-                    &format!(
-                        "result=refused account={account} sour=({}, {}) dest=({}, {}) reason={error}",
-                        packet.sour_type, packet.sour_pos, packet.dest_type, packet.dest_pos
-                    ),
-                ),
+                Ok(outcome) => {
+                    log(
+                        "info",
+                        "use_item",
+                        &format!(
+                            "result=refined account={account} powder={:?} slot={} target={} from=+{} to=+{} rate_bps={} success={} destroyed={} powder_left={}",
+                            outcome.powder,
+                            outcome.source_slot,
+                            outcome.target_slot,
+                            outcome.resolution.from_level,
+                            outcome.resolution.to_level,
+                            outcome.resolution.rate_bps,
+                            outcome.resolution.success,
+                            outcome.destroyed,
+                            outcome.powder_left
+                        ),
+                    );
+                    // Alvo atualizado com o par EF_SANC no fio; destruído vira slot vazio
+                    // (`sIndex` 0 limpa no cliente). Recusa não emite nada: o cliente já
+                    // mostra o estado correto, pois o servidor nada mudou.
+                    let quadro = selected
+                        .items
+                        .iter()
+                        .find(|linha| linha.slot == outcome.target_slot)
+                        .map(|linha| {
+                            Item::from_row_with_pity(linha, outcome.resolution.next_pity).to_bytes()
+                        })
+                        .unwrap_or_default();
+                    reply_send_item(
+                        stream,
+                        key_word,
+                        client_id,
+                        packet.dest_type,
+                        packet.dest_pos,
+                        quadro,
+                    )
+                }
+                Err(error) => {
+                    log(
+                        "warn",
+                        "use_item",
+                        &format!(
+                            "result=refused account={account} sour=({}, {}) dest=({}, {}) reason={error}",
+                            packet.sour_type,
+                            packet.sour_pos,
+                            packet.dest_type,
+                            packet.dest_pos
+                        ),
+                    );
+                    true
+                }
             }
-            // O corpo de `_MSG_UpdateItem` ainda não está portado; não inventamos um
-            // frame vazio para fingir que o cliente já redesenhou o item. O estado da
-            // sessão e o banco mudaram; o pacote entra com a captura do layout.
-            true
         }
         // `_MSG_ApplyBonus`: distribuir ponto de atributo/skill. Responde `UpdateEtc` + `UpdateScore`
         // (o `SendEtc`/`SendScore` do legado) com o estado gravado no banco.
@@ -1259,7 +1343,7 @@ fn handle_attack<const N: usize>(
             // Morte: o abate já saiu do motor (o mundo não guarda cadáver). O cliente recebe
             // `_MSG_RemoveMob` com `RemoveType = 1` (morte) e a vista local perde o id antes
             // do próximo delta, senão o poll de cena repetiria a remoção.
-            scene.npcs.remove(&report.target_npc);
+            scene.mobs.remove(&report.target_scene);
             log(
                 "info",
                 "death",
@@ -1300,7 +1384,7 @@ fn handle_attack<const N: usize>(
                     ),
                 ),
             }
-            send_remove_mob(stream, key_word, report.target_npc, RemoveMob::DEATH)
+            send_remove_mob(stream, key_word, report.target_scene, RemoveMob::DEATH)
         }
         Ok(None) => {
             log(
@@ -1418,86 +1502,97 @@ fn refresh_scene(
     let (Stage::InGame { scene, .. }, Some(store)) = (stage, selection) else {
         return true;
     };
-    let Some(atual) = store.npc_scene() else {
+    let Some(atual) = store.scene() else {
         return true;
     };
+    // A geração cobre NPC **e** personagem: entrada/saída de jogador também precisa chegar.
     if atual.generation == scene.generation {
         return true;
     }
-    let ids: std::collections::BTreeSet<i32> = atual.npcs.iter().map(|npc| npc.id).collect();
-    let sair: Vec<i32> = scene
-        .npcs
-        .keys()
-        .filter(|id| !ids.contains(id))
-        .copied()
-        .collect();
-    for id in &sair {
-        if !send_remove_mob(stream, key_word, *id, RemoveMob::OUT_OF_VIEW) {
+    let plano = plan_scene(&scene.mobs, &atual, scene_budget());
+    let mut removidos = 0usize;
+    for (id, remove_type) in &plano.leave {
+        if !send_remove_mob(stream, key_word, *id, *remove_type) {
             return false;
         }
-        scene.npcs.remove(id);
+        scene.mobs.remove(id);
+        removidos += 1;
     }
     let mut criados = 0usize;
-    for npc in &atual.npcs {
-        if scene.npcs.get(&npc.id) == Some(npc) {
-            continue;
-        }
-        // Mudou de posição/aparência: sai da vista e volta, na ordem em que o cliente aceita.
-        if scene.npcs.remove(&npc.id).is_some()
-            && !send_remove_mob(stream, key_word, npc.id, RemoveMob::OUT_OF_VIEW)
-        {
+    for mob in &plano.enter {
+        if !send_create_mob(stream, key_word, mob) {
             return false;
         }
-        if !send_create_mob(stream, key_word, npc) {
-            return false;
-        }
-        scene.npcs.insert(npc.id, npc.clone());
+        scene.mobs.insert(mob.id, mob.actor);
         criados += 1;
     }
-    scene.generation = atual.generation;
+    if plano.complete {
+        scene.generation = atual.generation;
+    } else {
+        // Teto atingido: mantém a geração antiga para a próxima varredura continuar o delta.
+        log(
+            "warn",
+            "scene",
+            &format!(
+                "result=budget limit={} created={criados} removed={removidos} pending=1",
+                scene_budget()
+            ),
+        );
+        return true;
+    }
     log(
         "info",
         "scene",
         &format!(
-            "result=applied generation={} mobs={} created={criados} removed={}",
+            "result=applied generation={} mobs={} created={criados} removed={removidos}",
             scene.generation,
-            scene.npcs.len(),
-            sair.len()
+            scene.mobs.len()
         ),
     );
     true
 }
 
-/// `_MSG_CreateMob`: uma criatura na vista, com `HEADER.ID = ESCENE_FIELD`.
+/// Teto de pacotes de cena por varredura (`WYD_SCENE_MAX_PER_REFRESH`), lido uma vez.
+fn scene_budget() -> usize {
+    use std::sync::OnceLock;
+    static BUDGET: OnceLock<usize> = OnceLock::new();
+    *BUDGET.get_or_init(|| match crate::world::scene_budget_from_env() {
+        Ok(teto) => teto,
+        Err(error) => {
+            // O boot já recusa valor inválido; aqui é rede de segurança para o teste.
+            log("error", "config", &format!("result=invalid {error}"));
+            crate::world::DEFAULT_SCENE_MAX_PER_REFRESH
+        }
+    })
+}
+
+/// `_MSG_CreateMob`: uma entidade na vista (NPC ou personagem), `HEADER.ID = ESCENE_FIELD`.
 ///
 /// O corpo é o de `Basedef.h`/porte Go (232 B, offsets em `payload/scene.rs`). `Affect`,
-/// `AnctCode`, `Tab` e `Hold` vão zerados porque o snapshot não os tem — não se inventa
-/// efeito nem aura de refino que o dado não sustenta.
-fn send_create_mob(stream: &mut TcpStream, key_word: u8, npc: &NpcView) -> bool {
-    let mut mob_name = [0u8; 16];
-    let nome = npc.name.as_bytes();
-    let limite = nome.len().min(mob_name.len());
-    mob_name[..limite].copy_from_slice(&nome[..limite]);
+/// `AnctCode`, `Tab` e `Hold` vão zerados porque a origem não os tem — não se inventa
+/// efeito nem aura de refino que o dado não sustenta. Do `STRUCT_MOB` do personagem saem
+/// nome, `Equip[i].sIndex`, `Guild` e `CurrentScore`; `Merchant` de jogador é 0.
+fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob) -> bool {
     let packet = CreateMob {
-        pos_x: u16::try_from(npc.position.x).unwrap_or(0),
-        pos_y: u16::try_from(npc.position.y).unwrap_or(0),
-        mob_id: u16::try_from(npc.id).unwrap_or(0),
-        mob_name,
-        equip: npc.equip,
+        pos_x: u16::try_from(mob.position.x).unwrap_or(0),
+        pos_y: u16::try_from(mob.position.y).unwrap_or(0),
+        mob_id: mob.id,
+        mob_name: mob.name,
+        equip: mob.equip,
         affect: [0; 32],
-        guild: 0,
+        guild: mob.guild,
         guild_member_type: 0,
         unknow: [0; 3],
-        level: i32::from(npc.level),
-        ac: i32::try_from(npc.defense).unwrap_or(i32::MAX),
-        damage: i32::try_from(npc.attack).unwrap_or(i32::MAX),
-        merchant: npc.merchant,
-        attack_run: npc.attack_run,
-        direction: npc.direction,
+        level: i32::from(mob.level),
+        ac: i32::try_from(mob.defense).unwrap_or(i32::MAX),
+        damage: i32::try_from(mob.attack).unwrap_or(i32::MAX),
+        merchant: mob.merchant,
+        attack_run: mob.attack_run,
+        direction: mob.direction,
         chaos_rate: 0,
-        max_hp: i32::try_from(npc.max_hp).unwrap_or(i32::MAX),
+        max_hp: i32::try_from(mob.max_hp).unwrap_or(i32::MAX),
         max_mp: 0,
-        hp: i32::try_from(npc.hp).unwrap_or(i32::MAX),
+        hp: i32::try_from(mob.hp).unwrap_or(i32::MAX),
         mp: 0,
         strength: 0,
         intelligence: 0,
@@ -1521,9 +1616,9 @@ fn send_create_mob(stream: &mut TcpStream, key_word: u8, npc: &NpcView) -> bool 
     )
 }
 
-/// `_MSG_RemoveMob`: `HEADER.ID` = id da criatura, corpo `RemoveType` (0 = fora de vista).
-fn send_remove_mob(stream: &mut TcpStream, key_word: u8, npc_id: i32, remove_type: i32) -> bool {
-    let id = u16::try_from(npc_id).unwrap_or(0);
+/// `_MSG_RemoveMob`: `HEADER.ID` = id de cena, corpo `RemoveType` (0 = fora de vista,
+/// 2 = logout — `ADR-0025`).
+fn send_remove_mob(stream: &mut TcpStream, key_word: u8, id: u16, remove_type: i32) -> bool {
     let packet = RemoveMob { remove_type };
     let mut frame = vec![0u8; RemoveMob::WIRE_LEN];
     if packet.encode_into(&mut frame).is_err() {
@@ -1613,6 +1708,36 @@ fn select_character(
     Ok((detalhe, selected))
 }
 
+/// `_MSG_SendItem` (0x0182): atualiza um slot do inventário no cliente.
+///
+/// É a resposta do refino: o alvo com `BASE_SetItemSanc` aplicado no fio e `HEADER.ID`
+/// da conexão do dono. `inv_type` segue `ITEM_PLACE_*` e `slot` é relativo ao lugar.
+fn reply_send_item(
+    stream: &mut TcpStream,
+    key_word: u8,
+    client_id: u16,
+    inv_type: i32,
+    slot: i32,
+    item: [u8; 8],
+) -> bool {
+    let packet = SendItem {
+        inv_type: inv_type as u16,
+        slot: slot as u16,
+        item,
+    };
+    let mut frame = vec![0u8; SendItem::WIRE_LEN];
+    if packet.encode_into(&mut frame).is_err() {
+        return false;
+    }
+    reply_with_body(
+        stream,
+        key_word,
+        client_id,
+        Opcode::SendItem,
+        &frame[HEADER_SIZE..],
+    )
+}
+
 /// Envia o estado do personagem ao cliente: `MSG_UpdateEtc` e `MSG_UpdateScore`.
 ///
 /// É o par `SendEtc`/`SendScore` do legado, usado quando a progressão muda (bônus e nível).
@@ -1689,4 +1814,97 @@ fn log(level: &str, event: &str, fields: &str) {
     let linha = format!("level={level} event={event} {fields}");
     crate::logs::record(&linha);
     println!("{linha}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{TcpListener, TcpStream};
+    use wyd_protocol::payload::scene::{CreateMob, RemoveMob};
+
+    /// Par de sockets loopback: a sessão escreve num lado, o teste lê do outro.
+    fn par() -> (TcpStream, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("porta efêmera");
+        let endereco = listener.local_addr().expect("endereço");
+        let cliente = TcpStream::connect(endereco).expect("cliente conecta");
+        let (servidor, _) = listener.accept().expect("servidor aceita");
+        (servidor, cliente)
+    }
+
+    /// Lê um frame do lado do cliente, desofusca e devolve `(cabeçalho, frame claro)`.
+    fn ler_frame(cliente: &mut TcpStream) -> (Header, Vec<u8>) {
+        use std::io::Read;
+        let mut head = [0u8; HEADER_SIZE];
+        cliente.read_exact(&mut head).expect("cabeçalho");
+        let tamanho = usize::from(u16::from_le_bytes([head[0], head[1]]));
+        let mut frame = vec![0u8; tamanho];
+        frame[..HEADER_SIZE].copy_from_slice(&head);
+        cliente
+            .read_exact(&mut frame[HEADER_SIZE..])
+            .expect("corpo");
+        decode_in_place(&mut frame).expect("desofusca");
+        let cabecalho = Header::decode(&frame[..HEADER_SIZE]).expect("cabeçalho claro");
+        (cabecalho, frame)
+    }
+
+    fn mob(id: u16, name: &[u8], actor: bool) -> SceneMob {
+        let mut nome = [0u8; 16];
+        nome[..name.len()].copy_from_slice(name);
+        let mut equip = [0u16; 16];
+        equip[0] = 831;
+        SceneMob {
+            id,
+            actor,
+            name: nome,
+            position: wyd_core::Position { x: 300, y: 400 },
+            level: 42,
+            hp: 90,
+            max_hp: 90,
+            attack: 12,
+            defense: 5,
+            merchant: 0,
+            attack_run: 82,
+            direction: 3,
+            equip,
+            guild: 4,
+        }
+    }
+
+    #[test]
+    fn create_mob_de_personagem_traz_escene_field_e_a_aparencia_do_login() {
+        let (mut servidor, mut cliente) = par();
+        assert!(send_create_mob(&mut servidor, 7, &mob(9, b"Buffy", true)));
+
+        let (cabecalho, frame) = ler_frame(&mut cliente);
+        // Invariante 4: pacote autoritativo de cena vai com `ESCENE_FIELD`, nunca com o id
+        // da conexão (`ClientID`), senão a barra de EXP/HP do cliente não atualiza.
+        assert_eq!(cabecalho.id, ID_SCENE);
+        assert_eq!(cabecalho.id, wyd_protocol::ESCENE_FIELD);
+        assert_eq!(cabecalho.message_type, Opcode::CreateMob.wire());
+        assert_eq!(usize::from(cabecalho.size), CreateMob::WIRE_LEN);
+        assert_eq!(frame.len() - HEADER_SIZE, CreateMob::WIRE_LEN - HEADER_SIZE);
+
+        let pacote = CreateMob::decode(&frame).expect("corpo do CreateMob");
+        assert_eq!(
+            pacote.mob_id, 9,
+            "o id da criatura vai em MobID, não no HEADER"
+        );
+        assert_eq!(pacote.name_bytes(), b"Buffy");
+        assert_eq!(pacote.equip[0], 831, "aparece pelo s_Index do equipamento");
+        assert_eq!(pacote.guild, 4);
+        assert_eq!((pacote.level, pacote.max_hp, pacote.hp), (42, 90, 90));
+        assert_eq!(pacote.merchant, 0, "jogador não é NPC de loja");
+    }
+
+    #[test]
+    fn remove_mob_leva_o_id_da_cena_no_header_e_o_tipo_no_corpo() {
+        let (mut servidor, mut cliente) = par();
+        assert!(send_remove_mob(&mut servidor, 3, 9, RemoveMob::LOGOUT));
+
+        let (cabecalho, frame) = ler_frame(&mut cliente);
+        assert_eq!(cabecalho.id, 9, "RemoveMob usa o id da entidade no HEADER");
+        assert_eq!(cabecalho.message_type, Opcode::RemoveMob.wire());
+        let pacote = RemoveMob::decode(&frame).expect("corpo do RemoveMob");
+        assert_eq!(pacote.remove_type, RemoveMob::LOGOUT);
+    }
 }

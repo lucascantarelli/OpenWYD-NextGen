@@ -14,8 +14,9 @@ use std::time::Duration;
 use wyd_admin::transport::http;
 use wyd_db::{PgBackend, Sessions};
 
-use crate::channels::{render_status_body, World};
+use crate::channels::{render_status_body, ChannelRules, World};
 use crate::metrics::ServiceMetrics;
+use crate::session::PolicyOverrides;
 
 /// Caminho que o cliente busca (`docs/cliente/formatos.md` §4.1).
 pub const STATUS_PATH: &str = "/serv00.htm";
@@ -27,21 +28,34 @@ pub const HEALTH_PATH: &str = "/health";
 /// (captura `target/teste-udp.json`). O legado respondia com eco.
 pub const UDP_PROBE_LEN: usize = 4;
 
+/// Dependências do servidor de status (`:80`): o `overrides` carrega a política efetiva
+/// de manutenção para o `/health` (FASE-06-3).
+pub struct StatusDeps {
+    /// Socket do `:80` (publicado como `:80` só pelo canal de status).
+    pub listener: TcpListener,
+    /// Foto dos canais (o `serv00.htm` sai daqui).
+    pub world: Arc<World>,
+    /// Pool compartilhado com o handshake.
+    pub backend: PgBackend,
+    /// Runtime que executa as consultas.
+    pub runtime: Arc<tokio::runtime::Runtime>,
+    /// Contadores do processo.
+    pub metrics: Arc<ServiceMetrics>,
+    /// Grupo deste processo.
+    pub group_id: i16,
+    /// Canal deste processo.
+    pub channel: i16,
+    /// Sobrescritas de lotação/manutenção por processo (env).
+    pub overrides: PolicyOverrides,
+    /// Regras do papel do canal (FASE-03-10): o `/health` publica o papel vigente.
+    pub rules: ChannelRules,
+}
+
 /// Aceita conexões do status HTTP para sempre (uma por vez: é uma leitura por cliente).
-pub fn serve(
-    listener: TcpListener,
-    world: Arc<World>,
-    backend: PgBackend,
-    runtime: Arc<tokio::runtime::Runtime>,
-    metrics: Arc<ServiceMetrics>,
-    group_id: i16,
-    channel: i16,
-) {
-    for aceito in listener.incoming() {
+pub fn serve(deps: StatusDeps) {
+    for aceito in deps.listener.incoming() {
         match aceito {
-            Ok(stream) => handle(
-                stream, &world, &backend, &runtime, &metrics, group_id, channel,
-            ),
+            Ok(stream) => handle(stream, &deps),
             Err(error) => {
                 log("error", "accept", &format!("service=status reason={error}"));
                 return;
@@ -50,15 +64,15 @@ pub fn serve(
     }
 }
 
-fn handle(
-    stream: TcpStream,
-    world: &World,
-    backend: &PgBackend,
-    runtime: &tokio::runtime::Runtime,
-    metrics: &ServiceMetrics,
-    group_id: i16,
-    channel: i16,
-) {
+fn handle(stream: TcpStream, deps: &StatusDeps) {
+    let world = &deps.world;
+    let backend = &deps.backend;
+    let runtime = &deps.runtime;
+    let metrics = &deps.metrics;
+    let group_id = deps.group_id;
+    let channel = deps.channel;
+    let overrides = deps.overrides;
+    let rules = deps.rules;
     let _ = stream.set_read_timeout(Some(Duration::from_secs(10)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(10)));
     // Diagnóstico: quem abriu TCP no :80 (é aqui que um cliente que disca a porta errada aparece).
@@ -119,13 +133,27 @@ fn handle(
                 let online = runtime
                     .block_on(backend.live_sessions(group_id, channel))
                     .unwrap_or(0);
+                // Manutenção efetiva (FASE-06-3): env sobrescreve o banco; banco fora
+                // do ar aqui é impossível (o `ping` acima passou), então linha ausente
+                // ou erro de leitura = sem manutenção.
+                let manutencao = overrides.maintenance.or_else(|| {
+                    runtime
+                        .block_on(backend.channel_capacity(group_id, channel))
+                        .ok()
+                        .map(|linha| linha.maintenance)
+                });
+                let manutencao = manutencao.unwrap_or(false);
                 (
                     200,
-                    format!(
-                        "{{\"ok\":true,\"database\":\"up\",\"channels\":{},\"group\":{group_id},\"channel\":{channel},\"online\":{online},\"schema\":{}}}",
-                        world.game_channel_count(),
-                        wyd_db::SCHEMA_VERSION
-                    ),
+                    health_body(&HealthFacts {
+                        channels: world.game_channel_count(),
+                        group_id,
+                        channel,
+                        rules,
+                        online,
+                        maintenance: manutencao,
+                        schema: wyd_db::SCHEMA_VERSION,
+                    }),
                 )
             } else {
                 (503, "{\"ok\":false,\"database\":\"down\"}".to_string())
@@ -142,6 +170,37 @@ fn handle(
             );
         }
     }
+}
+
+/// O que o `/health` publica além do `SELECT 1`.
+///
+/// `rules` entra como **teto** do papel: sem mapa em mãos, `pvp` é `true` só quando o canal
+/// não restringe (canal normal); no verde é `false` sempre.
+#[derive(Debug, Clone, Copy)]
+struct HealthFacts {
+    channels: usize,
+    group_id: i16,
+    channel: i16,
+    rules: ChannelRules,
+    online: u64,
+    maintenance: bool,
+    schema: u32,
+}
+
+/// Corpo JSON do `/health` (uma linha, sem dependência de serializer).
+fn health_body(fatos: &HealthFacts) -> String {
+    format!(
+        "{{\"ok\":true,\"database\":\"up\",\"channels\":{},\"group\":{},\"channel\":{},\"role\":\"{}\",\"pvp\":{},\"shop\":{},\"online\":{},\"maintenance\":{},\"schema\":{}}}",
+        fatos.channels,
+        fatos.group_id,
+        fatos.channel,
+        fatos.rules.as_str(),
+        fatos.rules.pvp_allowed(true),
+        fatos.rules.personal_shop_allowed(),
+        fatos.online,
+        fatos.maintenance,
+        fatos.schema
+    )
 }
 
 /// Sessões vivas por canal de jogo, na ordem de [`World::game_channels`].
@@ -203,4 +262,42 @@ pub fn serve_udp(socket: UdpSocket) {
 /// Log estruturado (uma linha, `key=value`).
 fn log(level: &str, event: &str, fields: &str) {
     println!("level={level} event={event} {fields}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wyd_db::ChannelRole;
+
+    fn fatos(role: ChannelRole) -> HealthFacts {
+        HealthFacts {
+            channels: 2,
+            group_id: 1,
+            channel: 2,
+            rules: crate::channels::ChannelRules::new(role),
+            online: 7,
+            maintenance: false,
+            schema: 41,
+        }
+    }
+
+    #[test]
+    fn health_publica_papel_do_canal() {
+        let verde = health_body(&fatos(ChannelRole::Verde));
+        assert!(
+            verde.contains("\"role\":\"verde\""),
+            "papel verde no corpo: {verde}"
+        );
+        assert!(verde.contains("\"pvp\":false"), "verde sem PvP: {verde}");
+        assert!(verde.contains("\"shop\":true"), "loja aberta: {verde}");
+        assert!(verde.contains("\"online\":7"), "presença do canal: {verde}");
+        assert!(verde.contains("\"schema\":41"), "schema corrente: {verde}");
+
+        let normal = health_body(&fatos(ChannelRole::Normal));
+        assert!(normal.contains("\"role\":\"normal\""));
+        assert!(
+            normal.contains("\"pvp\":true"),
+            "canal normal não restringe: {normal}"
+        );
+    }
 }

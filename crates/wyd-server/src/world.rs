@@ -14,9 +14,15 @@
 //! - Entrada/saída (03-8) passam por [`EngineHandle`]: a thread de rede envia o comando e
 //!   espera a resposta; o tick nunca bloqueia em I/O e nenhum mutex global é necessário.
 //!
-//! O que este módulo **ainda não** faz (issues donas): movimento/combate do jogador no fio
-//! (FASE-03-5/08) e `ESCENE_FIELD` (03-9). O save usa a fila de `wyd-db` (`SaveQueue`), que
-//! é *try_send*: nunca escreve no tick.
+//! Cena autoritativa (FASE-03-9): [`Engine::scene_snapshot`] devolve **uma** lista de
+//! entidades visíveis — NPCs do mapa e personagens no mundo — com o **índice de entidade**
+//! como id de cena (espaço único: o cliente indexa `MobID`, então NPC e jogador não podem
+//! colidir) e [`plan_scene`] calcula o delta de entrada/saída por sessão, com teto de pacotes
+//! por varredura. Quem escreve no fio é a borda, sempre com `HEADER.ID = ESCENE_FIELD`.
+//!
+//! O que este módulo **ainda não** faz (issues donas): movimento do jogador no fio (a tabela
+//! de opcodes provada não tem `_MSG_Move`, FASE-08-6) e atualização de barra de outro jogador.
+//! O save usa a fila de `wyd-db` (`SaveQueue`), que é *try_send*: nunca escreve no tick.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -68,6 +74,47 @@ const ATTACK_RULES: AttackRules = AttackRules {
     range_tiles: ATTACK_RANGE_TILES,
     cooldown_ms: ATTACK_COOLDOWN_MS,
 };
+
+/// Variável do teto de pacotes de cena por varredura de sessão.
+pub const ENV_SCENE_MAX_PER_REFRESH: &str = "WYD_SCENE_MAX_PER_REFRESH";
+/// Teto default de pacotes de cena por varredura (= por segundo, `SCENE_POLL`).
+///
+/// Um `_MSG_CreateMob` custa 232 B e a varredura acontece a 1 Hz: 64 pacotes são 14 848 B/s
+/// por sessão, muito abaixo do que a sessão já tráfega. O teto existe para uma recarga de
+/// `npc_definition` com milhares de criaturas não virar uma rajada — e, quando ele corta, a
+/// sessão **não** avança a geração e continua de onde parou na varredura seguinte.
+pub const DEFAULT_SCENE_MAX_PER_REFRESH: usize = 64;
+/// Faixa aceita do teto (0 e negativo não fazem sentido; a sessão pararia de desenhar o mapa).
+pub const MAX_SCENE_PER_REFRESH: usize = 4_096;
+
+/// Teto de pacotes de cena por varredura pedido no ambiente (default 64).
+pub fn scene_budget_from_env() -> Result<usize, String> {
+    let valor = std::env::var(ENV_SCENE_MAX_PER_REFRESH).ok();
+    scene_budget_from_value(valor.as_deref())
+}
+
+/// Interpreta o teto; `None`/vazio usa o default.
+///
+/// Separado do ambiente para o teste provar `0`, `4097` e `"abc"` sem mexer em variável de
+/// processo. Valor inválido é erro fatal no boot — nunca correção silenciosa.
+pub fn scene_budget_from_value(valor: Option<&str>) -> Result<usize, String> {
+    let bruto = match valor.map(str::trim) {
+        None | Some("") => return Ok(DEFAULT_SCENE_MAX_PER_REFRESH),
+        Some(bruto) => bruto,
+    };
+    let teto = bruto.parse::<usize>().map_err(|_| {
+        format!(
+            "{ENV_SCENE_MAX_PER_REFRESH} precisa ser um número entre 1 e {MAX_SCENE_PER_REFRESH}, \
+             recebido {bruto:?}"
+        )
+    })?;
+    if !(1..=MAX_SCENE_PER_REFRESH).contains(&teto) {
+        return Err(format!(
+            "{ENV_SCENE_MAX_PER_REFRESH}={teto} fora da faixa 1..={MAX_SCENE_PER_REFRESH}"
+        ));
+    }
+    Ok(teto)
+}
 
 /// Frequência pedida no ambiente (default 20), já validada pelo contrato do scheduler.
 pub fn tick_hz_from_env() -> Result<u32, String> {
@@ -193,36 +240,139 @@ pub struct NpcSpec {
     pub direction: u8,
 }
 
-/// NPC como o cliente precisa vê-lo: `_MSG_CreateMob` é montado a partir daqui.
+/// Aparência do personagem para a cena (`_MSG_CreateMob`), montada na borda a partir do
+/// `STRUCT_MOB` do login — o motor não conhece inventário nem template de classe.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ActorSkin {
+    /// `MobName[16]` do `STRUCT_MOB`.
+    pub name: [u8; 16],
+    /// `Equip[i].sIndex` — é por ela que o cliente desenha o personagem.
+    pub equip: [u16; 16],
+    /// `STRUCT_MOB.Guild` (0 = sem guilda).
+    pub guild: u16,
+    /// `CurrentScore.AttackRun` (velocidade da animação de andar).
+    pub attack_run: u8,
+    /// `CurrentScore.Direction`.
+    pub direction: u8,
+}
+
+/// Uma entidade na vista do cliente: NPC/monstro **ou** personagem.
 ///
-/// Sai do mundo vivo (posição autoritativa), não da foto do snapshot: a recarga pode já ter
-/// movido o NPC e a cena que vale é a do motor.
+/// `id` é o **índice da entidade** no armazém, não o id de `npc_definition`: o cliente indexa
+/// as criaturas por `MobID`, então NPC e jogador têm de viver no mesmo espaço de ids — usar o
+/// id do banco para NPC e o índice para jogador faria duas entidades diferentes colidirem no
+/// mesmo `MobID`. Sai do mundo vivo (posição autoritativa), nunca da foto do snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NpcView {
-    pub id: i32,
-    pub name: String,
+pub struct SceneMob {
+    /// `MobID` do `_MSG_CreateMob` (índice da entidade).
+    pub id: u16,
+    /// `true` para personagem: muda o `RemoveType` na saída (logout) e o `Merchant`.
+    pub actor: bool,
+    pub name: [u8; 16],
     pub position: Position,
     pub level: u16,
     pub hp: u32,
     pub max_hp: u32,
     pub attack: u32,
     pub defense: u32,
-    /// `STRUCT_SCORE.Merchant` do template: NPC de loja tem nome sempre visível.
+    /// `STRUCT_SCORE.Merchant`: NPC de loja tem nome sempre visível; jogador é 0.
     pub merchant: u8,
     pub attack_run: u8,
     pub direction: u8,
     pub equip: [u16; 16],
+    /// `STRUCT_MOB.Guild` (0 = sem guilda).
+    pub guild: u16,
 }
 
-/// Foto da cena de NPCs + a geração que a produziu.
+impl SceneMob {
+    /// Nome sem os NULs de preenchimento (log/teste).
+    #[must_use]
+    pub fn name_str(&self) -> String {
+        let fim = self
+            .name
+            .iter()
+            .position(|byte| *byte == 0)
+            .unwrap_or(self.name.len());
+        String::from_utf8_lossy(&self.name[..fim]).to_string()
+    }
+}
+
+/// Foto da cena (NPCs + personagens) e a geração que a produziu.
 ///
-/// A geração só sobe quando `sync_npcs` materializa ou remove alguma criatura: a sessão
-/// compara o número e busca a foto só quando ela mudou (nada de varrer 6 100 NPCs por
-/// pacote).
+/// A geração sobe a cada entidade que nasce ou sai do mundo: a sessão compara o número e só
+/// busca a foto quando ela mudou (nada de varrer 6 100 NPCs por pacote).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SceneSnapshot {
     pub generation: u64,
-    pub npcs: Vec<NpcView>,
+    pub mobs: Vec<SceneMob>,
+}
+
+/// Delta de cena de **uma** sessão: quem entra, quem sai e se o delta coube no teto.
+///
+/// `complete = false` significa que o teto de pacotes por varredura cortou o resto: a sessão
+/// **não** avança a geração e tenta de novo na próxima varredura (o que já foi enviado não é
+/// reenviado, porque o conjunto enviado é atualizado).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScenePlan {
+    pub enter: Vec<SceneMob>,
+    /// `(id, RemoveType)`: `0` fora de vista, `2` logout (`ADR-0025`).
+    pub leave: Vec<(u16, i32)>,
+    pub complete: bool,
+}
+
+/// `RemoveType` do `_MSG_RemoveMob` (`ADR-0025`): saiu da vista.
+pub const REMOVE_OUT_OF_VIEW: i32 = 0;
+/// `RemoveType` do `_MSG_RemoveMob`: o personagem saiu do mundo (logout/queda).
+pub const REMOVE_LOGOUT: i32 = 2;
+
+/// Calcula o delta entre o que a sessão já viu (`sent`: id → é personagem) e a foto atual.
+///
+/// Só entrada e saída: entidade que **mudou** de posição/HP não é reenviada como `CreateMob`
+/// (o cliente recusaria o id repetido e o pacote de movimento não está provado — resíduo
+/// declarado na FASE-03-9). Saídas vêm primeiro: liberar o cliente de um fantasma vale mais
+/// que desenhar um novo.
+#[must_use]
+pub fn plan_scene(
+    sent: &std::collections::BTreeMap<u16, bool>,
+    snapshot: &SceneSnapshot,
+    budget: usize,
+) -> ScenePlan {
+    let atuais: std::collections::BTreeMap<u16, &SceneMob> =
+        snapshot.mobs.iter().map(|mob| (mob.id, mob)).collect();
+    let mut leave: Vec<(u16, i32)> = sent
+        .iter()
+        .filter(|(id, _)| !atuais.contains_key(id))
+        .map(|(id, actor)| {
+            (
+                *id,
+                if *actor {
+                    REMOVE_LOGOUT
+                } else {
+                    REMOVE_OUT_OF_VIEW
+                },
+            )
+        })
+        .collect();
+    leave.sort_unstable_by_key(|(id, _)| *id);
+    let mut enter: Vec<SceneMob> = snapshot
+        .mobs
+        .iter()
+        .filter(|mob| !sent.contains_key(&mob.id))
+        .cloned()
+        .collect();
+    let total = leave.len() + enter.len();
+    let complete = total <= budget;
+    if !complete {
+        // Saídas primeiro; o que sobrar do teto vai para entradas.
+        leave.truncate(budget);
+        let restante = budget.saturating_sub(leave.len());
+        enter.truncate(restante);
+    }
+    ScenePlan {
+        enter,
+        leave,
+        complete,
+    }
 }
 
 /// Resultado de reconciliar o mundo com uma foto de `npc_definition`.
@@ -248,6 +398,8 @@ pub struct TalkTarget {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttackOutcome {
     pub target_npc: i32,
+    /// Id do alvo na cena (`MobID` = índice da entidade), usado no `_MSG_RemoveMob` de morte.
+    pub target_scene: u16,
     /// Template do alvo (`npc_template.template_name`), usado para resolver o loot.
     pub template: String,
     pub damage: u32,
@@ -269,6 +421,7 @@ pub enum Command {
     /// Encarna o personagem lido do banco (a leitura acontece na borda, fora do tick).
     Enter {
         character: Box<Character>,
+        skin: Box<ActorSkin>,
         reply: SyncSender<Result<Entity, EnterWorldError>>,
     },
     /// Tira a entidade do mundo e devolve o estado para o save.
@@ -315,8 +468,10 @@ pub struct Engine {
     by_character: HashMap<i64, Entity>,
     /// NPCs vivos por id de `npc_definition` (o mapa que a recarga reconcilia).
     npcs: HashMap<i32, NpcLive>,
-    /// Sobe a cada `sync_npcs` que materializou/removeu criatura: a borda difunde o delta.
-    npcs_generation: u64,
+    /// Aparência dos personagens vivos, por índice de entidade (cena de jogador).
+    skins: HashMap<u32, ActorSkin>,
+    /// Sobe a cada entidade que nasce ou sai do mundo: a borda difunde o delta.
+    scene_generation: u64,
 }
 
 impl core::fmt::Debug for Engine {
@@ -347,7 +502,8 @@ impl Engine {
             live: HashMap::new(),
             by_character: HashMap::new(),
             npcs: HashMap::new(),
-            npcs_generation: 0,
+            skins: HashMap::new(),
+            scene_generation: 0,
         })
     }
 
@@ -381,6 +537,8 @@ impl Engine {
             self.store.despawn(entity);
             return Err(error);
         }
+        // Entidade viva = mudança de cena (o cliente precisa de `_MSG_CreateMob`).
+        self.scene_generation = self.scene_generation.wrapping_add(1);
         Ok(entity)
     }
 
@@ -392,7 +550,13 @@ impl Engine {
         self.live.remove(&entity.index);
         self.by_character.retain(|_, atual| *atual != entity);
         self.npcs.retain(|_, npc| npc.entity != entity);
-        self.store.despawn(entity)
+        self.skins.remove(&entity.index);
+        let saiu = self.store.despawn(entity);
+        if saiu {
+            // Saída = mudança de cena (o cliente precisa de `_MSG_RemoveMob`).
+            self.scene_generation = self.scene_generation.wrapping_add(1);
+        }
+        saiu
     }
 
     /// Reconcilia o mundo com a foto de `npc_definition` do snapshot.
@@ -435,43 +599,75 @@ impl Engine {
                 Err(_) => report.rejected += 1,
             }
         }
-        if report.spawned > 0 || report.removed > 0 {
-            self.npcs_generation = self.npcs_generation.wrapping_add(1);
-        }
         report
     }
 
-    /// Cena atual: cada NPC vivo com a posição que o motor conhece, ordenada por id.
+    /// Cena atual: NPCs e personagens vivos, com a posição que o motor conhece, ordenados por id.
     ///
     /// A ordem determinística importa para o delta da borda: duas leituras iguais devolvem a
     /// mesma lista, então a sessão só emite o que realmente mudou.
     #[must_use]
     pub fn scene_snapshot(&self) -> SceneSnapshot {
-        let mut npcs: Vec<NpcView> = self
-            .npcs
-            .values()
-            .filter_map(|npc| {
-                let position = self.store.position_of(npc.entity)?;
-                Some(NpcView {
-                    id: npc.spec.id,
-                    name: npc.spec.name.clone(),
-                    position,
-                    level: npc.spec.stats.level,
-                    hp: npc.spec.stats.hp,
-                    max_hp: npc.spec.stats.max_hp,
-                    attack: npc.spec.stats.attack,
-                    defense: npc.spec.stats.defense,
-                    merchant: u8::try_from(npc.spec.merchant).unwrap_or(0),
-                    attack_run: npc.spec.attack_run,
-                    direction: npc.spec.direction,
-                    equip: npc.spec.equip,
-                })
-            })
-            .collect();
-        npcs.sort_by_key(|npc| npc.id);
+        let mut mobs: Vec<SceneMob> = Vec::with_capacity(self.npcs.len() + self.live.len());
+        for npc in self.npcs.values() {
+            let Some(position) = self.store.position_of(npc.entity) else {
+                continue;
+            };
+            let Ok(id) = u16::try_from(npc.entity.index) else {
+                continue;
+            };
+            mobs.push(SceneMob {
+                id,
+                actor: false,
+                name: fixed_name(&npc.spec.name),
+                position,
+                level: npc.spec.stats.level,
+                hp: npc.spec.stats.hp,
+                max_hp: npc.spec.stats.max_hp,
+                attack: npc.spec.stats.attack,
+                defense: npc.spec.stats.defense,
+                merchant: u8::try_from(npc.spec.merchant).unwrap_or(0),
+                attack_run: npc.spec.attack_run,
+                direction: npc.spec.direction,
+                equip: npc.spec.equip,
+                guild: 0,
+            });
+        }
+        for (indice, estado) in &self.live {
+            let Ok(id) = u16::try_from(*indice) else {
+                continue;
+            };
+            let skin = self.skins.get(indice).cloned().unwrap_or_default();
+            // Stats vêm do armazém (fonte autoritativa); a entidade é achada pelo personagem
+            // porque `LiveState` guarda o id do banco, não a entidade.
+            let stats = self
+                .by_character
+                .get(&estado.character_id)
+                .and_then(|entity| self.store.stats_of(*entity));
+            mobs.push(SceneMob {
+                id,
+                actor: true,
+                name: skin.name,
+                position: Position {
+                    x: estado.x,
+                    y: estado.y,
+                },
+                level: estado.level,
+                hp: estado.hp,
+                max_hp: stats.map_or(estado.hp, |stats| stats.max_hp),
+                attack: stats.map_or(0, |stats| stats.attack),
+                defense: stats.map_or(0, |stats| stats.defense),
+                merchant: 0,
+                attack_run: skin.attack_run,
+                direction: skin.direction,
+                equip: skin.equip,
+                guild: skin.guild,
+            });
+        }
+        mobs.sort_by_key(|mob| mob.id);
         SceneSnapshot {
-            generation: self.npcs_generation,
-            npcs,
+            generation: self.scene_generation,
+            mobs,
         }
     }
 
@@ -532,10 +728,10 @@ impl Engine {
         // resolvido na sessão, com a tabela do snapshot e o sorteio do momento.
         if killed {
             self.despawn(entity);
-            self.npcs_generation = self.npcs_generation.wrapping_add(1);
         }
         Ok(Some(AttackOutcome {
             target_npc: npc_id,
+            target_scene: u16::try_from(entity.index).unwrap_or(0),
             template,
             damage: golpe.amount,
             remaining_hp: golpe.remaining_hp,
@@ -570,7 +766,13 @@ impl Engine {
     ///
     /// Toda validação acontece **antes** do spawn: dado inconsistente devolve erro e o
     /// personagem continua fora do mundo (nada de entidade com HP 0 ou posição inválida).
-    pub fn enter(&mut self, character: &Character) -> Result<Entity, EnterWorldError> {
+    /// A `skin` é a aparência do `STRUCT_MOB` do login: sem ela o cliente desenharia um
+    /// personagem sem nome nem equipamento.
+    pub fn enter(
+        &mut self,
+        character: &Character,
+        skin: ActorSkin,
+    ) -> Result<Entity, EnterWorldError> {
         if self.by_character.contains_key(&character.id) {
             return Err(EnterWorldError::AlreadyInWorld {
                 character_id: character.id,
@@ -598,6 +800,7 @@ impl Engine {
             y,
         };
         self.live.insert(entity.index, state);
+        self.skins.insert(entity.index, skin);
         self.by_character.insert(character.id, entity);
         Ok(entity)
     }
@@ -623,8 +826,12 @@ impl Engine {
     /// Aplica um comando da borda sem bloquear o tick.
     fn apply(&mut self, command: Command) {
         match command {
-            Command::Enter { character, reply } => {
-                let _ = reply.send(self.enter(&character));
+            Command::Enter {
+                character,
+                skin,
+                reply,
+            } => {
+                let _ = reply.send(self.enter(&character, *skin));
             }
             Command::Leave { entity, reply } => {
                 let _ = reply.send(self.leave(entity));
@@ -719,6 +926,22 @@ impl Engine {
 }
 
 /// Conversão explícita do estado persistido para o componente do core.
+/// Nome do fio (`MobName[16]`): corta em 16 bytes sem quebrar UTF-8 no meio de um caractere.
+fn fixed_name(nome: &str) -> [u8; 16] {
+    let mut out = [0u8; 16];
+    let mut usado = 0;
+    for caractere in nome.chars() {
+        let mut buf = [0u8; 4];
+        let bytes = caractere.encode_utf8(&mut buf).as_bytes();
+        if usado + bytes.len() > out.len() {
+            break;
+        }
+        out[usado..usado + bytes.len()].copy_from_slice(bytes);
+        usado += bytes.len();
+    }
+    out
+}
+
 fn stats_from(character: &Character) -> Result<Stats, EnterWorldError> {
     let nivel = u16::try_from(character.level).map_err(|_| {
         EnterWorldError::InvalidState(format!("nível {} fora de u16", character.level))
@@ -773,11 +996,17 @@ impl EngineHandle {
         rx.recv_timeout(timeout).ok()
     }
 
-    /// Encarna o personagem; erro é recusa tipada (nada de entidade parcial).
-    pub fn enter(&self, character: &Character) -> Result<Entity, EnterWorldError> {
+    /// Encarna o personagem com a aparência do login; erro é recusa tipada (nada de entidade
+    /// parcial).
+    pub fn enter(
+        &self,
+        character: &Character,
+        skin: &ActorSkin,
+    ) -> Result<Entity, EnterWorldError> {
         self.call(
             |reply| Command::Enter {
                 character: Box::new(character.clone()),
+                skin: Box::new(skin.clone()),
                 reply,
             },
             COMMAND_TIMEOUT,
@@ -806,9 +1035,9 @@ impl EngineHandle {
             .unwrap_or_default()
     }
 
-    /// Cena vigente do motor (NPCs com posição autoritativa + geração).
+    /// Cena vigente do motor (NPCs e personagens com posição autoritativa + geração).
     #[must_use]
-    pub fn npcs(&self) -> SceneSnapshot {
+    pub fn scene(&self) -> SceneSnapshot {
         self.call(|reply| Command::Npcs { reply }, COMMAND_TIMEOUT)
             .unwrap_or_default()
     }
@@ -1058,7 +1287,9 @@ mod tests {
     fn entrar_cria_entidade_na_posicao_do_banco_e_sair_devolve_o_estado() {
         let mut engine = engine();
         let personagem = personagem(7, 300, 400);
-        let entity = engine.enter(&personagem).expect("entrada válida");
+        let entity = engine
+            .enter(&personagem, ActorSkin::default())
+            .expect("entrada válida");
         assert_eq!(engine.players(), 1);
         assert_eq!(engine.entities(), 1);
         let posicao = engine.store().position_of(entity).expect("vivo");
@@ -1079,22 +1310,24 @@ mod tests {
     fn personagem_duplicado_e_estado_invalido_nao_criam_entidade() {
         let mut engine = engine();
         let vivo = personagem(9, 10, 10);
-        engine.enter(&vivo).expect("primeira entrada");
+        engine
+            .enter(&vivo, ActorSkin::default())
+            .expect("primeira entrada");
         assert_eq!(
-            engine.enter(&vivo),
+            engine.enter(&vivo, ActorSkin::default()),
             Err(EnterWorldError::AlreadyInWorld { character_id: 9 })
         );
 
         let mut quebrado = personagem(10, 10, 10);
         quebrado.hp = 200; // acima do max_hp
         assert!(matches!(
-            engine.enter(&quebrado),
+            engine.enter(&quebrado, ActorSkin::default()),
             Err(EnterWorldError::InvalidState(_))
         ));
         let mut fora = personagem(11, -5, 10);
         fora.pos_x = -5;
         assert!(matches!(
-            engine.enter(&fora),
+            engine.enter(&fora, ActorSkin::default()),
             Err(EnterWorldError::Core(CoreError::OutOfBounds { .. }))
         ));
         assert_eq!(engine.players(), 1, "só o personagem válido entrou");
@@ -1160,7 +1393,9 @@ mod tests {
     fn dialogo_exige_alcance_e_usa_o_nome_da_definicao() {
         let mut engine = engine();
         engine.sync_npcs(vec![npc(7, "Aylin", 40, 40, 0)]);
-        let jogador = engine.enter(&personagem(1, 42, 40)).expect("entrada");
+        let jogador = engine
+            .enter(&personagem(1, 42, 40), ActorSkin::default())
+            .expect("entrada");
 
         let alvo = engine.talk_at(jogador, 40, 40).expect("NPC no alcance");
         assert_eq!(
@@ -1181,7 +1416,9 @@ mod tests {
             npc(1_000, "Orc Cavaleiro", 41, 40, 5_000),
             npc(7, "Aylin", 70, 70, 0),
         ]);
-        let jogador = engine.enter(&personagem(1, 40, 40)).expect("entrada");
+        let jogador = engine
+            .enter(&personagem(1, 40, 40), ActorSkin::default())
+            .expect("entrada");
 
         // `Npc` de loja nunca é alvo de `_MSG_Attack`: clicar nele não acha criatura.
         assert_eq!(
@@ -1208,16 +1445,25 @@ mod tests {
         );
         assert_eq!(engine.npc_actors(), 1, "só o NPC de loja continua vivo");
         let cena = engine.scene_snapshot();
-        assert_eq!(cena.npcs.len(), 1);
-        assert!(cena.npcs.iter().all(|npc| npc.id == 7));
-        assert_eq!(cena.generation, 2, "o abate incrementa a geração da cena");
+        // Personagem + NPC de loja: o monstro abatido saiu da cena.
+        assert_eq!(cena.mobs.len(), 2);
+        assert!(cena.mobs.iter().any(|mob| mob.actor));
+        assert_eq!(cena.mobs.iter().filter(|mob| !mob.actor).count(), 1);
+        assert!(
+            cena.mobs
+                .iter()
+                .all(|mob| mob.name_str() != "Orc Cavaleiro"),
+            "o abate tira o monstro da vista"
+        );
     }
 
     #[test]
     fn handle_da_borda_entra_sai_e_fotografa() {
         let (mut thread, handle) = EngineThread::spawn(engine(), 10).expect("thread do tick");
         let personagem = personagem(21, 100, 200);
-        let entity = handle.enter(&personagem).expect("entrada pelo handle");
+        let entity = handle
+            .enter(&personagem, &ActorSkin::default())
+            .expect("entrada pelo handle");
         let fotos = handle.snapshots();
         assert_eq!(fotos.len(), 1);
         assert_eq!(fotos[0].character_id, 21);
@@ -1225,5 +1471,139 @@ mod tests {
         assert_eq!(estado.character_id, 21);
         assert!(handle.snapshots().is_empty());
         thread.stop_and_join();
+    }
+
+    fn skin(nome: &[u8], guild: u16) -> ActorSkin {
+        let mut name = [0u8; 16];
+        name[..nome.len()].copy_from_slice(nome);
+        let mut equip = [0u16; 16];
+        equip[0] = 831;
+        equip[1] = 1201;
+        ActorSkin {
+            name,
+            equip,
+            guild,
+            attack_run: 82,
+            direction: 3,
+        }
+    }
+
+    #[test]
+    fn personagem_entra_na_cena_com_nome_equip_e_id_proprio() {
+        let mut engine = engine();
+        engine.sync_npcs(vec![npc(7, "Aylin", 40, 40, 0)]);
+        let jogador = engine
+            .enter(&personagem(1, 42, 40), skin(b"Buffy", 4))
+            .expect("entrada");
+
+        let cena = engine.scene_snapshot();
+        assert_eq!(cena.mobs.len(), 2, "NPC + personagem na mesma cena");
+        let ator = cena
+            .mobs
+            .iter()
+            .find(|mob| mob.actor)
+            .expect("personagem na cena");
+        assert_eq!(ator.id, u16::try_from(jogador.index).unwrap());
+        assert_eq!(ator.name_str(), "Buffy");
+        assert_eq!(ator.equip[0], 831, "aparência vem do STRUCT_MOB do login");
+        assert_eq!(ator.guild, 4);
+        assert_eq!((ator.level, ator.hp, ator.max_hp), (10, 90, 100));
+        assert_eq!((ator.position.x, ator.position.y), (42, 40));
+        assert_eq!(ator.merchant, 0, "jogador não é NPC de loja");
+
+        // Espaço de id único: o cliente indexa por `MobID`, então NPC e jogador não podem
+        // compartilhar número (o NPC usa o índice da entidade, não o id do banco).
+        let ids: std::collections::BTreeSet<u16> = cena.mobs.iter().map(|mob| mob.id).collect();
+        assert_eq!(ids.len(), cena.mobs.len());
+        assert!(
+            cena.mobs.iter().all(|mob| mob.id != 7),
+            "id de npc_definition não vira MobID"
+        );
+    }
+
+    #[test]
+    fn saida_do_personagem_sai_da_cena_e_sobe_a_geracao() {
+        let mut engine = engine();
+        let jogador = engine
+            .enter(&personagem(1, 10, 10), skin(b"Buffy", 0))
+            .expect("entrada");
+        let antes = engine.scene_snapshot();
+        assert_eq!(antes.mobs.len(), 1);
+
+        engine.leave(jogador).expect("estado final");
+        let depois = engine.scene_snapshot();
+        assert!(depois.mobs.is_empty(), "quem saiu não fica na cena");
+        assert!(
+            depois.generation > antes.generation,
+            "a saída precisa acordar o delta das outras sessões"
+        );
+    }
+
+    #[test]
+    fn plan_scene_emite_entrada_saida_e_respeita_o_teto() {
+        let mut engine = engine();
+        engine.sync_npcs(vec![npc(1, "Aylin", 40, 40, 0), npc(2, "Orc", 41, 40, 10)]);
+        let cena = engine.scene_snapshot();
+        let ids: Vec<u16> = cena.mobs.iter().map(|mob| mob.id).collect();
+
+        // Sessão nova: tudo entra, nada sai.
+        let vazio = std::collections::BTreeMap::new();
+        let plano = plan_scene(&vazio, &cena, 64);
+        assert_eq!(plano.enter.len(), 2);
+        assert!(plano.leave.is_empty());
+        assert!(plano.complete);
+
+        // Sessão que já viu tudo: delta vazio (nada é reenviado).
+        let vistos: std::collections::BTreeMap<u16, bool> =
+            ids.iter().map(|id| (*id, false)).collect();
+        let plano = plan_scene(&vistos, &cena, 64);
+        assert!(plano.enter.is_empty() && plano.leave.is_empty());
+        assert!(plano.complete);
+
+        // Id que sumiu do mundo vira `RemoveMob` fora de vista; personagem vira logout.
+        let mut antigos = vistos.clone();
+        antigos.insert(9_999, false);
+        antigos.insert(9_998, true);
+        let plano = plan_scene(&antigos, &cena, 64);
+        assert_eq!(
+            plano.leave,
+            vec![(9_998, REMOVE_LOGOUT), (9_999, REMOVE_OUT_OF_VIEW)]
+        );
+        assert!(plano.enter.is_empty());
+
+        // Teto de 1: sai o que precisa sair, entra um, e o delta fica incompleto.
+        let plano = plan_scene(&antigos, &cena, 1);
+        assert_eq!(plano.leave.len(), 1);
+        assert!(plano.enter.is_empty());
+        assert!(!plano.complete, "teto atingido não avança a geração");
+    }
+
+    #[test]
+    fn teto_de_cena_por_varredura_valida_o_ambiente() {
+        assert_eq!(
+            scene_budget_from_value(None),
+            Ok(DEFAULT_SCENE_MAX_PER_REFRESH)
+        );
+        assert_eq!(
+            scene_budget_from_value(Some("  ")),
+            Ok(DEFAULT_SCENE_MAX_PER_REFRESH)
+        );
+        assert_eq!(scene_budget_from_value(Some("1")), Ok(1));
+        assert_eq!(scene_budget_from_value(Some("4096")), Ok(4_096));
+        for invalido in ["0", "4097", "abc", "-1"] {
+            assert!(
+                scene_budget_from_value(Some(invalido)).is_err(),
+                "{invalido} deveria ser recusado"
+            );
+        }
+    }
+
+    #[test]
+    fn nome_do_fio_corta_em_16_bytes_sem_quebrar_utf8() {
+        assert_eq!(&fixed_name("Buffy")[..5], b"Buffy");
+        assert_eq!(fixed_name("Buffy")[5], 0);
+        // 'á' ocupa 2 bytes: 8 cabem em 16, o 9º não pode entrar partido.
+        let bytes = fixed_name(&"á".repeat(9));
+        assert_eq!(&bytes[..16], "á".repeat(8).as_bytes());
     }
 }

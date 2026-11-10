@@ -116,11 +116,35 @@ export const FONTES = {
       'Canal 0 = URL de status (≤ 32 chars); 1..10 = host que o cliente disca no 8281 fixo. ' +
       'Coloracao verde/normal e papel do processo, nao da linha: o mesmo host pode ser verde em outro grupo.',
   },
+  channel_capacity: {
+    dominio: 'canal de servidor',
+    fonte: 'FASE-06-3 (checklist 1.14) — limite e manutencao por canal',
+    estado: 'confirmado',
+    nota:
+      'Tabela propria (a serie proibe ALTER TABLE no up): max_players default 1000 = MAX_USER do legado; ' +
+      'maintenance recusa entrada nova sem derrubar sessao viva. Env WYD_SERVER_MAX_PLAYERS/_MAINTENANCE sobrescreve por processo.',
+  },
+  channel_role: {
+    dominio: 'canal de servidor',
+    fonte: 'FASE-03-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3',
+    estado: 'confirmado',
+    nota:
+      'Papel do canal: normal (PvP conforme o mapa) ou verde (novato: sem PvP, loja pessoal aberta). ' +
+      'Tabela propria (a serie proibe ALTER TABLE no up); env WYD_SERVER_CHANNEL_ROLE sobrescreve por processo.',
+  },
   content_version: {
     dominio: 'catálogo',
     fonte: 'ADR-0009',
     estado: 'confirmado',
     nota: 'Uma linha (`id = 1`); cada seed de conteúdo avança a versão.',
+  },
+  donate_credit: {
+    dominio: 'economia',
+    fonte: 'FASE-07-6 — razão de `credit_donate_balance` (idempotência por chave)',
+    estado: 'confirmado',
+    nota:
+      'Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem creditar duas vezes. ' +
+      'O saldo mora em `account_wallet` (conta, não personagem); tabela própria (a série proíbe ALTER TABLE no up).',
   },
   game_system: {
     dominio: 'catálogo',
@@ -272,6 +296,14 @@ export const FONTES = {
     fonte: '0037_config_editavel.sql + docs/wyd/sistemas/refino.md §2',
     estado: 'confirmado',
     nota: 'Camada de edição do staff sobre `refine_rate`; o loader lê `COALESCE(override, base)` e reset apaga a linha, sem reescrever o seed.',
+  },
+  refine_pity: {
+    dominio: 'refino',
+    fonte: 'FASE-03-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)',
+    estado: 'confirmado',
+    nota:
+      'Piedade por (personagem, slot), 0..20; linha ausente = 0. Tabela própria (a série proíbe ALTER TABLE no up). ' +
+      '`replace_items` grava itens + piedade na mesma transação e poda slots que saíram do inventário; destruir o item apaga a linha.',
   },
   sanc_rate_override: {
     dominio: 'refino',

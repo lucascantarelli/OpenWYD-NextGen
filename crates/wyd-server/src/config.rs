@@ -31,7 +31,9 @@ use std::time::Duration;
 use wyd_db::{
     AccessoryRuleRow, ConfigRateRow, DropConfigRow, NpcConfigRow, PgBackend, RouteConfigRow,
 };
+use wyd_sim::formula::drop::CITIZEN_BONUS_MAX;
 use wyd_sim::formula::refine::{powder_success_bps, Powder, RefinePolicy};
+use wyd_sim::units::Bps;
 
 /// Multiplicador neutro (`10000` bps = 100%) quando a tabela não tem override.
 pub const DEFAULT_MULTIPLIER_BPS: u32 = 10_000;
@@ -45,6 +47,10 @@ pub const MIN_CONFIG_POLL_MS: u64 = 50;
 pub const MAX_CONFIG_POLL_MS: u64 = 60_000;
 /// Teto de linhas lidas de drops/NPCs/rotas por snapshot.
 const DROP_LIMIT: i64 = 200;
+/// Seção de `game_setting` com os parâmetros do canal (migration `0041`).
+pub const CITIZEN_BONUS_SECTION: &str = "Channel Settings";
+/// Chave do bônus de drop do canal de cidadania (bps; `0` = desligado).
+pub const CITIZEN_BONUS_KEY: &str = "citizen_bonus_bps";
 const NPC_LIMIT: i64 = 100_000;
 const ROUTE_LIMIT: i64 = 500;
 
@@ -310,6 +316,18 @@ impl GameConfig {
                         return Err(ConfigError::InvalidKey {
                             family: "setting",
                             key: row.key.clone(),
+                        });
+                    }
+                    // Bônus de cidadania tem faixa própria: negativo não existe e acima de
+                    // `CITIZEN_BONUS_MAX` seria taxa inventada pela metade.
+                    if section == CITIZEN_BONUS_SECTION
+                        && key == CITIZEN_BONUS_KEY
+                        && !(0..=i64::from(CITIZEN_BONUS_MAX.raw())).contains(&row.value)
+                    {
+                        return Err(ConfigError::OutOfRange {
+                            family: "setting",
+                            key: row.key.clone(),
+                            value: row.value,
                         });
                     }
                     settings.insert(row.key.clone(), row.value);
@@ -588,6 +606,20 @@ impl GameConfig {
     #[must_use]
     pub fn setting_int(&self, section: &str, key: &str) -> Option<i64> {
         self.settings.get(&format!("{section}.{key}")).copied()
+    }
+
+    /// Bônus de drop do canal de cidadania, em basis points.
+    ///
+    /// Sai do dado (`game_setting`, seção [`CITIZEN_BONUS_SECTION`]) e **nunca** de constante:
+    /// ausente = 0 (default do seed), que mantém a taxa do legado intacta. Valor acima do teto
+    /// [`CITIZEN_BONUS_MAX`] é recusado em [`Self::from_rows`], então aqui o clamp é só defesa.
+    #[must_use]
+    pub fn citizen_bonus_bps(&self) -> Bps {
+        let bruto = self
+            .setting_int(CITIZEN_BONUS_SECTION, CITIZEN_BONUS_KEY)
+            .unwrap_or(0);
+        let teto = i64::from(CITIZEN_BONUS_MAX.raw());
+        Bps::new(u32::try_from(bruto.clamp(0, teto)).unwrap_or(0))
     }
 
     /// Quantos passos de refino a foto tem (deve ser 15).

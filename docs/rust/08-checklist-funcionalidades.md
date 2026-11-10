@@ -43,10 +43,10 @@ cidadania e handlers do gateway registrados como issues; contagens medidas no ba
 | 1.8 | Sessão única por conta entre canais | ✅ | `0030_sessao_unica.sql`, `crates/wyd-server/src/session.rs`; `tests/sessao_unica.rs::mesma_conta_nao_entra_em_dois_canais_e_libera_ao_sair` |
 | 1.9 | Criação de personagem (`CreateCharacter`) | ✅ | `characters.rs` grava a ficha inicial por classe (`BaseSIDCHM`/`BASE_GetHpMp`, migration `0032_character_scores`) e responde `CNFNewCharacter` com o roster real; `tests/personagens_crud.rs::cria_e_deleta_personagem_pelo_protocolo` cria pelo fio e confere nome/slot/classe, HP/MP e atributos no banco |
 | 1.10 | Deleção de personagem (`DeleteCharacter`) | ✅ | `characters.rs` recusa nome divergente e faz soft delete; o mesmo teste de `personagens_crud.rs` prova `DeleteCharacterFail` sem apagar e roster vazio no caso correto |
-| 1.11 | Seleção/entrada no personagem (`CharacterLogin`) | 🚧 | seleção decidida no banco, `STRUCT_MOB` emitido por `personagens::StructMob` e **personagem vira entidade** na posição salva (`FASE-03-8`, `tests/entrada_mundo.rs`); falta a cena: `ESCENE_FIELD` é `FASE-03-9` |
+| 1.11 | Seleção/entrada no personagem (`CharacterLogin`) | ✅ | seleção decidida no banco, `STRUCT_MOB` emitido por `personagens::StructMob`, **personagem vira entidade** na posição salva e **entra na cena**: `_MSG_CreateMob` com `HEADER.ID = ESCENE_FIELD` (FASE-03-9, `world::{scene_snapshot,plan_scene}`, `cpsock::{send_create_mob,refresh_scene}`, testes de cena em `world` + fio loopback em `cpsock::tests`) |
 | 1.12 | Tela de personagens com os 14 campos de `STRUCT_SELCHAR` | 🚧 | dados reais do banco (nome, classe, level, exp, hp/mp, máximos, ouro, PvP, posição, slot, guilda) provados em `tests/selchar.rs`; **layout provisório `rust-v1`** — o cliente 7662 ainda não confirmou offsets (`docs/cliente/captura-selchar.md`) |
-| 1.13 | Sair / logout explícito | 🚧 | libera a sessão por ociosidade (120 s) em `session.rs` e na queda de socket; pacote de saída não tratado. **Sem teste dedicado** — issue `FASE-08-9` |
-| 1.14 | Canal cheio / manutenção / recusa de entrada | ⬜ | `channels.rs` conta canais; regra de lotação não existe — issue `FASE-06-3` |
+| 1.13 | Sair / logout explícito | ✅ | libera a sessão por ociosidade (120 s), na queda de socket e no pacote de saída (`CharacterLogout → CNFCharacterLogout + leave_world + Drop`, `cpsock.rs:1030-1045`); log `event=logout result=ok reason=explicit\|socket`. Prova: `tests/selchar.rs::logout_explicito_fecha_a_conexao_e_libera_a_sessao` (CNF + conexão fecha + `live_session_of=None` em ≤ 5 s). Golden do frame real segue pendente da captura 08-6 |
+| 1.14 | Canal cheio / manutenção / recusa de entrada | ✅ | `channel_capacity` (migration `0040`, seed 1000/`MAX_USER` por canal 1–10) + `SessionGate::claim` recusa `Capacity{limit}`/`Maintenance` antes de abrir sessão; env `WYD_SERVER_MAX_PLAYERS`/`WYD_SERVER_MAINTENANCE` sobrescreve por processo; recusa em `wyd_packets_rejected_total{reason="canal_lotado"\|"manutencao"}` + log; `serv00.htm` mantém números, `/health` expõe `maintenance`. Provas: `tests/lotacao.rs` (5 casos) |
 | 1.15 | Conta no portal: criar, trocar senha, **trocar PIN** | ✅ | Tela de conta do portal (`conta/pin-form.tsx` -> `POST /api/panel/pin`) troca o PIN exigindo o atual, pelo mesmo `0x0FDE` em duas etapas do jogo. Prova: `tests/portal_pin.rs::troca_de_pin_pelo_portal_funciona_e_invalida_o_antigo` (servidor real + banco), `pin/route.test.ts` (rota) e `conta/pin-form.test.tsx` (componente real, jsdom: textos do i18n, POST e mensagens de erro). Criar conta e trocar senha seguem no fluxo de staff |
 | 1.16 | Limite de conexões simultâneas por IP (multiboxing) | ✅ | `cpsock::ConnectionLimit`/`serve_listener_with_limit`, env `WYD_MAX_CONNECTIONS_PER_IP` (padrão 6, `0` desliga); `tests/limite_ip.rs::segunda_conexao_do_mesmo_ip_e_recusada_e_volta_ao_sair`. Recusa conta em `wyd_ip_limit_refusals_total` (`metrics::ip_limit_refused`) e gera resumo a cada 25 (`result=ip_limit_summary`) |
 | 1.17 | **Troca de PIN em duas etapas (`0x0FDE`, `change_numeric` 1→2)** | ✅ | `cpsock::authorize_pin` (passo 1 exige o PIN atual e arma; passo 2 grava) + `auth::change_pin`; `tests/pin_troca.rs::troca_de_pin_exige_o_atual_e_invalida_o_antigo` prova passo 2 sem passo 1 recusado, PIN atual errado recusado, e que o PIN antigo deixa de valer no banco e no fio |
@@ -62,7 +62,7 @@ cliente.
 |---|---|---|---|
 | 2.1 | Ficha persistida (nível, EXP, HP/MP e máximos, ouro, PvP, posição, classe, guilda) | ✅ | `0002_personagens.sql` (inclui `gold`, `hp_max`, `mp_max`, `pvp_points`), `0032_character_scores.sql` (FOR/INT/DES/CON e pontos livres), `0004_guildas.sql` (guilda via `guild_members`), `repo/pg.rs`; `tests/selchar.rs` afirma esses campos no frame = banco e `tests/personagens_crud.rs` afirma a ficha inicial da classe. Cidadania é derivada do canal, não persistida |
 | 2.2 | Atributos e distribuição de pontos | 🚧 | criação grava `BaseSIDCHM[classe]` e 5 pontos livres (3 de skill) por nível em `character_scores`; a distribuição em jogo (`_MSG_ApplyBonus`) ainda não está implementada |
-| 2.3 | Cidadania (3 reinos) e canais por reino | 🚧 | `docs/wyd/canais-e-cidadania.md`, seed `0029`; `citizen = canal + 1` no `STRUCT_SELCHAR`, sem regra de reino — bônus e canal verde são `FASE-03-10` |
+| 2.3 | Cidadania (3 reinos) e canais por reino | ✅ | Papel do canal em dado (`channel_role`, migration `0041`: `1 = normal`, `2 = verde`) com sobrescrita por processo (`WYD_SERVER_CHANNEL_ROLE`); `channels::ChannelRules` decide `pvp_allowed(map)` (verde nunca liga, normal segue o mapa) e `personal_shop_allowed()`; `/health` publica `role`/`pvp`/`shop` e o boot loga `event=channel role=… source=banco|env`. Bônus de cidadania no drop é **parâmetro** (`Channel Settings.citizen_bonus_bps`, default 0, teto 50%) aplicado por `Gameplay::loot*` via `citizen`. Provas: `tests/canal_verde.rs` (4 casos: política, env, bônus na mesma seed, faixa inválida) e `tests/selchar.rs::sussurro_de_getout_e_tolerado_e_nao_derruba_a_sessao`. Resíduo declarado: cidadania ainda **derivada do canal** (compra na Kibita pertence ao diálogo de NPC — 3.5/7.2) e o PvP/loja no fio chegam com 4.5/7.2 |
 | 2.4 | Aparência / customização | ⬜ | — |
 | 2.5 | Rename / exclusão definitiva / recuperação | ⬜ | — |
 | 2.6 | Montaria | ⬜ | `game_system` tem `montaria`; sem regra |
@@ -93,7 +93,7 @@ cliente.
 | 4.5 | PvP, PK, chaos e penalidades | ⬜ | docs + coluna `pvp_points` (sem regra) |
 | 4.6 | IA de NPC (FSM + utilidade) | ✅ | `core/src/npc/brain.rs`, `behavior.rs`, `budget.rs`; `tests/npc.rs` |
 | 4.7 | Bosses e invasões | ⬜ | `docs/wyd/sistemas/eventos.md` |
-| 4.8 | Pacote autoritativo de cena (`ESCENE_FIELD` 30000) | ⬜ | invariante 4 do `AGENTS.md`; constante existe e **nenhum pacote é emitido** — issue `FASE-03-9` |
+| 4.8 | Pacote autoritativo de cena (`ESCENE_FIELD` 30000) | ✅ | invariante 4 cumprido: NPCs + personagens com `MobID` = índice da entidade (espaço único), delta entrar/sair por sessão, `RemoveType` 0/1/2, teto `WYD_SCENE_MAX_PER_REFRESH` (default 64, fatal no boot se inválido); prova: `world::tests` (ator na cena, saída, `plan_scene`, teto, UTF-8) + `cpsock::tests` (fio loopback: `ESCENE_FIELD` no header, `MobID` no corpo). Resíduos: movimento no fio e raio de visão sem fonte provada + captura 08-6 |
 
 ## 5. Itens, inventário e refino
 
@@ -102,7 +102,7 @@ cliente.
 | 5.1 | Catálogo de itens | ✅ | `0018_seed_item_catalog.sql`, `0017_seed_taxonomia.sql`; `tests/catalogo.rs` |
 | 5.2 | Inventário e equipamento | 🚧 | `core/src/systems/inventory.rs` + `tests/inventario.rs`; `0003_inventario.sql`; sem fio |
 | 5.3 | Drop e loot | 🚧 | **o sorteio está ligado ao abate:** `Opcode::Attack*` → `SelectionStore::attack` → `Gameplay::loot_at_death(template, die)` — um roll por item da tabela do snapshot, tirado no instante da morte, com `event=death`/`event=loot` (seed) em `cpsock`; `tests/config_gameplay.rs::morte_sorteia_um_roll_por_item_da_tabela_do_snapshot` prova seed→rolls→drops e a recarga do portal mudando o peso. **Falta materializar a caixa no chão** (`_MSG_CreateItem` 0x026E) e o pickup (`_MSG_GetItem` 0x0270 → `CNFGetItem` 0x0171): offsets levantados em `docs/cliente/pacotes.md` §“Caixa de item”, direção/pack dependem da captura 08-6 |
-| 5.4 | Refino, Anct, celestial/God2 | 🚧 | `0009_refino.sql`, `0022_seed_refino.sql`, `0025/0026_sanc_rate`; taxas editáveis no portal (`0037`); `Opcode::UseItem` → `SelectionStore::use_item` → `Gameplay::use_item` → `Gameplay::refine` lê SancRate do snapshot por tentativa, grava `character_items` e recusa sem mutação; `tests/config_gameplay.rs` prova recarga/reversão; refino de acessório como dado (`0038`); falta o `UpdateItem` de resposta e a piedade persistida |
+| 5.4 | Refino, Anct, celestial/God2 | 🚧 | `0009_refino.sql`, `0022_seed_refino.sql`, `0025/0026_sanc_rate`; taxas editáveis no portal (`0037`); `Opcode::UseItem` → `SelectionStore::use_item` → `Gameplay::use_item` → `Gameplay::refine` lê SancRate do snapshot por tentativa (piedade da `0043_refine_pity` somada), grava `character_items` + piedade na mesma transação e emite `SendItem` (0x0182) com o alvo; recusa (`MissingRate`, teto +6/+9, selado, `EF_NOSANC`) sem mutação e sem reenvio; `tests/config_gameplay.rs` prova recarga/reversão, `tests/refino_piedade.rs` 5/5 prova piedade + fio; refino de acessório como dado (`0038`). Resíduo: estatística +25AC/+40dmg do B16 e cadeia +12~+15 (FASE-10) |
 | 5.5 | Imbuir / repleção | ⬜ | docs; sem regra |
 | 5.6 | Mix / compose | 🚧 | `core/src/systems/compose.rs` + `tests/compose.rs`; sem fio |
 | 5.7 | Craft | ⬜ | catálogo `craft`; sem receita executável |
@@ -118,7 +118,7 @@ pacote de resposta.
 
 | Resolvedor | Entrada no servidor | Ligado ao protocolo? |
 |---|---|---|
-| `Gameplay::refine` / `Gameplay::use_item` (SancRate + `wyd-sim`) | `Opcode::UseItem` → `SelectionStore::use_item` | **Sim** — lê o snapshot por tentativa e grava `character_items`; falta o `UpdateItem` de resposta e a piedade persistida |
+| `Gameplay::refine` / `Gameplay::use_item` (SancRate + `wyd-sim`) | `Opcode::UseItem` → `SelectionStore::use_item` | **Sim** — lê o snapshot por tentativa (com piedade 0043), grava `character_items` + piedade e emite `SendItem` (0x0182); recusa sem mutação e sem reenvio |
 | `Gameplay::loot` / `Gameplay::loot_at_death` (roll por item, tabela do snapshot) | `Opcode::Attack*` → `Engine::attack_at` → `SelectionStore::attack` | **Sim até o sorteio** — o abate tira o mob do mundo, emite `RemoveMob` (morte) e resolve/loga os drops com os rolls do momento; **não** cria caixa no chão nem trata pickup |
 | `Gameplay::exp_reward` (multiplicador de EXP) | `Opcode::Attack*` → `SelectionStore::gain_exp` | **Sim** — `UpdateEtc`/`UpdateScore` com o `Mob` gravado |
 | `Gameplay::drop_rule` / `drop_chance_bps` (peso editável no portal) | portal → `config_revision` → `LiveConfig` | **Sim** — o peso novo entra no próximo roll, sem reiniciar o canal |
@@ -170,7 +170,7 @@ pacote de resposta.
 | 10.1 | Chat normal e whisper | ⬜ | — |
 | 10.2 | Party / grupo | ⬜ | — |
 | 10.3 | Amigos / ignore | ⬜ | — |
-| 10.4 | HUD, barras de HP/EXP, minimapa | ⬜ | depende de `ESCENE_FIELD` |
+| 10.4 | HUD, barras de HP/EXP, minimapa | 🚧 | servidor emite HP/nível/guilda na cena (`ESCENE_FIELD`, FASE-03-9); falta a prova de render no cliente 7662 (captura 08-6) |
 | 10.5 | Macro/auto | ⬜ | — |
 
 ## 11. Administração, portal e cliente
@@ -178,7 +178,7 @@ pacote de resposta.
 | # | Funcionalidade | Estado | Evidência (código + prova) |
 |---|---|---|---|
 | 11.1 | BFF do portal com `adminCall` | ✅ | `wyd-portal/src/server/admin.ts`; suíte vitest do portal (a contagem muda por entrega — vale a saída do CI, não um número fixo na doc) |
-| 11.2 | Grants via `delivery_queue` | ✅ | `0006_delivery_queue.sql` com `idempotency_key` UNIQUE; `grants/request` grava durável; tela `/entregas` enfileira ouro e mostra a fila; canal drena gold (`event=grant delivered`). **E2E real:** `npm run test:e2e` 3/3 (gold 0→250 pela tela; mesma chave → replay, 1 linha, gold 300). Item/nível seguem pendentes no inventário/nível do Hot Path (issue `FASE-07-6` para a fila de item) |
+| 11.2 | Grants via `delivery_queue` | ✅ | `0006_delivery_queue.sql` com `idempotency_key` UNIQUE; `grants/request` grava durável; tela `/entregas` enfileira ouro e mostra a fila; canal drena gold (`event=grant delivered`). **E2E real:** `npm run test:e2e` 3/3 (gold 0→250 pela tela; mesma chave → replay, 1 linha, gold 300). Item sai da fila pelo dreno `claim_item` (FASE-07-6 ✅: slot livre de `Carry` 16–79; mochila cheia pende com `attempts`); nível segue pendente no Hot Path |
 | 11.3 | Painel de staff | ✅ | login do portal, busca/criação de conta, moderação (papel + bloqueio com motivo), `/auditoria`, `/economia` (07-3) e `/entregas` (07-4); **provado na stack** com HTTP real por papel, efeito em `account_moderation`/`audit_log` e login bloqueado/liberado no portal e no jogo; E2E Playwright 3/3 |
 | 11.4 | Auditoria administrativa | ✅ | `0005_auditoria.sql`, `crates/wyd-admin`; `tests/contract.rs` |
 | 11.5 | Identidade visual única | ✅ | `docs/arquitetura/identidade.tokens`, `branding.rs`, `gui.rs`; `crates/wyd-launcher/tests/identidade.rs` |
@@ -189,12 +189,11 @@ pacote de resposta.
 
 ## Itens no código sem prova automatizada (não são ✅)
 
-| Item | Por que está em 🚧 |
-|---|---|
-| 1.13 (logout) | só o timeout de ociosidade tem código; pacote de saída não é tratado nem testado |
-| 4.3 (skill em combate) | `systems/skill.rs` sem teste dedicado e sem fio |
-| 11.7 (re-tema `.wyt`) | CLI existe; nenhum teste de ida-e-volta de paleta |
-| 5.4 / 5.6 no fio | regra no core testada, emissão de pacote não |
+| Item | Estado | Por que está em 🚧 |
+|---|---|---|
+| 4.3 (skill em combate) | 🚧 | `systems/skill.rs` sem teste dedicado e sem fio |
+| 11.7 (re-tema `.wyt`) | 🚧 | CLI existe; nenhum teste de ida-e-volta de paleta |
+| 5.4 / 5.6 no fio | 🚧 | 5.4 emite `SendItem` (fio provado em `refino_piedade.rs`); 5.6 segue sem emissão |
 
 ## Pendências de entrega (2026-11-09)
 

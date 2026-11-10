@@ -113,10 +113,37 @@ pub fn gem_bonus(effect: GemEffect) -> Bps {
     }
 }
 
+/// Teto do bônus de canal/cidadania: **50%**.
+///
+/// O legado descreve o bônus de cidadania (`Language.txt:423/432`) sem publicar a taxa; a
+/// referência de produção dá o teto como +1% por 1.000.000.000 de imposto até 50%
+/// (`docs/wyd/canais-e-cidadania.md` §2). Aqui ele é **teto de sanidade de parâmetro** — não
+/// taxa aplicada: o valor efetivo vem do dado do canal (`game_setting.citizen_bonus_bps`).
+pub const CITIZEN_BONUS_MAX: Bps = Bps::new(5_000);
+
+/// Soma bônus de origens diferentes (gema, cidadania) sem estourar `u32`.
+///
+/// Os bônus são **composições aditivas**: cada um incide sobre a mesma taxa-base, nunca um
+/// sobre o resultado do outro (`effective_rate` aplica a soma uma vez só).
+#[must_use]
+pub fn sum_bonus(bonuses: &[Bps]) -> Bps {
+    Bps::new(
+        bonuses
+            .iter()
+            .fold(0u32, |soma, bonus| soma.saturating_add(bonus.raw())),
+    )
+}
+
 /// Taxa efetiva: `rate + rate × bônus`, limitada ao topo da escala.
 #[must_use]
 pub fn effective_rate(rate: u32, bonus: Bps) -> u32 {
     rate.saturating_add(bonus.apply(rate)).min(DROP_ROLL_MAX)
+}
+
+/// Taxa efetiva com bônus compostos (gema + canal), aplicados uma vez sobre a base.
+#[must_use]
+pub fn effective_rate_with(rate: u32, bonuses: &[Bps]) -> u32 {
+    effective_rate(rate, sum_bonus(bonuses))
 }
 
 /// O item cai? `roll` precisa estar em `1..=DROP_ROLL_MAX`.
@@ -168,6 +195,28 @@ mod tests {
         assert_eq!(effective_rate(10_000, GEM_DROP_BONUS), 10_800);
         assert_eq!(effective_rate(1, GEM_DROP_BONUS), 1, "8% de 1 trunca em 0");
         assert_eq!(effective_rate(DROP_ROLL_MAX, GEM_DROP_BONUS), DROP_ROLL_MAX);
+    }
+
+    #[test]
+    fn bonus_de_cidadania_soma_com_a_gema_e_respeita_o_teto() {
+        // 50% de cidadania + 8% da gema sobre 10.000 = 15.800 (soma, não composição).
+        assert_eq!(
+            effective_rate_with(10_000, &[GEM_DROP_BONUS, CITIZEN_BONUS_MAX]),
+            15_800
+        );
+        // Sem bônus, a taxa é a base (default do servidor é 0).
+        assert_eq!(effective_rate_with(10_000, &[Bps::ZERO]), 10_000);
+        // Nenhum bônus vira teto da escala de sorteio.
+        assert_eq!(
+            effective_rate_with(DROP_ROLL_MAX, &[CITIZEN_BONUS_MAX]),
+            DROP_ROLL_MAX
+        );
+        // Soma satura em `u32`, nunca estoura.
+        assert_eq!(
+            sum_bonus(&[Bps::new(u32::MAX), Bps::new(10)]).raw(),
+            u32::MAX
+        );
+        assert_eq!(CITIZEN_BONUS_MAX.raw(), 5_000);
     }
 
     #[test]

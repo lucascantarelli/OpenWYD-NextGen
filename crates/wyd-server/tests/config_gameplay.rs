@@ -308,6 +308,7 @@ fn use_item_e_o_caminho_do_pacote_leem_a_sancrate_viva() {
                 roll: 0,
                 pity_roll: 3,
             },
+            0,
         )
         .expect("pó e alvo válidos");
     assert!(primeira.resolution.success);
@@ -341,6 +342,7 @@ fn use_item_e_o_caminho_do_pacote_leem_a_sancrate_viva() {
                 roll: 0,
                 pity_roll: 3,
             },
+            0,
         )
         .expect("pó e alvo válidos");
     assert!(!segunda.resolution.success);
@@ -371,6 +373,7 @@ fn use_item_e_o_caminho_do_pacote_leem_a_sancrate_viva() {
                 roll: 0,
                 pity_roll: 3,
             },
+            0,
         )
         .expect("pó e alvo válidos");
     assert!(terceira.resolution.success);
@@ -407,6 +410,7 @@ fn use_item_e_o_caminho_do_pacote_leem_a_sancrate_viva() {
                 roll: 0,
                 pity_roll: 3,
             },
+            0,
         )
         .expect("snapshot bom continua valendo");
     assert!(ultima.resolution.success);
@@ -417,18 +421,20 @@ fn use_item_e_o_caminho_do_pacote_leem_a_sancrate_viva() {
 fn loot_le_a_tabela_do_snapshot_e_cada_item_tem_seu_roll() {
     let (live, gameplay, source) = boot(config(1, 10, 500_000, 10_000));
 
-    let caiu = gameplay.loot("wolf", &[(413, 1)]).expect("tabela existe");
+    let caiu = gameplay
+        .loot("wolf", &[(413, 1)], false)
+        .expect("tabela existe");
     assert_eq!(caiu.len(), 1);
     assert_eq!((caiu[0].item_index, caiu[0].qty), (413, 1));
 
     // Peso 500.000: roll 500.001 não cai; roll 500.000 cai (comparação inclusiva).
     assert!(gameplay
-        .loot("wolf", &[(413, 500_001)])
+        .loot("wolf", &[(413, 500_001)], false)
         .expect("tabela existe")
         .is_empty());
     assert_eq!(
         gameplay
-            .loot("wolf", &[(413, 500_000)])
+            .loot("wolf", &[(413, 500_000)], false)
             .expect("tabela")
             .len(),
         1
@@ -440,9 +446,15 @@ fn loot_le_a_tabela_do_snapshot_e_cada_item_tem_seu_roll() {
         live.refresh(&source),
         ReloadOutcome::Applied { from: 1, to: 2 }
     );
-    assert_eq!(gameplay.loot("wolf", &[(413, 1)]).expect("tabela").len(), 1);
+    assert_eq!(
+        gameplay
+            .loot("wolf", &[(413, 1)], false)
+            .expect("tabela")
+            .len(),
+        1
+    );
     assert!(gameplay
-        .loot("wolf", &[(413, 2)])
+        .loot("wolf", &[(413, 2)], false)
         .expect("tabela")
         .is_empty());
 
@@ -454,7 +466,7 @@ fn loot_le_a_tabela_do_snapshot_e_cada_item_tem_seu_roll() {
     );
     assert_eq!(
         gameplay
-            .loot("wolf", &[(413, 500_000)])
+            .loot("wolf", &[(413, 500_000)], false)
             .expect("tabela")
             .len(),
         1
@@ -462,18 +474,18 @@ fn loot_le_a_tabela_do_snapshot_e_cada_item_tem_seu_roll() {
 
     // Cada linha exige seu próprio sorteio; faltar é erro, não "não dropou".
     assert_eq!(
-        gameplay.loot("wolf", &[]),
+        gameplay.loot("wolf", &[], false),
         Err(LootError::MissingRoll { item_index: 413 })
     );
     assert_eq!(
-        gameplay.loot("wolf", &[(413, 0)]),
+        gameplay.loot("wolf", &[(413, 0)], false),
         Err(LootError::InvalidRoll {
             item_index: 413,
             roll: 0
         })
     );
     assert_eq!(
-        gameplay.loot("troll", &[(413, 1)]),
+        gameplay.loot("troll", &[(413, 1)], false),
         Err(LootError::NoTable {
             template: "troll".to_string()
         })
@@ -487,7 +499,7 @@ fn multiplicador_de_drop_entra_no_peso_efetivo() {
     // 500.000 × 200% = 1.000.000: o topo da escala passa a cair.
     assert_eq!(
         gameplay
-            .loot("wolf", &[(413, 1_000_000)])
+            .loot("wolf", &[(413, 1_000_000)], false)
             .expect("tabela")
             .len(),
         1
@@ -499,7 +511,7 @@ fn multiplicador_de_drop_entra_no_peso_efetivo() {
         ReloadOutcome::Applied { from: 1, to: 2 }
     );
     assert!(gameplay
-        .loot("wolf", &[(413, 1)])
+        .loot("wolf", &[(413, 1)], false)
         .expect("tabela")
         .is_empty());
 }
@@ -720,7 +732,7 @@ fn valor_invalido_nao_publica_e_o_resolvedor_continua_no_ultimo_bom() {
     assert_eq!(refino.rate_bps, 1_000);
     assert_eq!(
         gameplay
-            .loot("wolf", &[(413, 1)])
+            .loot("wolf", &[(413, 1)], false)
             .expect("snapshot bom")
             .len(),
         1
@@ -734,7 +746,7 @@ fn valor_invalido_nao_publica_e_o_resolvedor_continua_no_ultimo_bom() {
         ReloadOutcome::Applied { from: 1, to: 2 }
     );
     assert!(gameplay
-        .loot("wolf", &[(413, 2)])
+        .loot("wolf", &[(413, 2)], false)
         .expect("tabela")
         .is_empty());
 }
@@ -774,7 +786,7 @@ fn morte_sorteia_um_roll_por_item_da_tabela_do_snapshot() {
 
     let mut die = XorShift64::from_seed(2_026);
     let resolucao = gameplay
-        .loot_at_death("wolf", &mut die)
+        .loot_at_death("wolf", &mut die, false)
         .expect("tabela do snapshot");
     assert_eq!(resolucao.template, "wolf");
     assert_eq!(resolucao.rolls.len(), 2, "um roll por linha da tabela");
@@ -795,7 +807,9 @@ fn morte_sorteia_um_roll_por_item_da_tabela_do_snapshot() {
     // Mesma seed, mesma decisão: o `seed=` do log do abate reproduz o kill.
     let mut outra = XorShift64::from_seed(2_026);
     assert_eq!(
-        gameplay.loot_at_death("wolf", &mut outra).expect("tabela"),
+        gameplay
+            .loot_at_death("wolf", &mut outra, false)
+            .expect("tabela"),
         resolucao
     );
 
@@ -806,7 +820,9 @@ fn morte_sorteia_um_roll_por_item_da_tabela_do_snapshot() {
         ReloadOutcome::Applied { from: 1, to: 2 }
     );
     let mut depois = XorShift64::from_seed(2_026);
-    let segunda = gameplay.loot_at_death("wolf", &mut depois).expect("tabela");
+    let segunda = gameplay
+        .loot_at_death("wolf", &mut depois, false)
+        .expect("tabela");
     let caiu_413 = segunda.drops.iter().any(|drop| drop.item_index == 413);
     assert_eq!(
         caiu_413,
@@ -819,7 +835,7 @@ fn morte_sorteia_um_roll_por_item_da_tabela_do_snapshot() {
 
     // Template sem tabela é erro explícito, nunca \"drop vazio\".
     assert!(matches!(
-        gameplay.loot_at_death("troll", &mut XorShift64::from_seed(1)),
+        gameplay.loot_at_death("troll", &mut XorShift64::from_seed(1), false),
         Err(LootError::NoTable { .. })
     ));
 }

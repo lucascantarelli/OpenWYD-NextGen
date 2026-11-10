@@ -64,21 +64,37 @@ fila, não mutação; jogador nunca passa.
 - `docs/arquitetura/adr/0023` (moderação/auditoria/economia) e `0022` (gateway).
 - `docs/rust/08-checklist-funcionalidades.md` 11.2/11.3.
 
+## Entrega (2026-11-10)
+
+Escopo ajustado ao que o banco sustenta (D-B07: sem `ALTER TABLE` no `up`):
+`content_rates` já tinha handler (fase anterior) e não reabriu; `donate_revenue_admin/*`
+e `daily_reward_admin/set_reward_item_enabled` seguem `501` auditado — não há tabela
+nem coluna que os sustente e a série proíbe inventar. `credit_donate_balance` credita
+`account_wallet` (saldo de **conta**, nunca personagem vivo) com idempotência pela tabela
+própria `donate_credit` (`0042_credito_donate.sql`, sem `ALTER`); `grant_item` enfileira
+na `delivery_queue` e o dreno entrega via `claim_item` (slot livre de `Carry` 16–79;
+mochila cheia pende com `attempts`, nunca duplica nem perde).
+
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
+- [x] Codificar issue (2026-11-10)
+- [x] Testar issue (2026-11-10)
+- [x] Revisar issue (2026-11-10)
+- [x] Documentar issue (2026-11-10)
+- [ ] Versionar issue, mergear branch e fechar issue (proibido nesta entrega: sem commit/push)
 - [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 
-- [ ] Rotas de operação deixam de responder `501`.
-- [ ] Toda escrita audita autor, alvo e antes/depois quando aplicável.
-- [ ] Item/saldo só por `delivery_queue`, com idempotência.
-- [ ] Nenhuma rota lê ou devolve hash/PIN/token.
+- [x] Rotas de operação deixam de responder `501` (2026-11-10: daily/donate/evento/
+  contas/`grant_item` com handler; `501` só onde não há tabela — ver Entrega).
+- [x] Toda escrita audita autor, alvo e antes/depois quando aplicável (2026-11-10:
+  `log_action` em cada escrita; leitura não audita, como em 07-5).
+- [x] Item/saldo só por `delivery_queue`, com idempotência (2026-11-10: `grant_item` é
+  fila; `claim_item` drena; `donate_credit` impede crédito duplo; teste falha se
+  `characters`/`character_items` mudarem fora do dreno).
+- [x] Nenhuma rota lê ou devolve hash/PIN/token (2026-11-10: `AccountListRow` sem
+  segredo; teste asserta ausência de `password`/`pin` no JSON).
 
 ## Riscos / rollback
 

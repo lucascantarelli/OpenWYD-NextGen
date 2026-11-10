@@ -63,6 +63,11 @@ services:
       WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
       WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
       WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
+      # Lotação/manutenção do canal (FASE-06-3): vazio = vale o banco.
+      WYD_SERVER_MAX_PLAYERS: ""
+      WYD_SERVER_MAINTENANCE: ""
+      # Papel do canal (FASE-03-10): vazio = vale o banco (`channel_role`, 0041).
+      WYD_SERVER_CHANNEL_ROLE: ""
     depends_on:
       db:
         condition: service_healthy

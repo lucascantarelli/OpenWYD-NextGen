@@ -82,7 +82,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
-    use wyd_db::{ClaimOutcome, DbError, Role};
+    use wyd_db::{ChannelCapacity, ChannelRole, ClaimOutcome, DbError, Role};
 
     /// Backend de teste: presença por canal declarada, sem banco.
     struct FakeSessions {
@@ -119,6 +119,22 @@ mod tests {
 
         async fn live_sessions(&self, group_id: i16, channel: i16) -> Result<u64, DbError> {
             Ok(self.online.get(&(group_id, channel)).copied().unwrap_or(0))
+        }
+
+        async fn channel_capacity(
+            &self,
+            _group_id: i16,
+            _channel: i16,
+        ) -> Result<ChannelCapacity, DbError> {
+            Ok(ChannelCapacity::permissive())
+        }
+
+        async fn channel_role(
+            &self,
+            _group_id: i16,
+            _channel: i16,
+        ) -> Result<Option<ChannelRole>, DbError> {
+            Ok(Some(ChannelRole::Normal))
         }
     }
 

@@ -51,6 +51,62 @@ pub struct ServerChannel {
     pub enabled: bool,
 }
 
+/// Lotação de sessões por canal (FASE-06-3, migration `0040`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChannelCapacity {
+    /// Teto de sessões vivas; `1000` é o `MAX_USER` do legado.
+    pub max_players: u32,
+    /// Canal em manutenção: recusa entrada nova, preserva sessão viva.
+    pub maintenance: bool,
+}
+
+impl ChannelCapacity {
+    /// Política operacional quando a linha não existe (canal sem seed de capacidade).
+    #[must_use]
+    pub const fn permissive() -> Self {
+        Self {
+            max_players: 1000,
+            maintenance: false,
+        }
+    }
+}
+
+/// Papel do canal (FASE-03-10, migration `0041`).
+///
+/// `Normal` aplica a regra completa (PvP conforme o mapa); `Verde` é o canal novato do legado:
+/// PvP desligado e loja pessoal permitida (`docs/wyd/canais-e-cidadania.md` §3). O papel é do
+/// **processo**, nunca escolhido pelo jogador — por isso mora na configuração do canal e não no
+/// personagem.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ChannelRole {
+    /// Regra completa: PvP conforme o mapa.
+    #[default]
+    Normal,
+    /// Canal verde (novato): sem PvP, loja pessoal aberta.
+    Verde,
+}
+
+impl ChannelRole {
+    /// Lê o valor persistido; desconhecido é `None` (o chamador decide, nunca `panic!`).
+    #[must_use]
+    pub fn parse(texto: &str) -> Option<Self> {
+        match texto.trim().to_ascii_lowercase().as_str() {
+            "normal" => Some(Self::Normal),
+            "verde" => Some(Self::Verde),
+            _ => None,
+        }
+    }
+
+    /// Valor como está no `CHECK` de `channel_role.role`.
+    #[must_use]
+    pub const fn as_db(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Verde => "verde",
+        }
+    }
+}
+
 impl PgBackend {
     /// Lista os canais de servidor ordenados por grupo e canal.
     ///
@@ -117,6 +173,27 @@ impl PgBackend {
             });
         }
         Ok(CatalogSnapshot { version, items })
+    }
+
+    /// O template do item carrega o efeito (`item_catalog.effect_names`, FASE-03-16)?
+    ///
+    /// Porta do `EF_NOSANC` (126) no refino: o bloqueio é dado do catálogo semeado, não
+    /// regra chutada — item sem linha ou sem a chave devolve `false` (refinável). Leitura
+    /// fora do tick (o `use_item` a chama antes de resolver); falha de banco vira
+    /// `Transport { op }` e o chamador recusa sem mutação, como em taxa ausente.
+    pub async fn item_has_effect(&self, item_index: i32, effect: &str) -> Result<bool, DbError> {
+        let tem: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM item_catalog \
+             WHERE item_index = $1 AND effect_names @> ARRAY[$2])",
+        )
+        .bind(item_index)
+        .bind(effect)
+        .fetch_one(self.pool())
+        .await
+        .map_err(|_| DbError::Transport {
+            op: "catalog.has_effect",
+        })?;
+        Ok(tem)
     }
 
     /// Lê o teto de pilha por item da view `item_stack_cap` (migration `0039`).

@@ -203,7 +203,7 @@ nenhum `ALTER TABLE` no `up`. Verificação em três camadas:
 `node tools/content/check-migrations.mjs` (ordem/FK/down/INSERT, sem banco),
 `cargo test -p wyd-db` (`tests/catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
 e `node tools/content/verify-schema.mjs` (banco vazio → `up` → `information_schema` ↔ catálogo).
-Números atuais: **38 arquivos, 80 tabelas, 149 `INSERT`s**, sem problema (medidos pelo `check-migrations`, 2026-11-10; colunas não recontadas aqui).
+Números atuais: **42 arquivos, 83 tabelas, 152 `INSERT`s**, sem problema (medidos pelo `check-migrations`, 2026-11-10; colunas não recontadas aqui).
 
 | Migração | Domínio | Objetos |
 |---|---|---|

@@ -76,6 +76,18 @@ pub trait Grants {
         id: i64,
     ) -> impl Future<Output = Result<Option<(i64, i64)>, DbError>> + Send;
 
+    /// Entrega o item da linha pendente na mochila e marca `claimed`.
+    ///
+    /// Transação: trava a linha, acha o primeiro slot livre de `Carry` (16–79,
+    /// `modelo-banco.md` §3/`protocolo.md` §5.1) e insere com o `qty` do grant
+    /// (`flags`/`refine`/efeitos zerados — grant entrega o item base). Mochila cheia
+    /// ou linha que não é item pendente devolve `None` e a linha continua pendente
+    /// (cheia soma `attempts`, visível na tela de entregas); nunca duplica nem perde.
+    fn claim_item(
+        &self,
+        id: i64,
+    ) -> impl Future<Output = Result<Option<(i64, i32)>, DbError>> + Send;
+
     /// Linhas da fila de um personagem (mais recentes primeiro), com estado.
     ///
     /// Somente leitura: staff confere o que foi pedido e o que já foi entregue;

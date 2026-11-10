@@ -27,8 +27,8 @@ pub use error::ProtocolError;
 pub use payload::{
     declared_len, nul_trimmed, require_ported, AccountLogin, AccountSecure, Action, ApplyBonus,
     Attack, AttackFull, AttackOne, AttackTwo, Buy, CharacterLogin, CreateCharacter,
-    DeleteCharacter, MessagePanel, PayloadError, Sell, TargetDamage, TradingItem, UpdateWeather,
-    UseItem, WireField, WirePayload,
+    DeleteCharacter, MessagePanel, PayloadError, Sell, SendItem, TargetDamage, TradingItem,
+    UpdateWeather, UseItem, WireField, WirePayload,
 };
 pub use wire::{
     inspect, split_frame, validate_size, Flow, FrameError, Header, HeaderError, Opcode, ValidFrame,

@@ -487,6 +487,63 @@ fn logout_explicito_fecha_a_conexao_e_libera_a_sessao() {
     }
 }
 
+/// `/getout` chega como sussurro (`_MSG_MessageWhisper` 0x0334) e o corpo dele **não** tem
+/// layout provado: o servidor tolera, loga `action=getout` e mantém a sessão. Tratar o pacote
+/// como comando seria inventar layout (invariante 5); derrubar a conexão seria pior.
+#[test]
+fn sussurro_de_getout_e_tolerado_e_nao_derruba_a_sessao() {
+    let Some(dsn) = dsn() else { return };
+    let rt = runtime();
+    let backend = Arc::new(
+        rt.block_on(PgBackend::connect(&dsn, PoolConfig::local()))
+            .expect("banco"),
+    );
+    let (porta, selection) = servidor(Arc::clone(&backend), Arc::clone(&rt));
+    let conta = conta_unica();
+    rt.block_on(backend.create_account(&conta, Role::Player))
+        .expect("conta");
+    let hash = hash_password(SENHA).expect("hash");
+    rt.block_on(backend.set_credentials(&conta, &hash, Role::Player))
+        .expect("credencial");
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let nome = format!("G{:06}", nanos % 1_000_000);
+    selection
+        .create(&conta, 0, nome.as_bytes(), 0)
+        .expect("criação");
+
+    let mut s = TcpStream::connect(("127.0.0.1", porta)).expect("conecta");
+    s.set_read_timeout(Some(Duration::from_secs(10)))
+        .expect("timeout");
+    s.write_all(&INITCODE.to_le_bytes()).expect("init");
+    s.write_all(&frame_login(&conta)).expect("login");
+    assert_eq!(abrir(&ler_frame(&mut s)).0, Opcode::CNFAccountLogin);
+    s.write_all(&frame_pin(PIN)).expect("pin");
+    assert_eq!(abrir(&ler_frame(&mut s)).0, Opcode::AccountSecure);
+    s.write_all(&frame_selecao(0)).expect("seleção");
+    assert_eq!(abrir(&ler_frame(&mut s)).0, Opcode::CNFCharacterLogin);
+
+    // Sussurro (`/getout` do legado): só cabeçalho, corpo não provado — o handler não lê o
+    // corpo, então o frame mínimo é o teste honesto da tolerância.
+    s.write_all(&frame_header(Opcode::MessageWhisper))
+        .expect("sussurro");
+
+    // A sessão continua viva: o próximo pacote de controle é atendido normalmente.
+    s.write_all(&frame_header(Opcode::CharacterLogout))
+        .expect("logout");
+    assert_eq!(
+        abrir(&ler_frame(&mut s)).0,
+        Opcode::CNFCharacterLogout,
+        "sussurro tolerado não encerrou a conexão"
+    );
+    let viva = rt
+        .block_on(backend.live_session_of(&conta))
+        .expect("sessão");
+    assert_eq!(viva, None, "o logout seguinte liberou a sessão");
+}
+
 /// Reconexão no **mesmo** canal retoma a sessão (o cliente reconectou); outro canal continua
 /// recusado — a cerca de 0030 segue sendo a autoridade entre canais.
 #[test]

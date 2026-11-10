@@ -11,8 +11,8 @@
 
 ## 1. Resumo
 
-- migrations: **38** · última versão: **38**
-- tabelas: **80** · colunas: **590** · índices: **34** · funções: **1**
+- migrations: **44** · última versão: **44**
+- tabelas: **84** · colunas: **608** · índices: **34** · funções: **1**
 - domínios: **18** · tabelas com dado provisório: **26**
 
 | Domínio | Tabelas |
@@ -20,11 +20,11 @@
 | acesso | `accounts`, `character_session` |
 | arena | `arena`, `arena_match`, `arena_round`, `arena_score` |
 | auditoria | `audit_log` |
-| canal de servidor | `server_channel` |
+| canal de servidor | `server_channel`, `channel_capacity`, `channel_role` |
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
 | configuração | `config_revision`, `config_change` |
-| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet` |
+| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet`, `donate_credit` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | inventário | `character_items`, `vault_items`, `character_short_skill` |
 | moderação | `account_moderation` |
@@ -33,7 +33,7 @@
 | ponte web→jogo | `delivery_queue` |
 | progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
-| refino | `refine_rate`, `refine_gem_effect`, `sanc_rate`, `combine_value`, `refine_rate_override`, `sanc_rate_override`, `combine_value_override`, `accessory_refine_rule` |
+| refino | `refine_rate`, `refine_gem_effect`, `sanc_rate`, `combine_value`, `refine_rate_override`, `sanc_rate_override`, `combine_value_override`, `accessory_refine_rule`, `refine_pity` |
 | social | `guilds`, `guild_members`, `guild_relations`, `guild_tower` |
 
 ## 2. Catálogo
@@ -1748,6 +1748,80 @@
 | `reason` | `text` | não |
 | `at` | `timestamp with time zone` | não |
 
+### `channel_capacity`
+
+- **Arquivo:** `0040_capacidade_canal.sql` · **Domínio:** canal de servidor · **Estado:** confirmado
+- **Fonte:** FASE-06-3 (checklist 1.14) — limite e manutencao por canal
+- **Nota:** Tabela propria (a serie proibe ALTER TABLE no up): max_players default 1000 = MAX_USER do legado; maintenance recusa entrada nova sem derrubar sessao viva. Env WYD_SERVER_MAX_PLAYERS/_MAINTENANCE sobrescreve por processo.
+- **PK:** `group_id`, `channel`
+- **FK:** `group_id, channel` → `server_channel`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `group_id` | `smallint` | não |
+| `channel` | `smallint` | não |
+| `max_players` | `integer` | não |
+| `maintenance` | `boolean` | não |
+| `note` | `text` | não |
+
+### `channel_role`
+
+- **Arquivo:** `0041_papel_do_canal.sql` · **Domínio:** canal de servidor · **Estado:** confirmado
+- **Fonte:** FASE-03-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3
+- **Nota:** Papel do canal: normal (PvP conforme o mapa) ou verde (novato: sem PvP, loja pessoal aberta). Tabela propria (a serie proibe ALTER TABLE no up); env WYD_SERVER_CHANNEL_ROLE sobrescreve por processo.
+- **PK:** `group_id`, `channel`
+- **FK:** `group_id, channel` → `server_channel`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `group_id` | `smallint` | não |
+| `channel` | `smallint` | não |
+| `role` | `text` | não |
+| `note` | `text` | não |
+
+### `donate_credit`
+
+- **Arquivo:** `0042_credito_donate.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** FASE-07-6 — razão de `credit_donate_balance` (idempotência por chave)
+- **Nota:** Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem creditar duas vezes. O saldo mora em `account_wallet` (conta, não personagem); tabela própria (a série proíbe ALTER TABLE no up).
+- **PK:** `id`
+- **FK:** `account_id` → `accounts` · `created_by` → `accounts`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `created_at` | `timestamp with time zone` | não |
+| `idempotency_key` | `text` | não |
+| `account_id` | `bigint` | não |
+| `credits` | `bigint` | não |
+| `created_by` | `bigint` | sim |
+
+### `refine_pity`
+
+- **Arquivo:** `0043_piedade_refino.sql` · **Domínio:** refino · **Estado:** confirmado
+- **Fonte:** FASE-03-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)
+- **Nota:** Piedade por (personagem, slot), 0..20; linha ausente = 0. Tabela própria (a série proíbe ALTER TABLE no up). `replace_items` grava itens + piedade na mesma transação e poda slots que saíram do inventário; destruir o item apaga a linha.
+- **PK:** `character_id`, `slot`
+- **FK:** `character_id` → `characters`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `slot` | `smallint` | não |
+| `pity` | `smallint` | não |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1838,6 +1912,12 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0036 | `0036_character_special.sql` | DDL | `character_special` |
 | 0037 | `0037_config_editavel.sql` | DDL | `refine_rate_override`, `sanc_rate_override`, `combine_value_override`, `accessory_refine_rule`, `config_revision`, `config_change` |
 | 0038 | `0038_seed_acessorio_refino.sql` | seed | — |
+| 0039 | `0039_classificacao_e_teto.sql` | DDL | — |
+| 0040 | `0040_capacidade_canal.sql` | DDL | `channel_capacity` |
+| 0041 | `0041_papel_do_canal.sql` | DDL | `channel_role` |
+| 0042 | `0042_credito_donate.sql` | DDL | `donate_credit` |
+| 0043 | `0043_piedade_refino.sql` | DDL | `refine_pity` |
+| 0044 | `0044_seed_ongame.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

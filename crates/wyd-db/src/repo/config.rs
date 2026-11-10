@@ -74,6 +74,112 @@ pub struct NpcConfigRow {
     pub merchant: i16,
 }
 
+/// NPC para a lista do portal (sem o `blob` do template: a lista não precisa de 816 B por
+/// linha; quem edita um NPC abre `config_npc` por id).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpcListRow {
+    pub id: i32,
+    pub slug: String,
+    pub display_name: String,
+    pub template_name: String,
+    pub map_id: i16,
+    pub pos_x: i16,
+    pub pos_y: i16,
+    pub enabled: bool,
+    pub merchant: i16,
+}
+
+/// Template de mob para a lista do portal (vem de `npc_template`, que tem 1.991 linhas
+/// semeadas; `mob_template_stat` continua vazia até a extração do `STRUCT_MOB`, FASE-10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobTemplateRow {
+    pub template_name: String,
+    /// `name_recovered` quando existe, senão o próprio nome do template.
+    pub name: String,
+    pub source_size: i16,
+}
+
+/// Edição de recompensa diária (cria com `id = None`, substitui com `Some`).
+///
+/// Agrupa os 7 campos do upsert num struct só: o clippy da série limita funções a
+/// 7 argumentos e o `actor` de auditoria já ocupa um.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DailyRewardEdit {
+    pub id: Option<i32>,
+    pub day: Option<i16>,
+    pub item_index: Option<i32>,
+    pub gold: i64,
+    pub qty: i16,
+    pub account_wide: bool,
+}
+
+/// Recompensa diária para a lista do portal (`daily_reward_item`).
+///
+/// Sem `enabled` nem `content_source`: a tabela 0010 não tem essas colunas e a série de
+/// migrations não usa `ALTER TABLE` no `up` — ligar/desligar dia específico segue `501`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DailyRewardRow {
+    pub id: i32,
+    pub day: Option<i16>,
+    pub item_index: Option<i32>,
+    pub gold: i64,
+    pub qty: i16,
+    pub account_wide: bool,
+}
+
+/// Item da loja de donate para a lista do portal (`donate_shop_item`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateItemRow {
+    pub id: i32,
+    pub item_index: i32,
+    pub price_credits: i32,
+    pub duration_days: Option<i16>,
+    pub enabled: bool,
+}
+
+/// Evento de mundo para o painel (`world_event` + `event_schedule`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorldEventRow {
+    pub code: String,
+    pub name: String,
+    pub kind: String,
+    pub enabled: bool,
+    pub requires_city: bool,
+    pub description: String,
+}
+
+/// Horário de um evento (`event_schedule`, `timezone` explícito por linha).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventScheduleRow {
+    pub id: i32,
+    pub event_code: String,
+    pub weekday: i16,
+    /// `HH:MM:SS` como o banco devolve.
+    pub start_time: String,
+    pub duration_minutes: i16,
+    pub timezone: String,
+    pub every_n_weeks: i16,
+    pub enabled: bool,
+}
+
+/// Conta para a lista do portal: sem hash, PIN, segredo ou token.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountListRow {
+    pub id: i64,
+    pub login: String,
+    pub role: String,
+}
+
+/// Efeito de item para a lista do portal (`item_effect`, chave `EF_*`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EffectRow {
+    pub name: String,
+    pub label: String,
+    pub category: String,
+    pub description: String,
+    pub confirmed: bool,
+}
+
 /// Rota de teleporte editável.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RouteConfigRow {
@@ -1052,6 +1158,661 @@ impl PgBackend {
             op: "config.set_route.commit",
         })?;
         Ok(version)
+    }
+
+    /// NPCs definidos no mundo em páginas por id (lista do portal, FASE-07-5).
+    ///
+    /// `after_id` é o cursor: `None` começa do primeiro. Sem o `blob` do template para a
+    /// lista de 6.100 caber no teto sem pesar a resposta.
+    pub async fn config_npc_page(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<NpcListRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, slug, display_name, template_name, map_id::int AS map_id, \
+             pos_x::int AS pos_x, pos_y::int AS pos_y, enabled, merchant::int AS merchant \
+             FROM npc_definition \
+             WHERE ($1::int IS NULL OR id > $1) \
+             ORDER BY id LIMIT $2",
+        )
+        .bind(after_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.npc_page", "npc_definition"))?;
+        Ok(rows
+            .iter()
+            .map(|row| NpcListRow {
+                id: row.try_get("id").unwrap_or_default(),
+                slug: row.try_get("slug").unwrap_or_default(),
+                display_name: row.try_get("display_name").unwrap_or_default(),
+                template_name: row.try_get("template_name").unwrap_or_default(),
+                map_id: row.try_get::<i32, _>("map_id").unwrap_or_default() as i16,
+                pos_x: row.try_get::<i32, _>("pos_x").unwrap_or_default() as i16,
+                pos_y: row.try_get::<i32, _>("pos_y").unwrap_or_default() as i16,
+                enabled: row.try_get("enabled").unwrap_or(false),
+                merchant: row.try_get::<i32, _>("merchant").unwrap_or_default() as i16,
+            })
+            .collect())
+    }
+
+    /// Templates de mob em páginas por nome (lista do portal, FASE-07-5).
+    ///
+    /// A fonte é `npc_template` (semeada); `mob_template_stat`/`mob_template_equip` estão
+    /// vazias até a FASE-10 e não servem lista nenhuma. Cursor sobre `template_name`.
+    pub async fn config_mob_templates(
+        &self,
+        limit: i64,
+        after: Option<&str>,
+    ) -> Result<Vec<MobTemplateRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT template_name, COALESCE(NULLIF(name_recovered, ''), template_name) AS name, \
+             source_size \
+             FROM npc_template \
+             WHERE ($1::text IS NULL OR template_name > $1) \
+             ORDER BY template_name LIMIT $2",
+        )
+        .bind(after)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.mob_templates", "npc_template"))?;
+        Ok(rows
+            .iter()
+            .map(|row| MobTemplateRow {
+                template_name: row.try_get("template_name").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or_default(),
+                source_size: row.try_get("source_size").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Efeitos de item em páginas por nome (lista do portal, FASE-07-5).
+    ///
+    /// O código numérico do `ItemEffect.h` não foi provado (`confirmed = false`): a lista
+    /// mostra o símbolo `EF_*`, o rótulo e a categoria que o seed declara, sem número.
+    pub async fn config_effects(
+        &self,
+        limit: i64,
+        after: Option<&str>,
+    ) -> Result<Vec<EffectRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT name, label, category, description, confirmed \
+             FROM item_effect \
+             WHERE ($1::text IS NULL OR name > $1) \
+             ORDER BY name LIMIT $2",
+        )
+        .bind(after)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.effects", "item_effect"))?;
+        Ok(rows
+            .iter()
+            .map(|row| EffectRow {
+                name: row.try_get("name").unwrap_or_default(),
+                label: row.try_get("label").unwrap_or_default(),
+                category: row.try_get("category").unwrap_or_default(),
+                description: row.try_get("description").unwrap_or_default(),
+                confirmed: row.try_get("confirmed").unwrap_or(false),
+            })
+            .collect())
+    }
+
+    /// Recompensas diárias em páginas por id (lista do portal, FASE-07-6).
+    ///
+    /// Base semeada vazia: lista vazia é resposta válida, nunca erro.
+    pub async fn config_daily_rewards(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<DailyRewardRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, day::int AS day, item_index, gold, qty::int AS qty, account_wide \
+             FROM daily_reward_item \
+             WHERE ($1::int IS NULL OR id > $1) \
+             ORDER BY id LIMIT $2",
+        )
+        .bind(after_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.daily_rewards", "daily_reward_item"))?;
+        Ok(rows
+            .iter()
+            .map(|row| DailyRewardRow {
+                id: row.try_get("id").unwrap_or_default(),
+                day: row
+                    .try_get::<Option<i32>, _>("day")
+                    .ok()
+                    .flatten()
+                    .map(|d| d as i16),
+                item_index: row.try_get("item_index").ok().flatten(),
+                gold: row.try_get("gold").unwrap_or_default(),
+                qty: row.try_get::<i32, _>("qty").unwrap_or_default() as i16,
+                account_wide: row.try_get("account_wide").unwrap_or(true),
+            })
+            .collect())
+    }
+
+    /// Cria (`id = None`) ou substitui (`Some`) uma recompensa diária.
+    ///
+    /// A validação de faixa mora no `CHECK` da tabela (`day` 1..=7, item ou ouro,
+    /// `qty > 0`); violação vira `ConstraintViolation`, nunca `panic!`. Devolve a revisão.
+    pub async fn config_upsert_daily_reward(
+        &self,
+        edit: &DailyRewardEdit,
+        actor: i64,
+    ) -> Result<i64, DbError> {
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.set_daily_reward",
+        })?;
+        let version =
+            match edit.id {
+                Some(id) => {
+                    let old: Option<String> = sqlx::query_scalar(
+                    "SELECT format('day=%s item=%s gold=%s qty=%s', day, item_index, gold, qty) \
+                     FROM daily_reward_item WHERE id = $1",
+                )
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_error("config.set_daily_reward.read", "daily_reward_item"))?;
+                    let Some(old) = old else {
+                        return Err(DbError::NotFound {
+                            entity: "daily_reward_item",
+                            id: i64::from(id),
+                        });
+                    };
+                    sqlx::query(
+                        "UPDATE daily_reward_item SET day = $2, item_index = $3, gold = $4, \
+                     qty = $5, account_wide = $6 WHERE id = $1",
+                    )
+                    .bind(id)
+                    .bind(edit.day.map(i32::from))
+                    .bind(edit.item_index)
+                    .bind(edit.gold)
+                    .bind(i32::from(edit.qty))
+                    .bind(edit.account_wide)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(map_error(
+                        "config.set_daily_reward.write",
+                        "daily_reward_item",
+                    ))?;
+                    let new = format!(
+                        "day={} item={} gold={} qty={}",
+                        edit.day.map_or_else(|| "*".to_string(), |d| d.to_string()),
+                        edit.item_index
+                            .map_or_else(|| "-".to_string(), |i| i.to_string()),
+                        edit.gold,
+                        edit.qty
+                    );
+                    self.bump_revision(&mut tx, actor, "daily", &format!("reward:{id}"), &old, &new)
+                        .await?
+                }
+                None => {
+                    let row: (i32,) = sqlx::query_as(
+                        "INSERT INTO daily_reward_item (day, item_index, gold, qty, account_wide) \
+                     VALUES ($1, $2, $3, $4, $5) RETURNING id",
+                    )
+                    .bind(edit.day.map(i32::from))
+                    .bind(edit.item_index)
+                    .bind(edit.gold)
+                    .bind(i32::from(edit.qty))
+                    .bind(edit.account_wide)
+                    .fetch_one(&mut *tx)
+                    .await
+                    .map_err(map_error(
+                        "config.set_daily_reward.write",
+                        "daily_reward_item",
+                    ))?;
+                    self.bump_revision(
+                        &mut tx,
+                        actor,
+                        "daily",
+                        &format!("reward:{}", row.0),
+                        "",
+                        &format!("gold={} qty={}", edit.gold, edit.qty),
+                    )
+                    .await?
+                }
+            };
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.set_daily_reward.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Remove uma recompensa diária (volta a não existir; o seed não a recria sozinho).
+    pub async fn config_delete_daily_reward(&self, id: i32, actor: i64) -> Result<i64, DbError> {
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.delete_daily_reward",
+        })?;
+        let feito = sqlx::query("DELETE FROM daily_reward_item WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error(
+                "config.delete_daily_reward.write",
+                "daily_reward_item",
+            ))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFound {
+                entity: "daily_reward_item",
+                id: i64::from(id),
+            });
+        }
+        let version = self
+            .bump_revision(
+                &mut tx,
+                actor,
+                "daily",
+                &format!("reward:{id}"),
+                "existe",
+                "",
+            )
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.delete_daily_reward.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Loja de donate em páginas por id (lista do portal, FASE-07-6).
+    pub async fn config_donate_items(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<DonateItemRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, item_index, price_credits, duration_days::int AS duration_days, enabled \
+             FROM donate_shop_item \
+             WHERE ($1::int IS NULL OR id > $1) \
+             ORDER BY id LIMIT $2",
+        )
+        .bind(after_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.donate_items", "donate_shop_item"))?;
+        Ok(rows
+            .iter()
+            .map(|row| DonateItemRow {
+                id: row.try_get("id").unwrap_or_default(),
+                item_index: row.try_get("item_index").unwrap_or_default(),
+                price_credits: row.try_get("price_credits").unwrap_or_default(),
+                duration_days: row
+                    .try_get::<Option<i32>, _>("duration_days")
+                    .ok()
+                    .flatten()
+                    .map(|d| d as i16),
+                enabled: row.try_get("enabled").unwrap_or(false),
+            })
+            .collect())
+    }
+
+    /// Cria (`id = None`) ou substitui (`Some`) um item da loja de donate.
+    pub async fn config_upsert_donate_item(
+        &self,
+        id: Option<i32>,
+        item_index: i32,
+        price_credits: i32,
+        duration_days: Option<i16>,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, DbError> {
+        if item_index <= 0 || price_credits <= 0 {
+            return Err(invalid("donate_shop_item", "item_ou_preco"));
+        }
+        if duration_days.is_some_and(|d| d <= 0) {
+            return Err(invalid("donate_shop_item", "duration_days"));
+        }
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.set_donate_item",
+        })?;
+        let alvo = match id {
+            Some(id) => {
+                let existe: Option<i32> =
+                    sqlx::query_scalar("SELECT id FROM donate_shop_item WHERE id = $1")
+                        .bind(id)
+                        .fetch_optional(&mut *tx)
+                        .await
+                        .map_err(map_error("config.set_donate_item.read", "donate_shop_item"))?;
+                if existe.is_none() {
+                    return Err(DbError::NotFound {
+                        entity: "donate_shop_item",
+                        id: i64::from(id),
+                    });
+                }
+                sqlx::query(
+                    "UPDATE donate_shop_item SET item_index = $2, price_credits = $3, \
+                     duration_days = $4, enabled = $5 WHERE id = $1",
+                )
+                .bind(id)
+                .bind(item_index)
+                .bind(price_credits)
+                .bind(duration_days.map(i32::from))
+                .bind(enabled)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_error(
+                    "config.set_donate_item.write",
+                    "donate_shop_item",
+                ))?;
+                format!("shop:{id}")
+            }
+            None => {
+                let row: (i32,) = sqlx::query_as(
+                    "INSERT INTO donate_shop_item (item_index, price_credits, duration_days, enabled) \
+                     VALUES ($1, $2, $3, $4) RETURNING id",
+                )
+                .bind(item_index)
+                .bind(price_credits)
+                .bind(duration_days.map(i32::from))
+                .bind(enabled)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(map_error("config.set_donate_item.write", "donate_shop_item"))?;
+                format!("shop:{}", row.0)
+            }
+        };
+        let version = self
+            .bump_revision(
+                &mut tx,
+                actor,
+                "donate",
+                &alvo,
+                "",
+                &format!("item={item_index}"),
+            )
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.set_donate_item.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Liga/desliga um item da loja sem tocar no preço.
+    pub async fn config_set_donate_item_enabled(
+        &self,
+        id: i32,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, DbError> {
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.set_donate_item_enabled",
+        })?;
+        let feito = sqlx::query("UPDATE donate_shop_item SET enabled = $2 WHERE id = $1")
+            .bind(id)
+            .bind(enabled)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error(
+                "config.set_donate_item_enabled.write",
+                "donate_shop_item",
+            ))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFound {
+                entity: "donate_shop_item",
+                id: i64::from(id),
+            });
+        }
+        let version = self
+            .bump_revision(
+                &mut tx,
+                actor,
+                "donate",
+                &format!("shop:{id}"),
+                &format!("enabled={}", !enabled),
+                &format!("enabled={enabled}"),
+            )
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.set_donate_item_enabled.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Remove um item da loja (não apaga compra já feita; só some da vitrine).
+    pub async fn config_delete_donate_item(&self, id: i32, actor: i64) -> Result<i64, DbError> {
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.delete_donate_item",
+        })?;
+        let feito = sqlx::query("DELETE FROM donate_shop_item WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error(
+                "config.delete_donate_item.write",
+                "donate_shop_item",
+            ))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFound {
+                entity: "donate_shop_item",
+                id: i64::from(id),
+            });
+        }
+        let version = self
+            .bump_revision(
+                &mut tx,
+                actor,
+                "donate",
+                &format!("shop:{id}"),
+                "existe",
+                "",
+            )
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.delete_donate_item.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Eventos de mundo com estado (lista do portal, FASE-07-6).
+    pub async fn config_world_events(&self) -> Result<Vec<WorldEventRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT code, name, kind, enabled, requires_city, description \
+             FROM world_event ORDER BY code",
+        )
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.world_events", "world_event"))?;
+        Ok(rows
+            .iter()
+            .map(|row| WorldEventRow {
+                code: row.try_get("code").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or_default(),
+                kind: row.try_get("kind").unwrap_or_default(),
+                enabled: row.try_get("enabled").unwrap_or(false),
+                requires_city: row.try_get("requires_city").unwrap_or(false),
+                description: row.try_get("description").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Horários de todos os eventos (o portal monta a grade a partir daqui).
+    pub async fn config_event_schedules(&self) -> Result<Vec<EventScheduleRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, event_code, weekday::int AS weekday, \
+             to_char(start_time, 'HH24:MI:SS') AS start_time, \
+             duration_minutes::int AS duration_minutes, timezone, \
+             every_n_weeks::int AS every_n_weeks, enabled \
+             FROM event_schedule ORDER BY event_code, weekday, start_time",
+        )
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.event_schedules", "event_schedule"))?;
+        Ok(rows
+            .iter()
+            .map(|row| EventScheduleRow {
+                id: row.try_get("id").unwrap_or_default(),
+                event_code: row.try_get("event_code").unwrap_or_default(),
+                weekday: row.try_get::<i32, _>("weekday").unwrap_or_default() as i16,
+                start_time: row.try_get("start_time").unwrap_or_default(),
+                duration_minutes: row
+                    .try_get::<i32, _>("duration_minutes")
+                    .unwrap_or_default() as i16,
+                timezone: row.try_get("timezone").unwrap_or_default(),
+                every_n_weeks: row.try_get::<i32, _>("every_n_weeks").unwrap_or_default() as i16,
+                enabled: row.try_get("enabled").unwrap_or(false),
+            })
+            .collect())
+    }
+
+    /// Liga/desliga um evento. Efeito só no próximo leitor do dado (boot/tick que lê a
+    /// tabela) — nenhum push para o Hot Path.
+    pub async fn config_set_world_event_enabled(
+        &self,
+        code: &str,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, DbError> {
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.set_world_event",
+        })?;
+        let feito = sqlx::query("UPDATE world_event SET enabled = $2 WHERE code = $1")
+            .bind(code.trim())
+            .bind(enabled)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("config.set_world_event.write", "world_event"))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFoundKey {
+                entity: "world_event",
+            });
+        }
+        let version = self
+            .bump_revision(
+                &mut tx,
+                actor,
+                "event",
+                &format!("event:{}", code.trim()),
+                &format!("enabled={}", !enabled),
+                &format!("enabled={enabled}"),
+            )
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.set_world_event.commit",
+        })?;
+        Ok(version)
+    }
+
+    /// Contas em páginas por id, sem hash/PIN/segredo (lista do portal, FASE-07-6).
+    pub async fn config_accounts(
+        &self,
+        limit: i64,
+        after_id: Option<i64>,
+    ) -> Result<Vec<AccountListRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT id, login, role FROM accounts \
+             WHERE ($1::bigint IS NULL OR id > $1) \
+             ORDER BY id LIMIT $2",
+        )
+        .bind(after_id)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.accounts", "accounts"))?;
+        Ok(rows
+            .iter()
+            .map(|row| AccountListRow {
+                id: row.try_get("id").unwrap_or_default(),
+                login: row.try_get("login").unwrap_or_default(),
+                role: row.try_get("role").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Uma conta por id, sem hash/PIN/segredo.
+    pub async fn config_account(&self, id: i64) -> Result<Option<AccountListRow>, DbError> {
+        let row = sqlx::query("SELECT id, login, role FROM accounts WHERE id = $1")
+            .bind(id)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("config.account", "accounts"))?;
+        Ok(row.map(|row| AccountListRow {
+            id: row.try_get("id").unwrap_or_default(),
+            login: row.try_get("login").unwrap_or_default(),
+            role: row.try_get("role").unwrap_or_default(),
+        }))
+    }
+
+    /// Credita saldo de donate na carteira da conta, com idempotência por chave.
+    ///
+    /// Uma transação só: a linha do razão (`donate_credit`, migration 0042) sai junto com
+    /// o crédito em `account_wallet` (teto `i32::MAX`, como o campo do fio). Repetir a
+    /// mesma chave devolve o mesmo razão com `replay = true` e **não** credita duas vezes.
+    /// É saldo de **conta** (Cold Path), nunca escrita em personagem vivo.
+    pub async fn config_credit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        actor: i64,
+    ) -> Result<(i64, bool), DbError> {
+        if credits <= 0 {
+            return Err(invalid("donate_credit", "credits"));
+        }
+        let existe: Option<i64> = sqlx::query_scalar("SELECT id FROM accounts WHERE id = $1")
+            .bind(account_id)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("config.credit_donate.read", "accounts"))?;
+        if existe.is_none() {
+            return Err(DbError::NotFound {
+                entity: "accounts",
+                id: account_id,
+            });
+        }
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.credit_donate",
+        })?;
+        let inserido: Option<(i64,)> = sqlx::query_as(
+            "INSERT INTO donate_credit (idempotency_key, account_id, credits, created_by) \
+             VALUES ($1, $2, $3, $4) ON CONFLICT (idempotency_key) DO NOTHING RETURNING id",
+        )
+        .bind(key.trim())
+        .bind(account_id)
+        .bind(credits)
+        .bind(actor)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("config.credit_donate.write", "donate_credit"))?;
+        let (razao, replay) = match inserido {
+            Some((id,)) => {
+                sqlx::query(
+                    "INSERT INTO account_wallet (account_id, coin) VALUES ($1, $2) \
+                     ON CONFLICT (account_id) DO UPDATE SET \
+                       coin = LEAST(account_wallet.coin + EXCLUDED.coin, 2147483647)",
+                )
+                .bind(account_id)
+                .bind(credits)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_error("config.credit_donate.write", "account_wallet"))?;
+                (id, false)
+            }
+            None => {
+                let row: Option<(i64,)> =
+                    sqlx::query_as("SELECT id FROM donate_credit WHERE idempotency_key = $1")
+                        .bind(key.trim())
+                        .fetch_optional(&mut *tx)
+                        .await
+                        .map_err(map_error("config.credit_donate.read", "donate_credit"))?;
+                let Some((id,)) = row else {
+                    return Err(DbError::Transport {
+                        op: "config.credit_donate.replay",
+                    });
+                };
+                (id, true)
+            }
+        };
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.credit_donate.commit",
+        })?;
+        Ok((razao, replay))
     }
 
     /// Versão atual da configuração (o servidor compara antes de recarregar).

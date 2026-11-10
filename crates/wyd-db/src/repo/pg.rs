@@ -17,7 +17,7 @@ use crate::model::{
 use crate::pool::pg::{map_error, PgBackend};
 use crate::repo::accounts::CredentialRecord;
 use crate::repo::audit::{AuditRow, AuditTrail, NewAuditEntry};
-use crate::repo::content::{SkillRule, SkillRules};
+use crate::repo::content::{ChannelCapacity, ChannelRole, SkillRule, SkillRules};
 use crate::repo::economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 use crate::repo::sessions::ClaimOutcome;
 use crate::repo::{Accounts, Characters, Grant, Grants, Sessions};
@@ -664,7 +664,27 @@ impl Characters for PgBackend {
         Ok(())
     }
 
-    async fn replace_items(&self, character_id: i64, items: &[ItemRow]) -> Result<(), DbError> {
+    async fn refine_pity(&self, character_id: i64, slot: i64) -> Result<u8, DbError> {
+        let slot = i16::try_from(slot).map_err(|_| DbError::Transport {
+            op: "characters.refine_pity",
+        })?;
+        let pity: Option<i16> = sqlx::query_scalar(
+            "SELECT pity FROM refine_pity WHERE character_id = $1 AND slot = $2",
+        )
+        .bind(character_id)
+        .bind(slot)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("characters.refine_pity", "refine_pity"))?;
+        Ok(pity.unwrap_or(0).clamp(0, 20) as u8)
+    }
+
+    async fn replace_items(
+        &self,
+        character_id: i64,
+        items: &[ItemRow],
+        pity: &[(i64, u8)],
+    ) -> Result<(), DbError> {
         let mut tx = self.begin().await?;
         sqlx::query("DELETE FROM character_items WHERE character_id = $1")
             .bind(character_id)
@@ -689,6 +709,40 @@ impl Characters for PgBackend {
             .execute(&mut *tx)
             .await
             .map_err(map_error("characters.replace_items", "character_items"))?;
+        }
+        // Poda: slots que saíram do inventário (pó consumido, item destruído) não
+        // deixam piedade órfã; a mesma transação grava item + pó + piedade.
+        sqlx::query(
+            "DELETE FROM refine_pity WHERE character_id = $1 AND slot NOT IN \
+             (SELECT slot FROM character_items WHERE character_id = $1)",
+        )
+        .bind(character_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("characters.replace_items", "refine_pity"))?;
+        for (slot, valor) in pity {
+            let slot = i16::try_from(*slot).map_err(|_| DbError::Transport {
+                op: "characters.replace_items",
+            })?;
+            if *valor == 0 {
+                sqlx::query("DELETE FROM refine_pity WHERE character_id = $1 AND slot = $2")
+                    .bind(character_id)
+                    .bind(slot)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(map_error("characters.replace_items", "refine_pity"))?;
+            } else {
+                sqlx::query(
+                    "INSERT INTO refine_pity (character_id, slot, pity) VALUES ($1, $2, $3) \
+                     ON CONFLICT (character_id, slot) DO UPDATE SET pity = EXCLUDED.pity",
+                )
+                .bind(character_id)
+                .bind(slot)
+                .bind(i16::from((*valor).min(20)))
+                .execute(&mut *tx)
+                .await
+                .map_err(map_error("characters.replace_items", "refine_pity"))?;
+            }
         }
         tx.commit()
             .await
@@ -1110,6 +1164,77 @@ impl Grants for PgBackend {
         Ok(Some((character_id, gold)))
     }
 
+    /// Primeiro slot livre de `Carry` (16–79) ou `None` com a mochila cheia.
+    async fn claim_item(&self, id: i64) -> Result<Option<(i64, i32)>, DbError> {
+        const CARRY_FIRST: i16 = 16;
+        const CARRY_LAST: i16 = 79;
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "grants.claim_item",
+        })?;
+        let linha: Option<(i64, i32, i32)> = sqlx::query_as(
+            "SELECT character_id, item_id, qty FROM delivery_queue \
+             WHERE id = $1 AND status = 'pending' AND kind = 'item' FOR UPDATE",
+        )
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("grants.claim_item.read", "delivery_queue"))?;
+        let Some((character_id, item_id, qty)) = linha else {
+            return Ok(None);
+        };
+        let ocupados: Vec<i16> =
+            sqlx::query_scalar("SELECT slot FROM character_items WHERE character_id = $1")
+                .bind(character_id)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_error("grants.claim_item.read", "character_items"))?;
+        let livre = (CARRY_FIRST..=CARRY_LAST).find(|slot| !ocupados.contains(slot));
+        let Some(slot) = livre else {
+            // Mochila cheia: a linha fica pendente para a próxima varredura do dreno
+            // (o staff vê `attempts` crescer na tela de entregas e libera espaço).
+            sqlx::query("UPDATE delivery_queue SET attempts = attempts + 1 WHERE id = $1")
+                .bind(id)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_error("grants.claim_item.write", "delivery_queue"))?;
+            tx.commit().await.map_err(|_e| DbError::Transport {
+                op: "grants.claim_item.commit",
+            })?;
+            return Ok(None);
+        };
+        let inserido = sqlx::query(
+            "INSERT INTO character_items \
+               (character_id, slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value) \
+             VALUES ($1, $2, $3, $4, 0, 0, false, 0, 0) \
+             ON CONFLICT (character_id, slot) DO NOTHING",
+        )
+        .bind(character_id)
+        .bind(slot)
+        .bind(item_id)
+        .bind(qty)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("grants.claim_item.write", "character_items"))?;
+        if inserido.rows_affected() == 0 {
+            // Corrida no slot (outro dreno/consumo): tenta de novo na próxima varredura.
+            tx.rollback().await.map_err(|_e| DbError::Transport {
+                op: "grants.claim_item.rollback",
+            })?;
+            return Ok(None);
+        }
+        sqlx::query(
+            "UPDATE delivery_queue SET status = 'claimed', claimed_at = now() WHERE id = $1",
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("grants.claim_item.write", "delivery_queue"))?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "grants.claim_item.commit",
+        })?;
+        Ok(Some((character_id, i32::from(slot))))
+    }
+
     async fn list_for_character(
         &self,
         character_id: i64,
@@ -1510,5 +1635,61 @@ impl Sessions for PgBackend {
             op: "sessions.decode",
         })?;
         Ok(u64::try_from(total).unwrap_or(0))
+    }
+
+    async fn channel_capacity(
+        &self,
+        group_id: i16,
+        channel: i16,
+    ) -> Result<ChannelCapacity, DbError> {
+        let linha = sqlx::query(
+            "SELECT max_players, maintenance FROM channel_capacity \
+             WHERE group_id = $1 AND channel = $2",
+        )
+        .bind(group_id)
+        .bind(channel)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("sessions.capacity", "channel_capacity"))?;
+        let Some(linha) = linha else {
+            return Ok(ChannelCapacity::permissive());
+        };
+        let maximo: i32 = linha
+            .try_get("max_players")
+            .map_err(|_| DbError::Transport {
+                op: "sessions.decode",
+            })?;
+        let manutencao: bool = linha
+            .try_get("maintenance")
+            .map_err(|_| DbError::Transport {
+                op: "sessions.decode",
+            })?;
+        Ok(ChannelCapacity {
+            max_players: u32::try_from(maximo).unwrap_or(0),
+            maintenance: manutencao,
+        })
+    }
+
+    async fn channel_role(
+        &self,
+        group_id: i16,
+        channel: i16,
+    ) -> Result<Option<ChannelRole>, DbError> {
+        let linha =
+            sqlx::query("SELECT role FROM channel_role WHERE group_id = $1 AND channel = $2")
+                .bind(group_id)
+                .bind(channel)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("sessions.role", "channel_role"))?;
+        let Some(linha) = linha else {
+            return Ok(None);
+        };
+        let texto: String = linha.try_get("role").map_err(|_| DbError::Transport {
+            op: "sessions.decode",
+        })?;
+        // Valor fora do CHECK é dado corrompido: devolve `None` para o chamador cair no
+        // default `normal` em vez de derrubar o boot do canal.
+        Ok(ChannelRole::parse(&texto))
     }
 }

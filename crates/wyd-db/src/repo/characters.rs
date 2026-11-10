@@ -66,17 +66,35 @@ pub trait Characters {
         async { Ok(()) }
     }
 
+    /// Piedade de refino do slot (`refine_pity`, FASE-03-16; 0 = linha ausente).
+    ///
+    /// O legado empacota a piedade no próprio item (`cValue = nível + 10×piedade`); aqui
+    /// ela mora na tabela própria, chaveada por (personagem, slot). Default para os
+    /// fakes do Cold Path, que não têm inventário persistido.
+    fn refine_pity(
+        &self,
+        character_id: i64,
+        slot: i64,
+    ) -> impl Future<Output = Result<u8, DbError>> + Send {
+        let _ = (character_id, slot);
+        async { Ok(0) }
+    }
+
     /// Substitui o inventário do personagem em uma transação (refino/consumo de pó).
     ///
     /// Diferente de [`Self::insert_items`], que só materializa o template na criação, este
     /// caminho troca o conjunto inteiro: linhas consumidas somem e o refino novo é gravado.
-    /// Default para os fakes do Cold Path, que não têm inventário persistido.
+    /// `pity` carrega `(slot, piedade)` do refino que acabou de rodar — gravada na mesma
+    /// transação — e as linhas de slots que saíram do inventário são podadas (item
+    /// destruído/consumido não deixa piedade órfã). Default para os fakes do Cold Path,
+    /// que não têm inventário persistido.
     fn replace_items(
         &self,
         character_id: i64,
         items: &[ItemRow],
+        pity: &[(i64, u8)],
     ) -> impl Future<Output = Result<(), DbError>> + Send {
-        let _ = (character_id, items);
+        let _ = (character_id, items, pity);
         async { Ok(()) }
     }
 

@@ -241,6 +241,293 @@ impl ConfigStore for Blocking {
         .map_err(wyd_admin::AdminError::from)
     }
 
+    fn npcs(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<NpcRow>, wyd_admin::AdminError> {
+        let rows = run_on(&self.runtime, self.inner.config_npc_page(limit, after_id))
+            .map_err(wyd_admin::AdminError::from)?;
+        Ok(rows
+            .into_iter()
+            .map(|row| NpcRow {
+                id: row.id,
+                slug: row.slug,
+                display_name: row.display_name,
+                map_id: row.map_id,
+                pos_x: row.pos_x,
+                pos_y: row.pos_y,
+                enabled: row.enabled,
+                merchant: row.merchant,
+            })
+            .collect())
+    }
+
+    fn mob_templates(
+        &self,
+        limit: i64,
+        after: Option<&str>,
+    ) -> Result<Vec<wyd_admin::MobTemplateRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_mob_templates(limit, after))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::MobTemplateRow {
+                        template_name: row.template_name,
+                        name: row.name,
+                        source_size: row.source_size,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn effects(
+        &self,
+        limit: i64,
+        after: Option<&str>,
+    ) -> Result<Vec<wyd_admin::EffectRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_effects(limit, after))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::EffectRow {
+                        name: row.name,
+                        label: row.label,
+                        category: row.category,
+                        description: row.description,
+                        confirmed: row.confirmed,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn daily_rewards(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<wyd_admin::DailyRewardRow>, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_daily_rewards(limit, after_id),
+        )
+        .map(|rows| {
+            rows.into_iter()
+                .map(|row| wyd_admin::DailyRewardRow {
+                    id: row.id,
+                    day: row.day,
+                    item_index: row.item_index,
+                    gold: row.gold,
+                    qty: row.qty,
+                    account_wide: row.account_wide,
+                })
+                .collect()
+        })
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn upsert_daily_reward(
+        &self,
+        edit: &wyd_admin::DailyEdit,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_upsert_daily_reward(
+                &wyd_db::DailyRewardEdit {
+                    id: edit.id,
+                    day: edit.day,
+                    item_index: edit.item_index,
+                    gold: edit.gold,
+                    qty: edit.qty,
+                    account_wide: edit.account_wide,
+                },
+                actor,
+            ),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn delete_daily_reward(&self, id: i32, actor: i64) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_delete_daily_reward(id, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn donate_items(
+        &self,
+        limit: i64,
+        after_id: Option<i32>,
+    ) -> Result<Vec<wyd_admin::DonateItemRow>, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_donate_items(limit, after_id),
+        )
+        .map(|rows| {
+            rows.into_iter()
+                .map(|row| wyd_admin::DonateItemRow {
+                    id: row.id,
+                    item_index: row.item_index,
+                    price_credits: row.price_credits,
+                    duration_days: row.duration_days,
+                    enabled: row.enabled,
+                })
+                .collect()
+        })
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn upsert_donate_item(
+        &self,
+        edit: &wyd_admin::DonateEdit,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_upsert_donate_item(
+                edit.id,
+                edit.item_index,
+                edit.price_credits,
+                edit.duration_days,
+                edit.enabled,
+                actor,
+            ),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn set_donate_item_enabled(
+        &self,
+        id: i32,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_set_donate_item_enabled(id, enabled, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn delete_donate_item(&self, id: i32, actor: i64) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_delete_donate_item(id, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn world_events(&self) -> Result<Vec<wyd_admin::WorldEventRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_world_events())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::WorldEventRow {
+                        code: row.code,
+                        name: row.name,
+                        kind: row.kind,
+                        enabled: row.enabled,
+                        requires_city: row.requires_city,
+                        description: row.description,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn event_schedules(&self) -> Result<Vec<wyd_admin::EventScheduleRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_event_schedules())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::EventScheduleRow {
+                        id: row.id,
+                        event_code: row.event_code,
+                        weekday: row.weekday,
+                        start_time: row.start_time,
+                        duration_minutes: row.duration_minutes,
+                        timezone: row.timezone,
+                        every_n_weeks: row.every_n_weeks,
+                        enabled: row.enabled,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn set_world_event_enabled(
+        &self,
+        code: &str,
+        enabled: bool,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_set_world_event_enabled(code, enabled, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn accounts(
+        &self,
+        limit: i64,
+        after_id: Option<i64>,
+    ) -> Result<Vec<wyd_admin::AccountSummary>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_accounts(limit, after_id))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| {
+                        let role = match row.role.as_str() {
+                            "moderator" => wyd_db::Role::Moderator,
+                            "admin" => wyd_db::Role::Admin,
+                            _ => wyd_db::Role::Player,
+                        };
+                        wyd_admin::AccountSummary {
+                            id: row.id,
+                            login: row.login,
+                            role,
+                        }
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn account(&self, id: i64) -> Result<Option<wyd_admin::AccountSummary>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_account(id))
+            .map(|row| {
+                row.map(|row| {
+                    let role = match row.role.as_str() {
+                        "moderator" => wyd_db::Role::Moderator,
+                        "admin" => wyd_db::Role::Admin,
+                        _ => wyd_db::Role::Player,
+                    };
+                    wyd_admin::AccountSummary {
+                        id: row.id,
+                        login: row.login,
+                        role,
+                    }
+                })
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn credit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        actor: i64,
+    ) -> Result<(i64, bool), wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_credit_donate(account_id, credits, key, actor),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
     fn routes(&self, limit: i64) -> Result<Vec<RouteRow>, wyd_admin::AdminError> {
         let rows = run_on(&self.runtime, self.inner.config_routes(limit))
             .map_err(wyd_admin::AdminError::from)?;

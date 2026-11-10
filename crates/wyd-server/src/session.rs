@@ -15,12 +15,53 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use wyd_db::{ClaimOutcome, PgBackend, Sessions};
+use wyd_db::{ChannelCapacity, ClaimOutcome, PgBackend, Sessions};
 
 /// TTL mínimo da sessão ociosa: abaixo disso a retomada por TTL viraria corrida.
 const MIN_STALE: Duration = Duration::from_secs(30);
 
-/// Falhas da cerca — ou o banco recusou, ou já existe sessão viva.
+/// Lotação de um canal (FASE-06-3): fonte = `channel_capacity` no banco, com
+/// sobrescrita por processo via env (`WYD_SERVER_MAX_PLAYERS` e
+/// `WYD_SERVER_MAINTENANCE`, lidos no boot em `channels::policy_overrides_from_env`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChannelPolicy {
+    /// Teto de sessões vivas; `1000` é o `MAX_USER` do legado.
+    pub max_players: u32,
+    /// Canal em manutenção: recusa entrada nova, preserva sessão viva.
+    pub maintenance: bool,
+}
+
+impl ChannelPolicy {
+    /// Política operacional: 1000 sessões, sem manutenção.
+    #[must_use]
+    pub const fn open() -> Self {
+        Self {
+            max_players: 1000,
+            maintenance: false,
+        }
+    }
+}
+
+impl From<ChannelCapacity> for ChannelPolicy {
+    fn from(linha: ChannelCapacity) -> Self {
+        Self {
+            max_players: linha.max_players,
+            maintenance: linha.maintenance,
+        }
+    }
+}
+
+/// Sobrescritas de política por processo (env); `None` = vale o banco.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PolicyOverrides {
+    /// Teto de sessões vivas deste processo, se fixado por env.
+    pub max_players: Option<u32>,
+    /// Manutenção deste processo, se fixada por env.
+    pub maintenance: Option<bool>,
+}
+
+/// Falhas da cerca — ou o banco recusou, ou já existe sessão viva, ou o canal
+/// está lotado/em manutenção.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SessionError {
     /// A conta já tem sessão viva (este canal ou outro) — recusa explícita, nunca silêncio.
@@ -28,6 +69,13 @@ pub enum SessionError {
         /// Canal onde a sessão viva está.
         channel: i16,
     },
+    /// Canal lotado: sessões vivas atingiram `max_players` — recusa tipada (FASE-06-3).
+    Capacity {
+        /// Teto vigente quando a entrada foi recusada.
+        limit: u32,
+    },
+    /// Canal em manutenção: entrada nova recusada, sessão viva preservada.
+    Maintenance,
     /// Persistência indisponível: sem banco não se abre sessão (fail-closed).
     Db(String),
 }
@@ -38,6 +86,10 @@ impl core::fmt::Display for SessionError {
             Self::Conflict { channel } => {
                 write!(f, "conta já tem sessão viva no canal {channel}")
             }
+            Self::Capacity { limit } => {
+                write!(f, "canal lotado: {limit} sessões vivas")
+            }
+            Self::Maintenance => write!(f, "canal em manutenção"),
             Self::Db(motivo) => write!(f, "sessão sem lastro no banco: {motivo}"),
         }
     }
@@ -53,6 +105,7 @@ pub struct SessionGate {
     channel: i16,
     stale_after: Duration,
     idle: Duration,
+    overrides: PolicyOverrides,
 }
 
 impl SessionGate {
@@ -73,7 +126,32 @@ impl SessionGate {
             channel,
             stale_after: stale_after.max(MIN_STALE),
             idle,
+            overrides: PolicyOverrides::default(),
         }
+    }
+
+    /// Fixa sobrescritas de política por processo (env lido no boot; o padrão deixa
+    /// tudo valendo o banco).
+    #[must_use]
+    pub fn with_overrides(mut self, overrides: PolicyOverrides) -> Self {
+        self.overrides = overrides;
+        self
+    }
+
+    /// Política efetiva do canal: banco como fonte, env como sobrescrita.
+    fn policy(&self) -> Result<ChannelPolicy, SessionError> {
+        let linha = self
+            .runtime
+            .block_on(self.backend.channel_capacity(self.group_id, self.channel))
+            .map_err(|error| SessionError::Db(error.to_string()))?;
+        let mut politica = ChannelPolicy::from(linha);
+        if let Some(teto) = self.overrides.max_players {
+            politica.max_players = teto;
+        }
+        if let Some(manutencao) = self.overrides.maintenance {
+            politica.maintenance = manutencao;
+        }
+        Ok(politica)
     }
 
     /// Canal deste processo (vai para o log).
@@ -100,6 +178,29 @@ impl SessionGate {
     /// era), então a linha antiga é liberada e a nova abre. Conflito em outro canal continua
     /// recusa — ali há dois mundos com o mesmo personagem, que é o que a cerca protege.
     pub fn claim(&self, login: &str, client_version: i32) -> Result<SessionLease, SessionError> {
+        let politica = self.policy()?;
+        if politica.maintenance {
+            log(&format!(
+                "level=warn event=session result=maintenance account={login} group={} channel={}",
+                self.group_id, self.channel
+            ));
+            return Err(SessionError::Maintenance);
+        }
+        let vivas = self
+            .runtime
+            .block_on(self.backend.live_sessions(self.group_id, self.channel))
+            .map_err(|error| SessionError::Db(error.to_string()))?;
+        if u64::from(politica.max_players) <= vivas {
+            log(&format!(
+                "level=warn event=session result=full account={login} group={} channel={} limit={} live={vivas}",
+                self.group_id,
+                self.channel,
+                politica.max_players
+            ));
+            return Err(SessionError::Capacity {
+                limit: politica.max_players,
+            });
+        }
         match self.claim_once(login, client_version)? {
             ClaimOutcome::Acquired { id } => Ok(self.lease(id)),
             ClaimOutcome::Conflict { channel } if channel == self.channel => {

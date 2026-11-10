@@ -24,11 +24,12 @@ use std::sync::Arc;
 
 use wyd_db::ItemRow;
 use wyd_protocol::UseItem;
-use wyd_sim::formula::drop::{drops, DROP_ROLL_MAX};
+use wyd_sim::formula::drop::{drops, effective_rate_with, DROP_ROLL_MAX};
 use wyd_sim::formula::refine::{
     pity_gain, powder_next_level, powder_roll_succeeds, Powder, RefinePolicy, PITY_MAX, REFINE_MAX,
 };
 use wyd_sim::roll::XorShift64;
+use wyd_sim::units::Bps;
 
 use crate::config::{DropRule, GameConfig, LiveConfig};
 
@@ -211,6 +212,9 @@ pub enum UseItemError {
     NotPowder { item_index: i64 },
     /// O alvo é pó, rosto ou item fora da faixa de refino.
     NotRefinable { item_index: i64, slot: i64 },
+    /// O catálogo marca o item com `EF_NOSANC` (126): não é erro de protocolo, é veto
+    /// de dado (FASE-03-16). Recusa sem mutação, como o legado faz na sanitização.
+    BlockedByCatalog { item_index: i64 },
     /// Refino persistido fora de `0..=15`.
     InvalidTargetLevel { level: i64 },
     /// Regra de refino recusou (taxa ausente, teto do pó, sorteio inválido).
@@ -233,6 +237,9 @@ impl fmt::Display for UseItemError {
             Self::EmptyTarget { slot } => write!(f, "slot de destino {slot} vazio"),
             Self::SameSlot { slot } => write!(f, "origem e destino são o mesmo slot {slot}"),
             Self::NotPowder { item_index } => write!(f, "item {item_index} não é pó de refino"),
+            Self::BlockedByCatalog { item_index } => {
+                write!(f, "item {item_index} bloqueado pelo catálogo (EF_NOSANC)")
+            }
             Self::NotRefinable { item_index, slot } => {
                 write!(f, "item {item_index} no slot {slot} não é refinável")
             }
@@ -335,10 +342,16 @@ impl Gameplay {
     /// Resolve uma tabela de drop do snapshot atual com sorteios já dados.
     ///
     /// É a forma pura do resolvedor (teste/golden): `rolls` precisa ter um sorteio por item
-    /// da tabela; a ausência é erro explícito.
-    pub fn loot(&self, template: &str, rolls: &[(i32, u32)]) -> Result<Vec<LootDrop>, LootError> {
+    /// da tabela; a ausência é erro explícito. `citizen` liga o bônus de cidadania do canal
+    /// (FASE-03-10) — desligado, a taxa é exatamente a do legado.
+    pub fn loot(
+        &self,
+        template: &str,
+        rolls: &[(i32, u32)],
+        citizen: bool,
+    ) -> Result<Vec<LootDrop>, LootError> {
         let config = self.config.snapshot();
-        loot_with(&config, template, rolls)
+        loot_with(&config, template, rolls, citizen)
     }
 
     /// **Morte de monstro**: tabela do snapshot vigente + os rolls do momento.
@@ -351,6 +364,7 @@ impl Gameplay {
         &self,
         template: &str,
         die: &mut XorShift64,
+        citizen: bool,
     ) -> Result<LootResolution, LootError> {
         let config = self.config.snapshot();
         let table = config.drops_for(template);
@@ -362,7 +376,7 @@ impl Gameplay {
                 (*item_index, roll)
             })
             .collect();
-        let drops = loot_with(&config, template, &rolls)?;
+        let drops = loot_with(&config, template, &rolls, citizen)?;
         Ok(LootResolution {
             template: template.to_string(),
             rolls,
@@ -377,13 +391,15 @@ impl Gameplay {
     /// sempre; sucesso sobe um nível, falha comum mantém o item e falha de selado em +7..+9
     /// destrói o alvo. A taxa é lida **nesta chamada** por [`Self::refine`], nunca no boot.
     ///
-    /// A sessão passa a lista completa de linhas; o chamador persiste depois. Recusa não
-    /// consome pó nem altera o alvo.
+    /// `pity` é a piedade persistida do alvo (tabela `refine_pity`, FASE-03-16): quem chama
+    /// lê antes e grava `resolution.next_pity` depois. A sessão passa a lista completa de
+    /// linhas; o chamador persiste depois. Recusa não consome pó nem altera o alvo.
     pub fn use_item(
         &self,
         items: &mut Vec<ItemRow>,
         packet: &UseItem,
         rolls: UseItemRolls,
+        pity: u8,
     ) -> Result<RefineUse, UseItemError> {
         if packet.sour_type != ITEM_PLACE_CARRY {
             return Err(UseItemError::SourceNotCarry {
@@ -455,9 +471,7 @@ impl Gameplay {
             level,
             powder,
             sealed: is_sealed(target.item_id),
-            // O legado guarda a piedade no item; o esquema normalizado ainda não tem coluna
-            // para ela. Zero é o valor inicial explícito, não uma taxa inventada.
-            pity: 0,
+            pity: pity.min(PITY_MAX),
             roll: rolls.roll,
             pity_roll: rolls.pity_roll,
         })?;
@@ -554,6 +568,7 @@ fn loot_with(
     config: &GameConfig,
     template: &str,
     rolls: &[(i32, u32)],
+    citizen: bool,
 ) -> Result<Vec<LootDrop>, LootError> {
     let table = config.drops_for(template);
     if table.is_empty() {
@@ -561,6 +576,13 @@ fn loot_with(
             template: template.to_string(),
         });
     }
+    // Bônus do canal de cidadania: `0` quando desligado ou quando quem matou não é cidadão
+    // deste canal. Lido do snapshot **uma vez** por abate, como a tabela.
+    let citizen_bonus = if citizen {
+        config.citizen_bonus_bps()
+    } else {
+        Bps::ZERO
+    };
     let mut out = Vec::new();
     for (item_index, rule) in table {
         let roll = rolls
@@ -568,7 +590,7 @@ fn loot_with(
             .find(|(item, _)| *item == item_index)
             .map(|(_, roll)| *roll)
             .ok_or(LootError::MissingRoll { item_index })?;
-        let rate = effective_weight(config, item_index, rule)?;
+        let rate = effective_weight(config, item_index, rule, citizen_bonus)?;
         if drops(rate, roll).map_err(|_| LootError::InvalidRoll { item_index, roll })? {
             out.push(LootDrop {
                 item_index,
@@ -579,11 +601,12 @@ fn loot_with(
     Ok(out)
 }
 
-/// Peso efetivo: multiplicador global de drop + teto da escala de sorteio.
+/// Peso efetivo: multiplicador global de drop + bônus de cidadania, com teto da escala.
 fn effective_weight(
     config: &GameConfig,
     item_index: i32,
     rule: DropRule,
+    citizen_bonus: Bps,
 ) -> Result<u32, LootError> {
     if rule.weight <= 0 {
         return Err(LootError::InvalidWeight {
@@ -595,5 +618,8 @@ fn effective_weight(
     let scaled = config
         .apply_multiplier("drop", base)
         .min(u64::from(DROP_ROLL_MAX));
-    Ok(u32::try_from(scaled).unwrap_or(DROP_ROLL_MAX))
+    let escalado = u32::try_from(scaled).unwrap_or(DROP_ROLL_MAX);
+    // Bônus aplicado **depois** do multiplicador global e antes do sorteio (hipótese D-08 de
+    // `docs/wyd/sistemas/drops.md` §1 para bônus de canal), com teto na escala do roll.
+    Ok(effective_rate_with(escalado, &[citizen_bonus]))
 }

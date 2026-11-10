@@ -79,11 +79,34 @@ fn run() -> Result<(), String> {
     );
     let canal_i16 = i16::try_from(channel).map_err(|_| "WYD_SERVER_CHANNEL fora de 1..10")?;
     let tick_hz = wyd_server::world::tick_hz_from_env()?;
+    // Teto de cena por varredura (FASE-03-9): validado no boot, nunca corrigido em silêncio.
+    let scene_budget = wyd_server::world::scene_budget_from_env()?;
 
     log(
         "info",
         "boot",
         &format!("channel={channel} version={}", env!("CARGO_PKG_VERSION")),
+    );
+    // Lotação/manutenção (FASE-06-3): o banco é a fonte, o env sobrescreve por processo.
+    let capacity_overrides = wyd_server::channels::policy_overrides_from_env();
+    // Teto baixo por engano trava o canal: o aviso é no boot, antes de recusar ninguém.
+    let nivel = if capacity_overrides.max_players.is_some_and(|teto| teto < 10) {
+        "warn"
+    } else {
+        "info"
+    };
+    log(
+        nivel,
+        "session",
+        &format!(
+            "capacity max_players={} maintenance={} (env sobrescreve banco)",
+            capacity_overrides
+                .max_players
+                .map_or("banco".to_string(), |teto| teto.to_string()),
+            capacity_overrides
+                .maintenance
+                .map_or("banco".to_string(), |ativo| ativo.to_string()),
+        ),
     );
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -112,6 +135,28 @@ fn run() -> Result<(), String> {
         .block_on(backend.server_channels())
         .map_err(|error| format!("server_channel indisponível (migrations aplicadas?): {error}"))?;
     let world = Arc::new(World::new(canais)?);
+    // Papel do canal (FASE-03-10): o banco é a fonte, o env sobrescreve. Canal sem linha =
+    // `normal`, então nenhum comportamento muda por omissão.
+    let role_env = wyd_server::channels::role_overrides_from_env();
+    let role_db = runtime
+        .block_on(wyd_db::Sessions::channel_role(
+            &backend, group_id, canal_i16,
+        ))
+        .unwrap_or(None);
+    let rules = wyd_server::channels::ChannelRules::new(wyd_server::channels::effective_role(
+        role_db, role_env,
+    ));
+    let origem_papel = if role_env.is_some() { "env" } else { "banco" };
+    log(
+        "info",
+        "channel",
+        &format!(
+            "role={} pvp={} shop={} source={origem_papel} group={group_id} channel={canal_i16}",
+            rules.as_str(),
+            rules.pvp_allowed(true),
+            rules.personal_shop_allowed()
+        ),
+    );
     let metrics = Arc::new(ServiceMetrics::new(world.game_channel_count()));
     // Registro do motor anexado ao `/metrics` **antes** do primeiro scrape: o HTTP não
     // publica tick zerado (ADR-0022 §7).
@@ -267,15 +312,17 @@ fn run() -> Result<(), String> {
         let runtime = Arc::clone(&runtime);
         let metrics = Arc::clone(&metrics);
         std::thread::spawn(move || {
-            status::serve(
-                status_listener,
+            status::serve(status::StatusDeps {
+                listener: status_listener,
                 world,
                 backend,
                 runtime,
                 metrics,
                 group_id,
-                canal_i16,
-            )
+                channel: canal_i16,
+                overrides: capacity_overrides,
+                rules,
+            })
         });
     }
 
@@ -285,7 +332,9 @@ fn run() -> Result<(), String> {
     log(
         "info",
         "tick",
-        &format!("hz={tick_hz} interval_ms={tick_interval} thread=wyd-tick"),
+        &format!(
+            "hz={tick_hz} interval_ms={tick_interval} scene_budget={scene_budget} thread=wyd-tick"
+        ),
     );
 
     // NPCs do snapshot: materializa `npc_definition` do mapa do canal e reconcilia a cada
@@ -339,14 +388,17 @@ fn run() -> Result<(), String> {
         "gate",
         &format!("expected_version={}", gate.expected()),
     );
-    let sessions = Arc::new(wyd_server::session::SessionGate::new(
-        Arc::new(backend.clone()),
-        Arc::clone(&runtime),
-        group_id,
-        canal_i16,
-        session_idle,
-        session_stale,
-    ));
+    let sessions = Arc::new(
+        wyd_server::session::SessionGate::new(
+            Arc::new(backend.clone()),
+            Arc::clone(&runtime),
+            group_id,
+            canal_i16,
+            session_idle,
+            session_stale,
+        )
+        .with_overrides(capacity_overrides),
+    );
     // Seleção de personagem depois do login: mesmo pool e mesmo runtime do handshake.
     let selection = Arc::new(
         wyd_server::characters::SelectionStore::new(

@@ -62,8 +62,17 @@ inteiro; canal novato é do canal.
 
 No legado **não existe flag "novato"**: PvP é decidido por mapa/zona (`AttributeMap`,
 `Regions.txt`). Portanto canal verde = configuração do processo (mesmos mapas, PvP desligado e
-loja permitida), aplicada por `-novice-channel`/`W2PP_NOVICE_CHANNEL` no desenho Go antigo e a
-portar como flag equivalente no núcleo Rust.
+loja permitida), aplicada por `-novice-channel`/`W2PP_NOVICE_CHANNEL` no desenho Go antigo.
+
+**No Rust (FASE-03-10)** o papel é dado do canal: tabela `channel_role` (migration `0041`,
+seed `1 = normal`, `2 = verde`), sobrescrita por processo em `WYD_SERVER_CHANNEL_ROLE`
+(`normal`/`verde`; valor desconhecido é ignorado e vale o banco). O processo resolve o papel no
+boot (`channels::effective_role`), publica em `GET /health` (`role`, `pvp`, `shop`) e loga
+`event=channel role=… source=banco|env`. A política vive em `channels::ChannelRules`:
+`pvp_allowed(map_allows_pvp)` e `personal_shop_allowed()` — o canal só **restringe** o PvP do
+mapa, nunca libera além dele. Os handlers de PvP (checklist 4.5) e de loja pessoal (7.2) ainda
+não existem no fio; até lá a regra é provada como política (`tests/canal_verde.rs`), sem pacote
+inventado.
 
 ## 4. Guildas donas de cidade (por canal)
 
@@ -89,8 +98,13 @@ processo daquele canal.
    derivadas dele.
 3. Canal novato como flag por processo (PvP desligado, loja permitida) e o conjunto de eventos
    presos a ele — não como rotação diária escolhida por nós.
-4. Bônus de cidadania **efetivamente aplicado** no cálculo de drop antes de vender cidadania: hoje
-   o texto existe e a taxa não é aplicada (pendência registrada na `main` em `docs/migration/canais.md`).
+4. Bônus de cidadania **efetivamente aplicado** no cálculo de drop antes de vender cidadania.
+   **Feito (FASE-03-10) como parâmetro:** `game_setting` (`Channel Settings.citizen_bonus_bps`,
+   default `0`, teto 50%) entra em `Gameplay::loot*` pelo argumento `citizen`; o cidadão usa a
+   taxa corrigida (`peso + peso × bônus`), o visitante fica na taxa do legado. Sem número com
+   fonte o default `0` mantém o drop idêntico ao original — nenhuma taxa foi inventada. Falta
+   **quem** é cidadão persistido (`MobExtra.Citizen`): hoje a cidadania é derivada do canal
+   (checklist 2.1), então todo personagem no canal é cidadão dele.
 5. Guerra entre canais só faz sentido com 2+ instâncias; até lá, um canal é o único mundo real.
 
 ### 5.1 Plano de canais para desenvolvimento (recomendado)

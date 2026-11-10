@@ -20,12 +20,12 @@ pub mod pool;
 pub mod repo;
 pub mod transfer;
 
-/// Versão do schema = número da última migration (`0039_classificacao_e_teto`).
+/// Versão do schema = número da última migration (``0043_piedade_refino`).
 ///
 /// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
 /// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
 /// juntos é pior que não ter versão.
-pub const SCHEMA_VERSION: u32 = 39;
+pub const SCHEMA_VERSION: u32 = 43;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -46,10 +46,12 @@ pub use model::{
 };
 pub use pool::{PgBackend, PoolConfig};
 pub use repo::{
-    AccessoryRuleRow, Accounts, AuditRow, AuditTrail, CatalogItemRow, CatalogSnapshot, Characters,
-    CityTaxTotal, ClaimOutcome, ConfigRateRow, CredentialRecord, DropConfigRow, Economy,
-    EconomySummary, Grant, GrantTotal, Grants, NewAuditEntry, NpcConfigRow, QueuedGrantRow,
-    RouteConfigRow, ServerChannel, Sessions, SkillRule, SkillRules, StackCapRow, NO_CREDENTIAL,
+    AccessoryRuleRow, AccountListRow, Accounts, AuditRow, AuditTrail, CatalogItemRow,
+    CatalogSnapshot, ChannelCapacity, ChannelRole, Characters, CityTaxTotal, ClaimOutcome,
+    ConfigRateRow, CredentialRecord, DailyRewardEdit, DailyRewardRow, DonateItemRow, DropConfigRow,
+    Economy, EconomySummary, EffectRow, EventScheduleRow, Grant, GrantTotal, Grants,
+    MobTemplateRow, NewAuditEntry, NpcConfigRow, NpcListRow, QueuedGrantRow, RouteConfigRow,
+    ServerChannel, Sessions, SkillRule, SkillRules, StackCapRow, WorldEventRow, NO_CREDENTIAL,
 };
 pub use transfer::{
     DeliveryQueue, FlushReport, QueuedGrant, SaveDrain, SavePolicy, SaveQueue, SaveRequest,
@@ -67,7 +69,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 39);
+        assert_eq!(SCHEMA_VERSION, 43);
         // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }
