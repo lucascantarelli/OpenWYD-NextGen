@@ -12,14 +12,22 @@ que o servidor precisa guardar.
 |---|---|---|---|
 | **Mortal** | criação do personagem | nível 1–400; pontos de status/aprendizado/skill | CONFIRMADO |
 | **God (Celestial)** | nível **400** com o Mortal | nova classe escolhida, novo corpo, novo teto | CONFIRMADO |
-| **Arch** | 2 quests + nível 400 + Pedra da Imortalidade, Sephirot, capa | personagem paralelo com +8 atributo/nível | CONFIRMADO |
+| **Arch** | Mortal **300+** + **Pedra da Imortalidade** e **Sephirot** equipados; **355** = capa/destrave; **400** = Celestial | personagem paralelo com +8 atributo/nível | CONFIRMADO (duas fontes de 2009; dossiê D-3) |
 | **Subcelestial** | evolução do Arch com Pedra Ideal | Arch nível 356+ e Mortal 400 | CONFIRMADO |
 | **God2** | nível **400** com o Arch | segunda transformação | CONFIRMADO |
 | **Nightmare** | patamar acima do God2, controlado por `maxNightmare` | progressão extra | CONFIRMADO no dado (`maxNightmare = 3`) |
 
+> **Três marcos do Arch, não um gate:** **300** é o mínimo de criação (e de fusão das almas) na era
+> oficial; **355** é a **borda grossa da capa** (Selo do Guerreiro) e o **destrave de XP** do Arch
+> no NPC **Lindy** — a rota que exige 355 *para criar* é config de servidor privado; **400** é o
+> requisito do **Celestial** e a recomendação para maximizar pontos. Fontes: dossiê §2.1 (D-3).
+
 **CONFIRMADO** para a existência das camadas e para o nível 400 como gatilho duplo
 (wiki oficial: "you will become a character GOD… this transformation occurs twice, once
 at 400 with MORTAL and once at 400 with your ARCH").
+
+> Esse "400 duplo" é das transformações **God** (Mortal 400) e **God2** (Arch 400) — **não** é o
+gate de criação do Arch, que é o **300**.
 
 > Nomes que confundem: **God**, **Celestial** e **Superior** aparecem como sinônimos em
 > fontes diferentes. **Subcelestial** é a camada intermediária do Arch. **God2** é a segunda

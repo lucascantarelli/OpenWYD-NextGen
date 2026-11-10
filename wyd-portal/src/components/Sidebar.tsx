@@ -1,6 +1,15 @@
 "use client";
 
-import { Activity, Coins, Gift, LayoutDashboard, Package, ScrollText, Users } from "lucide-react";
+import {
+  Activity,
+  Coins,
+  Gift,
+  LayoutDashboard,
+  Package,
+  ScrollText,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -12,6 +21,7 @@ const ICONS: Record<NavIcon, typeof Activity> = {
   grants: Gift,
   monitoring: Activity,
   catalog: Package,
+  config: SlidersHorizontal,
   audit: ScrollText,
   economy: Coins,
 };

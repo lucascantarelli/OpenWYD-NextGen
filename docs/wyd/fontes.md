@@ -40,6 +40,8 @@ para servidor e até entre patches do mesmo servidor.
 | `wydwinter.wixsite.com` | **droplist completa por mapa e por faixa de quest** (1–40, 41–115, 116–190) | organiza por faixa, igual ao desenho do jogo | projeto antigo (2015) |
 | `portaluok.com` / `portalrogue.com.br` | Kefra (drops do kill), Pista de Runas sala por sala, criação de Arch | detalha recompensa por sala | taxa de servidor |
 | `wydwar.com` | ranking, domínio de cidade, imposto, horários de guerra | confirma estrutura de guerra | landing comercial |
+| `pathoflords.com` (FreeWyd) | **matemática de combate**: velocidade de ataque, golpe duplo/triplo, crítico, evasão, com tabela | o próprio site diz que publica "as regras que mudam em relação ao WYD original" — serve de **hipótese** para a FASE-10-2, nunca de regra |
+| `worldwyd.webnode.com.br`, `wydvaelion.online` | Soul (combinações e percentuais), Celestial/Subcelestial, quests por faixa, comandos | guias de jogador compilados de vários servidores; número é do servidor |
 
 ### Fontes técnicas de código (**D/E**, nunca contrato universal)
 
@@ -103,3 +105,7 @@ para servidor e até entre patches do mesmo servidor.
 5. **Guia de servidor descreve mecânica que não existe no original** (Arcanjo, nível 800,
    Refinador de Amuleto como item). Serve para entender a **família** do sistema, não para
    afirmar que o WYD2 tem aquilo.
+6. **Matemática de servidor privado lida como "a fórmula do jogo".** O FreeWyd publica uma
+tabela de velocidade/duplo/triplo que explica numericamente a "anomalia de 200%" — mas ele
+próprio declara que lista **o que muda em relação ao original**. Ela entra como hipótese
+testável (FASE-10-2), nunca como constante de `wyd-core`.

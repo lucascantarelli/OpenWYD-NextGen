@@ -89,7 +89,7 @@ cliente.
 | 4.1 | Ataque físico (intenção → resolução) | 🚧 | `core/src/systems/combat.rs` + `tests/combat.rs`; sem fio |
 | 4.2 | Fórmulas de dano/defesa/crítico | ⛔ | FASE-10 (`crates/wyd-sim`); nada inventado no core |
 | 4.3 | Skills em combate (custo, cast, alvo) | 🚧 | `core/src/systems/skill.rs` **coberto** por `tests/autoridade.rs` (skill não aprendida, MP/cooldown, alvo fora de alcance, recusa atômica); falta o fio (payload de uso de skill) |
-| 4.4 | HP/MP, regen e morte/respawn | ⬜ | colunas existem; regra não |
+| 4.4 | HP/MP, regen e morte/respawn | 🚧 | **morte ligada:** `Opcode::Attack*` → `Engine::attack_at` retira a criatura do mundo no golpe fatal (geração da cena sobe) → `_MSG_RemoveMob` com `RemoveType=1` na borda; falta regen e respawn próprio (hoje o NPC só volta numa recarga de `npc_definition`) |
 | 4.5 | PvP, PK, chaos e penalidades | ⬜ | docs + coluna `pvp_points` (sem regra) |
 | 4.6 | IA de NPC (FSM + utilidade) | ✅ | `core/src/npc/brain.rs`, `behavior.rs`, `budget.rs`; `tests/npc.rs` |
 | 4.7 | Bosses e invasões | ⬜ | `docs/wyd/sistemas/eventos.md` |
@@ -101,14 +101,31 @@ cliente.
 |---|---|---|---|
 | 5.1 | Catálogo de itens | ✅ | `0018_seed_item_catalog.sql`, `0017_seed_taxonomia.sql`; `tests/catalogo.rs` |
 | 5.2 | Inventário e equipamento | 🚧 | `core/src/systems/inventory.rs` + `tests/inventario.rs`; `0003_inventario.sql`; sem fio |
-| 5.3 | Drop e loot | ⬜ | catálogo existe; regra não |
-| 5.4 | Refino, Anct, celestial/God2 | 🚧 | `0009_refino.sql`, `0022_seed_refino.sql`, `0025/0026_sanc_rate`; regra no fio ⬜ |
+| 5.3 | Drop e loot | 🚧 | **o sorteio está ligado ao abate:** `Opcode::Attack*` → `SelectionStore::attack` → `Gameplay::loot_at_death(template, die)` — um roll por item da tabela do snapshot, tirado no instante da morte, com `event=death`/`event=loot` (seed) em `cpsock`; `tests/config_gameplay.rs::morte_sorteia_um_roll_por_item_da_tabela_do_snapshot` prova seed→rolls→drops e a recarga do portal mudando o peso. **Falta materializar a caixa no chão** (`_MSG_CreateItem` 0x026E) e o pickup (`_MSG_GetItem` 0x0270 → `CNFGetItem` 0x0171): offsets levantados em `docs/cliente/pacotes.md` §“Caixa de item”, direção/pack dependem da captura 08-6 |
+| 5.4 | Refino, Anct, celestial/God2 | 🚧 | `0009_refino.sql`, `0022_seed_refino.sql`, `0025/0026_sanc_rate`; taxas editáveis no portal (`0037`); `Opcode::UseItem` → `SelectionStore::use_item` → `Gameplay::use_item` → `Gameplay::refine` lê SancRate do snapshot por tentativa, grava `character_items` e recusa sem mutação; `tests/config_gameplay.rs` prova recarga/reversão; refino de acessório como dado (`0038`); falta o `UpdateItem` de resposta e a piedade persistida |
 | 5.5 | Imbuir / repleção | ⬜ | docs; sem regra |
 | 5.6 | Mix / compose | 🚧 | `core/src/systems/compose.rs` + `tests/compose.rs`; sem fio |
 | 5.7 | Craft | ⬜ | catálogo `craft`; sem receita executável |
 | 5.8 | Armazém / baú | ⬜ | — |
 | 5.9 | Durabilidade, reparo e quebra | ⬜ | — |
 | 5.10 | Comércio jogador↔jogador | ⬜ | `MSG_Trade` UNVERIFIED (invariante 5) |
+
+### 5.11 Resolvedores prontos × fluxo ligado ao protocolo (revisão 2026-11-10)
+
+Resolvedor pronto = regra pura com teste (goldens/duplo de snapshot). Fluxo ligado = existe
+opcode do cliente chegando no `cpsock::dispatch` até o resolvedor, com efeito persistido ou
+pacote de resposta.
+
+| Resolvedor | Entrada no servidor | Ligado ao protocolo? |
+|---|---|---|
+| `Gameplay::refine` / `Gameplay::use_item` (SancRate + `wyd-sim`) | `Opcode::UseItem` → `SelectionStore::use_item` | **Sim** — lê o snapshot por tentativa e grava `character_items`; falta o `UpdateItem` de resposta e a piedade persistida |
+| `Gameplay::loot` / `Gameplay::loot_at_death` (roll por item, tabela do snapshot) | `Opcode::Attack*` → `Engine::attack_at` → `SelectionStore::attack` | **Sim até o sorteio** — o abate tira o mob do mundo, emite `RemoveMob` (morte) e resolve/loga os drops com os rolls do momento; **não** cria caixa no chão nem trata pickup |
+| `Gameplay::exp_reward` (multiplicador de EXP) | `Opcode::Attack*` → `SelectionStore::gain_exp` | **Sim** — `UpdateEtc`/`UpdateScore` com o `Mob` gravado |
+| `Gameplay::drop_rule` / `drop_chance_bps` (peso editável no portal) | portal → `config_revision` → `LiveConfig` | **Sim** — o peso novo entra no próximo roll, sem reiniciar o canal |
+| `core/systems/skill.rs` (custo, cooldown, alcance) | nenhum | **Não** — falta o payload de uso de skill |
+| `core/systems/compose.rs` (mix) | nenhum | **Não** — falta o layout de `_MSG_CombineItem` |
+| `core/systems/inventory.rs` (slots/equip) | leitura no `_MSG_CharacterLogin` (`STRUCT_MOB`) | **Parcial** — leitura/criação persistidas; falta pacote de mover/equipar/vender |
+| `core/npc/{brain,behavior}` (IA) | tick do motor | **Sim (interno)** — a IA roda no tick; nenhum pacote de ação de NPC sai para o cliente |
 
 ## 6. Skills
 

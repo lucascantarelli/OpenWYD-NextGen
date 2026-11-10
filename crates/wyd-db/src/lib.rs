@@ -20,12 +20,12 @@ pub mod pool;
 pub mod repo;
 pub mod transfer;
 
-/// Versão do schema = número da última migration (`0036_character_special`).
+/// Versão do schema = número da última migration (`0039_classificacao_e_teto`).
 ///
 /// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
 /// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
 /// juntos é pior que não ter versão.
-pub const SCHEMA_VERSION: u32 = 36;
+pub const SCHEMA_VERSION: u32 = 39;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -46,9 +46,10 @@ pub use model::{
 };
 pub use pool::{PgBackend, PoolConfig};
 pub use repo::{
-    Accounts, AuditRow, AuditTrail, CatalogItemRow, CatalogSnapshot, Characters, CityTaxTotal,
-    ClaimOutcome, CredentialRecord, Economy, EconomySummary, Grant, GrantTotal, Grants,
-    NewAuditEntry, QueuedGrantRow, ServerChannel, Sessions, SkillRule, SkillRules, NO_CREDENTIAL,
+    AccessoryRuleRow, Accounts, AuditRow, AuditTrail, CatalogItemRow, CatalogSnapshot, Characters,
+    CityTaxTotal, ClaimOutcome, ConfigRateRow, CredentialRecord, DropConfigRow, Economy,
+    EconomySummary, Grant, GrantTotal, Grants, NewAuditEntry, NpcConfigRow, QueuedGrantRow,
+    RouteConfigRow, ServerChannel, Sessions, SkillRule, SkillRules, StackCapRow, NO_CREDENTIAL,
 };
 pub use transfer::{
     DeliveryQueue, FlushReport, QueuedGrant, SaveDrain, SavePolicy, SaveQueue, SaveRequest,
@@ -66,7 +67,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 36);
+        assert_eq!(SCHEMA_VERSION, 39);
         // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }

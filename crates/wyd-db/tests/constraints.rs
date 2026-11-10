@@ -99,9 +99,14 @@ fn migrations_are_numbered_reversible_and_fk_consistent() {
         // DDL cria tabela ou evolui uma existente (`ALTER TABLE`); seed (`NNNN_seed_*`) só
         // insere, então não pode ser exigido dele.
         if !name.contains("_seed_") {
+            // View também é DDL: a 0039 deriva classificação e teto (`CREATE VIEW`) sem
+            // criar tabela — exigir tabela reprovaria uma migration legítima.
             assert!(
-                !created.is_empty() || up.contains("ALTER TABLE"),
-                "{name} cria ou altera ao menos uma tabela"
+                !created.is_empty()
+                    || up.contains("ALTER TABLE")
+                    || up.contains("CREATE VIEW")
+                    || up.contains("CREATE OR REPLACE VIEW"),
+                "{name} cria ou altera ao menos uma tabela ou view"
             );
         }
         for t in tables_dropped(&down) {

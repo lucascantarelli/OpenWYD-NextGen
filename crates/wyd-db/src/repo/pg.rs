@@ -664,6 +664,38 @@ impl Characters for PgBackend {
         Ok(())
     }
 
+    async fn replace_items(&self, character_id: i64, items: &[ItemRow]) -> Result<(), DbError> {
+        let mut tx = self.begin().await?;
+        sqlx::query("DELETE FROM character_items WHERE character_id = $1")
+            .bind(character_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("characters.replace_items", "character_items"))?;
+        for item in items {
+            sqlx::query(
+                "INSERT INTO character_items \
+                 (character_id, slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            )
+            .bind(character_id)
+            .bind(i16::try_from(item.slot).unwrap_or(i16::MAX))
+            .bind(i32::try_from(item.item_id).unwrap_or(0))
+            .bind(i32::try_from(item.qty).unwrap_or(1))
+            .bind(i32::try_from(item.flags).unwrap_or(0))
+            .bind(i16::try_from(item.refine).unwrap_or(0))
+            .bind(item.ancient)
+            .bind(i16::try_from(item.gem_effect).unwrap_or(0))
+            .bind(i16::try_from(item.gem_value).unwrap_or(0))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("characters.replace_items", "character_items"))?;
+        }
+        tx.commit()
+            .await
+            .map_err(map_error("characters.replace_items", "character_items"))?;
+        Ok(())
+    }
+
     async fn short_skill(
         &self,
         character_id: i64,

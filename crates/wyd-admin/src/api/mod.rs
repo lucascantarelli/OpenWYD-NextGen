@@ -4,11 +4,15 @@
 
 pub mod accounts;
 pub mod catalog;
+pub mod drop;
 pub mod economy;
 pub mod grants;
 pub mod moderation;
+pub mod npc;
 pub mod panel;
 pub mod presence;
+pub mod rates;
+pub mod teleport;
 
 pub use accounts::{create_account, find_account, AccountSummary};
 pub use catalog::items_json;
@@ -20,3 +24,4 @@ pub use panel::{
     RankingEntry, MAX_RANKING,
 };
 pub use presence::{list_channel_presence, ChannelPresence, PresenceSnapshot};
+pub use rates::{ConfigStore, DropEdit, DropRow, NpcRow, RatesSnapshot, RouteRow};

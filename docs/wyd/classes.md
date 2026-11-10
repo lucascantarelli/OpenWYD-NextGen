@@ -20,8 +20,8 @@ wiki das classes; WYD International).
 ### 1.1 Ficha inicial de um personagem novo
 
 Fonte primária: `origin/main:Source/Code/Basedef.cpp` — `BaseSIDCHM`, `g_pIncrementHp/Mp`,
-`BASE_GetHpMp`, `BASE_GetBonusScorePoint` e `BASE_GetBonusSkillPoint`; o porte Go vive em
-`origin/main:tmserver/internal/level/level.go`. O nível inicial é 1 e `ClassMaster = MORTAL`
+`BASE_GetHpMp`, `BASE_GetBonusScorePoint` e `BASE_GetBonusSkillPoint`; o porte atual vive em
+`crates/wyd-server/src/characters.rs`. O nível inicial é 1 e `ClassMaster = MORTAL`
 (`DBSrv/CFileDB.cpp`, `_MSG_DBCreateCharacter`).
 
 | Classe | FOR | INT | DES | CON | HP base | MP base | HP/nível | MP/nível | HP nível 1 | MP nível 1 |
@@ -238,8 +238,10 @@ linhagem, não como derivado do nível.
 | Bônus no nível 370 | **112** pontos de aprendizado, **288** de atributos, **168** de skill |
 | Bônus por nível | +**8** pontos de atributo por nível evoluído do personagem normal |
 
-Quests de criação (itens): **Pedra da Imortalidade**, **Sephirot**, capa Red ou Blue,
-Mortal nível 400. **CONFIRMADO** (guia de criação de Arch).
+Quests de criação (itens): **Pedra da Imortalidade** e **Sephirot** equipados, Mortal **nível 300+**.
+**CONFIRMADO** (dois guias de 2009). A **capa Red/Blue não é item de criação**: é conquista do
+Mortal (borda grossa no **355**, com Selo do Guerreiro). O **400** é o requisito do **Celestial**
+e a recomendação para maximizar pontos — ver dossiê §2.1 (D-3).
 
 > O Arch é o único ponto do jogo em que **duas entidades de personagem** coexistem: o Mortal
 > e o Arch com o mesmo nome. No banco isso vira duas linhas ligadas por `arch_of_id`, e a

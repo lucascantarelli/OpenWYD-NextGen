@@ -6,6 +6,7 @@
 //! Mapa completo (entradas, saídas, unidade, ordem no tick, arredondamento e estado):
 //! `docs/arquitetura/matematica-sim.md`.
 
+pub mod accessory;
 pub mod attributes;
 pub mod damage;
 pub mod drop;
@@ -17,6 +18,7 @@ pub mod regen;
 pub mod resist;
 pub mod threat;
 
+pub use accessory::*;
 pub use attributes::*;
 pub use damage::*;
 pub use drop::*;

@@ -317,5 +317,142 @@ export const grantsAdmin = svc<{
   >;
 }>("grants", ["request"]);
 
+/* --------------------------- configuração ---------------------------- */
+
+/** Linha de taxa com o override já aplicado (`content_rates/get_rates`). */
+export interface RateWire {
+  domain: string;
+  key: string;
+  value: number;
+  unit: string;
+  source: string;
+  overridden: boolean;
+}
+
+/** Regra de refino de acessório (brinco/colar/cinto/…), por passo e receita. */
+export interface AccessoryRuleWire {
+  kind: string;
+  recipe: string;
+  step_from: number;
+  step_to: number;
+  rate_bps: number;
+  fail_mode: string;
+  fail_bonus_bps: number;
+  gold_cost: number;
+  material_name: string;
+  material_qty: number;
+  source: string;
+  notes: string;
+}
+
+export interface GetRatesResponse extends AdminEnvelope {
+  revision?: number;
+  rates?: RateWire[];
+  accessories?: AccessoryRuleWire[];
+}
+
+export interface RevisionResponse extends AdminEnvelope {
+  revision?: number;
+}
+
+export interface ServerFlagsResponse extends AdminEnvelope {
+  revision?: number;
+  flags?: Record<string, number>;
+}
+
+/** `content_rates/*` — taxas de refino, SancRate, composição e acessório. */
+export const contentRates = svc<{
+  getRates: Unary<Record<string, never>, GetRatesResponse>;
+  upsertRate: Unary<
+    { domain: string; key: string; value: number; source: string },
+    RevisionResponse
+  >;
+  resetRate: Unary<{ domain: string; key: string }, RevisionResponse>;
+  getServerFlags: Unary<Record<string, never>, ServerFlagsResponse>;
+}>("content_rates", ["getRates", "upsertRate", "resetRate", "getServerFlags"]);
+
+/** Peso de drop por template de monstro. */
+export interface DropWire {
+  template_name: string;
+  item_index: number;
+  item_name: string;
+  weight: number;
+  min_qty: number;
+  max_qty: number;
+  source: string;
+}
+
+export interface ListDropsResponse extends AdminEnvelope {
+  drops?: DropWire[];
+}
+
+export const dropAdmin = svc<{
+  listDropRates: Unary<{ template_name?: string; limit: number }, ListDropsResponse>;
+  upsertDropRate: Unary<
+    {
+      template_name: string;
+      item_index: number;
+      weight: number;
+      min_qty: number;
+      max_qty: number;
+      source: string;
+    },
+    RevisionResponse
+  >;
+  resetDropRate: Unary<{ template_name: string; item_index: number }, RevisionResponse>;
+}>("drop_admin", ["listDropRates", "upsertDropRate", "resetDropRate"]);
+
+/** NPC com posição editável. */
+export interface NpcWire {
+  id: number;
+  slug: string;
+  display_name: string;
+  map_id: number;
+  pos_x: number;
+  pos_y: number;
+  enabled: boolean;
+  merchant: number;
+}
+
+export interface GetNpcResponse extends AdminEnvelope {
+  npc?: NpcWire;
+}
+
+export const npcAdmin = svc<{
+  getNpc: Unary<{ id: number }, GetNpcResponse>;
+  upsertNpc: Unary<
+    { id: number; map_id: number; pos_x: number; pos_y: number; enabled: boolean },
+    RevisionResponse
+  >;
+}>("npc_admin", ["getNpc", "upsertNpc"]);
+
+/** Rota de teleporte: política editável (custo, nível, disponibilidade). */
+export interface RouteWire {
+  id: number;
+  from_map_id: number;
+  from_x: number;
+  from_y: number;
+  to_map_id: number;
+  to_x: number;
+  to_y: number;
+  npc_id: number | null;
+  cost_gold: number;
+  req_level: number;
+  enabled: boolean;
+}
+
+export interface ListRoutesResponse extends AdminEnvelope {
+  routes?: RouteWire[];
+}
+
+export const teleportAdmin = svc<{
+  listRoutes: Unary<{ limit: number }, ListRoutesResponse>;
+  upsertRoute: Unary<
+    { id: number; cost_gold?: number; req_level?: number; enabled?: boolean },
+    RevisionResponse
+  >;
+  setRouteEnabled: Unary<{ id: number; enabled: boolean }, RevisionResponse>;
+}>("teleport_admin", ["listRoutes", "upsertRoute", "setRouteEnabled"]);
+
 export { promisify };
 export type { Unary };

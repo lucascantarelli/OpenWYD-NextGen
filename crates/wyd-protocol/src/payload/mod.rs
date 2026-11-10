@@ -120,6 +120,24 @@ impl<const N: usize> WireField for [u8; N] {
     }
 }
 
+impl<const N: usize> WireField for [u16; N] {
+    const LEN: usize = N * 2;
+
+    fn read(buf: &[u8], off: usize) -> Self {
+        let mut raw = [0u16; N];
+        for (index, slot) in raw.iter_mut().enumerate() {
+            *slot = u16::read(buf, off + index * 2);
+        }
+        raw
+    }
+
+    fn write(self, buf: &mut [u8], off: usize) {
+        for (index, value) in self.iter().enumerate() {
+            u16::write(*value, buf, off + index * 2);
+        }
+    }
+}
+
 impl<const N: usize> WireField for [i32; N] {
     const LEN: usize = N * 4;
 
@@ -181,6 +199,7 @@ pub mod combat;
 pub mod commerce;
 pub mod inventory;
 pub mod movement;
+pub mod scene;
 pub mod ui;
 
 pub use auth::{AccountLogin, AccountSecure};
@@ -189,6 +208,7 @@ pub use combat::{Attack, AttackFull, AttackOne, AttackTwo, TargetDamage};
 pub use commerce::{Buy, Sell};
 pub use inventory::{ApplyBonus, TradingItem, UseItem};
 pub use movement::Action;
+pub use scene::{CreateMob, RemoveMob};
 pub use ui::{MessagePanel, UpdateWeather};
 
 /// Exige layout documentado para o opcode (etapa payload do pipeline).
@@ -220,6 +240,8 @@ pub fn declared_len(opcode: Opcode) -> Option<usize> {
         Opcode::Attack => Some(AttackFull::WIRE_LEN),
         Opcode::AttackOne => Some(AttackOne::WIRE_LEN),
         Opcode::AttackTwo => Some(AttackTwo::WIRE_LEN),
+        Opcode::CreateMob => Some(CreateMob::WIRE_LEN),
+        Opcode::RemoveMob => Some(RemoveMob::WIRE_LEN),
         _ => None,
     }
 }

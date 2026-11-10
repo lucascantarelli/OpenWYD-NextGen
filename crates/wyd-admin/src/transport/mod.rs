@@ -25,8 +25,8 @@ use wyd_db::{
 use crate::api::{
     create_account, economy_summary, find_account, moderation, own_account, own_characters,
     recent_audit, request_grant, request_recovery, set_blocked, set_role, top_rankings,
-    AccountSummary, ChannelPresence, GrantKind, GrantRequest, PanelAccount, PanelCharacter,
-    RankingEntry,
+    AccountSummary, ChannelPresence, ConfigStore, GrantKind, GrantRequest, PanelAccount,
+    PanelCharacter, RankingEntry,
 };
 use crate::audit::{log_action, log_denied, log_panel, AuditSink};
 use crate::auth::{Session, StaffSession};
@@ -367,6 +367,8 @@ pub struct Router<A, C, S> {
     grant_trail: Option<Arc<dyn GrantTrail>>,
     /// `host:porta` do CPSock do servidor de jogo (troca de PIN pelo portal).
     game: Option<String>,
+    /// Configuração editável (taxas, drops, NPC, teleporte) — nunca estado vivo.
+    config: Option<Arc<dyn ConfigStore>>,
     max_body: usize,
 }
 
@@ -387,6 +389,7 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             economy: None,
             grant_trail: None,
             game: None,
+            config: None,
             max_body: http::MAX_BODY,
         }
     }
@@ -444,6 +447,16 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
     #[must_use]
     pub fn with_catalog(mut self, catalog: CatalogSnapshot) -> Self {
         self.catalog = Some(catalog);
+        self
+    }
+
+    /// Liga a configuração editável (FASE-07-6).
+    ///
+    /// Sem ela, as rotas de taxa/drop/NPC/teleporte respondem `503`: o gateway não
+    /// inventa leitura nem escrita de config sem a porta montada.
+    #[must_use]
+    pub fn with_config(mut self, config: Arc<dyn ConfigStore>) -> Self {
+        self.config = Some(config);
         self
     }
 
@@ -522,6 +535,20 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("account_web", "verify_credentials") => self.verify_credentials(&params, trace),
             ("account_web", "change_numeric_pin") => self.change_pin(&params, trace),
             ("server_admin", "list_channel_presence") => self.presence_list(session, trace),
+            ("content_rates", "get_rates") => self.config_rates(session, trace),
+            ("content_rates", "get_server_flags") => self.config_flags(session, trace),
+            ("content_rates", "upsert_rate") => self.config_upsert_rate(session, &params, trace),
+            ("content_rates", "reset_rate") => self.config_reset_rate(session, &params, trace),
+            ("drop_admin", "list_drop_rates") => self.config_drops(session, &params, trace),
+            ("drop_admin", "upsert_drop_rate") => self.config_set_drop(session, &params, trace),
+            ("drop_admin", "reset_drop_rate") => self.config_reset_drop(session, &params, trace),
+            ("npc_admin", "get_npc") => self.config_npc(session, &params, trace),
+            ("npc_admin", "upsert_npc") => self.config_set_npc(session, &params, trace),
+            ("teleport_admin", "list_routes") => self.config_routes(session, &params, trace),
+            ("teleport_admin", "upsert_route") => self.config_set_route(session, &params, trace),
+            ("teleport_admin", "set_route_enabled") => {
+                self.config_set_route(session, &params, trace)
+            }
             _ if conhecido(service, method) => self.pending(session, service, method, trace),
             _ => Reply::transport(404, trace, "método desconhecido"),
         }
@@ -701,6 +728,311 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             trace,
             &format!(",\"items\":{items},\"catalog_version\":{version},\"icon_pack_version\":\"\""),
         )
+    }
+
+    /// `content_rates/get_rates` — foto completa das taxas e do refino de acessório.
+    fn config_rates(&self, session: Session, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        match crate::api::rates::get_rates(Some(session), store.as_ref(), &self.audit) {
+            Ok(snapshot) => Reply::ok(
+                trace,
+                &format!(",{}", crate::api::rates::snapshot_json(&snapshot)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `content_rates/get_server_flags` — configurações inteiras do servidor.
+    fn config_flags(&self, session: Session, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        match crate::api::rates::get_rates(Some(session), store.as_ref(), &self.audit) {
+            Ok(snapshot) => {
+                let flags: Vec<String> = crate::api::rates::flags_from(&snapshot)
+                    .iter()
+                    .map(|(key, value)| format!("{}:{value}", json::quote(key)))
+                    .collect();
+                Reply::ok(
+                    trace,
+                    &format!(
+                        ",\"flags\":{{{}}},\"revision\":{}",
+                        flags.join(","),
+                        snapshot.revision
+                    ),
+                )
+            }
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `content_rates/upsert_rate` — grava taxa com fonte obrigatória.
+    fn config_upsert_rate(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let campo = |nome: &str| params.get(nome).and_then(json::Json::as_str);
+        let (Some(domain), Some(key), Some(value)) = (
+            campo("domain"),
+            campo("key"),
+            params.get("value").and_then(json::Json::as_i64),
+        ) else {
+            return Reply::business(trace, RESULT_INVALID, "domain, key e value obrigatórios");
+        };
+        let source = campo("source").unwrap_or_default();
+        match crate::api::rates::upsert_rate(
+            Some(session),
+            domain,
+            key,
+            value,
+            source,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `content_rates/reset_rate` — remove o override.
+    fn config_reset_rate(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(domain), Some(key)) = (
+            params.get("domain").and_then(json::Json::as_str),
+            params.get("key").and_then(json::Json::as_str),
+        ) else {
+            return Reply::business(trace, RESULT_INVALID, "domain e key obrigatórios");
+        };
+        match crate::api::rates::reset_rate(Some(session), domain, key, store.as_ref(), &self.audit)
+        {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `drop_admin/list_drop_rates` — pesos por template de monstro.
+    fn config_drops(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let template = params.get("template_name").and_then(json::Json::as_str);
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        match crate::api::drop::list_drops(
+            Some(session),
+            template,
+            limit,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"drops\":{}", crate::api::drop::drops_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `drop_admin/upsert_drop_rate` — grava o peso de (template, item).
+    fn config_set_drop(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(template), Some(item), Some(weight)) = (
+            params.get("template_name").and_then(json::Json::as_str),
+            params.get("item_index").and_then(json::Json::as_i64),
+            params.get("weight").and_then(json::Json::as_i64),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "template_name, item_index e weight obrigatórios",
+            );
+        };
+        let Ok(item) = i32::try_from(item) else {
+            return Reply::business(trace, RESULT_INVALID, "item_index fora da faixa");
+        };
+        let min_qty = params
+            .get("min_qty")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(1);
+        let max_qty = params
+            .get("max_qty")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(min_qty);
+        let (Ok(min_qty), Ok(max_qty)) = (i16::try_from(min_qty), i16::try_from(max_qty)) else {
+            return Reply::business(trace, RESULT_INVALID, "quantidade fora da faixa");
+        };
+        let source = params
+            .get("source")
+            .and_then(json::Json::as_str)
+            .unwrap_or_default();
+        let edit = crate::api::DropEdit {
+            template_name: template.to_string(),
+            item_index: item,
+            weight,
+            min_qty,
+            max_qty,
+            source: source.to_string(),
+        };
+        match crate::api::drop::upsert_drop(Some(session), &edit, store.as_ref(), &self.audit) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `drop_admin/reset_drop_rate` — remove o peso editado.
+    fn config_reset_drop(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(template), Some(item)) = (
+            params.get("template_name").and_then(json::Json::as_str),
+            params.get("item_index").and_then(json::Json::as_i64),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "template_name e item_index obrigatórios",
+            );
+        };
+        let Ok(item) = i32::try_from(item) else {
+            return Reply::business(trace, RESULT_INVALID, "item_index fora da faixa");
+        };
+        match crate::api::drop::reset_drop(
+            Some(session),
+            template,
+            item,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `npc_admin/get_npc` — posição e visibilidade de um NPC.
+    fn config_npc(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let Some(id) = params.get("id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo id obrigatório");
+        };
+        let Ok(id) = i32::try_from(id) else {
+            return Reply::business(trace, RESULT_INVALID, "id fora da faixa");
+        };
+        match crate::api::npc::get_npc(Some(session), id, store.as_ref(), &self.audit) {
+            Ok(Some(npc)) => Reply::ok(
+                trace,
+                &format!(",\"npc\":{}", crate::api::npc::npc_json(&npc)),
+            ),
+            Ok(None) => Reply::business(trace, RESULT_NOT_FOUND, "NPC não encontrado"),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `npc_admin/upsert_npc` — move/ativa NPC.
+    fn config_set_npc(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(id), Some(map_id), Some(x), Some(y), Some(enabled)) = (
+            params.get("id").and_then(json::Json::as_i64),
+            params.get("map_id").and_then(json::Json::as_i64),
+            params.get("pos_x").and_then(json::Json::as_i64),
+            params.get("pos_y").and_then(json::Json::as_i64),
+            params.get("enabled").and_then(json::Json::as_bool),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "id, map_id, pos_x, pos_y e enabled obrigatórios",
+            );
+        };
+        let (Ok(id), Ok(map_id), Ok(x), Ok(y)) = (
+            i32::try_from(id),
+            i16::try_from(map_id),
+            i16::try_from(x),
+            i16::try_from(y),
+        ) else {
+            return Reply::business(trace, RESULT_INVALID, "coordenada fora da faixa");
+        };
+        match crate::api::npc::set_npc(
+            Some(session),
+            id,
+            (map_id, x, y),
+            enabled,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `teleport_admin/list_routes` — rotas com custo e requisito.
+    fn config_routes(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(100);
+        match crate::api::teleport::list_routes(Some(session), limit, store.as_ref(), &self.audit) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"routes\":{}", crate::api::teleport::routes_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `teleport_admin/upsert_route` e `set_route_enabled` — política da rota.
+    fn config_set_route(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let Some(id) = params.get("id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo id obrigatório");
+        };
+        let Ok(id) = i32::try_from(id) else {
+            return Reply::business(trace, RESULT_INVALID, "id fora da faixa");
+        };
+        let cost = match params.get("cost_gold").and_then(json::Json::as_i64) {
+            Some(value) => match i32::try_from(value) {
+                Ok(value) => Some(value),
+                Err(_) => return Reply::business(trace, RESULT_INVALID, "custo fora da faixa"),
+            },
+            None => None,
+        };
+        let level = match params.get("req_level").and_then(json::Json::as_i64) {
+            Some(value) => match i16::try_from(value) {
+                Ok(value) => Some(value),
+                Err(_) => return Reply::business(trace, RESULT_INVALID, "nível fora da faixa"),
+            },
+            None => None,
+        };
+        let enabled = params.get("enabled").and_then(json::Json::as_bool);
+        match crate::api::teleport::set_route(
+            Some(session),
+            id,
+            cost,
+            level,
+            enabled,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
     }
 
     /// Rota do contrato ainda sem handler de domínio: `501` explícito, com autor auditado.

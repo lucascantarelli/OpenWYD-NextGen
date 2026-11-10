@@ -36,6 +36,7 @@ export const config = {
     "/entregas/:path*",
     "/itens/:path*",
     "/monitoramento/:path*",
+    "/configuracoes/:path*",
     "/auditoria/:path*",
     "/economia/:path*",
   ],

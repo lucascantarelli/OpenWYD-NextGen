@@ -268,9 +268,17 @@
 | `Attack` (13 alvos) | 0x0367 | 164 | corpo 60 + 13×`STRUCT_DAM`(8) |
 | `AttackOne` | 0x039D | 68 | corpo 60 + 1×`STRUCT_DAM` |
 | `AttackTwo` | 0x039E | 76 | corpo 60 + 2×`STRUCT_DAM` |
+| `CreateMob` | 0x0364 | 232 | `PosX/PosY`+12, `MobID`+16, `MobName[16]`+18, `Equip[16]`+34, `Affect[32]`+66, `Guild`+130, `GuildMemberType`+132, `Unknow[3]`+133, `STRUCT_SCORE`+136, `CreateType`+184, `AnctCode[16]`+186, `Tab[26]`+202, `Hold`+228 |
+| `RemoveMob` | 0x0165 | 16 | `RemoveType` i32+12 (`HEADER.ID` = id da criatura) |
 
 `STRUCT_DAM` = `target_id` i32 + `damage` i32. Strings são `char[N]` em bytes
 crus (nunca UTF-8 assumido); leitura até o primeiro `NUL`.
+
+`_MSG_CreateMob` leva **`HEADER.ID = ESCENE_FIELD`** (30000) e o id da criatura em `MobID`
+(+16); `_MSG_RemoveMob` é o inverso (`HEADER.ID` = id, corpo `RemoveType`). Layout conferido
+em `Basedef.h` (`struct MSG_CreateMob`/`MSG_RemoveMob`) e no porte Go do mesmo alvo 7662
+(`tmserver/internal/protocol/createmob.go`); implementação em `payload/scene.rs` (ADR-0025).
+A captura ao vivo do 7662 recebendo esses bytes segue pendente (FASE-08-6).
 
 ### 5.1 Seletor e criação de personagem (S→C)
 

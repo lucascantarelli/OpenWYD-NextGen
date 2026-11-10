@@ -11,9 +11,9 @@
 
 ## 1. Resumo
 
-- migrations: **36** · última versão: **36**
-- tabelas: **74** · colunas: **540** · índices: **33** · funções: **1**
-- domínios: **17** · tabelas com dado provisório: **24**
+- migrations: **38** · última versão: **38**
+- tabelas: **80** · colunas: **590** · índices: **34** · funções: **1**
+- domínios: **18** · tabelas com dado provisório: **26**
 
 | Domínio | Tabelas |
 |---|---|
@@ -23,6 +23,7 @@
 | canal de servidor | `server_channel` |
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
+| configuração | `config_revision`, `config_change` |
 | economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | inventário | `character_items`, `vault_items`, `character_short_skill` |
@@ -32,7 +33,7 @@
 | ponte web→jogo | `delivery_queue` |
 | progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
-| refino | `refine_rate`, `refine_gem_effect`, `sanc_rate`, `combine_value` |
+| refino | `refine_rate`, `refine_gem_effect`, `sanc_rate`, `combine_value`, `refine_rate_override`, `sanc_rate_override`, `combine_value_override`, `accessory_refine_rule` |
 | social | `guilds`, `guild_members`, `guild_relations`, `guild_tower` |
 
 ## 2. Catálogo
@@ -1613,6 +1614,140 @@
 | `special_bonus` | `smallint` | não |
 | `updated_at` | `timestamp with time zone` | não |
 
+### `refine_rate_override`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** refino · **Estado:** confirmado
+- **Fonte:** 0037_config_editavel.sql + docs/wyd/sistemas/refino.md §2
+- **Nota:** Camada de edição do staff sobre `refine_rate`; o loader lê `COALESCE(override, base)` e reset apaga a linha, sem reescrever o seed.
+- **PK:** `step`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `step` | `smallint` | não |
+| `rate_bps` | `integer` | não |
+| `content_source` | `text` | não |
+| `notes` | `text` | não |
+| `updated_by` | `bigint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `sanc_rate_override`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** refino · **Estado:** confirmado
+- **Fonte:** 0037_config_editavel.sql + docs/wyd/sistemas/refino.md §2
+- **Nota:** Edição da célula (pó × refino atual) em percentual 0..100; o servidor recalcula em bps ao montar o snapshot.
+- **PK:** `powder`, `refine_index`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `powder` | `text` | não |
+| `refine_index` | `smallint` | não |
+| `percent` | `smallint` | não |
+| `content_source` | `text` | não |
+| `notes` | `text` | não |
+| `updated_by` | `bigint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `combine_value_override`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** refino · **Estado:** provisorio
+- **Fonte:** 0037_config_editavel.sql + CompRate.txt
+- **Nota:** Edição de taxa/custo por (família, chave); a semântica de composição ainda é provisória, então a tabela não vira gate.
+- **PK:** `family`, `key`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `family` | `text` | não |
+| `key` | `text` | não |
+| `value` | `integer` | não |
+| `unit` | `text` | não |
+| `content_source` | `text` | não |
+| `notes` | `text` | não |
+| `updated_by` | `bigint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `accessory_refine_rule`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** refino · **Estado:** provisorio
+- **Fonte:** 0037_config_editavel.sql + 0038_seed_acessorio_refino.sql + guia Bahamut/Kersef
+- **Nota:** Sistema posterior ao 7662: passo, taxa e modo de falha por receita; amuleto/ankh/pedra aceitam linha, mas o seed não inventa regra publicada.
+- **PK:** `kind`, `recipe`, `step_from`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `kind` | `text` | não |
+| `recipe` | `text` | não |
+| `step_from` | `smallint` | não |
+| `step_to` | `smallint` | não |
+| `rate_bps` | `integer` | não |
+| `fail_mode` | `text` | não |
+| `fail_bonus_item` | `integer` | sim |
+| `fail_bonus_bps` | `integer` | não |
+| `gold_cost` | `bigint` | não |
+| `material_item` | `integer` | sim |
+| `material_name` | `text` | não |
+| `material_qty` | `smallint` | não |
+| `content_source` | `text` | não |
+| `confidence` | `smallint` | não |
+| `notes` | `text` | não |
+| `updated_by` | `bigint` | sim |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `config_revision`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** configuração · **Estado:** confirmado
+- **Fonte:** 0037_config_editavel.sql
+- **Nota:** Linha única (`id = 1`); toda escrita de config incrementa `version` na mesma transação e é o sinal de recarga do servidor.
+- **PK:** `id`
+- **FK:** —
+- **CHECK:** `config_revision_singleton`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `smallint` | não |
+| `version` | `bigint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+| `updated_by` | `bigint` | não |
+
+### `config_change`
+
+- **Arquivo:** `0037_config_editavel.sql` · **Domínio:** configuração · **Estado:** confirmado
+- **Fonte:** 0037_config_editavel.sql
+- **Nota:** Trilha por mudança: domínio, alvo, valor anterior/novo, autor e motivo; não substitui o audit_log genérico.
+- **PK:** `id`
+- **FK:** —
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** `config_change_at_idx` (at DESC) ;
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `domain` | `text` | não |
+| `target` | `text` | não |
+| `old_value` | `text` | não |
+| `new_value` | `text` | não |
+| `actor_id` | `bigint` | não |
+| `reason` | `text` | não |
+| `at` | `timestamp with time zone` | não |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1701,6 +1836,8 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0034 | `0034_account_wallet.sql` | DDL | `account_wallet` |
 | 0035 | `0035_character_learned_skill.sql` | DDL | `character_learned_skill` |
 | 0036 | `0036_character_special.sql` | DDL | `character_special` |
+| 0037 | `0037_config_editavel.sql` | DDL | `refine_rate_override`, `sanc_rate_override`, `combine_value_override`, `accessory_refine_rule`, `config_revision`, `config_change` |
+| 0038 | `0038_seed_acessorio_refino.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

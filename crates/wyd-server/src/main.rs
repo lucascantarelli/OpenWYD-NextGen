@@ -105,6 +105,8 @@ fn run() -> Result<(), String> {
     runtime
         .block_on(backend.ping())
         .map_err(|error| format!("banco sem SELECT 1: {error}"))?;
+    // Um runtime só para todo o processo (borda, config, status e saves).
+    let runtime = Arc::new(runtime);
 
     let canais = runtime
         .block_on(backend.server_channels())
@@ -115,6 +117,45 @@ fn run() -> Result<(), String> {
     // publica tick zerado (ADR-0022 §7).
     let engine_metrics = Arc::new(wyd_core::Metrics::new());
     metrics.attach_engine(Arc::clone(&engine_metrics));
+
+    // Configuração viva: o boot exige uma foto válida (sem default silencioso); a partir
+    // daqui a thread `wyd-config` observa `config_revision` e troca o `Arc` sem tocar no tick.
+    let config_source = Arc::new(wyd_server::config::PgConfigSource::new(
+        backend.clone(),
+        Arc::clone(&runtime),
+    ));
+    let config_inicial = config_source
+        .load_current()
+        .map_err(|error| format!("config inicial: {error}"))?;
+    log(
+        "info",
+        "config",
+        &format!(
+            "revision={} refine={} sanc={} combine={} drops={} npcs={} routes={}",
+            config_inicial.revision(),
+            config_inicial.refine_steps(),
+            config_inicial.sanc_cells(),
+            config_inicial.combine_values(),
+            config_inicial.drop_overrides(),
+            config_inicial.npc_count(),
+            config_inicial.route_count()
+        ),
+    );
+    let live_config = Arc::new(wyd_server::config::LiveConfig::new(config_inicial));
+    metrics.attach_config(Arc::clone(&live_config));
+    let config_poll = wyd_server::config::poll_interval_from_env()?;
+    let config_stop = Arc::new(AtomicBool::new(false));
+    let config_thread = wyd_server::config::spawn_reloader(
+        Arc::clone(&live_config),
+        config_source,
+        config_poll,
+        Arc::clone(&config_stop),
+    )?;
+    log(
+        "info",
+        "config",
+        &format!("reloader=on poll_ms={}", config_poll.as_millis()),
+    );
     let engine = wyd_server::world::Engine::new(tick_hz, Arc::clone(&engine_metrics))
         .map_err(|error| format!("tick: {error}"))?;
     let tick_interval = engine.interval_ms();
@@ -127,8 +168,6 @@ fn run() -> Result<(), String> {
             wyd_server::channels::status_url(&world)
         ),
     );
-
-    let runtime = Arc::new(runtime);
 
     // Fila de save do mundo (FASE-03-8): `enqueue` é `try_send` na borda; o dreno grava
     // fora do tick, coalescendo por personagem. Sem banco no laço de simulação.
@@ -249,6 +288,51 @@ fn run() -> Result<(), String> {
         &format!("hz={tick_hz} interval_ms={tick_interval} thread=wyd-tick"),
     );
 
+    // NPCs do snapshot: materializa `npc_definition` do mapa do canal e reconcilia a cada
+    // revisão nova — a edição no portal muda o mundo sem reiniciar o processo. O mapa vem do
+    // ambiente porque `character` ainda não persiste mapa (FASE-03-9).
+    let map_id: i16 = std::env::var("WYD_SERVER_MAP_ID")
+        .unwrap_or_else(|_| "0".to_string())
+        .parse()
+        .map_err(|_| "WYD_SERVER_MAP_ID precisa ser um número".to_string())?;
+    let npc_inicial = engine_handle.sync_npcs(wyd_server::world::npc_specs(
+        &live_config.snapshot(),
+        map_id,
+    ));
+    log(
+        "info",
+        "npc",
+        &format!(
+            "result=spawn map={map_id} spawned={} kept={} removed={} rejected={}",
+            npc_inicial.spawned, npc_inicial.kept, npc_inicial.removed, npc_inicial.rejected
+        ),
+    );
+    {
+        let handle = engine_handle.clone();
+        let live = Arc::clone(&live_config);
+        std::thread::spawn(move || {
+            let mut aplicada = live.revision();
+            loop {
+                std::thread::sleep(Duration::from_millis(200));
+                let revisao = live.revision();
+                if revisao == aplicada {
+                    continue;
+                }
+                let report =
+                    handle.sync_npcs(wyd_server::world::npc_specs(&live.snapshot(), map_id));
+                log(
+                    "info",
+                    "npc",
+                    &format!(
+                        "result=reload revision={revisao} spawned={} kept={} removed={} rejected={}",
+                        report.spawned, report.kept, report.removed, report.rejected
+                    ),
+                );
+                aplicada = revisao;
+            }
+        });
+    }
+
     let gate = VersionGate::from_protocol_version();
     log(
         "info",
@@ -269,7 +353,8 @@ fn run() -> Result<(), String> {
             Arc::new(backend.clone()),
             Arc::clone(&runtime),
         )
-        .with_world(engine_handle.clone(), saves.clone()),
+        .with_world(engine_handle.clone(), saves.clone())
+        .with_config(Arc::clone(&live_config)),
     );
 
     // Save periódico: foto do mundo a cada 5 s, sem tocar no tick.
@@ -320,6 +405,8 @@ fn run() -> Result<(), String> {
     save_stop.store(true, Ordering::Relaxed);
     let _ = save_thread.join();
     tick_thread.stop_and_join();
+    config_stop.store(true, Ordering::Relaxed);
+    let _ = config_thread.join();
     Ok(())
 }
 
