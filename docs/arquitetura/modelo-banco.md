@@ -25,6 +25,10 @@ accounts 1───* characters 1───* character_items
    └───* delivery_queue (grants pendentes do wyd-portal/admin)
 
 characters 1───* character_affects   (um por `type`; buffs reidratados no login)
+characters 1───1 character_short_skill  (ShortSkill[16] do CNFCharacterLogin)
+characters 1───1 character_learned_skill (máscara LearnedSkill do _MSG_ApplyBonus)
+characters 1───1 character_special       (Special[4] + SpecialBonus da maestria)
+accounts   1───1 account_wallet      (Coin do CNFAccountLogin; separado de characters.gold)
 accounts   1───* daily_reward_claim  (UNIQUE account_id + claim_date)
 guilds     1───* guild_relations     (kind 1/2, sem auto-relação)
 kingdom_cape_price (linha única)  ·  guild_tower (linha única; owner_guild 0 = sem dono)
@@ -40,6 +44,10 @@ audit_log (append-only, sem FK para nunca bloquear escrita)
 | `characters` | `id` | `account_id → accounts` ON DELETE CASCADE | `slot 0–3`, `level ≥ 1`, `exp ≥ 0`, `hp ≥ 0`, `name` não-vazio | `UNIQUE(account_id, slot) WHERE deleted_at IS NULL`, `UNIQUE(name)`, `idx(account_id)` |
 | `character_items` | `(character_id, slot)` | `character_id → characters` ON DELETE CASCADE | `slot 0–127`, `qty ≥ 1` | `idx(character_id)` (= PK) |
 | `vault_items` | `(account_id, slot)` | `account_id → accounts` ON DELETE CASCADE | `slot 0–127`, `qty ≥ 1` | `idx(account_id)` (= PK) |
+| `character_short_skill` | `character_id` | `character_id → characters` CASCADE | `octet_length(short_skill) = 16` | `idx(character_id)` (= PK) |
+| `account_wallet` | `account_id` | `account_id → accounts` CASCADE | `coin` 0–2147483647 (`int` do fio) | `idx(account_id)` (= PK) |
+| `character_learned_skill` | `character_id` | `character_id → characters` CASCADE | `learned_skill` 0–16777215 (24 bits = `g_pSpell[24*classe+pos]`) | `idx(character_id)` (= PK) |
+| `character_special` | `character_id` | `character_id → characters` CASCADE | `special_0..3` 0–255 (teto 200, 255 com skill de linha) e `special_bonus >= 0` | `idx(character_id)` (= PK) |
 | `guilds` | `id` | `master_character_id → characters` DEFERRABLE | `name` não-vazio | `UNIQUE(name)` |
 | `guild_members` | `(guild_id, character_id)` | ambas CASCADE | `rank 0–9` | `UNIQUE(character_id)` (um clã por char) |
 | `audit_log` | `id` | — (nunca bloqueia) | `action` não-vazia | `idx(at)` |
@@ -63,6 +71,9 @@ over-engineering nesta escala; CHECK documenta o domínio).
 2. **Inventário normalizado, não blob**: `character_items`/`vault_items` com
    PK composta permitem conferência item-a-item no boot (anti-dupe) sem ler
    binário opaco. Efeitos de item continuam catálogo (FASE-10/economia).
+   `slot` 0–15 é `Equip[i]` e 16–79 é `Carry[i − 16]` (80–127 reservado): é esse
+   mapeamento que o `STRUCT_MOB` do login usa — o banco é a fonte da verdade depois
+   da criação, que copia o template uma única vez.
 3. **`delivery_queue` relacional**: colunas tipadas por `kind` + CHECK de
    coerência, em vez de JSONB opaco — a fila é dinheiro/item, não log.
 4. **Sem FK na `audit_log`**: auditoria nunca falha por integridade alheia.
@@ -192,7 +203,7 @@ nenhum `ALTER TABLE` no `up`. Verificação em três camadas:
 `node tools/content/check-migrations.mjs` (ordem/FK/down/INSERT, sem banco),
 `cargo test -p wyd-db` (`tests/catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
 e `node tools/content/verify-schema.mjs` (banco vazio → `up` → `information_schema` ↔ catálogo).
-Números atuais: **31 arquivos, 69 tabelas, 517 colunas, 147 `INSERT`s**, sem problema.
+Números atuais: **36 arquivos, 74 tabelas, 147 `INSERT`s**, sem problema (medidos pelo `check-migrations`, 2026-11-10; colunas não recontadas aqui).
 
 | Migração | Domínio | Objetos |
 |---|---|---|

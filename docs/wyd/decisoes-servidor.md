@@ -110,17 +110,21 @@ das três cidades vai para Noatun; o resto fica na cidade. Rateio exato entre as
 
 ## 6. Skills → classe/linhagem (o que foi tentado e onde parou)
 
-Estado real: **82 das 154 linhas continuam `unmapped`**. O seed `0019` já trazia 12 com
-`rule:name_confirmed`; a curadoria fechou **57 novas** com fonte oficial (9ª e 10ª skill da
-Kersef e listas por linhagem das páginas de classe), gravadas em
+Estado real medido no banco em **2026-11-09**: `skill_catalog` = **154 linhas**, das quais
+**72** têm `class_code`/`lineage_code` preenchidos — **82 continuam `unmapped`**. O seed `0019`
+trazia 12 com `rule:name_confirmed`; a curadoria fechou 57 novas com fonte oficial (9ª e 10ª
+skill da Kersef e listas por linhagem das páginas de classe), gravadas em
 `crates/wyd-db/migrations/0021_seed_skill_lineage.sql` por
 `tools/content/gen-skill-lineage.mjs` — cada linha cita fonte, `skill_role` e confiança. O
 `down` é seletivo: restaura as 6 linhas herdadas do seed e só zera as 57 que a `0021` criou.
-Cobertura: **69 das 151 do seed**; três nomes publicados pela Kersef não existiam no seed do
-cliente (`Roubar_Dinheiro`, `Evocar_Lobo_Selvagem`, `Metamorfose_Superior`) e viraram linhas
-de catálogo em `0024_seed_skill_catalog_kersef.sql`, com linhagem, fonte, confiança e índice
-provisório declarado em `notes` — total **63 de 154**. O que não tem fonte pública por
-linhagem segue `NULL`, não chutado.
+Três nomes publicados pela Kersef não existiam no seed do cliente (`Roubar_Dinheiro`,
+`Evocar_Lobo_Selvagem`, `Metamorfose_Superior`) viraram linhas em
+`0024_seed_skill_catalog_kersef.sql`, com linhagem, fonte, confiança e índice provisório em
+`notes`. O que não tem fonte pública segue `NULL`, não chutado.
+
+> Correção de contagem: a versão anterior deste parágrafo dizia “69 de 151” e, três linhas
+depois, “63 de 154” — três números diferentes para o mesmo estado. A contagem agora é **medida
+no banco** (`select count(*) from skill_catalog where class_code is not null` = 72).
 
 O que foi provado nesta rodada:
 

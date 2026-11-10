@@ -1,7 +1,13 @@
 # Visão da transição Go → Rust — planejamento, inventário e estrutura proposta
 
+> **Documento histórico (snapshot de 2026-11-07).** Ele registra o estado da transição
+durante o arquivamento do Go (7 crates, 15 skills, Go ainda no PATH) e **não** descreve o
+presente. Estado vigente: **8 crates** (inclui `wyd-server`), 27 skills, Go fora da fonte de
+build — ver `docs/rust/03-progresso.md`, `docs/arquitetura/estrutura-e-padroes.md` §1/§16 e
+`docs/rust/04-revisao-roadmap.md` §6.
+
 > Origem: `start-rust.md` + `pre-release-rust.md`. Escopo deste passe: **esqueleto Rust compilável sem arquivar/mover/apagar Go e sem desinstalar Go**.
-> Estado efetivo em 07/11/2026: toolchain `stable 1.99.1` presente (`cargo --version` OK), workspace `Cargo.toml` na raiz com os 7 crates de `crates/`, `rust-toolchain.toml` pinando stable, código mínimo que compila, `cargo build --workspace` + `cargo test --workspace` + `clippy -D warnings` + `fmt --check` passando, `go build ./...` ainda passando, `git status` sem remoções de Go.
+> Estado em 07/11/2026 (histórico, não vigente): toolchain `stable 1.99.1` presente (`cargo --version` OK), workspace `Cargo.toml` na raiz com os 7 crates de `crates/`, `rust-toolchain.toml` pinando stable, código mínimo que compila, `cargo build --workspace` + `cargo test --workspace` + `clippy -D warnings` + `fmt --check` passando, `go build ./...` ainda passando, `git status` sem remoções de Go.
 
 ## 1. Inventário atual (07/11/2026)
 

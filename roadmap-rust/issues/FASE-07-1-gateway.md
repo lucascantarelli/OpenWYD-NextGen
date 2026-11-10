@@ -195,4 +195,9 @@ O transporte já existia; faltava o **serviço**. Agora existe binário e ele ro
   `docs/rust/05-stack-docker.md` §5).
 
 **Ainda aberto nesta issue:** handlers de domínio das 13 rotas de conteúdo/painel (seguem
-`501` auditado) e escrita de auditoria em `audit_log` (hoje stdout estruturado do container).
+`501` auditado). A escrita de auditoria em `audit_log` foi fechada na 07-3 (`PersistentSink`).
+
+**Revisão 2026-11-09:** o que resta não é transporte nem uma issue só — é conteúdo/operação,
+e foi **dividido** para virar entrega pequena: `FASE-07-5` (rotas de leitura de conteúdo) e
+`FASE-07-6` (rotas de operação com escrita auditada). A 07-1 fecha quando as duas estiverem
+verdes e o `admin.pending` não for mais alcançado por nenhuma rota conhecida.

@@ -8,6 +8,9 @@
 
 use core::sync::atomic::{AtomicU64, Ordering};
 
+/// Orçamento default do tick (20 Hz). O `Engine` sobrescreve com `1e6 / WYD_TICK_HZ`.
+pub const DEFAULT_TICK_BUDGET_US: u64 = 50_000;
+
 /// Limites superiores do histograma de duração de tick, em microssegundos.
 pub const TICK_BUCKETS_US: [u64; 10] = [
     500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 1_000_000,
@@ -112,16 +115,30 @@ pub struct TickSnapshot {
 pub struct Metrics {
     ticks: AtomicU64,
     tick_us: Histogram,
+    tick_budget_us: AtomicU64,
     entities: AtomicU64,
     heap_bytes: AtomicU64,
     heap_samples: AtomicU64,
 }
 
 impl Metrics {
-    /// Registro vazio.
+    /// Registro vazio, com o orçamento default de 20 Hz até o `Engine` informar o real.
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        let metrics = Self::default();
+        metrics.set_tick_budget_us(DEFAULT_TICK_BUDGET_US);
+        metrics
+    }
+
+    /// Orçamento do tick em µs (`1e6 / hz`), para painel e alerta compararem com o P99.
+    pub fn set_tick_budget_us(&self, micros: u64) {
+        self.tick_budget_us.store(micros.max(1), Ordering::Relaxed);
+    }
+
+    /// Orçamento do tick em µs.
+    #[must_use]
+    pub fn tick_budget_us(&self) -> u64 {
+        self.tick_budget_us.load(Ordering::Relaxed)
     }
 
     /// Contabiliza um tick concluído. `micros` é o tempo do tick inteiro (não só a IA).
@@ -203,6 +220,12 @@ impl Metrics {
             "wyd_tick_duration_microseconds_sum {}\nwyd_tick_duration_microseconds_count {}\n",
             h.sum, h.count
         ));
+        out.push_str("# HELP wyd_tick_budget_microseconds Orcamento do tick em microssegundos (1e6 / WYD_TICK_HZ).\n");
+        out.push_str("# TYPE wyd_tick_budget_microseconds gauge\n");
+        out.push_str(&format!(
+            "wyd_tick_budget_microseconds {}\n",
+            self.tick_budget_us()
+        ));
         out.push_str("# HELP wyd_entities_active Entidades vivas no mundo.\n");
         out.push_str("# TYPE wyd_entities_active gauge\n");
         out.push_str(&format!(
@@ -275,6 +298,9 @@ mod tests {
         assert!(m
             .render("")
             .contains("wyd_tick_duration_microseconds_count 2"));
+        assert_eq!(m.tick_budget_us(), DEFAULT_TICK_BUDGET_US);
+        m.set_tick_budget_us(20_000);
+        assert!(m.render("").contains("wyd_tick_budget_microseconds 20000"));
     }
 
     #[test]

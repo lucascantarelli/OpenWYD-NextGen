@@ -107,6 +107,27 @@ impl PgBackend {
     }
 }
 
+/// Pré-requisitos de uma skill para `_MSG_ApplyBonus` (tipo 2).
+///
+/// `skill_point` vem de `skill_catalog`; `req_*` de `item_catalog` — a skill é o item
+/// `5000 + índice`, exatamente o `g_pItemList[Detail]` que o legado consulta.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SkillRule {
+    pub skill_point: i64,
+    pub req_level: i64,
+    pub req_int: i64,
+    pub req_dex: i64,
+    pub req_con: i64,
+}
+
+/// Leitura pontual das regras de skill (uma consulta por clique, fora do tick).
+pub trait SkillRules {
+    fn skill_rule(
+        &self,
+        item_index: i64,
+    ) -> impl std::future::Future<Output = Result<Option<SkillRule>, crate::error::DbError>> + Send;
+}
+
 impl ContentSource for PgBackend {
     async fn load_content(&self) -> Result<ContentTables, ContentError> {
         let mut tx = self.begin().await.map_err(|_e| infra_failure())?;

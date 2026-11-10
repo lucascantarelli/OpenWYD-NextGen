@@ -7,14 +7,15 @@
 //! na ADR-0022 §7: `wyd_server_uptime_seconds`, `wyd_server_channels_published`,
 //! `wyd_status_requests_total`, `wyd_status_health_failures_total`.
 //!
-//! **Lacuna declarada:** `wyd_ticks_total`/`wyd_tick_duration_microseconds`/`wyd_entities_active`
-//! ainda não aparecem porque o loop de tick (`wyd-core`) não roda neste processo; publicá-los
-//! zerados seria mentira, não lacuna.
+//! `wyd_ticks_total`/`wyd_tick_duration_microseconds`/`wyd_entities_active` vêm do registro do
+//! motor (`wyd_core::Metrics`) da thread de tick (FASE-03-7): são número medido, não gauge
+//! zerado. Antes do loop existir eles **não** eram publicados — publicá-los em zero seria
+//! mentira (ADR-0022 §7).
 
 use std::io::BufReader;
 use std::net::TcpListener;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use wyd_admin::transport::http;
@@ -28,6 +29,7 @@ pub struct ServiceMetrics {
     status_requests: AtomicU64,
     health_failures: AtomicU64,
     channels: u64,
+    engine: OnceLock<Arc<wyd_core::Metrics>>,
 }
 
 impl ServiceMetrics {
@@ -38,7 +40,13 @@ impl ServiceMetrics {
             status_requests: AtomicU64::new(0),
             health_failures: AtomicU64::new(0),
             channels: channels as u64,
+            engine: OnceLock::new(),
         }
+    }
+
+    /// Anexa o registro do motor da thread de tick (idempotente: a primeira vez vale).
+    pub fn attach_engine(&self, engine: Arc<wyd_core::Metrics>) {
+        let _ = self.engine.set(engine);
     }
 
     pub fn status_served(&self) {
@@ -55,6 +63,9 @@ impl ServiceMetrics {
     #[must_use]
     pub fn render(&self) -> String {
         let mut out = wyd_net::NET.render_prometheus();
+        if let Some(engine) = self.engine.get() {
+            out.push_str(&engine.render(""));
+        }
         out.push_str(
             "# HELP wyd_server_uptime_seconds Segundos desde o start do servidor de jogo.\n",
         );

@@ -272,6 +272,125 @@
 `STRUCT_DAM` = `target_id` i32 + `damage` i32. Strings são `char[N]` em bytes
 crus (nunca UTF-8 assumido); leitura até o primeiro `NUL`.
 
+### 5.1 Seletor e criação de personagem (S→C)
+
+Layout conferido contra `Basedef.h` (`STRUCT_SCORE`/`STRUCT_ITEM`/`STRUCT_MOB`/
+`STRUCT_SELCHAR`, `MSG_DBCNFAccountLogin`, `MSG_CNFNewCharacter`,
+`MSG_CNFClientCharacterLogin`) e contra o porte Go de
+`main:tmserver/internal/protocol/{mob,selchar}.go`; implementação em
+`crates/wyd-server/src/personagens.rs`. Alinhamento natural do MSVC x86 — **não** `pack(1)`.
+
+| Pacote | `HEADER.ID` | Total | Corpo |
+|---|---:|---:|---|
+| `_MSG_CNFAccountLogin` | 30002 | 2008 | `Unknow_28=1`@16, sel@20 (840), `Cargo[128]`@860, `Coin`@1884, `AccountName`@1888 |
+| `_MSG_CNFNewCharacter` | 30001 | 856 | sel@4 (840) |
+| `_MSG_CNFCharacterLogin` | 30000 (`ESCENE_FIELD`) | 1832 | `PosX`@0, `PosY`@2, mob@4 (816), `unk[208]`@820, `Slot`@1028, `ClientID`@1030, `Weather`@1032, `ShortSkill[16]`@1034, `AccountName` em `Unk2[448]`@1500 |
+
+`STRUCT_SELCHAR` (840 B): `SPX[4]`@0, `SPY[4]`@8, `Name[4][16]`@16, `Score[4]`@80,
+`Equip[4][16]`@272, `Guild[4]`@784, `Coin[4]`@792, `Exp[4]`@808. **Não tem campo de
+classe**: o cliente desenha a classe pelo rosto em `Equip[slot][0]`, como o `DBGetSelChar`
+monta (`CFileDB.cpp:2636`) — o C tem um bug de digitação (`sel->SPX` recebe SPY duas vezes)
+que o porte Go corrige e esta stack segue corrigido.
+
+`STRUCT_MOB` (816 B): `MobName`@0, `Clan`@16, `Merchant`@17, `Guild`@18, `Class`@20,
+`Rsv`@22, `Quest`@24, `Coin`@28 (int), `Exp`@32 (`long long`), `SPX`@40, `SPY`@42,
+`BaseScore`@44, `CurrentScore`@92, `Equip[16]`@140, `Carry[64]`@268, `LearnedSkill`@780,
+`Magic`@784, `ScoreBonus`@788, `SpecialBonus`@790, `SkillBonus`@792, `Critical`@794,
+`SaveMana`@795, `SkillBar[4]`@796, `GuildLevel`@800, `RegenHP`@802, `RegenMP`@804,
+`Resist[4]`@806 (cauda de alinhamento 810–815). `STRUCT_SCORE` (48 B): `Level`0, `Ac`4,
+`Damage`8, `Merchant`12, `AttackRun`13, `Direction`14, `ChaosRate`15, `MaxHp`16, `MaxMp`20,
+`Hp`24, `Mp`28, `Str`32, `Int`34, `Dex`36, `Con`38, `Special[4]`40.
+
+O C declara ainda `affect[MAX_AFFECT]`/`mobExtra`/`Donate` depois de `Unk2`; o game server
+antigo envia ao cliente só o prefixo `MSG_CNFClientCharacterLogin` (1832 B, via `memcpy` de
+`sizeof(MSG_CNFClientCharacterLogin)`) — é esse recorte que o porte Go e esta stack seguem.
+O mapeamento campo→origem (template `BaseMob` × banco) está em `docs/wyd/classes.md` §1.1–1.2.
+
+**Origem de cada bloco no login** (`crates/wyd-server/src/characters.rs` +
+`personagens.rs`):
+
+| Bloco | Origem | Sem linha no banco |
+|---|---|---|
+| `SELCHAR.Equip[i]` / `MOB.Equip[16]` | `character_items` slot 0–15 | só `Equip[0]` = rosto padrão da classe |
+| `SELCHAR` score/`Coin`/`Exp` e `MOB` vitais | `characters` + `character_scores` | personagem inexistente (nunca inventado) |
+| `MOB.Carry[64]` | `character_items` slot 16–79 | slot vazio |
+| `Carry[KILL_MARK=63]` | linha do item 547 (`character_items`) | reposta na criação/materialização, com `EF_CURKILL`/`EF_LTOTKILL`/`EF_HTOTKILL` |
+| `ShortSkill[16]`@1034 | `character_short_skill` | `0xFF` × 16 (o `memset` da criação), persistido na primeira leitura |
+| `Cargo[128]`@860 | `vault_items` (slot 0–127) | slots vazios |
+| `Coin`@1884 | `account_wallet.coin` | `0` |
+
+O template da classe é copiado para `character_items` **apenas na criação**
+(`memcpy` do `g_pBaseSet`); o login nunca deriva equipamento dele.
+
+### 5.2 Bônus de pontos (`_MSG_ApplyBonus`) e resposta de score (S→C)
+
+`_MSG_ApplyBonus` (0x0277, 18 B) é C→J e não tem confirmação própria: o resultado sai em
+`_MSG_UpdateEtc` (0x0337) + `_MSG_UpdateScore` (0x0336), os dois com `HEADER.ID` = índice do mob
+(o `conn` do `SendEtc`/`SendScore` em `SendFunc.cpp`).
+
+| Pacote | Total | Corpo (offsets) |
+|---|---:|---|
+| `_MSG_UpdateEtc` | 48 | `Hold`@0 (u32), `Exp`@4 (i64), `Learn`@12 (i64), `ScoreBonus`@20, `SpecialBonus`@22, `SkillBonus`@24, `Magic`@26 (u16), `Coin`@28 (i32), cauda de alinhamento 32–35 |
+| `_MSG_UpdateScore` | 152 | `STRUCT_SCORE`@0 (48), `Critical`@48, `SaveMana`@49, `Affect[32]`@50 (u16), `Guild`@114, `GuildLevel`@116, `Resist[4]`@118, `RegenHP`@122, `RegenMP`@123, `CurrHp`@124, `CurrMp`@128, `Magic`@132 (i32), `Special[4]`@136 (`0xCC`) |
+
+Porte de `_MSG_ApplyBonus.cpp`: **tipo 0** → atributo `Detail` 0–3, `ScoreBonus >= 300` gasta 100
+de uma vez; **tipo 2** → skill `Detail` 5000–5095, `TargetID` na faixa `MAX_USER..MAX_MOB`
+(1000–25000), classe da skill, custo do `skill_catalog`, tier 7/15/23 (uma por classe, exige as
+7 anteriores e 50 000 000 de ouro) e nível/maestria do `item_catalog`.
+
+**Tipo 1 — maestria** (`Special[4]`): exige `SpecialBonus > 0`, `Detail` 0–3 e respeita dois
+tetos: `3 × (nível + 1) ÷ 2` por atributo e 200 — 255 quando a skill de linha correspondente
+está aprendida (`Detail` 1/2/3 → bits 7/15/23 do `LearnedSkill`; `Detail` 0 nunca passa de 200).
+Debita 1 ponto e grava em `character_special` (`special_0..3` + `special_bonus`). O bônus
+celestial (`+3 × 400` no limite de nível) não se aplica: `ClassMaster` CELESTIAL/SCELESTIAL
+ainda não existe na stack.
+
+> `Special[4]` no `_MSG_UpdateScore` é **sentinela `0xCC`** — o `SendScore` do legado
+> (`SendFunc.cpp:1274-1277`) escreve `0xCC` fixo, não a maestria. O valor real viaja no
+> `STRUCT_MOB` (`BaseScore.Special`/`CurrentScore.Special`) no login; o `UpdateEtc` mostra o
+> que importa no clique, que é o `SpecialBonus` restante. Não troque o `0xCC` por valor real
+> sem captura: seria layout novo, não porte.
+
+`Affect[32]` sai zerado até o sistema de afetos (FASE-10); `Hold` também (carga não persistida).
+
+### 5.3 Ganho de EXP e nível (S→C) e o `Level` do fio
+
+`CMob::CheckGetLevel` (`Source/Code/TMSrv/CMob.cpp`) + `g_pNextLevel` (`Basedef.cpp:625`)
+portados em `crates/wyd-server/src/characters.rs`:
+
+- A EXP do banco é **acumulada** (`characters.exp`, o `MOB.Exp` do legado) e comparada com a
+  curva; o índice da curva é o nível **interno** do legado (`g_pNextLevel[0] = 0` é o
+  personagem recém-criado).
+- Por nível ganho (MORTAL): `SkillBonus += 3` (4 a partir do nível interno 200),
+  `SpecialBonus += 2`, `ScoreBonus += 5`, `MaxHp/MaxMp += g_pIncrementHp/Mp` da classe e
+  HP/MP cheios. O `Ac++` do legado ainda não tem coluna — pendência registrada, não inventada.
+- O excedente no teto (`MAX_LEVEL` 399 interno = 400 no banco) é **retido**, nunca descartado.
+- A gravação é uma transação (`characters` + `character_scores` + `character_learned_skill` +
+  `character_special`) e o cliente recebe `_MSG_UpdateEtc` + `_MSG_UpdateScore`
+  (`cpsock::send_progress`), o par `SendEtc`/`SendScore` do legado.
+
+**Nível no fio:** o `Level` do `STRUCT_SCORE` (seleção e `STRUCT_MOB`) é o do banco **menos
+um**. O `BaseMob` das quatro classes traz `Level@44 = 0` e a criação do legado (`CFileDB.cpp`,
+`memcpy(mob, &g_pBaseSet[cls])`) não escreve o nível; o cliente soma 1 ao desenhar
+(personagem de banco 1 aparecia como 2). O banco continua 1-based (CHECK `level >= 1`); só o
+fio é 0-based (`personagens::wire_level`).
+
+`_MSG_CNFDeleteCharacter` responde o `STRUCT_SELCHAR` inteiro (844 B, `sel@4`, o mesmo layout do
+`CNFNewCharacter`) para o cliente apagar o slot da tela. Responder só `Size = 12` deixava o
+personagem removido ainda desenhado no seletor — foi o defeito do teste com o cliente real.
+
+**Alocação de slot na criação:** o `slot` do `_MSG_CreateCharacter` é o que o **cliente**
+desenha como vazio, e a tela dele pode estar dessincronizada. O servidor honra o pedido quando
+livre e, se estiver ocupado, grava no primeiro slot livre de 0–3; conta com os quatro ocupados
+é `NewCharacterFail`. Nunca há sobrescrita: `characters_account_slot_unique` (0002) é a última
+palavra contra corrida entre processos.
+
+**Saída explícita:** `_MSG_CharacterLogout` (0x0215, C→J) responde `_MSG_CNFCharacterLogout`
+(0x0116) e encerra a conexão — o `leave_world` salva e o `Drop` do `SessionLease` libera a
+conta na hora, sem esperar o timeout de ociosidade. O mesmo endereço de sessão aceita
+**retomada no próprio canal** (`event=session result=takeover`): cliente que reconecta no mesmo
+processo não fica preso na linha antiga; outro canal continua recusado.
+
 ## 6. UNVERIFIED (não vira tipo até a captura real, FASE-08-2)
 
 - `MSG_Trade` (troca entre jogadores) — layout não documentado.

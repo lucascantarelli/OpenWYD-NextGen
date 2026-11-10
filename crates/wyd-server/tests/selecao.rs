@@ -22,7 +22,9 @@ use wyd_protocol::payload::WirePayload;
 use wyd_protocol::wire::frame::INITCODE;
 use wyd_protocol::wire::header::HEADER_SIZE;
 use wyd_protocol::wire::opcode::Opcode;
-use wyd_protocol::{AccountLogin, CharacterLogin, CreateCharacter, DeleteCharacter, Header};
+use wyd_protocol::{
+    AccountLogin, AccountSecure, CharacterLogin, CreateCharacter, DeleteCharacter, Header,
+};
 use wyd_server::channels::World;
 use wyd_server::cpsock;
 
@@ -203,49 +205,25 @@ where
     stream.write_all(&frame).expect("pacote");
 }
 
-/// Nome de personagem único e ASCII (o banco tem UNIQUE parcial por nome vivo).
-fn nome_unico() -> [u8; 16] {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_nanos())
-        .unwrap_or(0);
-    let texto = format!("QA{nanos:08}");
-    let mut nome = [0u8; 16];
-    nome[..texto.len()].copy_from_slice(texto.as_bytes());
-    nome
-}
-
-/// Prova **viva** (gated): `WYD_LIVE_CPSOCK=127.0.0.1:8281 WYD_LIVE_ACCOUNT=<conta real>`.
-///
-/// Exige um canal com a stack de pé e a conta com linha em `accounts`. O personagem é criado,
-/// selecionado e removido no mesmo teste — o banco é o de desenvolvimento, mas nada fica
-/// pendurado: o `DeleteCharacter` faz o soft-delete que o cliente faria.
-#[test]
-fn selecao_contra_servidor_vivo() {
-    let Ok(endereco) = std::env::var("WYD_LIVE_CPSOCK") else {
-        return;
-    };
-    let Ok(conta) = std::env::var("WYD_LIVE_ACCOUNT") else {
-        return;
-    };
-    let mut nome = [0u8; 16];
-    let bytes = conta.trim().as_bytes();
-    assert!(bytes.len() <= nome.len(), "conta cabe em char[16]");
-    nome[..bytes.len()].copy_from_slice(bytes);
-
-    let mut stream = TcpStream::connect(&endereco).expect("conecta no canal");
-    stream
-        .set_read_timeout(Some(Duration::from_secs(5)))
-        .expect("timeout");
+/// Handshake real (INITCODE + senha + PIN) no socket já aberto.
+fn autenticar(stream: &mut TcpStream, conta: &str, senha: &str, pin: &str) {
     stream.write_all(&INITCODE.to_le_bytes()).expect("INITCODE");
     enviar(
-        &mut stream,
+        stream,
         11,
         Opcode::AccountLogin,
         AccountLogin::WIRE_LEN,
         |f| {
+            let mut nome = [0u8; 16];
+            let bytes = conta.trim().as_bytes();
+            assert!(bytes.len() <= nome.len(), "conta cabe em char[16]");
+            nome[..bytes.len()].copy_from_slice(bytes);
+            let mut senha_bytes = [0u8; 12];
+            let bytes = senha.as_bytes();
+            assert!(bytes.len() <= senha_bytes.len(), "senha cabe em char[12]");
+            senha_bytes[..bytes.len()].copy_from_slice(bytes);
             AccountLogin {
-                account_password: [0u8; 12],
+                account_password: senha_bytes,
                 account_name: nome,
                 zero: [0u8; 52],
                 client_version: 12_000,
@@ -256,29 +234,149 @@ fn selecao_contra_servidor_vivo() {
             .expect("corpo do login");
         },
     );
-    assert_eq!(expect_reply(&mut stream), Opcode::CNFAccountLogin);
-
-    let personagem = nome_unico();
+    assert_eq!(
+        expect_reply(stream),
+        Opcode::CNFAccountLogin,
+        "senha da conta aceita"
+    );
     enviar(
-        &mut stream,
+        stream,
         11,
-        Opcode::CreateCharacter,
-        CreateCharacter::WIRE_LEN,
+        Opcode::AccountSecure,
+        AccountSecure::WIRE_LEN,
         |f| {
-            CreateCharacter {
-                slot: 3,
-                mob_name: personagem,
-                mob_class: 0,
+            let mut token = [0u8; 6];
+            let bytes = pin.as_bytes();
+            assert!((4..=6).contains(&bytes.len()), "PIN tem 4 a 6 dígitos");
+            token[..bytes.len()].copy_from_slice(bytes);
+            AccountSecure {
+                numeric_token: token,
+                unknown: [0u8; 10],
+                change_numeric: 0,
             }
             .encode_into(f)
-            .expect("corpo da criação");
+            .expect("corpo do PIN");
         },
     );
     assert_eq!(
-        expect_reply(&mut stream),
-        Opcode::CNFNewCharacter,
-        "{endereco} criou o personagem da conta {conta}"
+        expect_reply(stream),
+        Opcode::AccountSecure,
+        "PIN aceito ou cadastrado na primeira entrada"
     );
+}
+
+/// Lê `wyd_entities_active{canal="<canal>"}` do Prometheus por HTTP (sem dependência nova).
+fn ler_gauge_entidades(prometheus: &str, canal: &str) -> Option<f64> {
+    let alvo = prometheus
+        .trim()
+        .trim_start_matches("http://")
+        .trim_end_matches('/');
+    let mut stream = TcpStream::connect(alvo).ok()?;
+    stream.set_read_timeout(Some(Duration::from_secs(5))).ok()?;
+    let pedido = format!(
+        "GET /api/v1/query?query=wyd_entities_active%7Bcanal%3D%22{canal}%22%7D HTTP/1.1\r\nHost: {alvo}\r\nConnection: close\r\n\r\n"
+    );
+    stream.write_all(pedido.as_bytes()).ok()?;
+    let mut resposta = String::new();
+    stream.read_to_string(&mut resposta).ok()?;
+    let corpo = resposta.split("\r\n\r\n").nth(1)?;
+    let marca = "\"value\":[";
+    let inicio = corpo.find(marca)? + marca.len();
+    let resto = &corpo[inicio..];
+    let abre = resto.find('"')? + 1;
+    let fecha = resto[abre..].find('"')? + abre;
+    resto[abre..fecha].parse().ok()
+}
+
+/// Espera o gauge satisfazer `aceita`, devolvendo o último valor lido.
+fn esperar_gauge(
+    prometheus: &str,
+    canal: &str,
+    aceita: impl Fn(f64) -> bool,
+    limite: Duration,
+) -> Option<f64> {
+    let inicio = std::time::Instant::now();
+    let mut ultimo = None;
+    while inicio.elapsed() < limite {
+        if let Some(valor) = ler_gauge_entidades(prometheus, canal) {
+            ultimo = Some(valor);
+            if aceita(valor) {
+                return Some(valor);
+            }
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    }
+    ultimo
+}
+
+/// Prova **viva** (gated) do gauge de entidades, pelo fluxo real do cliente.
+///
+/// Requer a stack de pé e estes ambientes:
+/// `WYD_LIVE_CPSOCK=127.0.0.1:8281`, `WYD_LIVE_ACCOUNT`, `WYD_LIVE_PASSWORD` e, opcionalmente,
+/// `WYD_LIVE_PIN` (default `2468`, cadastrado na primeira entrada), `WYD_LIVE_CHARACTER_SLOT`
+/// (default 0), `WYD_LIVE_CANAL` (default 1), `WYD_LIVE_PROMETHEUS` (default
+/// `127.0.0.1:9090`), `WYD_LIVE_HOLD_SECS` (default 20) e `WYD_LIVE_CREATE_NAME` (cria o
+/// personagem pelo `_MSG_CreateCharacter` no slot e o remove no fim, pelo protocolo).
+///
+/// O personagem é o persistido no slot ou o criado pelo protocolo. A sessão fica aberta
+/// (ping a cada 5 s) por pelo menos um scrape de 15 s; o teste exige o gauge > 0 no canal e,
+/// depois do FIN, a volta a 0.
+#[test]
+fn sessao_viva_publica_entidade_no_gauge() {
+    let Ok(endereco) = std::env::var("WYD_LIVE_CPSOCK") else {
+        return;
+    };
+    let conta = std::env::var("WYD_LIVE_ACCOUNT").expect("WYD_LIVE_ACCOUNT com a conta real");
+    let senha = std::env::var("WYD_LIVE_PASSWORD").expect("WYD_LIVE_PASSWORD da conta real");
+    let pin = std::env::var("WYD_LIVE_PIN").unwrap_or_else(|_| "2468".to_string());
+    let slot: i32 = std::env::var("WYD_LIVE_CHARACTER_SLOT")
+        .ok()
+        .and_then(|valor| valor.parse().ok())
+        .unwrap_or(0);
+    let canal = std::env::var("WYD_LIVE_CANAL").unwrap_or_else(|_| "1".to_string());
+    let prometheus =
+        std::env::var("WYD_LIVE_PROMETHEUS").unwrap_or_else(|_| "127.0.0.1:9090".to_string());
+    let espera: u64 = std::env::var("WYD_LIVE_HOLD_SECS")
+        .ok()
+        .and_then(|valor| valor.parse().ok())
+        .unwrap_or(20);
+    let criar = std::env::var("WYD_LIVE_CREATE_NAME")
+        .ok()
+        .filter(|nome| !nome.trim().is_empty());
+
+    let mut stream = TcpStream::connect(&endereco).expect("conecta no canal");
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .expect("timeout");
+    autenticar(&mut stream, &conta, &senha, &pin);
+
+    let criado = criar.map(|nome| {
+        let bytes = nome.as_bytes();
+        assert!(bytes.len() <= 16, "nome do personagem cabe em char[16]");
+        let mut campo = [0u8; 16];
+        campo[..bytes.len()].copy_from_slice(bytes);
+        enviar(
+            &mut stream,
+            11,
+            Opcode::CreateCharacter,
+            CreateCharacter::WIRE_LEN,
+            |f| {
+                CreateCharacter {
+                    slot,
+                    mob_name: campo,
+                    mob_class: 0,
+                }
+                .encode_into(f)
+                .expect("corpo da criação");
+            },
+        );
+        assert_eq!(
+            expect_reply(&mut stream),
+            Opcode::CNFNewCharacter,
+            "{endereco} criou o personagem {nome} no slot {slot}"
+        );
+        campo
+    });
 
     enviar(
         &mut stream,
@@ -286,7 +384,7 @@ fn selecao_contra_servidor_vivo() {
         Opcode::CharacterLogin,
         CharacterLogin::WIRE_LEN,
         |f| {
-            CharacterLogin { slot: 3, force: 1 }
+            CharacterLogin { slot, force: 1 }
                 .encode_into(f)
                 .expect("corpo da seleção");
         },
@@ -294,29 +392,70 @@ fn selecao_contra_servidor_vivo() {
     assert_eq!(
         expect_reply(&mut stream),
         Opcode::CNFCharacterLogin,
-        "{endereco} selecionou o personagem"
+        "{endereco} encarnou o personagem do slot {slot}"
     );
 
-    enviar(
-        &mut stream,
-        11,
-        Opcode::DeleteCharacter,
-        DeleteCharacter::WIRE_LEN,
-        |f| {
-            DeleteCharacter {
-                slot: 3,
-                mob_name: personagem,
-                password: [0u8; 12],
-            }
-            .encode_into(f)
-            .expect("corpo da remoção");
-        },
+    let durante = esperar_gauge(
+        &prometheus,
+        &canal,
+        |valor| valor > 0.0,
+        Duration::from_secs(45),
+    )
+    .unwrap_or_else(|| {
+        panic!("wyd_entities_active{{canal=\"{canal}\"}} continuou 0 com a sessão aberta")
+    });
+    eprintln!(
+        "PASS: sessão no canal {canal} publicou wyd_entities_active={durante} (personagem slot {slot})"
     );
-    assert_eq!(
-        expect_reply(&mut stream),
-        Opcode::CNFDeleteCharacter,
-        "{endereco} removeu o personagem de teste"
-    );
+
+    let inicio = std::time::Instant::now();
+    while inicio.elapsed() < Duration::from_secs(espera) {
+        std::thread::sleep(Duration::from_secs(5));
+        enviar(&mut stream, 11, Opcode::Ping, HEADER_SIZE, |_| {});
+    }
+    drop(stream);
+
+    let depois = esperar_gauge(
+        &prometheus,
+        &canal,
+        |valor| valor == 0.0,
+        Duration::from_secs(45),
+    )
+    .unwrap_or_else(|| {
+        panic!("wyd_entities_active{{canal=\"{canal}\"}} não voltou a 0 após o logout")
+    });
+    assert_eq!(depois, 0.0, "gauge zerado depois do FIN");
+    eprintln!("PASS: logout zerou wyd_entities_active{{canal=\"{canal}\"}}");
+
+    if let Some(nome) = criado {
+        // Remove o personagem pelo mesmo protocolo do cliente; a sessão anterior já saiu.
+        std::thread::sleep(Duration::from_secs(1));
+        let mut limpeza = TcpStream::connect(&endereco).expect("reconecta para remover");
+        limpeza
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .expect("timeout da remoção");
+        autenticar(&mut limpeza, &conta, &senha, &pin);
+        enviar(
+            &mut limpeza,
+            11,
+            Opcode::DeleteCharacter,
+            DeleteCharacter::WIRE_LEN,
+            |f| {
+                DeleteCharacter {
+                    slot,
+                    mob_name: nome,
+                    password: [0u8; 12],
+                }
+                .encode_into(f)
+                .expect("corpo da remoção");
+            },
+        );
+        assert_eq!(
+            expect_reply(&mut limpeza),
+            Opcode::CNFDeleteCharacter,
+            "personagem de prova removido pelo protocolo"
+        );
+    }
 }
 
 #[test]

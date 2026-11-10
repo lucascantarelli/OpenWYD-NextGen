@@ -14,7 +14,7 @@ pub mod sessions;
 pub use accounts::{Accounts, CredentialRecord};
 pub use audit::{AuditRow, AuditTrail, NewAuditEntry};
 pub use characters::Characters;
-pub use content::{CatalogItemRow, CatalogSnapshot, ServerChannel};
+pub use content::{CatalogItemRow, CatalogSnapshot, ServerChannel, SkillRule, SkillRules};
 pub use economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 pub use grants::{Grant, Grants, QueuedGrantRow};
 pub use pg::NO_CREDENTIAL;

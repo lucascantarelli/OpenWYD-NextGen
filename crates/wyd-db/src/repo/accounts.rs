@@ -7,7 +7,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::error::DbError;
-use crate::model::{Account, AccountModeration, Role};
+use crate::model::{Account, AccountModeration, ItemRow, Role};
 
 /// Credencial de login: a conta e o hash guardado.
 ///
@@ -134,6 +134,51 @@ pub trait Accounts {
     ) -> Pin<Box<dyn Future<Output = Result<AccountModeration, DbError>> + Send + 'a>> {
         let _ = (login, blocked, reason, by);
         Box::pin(async { Err(DbError::NotFoundKey { entity: "account" }) })
+    }
+
+    /// Cofre da conta (`vault_items`) no `Cargo[128]` do `MSG_DBCNFAccountLogin`.
+    ///
+    /// Sem linha a resposta é vazia — o pacote manda slots vazios, nunca item sintético.
+    fn vault_items(
+        &self,
+        account_id: i64,
+    ) -> impl Future<Output = Result<Vec<ItemRow>, DbError>> + Send {
+        let _ = account_id;
+        async { Ok(Vec::new()) }
+    }
+
+    /// Moeda da conta (`account_wallet.coin`); `None` = conta sem linha.
+    ///
+    /// Separada de `characters.gold`: o `Coin` do pacote de login é saldo **da conta**.
+    fn account_coin(
+        &self,
+        account_id: i64,
+    ) -> impl Future<Output = Result<Option<i64>, DbError>> + Send {
+        let _ = account_id;
+        async { Ok(None) }
+    }
+
+    /// Grava o cofre da conta (`vault_items`), upsert por slot.
+    ///
+    /// O depósito/retirada do jogo entra pela porta de jogo; esta escrita existe para o
+    /// cofre ter lastro persistido e o login poder ser conferido contra o banco.
+    fn store_vault_items(
+        &self,
+        account_id: i64,
+        items: &[ItemRow],
+    ) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = (account_id, items);
+        async { Ok(()) }
+    }
+
+    /// Grava o `Coin` da conta (`account_wallet`); teto `i32::MAX` porque o campo do fio é `int`.
+    fn set_account_coin(
+        &self,
+        account_id: i64,
+        coin: i64,
+    ) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = (account_id, coin);
+        async { Ok(()) }
     }
 
     /// Define/atualiza a credencial de uma conta (seed de staff, troca de senha).

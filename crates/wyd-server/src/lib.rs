@@ -10,11 +10,15 @@
 //! - `status`: `GET /serv00.htm` no `:80` com os números dos canais lidos do Postgres e a
 //!   sonda UDP do `:8281` — é o que popula e valida o seletor de canais do cliente;
 //! - `metrics`: `GET /metrics` no `:9898` (contrato da FASE-06-1) com o fragmento de rede
-//!   (`wyd_packets_*`, `wyd_handshakes_total`, `wyd_sessions_open`, versão de cliente) e os
-//!   gauges do serviço.
+//!   (`wyd_packets_*`, `wyd_handshakes_total`, `wyd_sessions_open`, versão de cliente), o
+//!   registro **real** do motor (`wyd_ticks_total`, `wyd_tick_duration_microseconds`,
+//!   `wyd_entities_active`) e os gauges do serviço;
+//! - `world`: o `Engine` do `wyd-core` deste processo — tick fixo a `WYD_TICK_HZ`, mundo em
+//!   memória e parada limpa da thread (FASE-03-7).
 //!
-//! O que ainda **não** existe aqui: tick do `wyd-core`, autenticação de conta e pacotes de
-//! cena (`ESCENE_FIELD`). Cada um entra pela issue dona; nenhum deles é simulado.
+//! O que ainda **não** existe aqui: personagem como entidade do mundo, save na saída
+//! (03-8) e pacotes de cena (`ESCENE_FIELD`, 03-9). Cada um entra pela issue dona; nenhum
+//! deles é simulado.
 
 pub mod auth;
 pub mod channels;
@@ -25,9 +29,11 @@ pub mod metrics;
 pub mod personagens;
 pub mod session;
 pub mod status;
+pub mod world;
 
 pub use channels::{render_status_body, status_url, World};
 pub use characters::{SelectionError, SelectionStore};
 pub use cpsock::{serve_listener, HandshakeError, HandshakeOk};
 pub use metrics::ServiceMetrics;
 pub use session::{SessionError, SessionGate, SessionLease};
+pub use world::{Engine, EngineThread};

@@ -1508,11 +1508,14 @@ version = "0.1.0"
 name = "wyd-server"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "tokio",
  "wyd-admin",
+ "wyd-core",
  "wyd-db",
  "wyd-net",
  "wyd-protocol",
+ "wyd-sim",
 ]
 
 [[package]]

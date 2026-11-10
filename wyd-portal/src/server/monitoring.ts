@@ -41,6 +41,30 @@ export interface ChannelHealth {
   handshakes: number;
   sessions: number;
   memoryBytes: number | null;
+  /** Ticks por segundo medidos no processo (FASE-03-7). */
+  ticksPerSecond: number | null;
+  /** P99 do tick em µs (histograma do motor). */
+  tickP99Us: number | null;
+  /** Entidades vivas no mundo (jogadores + NPCs). */
+  entities: number | null;
+  /** Orçamento do tick deste processo em µs (`1e6 / WYD_TICK_HZ`). */
+  tickBudgetUs: number;
+}
+
+/**
+ * Orçamento de fallback (20 Hz) quando o processo ainda não publica o próprio
+ * orçamento. O valor real vem de `wyd_tick_budget_microseconds` (`1e6 / WYD_TICK_HZ`).
+ */
+export const TICK_BUDGET_US = 50_000;
+
+/** Agregado do motor entre canais (pior P99, soma de ticks/entidades). */
+export interface EngineHealth {
+  ticksPerSecond: number | null;
+  tickP99Us: number | null;
+  tickBudgetUs: number;
+  /** P99 como percentual do orçamento (null sem amostra). */
+  tickBudgetPct: number | null;
+  entities: number | null;
 }
 
 export interface JobHealth {
@@ -79,6 +103,7 @@ export interface MonitoringSnapshot {
   channels: ChannelHealth[];
   otherJobs: JobHealth[];
   gateway: { requests: number; uptimeSeconds: number | null };
+  engine: EngineHealth;
   host: { cpuPercent: number | null; memoryPercent: number | null; load1: number | null };
   status: { requests: number; channelsPublished: number | null };
   alerts: StackAlert[];
@@ -192,6 +217,13 @@ async function getPrometheusSnapshot(): Promise<
     channels: [] as ChannelHealth[],
     otherJobs: [] as JobHealth[],
     gateway: { requests: 0, uptimeSeconds: null },
+    engine: {
+      ticksPerSecond: null,
+      tickP99Us: null,
+      tickBudgetUs: TICK_BUDGET_US,
+      tickBudgetPct: null,
+      entities: null,
+    },
     host: { cpuPercent: null, memoryPercent: null, load1: null },
     status: { requests: 0, channelsPublished: null },
   };
@@ -219,7 +251,13 @@ async function getPrometheusSnapshot(): Promise<
   const sessions = await optional("wyd_sessions_open");
   const memory = await optional('process_resident_memory_bytes{job="wyd-server"}');
   const statusRequests = await optional("wyd_status_requests_total");
-  const channelsPublished = await optional("wyd_channels_published");
+  const channelsPublished = await optional("wyd_server_channels_published");
+  const ticks = await optional("sum by (canal) (rate(wyd_ticks_total[1m]))");
+  const tickP99 = await optional(
+    "histogram_quantile(0.99, sum by (le, canal) (rate(wyd_tick_duration_microseconds_bucket[5m])))",
+  );
+  const tickBudgets = await optional("wyd_tick_budget_microseconds");
+  const entities = await optional("sum by (canal) (wyd_entities_active)");
   const gatewayRequests = await optional('wyd_gateway_requests_total{job="wyd-gateway"}');
   const gatewayUptime = await optional('wyd_gateway_uptime_seconds{job="wyd-gateway"}');
   const cpu = await optional(
@@ -233,18 +271,32 @@ async function getPrometheusSnapshot(): Promise<
   const canalOf = (labels: Record<string, string>, fallback: string): string =>
     labels.canal ?? labels.instance ?? fallback;
 
+  /** Orçamento do canal; sem a métrica (imagem antiga), cai no default de 20 Hz. */
+  const budgetOf = (labels: Record<string, string>): number => {
+    const canal = canalOf(labels, "");
+    const found = tickBudgets.find((sample) => canalOf(sample.labels, "") === canal);
+    return found && found.value > 0 ? found.value : TICK_BUDGET_US;
+  };
+
   const channels: ChannelHealth[] = upServers
     .map((sample) => {
       const canal = canalOf(sample.labels, sample.labels.target ?? "?");
       const pick = (samples: Sample[]): number =>
         total(samples.filter((s) => canalOf(s.labels, "") === canal));
       const mem = memory.find((s) => canalOf(s.labels, "") === canal);
+      const tickRate = ticks.find((s) => canalOf(s.labels, "") === canal);
+      const tickP = tickP99.find((s) => canalOf(s.labels, "") === canal);
+      const alive = entities.find((s) => canalOf(s.labels, "") === canal);
       return {
         canal,
         up: sample.value === 1,
         handshakes: pick(handshakes),
         sessions: pick(sessions),
         memoryBytes: mem ? mem.value : null,
+        ticksPerSecond: tickRate ? tickRate.value : null,
+        tickP99Us: tickP ? tickP.value : null,
+        entities: alive ? alive.value : null,
+        tickBudgetUs: budgetOf(sample.labels),
       };
     })
     .sort((a, b) => Number(a.canal) - Number(b.canal));
@@ -258,6 +310,24 @@ async function getPrometheusSnapshot(): Promise<
       .map((sample) => ({ job: sample.labels.job ?? "?", up: sample.value === 1 }))
       .sort((a, b) => a.job.localeCompare(b.job)),
     gateway: { requests: total(gatewayRequests), uptimeSeconds: first(gatewayUptime) },
+    engine: (() => {
+      // Pior canal manda: o orçamento é por processo, não a média do grupo.
+      const budgetPct = tickP99.map(
+        (sample) => (sample.value / budgetOf(sample.labels)) * 100,
+      );
+      const worst = budgetPct.length > 0 ? Math.max(...budgetPct) : null;
+      return {
+        ticksPerSecond: ticks.length > 0 ? total(ticks) : null,
+        tickP99Us:
+          tickP99.length > 0 ? Math.max(...tickP99.map((sample) => sample.value)) : null,
+        tickBudgetUs:
+          tickP99.length > 0 && channels.length > 0
+            ? Math.min(...channels.map((channel) => channel.tickBudgetUs))
+            : TICK_BUDGET_US,
+        tickBudgetPct: worst,
+        entities: entities.length > 0 ? total(entities) : null,
+      };
+    })(),
     host: {
       cpuPercent: first(cpu),
       memoryPercent: first(memoryPercent),
@@ -286,6 +356,13 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
       channels: [],
       otherJobs: [],
       gateway: { requests: 0, uptimeSeconds: null },
+      engine: {
+        ticksPerSecond: null,
+        tickP99Us: null,
+        tickBudgetUs: TICK_BUDGET_US,
+        tickBudgetPct: null,
+        entities: null,
+      },
       host: { cpuPercent: null, memoryPercent: null, load1: null },
       status: { requests: 0, channelsPublished: null },
       alerts: [],

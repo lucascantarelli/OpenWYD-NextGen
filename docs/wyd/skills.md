@@ -88,7 +88,7 @@ Regra do repositório: entrada de rede nunca causa `panic!`; erro tipado por fro
 
 ## 4. Custo em mana, delay e alcance
 
-O catálogo legado (`skill_catalog`, 151 linhas) traz o comportamento de cada skill:
+O catálogo legado (`skill_catalog`, **154 linhas** após a curadoria Kersef) traz o comportamento de cada skill:
 
 | Coluna | Significado | Unidade |
 |---|---|---|

@@ -13,7 +13,7 @@ histórico de planejamento). Regras vigentes:
   `Source/`, `roadmap/` (Go) ou `docs/migration/` na árvore. Nada de `go build`, `go test`
   ou referência legada como fonte. Fonte canônica atual é `docs/` + `crates/` + `roadmap-rust/`
   (ver `docs/arquitetura/protocolo.md`, `docs/cliente/`, `docs/rust/`).
-- **Trabalho Rust vive em:** `crates/wyd-{protocol,core,net,db,admin,sim,launcher}/`,
+- **Trabalho Rust vive em:** `crates/wyd-{protocol,core,net,db,admin,server,sim,launcher}/`,
   `Cargo.toml` (workspace), `rust-toolchain.toml`, `docs/arquitetura/`, `docs/rust/`,
   `docs/cliente/`, `roadmap-rust/`, `wyd-portal/` (Cold Path), `tools/` (análise/geração),
   `fixtures/cliente/` (goldens).
@@ -61,6 +61,7 @@ externo — tudo num único repositório.
 | `crates/wyd-net/` | Transporte async (framing, sessão, rate-limit) | Rust (tokio/io_uring via ADR) |
 | `crates/wyd-db/` | Persistência async (Postgres, migrations, delivery_queue) | Rust + sqlx (via ADR) |
 | `crates/wyd-admin/` | Control plane Cold Path (auth, grants, auditoria p/ o portal) | Rust |
+| `crates/wyd-server/` | Binário do monólito de jogo: um processo por canal (CPSock, status, sessão, seleção de personagem) | Rust |
 | `crates/wyd-sim/` | Laboratório matemático (fórmulas puras, cenários, goldens) | Rust |
 | `crates/wyd-launcher/` | Launcher/patcher (manifest, patch atômico, bootstrap, update) | Rust std puro |
 | `wyd-portal/` | UI de administração: BFF puro sobre `wyd-admin`, sem tocar estado vivo | Next.js 15, TypeScript |
@@ -91,10 +92,10 @@ make check          # fmt --check + clippy -D warnings + build + test
 
 # 2. Stack atual (Postgres + portal; tmserver/gateway entram com os binários das FASEs)
 make stack-config   # valida compose base+prod sem subir
-make stack-up       # db + portal em background
+make stack-up       # db + gateway + portal + 2 canais + monitoramento
 docker compose ps   # Up != pronto: ver sinais em docs/rust/05-stack-docker.md
 curl -s localhost:3000/login | head -3
-curl -s localhost:3000/api/health   # 502 esperado sem gateway (FASE-07-1), não é bug
+curl -s localhost:3000/api/health   # 200 com contagem do catálogo; 502 só sem gateway
 
 # 3. Portal em modo desenvolvimento (hot reload), sem container:
 make portal-install     # npm ci
@@ -113,7 +114,8 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
 ## 3. Invariantes que não podem ser quebradas
 
 1. **Hot Path monolítico, sem I/O no tick.** Tick, física, combate e visibilidade vivem
-   juntos em `wyd-core` no mesmo espaço de memória. Nada de gRPC/HTTP/SQL no loop,
+   juntos em `wyd-core` no mesmo espaço de memória (composição em `wyd-server`, um processo
+   por canal — ADR-0022). Nada de gRPC/HTTP/SQL no loop,
    nada de mutex global, nada de alocação quente. Persistência entra por portas
    (traits) e canais async fora do tick (ver ADR-0001/0004/0006).
 2. **Layout binário é por offset explícito.** HEADER 12 bytes LE (`Size/KeyWord/CheckSum/

@@ -89,7 +89,8 @@ chama o backend.
 
 ### WydTickP99Alto
 
-P99 do tick acima de 20 ms por 10 min (orçamento do tick é 50 ms).
+P99 do tick acima de 40% do orçamento do processo por 10 min. O orçamento vem de
+`wyd_tick_budget_microseconds` (`1e6 / WYD_TICK_HZ`): 50 ms a 20 Hz, 20 ms a 50 Hz.
 
 1. Confirmar no dashboard "Tick P50/P95/P99" que é o P99 e não um pico isolado.
 2. Comparar com `wyd_entities_active` e `wyd_packets_total`: crescimento de entidades ou
@@ -138,11 +139,39 @@ RSS acima de 1,5 GB por 15 min.
 2. Se o motor roda em container Linux e a métrica está parada, é bug de amostragem — abrir
    issue; não mascarar o alerta.
 
+### WydTickAcimaDoOrcamento
+
+Regra: P99 acima de 100% de `wyd_tick_budget_microseconds` (gauge publicado pelo
+processo; o limiar acompanha `WYD_TICK_HZ`, não um valor fixo).
+
+1. Olhar `wyd_tick_duration_microseconds` por canal no painel “saúde do motor”: se só um canal
+   estourou, o problema é do processo (GC de SO, swap, CPU throttling), não do grupo.
+2. Comparar com `rate(wyd_ticks_total[1m])`: ticks/s abaixo do `WYD_TICK_HZ` do container =
+   perda de passo real; acima = intervalo configurado divergente entre canais.
+3. `docker stats` no container do canal; se RSS/CPU estiverem normais, verificar
+   `WydSemAmostraDeMemoria` e o log `event=tick p99_us=…` da thread.
+4. Causa comum de P99 alto sem carga: stall de VM/host (o `Scheduler` descarta o atraso, então
+   o tick não “corre atrás” — o sintoma é P99 alto e taxa normal).
+
+### WydMotorSemTick
+
+1. `up{job="wyd-server"}` continua 1: o processo responde `/metrics`, então a thread
+   `wyd-tick` parou ou nunca subiu.
+2. Ver no log do container `event=boot`/`event=tick`: ausência de `event=tick` = thread não
+   iniciou; boot com `reason=WYD_TICK_HZ` = configuração recusada (faixa 20–50).
+3. `docker logs <canal> | grep event=tick`: se havia `ticks=` e parou, o processo travou no
+   laço (ver stack com `SIGQUIT`/profiler) — abrir issue com o horário.
+4. Confirmar que a métrica não foi renomeada: `wyd_ticks_total` é contrato da FASE-06-1 e só
+   existe quando o motor roda (ADR-0022 §7).
+
 ## 4. Lacunas declaradas
 
-- **Série do motor ainda vazia:** o workspace não tem binário de servidor (FASE-03/04/06 →
-  serviço `tmserver`); os painéis do motor ficam vazios até ele existir. Dois painéis já têm série
-  real: os do **gateway** (`wyd_gateway_*`), que roda em Docker desde a ADR-0022.
+- **Série do motor depende da imagem em execução:** os painéis do motor ficam vazios enquanto
+  os containers `server`/`server-canal-2` rodarem imagem anterior à FASE-03-7, mesmo com
+  `up{job="wyd-server"} == 1`. Recriar só esses containers (`docker compose up -d --build
+  server server-canal-2`) publica `wyd_ticks_total`, `wyd_tick_duration_microseconds`,
+  `wyd_tick_budget_microseconds` e `wyd_entities_active`. O gateway (`wyd_gateway_*`) não
+  depende disso.
 - **Sem métrica de memória do gateway:** `process_resident_memory_bytes` é do exporter do motor;
   no Cold Path a leitura viria de `/proc` (mesma lacuna de plataforma da 06-1) — declarado, não inventado.
 - **Sem alerta de migration:** a 12-1 pede "falha de migration", mas a 06-1 não expõe métrica

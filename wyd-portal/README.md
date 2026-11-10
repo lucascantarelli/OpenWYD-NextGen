@@ -37,7 +37,11 @@ O portal só tem tela para o que o contrato do gateway serve hoje
 | `/painel` | staff | `server_admin/list_channel_presence`, Prometheus, Loki, Grafana e `item_catalog/list_items` |
 | `/contas` | staff | `accounts/find`, `accounts/create` e moderação (`get_moderation`/`set_role`/`set_blocked`) |
 | `/itens` | staff | `item_catalog/list_items` (somente leitura) |
-| `/monitoramento` | staff | presença no banco, Prometheus, Loki e dashboards do Grafana |
+| `/monitoramento` | staff | índice enxuto: saúde dos canais, motor (ticks/s, p99, entidades) e atalhos |
+| `/monitoramento/servidor` | staff | motor do jogo por canal: ticks/s, p99, entidades, orçamento de tick |
+| `/monitoramento/grafana` | staff | dashboards do Grafana embutidos (kiosk) |
+| `/monitoramento/prometheus` | staff | alvos, regras de alerta e séries coletadas |
+| `/monitoramento/logs` | staff | volume e erros por serviço no Loki |
 | `/auditoria` | admin | `audit_admin/recent` (`audit_log`, append-only) |
 | `/economia` | staff | `economy_admin/summary` (`city_tax_ledger` + `delivery_queue`) |
 | `/conta` | jogador | `panel/self`, `panel/characters`, `panel/rankings` e `account_web/change_numeric_pin` |
@@ -165,7 +169,17 @@ gerado por `tools/content/` — são rotas públicas e não passam pelo gateway.
 
 ## Monitoramento
 
-Uma página, quatro fontes independentes: Prometheus (métricas e alertas), Loki
-(volume e erros por serviço), gateway (presença viva por canal, lida de
-`character_session`) e Grafana (dashboards em kiosk). Cada bloco falha sozinho.
-O portal nunca escreve estado vivo do jogo.
+O módulo nasceu como uma página única e hoje é um **índice** (`/monitoramento`) com
+subpáginas para o que cresce em volume e merece leitura própria:
+
+- `/monitoramento` — foto enxuta: presença viva por canal, motor (ticks/s, p99, entidades),
+  alertas disparando e links para as subpáginas.
+- `/monitoramento/servidor` — o jogo em si: ticks/s, p99 e entidades por canal contra o
+  orçamento de tick (`TICK_BUDGET_US`), para responder “o canal está atrasando?”.
+- `/monitoramento/grafana` — dashboards em kiosk (inclui `wyd-saude.json` com orçamento de
+  tick, entidades e ticks por canal).
+- `/monitoramento/prometheus` — alvos, regras ativas e séries que o portal consulta.
+- `/monitoramento/logs` — volume e erros por serviço no Loki.
+
+Cada bloco falha sozinho (Prometheus, Loki, gateway e Grafana são consultados em
+paralelo e degradam para aviso). O portal nunca escreve estado vivo do jogo.

@@ -1,6 +1,6 @@
 //! Persistência Cold Path (`wyd-db`): modelo, portas, adapters, filas e config.
 //!
-//! PostgreSQL via migrations versionadas (`migrations/`, seeds em `seeds/`
+//! PostgreSQL via migrations versionadas (`migrations/`, 0001–0036; seeds em `seeds/`
 //! só com dados de desenvolvimento). O pool `sqlx` e as implementações `pg` das portas
 //! entraram na FASE-04-3 (ADR-0021); a fila de save (`SaveQueue`/`SaveDrain`) leva o
 //! estado do Hot Path ao banco **fora** do tick.
@@ -20,12 +20,12 @@ pub mod pool;
 pub mod repo;
 pub mod transfer;
 
-/// Versão do schema = número da última migration (`0031_moderacao`).
+/// Versão do schema = número da última migration (`0036_character_special`).
 ///
 /// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
 /// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
 /// juntos é pior que não ter versão.
-pub const SCHEMA_VERSION: u32 = 31;
+pub const SCHEMA_VERSION: u32 = 36;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -39,13 +39,16 @@ pub fn is_postgres_dsn(dsn: &str) -> bool {
 pub use error::DbError;
 pub use migrate::{MigrationError, MigrationReport};
 pub use model::{
-    Account, AccountModeration, AuditEntry, Character, Guild, GuildMember, Role, MAX_SLOTS,
+    Account, AccountModeration, AuditEntry, Character, Guild, GuildMember, ItemRow, Progression,
+    Role, CARRY_FIRST_SLOT, CARRY_SLOTS, EQUIP_SLOTS, ITEM_SLOTS, LEARNED_SKILL_MASK, MAX_SLOTS,
+    SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN, SKILL_SLOTS, SKILL_TIER_COIN,
+    SKILL_TIER_POSITIONS, SPECIAL_LINEAGE_SKILL, SPECIAL_MAX, SPECIAL_MAX_LINEAGE, SPECIAL_SLOTS,
 };
 pub use pool::{PgBackend, PoolConfig};
 pub use repo::{
     Accounts, AuditRow, AuditTrail, CatalogItemRow, CatalogSnapshot, Characters, CityTaxTotal,
     ClaimOutcome, CredentialRecord, Economy, EconomySummary, Grant, GrantTotal, Grants,
-    NewAuditEntry, QueuedGrantRow, ServerChannel, Sessions, NO_CREDENTIAL,
+    NewAuditEntry, QueuedGrantRow, ServerChannel, Sessions, SkillRule, SkillRules, NO_CREDENTIAL,
 };
 pub use transfer::{
     DeliveryQueue, FlushReport, QueuedGrant, SaveDrain, SavePolicy, SaveQueue, SaveRequest,
@@ -63,7 +66,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 31);
+        assert_eq!(SCHEMA_VERSION, 36);
         // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }

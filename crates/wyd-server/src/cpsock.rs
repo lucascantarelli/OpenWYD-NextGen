@@ -31,13 +31,18 @@ use wyd_protocol::payload::WirePayload;
 use wyd_protocol::wire::frame::{inspect, INITCODE};
 use wyd_protocol::wire::header::{Header, HEADER_SIZE};
 use wyd_protocol::wire::opcode::Opcode;
-use wyd_protocol::{AccountLogin, AccountSecure, CharacterLogin, CreateCharacter, DeleteCharacter};
+use wyd_protocol::{
+    AccountLogin, AccountSecure, ApplyBonus, CharacterLogin, CreateCharacter, DeleteCharacter,
+};
 
 use crate::auth::{Authenticator, PinOutcome};
-use crate::personagens::{character_body, StructMob};
+use crate::personagens::{
+    account_login_body, cargo_items, character_login_body, delete_character_body,
+    new_character_body, Mob, ID_DELETE_CHARACTER, ID_NEW_CHARACTER, ID_SCENE, ID_SELCHAR,
+};
 
 use crate::channels::World;
-use crate::characters::{SelectionError, SelectionStore};
+use crate::characters::{LoginSnapshot, Selected, SelectionError, SelectionStore};
 use crate::session::{SessionError, SessionGate, SessionLease};
 
 /// Timeout de leitura do handshake: conexão muda não segura thread.
@@ -50,17 +55,32 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_IDLE_ROUNDS: u32 = 10;
 
 /// Estágio da conexão depois do login mantido só para o log (seleção × em jogo).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 enum Stage {
     Selecting,
-    InGame,
+    /// Encarnado: entidade do mundo (FASE-03-8), quando o processo tem mundo, mais o
+    /// personagem escolhido — `_MSG_ApplyBonus` precisa dele para gravar a progressão.
+    InGame {
+        entity: Option<wyd_core::Entity>,
+        selected: Box<Selected>,
+        /// `HEADER.ID` que o cliente conhece para o próprio mob (`ClientID` do login).
+        client_id: u16,
+    },
 }
 
 impl Stage {
-    const fn as_str(self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             Self::Selecting => "selecting",
-            Self::InGame => "in_game",
+            Self::InGame { .. } => "in_game",
+        }
+    }
+
+    /// Entidade viva desta conexão (para o save de saída).
+    fn entity(&self) -> Option<wyd_core::Entity> {
+        match self {
+            Self::Selecting => None,
+            Self::InGame { entity, .. } => *entity,
         }
     }
 }
@@ -324,25 +344,19 @@ pub fn handle_connection(
     let _ = stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT));
     let _ = stream.set_write_timeout(Some(HANDSHAKE_TIMEOUT));
     NET.session_delta(1);
-    let citizen = sessions.map_or(0, |cerca| {
-        u8::try_from(cerca.channel()).unwrap_or(0).saturating_add(1)
-    });
     let resultado = (|| {
-        let (mut ok, conta) = handshake(&mut stream, world, gate, auth, selection, citizen)?;
+        let (mut ok, conta) = handshake(&mut stream, world, gate, auth, selection)?;
         // A cerca só abre **depois** do PIN: senha errada ou PIN errado não deixam sessão.
         let lease = authorize_pin(&mut stream, &conta, auth, sessions, ok.client_version)?;
         ok.session_id = lease.as_ref().map(SessionLease::id);
         // Segura a conexão: é a vida da sessão. Sem isso a sessão morreria no CNF e a cerca
         // não impediria nada — e sem o laço de seleção o jogador não passa do login.
         let idle = sessions.map_or(HANDSHAKE_TIMEOUT, SessionGate::idle);
-        serve_selection(
-            &mut stream,
-            &conta,
-            selection,
-            lease.as_ref(),
-            idle,
-            citizen,
-        );
+        let entity = serve_selection(&mut stream, &conta, selection, lease.as_ref(), idle);
+        // Saída (logout, timeout ou queda): tira do mundo e enfileira o save do estado.
+        if let Some(selection) = selection {
+            selection.leave_world(entity);
+        }
         Ok(ok)
     })();
     NET.session_delta(-1);
@@ -355,7 +369,6 @@ fn handshake(
     gate: VersionGate,
     auth: Option<&Authenticator>,
     selection: Option<&SelectionStore>,
-    citizen: u8,
 ) -> Result<(HandshakeOk, String), HandshakeError> {
     let mut init = [0u8; 4];
     stream.read_exact(&mut init)?;
@@ -429,24 +442,33 @@ fn handshake(
         ),
     );
 
-    // Corpo com os personagens da conta (`STRUCT_SELCHAR`): estado real do banco. Falha de
-    // leitura devolve lista vazia — o cliente vê "sem personagem", nunca dado inventado.
-    let roster = match selection.map(|store| store.roster(&conta)) {
-        Some(Ok(roster)) => roster,
+    // Corpo com os personagens da conta (`STRUCT_SELCHAR`), o cofre (`Cargo[128]`) e o
+    // `Coin`: tudo do banco. Falha de leitura devolve lista vazia/zero — o cliente vê "sem
+    // personagem", nunca dado inventado.
+    let snapshot = match selection.map(|store| store.login_snapshot(&conta)) {
+        Some(Ok(snapshot)) => snapshot,
         Some(Err(error)) => {
             log(
                 "warn",
                 "login",
                 &format!("result=empty_roster account={conta} reason={error}"),
             );
-            Vec::new()
+            LoginSnapshot::default()
         }
-        None => Vec::new(),
+        None => LoginSnapshot::default(),
     };
-    let corpo = character_body(&roster, citizen);
-    reply_with_body(stream, header.key_word, Opcode::CNFAccountLogin, &corpo)
-        .then_some(())
-        .ok_or_else(|| HandshakeError::Io("falha ao escrever _MSG_CNFAccountLogin".to_string()))?;
+    let cargo = cargo_items(&snapshot.vault);
+    let coin = i32::try_from(snapshot.coin).unwrap_or(i32::MAX);
+    let corpo = account_login_body(&snapshot.roster, &cargo, coin, &conta);
+    reply_with_body(
+        stream,
+        header.key_word,
+        ID_SELCHAR,
+        Opcode::CNFAccountLogin,
+        &corpo,
+    )
+    .then_some(())
+    .ok_or_else(|| HandshakeError::Io("falha ao escrever _MSG_CNFAccountLogin".to_string()))?;
 
     Ok((
         HandshakeOk {
@@ -655,8 +677,7 @@ fn serve_selection(
     selection: Option<&SelectionStore>,
     lease: Option<&SessionLease>,
     idle: Duration,
-    citizen: u8,
-) {
+) -> Option<wyd_core::Entity> {
     let _ = stream.set_read_timeout(Some(idle));
     let mut stage = Stage::Selecting;
     let mut ocioso = 0u32;
@@ -678,14 +699,14 @@ fn serve_selection(
                             stage.as_str()
                         ),
                     );
-                    return;
+                    return stage.entity();
                 }
                 continue;
             }
-            Err(_) => return,
+            Err(_) => return stage.entity(),
         }
         let Some(frame) = read_frame(stream, &head, account) else {
-            return;
+            return stage.entity();
         };
         // O cliente está vivo: renovar antes de qualquer trabalho no banco.
         if let Some(lease) = lease {
@@ -732,11 +753,11 @@ fn serve_selection(
             &limpo,
             head[2],
             valid.opcode,
-            Sessao { account, citizen },
+            Sessao { account },
             selection,
             &mut stage,
         ) {
-            return;
+            return stage.entity();
         }
     }
 }
@@ -783,37 +804,80 @@ fn dispatch(
     selection: Option<&SelectionStore>,
     stage: &mut Stage,
 ) -> bool {
-    let Sessao { account, citizen } = sessao;
+    let Sessao { account } = sessao;
     match opcode {
         Opcode::CreateCharacter => {
             let resultado = match selection {
                 Some(store) => create_character(store, frame, account),
                 None => Err(SelectionError::Unavailable),
             };
-            respond(
-                stream,
-                key_word,
-                resultado,
-                Opcode::CNFNewCharacter,
-                Opcode::NewCharacterFail,
-                account,
-                "create",
-            )
+            match resultado {
+                Ok(detalhe) => {
+                    log(
+                        "info",
+                        "character",
+                        &format!("result=ok action=create account={account} {detalhe}"),
+                    );
+                    // O antigo responde `CNFNewCharacter` com a seleção inteira
+                    // (`_MSG_DBCNFNewCharacter` → `MSG_CNFNewCharacter.sel`). O corpo é o
+                    // `SELCHAR` provisório já enviado no login, agora com o personagem novo.
+                    let roster = selection
+                        .and_then(|store| store.roster_inventory(account).ok())
+                        .unwrap_or_default();
+                    let corpo = new_character_body(&roster);
+                    reply_with_body(
+                        stream,
+                        key_word,
+                        ID_NEW_CHARACTER,
+                        Opcode::CNFNewCharacter,
+                        &corpo,
+                    )
+                }
+                Err(error) => {
+                    log(
+                        "warn",
+                        "character",
+                        &format!("result=refused action=create account={account} reason={error}"),
+                    );
+                    reply(stream, key_word, Opcode::NewCharacterFail)
+                }
+            }
         }
         Opcode::DeleteCharacter => {
             let resultado = match selection {
                 Some(store) => delete_character(store, frame, account),
                 None => Err(SelectionError::Unavailable),
             };
-            respond(
-                stream,
-                key_word,
-                resultado,
-                Opcode::CNFDeleteCharacter,
-                Opcode::DeleteCharacterFail,
-                account,
-                "delete",
-            )
+            match resultado {
+                Ok(detalhe) => {
+                    log(
+                        "info",
+                        "character",
+                        &format!("result=ok action=delete account={account} {detalhe}"),
+                    );
+                    // O legado devolve o roster inteiro (`MSG_CNFDeleteCharacter` carrega
+                    // `STRUCT_SELCHAR`): é com ele que o cliente apaga o slot da tela.
+                    let roster = selection
+                        .and_then(|store| store.roster_inventory(account).ok())
+                        .unwrap_or_default();
+                    let corpo = delete_character_body(&roster);
+                    reply_with_body(
+                        stream,
+                        key_word,
+                        ID_DELETE_CHARACTER,
+                        Opcode::CNFDeleteCharacter,
+                        &corpo,
+                    )
+                }
+                Err(error) => {
+                    log(
+                        "warn",
+                        "character",
+                        &format!("result=refused action=delete account={account} reason={error}"),
+                    );
+                    reply(stream, key_word, Opcode::DeleteCharacterFail)
+                }
+            }
         }
         Opcode::CharacterLogin => {
             let resultado = match selection {
@@ -821,16 +885,69 @@ fn dispatch(
                 None => Err(SelectionError::Unavailable),
             };
             match resultado {
-                Ok((detalhe, personagem)) => {
-                    *stage = Stage::InGame;
-                    log(
-                        "info",
-                        "character",
-                        &format!("result=ok action=select account={account} {detalhe}"),
-                    );
-                    // `STRUCT_MOB` do personagem escolhido, do estado persistido.
-                    let corpo = StructMob::from_character(&personagem, citizen).encode();
-                    reply_with_body(stream, key_word, Opcode::CNFCharacterLogin, &corpo)
+                Ok((detalhe, selected)) => {
+                    let personagem = &selected.character;
+                    // Encarna no mundo **antes** de confirmar: recusa do motor vira
+                    // `CharacterLoginFail` e o personagem não fica pela metade.
+                    let entrada = match selection {
+                        Some(store) => store.enter_world(personagem),
+                        None => Ok(None),
+                    };
+                    match entrada {
+                        Ok(entity) => {
+                            let client_id = entity
+                                .map_or(0, |entidade| u16::try_from(entidade.index).unwrap_or(0));
+                            *stage = Stage::InGame {
+                                entity,
+                                selected: Box::new(selected.clone()),
+                                client_id,
+                            };
+                            log(
+                                "info",
+                                "character",
+                                &format!(
+                                    "result=ok action=select account={account} {detalhe} entity={} client_id={client_id}",
+                                    entity.map_or_else(
+                                        || "none".to_string(),
+                                        |e| e.index.to_string()
+                                    )
+                                ),
+                            );
+                            // `STRUCT_MOB` do personagem escolhido: equipamento e mochila
+                            // de `character_items`, nunca do template da classe.
+                            let mut mob = Mob::from_persisted(personagem, &selected.items);
+                            // Atributos, pontos e `LearnedSkill` vêm do banco (`character_scores`
+                            // + `character_learned_skill`), não do template da classe.
+                            crate::characters::apply_progression(&mut mob, &selected.progression);
+                            let client_id = entity
+                                .map_or(0, |entidade| u16::try_from(entidade.index).unwrap_or(0));
+                            let corpo = character_login_body(
+                                &mob,
+                                u16::try_from(personagem.slot).unwrap_or(0),
+                                client_id,
+                                0,
+                                &selected.short_skill,
+                                account,
+                            );
+                            reply_with_body(
+                                stream,
+                                key_word,
+                                ID_SCENE,
+                                Opcode::CNFCharacterLogin,
+                                &corpo,
+                            )
+                        }
+                        Err(error) => {
+                            log(
+                                "warn",
+                                "character",
+                                &format!(
+                                    "result=refused action=enter account={account} reason={error}"
+                                ),
+                            );
+                            reply(stream, key_word, Opcode::CharacterLoginFail)
+                        }
+                    }
                 }
                 Err(error) => {
                     log(
@@ -841,6 +958,82 @@ fn dispatch(
                     reply(stream, key_word, Opcode::CharacterLoginFail)
                 }
             }
+        }
+        // `_MSG_CharacterLogout` (0x0215, C→J): o cliente pediu para sair (voltar à seleção ou
+        // fechar a janela). Responder `CNFCharacterLogout` e encerrar aqui libera a sessão e
+        // enfileira o save **na hora** (`leave_world` + `Drop` do `SessionLease`), sem esperar
+        // o timeout de ociosidade — era o defeito de "cliente fechado continua online".
+        Opcode::CharacterLogout => {
+            log(
+                "info",
+                "logout",
+                &format!(
+                    "result=ok reason=explicit account={account} stage={}",
+                    stage.as_str()
+                ),
+            );
+            reply(stream, key_word, Opcode::CNFCharacterLogout);
+            false
+        }
+        // `_MSG_ApplyBonus`: distribuir ponto de atributo/skill. Responde `UpdateEtc` + `UpdateScore`
+        // (o `SendEtc`/`SendScore` do legado) com o estado gravado no banco.
+        Opcode::ApplyBonus => {
+            let (client_id, aplicado) = match (&*stage, selection) {
+                (
+                    Stage::InGame {
+                        selected,
+                        client_id,
+                        ..
+                    },
+                    Some(store),
+                ) => match ApplyBonus::decode(frame) {
+                    Ok(packet) => match store.apply_bonus(selected, &packet) {
+                        Ok(aplicado) => {
+                            log(
+                                "info",
+                                "bonus",
+                                &format!(
+                                    "result=ok account={account} bonus_type={} detail={} pontos={} skill_bonus={} learned={:#08x}",
+                                    packet.bonus_type,
+                                    packet.detail,
+                                    aplicado.progression.score_bonus,
+                                    aplicado.progression.skill_bonus,
+                                    aplicado.progression.learned_skill
+                                ),
+                            );
+                            (*client_id, aplicado)
+                        }
+                        Err(error) => {
+                            log(
+                                "warn",
+                                "bonus",
+                                &format!(
+                                    "result=refused account={account} bonus_type={} detail={} reason={error}",
+                                    packet.bonus_type, packet.detail
+                                ),
+                            );
+                            return true;
+                        }
+                    },
+                    Err(error) => {
+                        log(
+                            "warn",
+                            "bonus",
+                            &format!("result=refused account={account} reason=layout:{error}"),
+                        );
+                        return true;
+                    }
+                },
+                _ => {
+                    log(
+                        "warn",
+                        "bonus",
+                        &format!("result=refused account={account} reason=not_in_game"),
+                    );
+                    return true;
+                }
+            };
+            send_progress(stream, key_word, client_id, &aplicado.mob)
         }
         // Sem layout portado (UNVERIFIED) ou fora do escopo deste processo: tolerar, registrar
         // e seguir. Fechar a conexão aqui era o defeito que derrubava a sessão.
@@ -868,9 +1061,11 @@ fn create_character(
     let packet = CreateCharacter::decode(frame)
         .map_err(|error| SelectionError::Layout(error.to_string()))?;
     let character = store.create(account, packet.slot, &packet.mob_name, packet.mob_class)?;
+    // `pedido` é o slot que o cliente desenhou; `slot` é o escolhido pelo servidor (o primeiro
+    // livre quando o pedido estava ocupado). A diferença aparece no log, não é silenciosa.
     Ok(format!(
-        "slot={} name={} class={} id={}",
-        character.slot, character.name, character.class, character.id
+        "slot={} pedido={} name={} class={} id={}",
+        character.slot, packet.slot, character.name, character.class, character.id
     ))
 }
 
@@ -894,10 +1089,11 @@ fn select_character(
     store: &SelectionStore,
     frame: &[u8],
     account: &str,
-) -> Result<(String, wyd_db::Character), SelectionError> {
+) -> Result<(String, Selected), SelectionError> {
     let packet =
         CharacterLogin::decode(frame).map_err(|error| SelectionError::Layout(error.to_string()))?;
-    let character = store.select(account, packet.slot)?;
+    let selected = store.select_snapshot(account, packet.slot)?;
+    let character = &selected.character;
     let detalhe = format!(
         "slot={} name={} class={} level={} id={} force={}",
         character.slot,
@@ -907,47 +1103,36 @@ fn select_character(
         character.id,
         packet.force
     );
-    Ok((detalhe, character))
+    Ok((detalhe, selected))
 }
 
-/// Responde o opcode de sucesso ou o de falha do mesmo domínio, com log do motivo.
-fn respond(
-    stream: &mut TcpStream,
-    key_word: u8,
-    resultado: Result<String, SelectionError>,
-    ok_opcode: Opcode,
-    fail_opcode: Opcode,
-    account: &str,
-    action: &str,
-) -> bool {
-    match resultado {
-        Ok(detalhe) => {
-            log(
-                "info",
-                "character",
-                &format!("result=ok action={action} account={account} {detalhe}"),
-            );
-            reply(stream, key_word, ok_opcode)
-        }
-        Err(error) => {
-            log(
-                "warn",
-                "character",
-                &format!("result=refused action={action} account={account} reason={error}"),
-            );
-            reply(stream, key_word, fail_opcode)
-        }
-    }
+/// Envia o estado do personagem ao cliente: `MSG_UpdateEtc` e `MSG_UpdateScore`.
+///
+/// É o par `SendEtc`/`SendScore` do legado, usado quando a progressão muda (bônus e nível).
+/// Os dois levam o `HEADER.ID` do próprio dono (`ClientID` do login).
+pub fn send_progress(stream: &mut TcpStream, key_word: u8, client_id: u16, mob: &Mob) -> bool {
+    let etc = crate::personagens::update_etc_body(mob);
+    let score = crate::personagens::update_score_body(mob);
+    reply_with_body(stream, key_word, client_id, Opcode::UpdateEtc, &etc)
+        && reply_with_body(stream, key_word, client_id, Opcode::UpdateScore, &score)
 }
 
-/// Conta autenticada + canal de origem (o `citizen` do `STRUCT_SELCHAR` é canal + 1).
+/// Conta autenticada nesta conexão (`account` decide o roster e o dono da criação).
 struct Sessao<'a> {
     account: &'a str,
-    citizen: u8,
 }
 
 /// Frame com corpo (`Size = 12 + corpo`), ofuscado com a chave do frame de entrada.
-fn reply_with_body(stream: &mut TcpStream, key_word: u8, opcode: Opcode, body: &[u8]) -> bool {
+///
+/// `id` é o `HEADER.ID` do pacote: o legado envia `ESCENE_FIELD` (30000) no snapshot do
+/// mundo e os ids de seletor nos pacotes de seleção (`Basedef.h`, `IDSelChar`/`IDNewCharacter`).
+fn reply_with_body(
+    stream: &mut TcpStream,
+    key_word: u8,
+    id: u16,
+    opcode: Opcode,
+    body: &[u8],
+) -> bool {
     let mut frame = vec![0u8; HEADER_SIZE + body.len()];
     frame[HEADER_SIZE..].copy_from_slice(body);
     let size = match u16::try_from(frame.len()) {
@@ -959,7 +1144,7 @@ fn reply_with_body(stream: &mut TcpStream, key_word: u8, opcode: Opcode, body: &
         key_word,
         checksum: 0,
         message_type: opcode.wire(),
-        id: 1,
+        id,
         client_tick: 0,
     };
     if cabecalho.encode(&mut frame).is_err() || encode_in_place(&mut frame, key_word).is_err() {

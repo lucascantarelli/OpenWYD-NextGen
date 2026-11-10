@@ -109,6 +109,14 @@ mod tests {
             Ok(())
         }
 
+        async fn release_account_sessions(&self, _login: &str) -> Result<u64, DbError> {
+            Ok(0)
+        }
+
+        async fn live_session_of(&self, _login: &str) -> Result<Option<i16>, DbError> {
+            Ok(None)
+        }
+
         async fn live_sessions(&self, group_id: i16, channel: i16) -> Result<u64, DbError> {
             Ok(self.online.get(&(group_id, channel)).copied().unwrap_or(0))
         }

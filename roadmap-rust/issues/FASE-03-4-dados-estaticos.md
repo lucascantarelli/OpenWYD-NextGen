@@ -104,8 +104,12 @@ abortado com relatório).
 - pre-release-rust.md (FASE 3 §3.2).
 - docs/rust/05-stack-docker.md - arquivos planos legados.
 
-**Status:** 🚧 (2026-11-08) — esquema e seed de **mundo** entregues (0007–0012, verificado
-em Postgres); falta a carga/validação no boot, que depende da FASE-04-3 (`sqlx`).
+**Status:** ✅ (2026-11-09, revisão) — esquema/seed entregues (0007–0024, 31 migrations) **e**
+carga validada no boot: `wyd_core::ports::content` (validação pura) + `impl ContentSource for
+PgBackend` em `crates/wyd-db/src/repo/content.rs`, com `crates/wyd-core/tests/content.rs` (7
+casos) e `conteudo_estatico_carrega_e_aborta_com_dado_corrompido` em `tests/pg.rs`. O que resta
+não é esta issue: é o **processo do canal chamar o loader** — `FASE-03-7` (hoje o binário não
+depende de `wyd-core`).
 
 ## Subtasks
 

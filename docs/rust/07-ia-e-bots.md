@@ -26,7 +26,7 @@ seguem sem código.
 | IA de NPC (aggro/perseguição/ataque/fuga/retorno) | **executada (2026-11-08)** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); matemática de ameaça copiada de `crates/wyd-sim/src/formula/threat.rs` e presa por golden em `tests/npc.rs`; tabela `npc_behavior` continua ausente (perfil vem por parâmetro) |
 | Bots jogáveis (cliente falso) | **planejado** | ADR-0010 camada B; crate `crates/wyd-bots` (nova) — `FASE-15-3` |
 | LLM para diálogo/quest/nomes | **lacuna (bloqueada por decisão do dono)** | nenhum doc cita LLM; custo/chave exigem aprovação → §7 |
-| Tabelas `npc_behavior`, `npc_dialogue`, `llm_job` | **planejado (não criado)** | `banco-catalogo.md` modela 59 tabelas de jogo/conteúdo (§6.5) |
+| Tabelas `npc_behavior`, `npc_dialogue`, `llm_job` | **planejado (não criado)** | `banco-catalogo.md` modela 69 tabelas de jogo/conteúdo (§6.5) |
 | Stats de monstro (insumo da IA) | **lacuna** | `mob_template_stat`/`mob_template_equip` vazias — `crates/wyd-db/migrations/README.md` §Lacunas; por isso `NpcProfile` é informado pelo chamador, não derivado do banco |
 
 ## 3. Por que a resposta parecia "sim"

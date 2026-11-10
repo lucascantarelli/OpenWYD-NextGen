@@ -68,6 +68,15 @@ Saída esperada: `test result: ok`; bench de iteração publicado como baseline.
 > Decisão registrada: ADR-0004 (`docs/arquitetura/adr/0004-ecs-manual-diferido.md`) —
 > SoA manual até o bench mandar o contrário; `hecs`/`bevy_ecs`/`bumpalo` diferidos.
 
+## Fechamento (2026-11-09, revisão)
+
+Os três itens que a nota de 2026-11-07 deixava abertos foram entregues e provados:
+`src/systems/` existe (`movement`, `combat`, `skill`, `inventory`, `npc`, `compose`), a ADR do
+ECS é a **ADR-0004** (SoA manual, decisão mantida) e o bench baseline está no bloco
+“fechamento: lote tudo-ou-nada + baseline SoA” (10 000 entidades, p50 3 381,70 µs). Não há
+item aberto: o que falta para o mundo existir é o **processo** rodar o tick (`FASE-03-7`), não
+o ECS.
+
 ## Critérios de aceite
 
 - [x] 4 tipos de entidade como componentes contíguos; ADR da escolha do ECS.

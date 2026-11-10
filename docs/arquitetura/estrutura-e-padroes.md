@@ -14,6 +14,7 @@
 ```
 wyd-launcher ──► (nenhuma crate interna)
 wyd-bots     ──► wyd-sim, wyd-net, wyd-protocol   # PLANEJADO (ADR-0010, FASE-15-3)
+wyd-server   ──► wyd-core, wyd-net, wyd-protocol, wyd-db, wyd-admin   # raiz de composição (§16, ADR-0022)
 wyd-admin    ──► wyd-db
 wyd-db       ──► (independente)
 wyd-sim      ──► wyd-protocol
@@ -29,6 +30,10 @@ Regras:
 2. `wyd-protocol` não conhece regra de jogo: só bytes, layout e erro de parse.
 3. Sem ciclo, sem feature flag para "furar" a direção.
 4. Cold Path (admin/db) pode depender de contratos do core, nunca do estado vivo.
+5. **Só `wyd-server` conhece todas as crates** (raiz de composição, ADR-0022 §1): ele
+   monta o monólito de um canal. `wyd-core` continua sem saber o que é Postgres/socket e
+   `wyd-db` sem saber o que é transporte; dependência nova entre crates fora deste DAG
+   exige ADR.
 
 ## 2. Estrutura canônica de uma crate
 
@@ -430,3 +435,49 @@ Regra: `tools/` é análise/geração, nunca runtime; script novo entra no
 `README.md` do seu diretório. Raiz segue `visao-pastas.md` §1 (só manifestos e
 contratos) — referência normativa, sem duplicação aqui. Diretório vazio sem
 dono continua proibido: `.gitkeep` só via issue.
+
+## 16. `wyd-server` — árvore executada (ADR-0022, FASE-03/07/08)
+
+Raiz de composição do monólito **de um canal**. Não é "mais uma lib": é o único lugar que
+pode conhecer `wyd-core` + `wyd-net` + `wyd-db` + `wyd-admin` ao mesmo tempo. Lógica de jogo
+continua no `wyd-core`; regra de persistência no `wyd-db`; este crate só **liga** as peças e
+expõe as superfícies de processo.
+
+```
+crates/wyd-server/
+├── Cargo.toml            # deps: protocol, core, net (feature metrics), db, admin, tokio (borda)
+├── src/
+│   ├── lib.rs            # fachada: invariantes do processo em //!
+│   ├── main.rs           # boot: env → migrations → pool → listeners → loops; `--healthcheck`
+│   ├── cpsock.rs         # aceite CPSock, handshake, cerca de sessão, limite por IP, seleção
+│   ├── auth.rs           # senha (Argon2id) + PIN numérico com bloqueio persistido
+│   ├── characters.rs     # Create/Delete/CharacterLogin com autoridade no Postgres
+│   ├── personagens.rs    # STRUCT_SELCHAR/STRUCT_MOB a partir do banco
+│   ├── world.rs          # tick do canal (03-7): Engine do core, grade, métricas reais e parada
+│   │                     # limpa; entrada/saída do personagem e save (03-8)
+│   ├── session.rs        # sessão única por conta entre canais (0030)
+│   ├── channels.rs       # World: canais habilitados e papéis (normal/verde)
+│   ├── status.rs         # `/serv00.htm` + `/health` + sonda UDP :8281
+│   ├── logs.rs           # log estruturado do processo (event=...)
+│   └── metrics.rs        # métricas do processo (uptime, canais, status, IP-limit)
+└── tests/
+    ├── handshake.rs      # INITCODE, versão, checksum (inclusive contra servidor vivo)
+    ├── tick_processo.rs  # tick real, métricas do motor e parada limpa (03-7, sem banco)
+    ├── login.rs          # senha, PIN, bloqueio, sem segredo no log
+    ├── pin_*.rs          # persistência e troca do PIN entre processos
+    ├── personagens_crud.rs / selchar.rs / selecao.rs
+    ├── sessao_unica.rs / limite_ip.rs / status_udp.rs
+    └── portal_pin.rs     # troca de PIN pelo portal contra banco real
+```
+
+Regras que esta árvore carrega:
+
+1. **Sem regra de jogo aqui.** `main.rs`/`cpsock.rs` chamam sistemas do core; não calculam
+   dano, drop, cooldown nem inventário.
+2. **Um processo por canal** (ADR-0022 §7): canal vem de `WYD_SERVER_CHANNEL` + `server_channel`,
+   nunca de build nem de porta nova (o cliente fixa 8281).
+3. **Sem I/O no tick.** Listeners e banco vivem em threads/tokio próprios; o tick (FASE-03-7)
+   recebe intenção por fila e devolve evento por fila.
+4. **Migrations no boot** (ADR-0024) antes do pool; DDL nunca no tick.
+5. **Teste que exige banco pula com aviso** quando `WYD_TEST_DATABASE_URL`/`DATABASE_URL`
+   não existe — `cargo test --workspace` tem de passar em máquina limpa.

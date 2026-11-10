@@ -11,8 +11,8 @@
 
 ## 1. Resumo
 
-- migrations: **31** · última versão: **31**
-- tabelas: **69** · colunas: **519** · índices: **33** · funções: **1**
+- migrations: **36** · última versão: **36**
+- tabelas: **74** · colunas: **540** · índices: **33** · funções: **1**
 - domínios: **17** · tabelas com dado provisório: **24**
 
 | Domínio | Tabelas |
@@ -23,12 +23,12 @@
 | canal de servidor | `server_channel` |
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
-| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim` |
+| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
-| inventário | `character_items`, `vault_items` |
+| inventário | `character_items`, `vault_items`, `character_short_skill` |
 | moderação | `account_moderation` |
 | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone`, `map_definition`, `teleport_route` |
-| personagem | `characters` |
+| personagem | `characters`, `character_scores`, `character_learned_skill`, `character_special` |
 | ponte web→jogo | `delivery_queue` |
 | progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
@@ -1522,6 +1522,97 @@
 | `blocked_by` | `bigint` | sim |
 | `blocked_at` | `timestamp with time zone` | sim |
 
+### `character_scores`
+
+- **Arquivo:** `0032_character_scores.sql` · **Domínio:** personagem · **Estado:** confirmado
+- **Fonte:** Basedef.cpp `BaseSIDCHM`/`BASE_GetHpMp`/`BASE_GetBonusScorePoint` + tmserver/internal/level/level.go
+- **Nota:** Atributos-base e pontos livres no nível 1; HP/MP máximos derivam de Con/Int e do incremento da classe.
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_scores_strength`, `character_scores_intelligence`, `character_scores_dexterity`, `character_scores_constitution`, `character_scores_score_bonus`, `character_scores_skill_bonus`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `strength` | `smallint` | não |
+| `intelligence` | `smallint` | não |
+| `dexterity` | `smallint` | não |
+| `constitution` | `smallint` | não |
+| `score_bonus` | `integer` | não |
+| `skill_bonus` | `integer` | não |
+
+### `character_short_skill`
+
+- **Arquivo:** `0033_character_short_skill.sql` · **Domínio:** inventário · **Estado:** confirmado
+- **Fonte:** CFileDB.cpp `memset(ShortSkill, -1, 16)` + protocolo.md §5.1 (`ShortSkill[16]@1034`)
+- **Nota:** `ShortSkill[16]` persistido do personagem; linha ausente (personagem anterior à 0033) é materializada com `0xFF` na primeira leitura.
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_short_skill_len`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `short_skill` | `bytea` | não |
+
+### `account_wallet`
+
+- **Arquivo:** `0034_account_wallet.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** ProcessDBMessage.cpp `MSG_DBCNFAccountLogin.Coin` + protocolo.md §5.1
+- **Nota:** `Coin` da conta (distinto de `characters.gold`); teto `i32::MAX` porque o campo do fio é `int`. Conta sem linha responde zero.
+- **PK:** `account_id`
+- **FK:** `account_id` → `accounts`
+- **CHECK:** `account_wallet_coin`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `account_id` | `bigint` | não |
+| `coin` | `bigint` | não |
+
+### `character_learned_skill`
+
+- **Arquivo:** `0035_character_learned_skill.sql` · **Domínio:** personagem · **Estado:** confirmado
+- **Fonte:** _MSG_ApplyBonus.cpp (`LearnedSkill` = máscara de 24 bits) + protocolo.md §5.1 (`Learn` no `MSG_UpdateEtc`)
+- **Nota:** Skills aprendidas por personagem (`g_pSpell[24*classe+pos]`, 24 bits). Linha ausente = nenhuma skill aprendida; nunca bit inventado.
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_learned_skill_bits`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `learned_skill` | `bigint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
+### `character_special`
+
+- **Arquivo:** `0036_character_special.sql` · **Domínio:** personagem · **Estado:** confirmado
+- **Fonte:** _MSG_ApplyBonus.cpp (`Special[4]` + `SpecialBonus`) + protocolo.md §5.2 (tipo 1)
+- **Nota:** Maestria por atributo e pontos de maestria; `BaseMob` traz tudo zero. Teto 200 (255 com a skill de linha 7/15/23 aprendida) e teto dinâmico `3*(nível+1)>>1` são regra de servidor.
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_special_range`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `special_0` | `smallint` | não |
+| `special_1` | `smallint` | não |
+| `special_2` | `smallint` | não |
+| `special_3` | `smallint` | não |
+| `special_bonus` | `smallint` | não |
+| `updated_at` | `timestamp with time zone` | não |
+
 ## 3. Decisões provisórias (D-Bxx)
 
 Mesmo padrão do registro `D-xx` de `docs/arquitetura/matematica-sim.md`: decisão, escolha,
@@ -1605,6 +1696,11 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0029 | `0029_canal_de_servidor.sql` | DDL | `server_channel` |
 | 0030 | `0030_sessao_unica.sql` | DDL | `character_session` |
 | 0031 | `0031_moderacao.sql` | DDL | `account_moderation` |
+| 0032 | `0032_character_scores.sql` | DDL | `character_scores` |
+| 0033 | `0033_character_short_skill.sql` | DDL | `character_short_skill` |
+| 0034 | `0034_account_wallet.sql` | DDL | `account_wallet` |
+| 0035 | `0035_character_learned_skill.sql` | DDL | `character_learned_skill` |
+| 0036 | `0036_character_special.sql` | DDL | `character_special` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

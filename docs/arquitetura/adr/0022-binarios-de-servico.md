@@ -79,9 +79,12 @@ responde de verdade — `/api/health` chama `item_catalog/listItems`, não um `p
 - **Monólito** publica os nomes já fechados na FASE-06-1 (`wyd_ticks_total`,
   `wyd_tick_duration_microseconds`, `wyd_entities_active`, `wyd_packets_total`,
   `wyd_packets_rejected_total{reason}`, `wyd_handshakes_total`, `wyd_connections_pending`,
-  `wyd_sessions_open`, `process_resident_memory_bytes`) — **nenhum nome novo**.
+  `wyd_sessions_open`, `process_resident_memory_bytes`) — **nenhum nome novo**. A FASE-03-7
+  acrescentou só `wyd_tick_budget_microseconds` (§7), porque o orçamento do tick depende de
+  `WYD_TICK_HZ` (20–50 Hz) e um limiar fixo mentiria no alerta.
 - Scrape: um job por serviço no `monitoring/prometheus/prometheus.yml`; o job `wyd-server` segue
-  por descoberta de arquivo (`targets/wyd-server.json`) e continua vazio até o `tmserver` existir.
+  por descoberta de arquivo (`targets/wyd-server.json`), com um alvo por canal e o label `canal`
+  que os painéis agrupam.
 
 ### 5. Runtime async só na borda do Cold Path
 
@@ -138,9 +141,13 @@ linhas de banco compartilhadas; `docs/wyd/canais-e-cidadania.md` §5). Decidimos
   coluna Canal do cliente); os demais canais expõem o status só na rede interna, para `/health`;
 - **métricas novas declaradas aqui** (o resto vem do contrato da FASE-06-1):
   `wyd_server_uptime_seconds`, `wyd_server_channels_published`, `wyd_status_requests_total`,
-  `wyd_status_health_failures_total`. `wyd_ticks_total`/`wyd_tick_duration_microseconds`/
-  `wyd_entities_active` **não** são publicados enquanto o loop de `wyd-core` não roda no processo —
-  publicá-los zerados seria mentira.
+  `wyd_status_health_failures_total`.`wyd_ticks_total`/`wyd_tick_duration_microseconds`/`wyd_entities_active` **não** eram
+  publicados enquanto o loop de `wyd-core` não rodava no processo — publicá-los zerados seria
+  mentira. Desde a **FASE-03-7** (2026-11-09) o `Engine` roda na thread `wyd-tick`
+  (`crates/wyd-server/src/world.rs`) e os três passam a vir do registro real do motor,
+  anexado ao `/metrics` antes do primeiro scrape. O mesmo registro publica
+  `wyd_tick_budget_microseconds` (`1e6 / WYD_TICK_HZ`), que o painel de orçamento e as regras
+  `WydTickP99Alto`/`WydTickAcimaDoOrcamento` comparam com o P99 de cada canal.
 
 Consequências: custo por canal é um container (barato), a capacidade de “canal verde” é
 política de operação (qual IP recebe jogador novo), e a lista de canais passa a ser auditável no
