@@ -8,11 +8,16 @@
 //! `delivery_queue` é lida **e baixada** aqui (`pending`/`mark_claimed`): a web enfileira,
 //! o servidor drena — a única ponte permitida (`AGENTS.md` §3.7).
 
+use std::collections::HashMap;
+
 use crate::error::DbError;
-use crate::model::{Account, AccountModeration, Character, Role};
+use crate::model::{
+    Account, AccountModeration, Character, ItemRow, Progression, Role, SHORT_SKILL_LEN,
+};
 use crate::pool::pg::{map_error, PgBackend};
 use crate::repo::accounts::CredentialRecord;
 use crate::repo::audit::{AuditRow, AuditTrail, NewAuditEntry};
+use crate::repo::content::{SkillRule, SkillRules};
 use crate::repo::economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 use crate::repo::sessions::ClaimOutcome;
 use crate::repo::{Accounts, Characters, Grant, Grants, Sessions};
@@ -183,6 +188,59 @@ impl Accounts for PgBackend {
         Ok(())
     }
 
+    async fn store_vault_items(&self, account_id: i64, items: &[ItemRow]) -> Result<(), DbError> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        let mut tx = self.begin().await?;
+        for item in items {
+            sqlx::query(
+                "INSERT INTO vault_items \
+                 (account_id, slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) \
+                 ON CONFLICT (account_id, slot) DO UPDATE SET \
+                 item_id = EXCLUDED.item_id, qty = EXCLUDED.qty, flags = EXCLUDED.flags, \
+                 refine = EXCLUDED.refine, ancient = EXCLUDED.ancient, \
+                 gem_effect = EXCLUDED.gem_effect, gem_value = EXCLUDED.gem_value",
+            )
+            .bind(account_id)
+            .bind(i16::try_from(item.slot).unwrap_or(i16::MAX))
+            .bind(i32::try_from(item.item_id).unwrap_or(0))
+            .bind(i32::try_from(item.qty).unwrap_or(1))
+            .bind(i32::try_from(item.flags).unwrap_or(0))
+            .bind(i16::try_from(item.refine).unwrap_or(0))
+            .bind(item.ancient)
+            .bind(i16::try_from(item.gem_effect).unwrap_or(0))
+            .bind(i16::try_from(item.gem_value).unwrap_or(0))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("accounts.store_vault_items", "vault_items"))?;
+        }
+        tx.commit()
+            .await
+            .map_err(map_error("accounts.store_vault_items", "vault_items"))?;
+        Ok(())
+    }
+
+    async fn set_account_coin(&self, account_id: i64, coin: i64) -> Result<(), DbError> {
+        if !(0..=i64::from(i32::MAX)).contains(&coin) {
+            return Err(DbError::ConstraintViolation {
+                table: "account_wallet",
+                constraint: "account_wallet_coin",
+            });
+        }
+        sqlx::query(
+            "INSERT INTO account_wallet (account_id, coin) VALUES ($1, $2) \
+             ON CONFLICT (account_id) DO UPDATE SET coin = EXCLUDED.coin",
+        )
+        .bind(account_id)
+        .bind(coin)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("accounts.set_account_coin", "account_wallet"))?;
+        Ok(())
+    }
+
     async fn set_pin_hash(&self, login: &str, pin_hash: &str) -> Result<(), DbError> {
         let feito = sqlx::query("UPDATE accounts SET pin_hash = $2 WHERE login = $1")
             .bind(login)
@@ -218,6 +276,33 @@ impl Accounts for PgBackend {
         .await
         .map_err(map_error("accounts.set_credentials", "accounts"))?;
         account_row(&row)
+    }
+
+    async fn vault_items(&self, account_id: i64) -> Result<Vec<ItemRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value \
+             FROM vault_items WHERE account_id = $1 ORDER BY slot",
+        )
+        .bind(account_id)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("accounts.vault_items", "vault_items"))?;
+        rows.iter().map(item_row).collect()
+    }
+
+    async fn account_coin(&self, account_id: i64) -> Result<Option<i64>, DbError> {
+        let row = sqlx::query("SELECT coin FROM account_wallet WHERE account_id = $1")
+            .bind(account_id)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("accounts.account_coin", "account_wallet"))?;
+        row.map(|row| {
+            row.try_get::<i64, _>("coin")
+                .map_err(|_| DbError::Transport {
+                    op: "account_wallet.decode",
+                })
+        })
+        .transpose()
     }
 
     fn moderation_state<'a>(
@@ -366,6 +451,45 @@ impl Characters for PgBackend {
             .map_err(map_error("characters.list_by_account", "characters"))?;
         let mut personagens: Vec<Character> =
             rows.iter().map(character_row).collect::<Result<_, _>>()?;
+        // Atributos moram na tabela 1:1 `character_scores` (0032): um SELECT só para a
+        // conta. Personagem antigo sem linha fica com os defaults zero, nunca com lixo.
+        let scores = sqlx::query(
+            "SELECT cs.character_id, cs.strength, cs.intelligence, cs.dexterity, \
+             cs.constitution, cs.score_bonus, cs.skill_bonus \
+             FROM character_scores cs JOIN characters c ON c.id = cs.character_id \
+             WHERE c.account_id = $1 AND c.deleted_at IS NULL",
+        )
+        .bind(account_id)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("characters.list_scores", "character_scores"))?;
+        let mut por_id = HashMap::with_capacity(scores.len());
+        for row in &scores {
+            let decode = |_| DbError::Transport {
+                op: "character_scores.decode",
+            };
+            por_id.insert(
+                row.try_get::<i64, _>("character_id").map_err(decode)?,
+                (
+                    i64::from(row.try_get::<i16, _>("strength").map_err(decode)?),
+                    i64::from(row.try_get::<i16, _>("intelligence").map_err(decode)?),
+                    i64::from(row.try_get::<i16, _>("dexterity").map_err(decode)?),
+                    i64::from(row.try_get::<i16, _>("constitution").map_err(decode)?),
+                    i64::from(row.try_get::<i32, _>("score_bonus").map_err(decode)?),
+                    i64::from(row.try_get::<i32, _>("skill_bonus").map_err(decode)?),
+                ),
+            );
+        }
+        for personagem in &mut personagens {
+            if let Some((forca, int, dex, con, pontos, skills)) = por_id.get(&personagem.id) {
+                personagem.strength = *forca;
+                personagem.intelligence = *int;
+                personagem.dexterity = *dex;
+                personagem.constitution = *con;
+                personagem.score_bonus = *pontos;
+                personagem.skill_bonus = *skills;
+            }
+        }
         // Guilda é relação (`guild_members`), não coluna: um SELECT só para a conta.
         let guildas = sqlx::query(
             "SELECT gm.character_id, g.id, g.name FROM guild_members gm \
@@ -427,6 +551,7 @@ impl Characters for PgBackend {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \
              RETURNING {CHARACTER_COLUMNS}"
         );
+        let mut tx = self.begin().await?;
         let row = sqlx::query(&sql)
             .bind(character.account_id)
             .bind(i16::try_from(character.slot).unwrap_or(i16::MAX))
@@ -442,10 +567,39 @@ impl Characters for PgBackend {
             .bind(i32::try_from(character.hp_max).unwrap_or(0))
             .bind(i32::try_from(character.mp_max).unwrap_or(0))
             .bind(i32::try_from(character.pvp_points).unwrap_or(0))
-            .fetch_one(self.pool())
+            .fetch_one(&mut *tx)
             .await
             .map_err(map_error("characters.create_character", "characters"))?;
-        character_row(&row)
+        let id: i64 = row
+            .try_get("id")
+            .map_err(map_error("characters.create_character.id", "characters"))?;
+        sqlx::query(
+            "INSERT INTO character_scores \
+             (character_id, strength, intelligence, dexterity, constitution, \
+              score_bonus, skill_bonus) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(id)
+        .bind(i16::try_from(character.strength).unwrap_or(0))
+        .bind(i16::try_from(character.intelligence).unwrap_or(0))
+        .bind(i16::try_from(character.dexterity).unwrap_or(0))
+        .bind(i16::try_from(character.constitution).unwrap_or(0))
+        .bind(i32::try_from(character.score_bonus).unwrap_or(0))
+        .bind(i32::try_from(character.skill_bonus).unwrap_or(0))
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("characters.create_scores", "character_scores"))?;
+        tx.commit()
+            .await
+            .map_err(map_error("characters.create_commit", "characters"))?;
+        let mut criado = character_row(&row)?;
+        criado.strength = character.strength;
+        criado.intelligence = character.intelligence;
+        criado.dexterity = character.dexterity;
+        criado.constitution = character.constitution;
+        criado.score_bonus = character.score_bonus;
+        criado.skill_bonus = character.skill_bonus;
+        Ok(criado)
     }
 
     async fn soft_delete(&self, id: i64) -> Result<(), DbError> {
@@ -464,6 +618,280 @@ impl Characters for PgBackend {
             });
         }
         Ok(())
+    }
+
+    async fn items(&self, character_id: i64) -> Result<Vec<ItemRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value \
+             FROM character_items WHERE character_id = $1 ORDER BY slot",
+        )
+        .bind(character_id)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("characters.items", "character_items"))?;
+        rows.iter().map(item_row).collect()
+    }
+
+    async fn insert_items(&self, character_id: i64, items: &[ItemRow]) -> Result<(), DbError> {
+        if items.is_empty() {
+            return Ok(());
+        }
+        // Uma transação para o conjunto: ou o inventário inicial entra inteiro, ou nada.
+        let mut tx = self.begin().await?;
+        for item in items {
+            sqlx::query(
+                "INSERT INTO character_items \
+                 (character_id, slot, item_id, qty, flags, refine, ancient, gem_effect, gem_value) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) \
+                 ON CONFLICT (character_id, slot) DO NOTHING",
+            )
+            .bind(character_id)
+            .bind(i16::try_from(item.slot).unwrap_or(i16::MAX))
+            .bind(i32::try_from(item.item_id).unwrap_or(0))
+            .bind(i32::try_from(item.qty).unwrap_or(1))
+            .bind(i32::try_from(item.flags).unwrap_or(0))
+            .bind(i16::try_from(item.refine).unwrap_or(0))
+            .bind(item.ancient)
+            .bind(i16::try_from(item.gem_effect).unwrap_or(0))
+            .bind(i16::try_from(item.gem_value).unwrap_or(0))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("characters.insert_items", "character_items"))?;
+        }
+        tx.commit()
+            .await
+            .map_err(map_error("characters.insert_items", "character_items"))?;
+        Ok(())
+    }
+
+    async fn short_skill(
+        &self,
+        character_id: i64,
+    ) -> Result<Option<[u8; SHORT_SKILL_LEN]>, DbError> {
+        let row =
+            sqlx::query("SELECT short_skill FROM character_short_skill WHERE character_id = $1")
+                .bind(character_id)
+                .fetch_optional(self.pool())
+                .await
+                .map_err(map_error("characters.short_skill", "character_short_skill"))?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let bytes: Vec<u8> = row.try_get("short_skill").map_err(|_| DbError::Transport {
+            op: "character_short_skill.decode",
+        })?;
+        // O CHECK do banco garante 16 bytes; contagem divergente é dado corrompido.
+        let skill: [u8; SHORT_SKILL_LEN] =
+            bytes.try_into().map_err(|_| DbError::ConstraintViolation {
+                table: "character_short_skill",
+                constraint: "character_short_skill_len",
+            })?;
+        Ok(Some(skill))
+    }
+
+    async fn set_short_skill(
+        &self,
+        character_id: i64,
+        skill: &[u8; SHORT_SKILL_LEN],
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO character_short_skill (character_id, short_skill) VALUES ($1, $2) \
+             ON CONFLICT (character_id) DO UPDATE SET short_skill = EXCLUDED.short_skill",
+        )
+        .bind(character_id)
+        .bind(skill.as_slice())
+        .execute(self.pool())
+        .await
+        .map_err(map_error(
+            "characters.set_short_skill",
+            "character_short_skill",
+        ))?;
+        Ok(())
+    }
+
+    async fn progression(&self, character_id: i64) -> Result<Progression, DbError> {
+        let row = sqlx::query(
+            // Atributos e pontos moram em `character_scores` (0032); vitais e ouro em
+            // `characters`; `LearnedSkill` (0035) e maestria/`SpecialBonus` (0036) em
+            // tabelas 1:1. Sem linha, maestria e pontos valem zero — o `BaseMob`.
+            "SELECT cs.strength::bigint AS strength, cs.intelligence::bigint AS intelligence, \
+                    cs.dexterity::bigint AS dexterity, cs.constitution::bigint AS constitution, \
+                    c.hp_max::bigint AS hp_max, c.mp_max::bigint AS mp_max, \
+                    c.hp::bigint AS hp, c.mp::bigint AS mp, c.gold, \
+                    c.level::bigint AS level, c.exp, \
+                    cs.score_bonus::bigint AS score_bonus, cs.skill_bonus::bigint AS skill_bonus, \
+                    COALESCE(s.learned_skill, 0) AS learned_skill, \
+                    COALESCE(sp.special_0, 0)::bigint AS special_0, \
+                    COALESCE(sp.special_1, 0)::bigint AS special_1, \
+                    COALESCE(sp.special_2, 0)::bigint AS special_2, \
+                    COALESCE(sp.special_3, 0)::bigint AS special_3, \
+                    COALESCE(sp.special_bonus, 0)::bigint AS special_bonus \
+             FROM characters c \
+             JOIN character_scores cs ON cs.character_id = c.id \
+             LEFT JOIN character_learned_skill s ON s.character_id = c.id \
+             LEFT JOIN character_special sp ON sp.character_id = c.id \
+             WHERE c.id = $1 AND c.deleted_at IS NULL",
+        )
+        .bind(character_id)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("characters.progression", "characters"))?;
+        let Some(row) = row else {
+            return Err(DbError::NotFound {
+                entity: "character",
+                id: character_id,
+            });
+        };
+        let op = "characters.progression.decode";
+        let decode = |_| DbError::Transport { op };
+        Ok(Progression {
+            level: row.try_get("level").map_err(decode)?,
+            exp: row.try_get("exp").map_err(decode)?,
+            strength: row.try_get("strength").map_err(decode)?,
+            intelligence: row.try_get("intelligence").map_err(decode)?,
+            dexterity: row.try_get("dexterity").map_err(decode)?,
+            constitution: row.try_get("constitution").map_err(decode)?,
+            hp_max: row.try_get("hp_max").map_err(decode)?,
+            mp_max: row.try_get("mp_max").map_err(decode)?,
+            hp: row.try_get("hp").map_err(decode)?,
+            mp: row.try_get("mp").map_err(decode)?,
+            gold: row.try_get("gold").map_err(decode)?,
+            score_bonus: row.try_get("score_bonus").map_err(decode)?,
+            skill_bonus: row.try_get("skill_bonus").map_err(decode)?,
+            learned_skill: row.try_get("learned_skill").map_err(decode)?,
+            special: [
+                row.try_get("special_0").map_err(decode)?,
+                row.try_get("special_1").map_err(decode)?,
+                row.try_get("special_2").map_err(decode)?,
+                row.try_get("special_3").map_err(decode)?,
+            ],
+            special_bonus: row.try_get("special_bonus").map_err(decode)?,
+        })
+    }
+
+    async fn store_progression(
+        &self,
+        character_id: i64,
+        progression: &Progression,
+    ) -> Result<(), DbError> {
+        let mut tx = self.begin().await?;
+        let feito = sqlx::query(
+            "UPDATE characters SET hp_max = $2::int, mp_max = $3::int, hp = $4::int, \
+                    mp = $5::int, gold = $6::bigint, level = $7::int, exp = $8::bigint, \
+                    updated_at = now() \
+             WHERE id = $1 AND deleted_at IS NULL",
+        )
+        .bind(character_id)
+        .bind(i32::try_from(progression.hp_max).unwrap_or(0))
+        .bind(i32::try_from(progression.mp_max).unwrap_or(0))
+        .bind(i32::try_from(progression.hp).unwrap_or(0))
+        .bind(i32::try_from(progression.mp).unwrap_or(0))
+        .bind(progression.gold)
+        .bind(i32::try_from(progression.level).unwrap_or(1))
+        .bind(progression.exp)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("characters.store_progression", "characters"))?;
+        if feito.rows_affected() == 0 {
+            return Err(DbError::NotFound {
+                entity: "character",
+                id: character_id,
+            });
+        }
+        let atualizado = sqlx::query(
+            "UPDATE character_scores SET strength = $2::int, intelligence = $3::int, \
+                    dexterity = $4::int, constitution = $5::int, score_bonus = $6::int, \
+                    skill_bonus = $7::int \
+             WHERE character_id = $1",
+        )
+        .bind(character_id)
+        .bind(i32::try_from(progression.strength).unwrap_or(0))
+        .bind(i32::try_from(progression.intelligence).unwrap_or(0))
+        .bind(i32::try_from(progression.dexterity).unwrap_or(0))
+        .bind(i32::try_from(progression.constitution).unwrap_or(0))
+        .bind(i32::try_from(progression.score_bonus).unwrap_or(0))
+        .bind(i32::try_from(progression.skill_bonus).unwrap_or(0))
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error(
+            "characters.store_progression",
+            "character_scores",
+        ))?;
+        if atualizado.rows_affected() == 0 {
+            return Err(DbError::NotFound {
+                entity: "character_scores",
+                id: character_id,
+            });
+        }
+        sqlx::query(
+            "INSERT INTO character_learned_skill (character_id, learned_skill) VALUES ($1, $2) \
+             ON CONFLICT (character_id) DO UPDATE SET \
+             learned_skill = EXCLUDED.learned_skill, updated_at = now()",
+        )
+        .bind(character_id)
+        .bind(progression.learned_skill)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error(
+            "characters.store_progression",
+            "character_learned_skill",
+        ))?;
+        sqlx::query(
+            "INSERT INTO character_special \
+             (character_id, special_0, special_1, special_2, special_3, special_bonus) \
+             VALUES ($1, $2, $3, $4, $5, $6) \
+             ON CONFLICT (character_id) DO UPDATE SET \
+             special_0 = EXCLUDED.special_0, special_1 = EXCLUDED.special_1, \
+             special_2 = EXCLUDED.special_2, special_3 = EXCLUDED.special_3, \
+             special_bonus = EXCLUDED.special_bonus, updated_at = now()",
+        )
+        .bind(character_id)
+        .bind(i16::try_from(progression.special[0]).unwrap_or(0))
+        .bind(i16::try_from(progression.special[1]).unwrap_or(0))
+        .bind(i16::try_from(progression.special[2]).unwrap_or(0))
+        .bind(i16::try_from(progression.special[3]).unwrap_or(0))
+        .bind(i16::try_from(progression.special_bonus).unwrap_or(0))
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error(
+            "characters.store_progression",
+            "character_special",
+        ))?;
+        tx.commit()
+            .await
+            .map_err(map_error("characters.store_progression", "characters"))?;
+        Ok(())
+    }
+}
+
+impl SkillRules for PgBackend {
+    async fn skill_rule(&self, item_index: i64) -> Result<Option<SkillRule>, DbError> {
+        let row = sqlx::query(
+            "SELECT s.skill_point::bigint AS skill_point, \
+                    COALESCE(i.req_level, 0)::bigint AS req_level, \
+                    COALESCE(i.req_int, 0)::bigint AS req_int, \
+                    COALESCE(i.req_dex, 0)::bigint AS req_dex, \
+                    COALESCE(i.req_con, 0)::bigint AS req_con \
+             FROM skill_catalog s \
+             LEFT JOIN item_catalog i ON i.item_index = 5000 + s.skill_index \
+             WHERE s.skill_index = $1 - 5000",
+        )
+        .bind(i32::try_from(item_index).unwrap_or(-1))
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("content.skill_rule", "skill_catalog"))?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let op = "content.skill_rule.decode";
+        let decode = |_| DbError::Transport { op };
+        Ok(Some(SkillRule {
+            skill_point: row.try_get("skill_point").map_err(decode)?,
+            req_level: row.try_get("req_level").map_err(decode)?,
+            req_int: row.try_get("req_int").map_err(decode)?,
+            req_dex: row.try_get("req_dex").map_err(decode)?,
+            req_con: row.try_get("req_con").map_err(decode)?,
+        }))
     }
 }
 
@@ -487,6 +915,22 @@ fn character_row(row: &PgRow) -> Result<Character, DbError> {
         mp_max: i64::from(row.try_get::<i32, _>("mp_max").map_err(decode)?),
         pvp_points: i64::from(row.try_get::<i32, _>("pvp_points").map_err(decode)?),
         ..Character::default()
+    })
+}
+
+/// Linha de item de `character_items`/`vault_items` (colunas idênticas).
+fn item_row(row: &PgRow) -> Result<ItemRow, DbError> {
+    let op = "items.decode";
+    let decode = |_| DbError::Transport { op };
+    Ok(ItemRow {
+        slot: i64::from(row.try_get::<i16, _>("slot").map_err(decode)?),
+        item_id: i64::from(row.try_get::<i32, _>("item_id").map_err(decode)?),
+        qty: i64::from(row.try_get::<i32, _>("qty").map_err(decode)?),
+        flags: i64::from(row.try_get::<i32, _>("flags").map_err(decode)?),
+        refine: i64::from(row.try_get::<i16, _>("refine").map_err(decode)?),
+        ancient: row.try_get("ancient").map_err(decode)?,
+        gem_effect: i64::from(row.try_get::<i16, _>("gem_effect").map_err(decode)?),
+        gem_value: i64::from(row.try_get::<i16, _>("gem_value").map_err(decode)?),
     })
 }
 
@@ -973,6 +1417,38 @@ impl Sessions for PgBackend {
         .await
         .map_err(map_error("sessions.renew", "character_session"))?;
         Ok(())
+    }
+
+    async fn live_session_of(&self, login: &str) -> Result<Option<i16>, DbError> {
+        let row = sqlx::query(
+            "SELECT channel FROM character_session \
+             WHERE account_login = $1 AND released_at IS NULL \
+             ORDER BY id DESC LIMIT 1",
+        )
+        .bind(login)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("sessions.live_session_of", "character_session"))?;
+        row.map(|linha| {
+            linha
+                .try_get::<i16, _>("channel")
+                .map_err(|_| DbError::Transport {
+                    op: "sessions.live_session_of.decode",
+                })
+        })
+        .transpose()
+    }
+
+    async fn release_account_sessions(&self, login: &str) -> Result<u64, DbError> {
+        let res = sqlx::query(
+            "UPDATE character_session SET released_at = now() \
+             WHERE account_login = $1 AND released_at IS NULL",
+        )
+        .bind(login)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("sessions.release_account", "character_session"))?;
+        Ok(res.rows_affected())
     }
 
     async fn release_session(&self, id: i64) -> Result<(), DbError> {

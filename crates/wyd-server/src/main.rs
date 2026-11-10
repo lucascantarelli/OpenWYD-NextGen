@@ -9,13 +9,15 @@
 //!
 //! - `:8281` CPSock (handshake + gate de versão) e a sonda UDP de status do canal;
 //! - `:80` status (`/serv00.htm` e `/health`) — publicado no host só pelo canal de status;
-//! - `:9898` `/metrics` (contrato da FASE-06-1).
+//! - `:9898` `/metrics` (contrato da FASE-06-1), agora com as métricas **reais** do motor;
+//! - thread `wyd-tick` (FASE-03-7): `Engine` do `wyd-core` a `WYD_TICK_HZ`, dona do mundo.
 //!
 //! `--healthcheck` faz `GET /health` no próprio processo e só sai `0` com 200 (banco real).
 
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -23,6 +25,7 @@ use wyd_db::{Grant, Grants, PgBackend, PoolConfig};
 use wyd_net::VersionGate;
 use wyd_server::channels::World;
 use wyd_server::metrics::ServiceMetrics;
+use wyd_server::world::SaveSink;
 use wyd_server::{cpsock, status};
 
 const DEFAULT_CPSOCK: &str = "0.0.0.0:8281";
@@ -75,6 +78,7 @@ fn run() -> Result<(), String> {
             .map_err(|_| "WYD_SERVER_SESSION_STALE_SECS precisa ser um número")?,
     );
     let canal_i16 = i16::try_from(channel).map_err(|_| "WYD_SERVER_CHANNEL fora de 1..10")?;
+    let tick_hz = wyd_server::world::tick_hz_from_env()?;
 
     log(
         "info",
@@ -107,6 +111,13 @@ fn run() -> Result<(), String> {
         .map_err(|error| format!("server_channel indisponível (migrations aplicadas?): {error}"))?;
     let world = Arc::new(World::new(canais)?);
     let metrics = Arc::new(ServiceMetrics::new(world.game_channel_count()));
+    // Registro do motor anexado ao `/metrics` **antes** do primeiro scrape: o HTTP não
+    // publica tick zerado (ADR-0022 §7).
+    let engine_metrics = Arc::new(wyd_core::Metrics::new());
+    metrics.attach_engine(Arc::clone(&engine_metrics));
+    let engine = wyd_server::world::Engine::new(tick_hz, Arc::clone(&engine_metrics))
+        .map_err(|error| format!("tick: {error}"))?;
+    let tick_interval = engine.interval_ms();
     log(
         "info",
         "channels",
@@ -118,6 +129,21 @@ fn run() -> Result<(), String> {
     );
 
     let runtime = Arc::new(runtime);
+
+    // Fila de save do mundo (FASE-03-8): `enqueue` é `try_send` na borda; o dreno grava
+    // fora do tick, coalescendo por personagem. Sem banco no laço de simulação.
+    let (save_queue, mut save_drain) = wyd_db::SaveQueue::bounded(wyd_db::SavePolicy::local())
+        .map_err(|error| format!("fila de save: {error}"))?;
+    let saves = Arc::new(wyd_server::world::SaveQueueSink::new(Arc::new(save_queue)));
+    let save_stop = Arc::new(AtomicBool::new(false));
+    let save_thread = {
+        let stop = Arc::clone(&save_stop);
+        let drain_runtime = Arc::clone(&runtime);
+        let drain_backend = backend.clone();
+        std::thread::spawn(move || {
+            save_drain_loop(&mut save_drain, &drain_runtime, &drain_backend, &stop);
+        })
+    };
 
     // Dreno de grants duráveis (FASE-07-4): o portal/admin enfileira na
     // `delivery_queue`; este processo entrega ao personagem. Gold credita e baixa
@@ -214,6 +240,15 @@ fn run() -> Result<(), String> {
         });
     }
 
+    // Tick do mundo: um por processo, sem mutex global e sem I/O no laço.
+    let (mut tick_thread, engine_handle) =
+        wyd_server::world::EngineThread::spawn(engine, tick_interval)?;
+    log(
+        "info",
+        "tick",
+        &format!("hz={tick_hz} interval_ms={tick_interval} thread=wyd-tick"),
+    );
+
     let gate = VersionGate::from_protocol_version();
     log(
         "info",
@@ -229,10 +264,33 @@ fn run() -> Result<(), String> {
         session_stale,
     ));
     // Seleção de personagem depois do login: mesmo pool e mesmo runtime do handshake.
-    let selection = Arc::new(wyd_server::characters::SelectionStore::new(
-        Arc::new(backend.clone()),
-        Arc::clone(&runtime),
-    ));
+    let selection = Arc::new(
+        wyd_server::characters::SelectionStore::new(
+            Arc::new(backend.clone()),
+            Arc::clone(&runtime),
+        )
+        .with_world(engine_handle.clone(), saves.clone()),
+    );
+
+    // Save periódico: foto do mundo a cada 5 s, sem tocar no tick.
+    {
+        let handle = engine_handle.clone();
+        let saves = Arc::clone(&saves);
+        std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(5));
+            let estados = handle.snapshots();
+            for estado in &estados {
+                saves.save(*estado);
+            }
+            if !estados.is_empty() {
+                log(
+                    "info",
+                    "save",
+                    &format!("periodic players={}", estados.len()),
+                );
+            }
+        });
+    }
     log(
         "info",
         "session",
@@ -255,7 +313,45 @@ fn run() -> Result<(), String> {
         Some(sessions),
         Some(selection),
     );
+    // Encerramento ordenado: foto final → dreno (flush da última fila) → tick.
+    for estado in engine_handle.snapshots() {
+        saves.save(estado);
+    }
+    save_stop.store(true, Ordering::Relaxed);
+    let _ = save_thread.join();
+    tick_thread.stop_and_join();
     Ok(())
+}
+
+/// Dreno de save: flush a cada 1 s e uma última passagem depois do sinal de parada.
+fn save_drain_loop(
+    drain: &mut wyd_db::SaveDrain,
+    runtime: &tokio::runtime::Runtime,
+    backend: &PgBackend,
+    stop: &AtomicBool,
+) {
+    loop {
+        match runtime.block_on(drain.flush(backend)) {
+            Ok(report) if report.written > 0 || report.missing > 0 => log(
+                "info",
+                "save",
+                &format!(
+                    "written={} coalesced={} missing={}",
+                    report.written, report.coalesced, report.missing
+                ),
+            ),
+            Ok(_) => {}
+            Err(error) => log(
+                "warn",
+                "save",
+                &format!("result=flush_failed reason={error}"),
+            ),
+        }
+        if stop.load(Ordering::Relaxed) {
+            break;
+        }
+        std::thread::sleep(Duration::from_secs(1));
+    }
 }
 
 fn bind(var: &str, default: &str) -> Result<String, String> {

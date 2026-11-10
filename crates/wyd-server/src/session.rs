@@ -95,10 +95,36 @@ impl SessionGate {
     }
 
     /// Abre a sessão da conta **ou** recusa com o canal que já a tem.
+    ///
+    /// Conflito no **próprio** canal é retomada: o cliente reconectou (a conexão anterior já
+    /// era), então a linha antiga é liberada e a nova abre. Conflito em outro canal continua
+    /// recusa — ali há dois mundos com o mesmo personagem, que é o que a cerca protege.
     pub fn claim(&self, login: &str, client_version: i32) -> Result<SessionLease, SessionError> {
+        match self.claim_once(login, client_version)? {
+            ClaimOutcome::Acquired { id } => Ok(self.lease(id)),
+            ClaimOutcome::Conflict { channel } if channel == self.channel => {
+                // Retomada do mesmo canal: libera a linha abandonada e tenta de novo.
+                let liberadas = self
+                    .runtime
+                    .block_on(self.backend.release_account_sessions(login))
+                    .map_err(|error| SessionError::Db(error.to_string()))?;
+                log(&format!(
+                    "level=info event=session result=takeover account={login} group={} channel={} released={liberadas}",
+                    self.group_id, self.channel
+                ));
+                match self.claim_once(login, client_version)? {
+                    ClaimOutcome::Acquired { id } => Ok(self.lease(id)),
+                    ClaimOutcome::Conflict { channel } => Err(SessionError::Conflict { channel }),
+                }
+            }
+            ClaimOutcome::Conflict { channel } => Err(SessionError::Conflict { channel }),
+        }
+    }
+
+    /// Uma tentativa de abertura (expira órfã e tenta o índice único).
+    fn claim_once(&self, login: &str, client_version: i32) -> Result<ClaimOutcome, SessionError> {
         let stale = i64::try_from(self.stale_after.as_secs()).unwrap_or(i64::MAX);
-        let outcome = self
-            .runtime
+        self.runtime
             .block_on(self.backend.claim_session(
                 login,
                 self.group_id,
@@ -106,16 +132,22 @@ impl SessionGate {
                 client_version,
                 stale,
             ))
-            .map_err(|error| SessionError::Db(error.to_string()))?;
-        match outcome {
-            ClaimOutcome::Acquired { id } => Ok(SessionLease {
-                backend: Arc::clone(&self.backend),
-                runtime: Arc::clone(&self.runtime),
-                id,
-            }),
-            ClaimOutcome::Conflict { channel } => Err(SessionError::Conflict { channel }),
+            .map_err(|error| SessionError::Db(error.to_string()))
+    }
+
+    fn lease(&self, id: i64) -> SessionLease {
+        SessionLease {
+            backend: Arc::clone(&self.backend),
+            runtime: Arc::clone(&self.runtime),
+            id,
         }
     }
+}
+
+/// Log estruturado (`key=value`) no mesmo formato do canal.
+fn log(linha: &str) {
+    crate::logs::record(linha);
+    println!("{linha}");
 }
 
 /// Sessão aberta por este processo; liberar é automático ao sair de escopo.

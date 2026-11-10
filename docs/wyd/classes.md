@@ -17,6 +17,100 @@ WYD não tem raças jogáveis: o personagem é humano e a identidade vem da **cl
 **CONFIRMADO** para nomes, papéis, armas e mestres (central Kersef, "(MAPA) ARMIA";
 wiki das classes; WYD International).
 
+### 1.1 Ficha inicial de um personagem novo
+
+Fonte primária: `origin/main:Source/Code/Basedef.cpp` — `BaseSIDCHM`, `g_pIncrementHp/Mp`,
+`BASE_GetHpMp`, `BASE_GetBonusScorePoint` e `BASE_GetBonusSkillPoint`; o porte Go vive em
+`origin/main:tmserver/internal/level/level.go`. O nível inicial é 1 e `ClassMaster = MORTAL`
+(`DBSrv/CFileDB.cpp`, `_MSG_DBCreateCharacter`).
+
+| Classe | FOR | INT | DES | CON | HP base | MP base | HP/nível | MP/nível | HP nível 1 | MP nível 1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| TransKnight | 8 | 4 | 7 | 6 | 80 | 45 | 3 | 1 | 83 | 46 |
+| Foema | 5 | 8 | 5 | 5 | 60 | 65 | 1 | 3 | 61 | 68 |
+| BeastMaster | 6 | 6 | 9 | 5 | 70 | 55 | 1 | 2 | 71 | 57 |
+| Huntress | 8 | 9 | 13 | 6 | 75 | 60 | 2 | 1 | 77 | 61 |
+
+Fórmulas no nível 1, sem equipamento:
+
+- `MaxHp = BaseHP + (Con - BaseCon) × 2 + nível × HP/nível`; `MaxMp` idem com `Int` e MP.
+- Atributos começam iguais à base da classe; 5 pontos de atributo e 3 de skill ficam livres
+  (`BASE_GetBonusScorePoint` e `BASE_GetBonusSkillPoint` no MORTAL).
+- HP/MP correntes começam cheios; EXP 0.
+- Ouro, ponto de save e aparência/equipamento inicial **não** são default de schema: vêm do
+  `BaseMob` da classe, copiado na criação como o `CFileDB.cpp` fazia
+  (`memcpy(mob, &g_pBaseSet[cls], sizeof(STRUCT_MOB))`), com `MortalFace = Equip[0].sIndex`,
+  `memset(ShortSkill, -1, 16)` e o nome do pacote por cima.
+
+### 1.2 `BaseMob` — arquivos reais e valores iniciais
+
+Fonte: `origin/main:tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` — 816 B cada
+(`sizeof(STRUCT_MOB)`), embutidos no servidor por `include_bytes!` a partir de
+`crates/wyd-server/assets/basemob/`. O layout é o do `Basedef.h` (alinhamento natural do MSVC
+x86, **não** `pack(1)`): offsets e prova byte a byte em `crates/wyd-server/src/personagens.rs`.
+
+| Arquivo | Classe | SHA-256 | Ouro (`Coin@28`) | Save (`SPX/SPY@40`) | Rosto (`Equip[0]`) | `Equip[1..6]` | `Carry[0..3]` |
+|---|---|---|---:|---|---|---|---|
+| `TK` | 0 TransKnight | `19d0d0eb6c02d5212b7dcfed7ed238d37aa1b356d6451363349b0a5aae805586` | 5.000.000 | 2096/2096 | 1 | 1103, 1115, 1127, 1139, 1151, 861 | 401, 406, 4130, 4144 |
+| `FM` | 1 Foema | `13284d101b249066999516c5add3f6f8b8a3d580cb7b5c5f04dc6d4eadaa7b78` | 5.000.000 | 2096/2096 | 11 | 1251, 1265, 1277, 1289, 1301, 816 | 401, 406, 4130, 4144 |
+| `BM` | 2 BeastMaster | `d0e8d128388ead208636d996974b081dd19daf072d03c0c36c17cb10b84522ec` | 5.000.000 | 2096/2096 | 21 | 1403, 1406, 1409, 1412, 1415, 861 | 401, 406, 4130, 4144 |
+| `HT` | 3 Huntress | `4e7411dc8830e6393db900b25b5b826b8219d91a0bf94122b5cf9dd6b180bede` | 5.000.000 | 2096/2096 | 31 | 1553, 1556, 1559, 1562, 1565, 816 | 401, 406, 4130, 4144 |
+
+`Equip[0].sIndex` é o rosto (aparência) e é **também** como o cliente descobre a classe na tela
+de seleção: `STRUCT_SELCHAR` não tem campo `Class` (`DBGetSelChar`, `CFileDB.cpp:2636`).
+`Equip[0].stEffect` do BeastMaster traz `0x63/0x62/0x15` (cor de cabelo/pele), por isso o dump
+do slot 0 não é só o índice.
+
+O template também traz `Ac=4`, `Damage=5`, `Merchant=0` (TK/HT) ou `16` (FM/BM) e
+`AttackRun=82` nos dois scores; `Direction`/`ChaosRate` chegam `0xCC` do dump de memória do
+motor antigo e o porte Go **mantém** esses bytes no login (o cliente passa a usar a direção do
+primeiro `_MSG_Action`). `Special[4]`, `LearnedSkill`, `Magic`, `Critical`, `SkillBar` e
+`Resist` também vêm do template (zerados, exceto `Critical=0xFF`, `SkillBar=0xFF` e
+`Resist=-11`).
+
+O que o Rust **sobrescreve** por cima do template: nome, `Class`, `Coin`/`Exp` (do banco),
+`SPX/SPY` (ponto de save persistido, igual ao `sm.PosX = sm.mob.SPX` do legado), `Level`,
+`MaxHp/MaxMp/Hp/Mp`, `Str/Int/Dex/Con` (`BaseSIDCHM` + incrementos) e `ScoreBonus`/`SkillBonus`.
+
+**Inventário persistido (entrega de 2026-11-10).** A criação copia o `Equip`/`Carry` do
+template para `character_items` (slot `i` = `Equip[i]`, `16 + i` = `Carry[i]`) e grava o kill
+mark — item 547 em `Carry[KILL_MARK=63]`, o mesmo que o `ProcessDBMessage.cpp` repõe no login —
+e o `ShortSkill[16]` em `character_short_skill`. Daí em diante **o banco é a fonte da
+verdade**: `STRUCT_MOB` e `STRUCT_SELCHAR` são montados de `character_items`
+(`Mob::from_persisted`) e o template só é relido para personagem anterior a esta entrega, uma
+única vez, para materializar o inventário inicial. Cofre (`vault_items` → `Cargo[128]`) e
+`Coin` da conta (`account_wallet`) vêm do banco; sem linha, slots vazios e zero — nunca item
+ou valor sintético.
+
+O `STRUCT_ITEM` do fio leva `sIndex = item_id`; `stEffect[0]` recebe `EF_AMOUNT` quando a
+pilha tem mais de uma unidade (é o `3d 78` = 120 do 401/406 no template) e o item 547 recebe
+`EF_CURKILL`/`EF_LTOTKILL`/`EF_HTOTKILL`. Refino, Ancient e gema continuam estado da linha e
+ainda não têm codificação de fio (FASE-10): no `BaseMob`, `Equip[1..6]` só tem `sIndex`.
+
+Lacunas registradas: o `STRUCT_MOBEXTRA.MortalFace` é derivável de `Equip[0]` e não ganhou
+coluna; a customização de rosto/cabelo (que altera `Equip[0].stEffect`) ainda não existe e usa
+o rosto padrão da classe.
+
+**Distribuição de pontos (`_MSG_ApplyBonus`, 0x0277).** Os **5 pontos de atributo** (tipo 0) e
+os **3 de skill** (tipo 2) são gastos com o personagem em jogo, e o servidor é a autoridade: a
+quantidade vem de `character_scores` (`score_bonus`/`skill_bonus`), nunca do pacote. `Con`/`Int`
+somam 2 de `MaxHp`/`MaxMp` por ponto (`_MSG_ApplyBonus.cpp`) — o mesmo que o `BASE_GetHpMp` do
+login deriva de `(Con − base) × 2`, então banco e pacote continuam idênticos. A skill é
+`5000 + classe × 24 + pos` e custa o `skill_catalog.skill_point`; as posições 7/15/23 são linha
+única por classe, exigem as 7 anteriores e cobram 50 000 000 de ouro; nível e maestria vêm de
+`item_catalog.req_*`. Progressão e skill aprendida vão para `character_scores`/`characters` +
+`character_learned_skill` numa transação, e o cliente recebe `_MSG_UpdateEtc` + `_MSG_UpdateScore`
+(`docs/arquitetura/protocolo.md` §5.2).
+
+**Maestria (tipo 1).** `SpecialBonus` é gasto em `Special[0..3]` (Str/Int/Dex/Con) com dois
+tetos do legado: `3 × (nível + 1) ÷ 2` por atributo e 200 — 255 quando a skill de linha
+correspondente já foi aprendida (`Detail` 1/2/3 → bits 7/15/23). Fica em `character_special`
+e volta no `STRUCT_MOB` (`BaseScore`/`CurrentScore.Special`). O `Special[4]` do
+`_MSG_UpdateScore` é a sentinela `0xCC` do `SendScore`, não a maestria. **Fora:** o ganho de
+pontos por nível (`CMob.cpp:1128/1142`, +2) e o bônus celestial (`+3 × 400` no limite) —
+`ClassMaster` CELESTIAL/SCELESTIAL ainda não existe nesta stack; até lá os pontos entram por
+concessão, com o mesmo caminho de validação e gravação.
+
 Cada classe tem **três linhagens**, cada linhagem tem **oito skills base + 9ª, 10ª, 11ª e
 12ª**, e um personagem pode ter **24 skills** no total. **CONFIRMADO**.
 

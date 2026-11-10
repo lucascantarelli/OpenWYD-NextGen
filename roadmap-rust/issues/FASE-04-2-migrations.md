@@ -56,7 +56,12 @@ Saída esperada: `test result: ok`; log mostrando zero→última→revert→últ
 - [ ] Versionar issue, mergear branch e fechar issue
 - [ ] Limpar branch (se aplicável)
 
-**Status:** ✅ (2026-11-07, entregue dentro da FASE-04: 6 migrations + `seeds/dev.sql` + `tests/constraints.rs`; prova ao vivo zero→última→revert→última em PG17 descartável. Ferramenta runner (sqlx/refinery) pendente — ver ADR-0006; aplicação por `psql -f` até lá).
+**Status:** ✅ (2026-11-09, revisão) — a série cresceu de 6 para **31 migrations** (0001–0031,
+DDL 0001–0016 + seed 0017–0031), com `seeds/dev.sql`, `tests/constraints.rs`, `tests/catalogo.rs`,
+`check-migrations.mjs`, `migrate-cycle.mjs` (up→down→up em PG17) e `verify-schema.mjs`
+(banco vazio → `information_schema` == catálogo). O runner deixou de ser pendência: está em
+`crates/wyd-db/src/migrate.rs` com ledger/checksum/advisory lock e roda no boot (ADR-0024) —
+`sqlx::migrate!`/`refinery` seguem descartados por decisão, não por falta de código.
 
 ## Critérios de aceite
 

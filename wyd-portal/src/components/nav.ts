@@ -73,10 +73,22 @@ export const NAV: readonly NavGroup[] = [
   },
 ] as const;
 
+/**
+ * Subpáginas do monitoramento: não entram na sidebar (o item é único), mas precisam
+ * da mesma sessão de staff do shell. Manter aqui evita rota filha fora do proxy.
+ */
+export const MONITOR_ROUTES: readonly string[] = [
+  "/monitoramento/servidor",
+  "/monitoramento/grafana",
+  "/monitoramento/prometheus",
+  "/monitoramento/logs",
+];
+
 /** Rotas do shell que exigem sessão de staff (usado pelo proxy e pela sidebar). */
-export const SHELL_ROUTES: readonly string[] = NAV.flatMap((group) =>
-  group.items.map((item) => item.href),
-);
+export const SHELL_ROUTES: readonly string[] = [
+  ...NAV.flatMap((group) => group.items.map((item) => item.href)),
+  ...MONITOR_ROUTES,
+];
 
 /**
  * Área do jogador e documentação: públicas por desenho, por isso ficam fora de

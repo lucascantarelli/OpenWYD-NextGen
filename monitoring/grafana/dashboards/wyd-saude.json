@@ -144,6 +144,69 @@
           "expr": "wyd_gateway_uptime_seconds"
         }
       ]
+    },
+    {
+      "id": 10,
+      "type": "gauge",
+      "title": "Orçamento do tick usado (P99, WYD_TICK_HZ)",
+      "description": "100 × p99 ÷ wyd_tick_budget_microseconds (50 ms a 20 Hz, 20 ms a 50 Hz). Acima de 100% o processo perde o passo.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 200,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 40 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "100 * histogram_quantile(0.99, sum by (le, canal) (rate(wyd_tick_duration_microseconds_bucket[5m]))) / on(canal) wyd_tick_budget_microseconds"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Entidades por canal",
+      "description": "wyd_entities_active{canal} — jogadores + NPCs do processo.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "sum by (canal) (wyd_entities_active)"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Ticks por segundo por canal",
+      "description": "20 Hz a 50 Hz; zero com processo no ar dispara WydMotorSemTick.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "sum by (canal) (rate(wyd_ticks_total[1m]))"
+        }
+      ]
     }
   ]
 }

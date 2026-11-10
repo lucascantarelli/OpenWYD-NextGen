@@ -21,6 +21,7 @@ código tem de cumprir.
 | `sistemas/eventos.md` | evento de drop, Kefra, invasões, calendário, sazonais |
 | `canais-e-cidadania.md` | **servidor × canal**, cidadania (Kibita, bônus, `/getout`), canal verde/novato e guildas donas de cidade por canal |
 | `fontes.md` | **de onde vem cada afirmação** e onde cada site engana |
+| `referencia-externa-2026-11.md` | pesquisa de 2026-11-09: fontes, confirmações, lacunas e perguntas abertas |
 
 ## Confiança
 
@@ -32,18 +33,20 @@ código tem de cumprir.
 
 Detalhamento dos níveis A–E em `fontes.md`.
 
-## Estado do dado no banco (2026-11-08)
+## Estado do dado no banco (2026-11-09)
 
-Aplicado e verificado em Postgres (`0007`–`0012`):
+Aplicado e verificado em Postgres — **36 migrations** (`0001`–`0036`), **74 tabelas de jogo**
+(+ a ledger `schema_migrations`), schema conferido por `make banco-verify`:
 
 | Conteúdo | Linhas |
 |---|---:|
 | `item_catalog` | 3.220 |
 | `item_effect` (`EF_*`) | 55 símbolos |
-| `skill_catalog` | 151 |
+| `skill_catalog` | 154 (151 do seed + 3 da curadoria Kersef) |
 | `npc_template` (STRUCT_MOB 816 B) | 1.991 |
 | `npc_definition` | 6.100 |
 | `npc_shop_item` | 6.706 |
+| `skill_catalog` com `class_code` preenchido | 72 de 154 (medido 2026-11-09) |
 | `level_item` | 161 |
 | `guard_spawn` / `guard_spawn_reward` | 5 / 27 |
 | `game_setting` / `game_matrix` | 25 / 20 |

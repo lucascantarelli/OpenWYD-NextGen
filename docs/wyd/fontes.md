@@ -41,6 +41,20 @@ para servidor e até entre patches do mesmo servidor.
 | `portaluok.com` / `portalrogue.com.br` | Kefra (drops do kill), Pista de Runas sala por sala, criação de Arch | detalha recompensa por sala | taxa de servidor |
 | `wydwar.com` | ranking, domínio de cidade, imposto, horários de guerra | confirma estrutura de guerra | landing comercial |
 
+### Fontes técnicas de código (**D/E**, nunca contrato universal)
+
+| Fonte | Serve para | Armadilha |
+|---|---|---|
+| [WYD2EncDec](https://github.com/raphaelts3/wyd2encdec) | header de 12 B, ofuscação, `0x0FDE`/`0x0FDF` (PIN) | amostras de uma versão; não cobre todos os opcodes |
+| [W2PP `Basedef.h`](https://github.com/ErickAlcan/W2PP/blob/master/Code/Basedef.h) | `ESCENE_FIELD = 30000`, `STRUCT_SELCHAR`, `STRUCT_MOB` | layout C depende de `#pragma pack`/compilador/versão |
+| [w2pp-OpenWYD](https://github.com/Jean1dev/w2pp-OpenWYD) | reescrita Go do servidor, alvo 7662 | engenharia reversa; estado variável |
+| [WYD-Server-CPP](https://github.com/Amatsukan/WYD-Server-CPP) | source C++ de estudo (DBSrv/TMSrv) | o próprio README diz que é para estudo |
+| [WYD2Bot](https://github.com/kevinkouketsu/WYD2Bot) | lê `ItemList.csv`/`SkillData.csv` | é cliente/bot, **não** servidor nem regra |
+| [RaidHut droplist](https://global-droplist.raidhut.com/) | “o que cai onde” no WYD Global | balanceamento do Global, não do 7662 |
+
+> Pesquisa consolidada, com URLs e perguntas abertas: `referencia-externa-2026-11.md`.
+> `INITCODE = 0x1F11F311` **não** tem fonte pública: é medido no cliente do repositório (dado E).
+
 ### Fóruns e blogs (**D**)
 
 | Site | Cobre bem | Como usar |

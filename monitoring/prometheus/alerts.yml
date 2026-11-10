@@ -36,13 +36,38 @@ groups:
           runbook: "docs/rust/06-observabilidade-runbooks.md#wydservidorforadoar"
 
       - alert: WydTickP99Alto
-        expr: histogram_quantile(0.99, sum by (le) (rate(wyd_tick_duration_microseconds_bucket[5m]))) > 20000
+        # 40% do orçamento. O orçamento é publicado pelo processo
+        # (`wyd_tick_budget_microseconds = 1e6 / WYD_TICK_HZ`), então a regra vale
+        # tanto a 20 Hz (50 ms) quanto a 50 Hz (20 ms) — sem limiar fixo mentiroso.
+        expr: (histogram_quantile(0.99, sum by (le, canal) (rate(wyd_tick_duration_microseconds_bucket[5m]))) / on(canal) wyd_tick_budget_microseconds) > 0.4
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "P99 do tick acima de 20 ms (orçamento do tick é 50 ms)"
+          summary: "P99 do tick acima de 40% do orçamento (WYD_TICK_HZ)"
           runbook: "docs/rust/06-observabilidade-runbooks.md#wydtickp99alto"
+
+      - alert: WydTickAcimaDoOrcamento
+        # 100% do orçamento. O P99 é o pior tick do período, não a média: estourar
+        # aqui significa que o processo perdeu o passo de simulação.
+        expr: (histogram_quantile(0.99, sum by (le, canal) (rate(wyd_tick_duration_microseconds_bucket[5m]))) / on(canal) wyd_tick_budget_microseconds) > 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "P99 do tick passou do orçamento do processo (WYD_TICK_HZ)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydtickacimadooçamento"
+
+      - alert: WydMotorSemTick
+        # Processo no ar (scrape ok) e nenhum tick novo em 2 min: thread parada, travada
+        # ou `WYD_TICK_HZ` recusado no boot de outra instância.
+        expr: (sum(rate(wyd_ticks_total[2m])) == 0) and (sum(up{job="wyd-server"}) > 0)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "servidor no ar sem processar ticks"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydmotorsemtick"
 
       - alert: WydPacotesRecusados
         expr: sum(rate(wyd_packets_rejected_total[5m])) / clamp_min(sum(rate(wyd_packets_total[5m])), 0.001) > 0.1

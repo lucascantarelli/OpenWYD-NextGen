@@ -14,22 +14,25 @@ Regra-mãe: **arquivo Go/C++ removido em 2026-11 — nunca fonte** (nomes, porta
 | `wyd-sim` | laboratório matemático | Não — lib, sem runtime (FASE-10) |
 | `wyd-db` | persistência (migrations, delivery) | Não — lib usada pelos binários (FASE-04) |
 | `wyd-admin` | Cold Path (auth, billing, gateway) | **Sim** — binário `wyd-gateway` (`:7600`, ADR-0022) |
+| `wyd-server` | raiz de composição do monólito de um canal (CPSock/status/sessão/seleção) | **Sim** — binário `wyd-server`, um container por canal (`wyd-canal-1/2`, ADR-0022 §7) |
 | `wyd-launcher` | CLI/exe do cliente (GUI Tauri, ADR-0007) | **Nunca** — exe do lado do cliente, fora do compose |
 | `wyd-portal/` | BFF Next.js sobre o backend HTTP/JSON (ADR-0008) | Sim — serviço `portal` |
 
-Binários existentes: `wyd-launcher` (fora do compose) e `wyd-gateway` (`crates/wyd-admin/src/main.rs`,
-ADR-0022). Sem binário, não há serviço: o compose não antecipa o que a issue dona não entregou —
-`tmserver` continua bloqueado pela FASE-03/04/06.
+Binários existentes: `wyd-launcher` (fora do compose), `wyd-gateway` (`crates/wyd-admin/src/main.rs`)
+e `wyd-server` (`crates/wyd-server/src/main.rs`), todos pela ADR-0022. Sem binário não há serviço: o
+compose não antecipa o que a issue dona não entregou. **O motor (`wyd-core`) ainda não roda dentro
+do `wyd-server`** (o tick é a FASE-03-7): o processo hoje entrega conexão, login, seleção e status,
+não simulação de mundo.
 
 ## 2. O que sobe hoje (`docker compose up`)
 
 | Serviço | Imagem | Papel |
 |---|---|---|
 | `db` | `postgres:17-alpine` (oficial) | Postgres 17; sobe **vazio** (imagem oficial, sem Dockerfile). Sem one-shot de roles no stack novo: superusuário de dev — **não usar em produção**. Schema aplicado no boot do gateway/canal (ADR-0024) |
-| `server` (por canal: `wyd-canal-1`, `wyd-canal-2`) | `docker/Dockerfile.server` (multi-stage, distroless non-root) | Monólito de jogo: CPSock `:8281`, status `:8080` (publicado como `:80`) e `/metrics` `:9898`. **Um container por canal**, mesma imagem `wyd/server:${TAG}` e mesmo Postgres; canal vem de `server_channel` (migration `0029`) e de `WYD_SERVER_CHANNEL`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281 |
+| `server` (por canal: `wyd-canal-1`, `wyd-canal-2`) | `docker/Dockerfile.server` (multi-stage, distroless non-root) | Monólito de jogo: CPSock `:8281`, status `:8080` (publicado como `:80`) e `/metrics` `:9898`. **Um container por canal**, mesma imagem `wyd/server:${TAG}` e mesmo Postgres; canal vem de `server_channel` (migration `0029`) e de `WYD_SERVER_CHANNEL`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281. Roda o motor do core na thread `wyd-tick` a `WYD_TICK_HZ` (20–50, default 20) desde a FASE-03-7 |
 | `gateway` | `docker/Dockerfile.gateway` (multi-stage, distroless non-root) | Gateway HTTP/JSON do portal (`:7600`, ADR-0022): `GET /health` faz `SELECT 1` no Postgres, `GET /metrics` publica `wyd_gateway_requests_total{result}` + `wyd_gateway_uptime_seconds`, `POST /admin/v1/{servico}/{metodo}` serve o contrato já existente. `--healthcheck` é o próprio binário (imagem sem shell). Sobe depois do `db` saudável |
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
-| `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd`. FASE-12-1 ✅ — dashboards/alertas/runbooks em `monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
+| `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd` e é o **índice** do monitoramento, com subpáginas `/monitoramento/servidor` (motor: ticks/s, p99, entidades por canal), `/monitoramento/grafana` (dashboards em kiosk), `/monitoramento/prometheus` (alvos/regras de alerta) e `/monitoramento/logs` (Loki). FASE-12-1 ✅ — dashboards/alertas/runbooks em `monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
 | `loki` | `grafana/loki:3.5.5` | **Logs duráveis** (2026-11-09): grava em volume `wyd-loki-data` com retenção de 14 d (`monitoring/loki/loki.yml`). Sem porta no host — só o portal (server-side) e o Grafana consultam `loki:3100`. Resolve o problema do `json-file`: o stdout do Docker morre quando o container é recriado, o Loki não |
 | `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
@@ -42,7 +45,7 @@ com `-p`), rede/volume `wyd_*`.
 
 | Serviço futuro | Origem | Issue que libera |
 |---|---|---|
-| `tmserver` (CPSock `:8281` + status `:80`; canais e ServerIndex no desenho) | monólito `wyd-core`+`wyd-net`+`wyd-protocol` | FASE-03/04/06 |
+| tick do mundo dentro do canal (ECS + cena) | `wyd-core` no `wyd-server` | FASE-03-7/03-8/03-9 |
 | `launcher` | — | Fora do compose (exe). Imagem `docker/Dockerfile.launcher` só como artefato de release/smoke (FASE-05-2): `docker build` + `docker run --rm` |
 
 Cada novo serviço entra com: `docker/Dockerfile.<svc>`, registro no
@@ -151,9 +154,11 @@ idempotente, não precisa de imagem extra e não roda no `initdb` do Postgres �
 do banco só executa em volume vazio (`/docker-entrypoint-initdb.d`), então nunca serviria um
 volume já existente, que é o caso desta stack.
 
-Contagens observadas após aplicar (2026-11-09, banco recriado do zero com as 31 migrations):
-**70 tabelas** — 69 do schema de jogo (`0029` trouxe `server_channel`, `0030`
-`character_session`, `0031` a moderação) + a ledger `schema_migrations` do runner (ADR-0024),
+Contagens observadas após aplicar (2026-11-10, série em **36 migrations**): **74 tabelas** —
+73 do schema de jogo (`0029` trouxe `server_channel`, `0030` `character_session`, `0031` a
+moderação, `0032` `character_scores`, `0033` `character_short_skill`, `0034` `account_wallet`,
+`0035` `character_learned_skill` e `0036` `character_special`) + a ledger `schema_migrations`
+do runner (ADR-0024),
 `item_catalog` 3.220, `server_channel` 3 linhas (canal 0 = status, 1 = normal, 2 = verde),
 `content_version` 1.
 

@@ -76,9 +76,22 @@ impl Drop for MetricsServer {
 /// Responde uma conexão: `GET /metrics` → 200 texto; resto → 404.
 fn atender(mut stream: TcpStream, source: &dyn MetricsSource) -> std::io::Result<()> {
     let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+    // Lê até o fim do cabeçalho (`\r\n\r\n`): um `read` só pode voltar parcial, e fechar o
+    // socket com dados não lidos faz o Windows responder RST — o scrape via
+    // `ConnectionReset` em vez do corpo, mesmo com a resposta já escrita.
+    let mut recebido = Vec::with_capacity(512);
     let mut buf = [0u8; 512];
-    let lido = stream.read(&mut buf)?;
-    let pedido = String::from_utf8_lossy(&buf[..lido]);
+    while recebido.len() < 4096 {
+        let lido = stream.read(&mut buf)?;
+        if lido == 0 {
+            break;
+        }
+        recebido.extend_from_slice(&buf[..lido]);
+        if recebido.windows(4).any(|janela| janela == b"\r\n\r\n") {
+            break;
+        }
+    }
+    let pedido = String::from_utf8_lossy(&recebido);
     let (status, corpo) = if pedido.starts_with("GET /metrics ") {
         ("200 OK", source.scrape())
     } else {

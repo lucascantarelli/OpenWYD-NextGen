@@ -50,6 +50,22 @@ pub trait Sessions {
     /// Encerra a sessão; idempotente (sessão já liberada não é erro).
     fn release_session(&self, id: i64) -> impl Future<Output = Result<(), DbError>> + Send;
 
+    /// Libera **todas** as sessões vivas da conta e devolve quantas fechou.
+    ///
+    /// Usado só na retomada do mesmo canal: se o cliente reconectou, a conexão anterior já
+    /// era e a linha antiga não pode impedir a nova. Sessão de **outro** canal não passa por
+    /// aqui — trocar de canal continua exigindo sair do primeiro.
+    fn release_account_sessions(
+        &self,
+        login: &str,
+    ) -> impl Future<Output = Result<u64, DbError>> + Send;
+
+    /// Canal da sessão viva da conta, se houver (diagnóstico e teste de logout por conta).
+    fn live_session_of(
+        &self,
+        login: &str,
+    ) -> impl Future<Output = Result<Option<i16>, DbError>> + Send;
+
     /// Quantas sessões vivas existem hoje no canal (diagnóstico e `serv00.htm` futuro).
     fn live_sessions(
         &self,

@@ -88,6 +88,17 @@ for (const { file, table } of inserts) {
 }
 
 const tables = created.size;
+
+// Gate de deriva: a contagem do código tem de bater com a contagem registrada nos documentos.
+// Ao criar uma migration, atualize os números abaixo e os documentos citados (FASE-02-6).
+const DOCUMENTED = { migrations: 36, tables: 74 };
+if (files.length !== DOCUMENTED.migrations) {
+  problems.push(`${files.length} migrations no código, ${DOCUMENTED.migrations} documentadas`);
+}
+if (tables !== DOCUMENTED.tables) {
+  problems.push(`${tables} tabelas no código, ${DOCUMENTED.tables} documentadas`);
+}
+
 console.log(`migrations: ${files.length} | tabelas: ${tables} | INSERTs: ${inserts.length}`);
 if (problems.length === 0) {
   console.log("ok: ordem, FKs, duplicidade e down consistentes");

@@ -57,12 +57,17 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-02-3-ordem-priorizacao.md` | 2 | Grafo de dependências e caminho crítico | ✅ |
 | `issues/FASE-02-4-estrutura-e-padroes.md` | 2 | Estrutura de módulos, nomenclatura e padrões (gate de código) | ✅ |
 | `issues/FASE-02-5-visao-pastas.md` | 2 | Visão de pastas + mapa do cliente (gate de arquitetura) | ✅ |
+| `issues/FASE-02-6-consistencia-docs.md` | 2 | Gate de consistência índice ↔ painel ↔ código (`make docs-check`) | ⬜ |
 | `issues/FASE-03-1-tick.md` | 3 | Tick determinístico 20–50 Hz | ✅ |
 | `issues/FASE-03-2-ecs.md` | 3 | ECS: componentes contíguos + gema no inventário | ✅ |
 | `issues/FASE-03-3-spatial-grid.md` | 3 | Spatial grid e interest management O(1) | ✅ |
 | `issues/FASE-03-4-dados-estaticos.md` | 3 | Fim dos TXT/CSV; validação de schema no boot | ✅ |
 | `issues/FASE-03-5-autoridade-servidor.md` | 3 | Autoridade server-side (física/dano/skills/inventário) | ✅ |
 | `issues/FASE-03-6-ia-npc.md` | 3 | IA de NPC no Hot Path (FSM + utilidade determinística) | ✅ |
+| `issues/FASE-03-7-motor-no-canal.md` | 3 | Motor no canal: tick real dentro do `wyd-server` | ✅ |
+| `issues/FASE-03-8-entrada-no-mundo.md` | 3 | Entrada no mundo: spawn do personagem + save do estado vivo | ✅ |
+| `issues/FASE-03-9-cena-autoritativa.md` | 3 | Cena autoritativa (`ESCENE_FIELD` 30000) | ⬜ |
+| `issues/FASE-03-10-cidadania-canal-verde.md` | 3 | Cidadania aplicada + papel do canal verde | ⬜ |
 | `issues/FASE-04-1-modelagem.md` | 4 | Modelo relacional com FKs/CHECKs/índices | ✅ |
 | `issues/FASE-04-2-migrations.md` | 4 | Migrations versionadas + seeds | ✅ |
 | `issues/FASE-04-3-persistencia-async.md` | 4 | Pool async fora do tick | ✅ |
@@ -70,10 +75,13 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-05-2-release-docker.md` | 5 | Release LTO + imagem mínima | ✅ |
 | `issues/FASE-06-1-telemetria.md` | 6 | tracing + Prometheus no motor | ✅ |
 | `issues/FASE-06-2-hardening.md` | 6 | DoS, rate limiting, sanitização | ✅ |
+| `issues/FASE-06-3-lotacao-manutencao.md` | 6 | Lotação e manutenção do canal (recusa tipada) | ⬜ |
 | `issues/FASE-07-1-gateway.md` | 7 | Transporte + contrato + binário `wyd-gateway` em Docker (ADR-0008; [ADR-0022](../docs/arquitetura/adr/0022-binarios-de-servico.md)) | 🚧 |
 | `issues/FASE-07-2-painel-usuario.md` | 7 | Painel do jogador | ✅ |
 | `issues/FASE-07-3-painel-admin.md` | 7 | Painel de staff auditável | ✅ |
 | `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, painel, entrega idempotente) | ✅ |
+| `issues/FASE-07-5-handlers-conteudo.md` | 7 | Handlers de leitura de conteúdo (npc/mob/item/efeito/mapa/teleporte) | ⬜ |
+| `issues/FASE-07-6-handlers-operacao.md` | 7 | Handlers de operação (rates/daily/donate/evento/conta) | ⬜ |
 | `issues/FASE-08-1-tabela-protocolo.md` | 8 | Tabela do protocolo com UNVERIFIED | ✅ |
 | `issues/FASE-08-2-parsers.md` | 8 | `wyd-protocol` zero-copy + golden | ✅ |
 | `issues/FASE-08-3-launcher.md` | 8 | Distribuição do launcher/patch (updater substituto) | ✅ |
@@ -82,6 +90,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-08-6-cliente-reverso-dinamico.md` | 8 | Trace dinâmico e correlação de pacotes | 🚧 |
 | `issues/FASE-08-7-cliente-customizacao.md` | 8 | Customização sustentável + manifesto do launcher | ✅ |
 | `issues/FASE-08-8-launcher-gui-tauri.md` | 8 | GUI do launcher em Tauri v2 (notícias + Jogar) | 🚧 |
+| `issues/FASE-08-9-logout-explicito.md` | 8 | Logout explícito (sair sem esperar timeout) | ⬜ |
 | `issues/FASE-09-1-auditoria-skills.md` | 9 | Auditoria das skills Go restantes | ✅ |
 | `issues/FASE-09-2-criar-skills.md` | 9 | Skills sucessoras Rust | ✅ |
 | `issues/FASE-10-1-equacoes.md` | 10 | Equações exatas de combate | 🚧 |
@@ -96,6 +105,39 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-15-1-suite-concorrencia.md` | 15 | Suite completa + concorrência | ⬜ |
 | `issues/FASE-15-3-bots-carga.md` | 15 | Bots jogáveis e carga (`crates/wyd-bots`) | ⬜ |
 | `issues/FASE-15-2-carga-banco-release.md` | 15 | Carga + banco + release + relatório | ⬜ |
+
+## Fila de entregas rápidas (2026-11-09)
+
+Ordem por **tamanho** e por **desbloqueio**: cada linha entrega valor sozinha e não deixa a
+seguinte esperando. A coluna “depende” só cita o que já está pronto ou o que vem antes na
+mesma fila — nenhuma issue abaixo espera captura de cliente, decisão do dono ou serviço externo.
+
+| # | Issue | Tamanho | Depende de | Entrega |
+|---|---|---|---|---|
+| 1 | `FASE-02-6` consistência de docs | **S** | — | gate que impede status divergente voltar |
+| 2 | `FASE-06-3` lotação/manutenção | **S** | 06-2 ✅ | canal cheio e manutenção com recusa observável |
+| 3 | `FASE-08-9` logout explícito | **S** | 08-2 ✅ | sessão liberada na hora, relogin imediato |
+| 4 | `FASE-03-7` motor no canal | **M** | 03-6 ✅, 04-3 ✅ | tick real + métricas de motor verdadeiras |
+| 5 | `FASE-07-5` handlers de conteúdo | **M** | 07-1 🚧 | telas de conteúdo do portal saem do `501` |
+| 6 | `FASE-07-6` handlers de operação | **M** | 07-1 🚧, 07-3 ✅ | rates/daily/donate/evento auditados |
+| 7 | `FASE-03-8` entrada no mundo | **M** | 03-7 (fila) | personagem vira entidade e é salvo |
+| 8 | `FASE-03-10` cidadania/canal verde | **M** | 03-7 (fila) | cidadania deixa de ser campo e vira regra |
+| 9 | `FASE-03-9` cena autoritativa | **L** | 03-8 (fila) | primeiro mundo visível no cliente |
+
+Depois da fila, o que resta aberto é: `FASE-08-8` (GUI Tauri, M), `FASE-10-1` (fechar a ordem
+matemática, M), `FASE-10-2` (velocidade, M), `FASE-10-3` (laboratório em lote, M), `FASE-15-3`
+(bots, M), `FASE-15-1` (suite/concorrência, L), `FASE-15-2` (carga/release, L), `FASE-00-1`
+(desinstalar Go — **ação do dono**, exige elevação) e `FASE-01-1` (auditoria do planejamento Go,
+valor histórico). `FASE-08-6` continua ⛔ por depender de VM + cliente em execução; é o único
+bloqueio externo da árvore.
+
+## Lotes paralelos
+
+Duas frentes podem rodar ao mesmo tempo sem tocar os mesmos arquivos:
+
+- **Motor** — 03-7 → 03-8 → 03-9 (+ 03-10 em paralelo com 03-8, no `wyd-sim`/`wyd-core`).
+- **Cold Path** — 07-5 e 07-6 (gateway/DB) em paralelo com o motor; `02-6`, `06-3` e `08-9`
+  são curtas e podem entrar entre qualquer uma das duas.
 
 **Mapa de funcionalidades (checklist viva do jogo):** o que cada sistema, item e skill precisa ter,
 com estado e evidência por linha, fica em [`docs/rust/08-checklist-funcionalidades.md`](../docs/rust/08-checklist-funcionalidades.md).

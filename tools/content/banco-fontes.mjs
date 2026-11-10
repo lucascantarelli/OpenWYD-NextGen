@@ -27,6 +27,14 @@ export const FONTES = {
     estado: 'confirmado',
     nota: '`tier`/`arch_of_id` vêm das camadas CONFIRMADAS de progressão (D-B02).',
   },
+  character_scores: {
+    dominio: 'personagem',
+    fonte:
+      'Basedef.cpp `BaseSIDCHM`/`BASE_GetHpMp`/`BASE_GetBonusScorePoint` + tmserver/internal/level/level.go',
+    estado: 'confirmado',
+    nota:
+      'Atributos-base e pontos livres no nível 1; HP/MP máximos derivam de Con/Int e do incremento da classe.',
+  },
   character_items: {
     dominio: 'inventário',
     fonte: 'modelo-banco.md §2 + docs/wyd/sistemas/refino.md §2–§3',
@@ -38,6 +46,37 @@ export const FONTES = {
     fonte: 'modelo-banco.md §2 + docs/wyd/sistemas/refino.md §2–§3',
     estado: 'confirmado',
     nota: 'Mesmas colunas e CHECKs de `character_items`, por conta.',
+  },
+  character_short_skill: {
+    dominio: 'inventário',
+    fonte:
+      'CFileDB.cpp `memset(ShortSkill, -1, 16)` + protocolo.md §5.1 (`ShortSkill[16]@1034`)',
+    estado: 'confirmado',
+    nota:
+      '`ShortSkill[16]` persistido do personagem; linha ausente (personagem anterior à 0033) é materializada com `0xFF` na primeira leitura.',
+  },
+  character_learned_skill: {
+    dominio: 'personagem',
+    fonte:
+      '_MSG_ApplyBonus.cpp (`LearnedSkill` = máscara de 24 bits) + protocolo.md §5.1 (`Learn` no `MSG_UpdateEtc`)',
+    estado: 'confirmado',
+    nota:
+      'Skills aprendidas por personagem (`g_pSpell[24*classe+pos]`, 24 bits). Linha ausente = nenhuma skill aprendida; nunca bit inventado.',
+  },
+  character_special: {
+    dominio: 'personagem',
+    fonte:
+      '_MSG_ApplyBonus.cpp (`Special[4]` + `SpecialBonus`) + protocolo.md §5.2 (tipo 1)',
+    estado: 'confirmado',
+    nota:
+      'Maestria por atributo e pontos de maestria; `BaseMob` traz tudo zero. Teto 200 (255 com a skill de linha 7/15/23 aprendida) e teto dinâmico `3*(nível+1)>>1` são regra de servidor.',
+  },
+  account_wallet: {
+    dominio: 'economia',
+    fonte: 'ProcessDBMessage.cpp `MSG_DBCNFAccountLogin.Coin` + protocolo.md §5.1',
+    estado: 'confirmado',
+    nota:
+      '`Coin` da conta (distinto de `characters.gold`); teto `i32::MAX` porque o campo do fio é `int`. Conta sem linha responde zero.',
   },
   guilds: {
     dominio: 'social',

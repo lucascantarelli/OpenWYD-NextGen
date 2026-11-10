@@ -11,13 +11,18 @@ use wyd_server::auth::{AuthError, Authenticator, PinOutcome, MAX_PIN_FAILURES};
 const SENHA: &str = "SenhaForte1";
 const PIN: &str = "1357";
 
-fn dsn() -> String {
-    ["WYD_TEST_DATABASE_URL", "DATABASE_URL"]
+/// Sem banco o teste **pula** com aviso (mesmo contrato de `wyd-db/tests/pg.rs`):
+/// `cargo test --workspace` tem de passar em máquina limpa, sem DSN exportado.
+fn dsn() -> Option<String> {
+    let valor = ["WYD_TEST_DATABASE_URL", "DATABASE_URL"]
         .iter()
         .filter_map(|var| std::env::var(var).ok())
         .map(|valor| valor.trim().to_string())
-        .find(|valor| !valor.is_empty())
-        .expect("WYD_TEST_DATABASE_URL/DATABASE_URL para o teste de PIN")
+        .find(|valor| !valor.is_empty());
+    if valor.is_none() {
+        eprintln!("SKIP: WYD_TEST_DATABASE_URL/DATABASE_URL ausente — teste de PIN persistido não executado");
+    }
+    valor
 }
 
 fn runtime() -> Arc<tokio::runtime::Runtime> {
@@ -51,9 +56,10 @@ fn falhar(auth: &Authenticator, login: &str, pin: &str) -> AuthError {
 
 #[test]
 fn bloqueio_sobrevive_a_novo_processo() {
+    let Some(dsn) = dsn() else { return };
     let rt = runtime();
     let backend = Arc::new(
-        rt.block_on(PgBackend::connect(&dsn(), PoolConfig::local()))
+        rt.block_on(PgBackend::connect(&dsn, PoolConfig::local()))
             .expect("banco"),
     );
     let login = conta(&backend, &rt, "pp");
@@ -92,9 +98,10 @@ fn bloqueio_sobrevive_a_novo_processo() {
 
 #[test]
 fn pin_correto_zera_falhas_para_o_proximo_processo() {
+    let Some(dsn) = dsn() else { return };
     let rt = runtime();
     let backend = Arc::new(
-        rt.block_on(PgBackend::connect(&dsn(), PoolConfig::local()))
+        rt.block_on(PgBackend::connect(&dsn, PoolConfig::local()))
             .expect("banco"),
     );
     let login = conta(&backend, &rt, "pz");
@@ -120,9 +127,10 @@ fn pin_correto_zera_falhas_para_o_proximo_processo() {
 
 #[test]
 fn pin_gravado_nao_e_texto_plano() {
+    let Some(dsn) = dsn() else { return };
     let rt = runtime();
     let backend = Arc::new(
-        rt.block_on(PgBackend::connect(&dsn(), PoolConfig::local()))
+        rt.block_on(PgBackend::connect(&dsn, PoolConfig::local()))
             .expect("banco"),
     );
     let login = conta(&backend, &rt, "ph");

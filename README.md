@@ -15,8 +15,8 @@ mesmo espaço de memória, sem GC — com portal de administração em **Next.js
 │   ├── wyd-protocol/      # contratos de wire/cliente (CPSock, offsets explícitos)
 │   ├── wyd-core/          # engine Hot Path (tick, ECS, spatial grid)
 │   ├── wyd-net/           # transporte async (tokio/io_uring, zero-copy)
-│   ├── wyd-db/            # persistência async (Postgres sqlx)
-│   ├── wyd-admin/         # control plane Cold Path (gRPC/REST p/ o portal)
+│   ├── wyd-db/            # persistência async (Postgres sqlx)│   ├── wyd-admin/        # control plane Cold Path (HTTP/JSON p/ o portal)
+│   ├── wyd-server/       # monólito de jogo: um processo por canal (CPSock/status/sessão)
 │   ├── wyd-sim/           # laboratório matemático (balanceamento)
 │   └── wyd-launcher/      # launcher/patcher para o cliente (hash, patch, bootstrap,update,install, anticheat)
 ├── wyd-portal/                # 📊 UI Next.js (BFF; nunca escreve estado vivo)
@@ -44,7 +44,7 @@ Guia completo para quem chega agora: [`docs/manual-técnico/guia-contribuicao.md
 ```bash
 cargo fmt --check                      # formatação
 cargo clippy --workspace -- -D warnings # lints como erro
-cargo build --workspace                # compila as 7 crates
+cargo build --workspace                # compila as 8 crates
 cargo test --workspace                 # testes unitários (cada crate nasce com teste)
 ```
 
