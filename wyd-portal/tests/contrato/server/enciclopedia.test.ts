@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ENCYCLOPEDIA_COUNT, getItem, itemKinds, searchItems } from "./enciclopedia";
+import { ENCYCLOPEDIA_COUNT, getItem, itemKinds, searchItems } from "@/server/enciclopedia";
 
 /**
  * A enciclopédia é gerada (`tools/content/gen-enciclopedia.mjs`) e versionada.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { splitPlayersMobs } from "./monitoring";
+import { splitPlayersMobs } from "@/server/monitoring";
 
 describe("players × mobs (estimativa)", () => {
   it("separa jogadores do banco e mobs por diferença", () => {

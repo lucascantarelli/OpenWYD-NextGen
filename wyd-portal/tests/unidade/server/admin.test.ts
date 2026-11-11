@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_RESULT, httpStatusFor, isOk, messageFor } from "./admin-result";
+import { ADMIN_RESULT, httpStatusFor, isOk, messageFor } from "@/server/admin-result";
 
 /**
  * O mapa `AdminResult → HTTP` é o ponto onde o bug #257 nasceu: um valor de

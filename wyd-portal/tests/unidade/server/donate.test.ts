@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkDonateCredit, checkShopItem } from "./donate";
+import { checkDonateCredit, checkShopItem } from "@/server/donate";
 
 /**
  * As validações espelham o gateway (`api::donate::validar_edicao` e

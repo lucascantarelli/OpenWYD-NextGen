@@ -6,9 +6,9 @@ import { SignJWT } from "jose";
 import { NextRequest } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { NAV, SHELL_ROUTES } from "./components/nav";
-import { config, proxy } from "./proxy";
-import { SESSION_COOKIE, sessionKey } from "./server/session-key";
+import { NAV, SHELL_ROUTES } from "@/components/nav";
+import { config, proxy } from "@/proxy";
+import { SESSION_COOKIE, sessionKey } from "@/server/session-key";
 
 /**
  * Guarda de rota do portal. Os dois lados do contrato importam:
@@ -34,7 +34,7 @@ function covered(pathname: string, patterns: readonly string[] = config.matcher)
 
 /** Caminhos de página de `app/(admin)`, com `[param]` virando um valor concreto. */
 function adminRoutePaths(): string[] {
-  const root = fileURLToPath(new URL("./app/(admin)", import.meta.url));
+  const root = fileURLToPath(new URL("../../src/app/(admin)", import.meta.url));
   const out: string[] = [];
 
   const walk = (dir: string, prefix: string) => {

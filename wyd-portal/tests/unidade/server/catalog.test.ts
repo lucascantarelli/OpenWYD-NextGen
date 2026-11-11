@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findCatalogItem } from "./catalog";
+import { findCatalogItem } from "@/server/catalog";
 
 /**
  * A ficha do item (`?item=`) filtra a foto já lida do gateway: sem rota nova,

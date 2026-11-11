@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getDbHealth } from "./db-health";
+import { getDbHealth } from "@/server/db-health";
 
 describe("saúde do banco via gateway", () => {
   it("degrada sem derrubar quando o gateway está fora", async () => {

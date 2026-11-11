@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeEconomyAlerts, type EconomyView } from "./economy";
+import { computeEconomyAlerts, type EconomyView } from "@/server/economy";
 
 /**
  * Alertas derivam só de agregado já resumido (sem linha por jogador):

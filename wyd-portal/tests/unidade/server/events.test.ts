@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { scheduleLabel, weekdayLabel } from "./events";
+import { scheduleLabel, weekdayLabel } from "@/server/events";
 
 /**
  * Rótulos da grade de eventos: dia da semana e horário vêm do banco

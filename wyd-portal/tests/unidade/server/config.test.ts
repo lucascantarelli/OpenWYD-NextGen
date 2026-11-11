@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_PRICES, checkItemPrice } from "./config";
+import { MAX_PRICES, checkItemPrice } from "@/server/config";
 
 /**
  * A validação de preço espelha o gateway (`api::npc::validar_preco`): item e

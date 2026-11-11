@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getGuia, groupGuias, listGuias } from "./guias";
+import { getGuia, groupGuias, listGuias } from "@/server/guias";
 
 /**
  * O JSON de guias é gerado a partir de `docs/` (wyd-portal/scripts/build-guias.mjs).

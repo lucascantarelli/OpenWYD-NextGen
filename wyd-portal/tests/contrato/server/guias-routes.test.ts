@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { getGuia, guiaStaticParams, listGuias, renderGuia } from "./guias";
+import { getGuia, guiaStaticParams, listGuias, renderGuia } from "@/server/guias";
 
 /**
  * A ponte guias → rota não pode depender de inspeção manual.
