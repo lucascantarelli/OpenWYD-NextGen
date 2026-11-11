@@ -139,10 +139,10 @@ pub const MOB_PADDING: [usize; 11] = [21, 25, 26, 27, 801, 810, 811, 812, 813, 8
 
 /// Templates de classe reais, extraídos de
 /// `main:tmserver/content/DBsrv/run/BaseMob/{TK,FM,BM,HT}` (SHA-256 em `docs/wyd/classes.md`).
-const BASE_MOB_TK: &[u8] = include_bytes!("../assets/basemob/TK");
-const BASE_MOB_FM: &[u8] = include_bytes!("../assets/basemob/FM");
-const BASE_MOB_BM: &[u8] = include_bytes!("../assets/basemob/BM");
-const BASE_MOB_HT: &[u8] = include_bytes!("../assets/basemob/HT");
+const BASE_MOB_TK: &[u8] = include_bytes!("../../assets/basemob/TK");
+const BASE_MOB_FM: &[u8] = include_bytes!("../../assets/basemob/FM");
+const BASE_MOB_BM: &[u8] = include_bytes!("../../assets/basemob/BM");
+const BASE_MOB_HT: &[u8] = include_bytes!("../../assets/basemob/HT");
 
 /// Template cru da classe (`0`–`3`), ou `None` fora da faixa.
 #[must_use]

@@ -484,9 +484,10 @@ dono continua proibido: `.gitkeep` só via issue.
 
 ## 16. `wyd-server` — árvore executada (ADR-0022, FASE-03/07/08)
 
-> **ADR-0026 em execução.** Etapas 1–3 concluídas (`boot/`, `auth/`, `cpsock/` e `world/`);
-> os demais arquivos continuam planos até as etapas 4–5 (`character/`, `gameplay/`,
-> `config/`, `status/`). A árvore abaixo já reflete as etapas 1–3.
+> **ADR-0026 implementada (2026-11-11).** `boot/`, `auth/`, `cpsock/`, `world/`,
+> `character/`, `gameplay/`, `config/` e `status/` são diretórios com `mod.rs` de fachada;
+> a raiz fica só com `channels.rs`, `metrics.rs` e `logs.rs`. Quando o domínio ainda não
+> teve consumidor que justifique subdivisão fina, as regras ficam em `service.rs`.
 
 Raiz de composição do monólito **de um canal**. Não é "mais uma lib": é o único lugar que
 pode conhecer `wyd-core` + `wyd-net` + `wyd-db` + `wyd-admin` ao mesmo tempo. Lógica de jogo
@@ -514,8 +515,11 @@ crates/wyd-server/
 │   │   ├── mod.rs        # Authenticator/AuthError/PinOutcome (fachada do domínio)
 │   │   ├── password.rs   # senha de login (Argon2id)
 │   │   └── pin.rs        # PIN 4..=6, cadastro/troca e bloqueio persistido
-│   ├── characters.rs     # Create/Delete/CharacterLogin com autoridade no Postgres
-│   ├── personagens.rs    # STRUCT_SELCHAR/STRUCT_MOB a partir do banco
+│   ├── character/
+│   │   ├── mod.rs        # fachada do domínio
+│   │   ├── crud.rs       # Create/Delete/CharacterLogin com autoridade no Postgres
+│   │   ├── snapshot.rs   # STRUCT_SELCHAR/STRUCT_MOB a partir do banco
+│   │   └── session.rs    # sessão única por conta entre canais (0030)
 │   ├── world/
 │   │   ├── mod.rs        # World/Engine, tipos, comandos e porta `EngineHandle`
 │   │   ├── tick.rs       # EngineThread/run_loop, movimento e avanço do relógio
@@ -523,15 +527,18 @@ crates/wyd-server/
 │   │   ├── npc.rs        # `npc_specs`/`sync_npcs` e diálogo
 │   │   ├── combat.rs     # golpe autoritativo e dano por template
 │   │   └── save.rs       # `SaveSink`, `SaveQueueSink` e snapshots
-│   ├── session.rs        # sessão única por conta entre canais (0030)
 │   ├── channels.rs       # World: canais habilitados e papéis (normal/verde)
-│   ├── status.rs         # `/serv00.htm` + `/health` + sonda UDP :8281
-│   ├── config.rs         # snapshot de config (FASE-07-6): revisão, carga fora do tick
-│   │                     # e troca atômica; falha mantém o último snapshot bom; NPC carrega
-│   │                     # o STRUCT_MOB do `npc_template` (EXP/nível/atributos do spawn)
-│   ├── gameplay.rs       # refino/loot/EXP (07-6): lê o snapshot na chamada; `use_item` é o
-│   │                     # handler do `_MSG_UseItem`; `exp_reward` é o multiplicador do abate;
-│   │                     # loot ainda sem evento de morte
+│   ├── status/
+│   │   ├── mod.rs        # fachada do domínio
+│   │   └── service.rs    # `/serv00.htm` + `/health` + sonda UDP :8281
+│   ├── config/
+│   │   ├── mod.rs        # fachada do domínio
+│   │   └── service.rs    # snapshot/revisão/carga fora do tick; falha mantém o último
+│   │                     # snapshot bom; NPC carrega o STRUCT_MOB do `npc_template`
+│   ├── gameplay/
+│   │   ├── mod.rs        # fachada do domínio
+│   │   └── service.rs    # refino/loot/EXP/quest/portões/inventário; lê o snapshot na
+│   │                     # chamada; `use_item` é o handler do `_MSG_UseItem`; loot no abate
 │   ├── logs.rs           # log estruturado do processo (event=...)
 │   └── metrics.rs        # métricas do processo (uptime, canais, status, IP-limit)
 └── tests/                  # prefixo = tipo (docs/arquitetura/testes.md)
