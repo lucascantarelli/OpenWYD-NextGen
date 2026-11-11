@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkItemGrant } from "./deliveries";
+import { checkItemGrant } from "@/server/deliveries";
 
 /**
  * A validação do grant de item espelha o gateway (`validate_request`):

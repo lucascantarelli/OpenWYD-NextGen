@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fold, foldMatch } from "./fold";
+import { fold, foldMatch } from "@/lib/fold";
 
 /**
  * A dobra precisa dar o mesmo resultado de `content_fold()` (Postgres, 0007).

@@ -315,7 +315,7 @@ Layout conferido contra `Basedef.h` (`STRUCT_SCORE`/`STRUCT_ITEM`/`STRUCT_MOB`/
 `STRUCT_SELCHAR`, `MSG_DBCNFAccountLogin`, `MSG_CNFNewCharacter`,
 `MSG_CNFClientCharacterLogin`) e contra o porte Go de
 `main:tmserver/internal/protocol/{mob,selchar}.go`; implementação em
-`crates/wyd-server/src/personagens.rs`. Alinhamento natural do MSVC x86 — **não** `pack(1)`.
+`crates/wyd-server/src/character/snapshot.rs`. Alinhamento natural do MSVC x86 — **não** `pack(1)`.
 
 | Pacote | `HEADER.ID` | Total | Corpo |
 |---|---:|---:|---|
@@ -343,7 +343,7 @@ antigo envia ao cliente só o prefixo `MSG_CNFClientCharacterLogin` (1832 B, via
 `sizeof(MSG_CNFClientCharacterLogin)`) — é esse recorte que o porte Go e esta stack seguem.
 O mapeamento campo→origem (template `BaseMob` × banco) está em `docs/wyd/classes.md` §1.1–1.2.
 
-**Origem de cada bloco no login** (`crates/wyd-server/src/characters.rs` +
+**Origem de cada bloco no login** (`crates/wyd-server/src/character/crud.rs` +
 `personagens.rs`):
 
 | Bloco | Origem | Sem linha no banco |
@@ -399,7 +399,7 @@ ainda não existe na stack.
 ### 5.3 Ganho de EXP e nível (S→C) e o `Level` do fio
 
 `CMob::CheckGetLevel` (`Source/Code/TMSrv/CMob.cpp`) + `g_pNextLevel` (`Basedef.cpp:625`)
-portados em `crates/wyd-server/src/characters.rs`:
+portados em `crates/wyd-server/src/character/crud.rs`:
 
 - A EXP do banco é **acumulada** (`characters.exp`, o `MOB.Exp` do legado) e comparada com a
   curva; o índice da curva é o nível **interno** do legado (`g_pNextLevel[0] = 0` é o

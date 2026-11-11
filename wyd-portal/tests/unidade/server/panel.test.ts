@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./session", () => ({
+vi.mock("@/server/session", () => ({
   getSession: vi.fn(),
 }));
 
-import { AdminError } from "./errors";
-import { getPanelAccount, getPanelCharacters, getPanelRankings } from "./panel";
-import { getSession } from "./session";
+import { AdminError } from "@/server/errors";
+import { getPanelAccount, getPanelCharacters, getPanelRankings } from "@/server/panel";
+import { getSession } from "@/server/session";
 
 const getSessionMock = vi.mocked(getSession);
 

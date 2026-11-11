@@ -37,7 +37,7 @@ vi.mock("@/server/panel", async (importOriginal) => {
   };
 });
 
-const { POST } = await import("./route");
+const { POST } = await import("@/app/api/panel/pin/route");
 
 function req(body: unknown): Request {
   return new Request("http://127.0.0.1:3000/api/panel/pin", {

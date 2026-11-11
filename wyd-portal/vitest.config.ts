@@ -13,8 +13,10 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    // `.tsx` entra por causa do teste de componente da tela de conta (jsdom por
-    // arquivo, via `@vitest-environment jsdom` no topo do teste).
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // Testes por tipo em `tests/`: `unidade`, `contrato`, `integracao` e
+    // `componente`. `.tsx` entra por causa do teste de componente da tela de
+    // conta (jsdom por arquivo, via `@vitest-environment jsdom` no topo). O E2E
+    // é Playwright (`tests/e2e`, `npm run test:e2e`), fora do Vitest.
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
   },
 });

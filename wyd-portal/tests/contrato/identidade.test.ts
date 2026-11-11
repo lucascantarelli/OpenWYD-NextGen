@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
  * exista na identidade — as três formas de nascer uma paleta paralela.
  */
 
-const raiz = fileURLToPath(new URL("../..", import.meta.url));
+const raiz = fileURLToPath(new URL("../../../", import.meta.url));
 const tokensPath = `${raiz}/docs/arquitetura/identidade.tokens`;
 const cssPath = `${raiz}/wyd-portal/src/app/globals.css`;
 

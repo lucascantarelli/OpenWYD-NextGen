@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
  * público. Ele varre as páginas públicas, a home, o header e o footer.
  */
 // Teste em `wyd-portal/src/`: `../..` sobe até a raiz do repositório.
-const raiz = fileURLToPath(new URL("../..", import.meta.url));
+const raiz = fileURLToPath(new URL("../../../", import.meta.url));
 
 /** Todos os `.tsx` de uma pasta, recursivo. */
 function tsx(dir: string): string[] {

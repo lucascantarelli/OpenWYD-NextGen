@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MAX_ACCOUNT_PAGE, parseAccountCursor } from "./accounts";
+import { MAX_ACCOUNT_PAGE, parseAccountCursor } from "@/server/accounts";
 
 /**
  * A paginação de contas usa cursor opaco (`after_id`): a query string pode

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { embedUrlFor, openUrlFor } from "./grafana";
+import { embedUrlFor, openUrlFor } from "@/server/grafana";
 
 describe("embed do Grafana", () => {
   it("pede kiosk com menu e controles escondidos", () => {

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { formatarData, getNoticia, listNoticias, renderNoticia } from "./noticias";
+import { formatarData, getNoticia, listNoticias, renderNoticia } from "@/server/noticias";
 
 /**
  * O JSON publicado é gerado de `docs/noticias/*.md` (`npm run noticias`). Sem este

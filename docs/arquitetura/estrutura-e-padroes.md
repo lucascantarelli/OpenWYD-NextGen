@@ -597,3 +597,37 @@ Regras que esta árvore carrega:
 4. **Migrations no boot** (ADR-0024) antes do pool; DDL nunca no tick.
 5. **Teste que exige banco pula com aviso** quando `WYD_TEST_DATABASE_URL`/`DATABASE_URL`
    não existe — `cargo test --workspace` tem de passar em máquina limpa.
+
+## 17. `wyd-bots` — árvore executada (ADR-0027, FASE-15-4)
+
+Cliente de teste/QA que fala o protocolo real do canal; não é runtime de servidor. A
+fachada pública (`Bot`, `BotConfig`, `Race`, `SceneMob`, `parse_etapa`, `nome_do_campo` e
+`tela::*`) é consumida pelo `wyd-launcher` e pelos testes de sistema do `wyd-server`.
+
+```
+crates/wyd-bots/
+├── Cargo.toml
+└── src/
+    ├── lib.rs              # fachada: mod bot + pub mod tela + re-exports + testes
+    ├── main.rs             # CLI: BotConfig por raça e execução da campanha
+    ├── bot/
+    │   ├── mod.rs          # socket, handshake, autenticação, seleção e helpers de frame
+    │   ├── config.rs       # Race (classes 0–3) + BotConfig (conta/slot/treinadores)
+    │   ├── cena.rs         # SceneMob + nome_do_campo (CreateMob)
+    │   ├── campanha.rs     # campaign + quest + parse_etapa
+    │   ├── comercio.rs     # loja, compra e SendItem/Coin
+    │   ├── combate.rs      # Attack/AttackOne/AttackTwo e kill
+    │   ├── movimento.rs    # Action, walk_to e open_gate
+    │   └── recusa.rs       # motivo_da_recusa (texto acionável ao jogador)
+    └── tela/
+        └── mod.rs          # tela de conexão (renderização e entrada)
+```
+
+Regras:
+
+1. `lib.rs` só declara/re-exporta; testes de unidade ficam nele.
+2. Cada arquivo de `bot/` contém apenas os métodos de `impl Bot` do seu domínio; o header
+   de imports compartilhados fica em `bot/mod.rs` como `pub(crate) use`.
+3. `tela/` é UI de conexão, não protocolo de jogo; `main.rs` e os consumidores externos
+   continuam usando `wyd_bots::tela::*`.
+4. Nenhuma regra de servidor mora aqui: o bot apenas envia pacotes e lê a cena/painéis.

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TEXTO } from "@/lib/i18n";
 
-import PinForm from "./pin-form";
+import PinForm from "@/app/(public)/conta/pin-form";
 
 /**
  * Componente **real** da tela de conta (`/conta` usa este arquivo), sem mock do

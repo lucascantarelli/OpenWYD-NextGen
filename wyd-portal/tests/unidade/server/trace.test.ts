@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { promisify } from "./promisify";
-import { TRACE_HEADER, newTraceId, traceHeaders, validTraceId } from "./trace";
+import { promisify } from "@/server/promisify";
+import { TRACE_HEADER, newTraceId, traceHeaders, validTraceId } from "@/server/trace";
 
 describe("trace", () => {
   it("gera ids de 32 hex, distintos entre chamadas", () => {

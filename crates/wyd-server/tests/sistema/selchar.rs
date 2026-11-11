@@ -543,10 +543,12 @@ fn sussurro_de_getout_e_tolerado_e_nao_derruba_a_sessao() {
         Opcode::CNFCharacterLogout,
         "sussurro tolerado não encerrou a conexão"
     );
-    let viva = rt
-        .block_on(backend.live_session_of(&conta))
-        .expect("sessão");
-    assert_eq!(viva, None, "o logout seguinte liberou a sessão");
+    let saiu = common::esperar_ate(Duration::from_secs(5), || {
+        rt.block_on(backend.live_session_of(&conta))
+            .expect("sessão")
+            .is_none()
+    });
+    assert!(saiu, "o logout seguinte liberou a sessão");
 }
 
 /// Reconexão no **mesmo** canal retoma a sessão (o cliente reconectou); outro canal continua
