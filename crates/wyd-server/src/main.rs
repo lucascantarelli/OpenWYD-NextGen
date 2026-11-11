@@ -201,8 +201,10 @@ fn run() -> Result<(), String> {
         "config",
         &format!("reloader=on poll_ms={}", config_poll.as_millis()),
     );
-    let engine = wyd_server::world::Engine::new(tick_hz, Arc::clone(&engine_metrics))
+    let mut engine = wyd_server::world::Engine::new(tick_hz, Arc::clone(&engine_metrics))
         .map_err(|error| format!("tick: {error}"))?;
+    // PvP é decisão do canal × mapa: a penalidade de CP só existe quando o papel permite.
+    engine.set_pvp(rules.pvp_allowed(true));
     let tick_interval = engine.interval_ms();
     log(
         "info",

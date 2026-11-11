@@ -29,7 +29,7 @@
 | inventário | `character_items`, `vault_items`, `character_short_skill` |
 | moderação | `account_moderation` |
 | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone`, `map_definition`, `teleport_route` |
-| personagem | `characters`, `character_scores`, `character_learned_skill`, `character_special` |
+| personagem | `characters`, `character_scores`, `character_chaos`, `character_learned_skill`, `character_special` |
 | ponte web→jogo | `delivery_queue` |
 | progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
@@ -1544,6 +1544,22 @@
 | `score_bonus` | `integer` | não |
 | `skill_bonus` | `integer` | não |
 
+### `character_chaos`
+
+- **Arquivo:** `0048_chaos_points.sql` · **Domínio:** personagem · **Estado:** confirmado
+- **Fonte:** docs/wyd/pesquisa-internet-2026-11-10.md §2.4 (Kersef + WYD Int) + RE do cliente 7662
+- **Nota:** CP (`-75..=75`); o byte do fio é `cp + 75` (`ChaosRate` em `pMob+0x11e`, cor do nome).
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_chaos_cp`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `cp` | `smallint` | não |
+
 ### `character_short_skill`
 
 - **Arquivo:** `0033_character_short_skill.sql` · **Domínio:** inventário · **Estado:** confirmado
@@ -1942,6 +1958,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0045 | `0045_donate_debito.sql` | DDL | `donate_debit` |
 | 0046 | `0046_seed_campo_treinamento.sql` | seed | — |
 | 0047 | `0047_seed_limpeza_fixtures_campo.sql` | seed | — |
+| 0048 | `0048_chaos_points.sql` | DDL | `character_chaos` |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

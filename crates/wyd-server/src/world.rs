@@ -250,6 +250,8 @@ pub struct Entered {
 pub struct LiveState {
     pub character_id: i64,
     pub level: u16,
+    /// CP do personagem (`-75..=75`), persistido no save e usado na cor do nome.
+    pub cp: i16,
     pub exp: i64,
     pub hp: u32,
     pub mp: u32,
@@ -281,6 +283,7 @@ impl SaveSink for SaveQueueSink {
         let character = Character {
             id: state.character_id,
             level: i64::from(state.level),
+            cp: i64::from(state.cp),
             exp: state.exp,
             hp: i64::from(state.hp),
             mp: i64::from(state.mp),
@@ -362,6 +365,8 @@ pub struct SceneMob {
     pub defense: u32,
     /// `STRUCT_SCORE.Merchant`: NPC de loja tem nome sempre visível; jogador é 0.
     pub merchant: u8,
+    /// `STRUCT_SCORE.ChaosRate` = CP + 75: é o byte que o cliente lê para a cor do nome.
+    pub chaos_rate: u8,
     pub attack_run: u8,
     pub direction: u8,
     pub equip: [u16; 16],
@@ -492,6 +497,12 @@ pub struct AttackOutcome {
     pub killed: bool,
     /// EXP base do template (o multiplicador entra depois, na sessão).
     pub exp: i64,
+    /// `true` = o alvo era outro jogador (PvP), não um NPC.
+    pub target_actor: bool,
+    /// CP do autor depois do golpe (só muda em abate PvP).
+    pub cp_after: i16,
+    /// Caos descontado do autor neste abate (0 fora de PvP ou para vítima já listada).
+    pub cp_delta: i16,
 }
 
 /// Estado vivo de um NPC: entidade no armazém + a definição que a originou.
@@ -516,6 +527,11 @@ pub enum Command {
     },
     /// Foto de todos os vivos (save periódico/shutdown).
     Snapshots { reply: SyncSender<Vec<LiveState>> },
+    /// CP vivo da entidade (comando `/cp` do chat).
+    Cp {
+        entity: Entity,
+        reply: SyncSender<Option<i16>>,
+    },
     /// Materializa a foto de `npc_definition` (boot e cada recarga de configuração).
     SyncNpcs {
         specs: Vec<NpcSpec>,
@@ -595,6 +611,8 @@ pub struct Engine {
     scene_generation: u64,
     /// Portões abertos por chave (`EF_KEYID`), com fechamento por tempo (FASE-03-18).
     gates: crate::gameplay::GateBook,
+    /// PvP ligado neste canal/mapa (papel do canal × mapa, decidido na borda).
+    pvp: bool,
     /// Regras do movimento autoritativo (velocidade + retângulo do mapa).
     move_rules: MoveRules,
     /// Último movimento aceito por entidade (ms do processo): base do orçamento.
@@ -642,6 +660,7 @@ impl Engine {
             next_mob_scene: MAX_USER,
             scene_generation: 0,
             gates: crate::gameplay::GateBook::default(),
+            pvp: false,
             move_rules: MoveRules::new(
                 move_tiles_per_second(),
                 Position { x: 0, y: 0 },
@@ -665,6 +684,17 @@ impl Engine {
     #[must_use]
     pub fn interval_ms(&self) -> u64 {
         self.interval_ms
+    }
+
+    /// Liga/desliga o PvP deste mundo (decisão da borda: papel do canal × mapa).
+    pub fn set_pvp(&mut self, pvp: bool) {
+        self.pvp = pvp;
+    }
+
+    /// CP vivo da entidade (teste/observância).
+    #[must_use]
+    pub fn cp_of(&self, entity: Entity) -> Option<i16> {
+        self.live.get(&entity.index).map(|state| state.cp)
     }
 
     /// Reserva o id de cena da entidade no espaço do legado.
@@ -850,6 +880,7 @@ impl Engine {
                 attack: npc.spec.stats.attack,
                 defense: npc.spec.stats.defense,
                 merchant: u8::try_from(npc.spec.merchant).unwrap_or(0),
+                chaos_rate: crate::personagens::CP_NEUTRO,
                 attack_run: npc.spec.attack_run,
                 direction: npc.spec.direction,
                 equip: npc.spec.equip,
@@ -882,6 +913,7 @@ impl Engine {
                 attack: stats.map_or(0, |stats| stats.attack),
                 defense: stats.map_or(0, |stats| stats.defense),
                 merchant: 0,
+                chaos_rate: wyd_sim::chaos_rate(estado.cp),
                 attack_run: skin.attack_run,
                 direction: skin.direction,
                 equip: skin.equip,
@@ -935,7 +967,8 @@ impl Engine {
                 )
             })
         else {
-            return Ok(None);
+            // Sem criatura no ponto: com PvP ligado, o alvo pode ser outro jogador.
+            return self.attack_player(attacker, x, y, now_ms);
         };
         let golpe = combat_system::attack(
             &mut self.store,
@@ -961,6 +994,89 @@ impl Engine {
             remaining_hp: golpe.remaining_hp,
             killed,
             exp: if killed { exp } else { 0 },
+            target_actor: false,
+            cp_after: 0,
+            cp_delta: 0,
+        }))
+    }
+
+    /// Golpe em **outro jogador** (PvP) no ponto clicado.
+    ///
+    /// Só existe com o PvP do canal/mapa ligado e autor com CP acima do piso (`-75`). O
+    /// abate desconta o caos do autor (0 para vítima já listada) e devolve a vítima com HP
+    /// cheio — sem EXP/item, porque no original o CP é a consequência do kill. O save
+    /// periódico leva o CP novo (`LiveState.cp`).
+    fn attack_player(
+        &mut self,
+        attacker: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+    ) -> Result<Option<AttackOutcome>, CoreError> {
+        if !self.pvp {
+            return Ok(None);
+        }
+        let atacante_cp = self.live.get(&attacker.index).map_or(0, |state| state.cp);
+        if !wyd_sim::pode_iniciar_pk(atacante_cp) {
+            return Ok(None);
+        }
+        // Menor distância e depois menor índice: mesma ordem determinística de `npc_near`.
+        let alvo = self
+            .by_character
+            .values()
+            .copied()
+            .filter(|entity| *entity != attacker)
+            .filter_map(|entity| {
+                let posicao = self.store.position_of(entity)?;
+                let hp = self.store.stats_of(entity)?.hp;
+                let distancia = posicao.x.abs_diff(x).max(posicao.y.abs_diff(y));
+                (hp > 0 && distancia <= ATTACK_RANGE_TILES).then_some((
+                    distancia,
+                    entity.index,
+                    entity,
+                ))
+            })
+            .min_by_key(|(distancia, indice, _)| (*distancia, *indice))
+            .map(|(_, _, entity)| entity);
+        let Some(alvo) = alvo else {
+            return Ok(None);
+        };
+        let golpe = combat_system::attack(
+            &mut self.store,
+            attacker,
+            alvo,
+            now_ms,
+            ATTACK_RULES,
+            &TemplateDamage,
+        )?;
+        let killed = golpe.remaining_hp == 0;
+        let mut cp_after = atacante_cp;
+        let mut cp_delta = 0;
+        if killed {
+            let vitima_cp = self.live.get(&alvo.index).map_or(0, |state| state.cp);
+            cp_delta = wyd_sim::penalidade_de_kill(vitima_cp);
+            cp_after = wyd_sim::clamp_cp(atacante_cp - cp_delta);
+            if let Some(state) = self.live.get_mut(&attacker.index) {
+                state.cp = cp_after;
+            }
+            if let Some(stats) = self.store.stats_of(alvo) {
+                self.store.restore_hp(alvo, stats.max_hp);
+                if let Some(state) = self.live.get_mut(&alvo.index) {
+                    state.hp = stats.max_hp;
+                }
+            }
+        }
+        Ok(Some(AttackOutcome {
+            target_npc: 0,
+            target_scene: self.scene_ids.get(&alvo.index).copied().unwrap_or(0),
+            template: String::new(),
+            damage: golpe.amount,
+            remaining_hp: golpe.remaining_hp,
+            killed,
+            exp: 0,
+            target_actor: true,
+            cp_after,
+            cp_delta,
         }))
     }
 
@@ -1155,6 +1271,7 @@ impl Engine {
         let state = LiveState {
             character_id: character.id,
             level: stats.level,
+            cp: i16::try_from(character.cp).unwrap_or(0).clamp(-75, 75),
             exp: character.exp,
             hp: stats.hp,
             mp: stats.mp,
@@ -1197,6 +1314,9 @@ impl Engine {
             }
             Command::Leave { entity, reply } => {
                 let _ = reply.send(self.leave(entity));
+            }
+            Command::Cp { entity, reply } => {
+                let _ = reply.send(self.cp_of(entity));
             }
             Command::Snapshots { reply } => {
                 let _ = reply.send(self.snapshots());
@@ -1405,6 +1525,13 @@ impl EngineHandle {
             COMMAND_TIMEOUT,
         )
         .unwrap_or(Err(EnterWorldError::Unavailable))
+    }
+
+    /// CP vivo da entidade (`/cp` do chat).
+    #[must_use]
+    pub fn cp_of(&self, entity: Entity) -> Option<i16> {
+        self.call(|reply| Command::Cp { entity, reply }, COMMAND_TIMEOUT)
+            .flatten()
     }
 
     /// Retira a entidade do mundo e devolve o estado final.
@@ -1733,6 +1860,83 @@ mod tests {
 
     fn engine() -> Engine {
         Engine::new(20, Arc::new(Metrics::new())).expect("motor com 20 Hz")
+    }
+
+    #[test]
+    fn pvp_abaixa_o_cp_do_autor_e_restaura_a_vitima() {
+        let mut engine = engine();
+        engine.set_pvp(true);
+        let autor = personagem(1, 100, 100);
+        let vitima = Character {
+            hp: 1,
+            ..personagem(2, 101, 100)
+        };
+        let atacante = engine.enter(&autor, ActorSkin::default()).expect("entra");
+        let alvo = engine.enter(&vitima, ActorSkin::default()).expect("entra");
+        let golpe = engine
+            .attack_at(atacante.entity, 101, 100, 1_000)
+            .expect("consulta")
+            .expect("jogador no alcance");
+        assert!(golpe.target_actor, "o alvo era jogador, não NPC");
+        assert!(golpe.killed, "HP 1 vira abate");
+        assert_eq!(golpe.cp_delta, 2, "vítima neutra rende 2 de caos");
+        assert_eq!(engine.cp_of(atacante.entity), Some(-2));
+        assert_eq!(
+            engine.store().stats_of(alvo.entity).map(|stats| stats.hp),
+            Some(100),
+            "vítima volta com HP cheio"
+        );
+    }
+
+    #[test]
+    fn pvp_no_piso_do_cp_nao_atinge_jogador() {
+        let mut engine = engine();
+        engine.set_pvp(true);
+        let autor = Character {
+            cp: -75,
+            ..personagem(1, 100, 100)
+        };
+        let atacante = engine.enter(&autor, ActorSkin::default()).expect("entra");
+        engine
+            .enter(
+                &Character {
+                    hp: 1,
+                    ..personagem(2, 101, 100)
+                },
+                ActorSkin::default(),
+            )
+            .expect("entra");
+        assert!(
+            engine
+                .attack_at(atacante.entity, 101, 100, 1_000)
+                .expect("consulta")
+                .is_none(),
+            "CP -75 não inicia PK"
+        );
+    }
+
+    #[test]
+    fn pvp_desligado_nao_golpeia_jogador() {
+        let mut engine = engine();
+        let atacante = engine
+            .enter(&personagem(1, 100, 100), ActorSkin::default())
+            .expect("entra");
+        engine
+            .enter(
+                &Character {
+                    hp: 1,
+                    ..personagem(2, 101, 100)
+                },
+                ActorSkin::default(),
+            )
+            .expect("entra");
+        assert!(
+            engine
+                .attack_at(atacante.entity, 101, 100, 1_000)
+                .expect("consulta")
+                .is_none(),
+            "PvP desligado não golpeia jogador"
+        );
     }
 
     #[test]

@@ -490,6 +490,22 @@ impl Characters for PgBackend {
                 personagem.skill_bonus = *skills;
             }
         }
+        // CP (0048): tabela 1:1 carregada com o roster — é ela que pinta o nome no login.
+        let chaos = sqlx::query(
+            "SELECT cc.character_id, cc.cp FROM character_chaos cc \
+             JOIN characters c ON c.id = cc.character_id \
+             WHERE c.account_id = $1 AND c.deleted_at IS NULL",
+        )
+        .bind(account_id)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("characters.list_chaos", "character_chaos"))?;
+        for row in &chaos {
+            let id: i64 = row.get("character_id");
+            if let Some(personagem) = personagens.iter_mut().find(|p| p.id == id) {
+                personagem.cp = i64::from(row.get::<i16, _>("cp"));
+            }
+        }
         // Guilda é relação (`guild_members`), não coluna: um SELECT só para a conta.
         let guildas = sqlx::query(
             "SELECT gm.character_id, g.id, g.name FROM guild_members gm \
@@ -589,6 +605,12 @@ impl Characters for PgBackend {
         .execute(&mut *tx)
         .await
         .map_err(map_error("characters.create_scores", "character_scores"))?;
+        sqlx::query("INSERT INTO character_chaos (character_id, cp) VALUES ($1, $2)")
+            .bind(id)
+            .bind(i16::try_from(character.cp).unwrap_or(0))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_error("characters.create_chaos", "character_chaos"))?;
         tx.commit()
             .await
             .map_err(map_error("characters.create_commit", "characters"))?;
@@ -599,6 +621,7 @@ impl Characters for PgBackend {
         criado.constitution = character.constitution;
         criado.score_bonus = character.score_bonus;
         criado.skill_bonus = character.skill_bonus;
+        criado.cp = character.cp;
         Ok(criado)
     }
 

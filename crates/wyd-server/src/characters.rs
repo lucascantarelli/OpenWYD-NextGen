@@ -251,6 +251,8 @@ pub struct SelectionStore {
     runtime: Arc<tokio::runtime::Runtime>,
     world: Option<WorldBridge>,
     gameplay: Option<Arc<Gameplay>>,
+    /// Chat social do canal: uma fila por sessão em jogo (`_MSG_MessageChat`).
+    chat: Arc<crate::session::ChatHub>,
 }
 
 /// Ponte para o mundo vivo (FASE-03-8): entrada/saída por comando e save pela fila.
@@ -303,7 +305,14 @@ impl SelectionStore {
             runtime,
             world: None,
             gameplay: None,
+            chat: Arc::new(crate::session::ChatHub::new()),
         }
+    }
+
+    /// Registro de chat do canal (compartilhado por todas as conexões do processo).
+    #[must_use]
+    pub fn chat(&self) -> &Arc<crate::session::ChatHub> {
+        &self.chat
     }
 
     /// Piedade persistida do slot de inventário (`refine_pity`, FASE-03-16).
@@ -324,6 +333,12 @@ impl SelectionStore {
     pub fn with_world(mut self, handle: EngineHandle, saves: Arc<dyn SaveSink>) -> Self {
         self.world = Some(WorldBridge { handle, saves });
         self
+    }
+
+    /// CP vivo do personagem (fonte: `LiveState` do motor) — comando `/cp` do chat.
+    #[must_use]
+    pub fn cp(&self, entity: Entity) -> Option<i16> {
+        self.world.as_ref()?.handle.cp_of(entity)
     }
 
     /// Liga a seleção ao snapshot de configuração viva (multiplicador de EXP).
@@ -709,6 +724,26 @@ impl SelectionStore {
         let Some(golpe) = resultado else {
             return Ok(None);
         };
+        // PvP: o CP é a única consequência (o motor já descontou e reviveu a vítima).
+        // Nada de EXP/loot de template aqui.
+        if golpe.target_actor {
+            return Ok(Some(AttackReport {
+                target_npc: 0,
+                target_scene: golpe.target_scene,
+                template: String::new(),
+                damage: golpe.damage,
+                remaining_hp: golpe.remaining_hp,
+                killed: golpe.killed,
+                base_exp: 0,
+                granted_exp: 0,
+                levels: 0,
+                mob: None,
+                loot: None,
+                target_actor: true,
+                cp_after: golpe.cp_after,
+                cp_delta: golpe.cp_delta,
+            }));
+        }
         if !golpe.killed {
             return Ok(Some(AttackReport {
                 target_npc: golpe.target_npc,
@@ -722,6 +757,9 @@ impl SelectionStore {
                 levels: 0,
                 mob: None,
                 loot: None,
+                target_actor: false,
+                cp_after: 0,
+                cp_delta: 0,
             }));
         }
         let ganho = self.gain_exp(selected, golpe.exp)?;
@@ -748,6 +786,9 @@ impl SelectionStore {
             levels: ganho.levels,
             mob: Some(ganho.mob),
             loot,
+            target_actor: false,
+            cp_after: 0,
+            cp_delta: 0,
         }))
     }
 
@@ -1125,6 +1166,12 @@ pub struct AttackReport {
     pub mob: Option<Mob>,
     /// Loot do abate resolvido no instante da morte (`None` sem abate ou sem resolvedor).
     pub loot: Option<Result<LootResolution, LootError>>,
+    /// `true` = o golpe foi em outro jogador (PvP), sem EXP nem loot.
+    pub target_actor: bool,
+    /// CP do autor depois do golpe.
+    pub cp_after: i16,
+    /// Caos descontado do autor no abate (0 fora de PvP ou vítima já listada).
+    pub cp_delta: i16,
 }
 
 impl SelectionStore {

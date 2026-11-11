@@ -12,13 +12,289 @@
 //! Transitar entre canais continua trivial: sair libera a sessão, e a entrada no outro canal
 //! relê o personagem do banco — nada é copiado, nada é perdido.
 
-use std::sync::Arc;
+use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use wyd_db::{ChannelCapacity, ClaimOutcome, PgBackend, Sessions};
 
 /// TTL mínimo da sessão ociosa: abaixo disso a retomada por TTL viraria corrida.
 const MIN_STALE: Duration = Duration::from_secs(30);
+
+/// Uma linha de `_MSG_MessageChat` pronta para entrega.
+///
+/// `speaker` é o id de cena (`ClientID`/`MobID`) de quem falou: o cliente resolve esse id
+/// no mob da vista e monta o nome sozinho (receptor `0x48241f`: busca `MobID` e formata
+/// `nome : texto`). Não existe campo de nome no pacote.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChatLine {
+    /// Id de cena do falante (`HEADER.ID` do `_MSG_MessageChat`).
+    pub speaker: u16,
+    /// Texto já recortado em `text[128]`, como o corpo do pacote.
+    pub text: [u8; 128],
+}
+
+/// Registro de sessões **deste processo** (canal) para o chat social.
+///
+/// Cada conexão tem uma fila própria: quem fala não escreve no socket de ninguém, apenas
+/// entrega a linha para as filas de quem está na vista. O loop da conexão drena a fila e
+/// emite com o **próprio** `key_word` — é o que permite um processo atender várias sessões
+/// sem compartilhar socket nem escrever de fora da thread dona da conexão.
+/// Anti-flood do chat: no máximo [`CHAT_BURST`] falas a cada [`CHAT_WINDOW_MS`].
+///
+/// Vale só para mensagem social; `/cp`, `/mute` e `/unmute` não consomem cota.
+pub const CHAT_BURST: usize = 3;
+/// Janela do anti-flood (ms).
+pub const CHAT_WINDOW_MS: u64 = 5_000;
+
+/// Uma sessão inscrita: fila, nome do personagem, histórico do anti-flood e ignorados.
+#[derive(Debug)]
+struct ChatSession {
+    tx: Sender<ChatLine>,
+    name: [u8; 16],
+    recent: VecDeque<u64>,
+    muted: BTreeSet<[u8; 16]>,
+}
+
+/// Recusa ao silenciar (a resposta vai no `_MSG_MessagePanel`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MuteRefusal {
+    /// Tentou silenciar o próprio personagem.
+    SelfPlayer,
+    /// Nome não está em jogo neste canal.
+    NotFound,
+}
+
+/// `MobName[16]` normalizado em maiúsculas ASCII (o cliente já usa nomes em caixa alta).
+fn nome_16(nome: &str) -> [u8; 16] {
+    let mut out = [0u8; 16];
+    let bytes = nome.as_bytes();
+    let limite = bytes.len().min(out.len());
+    for (destino, byte) in out.iter_mut().zip(&bytes[..limite]) {
+        *destino = byte.to_ascii_uppercase();
+    }
+    out
+}
+
+fn nome_str(nome: &[u8; 16]) -> String {
+    let fim = nome
+        .iter()
+        .position(|byte| *byte == 0)
+        .unwrap_or(nome.len());
+    String::from_utf8_lossy(&nome[..fim]).to_string()
+}
+
+#[derive(Debug, Default)]
+pub struct ChatHub {
+    sessions: Mutex<HashMap<u16, ChatSession>>,
+}
+
+impl ChatHub {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Inscreve a sessão pelo id de cena + nome do personagem e devolve a fila e a licença.
+    pub fn join(self: &Arc<Self>, id: u16, nome: &str) -> (ChatLease, Receiver<ChatLine>) {
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner())
+            .insert(
+                id,
+                ChatSession {
+                    tx,
+                    name: nome_16(nome),
+                    recent: VecDeque::new(),
+                    muted: BTreeSet::new(),
+                },
+            );
+        (
+            ChatLease {
+                hub: Arc::clone(self),
+                id,
+            },
+            rx,
+        )
+    }
+
+    /// Remove a sessão (idempotente).
+    pub fn leave(&self, id: u16) {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner())
+            .remove(&id);
+    }
+
+    /// Anti-flood: `None` libera; `Some(ms)` é quanto falta para a janela abrir.
+    pub fn allow(&self, id: u16, now_ms: u64) -> Option<u64> {
+        let mut sessoes = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner());
+        let sessao = sessoes.get_mut(&id)?;
+        while let Some(&mais_antigo) = sessao.recent.front() {
+            if now_ms.saturating_sub(mais_antigo) >= CHAT_WINDOW_MS {
+                sessao.recent.pop_front();
+            } else {
+                break;
+            }
+        }
+        if sessao.recent.len() >= CHAT_BURST {
+            let mais_antigo = *sessao.recent.front().unwrap_or(&now_ms);
+            return Some((mais_antigo + CHAT_WINDOW_MS).saturating_sub(now_ms).max(1));
+        }
+        sessao.recent.push_back(now_ms);
+        None
+    }
+
+    /// Entrega para os ids indicados; devolve quantas filas receberam a linha.
+    ///
+    /// Id sem sessão (saiu entre a foto da vista e o envio) é ignorado, nunca erro. Quem
+    /// silenciou o falante também não recebe — o filtro é do destinatário, não do servidor.
+    pub fn deliver(&self, ids: &[u16], line: &ChatLine) -> usize {
+        let sessoes = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner());
+        let Some(falante) = sessoes.get(&line.speaker) else {
+            return 0;
+        };
+        let nome = falante.name;
+        let mut entregues = 0;
+        for id in ids {
+            let Some(destino) = sessoes.get(id) else {
+                continue;
+            };
+            if destino.muted.contains(&nome) {
+                continue;
+            }
+            if destino.tx.send(line.clone()).is_ok() {
+                entregues += 1;
+            }
+        }
+        entregues
+    }
+
+    /// Silencia o personagem `nome` para a sessão `id`.
+    pub fn mute(&self, id: u16, nome: &str) -> Result<(), MuteRefusal> {
+        let alvo = nome_16(nome);
+        let mut sessoes = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner());
+        let Some(atual) = sessoes.get(&id) else {
+            return Err(MuteRefusal::NotFound);
+        };
+        if atual.name == alvo {
+            return Err(MuteRefusal::SelfPlayer);
+        }
+        if !sessoes.values().any(|sessao| sessao.name == alvo) {
+            return Err(MuteRefusal::NotFound);
+        }
+        if let Some(atual) = sessoes.get_mut(&id) {
+            atual.muted.insert(alvo);
+        }
+        Ok(())
+    }
+
+    /// Volta a ouvir `nome`; `false` = não estava na lista.
+    pub fn unmute(&self, id: u16, nome: &str) -> bool {
+        let alvo = nome_16(nome);
+        self.sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner())
+            .get_mut(&id)
+            .is_some_and(|sessao| sessao.muted.remove(&alvo))
+    }
+
+    /// Lista de silenciados da sessão, em ordem alfabética.
+    #[must_use]
+    pub fn muted(&self, id: u16) -> Vec<String> {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner())
+            .get(&id)
+            .map(|sessao| sessao.muted.iter().map(nome_str).collect())
+            .unwrap_or_default()
+    }
+
+    /// Sessões inscritas agora (observabilidade/teste).
+    #[must_use]
+    pub fn online(&self) -> usize {
+        self.sessions
+            .lock()
+            .unwrap_or_else(|erro| erro.into_inner())
+            .len()
+    }
+}
+
+/// Licença de chat: sai do registro quando a sessão termina, inclusive em erro/panico.
+#[derive(Debug)]
+pub struct ChatLease {
+    hub: Arc<ChatHub>,
+    id: u16,
+}
+
+impl ChatLease {
+    #[must_use]
+    pub fn id(&self) -> u16 {
+        self.id
+    }
+}
+
+impl Drop for ChatLease {
+    fn drop(&mut self) {
+        self.hub.leave(self.id);
+    }
+}
+
+#[cfg(test)]
+mod chat_hub_tests {
+    use super::*;
+
+    fn linha(speaker: u16, texto: &[u8]) -> ChatLine {
+        let mut body = [0u8; 128];
+        body[..texto.len()].copy_from_slice(texto);
+        ChatLine {
+            speaker,
+            text: body,
+        }
+    }
+
+    #[test]
+    fn anti_flood_libera_tres_por_janela_e_devolve_a_espera() {
+        let hub = Arc::new(ChatHub::new());
+        let (_licenca, _rx) = hub.join(1, "Kae");
+        assert_eq!(hub.allow(1, 1_000), None);
+        assert_eq!(hub.allow(1, 1_100), None);
+        assert_eq!(hub.allow(1, 1_200), None);
+        assert_eq!(
+            hub.allow(1, 1_300),
+            Some(4_700),
+            "espera até a primeira fala sair da janela"
+        );
+        assert_eq!(hub.allow(1, 6_000), None, "janela rolou e liberou de novo");
+    }
+
+    #[test]
+    fn mute_esconde_a_linha_ate_o_unmute() {
+        let hub = Arc::new(ChatHub::new());
+        let (_a, _rx_a) = hub.join(1, "Kae");
+        let (_b, _rx_b) = hub.join(2, "Pkzinho");
+        let fala = linha(2, b"oi");
+        assert_eq!(hub.deliver(&[1, 2], &fala), 2);
+        assert_eq!(hub.mute(1, "pkzinho"), Ok(()));
+        assert_eq!(hub.deliver(&[1], &fala), 0, "silenciado não entrega");
+        assert_eq!(hub.muted(1), vec!["PKZINHO".to_string()]);
+        assert!(hub.unmute(1, "Pkzinho"));
+        assert_eq!(hub.deliver(&[1], &fala), 1);
+        assert_eq!(hub.mute(1, "Kae"), Err(MuteRefusal::SelfPlayer));
+        assert_eq!(hub.mute(1, "Ninguem"), Err(MuteRefusal::NotFound));
+    }
+}
 
 /// Lotação de um canal (FASE-06-3): fonte = `channel_capacity` no banco, com
 /// sobrescrita por processo via env (`WYD_SERVER_MAX_PLAYERS` e

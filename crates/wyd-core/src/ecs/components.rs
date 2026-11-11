@@ -548,6 +548,22 @@ impl ComponentStore {
             .flatten()
     }
 
+    /// Restaura o HP de uma entidade viva (cap no máximo).
+    ///
+    /// Usado pela morte de PvP: a vítima volta ao mundo com a barra cheia, sem perder
+    /// EXP/item (no original o CP é a consequência do abate). Devolve `false` para entidade
+    /// morta — nunca escreve em índice obsoleto.
+    pub fn restore_hp(&mut self, entity: Entity, hp: u32) -> bool {
+        if !self.is_alive(entity) {
+            return false;
+        }
+        if let Some(slot) = self.stats.get_mut(entity.index as usize) {
+            slot.hp = hp.min(slot.max_hp);
+            return true;
+        }
+        false
+    }
+
     /// Espécie da entidade viva (`None` se o id está morto/obsoleto).
     ///
     /// Leitura para IA e visibilidade; nenhuma regra de jogo é decidida aqui.

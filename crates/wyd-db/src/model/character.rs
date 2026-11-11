@@ -134,6 +134,9 @@ pub struct Character {
     pub mp_max: i64,
     /// Pontos de PvP (0031); ranking/season consome depois.
     pub pvp_points: i64,
+    /// CP (Chaos Points, 0048): `-75..=75`, 0 = neutro. A cor do nome no cliente é
+    /// `cp + 75`, calculada na borda — o banco guarda o CP real.
+    pub cp: i64,
     /// Atributos-base (0032): `BaseSIDCHM[classe]` no nível 1, mais o que o jogador
     /// distribuiu. HP/MP máximos derivam de `Con`/`Int` em `BASE_GetHpMp`.
     pub strength: i64,
@@ -171,6 +174,12 @@ impl Character {
             return Err(DbError::ConstraintViolation {
                 table: "characters",
                 constraint: "characters_name_nonempty",
+            });
+        }
+        if !(-75..=75).contains(&self.cp) {
+            return Err(DbError::ConstraintViolation {
+                table: "characters",
+                constraint: "characters_cp",
             });
         }
         Ok(())
