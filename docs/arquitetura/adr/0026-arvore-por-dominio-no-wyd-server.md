@@ -1,6 +1,6 @@
 # ADR-0026 — Árvore de `wyd-server/src` por domínio
 
-- **Estado:** aceita — etapas 1–3 implementadas (`boot/`, `auth/`, `cpsock/`, `world/`); etapas 4–5 pendentes
+- **Estado:** aceita — implementada em 2026-11-11 (etapas 1–5; ver *Execução*)
 - **Data:** 2026-11-11
 - **Decisores:** dono do projeto + agente
 - **Governa:** `crates/wyd-server` (árvore §16 de `estrutura-e-padroes.md`), FASE-03/07/08
@@ -71,22 +71,18 @@ src/
 │   ├── snapshot.rs        # STRUCT_SELCHAR/STRUCT_MOB
 │   └── session.rs         # sessão única entre canais
 ├── gameplay/
-│   ├── mod.rs
-│   ├── refine.rs
-│   ├── loot.rs
-│   ├── quest.rs
-│   └── exp.rs
+│   ├── mod.rs             # fachada do domínio
+│   └── service.rs         # refino/loot/EXP/quest/portões/inventário (ver Execução)
 ├── config/
-│   ├── mod.rs             # snapshot/revisão/troca atômica
-│   ├── loader.rs          # carga/validação
-│   └── npc.rs             # npc_specs/template
+│   ├── mod.rs             # fachada do domínio
+│   └── service.rs         # snapshot/revisão/carga/validação/NPC (ver Execução)
 ├── auth/
 │   ├── mod.rs
 │   ├── password.rs
 │   └── pin.rs
 ├── status/
-│   ├── mod.rs             # /serv00.htm, /health
-│   └── udp.rs             # sonda :8281
+│   ├── mod.rs             # fachada do domínio
+│   └── service.rs         # /serv00.htm, /health e sonda UDP :8281
 ├── channels.rs
 ├── metrics.rs
 └── logs.rs
@@ -132,9 +128,27 @@ Regras da árvore:
    `combat.rs`, `save.rs`) — **concluída em 2026-11-11**; gate `sistema_cena_mobs`,
    `sistema_entrada_mundo`, `integracao_tick_processo`.
 4. `character/` + `gameplay/`: CRUD, snapshot, refino/loot/quest/EXP; gate
-   `sistema_personagens_crud`, `sistema_selchar`, `sistema_refino_piedade`.
+   `sistema_personagens_crud`, `sistema_selchar`, `sistema_refino_piedade` — **concluída em
+   2026-11-11**.
 5. `config/` + `status/` + limpeza dos re-exports; atualizar §16 e este ADR para
-   **aceita (implementada)**.
+   **aceita (implementada)** — **concluída em 2026-11-11**. Os aliases `characters`,
+   `personagens` e `session` foram mantidos na `lib.rs` porque testes/launchers externos
+   ainda usam os caminhos antigos; removê-los é uma quebra de API fora do escopo desta ADR.
 
 Cada etapa: `cargo fmt --all --check`, `cargo clippy -p wyd-server --all-targets -- -D warnings`,
 `cargo test -p wyd-server -j 1`, e atualização do painel em `docs/rust/03-progresso.md`.
+
+## Execução (2026-11-11)
+
+A árvore entregue é a desta ADR, com uma consolidação deliberada: `gameplay/`, `config/`
+e `status/` têm `mod.rs` de fachada e **um** `service.rs` com as regras do domínio, em vez
+da subdivisão fina (`refine.rs`/`loot.rs`/`loader.rs`/`udp.rs`) prevista acima. A divisão
+fina não tem consumidor/teste que a exija hoje e o `service.rs` já dá o dono de domínio
+e a fronteira que faltavam; quando uma regra ganhar teste próprio, ela desce para o
+arquivo do seu domínio sem mudar a fachada. `character/` foi dividido de fato em
+`crud.rs`, `snapshot.rs` e `session.rs`.
+
+A raiz de `src/` ficou apenas com `lib.rs`, `main.rs`, `channels.rs`, `metrics.rs` e
+`logs.rs` (os três últimos previstos na árvore). O fallback `include_bytes!` de
+`character/snapshot.rs` foi ajustado de `../assets` para `../../assets` por causa da
+profundidade do novo diretório.

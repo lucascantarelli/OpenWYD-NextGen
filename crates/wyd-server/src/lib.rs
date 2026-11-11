@@ -23,16 +23,19 @@
 pub mod auth;
 pub mod boot;
 pub mod channels;
-pub mod characters;
+pub mod character;
 pub mod config;
 pub mod cpsock;
 pub mod gameplay;
 pub mod logs;
 pub mod metrics;
-pub mod personagens;
-pub mod session;
 pub mod status;
 pub mod world;
+
+// Caminhos históricos preservados durante a migração da ADR-0026.
+pub use character as characters;
+pub use character::session;
+pub use character::snapshot as personagens;
 
 pub use channels::{render_status_body, status_url, World};
 pub use channels::{ChannelRules, ROLE_ENV};

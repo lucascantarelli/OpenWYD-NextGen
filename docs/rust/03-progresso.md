@@ -92,6 +92,19 @@
 > spawned=0 kept=6100 removed=0`, provando recarga sem duplicar NPC; a tela já exibia
 > 25000, e a reversão para 10000 levou a revisão a 3 com `multiplier_exp=10000` no mesmo
 > processo. Sem migration nova (0037/0038 já existiam na árvore).
+>
+> **2026-11-11 (árvore por domínio em `wyd-server` e `wyd-bots`)**: `crates/wyd-server/src`
+> deixou de ter domínios planos na raiz. `character/` foi dividido em `crud.rs`, `snapshot.rs`
+> e `session.rs`; `gameplay/`, `config/` e `status/` viraram diretórios com `mod.rs` de
+> fachada e `service.rs` com as regras do domínio (subdivisão fina adiada até haver consumidor
+> que a justifique). A raiz ficou com `lib.rs`, `main.rs`, `channels.rs`, `metrics.rs` e
+> `logs.rs` (ADR-0026). `crates/wyd-bots/src` virou `bot/` (`config`, `cena`, `campanha`,
+> `comercio`, `combate`, `movimento`, `recusa` separados de socket/autenticação) + `tela/`,
+> preservando `Bot`, `BotConfig`, `Race`, `SceneMob`, `parse_etapa`, `nome_do_campo` e
+> `wyd_bots::tela::*` (ADR-0027). Gates: `cargo fmt --all --check` 0;
+> `cargo clippy -p wyd-server -p wyd-bots --all-targets -- -D warnings` 0;
+> `cargo test -p wyd-bots` verde. A suíte do `wyd-server` com banco real é o gate de fechamento
+> deste bloco.
 
 ## Legenda
 
