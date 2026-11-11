@@ -10,11 +10,13 @@ export type NavIcon =
   | "overview"
   | "accounts"
   | "grants"
+  | "mail"
   | "monitoring"
   | "catalog"
   | "config"
   | "audit"
-  | "economy";
+  | "economy"
+  | "cash";
 
 export interface NavItem {
   href: string;
@@ -40,6 +42,12 @@ export const NAV: readonly NavGroup[] = [
         label: "Entregas",
         icon: "grants",
         hint: "Conceder ouro e conferir a fila",
+      },
+      {
+        href: "/correio",
+        label: "Correio",
+        icon: "mail",
+        hint: "Conceder itens e conferir a fila",
       },
       {
         href: "/monitoramento",
@@ -75,6 +83,12 @@ export const NAV: readonly NavGroup[] = [
         label: "Economia",
         icon: "economy",
         hint: "Imposto e concessões com fonte auditada",
+      },
+      {
+        href: "/financeiro",
+        label: "Financeiro",
+        icon: "cash",
+        hint: "Loja de donate e crédito de saldo",
       },
     ],
   },

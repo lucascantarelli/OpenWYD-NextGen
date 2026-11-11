@@ -126,7 +126,21 @@ export default async function MonitoramentoPage() {
           label="Entidades no mundo"
           value={fmtInt(snapshot.engine.entities)}
           pending={!snapshot.reachable}
-          hint="jogadores + NPCs"
+          hint={
+            snapshot.engine.players !== null && snapshot.engine.mobs !== null
+              ? `${fmtInt(snapshot.engine.players)} jogadores · ${fmtInt(snapshot.engine.mobs)} mobs (est.)`
+              : "jogadores + NPCs"
+          }
+        />
+        <Stat
+          label="Banco"
+          value={snapshot.db.reachable ? `${snapshot.db.latencyMs ?? "—"} ms` : "fora"}
+          pending={!snapshot.db.reachable}
+          hint={
+            snapshot.db.reachable
+              ? `schema=${snapshot.db.schema ?? "?"}`
+              : snapshot.db.error
+          }
         />
       </div>
 

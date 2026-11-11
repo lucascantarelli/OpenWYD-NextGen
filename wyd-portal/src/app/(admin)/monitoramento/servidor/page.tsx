@@ -22,6 +22,13 @@ const fmtMb = (bytes: number | null): string =>
 const fmtPercent = (value: number | null): string =>
   value === null ? "—" : `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
+const fmtBps = (value: number | null): string => {
+  if (value === null) return "—";
+  if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB/s`;
+  if (value >= 1_000) return `${(value / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} KB/s`;
+  return `${value.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} B/s`;
+};
+
 /**
  * Servidor de jogo: a tela que só existe por causa do motor.
  *
@@ -73,8 +80,24 @@ export default async function ServidorMonitorPage() {
           label="Entidades"
           value={fmtInt(engine.entities)}
           pending={!snapshot.reachable}
-          hint="jogadores + NPCs"
+          hint={
+            engine.players !== null && engine.mobs !== null
+              ? `${fmtInt(engine.players)} jogadores · ${fmtInt(engine.mobs)} mobs (est.)`
+              : "jogadores + NPCs"
+          }
         />
+        <Stat
+          label="Banco"
+          value={snapshot.db.reachable ? `${snapshot.db.latencyMs ?? "—"} ms` : "fora"}
+          pending={!snapshot.db.reachable}
+          hint={
+            snapshot.db.reachable
+              ? `database=${snapshot.db.database ?? "?"} schema=${snapshot.db.schema ?? "?"}`
+              : snapshot.db.error
+          }
+        />
+        <Stat label="Rede RX" value={fmtBps(snapshot.host.networkRxBps)} pending={!snapshot.reachable} hint="node_exporter, sem lo" />
+        <Stat label="Rede TX" value={fmtBps(snapshot.host.networkTxBps)} pending={!snapshot.reachable} hint="node_exporter, sem lo" />
       </div>
 
       <section className="card" style={{ marginBottom: 16 }}>
@@ -106,6 +129,8 @@ export default async function ServidorMonitorPage() {
                     <th className="ui-align-right">Ticks/s</th>
                     <th className="ui-align-right">P99</th>
                     <th className="ui-align-right">Entidades</th>
+                    <th className="ui-align-right">Jogadores</th>
+                    <th className="ui-align-right">Mobs (est.)</th>
                     <th className="ui-align-right">RSS</th>
                   </tr>
                 </thead>
@@ -121,6 +146,8 @@ export default async function ServidorMonitorPage() {
                       <td className="ui-align-right">{fmtInt(channel.ticksPerSecond)}</td>
                       <td className="ui-align-right">{fmtMicros(channel.tickP99Us)}</td>
                       <td className="ui-align-right">{fmtInt(channel.entities)}</td>
+                      <td className="ui-align-right">{fmtInt(channel.players)}</td>
+                      <td className="ui-align-right">{fmtInt(channel.mobs)}</td>
                       <td className="ui-align-right">{fmtMb(channel.memoryBytes)}</td>
                     </tr>
                   ))}

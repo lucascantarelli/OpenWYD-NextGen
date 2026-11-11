@@ -121,6 +121,10 @@ mod tests {
             Ok(self.online.get(&(group_id, channel)).copied().unwrap_or(0))
         }
 
+        async fn release_stale_sessions(&self, _ttl_secs: i64) -> Result<u64, DbError> {
+            Ok(0)
+        }
+
         async fn channel_capacity(
             &self,
             _group_id: i16,

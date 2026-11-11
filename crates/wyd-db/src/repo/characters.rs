@@ -3,7 +3,7 @@
 use std::future::Future;
 
 use crate::error::DbError;
-use crate::model::{Character, ItemRow, Progression, SHORT_SKILL_LEN};
+use crate::model::{Character, ItemRow, Progression, QuestState, SHORT_SKILL_LEN};
 
 /// Operações sobre `characters` (soft-delete: apaga marcando `deleted_at`).
 pub trait Characters {
@@ -127,6 +127,28 @@ pub trait Characters {
     ) -> impl Future<Output = Result<Progression, DbError>> + Send {
         let _ = character_id;
         async { Ok(Progression::default()) }
+    }
+
+    /// Progresso da quest (`character_quest`, `0013_quests`); `None` = não começou.
+    ///
+    /// Default para os fakes do Cold Path (portal não lê progresso de quest).
+    fn quest_state(
+        &self,
+        character_id: i64,
+        quest_code: &str,
+    ) -> impl Future<Output = Result<Option<QuestState>, DbError>> + Send {
+        let _ = (character_id, quest_code);
+        async { Ok(None) }
+    }
+
+    /// Grava etapa/conclusão/máscara de recompensas (upsert por personagem+quest).
+    fn store_quest_state(
+        &self,
+        character_id: i64,
+        state: &QuestState,
+    ) -> impl Future<Output = Result<(), DbError>> + Send {
+        let _ = (character_id, state);
+        async { Ok(()) }
     }
 
     /// Grava a progressão em **uma** transação (`characters` + `character_learned_skill`).

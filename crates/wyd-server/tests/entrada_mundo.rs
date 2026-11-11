@@ -95,7 +95,11 @@ fn entrar_e_sair_salva_posicao_e_vitais_no_banco() {
         attack_run: 82,
         direction: 0,
     };
-    let entity = handle.enter(&personagem, &skin).expect("entrada no mundo");
+    let entrada = handle.enter(&personagem, &skin).expect("entrada no mundo");
+    assert!(
+        entrada.scene_id < 1_000,
+        "ClientID do jogador na faixa `< MAX_USER`"
+    );
     let vivos = handle.snapshots();
     assert_eq!(vivos.len(), 1, "uma entidade viva");
     assert_eq!(vivos[0].character_id, personagem.id);
@@ -105,7 +109,7 @@ fn entrar_e_sair_salva_posicao_e_vitais_no_banco() {
     assert!(handle.enter(&personagem, &skin).is_err());
     assert_eq!(handle.snapshots().len(), 1);
 
-    let estado = handle.leave(entity).expect("estado final");
+    let estado = handle.leave(entrada.entity).expect("estado final");
     assert_eq!((estado.hp, estado.mp), (90, 40));
     saves.save(estado);
 

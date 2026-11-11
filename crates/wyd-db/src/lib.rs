@@ -20,12 +20,12 @@ pub mod pool;
 pub mod repo;
 pub mod transfer;
 
-/// Versão do schema = número da última migration (``0043_piedade_refino`).
+/// Versão do schema = número da última migration (``0044_character_quest`).
 ///
 /// Invariante cobrada por `tests/catalogo.rs`: este número tem de acompanhar o último
 /// arquivo da série. Antes ficou em 6 com 25 migrations aplicadas — catálogo e save mentindo
 /// juntos é pior que não ter versão.
-pub const SCHEMA_VERSION: u32 = 43;
+pub const SCHEMA_VERSION: u32 = 44;
 
 /// Esquema esperado da string de conexão.
 pub const EXPECTED_SCHEME: &str = "postgres://";
@@ -40,8 +40,8 @@ pub use error::DbError;
 pub use migrate::{MigrationError, MigrationReport};
 pub use model::{
     Account, AccountModeration, AuditEntry, Character, Guild, GuildMember, ItemRow, Progression,
-    Role, CARRY_FIRST_SLOT, CARRY_SLOTS, EQUIP_SLOTS, ITEM_SLOTS, LEARNED_SKILL_MASK, MAX_SLOTS,
-    SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN, SKILL_SLOTS, SKILL_TIER_COIN,
+    QuestState, Role, CARRY_FIRST_SLOT, CARRY_SLOTS, EQUIP_SLOTS, ITEM_SLOTS, LEARNED_SKILL_MASK,
+    MAX_SLOTS, SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN, SKILL_SLOTS, SKILL_TIER_COIN,
     SKILL_TIER_POSITIONS, SPECIAL_LINEAGE_SKILL, SPECIAL_MAX, SPECIAL_MAX_LINEAGE, SPECIAL_SLOTS,
 };
 pub use pool::{PgBackend, PoolConfig};
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn schema_version_matches_latest_migration() {
-        assert_eq!(SCHEMA_VERSION, 43);
+        assert_eq!(SCHEMA_VERSION, 44);
         // A amarração de verdade (arquivo mais alto da série) está em tests/catalogo.rs.
     }
 }

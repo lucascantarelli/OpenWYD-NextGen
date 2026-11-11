@@ -13,7 +13,7 @@ services:
     # Só em loopback: o gateway é backend do portal, não serviço público.
     # Em prod (docker-compose.prod.yml) não há publicação — só a rede `wyd`.
     ports:
-      - "127.0.0.1:${GATEWAY_PORT:-7600}:7600"   # contrato admin (ADR-0008/0022)
+      - "127.0.0.1:${GATEWAY_PORT:-7600}:7600" # contrato admin (ADR-0008/0022)
     volumes:
       # `.env` vivo (read-only): o seed lê a senha atual em qualquer reinício,
       # inclusive `docker compose restart`, sem depender do ambiente congelado
@@ -31,7 +31,7 @@ services:
       PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
       PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-troque-aqui-dev}
 
-  server:
+  server-canal-1:
     # Canal 1 (normal): o cliente disca 8281 fixo no IP da célula do .bin, então a
     # publicação é por IP, não só por porta. O status `serv00.htm` sai no :80 deste
     # canal — é a resposta que popula a coluna Canal nos dois canais.
@@ -52,44 +52,11 @@ services:
   server-canal-2:
     # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
     # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
-    image: wyd/server:${TAG:-dev}
-    restart: unless-stopped
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      DATABASE_URL: "postgres://${POSTGRES_USER:-wyd}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-wyd}"
-      WYD_SERVER_CHANNEL: "2"
-      WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
-      WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
-      WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
-      # Lotação/manutenção do canal (FASE-06-3): vazio = vale o banco.
-      WYD_SERVER_MAX_PLAYERS: ""
-      WYD_SERVER_MAINTENANCE: ""
-      # Papel do canal (FASE-03-10): vazio = vale o banco (`channel_role`, 0041).
-      WYD_SERVER_CHANNEL_ROLE: ""
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281"
       - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281/udp"
       - "127.0.0.2:8281:8281"
       - "127.0.0.2:8281:8281/udp"
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/wyd-server", "--healthcheck"]
-      interval: 10s
-      timeout: 5s
-      start_period: 10s
-      retries: 5
-    # Mesma retenção do canal 1: o login manual deste canal não some por rotação.
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    networks:
-      - wyd
 
   # Observabilidade: as portas só existem em DEV (loopback). Sem este override o
   # compose de produção não publica Prometheus/Grafana/node-exporter.
@@ -107,7 +74,7 @@ services:
 
   portal:
     ports:
-      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"   # UI de administração
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000" # UI de administração
     environment:
       NODE_ENV: development
     volumes:

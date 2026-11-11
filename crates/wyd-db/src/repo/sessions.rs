@@ -74,6 +74,13 @@ pub trait Sessions {
         channel: i16,
     ) -> impl Future<Output = Result<u64, DbError>> + Send;
 
+    /// Reaper: libera linhas de `character_session` com `renewed_at` vencido (desconexão
+    /// abrupta sem `Drop`/`leave`). Devolve quantas linhas foram liberadas.
+    fn release_stale_sessions(
+        &self,
+        ttl_secs: i64,
+    ) -> impl Future<Output = Result<u64, DbError>> + Send;
+
     /// Lotação e manutenção do canal (FASE-06-3); linha ausente = [`ChannelCapacity::permissive`].
     fn channel_capacity(
         &self,

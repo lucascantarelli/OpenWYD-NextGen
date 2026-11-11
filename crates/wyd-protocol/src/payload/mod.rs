@@ -199,6 +199,7 @@ pub mod combat;
 pub mod commerce;
 pub mod inventory;
 pub mod movement;
+pub mod quest;
 pub mod scene;
 pub mod ui;
 
@@ -208,6 +209,7 @@ pub use combat::{Attack, AttackFull, AttackOne, AttackTwo, TargetDamage};
 pub use commerce::{Buy, Sell};
 pub use inventory::{ApplyBonus, SendItem, TradingItem, UseItem};
 pub use movement::Action;
+pub use quest::Quest;
 pub use scene::{CreateMob, RemoveMob};
 pub use ui::{MessagePanel, UpdateWeather};
 
@@ -230,6 +232,7 @@ pub fn declared_len(opcode: Opcode) -> Option<usize> {
         Opcode::CharacterLogin => Some(CharacterLogin::WIRE_LEN),
         Opcode::Action => Some(Action::WIRE_LEN),
         Opcode::UseItem => Some(UseItem::WIRE_LEN),
+        Opcode::Quest => Some(Quest::WIRE_LEN),
         Opcode::TradingItem => Some(TradingItem::WIRE_LEN),
         Opcode::Buy => Some(Buy::WIRE_LEN),
         Opcode::Sell => Some(Sell::WIRE_LEN),

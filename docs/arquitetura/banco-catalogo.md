@@ -1917,7 +1917,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0041 | `0041_papel_do_canal.sql` | DDL | `channel_role` |
 | 0042 | `0042_credito_donate.sql` | DDL | `donate_credit` |
 | 0043 | `0043_piedade_refino.sql` | DDL | `refine_pity` |
-| 0044 | `0044_seed_ongame.sql` | seed | — |
+| 0044 | `0044_seed_quest_campo.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

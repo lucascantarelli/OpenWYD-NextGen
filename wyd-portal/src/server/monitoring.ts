@@ -16,6 +16,7 @@
  */
 import { adminCall } from "./admin";
 import { presenceAdmin } from "./admin-client";
+import { getDbHealth, type DbHealth } from "./db-health";
 import { getGrafanaEmbeds, type GrafanaEmbed, type GrafanaHealth } from "./grafana";
 import { getLogStats, type LogStats } from "./loki";
 import { getSession, isStaff } from "./session";
@@ -47,6 +48,10 @@ export interface ChannelHealth {
   tickP99Us: number | null;
   /** Entidades vivas no mundo (jogadores + NPCs). */
   entities: number | null;
+  /** Jogadores (presença do banco por canal); null sem presença. */
+  players: number | null;
+  /** Mobs estimados (entidades − jogadores); null sem as duas fontes. */
+  mobs: number | null;
   /** Orçamento do tick deste processo em µs (`1e6 / WYD_TICK_HZ`). */
   tickBudgetUs: number;
 }
@@ -65,6 +70,10 @@ export interface EngineHealth {
   /** P99 como percentual do orçamento (null sem amostra). */
   tickBudgetPct: number | null;
   entities: number | null;
+  /** Jogadores (presença do banco); null sem presença. */
+  players: number | null;
+  /** Mobs estimados (entidades − jogadores); null sem as duas fontes. */
+  mobs: number | null;
 }
 
 export interface JobHealth {
@@ -104,12 +113,19 @@ export interface MonitoringSnapshot {
   otherJobs: JobHealth[];
   gateway: { requests: number; uptimeSeconds: number | null };
   engine: EngineHealth;
-  host: { cpuPercent: number | null; memoryPercent: number | null; load1: number | null };
+  host: {
+    cpuPercent: number | null;
+    memoryPercent: number | null;
+    load1: number | null;
+    networkRxBps: number | null;
+    networkTxBps: number | null;
+  };
   status: { requests: number; channelsPublished: number | null };
   alerts: StackAlert[];
   presence: PresenceSnapshotView;
   logs: LogStats;
   grafana: { health: GrafanaHealth; dashboards: GrafanaEmbed[] };
+  db: DbHealth;
 }
 
 async function query(expr: string): Promise<Sample[]> {
@@ -132,6 +148,15 @@ async function query(expr: string): Promise<Sample[]> {
     labels: row.metric ?? {},
     value: Number(row.value?.[1] ?? "0"),
   }));
+}
+
+/** Divide entidades em jogadores (banco) e mobs (estimativa); null sem as fontes. */
+export function splitPlayersMobs(
+  entities: number | null,
+  players: number | null,
+): { players: number | null; mobs: number | null } {
+  if (entities === null || players === null) return { players, mobs: null };
+  return { players, mobs: Math.max(entities - players, 0) };
 }
 
 /** Soma todos os elementos do vetor (uma métrica por instância/canal). */
@@ -209,7 +234,7 @@ async function getPresence(): Promise<PresenceSnapshotView> {
 
 /** Métricas do Prometheus (motor, gateway, host e estado dos alvos). */
 async function getPrometheusSnapshot(): Promise<
-  Omit<MonitoringSnapshot, "collectedAt" | "alerts" | "presence" | "logs" | "grafana">
+  Omit<MonitoringSnapshot, "collectedAt" | "alerts" | "presence" | "logs" | "grafana" | "db">
 > {
   const empty = {
     reachable: false,
@@ -223,8 +248,10 @@ async function getPrometheusSnapshot(): Promise<
       tickBudgetUs: TICK_BUDGET_US,
       tickBudgetPct: null,
       entities: null,
+      players: null,
+      mobs: null,
     },
-    host: { cpuPercent: null, memoryPercent: null, load1: null },
+    host: { cpuPercent: null, memoryPercent: null, load1: null, networkRxBps: null, networkTxBps: null },
     status: { requests: 0, channelsPublished: null },
   };
 
@@ -267,6 +294,8 @@ async function getPrometheusSnapshot(): Promise<
     "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
   );
   const load1 = await optional('node_load1{job="node"}');
+  const networkRx = await optional('sum(rate(node_network_receive_bytes_total{device!~"lo"}[5m]))');
+  const networkTx = await optional('sum(rate(node_network_transmit_bytes_total{device!~"lo"}[5m]))');
 
   const canalOf = (labels: Record<string, string>, fallback: string): string =>
     labels.canal ?? labels.instance ?? fallback;
@@ -296,6 +325,8 @@ async function getPrometheusSnapshot(): Promise<
         ticksPerSecond: tickRate ? tickRate.value : null,
         tickP99Us: tickP ? tickP.value : null,
         entities: alive ? alive.value : null,
+        players: null,
+        mobs: null,
         tickBudgetUs: budgetOf(sample.labels),
       };
     })
@@ -326,12 +357,16 @@ async function getPrometheusSnapshot(): Promise<
             : TICK_BUDGET_US,
         tickBudgetPct: worst,
         entities: entities.length > 0 ? total(entities) : null,
+        players: null,
+        mobs: null,
       };
     })(),
     host: {
       cpuPercent: first(cpu),
       memoryPercent: first(memoryPercent),
       load1: first(load1),
+      networkRxBps: first(networkRx),
+      networkTxBps: first(networkTx),
     },
     status: {
       requests: total(statusRequests),
@@ -362,8 +397,10 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
         tickBudgetUs: TICK_BUDGET_US,
         tickBudgetPct: null,
         entities: null,
+        players: null,
+        mobs: null,
       },
-      host: { cpuPercent: null, memoryPercent: null, load1: null },
+      host: { cpuPercent: null, memoryPercent: null, load1: null, networkRxBps: null, networkTxBps: null },
       status: { requests: 0, channelsPublished: null },
       alerts: [],
       presence: { reachable: false, error: "sessão de staff expirada", total: 0, channels: [] },
@@ -372,16 +409,27 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
         health: { reachable: false, error: "sessão de staff expirada", version: "", database: "" },
         dashboards: [],
       },
+      db: { reachable: false, error: "sessão de staff expirada", latencyMs: null, database: null, schema: null },
     };
   }
 
-  const [prometheus, alerts, presence, logs, grafana] = await Promise.all([
+  const [prometheus, alerts, presence, logs, grafana, db] = await Promise.all([
     getPrometheusSnapshot(),
     getAlerts(),
     getPresence(),
     getLogStats(),
     getGrafanaEmbeds(),
+    getDbHealth(),
   ]);
+
+  const presenceByChannel = new Map(presence.channels.map((row) => [String(row.channel), row.online]));
+  const channels = prometheus.channels.map((channel) => {
+    const players = presence.reachable ? (presenceByChannel.get(channel.canal) ?? 0) : null;
+    const { mobs } = splitPlayersMobs(channel.entities, players);
+    return { ...channel, players, mobs };
+  });
+  const players = presence.reachable ? presence.total : null;
+  const { mobs } = splitPlayersMobs(prometheus.engine.entities, players);
 
   return {
     ...prometheus,
@@ -390,5 +438,8 @@ export async function getMonitoringSnapshot(): Promise<MonitoringSnapshot> {
     presence,
     logs,
     grafana,
+    db,
+    channels,
+    engine: { ...prometheus.engine, players, mobs },
   };
 }

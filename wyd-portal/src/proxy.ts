@@ -34,6 +34,8 @@ export const config = {
     "/painel/:path*",
     "/contas/:path*",
     "/entregas/:path*",
+    "/correio/:path*",
+    "/financeiro/:path*",
     "/itens/:path*",
     "/monitoramento/:path*",
     "/configuracoes/:path*",

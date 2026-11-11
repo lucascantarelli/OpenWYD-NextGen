@@ -1,0 +1,174 @@
+site_name: WYD2 — Documentação do Projeto
+site_description: Documentação para usuários, moderadores, administradores, desenvolvedores, arquitetos e engenheiros do servidor WYD2 em Rust.
+site_author: Dolorestec WYD2
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: pt-BR
+  palette:
+    - scheme: slate
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Tema escuro
+    - scheme: default
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Tema claro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.emoji
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+
+plugins:
+  - search
+
+# Links para fora de docs/ (ex.: roadmap-rust/, wyd-portal/) são herança do
+# repo e não são páginas do site. Ignorados aqui; o gate de links internos
+# continua via `mkdocs build --strict` para tudo dentro de docs/.
+validation:
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore
+    anchors: ignore
+
+nav:
+  - Início: index.md
+  - Manual do usuário: manual-usuario/README.md
+  - Arquitetura:
+    - Visão geral: arquitetura/visao-pastas.md
+    - Estrutura e padrões: arquitetura/estrutura-e-padroes.md
+    - Protocolo CPSock: arquitetura/protocolo.md
+    - Autoridade do servidor: arquitetura/autoridade-servidor.md
+    - Modelo de banco: arquitetura/modelo-banco.md
+    - Catálogo do banco: arquitetura/banco-catalogo.md
+    - Contrato de transporte: arquitetura/contrato-transporte-cpsock.md
+    - Contrato de persistência: arquitetura/contrato-persistencia.md
+    - Contrato dispatch/opcode: arquitetura/contrato-dispatch-opcode.md
+    - C4 + pacotes: arquitetura/c4-pacotes.md
+    - Matemática (SIM): arquitetura/matematica-sim.md
+    - IA e bots: arquitetura/ia-bots.md
+    - ADRs:
+      - Índice: arquitetura/adr/README.md
+      - 0000 template: arquitetura/adr/0000-template.md
+      - 0001 hot path: arquitetura/adr/0001-hot-path-monolitico.md
+      - 0002 estrutura: arquitetura/adr/0002-estrutura-modulos.md
+      - 0003 patch cliente: arquitetura/adr/0003-estrategia-patch-cliente.md
+      - 0004 ECS manual: arquitetura/adr/0004-ecs-manual-diferido.md
+      - 0005 serialização: arquitetura/adr/0005-serializacao-manual-diferida.md
+      - 0006 async: arquitetura/adr/0006-async-diferido.md
+      - 0007 launcher Tauri: arquitetura/adr/0007-gui-launcher-tauri.md
+      - 0008 cold path HTTP: arquitetura/adr/0008-transporte-cold-path-http-json.md
+      - 0009 conteúdo estático: arquitetura/adr/0009-conteudo-estatico.md
+      - 0010 IA NPC e bots: arquitetura/adr/0010-ia-npc-e-bots.md
+      - 0011 matemática SIM: arquitetura/adr/0011-estrutura-matematica-sim.md
+      - 0012 gema inventário: arquitetura/adr/0012-gema-no-inventario.md
+      - 0013 down seed: arquitetura/adr/0013-down-seletivo-de-seed.md
+      - 0014 autoridade: arquitetura/adr/0014-autoridade-server-side.md
+      - 0015 inventário: arquitetura/adr/0015-inventario-autoritativo.md
+      - 0016 IA determinística: arquitetura/adr/0016-ia-npc-deterministica.md
+      - 0017 release mínima: arquitetura/adr/0017-release-e-imagem-minima.md
+      - 0018 telemetria: arquitetura/adr/0018-telemetria-tracing.md
+      - 0019 sancrate painel: arquitetura/adr/0019-sancrate-e-painel-do-jogador.md
+      - 0020 versão login: arquitetura/adr/0020-versao-de-cliente-no-login.md
+      - 0021 async sqlx: arquitetura/adr/0021-async-sqlx-adotados.md
+      - 0022 binários: arquitetura/adr/0022-binarios-de-servico.md
+      - 0023 moderação: arquitetura/adr/0023-moderacao-auditoria-economia.md
+      - 0024 migrations boot: arquitetura/adr/0024-migrations-no-boot.md
+      - 0025 cena payload: arquitetura/adr/0025-pacotes-de-cena-no-payload.md
+  - Cliente 7662:
+    - Dossiê: cliente/README.md
+    - Inventário: cliente/inventario.md
+    - Superfície conhecida: cliente/superficie-conhecida.md
+    - Engenharia reversa: cliente/engenharia-reversa.md
+    - Análise estática: cliente/analise-estatica.md
+    - Depuração: cliente/depuracao.md
+    - Pacotes: cliente/pacotes.md
+    - Formatos: cliente/formatos.md
+    - Tabelas binárias: cliente/tabelas-bin.md
+    - Mapa: cliente/mapa.md
+    - Launcher: cliente/launcher.md
+    - Customização: cliente/customizacao.md
+    - Captura selchar: cliente/captura-selchar.md
+    - Referência WYD Global: cliente/referencia-wyd-global.md
+  - Execução Rust:
+    - Visão e estrutura: rust/00-visao-estrutura.md
+    - Dependências: rust/01-dependencias.md
+    - Ciclo de execução: rust/02-execucao.md
+    - Progresso: rust/03-progresso.md
+    - Revisão do roadmap: rust/04-revisao-roadmap.md
+    - Stack Docker: rust/05-stack-docker.md
+    - Matemática: rust/06-matematica.md
+    - Observabilidade/runbooks: rust/06-observabilidade-runbooks.md
+    - IA e bots: rust/07-ia-e-bots.md
+    - Checklist funcional: rust/08-checklist-funcionalidades.md
+    - Duplicidades (DOC-01): rust/09-duplicidades.md
+  - Manual técnico:
+    - Guia de contribuição: manual-técnico/guia-contribuicao.md
+    - Auditoria do roadmap: manual-técnico/auditoria-roadmap.md
+    - Mapa de skills: manual-técnico/skills.md
+    - Portabilidade do legado: manual-técnico/analise-portabilidade-legado.md
+  - Mundo do jogo (WYD):
+    - Visão geral: wyd/README.md
+    - Lore: wyd/lore.md
+    - Classes: wyd/classes.md
+    - Sistemas (índice legado): wyd/sistemas.md
+    - Skills (índice legado): wyd/skills.md
+    - Progressão: wyd/progressao.md
+    - Economia: wyd/economia.md
+    - Itens: wyd/itens.md
+    - Canais e cidadania: wyd/canais-e-cidadania.md
+    - Decisões de servidor: wyd/decisoes-servidor.md
+    - Multiconta: wyd/multiconta.md
+    - Senha numérica: wyd/senha-numerica.md
+    - Fontes: wyd/fontes.md
+    - Guia Ongame: wyd/ongame-guia.md
+    - Referência externa: wyd/referencia-externa-2026-11.md
+    - Pesquisas 2026-11-10:
+      - Campo de treinamento: wyd/pesquisa-campo-de-treinamento-2026-11-10.md
+      - Internet: wyd/pesquisa-internet-2026-11-10.md
+      - Missão fase 1: wyd/pesquisa-wyd2-missao-fase1-2026-11-10.md
+      - Missão fase 2: wyd/pesquisa-wyd2-missao-fase2-2026-11-10.md
+      - Missão fase 3: wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md
+      - Missão fase 4: wyd/pesquisa-wyd2-missao-fase4-2026-11-10.md
+      - Missão fase 5: wyd/pesquisa-wyd2-missao-fase5-2026-11-10.md
+      - Missão fase 6: wyd/pesquisa-wyd2-missao-fase6-2026-11-10.md
+      - Fase 7 encerramento: wyd/pesquisa-wyd2-missao-fase7-encerramento-2026-11-10.md
+    - Sistemas:
+      - Mundo: wyd/sistemas/mundo.md
+      - Quests: wyd/sistemas/quests.md
+      - Drops: wyd/sistemas/drops.md
+      - Refino: wyd/sistemas/refino.md
+      - Refino auditoria: wyd/sistemas/refino-auditoria.md
+      - Aglutinação: wyd/sistemas/aglutinacao.md
+      - Guerras: wyd/sistemas/guerras.md
+      - Eventos: wyd/sistemas/eventos.md
+      - Fadas: wyd/sistemas/fadas.md
+      - Familiares: wyd/sistemas/familiares.md
+      - Battle Royale: wyd/sistemas/battle-royale.md

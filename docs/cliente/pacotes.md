@@ -11,7 +11,7 @@
 |---|---|---:|---|---|
 | `0x020D` | AccountLogin | 116 | `account_login.json` | **GERADO** |
 | `0x020F` | CreateCharacter | 36 | `create_character.json` | **GERADO** |
-| `0x0213` | CharacterLogin | 20 | `character_login.json` | **GERADO** |
+| `0x0213` | CharacterLogin | 20 (cliente 7662: 36) | `character_login.json` | **GERADO** |
 | `0x036C` | Action | 52 | `action.json` | **GERADO** |
 | `0x0333` | (framing) | 12 | `header_only.json` | **GERADO** (só header) |
 

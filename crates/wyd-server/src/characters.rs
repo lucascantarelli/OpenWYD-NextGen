@@ -24,9 +24,10 @@ use std::sync::Arc;
 
 use wyd_core::Entity;
 use wyd_db::{
-    Accounts, Character, Characters, DbError, ItemRow, PgBackend, Progression, SkillRule,
-    SkillRules, MAX_SLOTS, SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN, SKILL_TIER_COIN,
-    SKILL_TIER_POSITIONS, SPECIAL_LINEAGE_SKILL, SPECIAL_MAX, SPECIAL_MAX_LINEAGE, SPECIAL_SLOTS,
+    Accounts, Character, Characters, DbError, ItemRow, PgBackend, Progression, QuestState,
+    SkillRule, SkillRules, MAX_SLOTS, SCORE_BONUS_BULK, SHORT_SKILL_EMPTY, SHORT_SKILL_LEN,
+    SKILL_TIER_COIN, SKILL_TIER_POSITIONS, SPECIAL_LINEAGE_SKILL, SPECIAL_MAX, SPECIAL_MAX_LINEAGE,
+    SPECIAL_SLOTS,
 };
 use wyd_protocol::{ApplyBonus, UseItem};
 use wyd_sim::roll::XorShift64;
@@ -205,6 +206,8 @@ pub enum SelectionError {
     Exp(String),
     /// `_MSG_UseItem` recusado (pó, alvo ou taxa do snapshot).
     UseItem(String),
+    /// `_MSG_Quest` recusado (nível, ordem, prova, reentrega ou mochila cheia).
+    Quest(String),
     /// Combate/Diálogo recusados pelo mundo (`_MSG_Attack`/`_MSG_Action`).
     Combat(String),
     /// Conta com os quatro slots ocupados (criação não sobrescreve personagem).
@@ -227,6 +230,7 @@ impl core::fmt::Display for SelectionError {
             Self::Bonus(motivo) => write!(f, "bônus recusado: {motivo}"),
             Self::Exp(motivo) => write!(f, "EXP recusada: {motivo}"),
             Self::UseItem(motivo) => write!(f, "uso de item recusado: {motivo}"),
+            Self::Quest(motivo) => write!(f, "quest recusada: {motivo}"),
             Self::Combat(motivo) => write!(f, "combate recusado: {motivo}"),
             Self::Full => write!(f, "conta sem slot livre em 0..={MAX_SLOTS}"),
         }
@@ -377,6 +381,175 @@ impl SelectionStore {
         Ok(resultado)
     }
 
+    /// NPC da cena pelo `MobID` (`_MSG_Quest.Parm1`): merchant + nome, do mundo vivo.
+    ///
+    /// O `merchant` vem de `npc_definition` (autoridade); o corpo do pacote só aponta o NPC
+    /// que o cliente está vendo — o cliente nunca escolhe o treinador.
+    #[must_use]
+    pub fn npc_merchant(&self, scene_id: u16) -> Option<(i16, String)> {
+        let cena = self.scene()?;
+        let mob = cena.mobs.iter().find(|mob| mob.id == scene_id)?;
+        Some((i16::from(mob.merchant), mob.name_str()))
+    }
+
+    /// `_MSG_Quest` (0x028B): uma etapa do Campo de Treinamento (FASE-03-18).
+    ///
+    /// O motor (`gameplay::quest_engage`) decide com o estado **persistido** — nível,
+    /// ordem, prova e máscara de recompensas. Aqui só se carrega e grava: inventário,
+    /// `character_quest` e (etapa 1) o affect 44 como restauração de HP/MP.
+    pub fn quest(
+        &self,
+        selected: &mut Selected,
+        merchant: i16,
+        roll: u8,
+    ) -> Result<QuestOutcome, SelectionError> {
+        use crate::gameplay::{
+            apply_quest_reward, quest_engage, QuestEngage, QUEST_AFFECT_HEAL, QUEST_CAMPO_CODE,
+        };
+        let personagem = &selected.character;
+        let mut state = self
+            .runtime
+            .block_on(self.backend.quest_state(personagem.id, QUEST_CAMPO_CODE))
+            .map_err(map_db)?
+            .unwrap_or(QuestState {
+                quest_code: QUEST_CAMPO_CODE.to_string(),
+                ..QuestState::default()
+            });
+        let mut progression = self
+            .runtime
+            .block_on(self.backend.progression(personagem.id))
+            .map_err(map_db)?;
+        let ids: Vec<i64> = selected
+            .items
+            .iter()
+            .filter(|linha| linha.item_id != 0)
+            .map(|linha| linha.item_id)
+            .collect();
+        let arma = selected
+            .items
+            .iter()
+            .any(|linha| linha.slot == 6 && linha.item_id != 0);
+        let step = quest_engage(&QuestEngage {
+            merchant,
+            stage: state.stage,
+            reward_mask: state.reward_mask,
+            level: progression.level,
+            inventory: &ids,
+            // `ReqLvl` do item ainda não está no modelo: o nível do personagem é a base do
+            // `50 + ReqLvl` até o catálogo expor a coluna (registrado na issue).
+            weapon_req_level: arma.then_some(progression.level),
+            roll,
+        })
+        .map_err(|recusa| SelectionError::Quest(recusa.to_string()))?;
+        let mut items = selected.items.clone();
+        apply_quest_reward(&mut items, &step)
+            .map_err(|erro| SelectionError::Quest(erro.to_string()))?;
+        self.runtime
+            .block_on(self.backend.replace_items(personagem.id, &items, &[]))
+            .map_err(map_db)?;
+        if step.stage == 1 {
+            // Affect 44 (200,200) do `_MSG_Quest.cpp`: restauração imediata com teto.
+            progression.hp = (progression.hp + QUEST_AFFECT_HEAL).min(progression.hp_max);
+            progression.mp = (progression.mp + QUEST_AFFECT_HEAL).min(progression.mp_max);
+            self.runtime
+                .block_on(self.backend.store_progression(personagem.id, &progression))
+                .map_err(map_db)?;
+        }
+        state.stage = step.stage;
+        state.completed = step.completed;
+        state.reward_mask |= step.reward_bit;
+        self.runtime
+            .block_on(self.backend.store_quest_state(personagem.id, &state))
+            .map_err(map_db)?;
+        selected.items = items;
+        let mut mob = Mob::from_persisted(personagem, &selected.items);
+        apply_progression(&mut mob, &progression);
+        mob.exp = progression.exp;
+        Ok(QuestOutcome { state, step, mob })
+    }
+
+    /// Entrega o loot do abate no inventário (empilha, ocupa slot e grava).
+    ///
+    /// A tabela já foi sorteada por `Gameplay::loot_at_death`; aqui só entra o que o legado
+    /// entrega no `Carry`. Mochila cheia devolve menos slots — o item que não coube fica no
+    /// chão (log), nunca some do banco por engano.
+    pub fn grant_loot(
+        &self,
+        selected: &mut Selected,
+        drops: &[crate::gameplay::LootDrop],
+    ) -> Result<Vec<i64>, SelectionError> {
+        let mut items = selected.items.clone();
+        let mut slots = Vec::new();
+        for drop in drops {
+            if let Some(slot) =
+                crate::gameplay::add_item(&mut items, drop.item_index, i32::from(drop.qty))
+            {
+                if !slots.contains(&slot) {
+                    slots.push(slot);
+                }
+            }
+        }
+        if slots.is_empty() {
+            return Ok(slots);
+        }
+        self.runtime
+            .block_on(
+                self.backend
+                    .replace_items(selected.character.id, &items, &[]),
+            )
+            .map_err(map_db)?;
+        selected.items = items;
+        Ok(slots)
+    }
+
+    /// Uso de chave num portão do Campo (`EF_KEYID`, consumo e fechamento por tempo).
+    ///
+    /// `Ok(None)` = não há portão no ponto clicado (segue o fluxo de diálogo). Só as provas
+    /// carregam `EF_KEYID` (451→2, 452→3, 453→4); o portão aberto recusa nova chave e a
+    /// chave consumida sai do inventário na mesma gravação.
+    pub fn use_key(
+        &self,
+        selected: &mut Selected,
+        entity: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+    ) -> Result<Option<crate::gameplay::GateOutcome>, SelectionError> {
+        if crate::gameplay::gate_at(x, y).is_none() {
+            return Ok(None);
+        }
+        let bridge = self.world.as_ref().ok_or(SelectionError::Unavailable)?;
+        let chaves: Vec<i32> = selected
+            .items
+            .iter()
+            .filter_map(|linha| crate::gameplay::proof_key_ef(linha.item_id))
+            .collect();
+        let portao = bridge
+            .handle
+            .use_key(entity, x, y, &chaves, now_ms)
+            .map_err(|erro| SelectionError::World(erro.to_string()))?;
+        if let Some(posicao) = selected
+            .items
+            .iter()
+            .position(|linha| linha.item_id == portao.key_item && linha.qty > 0)
+        {
+            let linha = selected.items.remove(posicao);
+            if linha.qty > 1 {
+                selected.items.push(ItemRow {
+                    qty: linha.qty - 1,
+                    ..linha
+                });
+            }
+            self.runtime
+                .block_on(
+                    self.backend
+                        .replace_items(selected.character.id, &selected.items, &[]),
+                )
+                .map_err(map_db)?;
+        }
+        Ok(Some(portao))
+    }
+
     /// `_MSG_Attack` de corpo a corpo: o cliente aponta **onde**, o servidor calcula o dano.
     ///
     /// O golpe passa pelo motor (`combat::attack` com `Stats` autoritativos); no abate a EXP
@@ -469,7 +642,7 @@ impl SelectionStore {
         &self,
         character: &Character,
         skin: &crate::world::ActorSkin,
-    ) -> Result<Option<Entity>, SelectionError> {
+    ) -> Result<Option<crate::world::Entered>, SelectionError> {
         match &self.world {
             None => Ok(None),
             Some(bridge) => bridge
@@ -763,6 +936,14 @@ pub struct ExpGain {
     pub levels: u32,
     /// EXP de fato creditada (base já com o multiplicador do snapshot).
     pub granted: i64,
+}
+
+/// Resultado aceito de `_MSG_Quest`: estado gravado, etapa aplicada e `Mob` atualizado.
+#[derive(Debug, Clone)]
+pub struct QuestOutcome {
+    pub state: QuestState,
+    pub step: crate::gameplay::QuestStep,
+    pub mob: Mob,
 }
 
 /// Resultado de um `_MSG_Attack` aceito: o dano do servidor e, no abate, a EXP creditada.

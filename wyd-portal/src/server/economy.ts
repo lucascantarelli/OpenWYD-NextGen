@@ -25,6 +25,42 @@ export interface EconomyView {
   grants: GrantTotalView[];
 }
 
+/** Alerta derivado só de número já resumido (sem linha por jogador). */
+export interface EconomyAlert {
+  tone: "warn" | "accent";
+  title: string;
+  detail: string;
+}
+
+/**
+ * Alertas econômicos a partir do resumo (regras fixas, sem limiar inventado no dado).
+ *
+ * - cidade sem movimento com outras ativas: possível dreno (vale conferir o recolhimento);
+ * - concessões de ouro acima de 1M somado: volume alto de staff (vale conferir a fila);
+ * - sem movimento algum: silêncio, não problema — a tela mostra "sem movimento".
+ * Moderador vê agregados; nunca linha por jogador (regra da issue).
+ */
+export function computeEconomyAlerts(summary: EconomyView): EconomyAlert[] {
+  const alerts: EconomyAlert[] = [];
+  const gold = summary.grants.find((row) => row.kind === "gold");
+  if (gold && gold.gold >= 1_000_000) {
+    alerts.push({
+      tone: "warn",
+      title: "Volume alto de ouro concedido",
+      detail: `${gold.count} concessão(ões) somando ${gold.gold.toLocaleString("pt-BR")} de ouro na fila. Confira a fila antes de novas concessões.`,
+    });
+  }
+  const zeradas = summary.taxByCity.filter((row) => row.total <= 0);
+  if (summary.taxByCity.length > 1 && zeradas.length > 0) {
+    alerts.push({
+      tone: "accent",
+      title: "Cidade sem recolhimento",
+      detail: `${zeradas.map((row) => row.city).join(", ")} sem movimento no livro-caixa enquanto outras arrecadam.`,
+    });
+  }
+  return alerts;
+}
+
 /** Foto da economia auditada (`economy_admin/summary`, staff). */
 export async function getEconomySummary(): Promise<EconomyView> {
   const res = await adminCall<Record<string, never>, EconomyResponse>(

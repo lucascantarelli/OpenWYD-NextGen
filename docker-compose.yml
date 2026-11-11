@@ -81,7 +81,7 @@ services:
     networks:
       - wyd
 
-  server:
+  server-canal-1:
     # Monólito de jogo — UM container POR CANAL (ADR-0022 §7). Mesma imagem, mesmo
     # Postgres, canais diferentes: `WYD_SERVER_CHANNEL` + o IP publicado no override.
     # `wyd-canal-1` é o canal normal; `wyd-canal-2` (verde) entra no override de dev
@@ -112,7 +112,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "/usr/local/bin/wyd-server", "--healthcheck"]
+      test: [ "CMD", "/usr/local/bin/wyd-server", "--healthcheck" ]
       interval: 10s
       timeout: 5s
       start_period: 10s
@@ -121,6 +121,43 @@ services:
     # rotação. Recriar o container (`up -d` que troca a imagem) ainda abre um stream novo —
     # auditoria de longo prazo exige exportar para fora da máquina; aqui o mínimo é não
     # perder a janela recente por tamanho.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - wyd
+
+  server-canal-2:
+    # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
+    # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
+    image: wyd/server:${TAG:-dev}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-wyd}:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/${POSTGRES_DB:-wyd}"
+      WYD_SERVER_CHANNEL: "2"
+      WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
+      WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
+      WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
+      # Lotação/manutenção do canal (FASE-06-3): vazio = vale o banco.
+      WYD_SERVER_MAX_PLAYERS: ""
+      WYD_SERVER_MAINTENANCE: ""
+      # Papel do canal (FASE-03-10): vazio = vale o banco (`channel_role`, 0041).
+      WYD_SERVER_CHANNEL_ROLE: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "/usr/local/bin/wyd-server", "--healthcheck" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+    # Mesma retenção do canal 1: o login manual deste canal não some por rotação.
     logging:
       driver: json-file
       options:
@@ -212,7 +249,7 @@ services:
     # host: só o portal (server-side) e o Grafana consultam.
     image: grafana/loki:3.5.5
     restart: unless-stopped
-    command: ["-config.file=/etc/loki/loki.yml"]
+    command: [ "-config.file=/etc/loki/loki.yml" ]
     volumes:
       - ./monitoring/loki:/etc/loki:ro
       - loki-data:/loki

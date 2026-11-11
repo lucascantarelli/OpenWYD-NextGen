@@ -855,6 +855,59 @@ impl Characters for PgBackend {
         })
     }
 
+    async fn quest_state(
+        &self,
+        character_id: i64,
+        quest_code: &str,
+    ) -> Result<Option<crate::model::QuestState>, DbError> {
+        let row = sqlx::query(
+            "SELECT step, progress, (completed_at IS NOT NULL) AS completed \
+             FROM character_quest WHERE character_id = $1 AND quest_code = $2",
+        )
+        .bind(character_id)
+        .bind(quest_code)
+        .fetch_optional(self.pool())
+        .await
+        .map_err(map_error("characters.quest_state", "character_quest"))?;
+        let Some(row) = row else {
+            return Ok(None);
+        };
+        let op = "characters.quest_state.decode";
+        let decode = |_| DbError::Transport { op };
+        let step: i16 = row.try_get("step").map_err(decode)?;
+        Ok(Some(crate::model::QuestState {
+            quest_code: quest_code.to_string(),
+            // `step` é 1-based no banco; `stage` é o `Newbie` 0-based do legado.
+            stage: step.saturating_sub(1),
+            completed: row.try_get("completed").map_err(decode)?,
+            reward_mask: row.try_get("progress").map_err(decode)?,
+        }))
+    }
+
+    async fn store_quest_state(
+        &self,
+        character_id: i64,
+        state: &crate::model::QuestState,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            "INSERT INTO character_quest \
+             (character_id, quest_code, step, progress, completed_at) \
+             VALUES ($1, $2, $3, $4, CASE WHEN $5 THEN now() ELSE NULL END) \
+             ON CONFLICT (character_id, quest_code) DO UPDATE SET \
+             step = EXCLUDED.step, progress = EXCLUDED.progress, \
+             completed_at = COALESCE(EXCLUDED.completed_at, character_quest.completed_at)",
+        )
+        .bind(character_id)
+        .bind(&state.quest_code)
+        .bind(state.stage.saturating_add(1))
+        .bind(state.reward_mask)
+        .bind(state.completed)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("characters.store_quest_state", "character_quest"))?;
+        Ok(())
+    }
+
     async fn store_progression(
         &self,
         character_id: i64,
@@ -1619,6 +1672,18 @@ impl Sessions for PgBackend {
         .await
         .map_err(map_error("sessions.release", "character_session"))?;
         Ok(())
+    }
+
+    async fn release_stale_sessions(&self, ttl_secs: i64) -> Result<u64, DbError> {
+        let resultado = sqlx::query(
+            "UPDATE character_session SET released_at = now() \
+             WHERE released_at IS NULL AND renewed_at < now() - make_interval(secs => $1)",
+        )
+        .bind(ttl_secs as f64)
+        .execute(self.pool())
+        .await
+        .map_err(map_error("sessions.reap", "character_session"))?;
+        Ok(resultado.rows_affected())
     }
 
     async fn live_sessions(&self, group_id: i16, channel: i16) -> Result<u64, DbError> {
