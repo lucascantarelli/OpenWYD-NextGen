@@ -133,10 +133,10 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
   tocar no BFF; portal retoma funcionalidade admin sem Go.
 - **Negativas:** JSON de subconjunto próprio (~200 linhas + testes) até
   `serde_json` poder entrar; sem codegen, a paridade Rust↔TS depende de
-  `tests/contract.rs` (rota/params por serviço) e de revisão; HTTP/1.1 sem
+  `tests/contrato_transporte.rs` (rota/params por serviço) e de revisão; HTTP/1.1 sem
   keep-alive é mais lento por chamada (irrelevante em loopback, tráfego de admin).
 - **Invariantes afetados:** gRPC/HTTP continuam **proibidos no tick** (ADR-0001);
-  `.proto` fica proibido na árvore (o contrato é este ADR + `tests/contract.rs`);
+  `.proto` fica proibido na árvore (o contrato é este ADR + `tests/contrato_transporte.rs`);
   `moderator_id` do corpo permanece proibido; a web segue sem escrever estado vivo;
   nenhum bind fora de loopback.
 
@@ -164,7 +164,7 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
 - Evidência: nenhum `*.proto` versionado (`find . -name '*.proto'` só em
   `node_modules/`); nenhuma dep `tonic`/`prost` (`crates/*/Cargo.toml` só `path`);
   `crates/wyd-admin` já entrega auth/auditoria/grants (11 lib + 4 integração) e
-  `tests/unauthorized.rs` prova 401/403.
+  `tests/contrato_autorizacao.rs` prova 401/403.
 
 ## Revisão
 
@@ -172,5 +172,5 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
   streaming real (eventos ao vivo no portal) ou o volume de chamadas exigir
   multiplexação — aí gRPC volta à mesa **com medição**.
 - Sinais de que a decisão envelheceu: `json.rs` crescendo com casos de borda;
-  `tests/contract.rs` divergindo do TS com frequência; latência do painel
+  `tests/contrato_transporte.rs` divergindo do TS com frequência; latência do painel
   dominada pelo transporte (medir antes de trocar).

@@ -108,7 +108,7 @@ UNVERIFIED. Quando o diff do cliente aparecer, só as constantes mudam.
 Prova automatizada (roda sem cliente Windows, exige Postgres da stack):
 
 ```bash
-cargo test -p wyd-server --test selchar
+cargo test -p wyd-server --test sistema_selchar
 # grava tmp/captura/selchar-a.json (level 41) e selchar-b.json (level 42)
 node tools/client/diff-captura.mjs --a tmp/captura/selchar-a.json --b tmp/captura/selchar-b.json --json tmp/captura/diff-selchar.json
 ```

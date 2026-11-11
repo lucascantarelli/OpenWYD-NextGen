@@ -170,7 +170,7 @@ Consulta reexecutável e a lista por família/item estão em `docs/wyd/itens.md`
 | teto por item, com regra 120/1 e conteúdo de pack separado | `crates/wyd-core/src/systems/inventory.rs::StackCaps` | implementado + testes |
 | depósito pilha → slot livre → sobra | `inventory::deposit_into_bag` | implementado + testes |
 | janela da caixa (30 s dono / 3 min decay) | `crates/wyd-sim/src/formula/drop.rs::GroundLoot` | implementado + testes |
-| teto vindo do banco em produção | `wyd_db::PgBackend::item_stack_caps` + view `item_stack_cap` (migration `0039`) | implementado; teste `crates/wyd-db/tests/stack_caps.rs` (gated por `WYD_TEST_DSN`) |
+| teto vindo do banco em produção | `wyd_db::PgBackend::item_stack_caps` + view `item_stack_cap` (migration `0039`) | implementado; teste `crates/wyd-db/tests/sistema_stack_caps.rs` (gated por `WYD_TEST_DSN`) |
 | pacotes `CreateItem`/`GetItem`/`DecayItem` | `crates/wyd-protocol/src/payload/inventory.rs` | **pendente** |
 | `CNFGetItem` (0x0171) | — | **UNVERIFIED**: `Basedef.h` declara corpo de 16 B e põe `STRUCT_ITEM` em +20 — se contradiz |
 

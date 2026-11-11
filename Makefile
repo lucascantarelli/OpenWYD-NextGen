@@ -64,8 +64,8 @@ bench-gate: ## mede e falha em regressão de baseline por cenário (tools/dev/be
 	node tools/dev/bench-gate.mjs
 
 telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (FASE-06-1)
-	$(CARGO) test -p wyd-core --test telemetry -- --nocapture
-	$(CARGO) test -p wyd-net --features metrics --test metrics -- --nocapture
+	$(CARGO) test -p wyd-core --test sistema_telemetry -- --nocapture
+	$(CARGO) test -p wyd-net --features metrics --test integracao_metrics -- --nocapture
 
 release: ## release otimizado (LTO thin, codegen-units=1, strip — ADR-0017)
 	$(CARGO) build --release --workspace
@@ -106,7 +106,7 @@ server-image: ## imagem do monolito de jogo (um container POR canal, ADR-0022)
 server-smoke: ## handshake + serv00.htm dos DOIS canais (exige stack-up)
 	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/serv00.htm; echo
 	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/health; echo
-	@cargo test -p wyd-server --test handshake -- --nocapture
+	@cargo test -p wyd-server --test sistema_handshake -- --nocapture
 
 gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-up)
 	@curl -fsS http://127.0.0.1:7600/health && echo

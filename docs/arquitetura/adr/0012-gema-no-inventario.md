@@ -63,8 +63,8 @@ Regras que decorrem dela:
 - Issues consumidoras: `roadmap-rust/issues/FASE-03-2-ecs.md`, `FASE-10-1-equacoes.md`.
 - Docs atualizadas: `docs/rust/03-progresso.md`, `docs/rust/06-matematica.md` §4,
   `docs/arquitetura/matematica-sim.md` §2/§4 (D-12, D-13).
-- Evidência: `crates/wyd-core/tests/gem.rs` (6 testes de API pública),
-  `crates/wyd-core/tests/gema_seed.rs` (4 testes contra o seed real do banco) +
+- Evidência: `crates/wyd-core/tests/integracao_gem.rs` (6 testes de API pública),
+  `crates/wyd-core/tests/golden_gema_seed.rs` (4 testes contra o seed real do banco) +
   `crates/wyd-core/src/ecs/components.rs` (`gem_tests`, 11 testes).
 
 ## Prova contra o dado real (2026-11-08)

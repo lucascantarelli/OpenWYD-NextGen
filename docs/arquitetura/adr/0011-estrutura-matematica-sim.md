@@ -64,7 +64,7 @@ Regras que passam a valer:
 ## Consequências
 
 - **Positivas:** cada número tem dono e documento; o ouro de "mesma seed, mesma partida" é
-  testável (`tests/determinism.rs`); `wyd-core` pode consumir a mesma função sem duplicar
+  testável (`tests/integracao_determinism.rs`); `wyd-core` pode consumir a mesma função sem duplicar
   regra; a árvore deixa de crescer por acúmulo.
 - **Negativas:** mais arquivos pequenos e mais tipos de entrada (`AttrWeight`, `GrowthProfile`)
   que só o banco vai preencher — até lá, os cenários usam perfis explícitos. Duas estruturas

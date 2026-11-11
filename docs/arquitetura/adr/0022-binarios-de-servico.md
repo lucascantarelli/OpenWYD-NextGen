@@ -17,7 +17,7 @@ Já existe tudo o que o gateway precisa como **biblioteca**, e isso não se reim
 
 - transporte HTTP/1.1 + JSON em loopback com roteador `servico/metodo` (`crates/wyd-admin/src/transport/`, ADR-0008);
 - portas de persistência com adapter `sqlx` (`wyd_db::PgBackend`, ADR-0021);
-- contrato declarado pelo portal em `wyd-portal/src/server/admin-client.ts` (paridade cobrada por `crates/wyd-admin/tests/contract.rs`);
+- contrato declarado pelo portal em `wyd-portal/src/server/admin-client.ts` (paridade cobrada por `crates/wyd-admin/tests/contrato_transporte.rs`);
 - telemetria do motor e nomes de métrica fechados (`docs/rust/05-stack-docker.md` §4, ADR-0018).
 
 ## Decisão

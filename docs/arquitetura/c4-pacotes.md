@@ -72,7 +72,7 @@ Fora do caminho de jogo: `wyd-launcher` (valida/patcha `client/` via manifesto) 
 | Componente | Código |
 |---|---|
 | Rate-limit por conexão | `crates/wyd-net/src/limits/` (`TokenBucket`, `ConnectionGate`) |
-| Teste de inundação | `crates/wyd-net/tests/flood.rs` |
+| Teste de inundação | `crates/wyd-net/tests/integracao_flood.rs` |
 
 > Transporte completo (framing, sessão, `8281/tcp`) é FASE-07 — não desenhado aqui
 > para não inventar componente.

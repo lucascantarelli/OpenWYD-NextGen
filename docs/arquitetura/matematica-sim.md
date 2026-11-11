@@ -155,12 +155,12 @@ trace do cliente confirma. Enquanto não houver trace, a decisão vale só no la
 | Nível | O que valida | Onde |
 |---|---|---|
 | unidade | faixa, borda, erro tipado, saturação | `#[cfg(test)]` em cada módulo |
-| golden | **valor exato** de tabela publicada, com a fonte no nome | `tests/goldens.rs` (refino, gemas, absorção) |
+| golden | **valor exato** de tabela publicada, com a fonte no nome | `tests/golden_formulas.rs` (refino, gemas, absorção) |
 | composição | sistemas conversando na mesma unidade | `formula/mod.rs::tests::systems_compose_with_the_same_units` |
-| determinismo | mesma seed → mesma partida; rolls gravados → mesma partida | `tests/determinism.rs` (6 testes) |
+| determinismo | mesma seed → mesma partida; rolls gravados → mesma partida | `tests/integracao_determinism.rs` (6 testes) |
 | relatório | saída comparável estável | `report/table.rs` (alinhamento determinístico) |
 
-`tests/goldens.rs` mantém **as mesmas asserções** de antes da reorganização: a mudança foi de
+`tests/golden_formulas.rs` mantém **as mesmas asserções** de antes da reorganização: a mudança foi de
 estrutura, não de expectativa de jogo. Golden novo entra com a fonte citada no nome
 (`gem_scale_matches_kersef`), como manda `docs/rust/06-matematica.md` §5.
 

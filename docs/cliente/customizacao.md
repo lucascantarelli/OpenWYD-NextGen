@@ -76,7 +76,7 @@ wyd-launcher gui <dir>                         # LauncherGUI.html (contrato visu
 `WYD.exe` —, sempre com backup `.bak` e `tmp` + rename no mesmo diretório. Os nomes de
 servidor do `sn.bin` e as cores da skin saem de `docs/arquitetura/identidade.tokens`, a mesma
 fonte que o portal referencia em `globals.css`; o launcher não tem paleta nem nome próprios e
-`crates/wyd-launcher/tests/identidade.rs` + `wyd-portal/src/identidade.test.ts` quebram se um
+`crates/wyd-launcher/tests/contrato_identidade.rs` + `wyd-portal/src/identidade.test.ts` quebram se um
 lado divergir.
 
 Erros tipados, sem `panic` em input (manifestos corrompidos são o caso normal, não exceção).
@@ -95,8 +95,8 @@ A paleta/espaçamento/tipografia e os nomes de canal vivem **só** em
 `docs/arquitetura/identidade.tokens` (`chave = valor`, parser estrito). O portal aponta para os
 mesmos valores em `globals.css`, o launcher embute o arquivo (`include_str!`) e o gerador Node lê
 `servidor.N`; não existe paleta paralela em Rust nem `NextGen` fixo no gerador. Três testes
-seguram isso: `tests/identidade.rs` (tokens × CSS, `sn.bin`/`Launcher.bmp` instalados × gerados),
-`identidade.rs` no portal (vitest) e `tests/serverlist_paridade.rs` (bytes Rust × Node).
+seguram isso: `tests/contrato_identidade.rs` (tokens × CSS, `sn.bin`/`Launcher.bmp` instalados × gerados),
+`identidade.rs` no portal (vitest) e `tests/golden_serverlist_paridade.rs` (bytes Rust × Node).
 
 O que é customizável hoje, por arquivo:
 

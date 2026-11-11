@@ -139,12 +139,12 @@ mapa e registra os drops 451/452/453/524, sem criar blob nem tabela de conteúdo
   `templates_de_classe_tem_816_bytes_e_campos_nos_offsets_do_c`). O banco já recebia esse valor
   na criação; o que faltava era o **pacote**: o login enviava `_MSG_UpdateScore` e não o
   `_MSG_UpdateEtc`, que carrega `Coin@28` e desenha o ouro. Agora o par sai junto do
-  `CNFCharacterLogin` (`cpsock`), e `tests/gold_inicial.rs` falha se o cliente entrar sem ele.
+  `CNFCharacterLogin` (`cpsock`), e `tests/sistema_gold_inicial.rs` falha se o cliente entrar sem ele.
 - **Resolvido — NPCs na tela:** causa raiz era a **entrega**, não a varredura: 6 110
   `_MSG_CreateMob` de 232 B (~1,4 MB) no login não são desenhados pelo cliente 7662. A sessão
   agora recebe a cena por proximidade (`world::scene_around`, raio de 24 tiles,
   `WYD_SCENE_VIEW_TILES`) e o delta é recalculado a cada poll (andar troca o conjunto mesmo
-  sem mudar a geração). Prova: `tests/cena_armia.rs` → `33 mobs`, `32 NPCs` em volta do spawn,
+  sem mudar a geração). Prova: `tests/sistema_cena_armia.rs` → `33 mobs`, `32 NPCs` em volta do spawn,
   ids 1080..6941; unitário `cena_por_proximidade_corta_o_que_esta_longe`.
 - **Aberto — distribuir pontos:** `_MSG_UpdateScore` só existe J→C.
 - **Aberto — baú de XP:** `_MSG_UseItem` cobre refino/pó; sem affect/efeito visual.

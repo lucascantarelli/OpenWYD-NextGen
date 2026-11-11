@@ -91,7 +91,8 @@ crates/wyd-protocol/
 │       └── ui.rs              # MessagePanel, UpdateWeather
 ├── tests/
 │   ├── common/mod.rs          # monta pacote (header + corpo + ofuscação)
-│   └── roundtrip.rs           # integração: header+payload+codec
+│   ├── integracao_roundtrip.rs # header+payload+codec pela API pública
+│   └── golden_pacotes.rs      # bytes reais dos pacotes (fixtures do cliente 7662)
 └── benches/
 ```
 
@@ -143,12 +144,30 @@ herança. Genéricos só quando o ganho é medido.
 
 ## 7. Testes — onde cada um mora
 
-1. **Unitário**: `#[cfg(test)] mod tests` no fim do arquivo que contém a regra.
-2. **Integração**: `crates/<crate>/tests/*.rs`, usando apenas a API pública.
-3. **Golden byte-exato**: `tests/` com fixtures em `tests/fixtures/` (bytes reais).
-4. **Bench**: `benches/` por crate crítica, comparável entre commits.
-5. **Proibido**: teste que reimplementa a lógica para "provar" a si mesmo; teste
-   sem asserção de valor concreto; `#[ignore]` para esconder falha.
+Taxonomia completa, regras de higiene, matriz por crate e auditoria caso a caso:
+**`docs/arquitetura/testes.md`**. Resumo:
+
+1. **Unidade** (`unidade`): `#[cfg(test)] mod tests` no arquivo que contém a regra;
+   sem I/O, rede, banco, processo ou relógio real. Roda em todo `cargo test`.
+2. **Integração** (`integracao`): `crates/<crate>/tests/integracao_<tema>.rs`, usando
+   só a API pública; sem infraestrutura externa (nem Postgres, nem socket, nem processo).
+3. **Contrato** (`contrato`): `tests/contrato_<tema>.rs` — documentação ↔ código,
+   schema ↔ migrations, rota ↔ cliente TS, identidade ↔ assets. Falha se o contrato
+   publicado divergir; não prova comportamento de jogo.
+4. **Golden** (`golden`): `tests/golden_<tema>.rs` — bytes/valores exatos com a fonte
+   citada no nome ou no comentário (`include_bytes!`, seed SQL, fixture).
+5. **Sistema** (`sistema`): `tests/sistema_<tema>.rs` — Postgres real, socket CPSock,
+   processo filho ou filesystem. Opt-in por variável de ambiente, com `SKIP` explícito.
+6. **Bench**: `benches/` por crate crítica, comparável entre commits.
+
+Nomes de arquivo têm prefixo porque o Cargo só descobre `tests/*.rs` automaticamente;
+subpastas exigiriam um `[[test]]` por arquivo e escondem o tipo. `tests/common/mod.rs`
+NÃO é alvo de teste (sem `fn main`), é o lugar de helpers compartilhados.
+
+**Proibido**: teste que reimplementa a lógica para "provar" a si mesmo; teste sem
+asserção de valor concreto; `#[ignore]` para esconder falha; `return;` silencioso como
+gate (o skip precisa dizer qual variável falta); `sleep` fixo para sincronizar (poll
+com prazo); asserção enfraquecida para "passar no CI".
 
 ## 8. Fluxo obrigatório antes de escrever código
 
@@ -176,8 +195,9 @@ crates/wyd-launcher/
 │   ├── identidade.rs     # parser da fonte única `docs/arquitetura/identidade.tokens`
 │   ├── branding.rs       # Launcher.bmp/.hat gerados da identidade (escrita atômica)
 │   └── gui.rs            # LauncherGUI.html (contrato visual da GUI Tauri, só da identidade)
-└── tests/                # serverlist_paridade.rs (bytes Rust × Node); identidade.rs
-                          # (identidade × globals.css; assets instalados × gerados)
+└── tests/                # golden_serverlist_paridade.rs (bytes Rust × Node);
+                          # contrato_identidade.rs (identidade × globals.css;
+                          # assets instalados × gerados)
 ```
 
 Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,
@@ -231,8 +251,12 @@ crates/wyd-core/
 │       └── clock.rs       # trait: tempo injetável (determinismo em teste)
 ├── tests/
 │   ├── common/mod.rs
-│   ├── content.rs        # conteúdo inconsistente aborta o boot (ADR-0009)
-│   └── determinism.rs    # mesmo seed → mesmo resultado
+│   ├── integracao_content.rs    # conteúdo inconsistente aborta o boot (ADR-0009)
+│   ├── integracao_determinism.rs # mesmo seed → mesmo resultado
+│   ├── integracao_autoridade.rs / integracao_inventario.rs / integracao_npc.rs
+│   ├── integracao_compose.rs / integracao_gem.rs
+│   ├── golden_gema_seed.rs      # efeito de gema × seed SQL
+│   └── sistema_telemetry.rs     # tracing/métricas com relógio e stdout reais
 └── benches/
     └── tick.rs           # executado (03-6 + 03-2): custo da IA (500 NPCs) e baseline SoA (10k entidades)
 ```
@@ -264,7 +288,8 @@ crates/wyd-net/
 │       └── metrics.rs    # pacotes/s, filas, rejeições (sem println!)
 └── tests/
     ├── common/mod.rs
-    └── reject_malformed.rs # truncado/desconhecido/limite → erro tipado
+    ├── integracao_flood.rs       # truncado/desconhecido/limite → erro tipado e rate-limit
+    └── integracao_metrics.rs     # contadores da feature `metrics`
 ```
 
 ## 12. `wyd-db` — árvore alvo (FASE-04)
@@ -304,8 +329,11 @@ crates/wyd-db/
 │       ├── delivery_queue.rs # grants do portal → dreno do servidor
 │       └── save.rs       # executado (04-3): fila de save, política e dreno Cold Path
 └── tests/
-    ├── constraints.rs    # contra Postgres descartável: FK violada falha
-    └── pg.rs             # executado (04-3): portas + save contra Postgres real
+    ├── contrato_catalogo.rs    # doc ↔ migrations ↔ SCHEMA_VERSION (sem Postgres)
+    ├── contrato_migrations.rs  # estrutura das migrations (sem Postgres)
+    ├── sistema_pg.rs           # portas + save contra Postgres real (opt-in)
+    ├── sistema_sessoes.rs      # presença por canal (opt-in)
+    └── sistema_stack_caps.rs   # view item_stack_cap (opt-in)
 ```
 
 Nenhum acesso a banco dentro do tick; DSN real nunca versionado.
@@ -348,12 +376,13 @@ crates/wyd-admin/
 │       ├── mod.rs
 │       └── grant_service.rs # regra + idempotência por transação rastreável
 └── tests/
-    ├── unauthorized.rs   # sem sessão → 401; sem papel → 403
-    ├── contract.rs       # rota→método, envelope AdminResult, limites (ADR-0008)
-    ├── conteudo.rs       # 07-5: listas paginadas (fake + Postgres semeado)
-    ├── painel.rs         # painel do jogador
-    ├── login.rs          # credenciais/pin pelo Cold Path
-    └── seed.rs           # regressão do seed de staff em boot real
+    ├── contrato_autorizacao.rs # sem sessão → 401; sem papel → 403
+    ├── contrato_transporte.rs  # rota→método, envelope AdminResult, limites (ADR-0008)
+    ├── contrato_conteudo.rs    # 07-5: listas paginadas (fake + Postgres semeado)
+    ├── contrato_painel.rs      # painel do jogador
+    ├── contrato_login.rs       # credenciais/pin pelo Cold Path
+    ├── contrato_operacao.rs    # operação diária/donate/eventos
+    └── sistema_seed.rs         # regressão do seed de staff em boot real (opt-in)
 ```
 
 Transporte decidido na **ADR-0008** (HTTP/1.1 + JSON em loopback); `.proto` não
@@ -399,8 +428,9 @@ crates/wyd-sim/
 │       ├── mod.rs
 │       └── table.rs      # saída comparável (atual × proposto)
 └── tests/
-    ├── goldens.rs        # regressões matemáticas de valor exato (inalteradas)
-    └── determinism.rs    # mesma seed → mesma partida; replay com rolls gravados
+    ├── golden_formulas.rs    # regressões matemáticas de valor exato (inalteradas)
+    ├── golden_refino_seed.rs # refino × seed SQL
+    └── integracao_determinism.rs # mesma seed → mesma partida; replay com rolls gravados
 ```
 
 Mapa de sistemas, unidades, ordem no tick e decisões provisórias:
@@ -483,18 +513,17 @@ crates/wyd-server/
 │   │                     # loot ainda sem evento de morte
 │   ├── logs.rs           # log estruturado do processo (event=...)
 │   └── metrics.rs        # métricas do processo (uptime, canais, status, IP-limit)
-└── tests/
-    ├── handshake.rs      # INITCODE, versão, checksum (inclusive contra servidor vivo)
-    ├── tick_processo.rs  # tick real, métricas do motor e parada limpa (03-7, sem banco)
-    ├── login.rs          # senha, PIN, bloqueio, sem segredo no log
-    ├── pin_*.rs          # persistência e troca do PIN entre processos
-    ├── personagens_crud.rs / selchar.rs / selecao.rs
-    ├── sessao_unica.rs / limite_ip.rs / status_udp.rs
-    ├── config_recarga.rs # revisão → snapshot atômico, reset, falha mantém o último bom e
-    │                       # NPC/template que a recarga materializa
-    ├── config_gameplay.rs # refino/loot/EXP leem o snapshot na chamada; goldens do `wyd-sim`
-    │                       # e `_MSG_AttackOne` real creditando EXP × multiplicador
-    └── portal_pin.rs     # troca de PIN pelo portal contra banco real
+└── tests/                  # prefixo = tipo (docs/arquitetura/testes.md)
+    ├── contrato_monitoramento.rs # doc ↔ rotas/consultas do /monitoramento
+    ├── integracao_canal_verde.rs / integracao_config_gameplay.rs
+    ├── integracao_config_recarga.rs / integracao_tick_processo.rs
+    ├── sistema_handshake.rs  # INITCODE, versão, checksum (inclusive servidor vivo)
+    ├── sistema_login.rs      # senha, PIN, bloqueio, sem segredo no log
+    ├── sistema_pin_persistencia.rs / sistema_pin_troca.rs / sistema_portal_pin.rs
+    ├── sistema_personagens_crud.rs / sistema_selchar.rs / sistema_selecao.rs
+    ├── sistema_sessao_unica.rs / sistema_limite_ip.rs / sistema_status_udp.rs
+    ├── sistema_campo_*.rs / sistema_cena_*.rs / sistema_gold_inicial.rs
+    └── sistema_loja_viva.rs / sistema_lotacao.rs / sistema_conta_de_teste.rs
 ```
 
 **EXP ligada ao fio (2026-11-10).** `_MSG_Attack`/`AttackOne`/`AttackTwo` chegam por
@@ -505,7 +534,7 @@ crates/wyd-server/
 revisão. O que **continua** sem resolvedor é caixa/pickup e o sorteio de loot no abate.
 
 **Loot sem call site (2026-11-10).** `Gameplay::loot` só aparece em
-`crates/wyd-server/tests/config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
+`crates/wyd-server/tests/integracao_config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
 nominal do que **não** resolve morte/caixa/pickup:
 
 - `wyd_sim::resolve_attack` / `AttackOutcome` — só `hit`/`crit`/`damage`; não recebe HP e não

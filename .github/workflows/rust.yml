@@ -68,7 +68,7 @@ jobs:
       - name: Teste de boot com WYD_SEED_STAFF=0
         env:
           WYD_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
-        run: cargo test -p wyd-admin --test seed -- --nocapture
+        run: cargo test -p wyd-admin --test sistema_seed -- --nocapture
 
   actionlint:
     name: actionlint

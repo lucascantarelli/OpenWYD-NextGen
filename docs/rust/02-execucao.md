@@ -103,9 +103,9 @@ entra por `Metrics::render(&net.render_prometheus())`; **exige `--features metri
 **Smoke (sem `make`, host Windows):**
 
 ```bash
-WYD_LOG=debug cargo test -p wyd-core --test telemetry -- --nocapture
-WYD_LOG=info  cargo test -p wyd-core --test telemetry -- --nocapture   # nenhuma linha DEBUG
-cargo test -p wyd-net --features metrics --test metrics -- --nocapture # fragmento de rede
+WYD_LOG=debug cargo test -p wyd-core --test sistema_telemetry -- --nocapture
+WYD_LOG=info  cargo test -p wyd-core --test sistema_telemetry -- --nocapture   # nenhuma linha DEBUG
+cargo test -p wyd-net --features metrics --test integracao_metrics -- --nocapture # fragmento de rede
 ```
 
 **Medições desta passada (2026-11-08):** log `INFO resumo de telemetria ticks=40 … rss_bytes=0`
