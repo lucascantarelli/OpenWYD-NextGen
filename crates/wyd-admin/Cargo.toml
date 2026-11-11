@@ -31,3 +31,34 @@ sqlx = { version = "0.8", default-features = false, features = [
     "postgres",
     "tls-rustls-ring",
 ] }
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "contrato_autorizacao"
+path = "tests/contrato/autorizacao.rs"
+
+[[test]]
+name = "contrato_conteudo"
+path = "tests/contrato/conteudo.rs"
+
+[[test]]
+name = "contrato_login"
+path = "tests/contrato/login.rs"
+
+[[test]]
+name = "contrato_operacao"
+path = "tests/contrato/operacao.rs"
+
+[[test]]
+name = "contrato_painel"
+path = "tests/contrato/painel.rs"
+
+[[test]]
+name = "contrato_transporte"
+path = "tests/contrato/transporte.rs"
+
+[[test]]
+name = "sistema_seed"
+path = "tests/sistema/seed.rs"

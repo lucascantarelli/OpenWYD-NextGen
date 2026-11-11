@@ -24,3 +24,14 @@ wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
 name = "limits"
 harness = false
 test = false
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "integracao_flood"
+path = "tests/integracao/flood.rs"
+
+[[test]]
+name = "integracao_metrics"
+path = "tests/integracao/metrics.rs"

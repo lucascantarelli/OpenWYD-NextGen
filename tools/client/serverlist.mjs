@@ -191,7 +191,7 @@ export function channelRowCount(sn) {
  *
  * O gerador **não** tem nome próprio: a chave `servidor.<slot>` é a única fonte e é a mesma
  * que o `wyd-launcher` (Rust) embute para escrever o `sn.bin`. Divergência entre os dois lados
- * quebra `crates/wyd-launcher/tests/contrato_identidade.rs`.
+ * quebra `crates/wyd-launcher/tests/contrato/identidade.rs`.
  */
 export function identidadeServers(file = 'docs/arquitetura/identidade.tokens') {
   const nomes = {};

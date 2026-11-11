@@ -65,7 +65,7 @@ regressão melee `SkillIndex=0` (B12) e guarda `HP<=0` (B9). Ref: Fase 3 item 2;
 
 ### Issue 3 — Logout explícito com teste (FASE-08-9)
 `labels: fase-08, tamanho-S, sistema-sessao`
-Corpo: handler já existe — adicionar `tests/sistema_logout.rs`: `0x0215` responde `0x0116`,
+Corpo: handler já existe — adicionar `tests/sistema/logout.rs`: `0x0215` responde `0x0116`,
 libera `character_session` na hora, salva, segunda conexão entra sem timeout;
 queda sem pacote continua no timeout. Atualizar linha 48 (texto §2 acima) e as 4
 linhas (§1) na mesma entrega. Aceite: `cargo test` novo verde; sem órfãos no mundo.

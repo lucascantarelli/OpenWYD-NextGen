@@ -99,7 +99,7 @@ node tools/client/serverlist.mjs --check client                                #
 
 Os **nomes** dos slots vêm de `docs/arquitetura/identidade.tokens` (`servidor.<slot>`), não de
 constante no gerador: o mesmo arquivo alimenta `wyd-launcher` (Rust) e portal, e
-`crates/wyd-launcher/tests/contrato_identidade.rs` compara o `sn.bin` instalado com o gerado da
+`crates/wyd-launcher/tests/contrato/identidade.rs` compara o `sn.bin` instalado com o gerado da
 identidade. Nome com mais de 8 caracteres reprova (o campo tem 9 B com NUL).
 
 Estado atual de `client/sn.bin`: slot 0 reservado com contador 3 (2 canais + cabeçalho), slot 1
@@ -155,7 +155,7 @@ O `.bin` **nunca é versionado** (`client/` fora do git); a entrada canônica é
 Desde 2026-11-08 a geração/instalação é do **launcher Rust**
 (`crates/wyd-launcher/src/serverlist.rs` + `serverlist`/`launch` na CLI, ver
 `launcher.md` §8.1); o Node segue como referência de operação e a paridade de **bytes** entre os
-dois é teste (`crates/wyd-launcher/tests/golden_serverlist_paridade.rs`).
+dois é teste (`crates/wyd-launcher/tests/golden/serverlist_paridade.rs`).
 
 ### 4.1 `serv00.htm` — o que o cliente faz com a resposta (captura estática)
 

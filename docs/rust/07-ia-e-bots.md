@@ -23,7 +23,7 @@ seguem sem código.
 | Skill de harness de bots/carga | **existente (doc)** | `docs/manual-técnico/skills.md` l. 25 (`wyd-testing-bots` → `wyd-rust-testing`); `docs/rust/03-progresso.md` l. 166 |
 | Simulação massiva de combate (`wyd-sim`) | **existente (estrutura)** | `pre-release-rust.md` FASE 10 §10.3; `estrutura-e-padroes.md` §14; `docs/rust/06-matematica.md` |
 | `pre-release-bots.md` (definições da suíte) | **lacuna** | citado em `start-rust.md` l. 6; ausente na raiz (`ls *.md`: `AGENTS.md`, `README.md`, `pre-release-rust.md`, `start-rust.md`) |
-| IA de NPC (aggro/perseguição/ataque/fuga/retorno) | **executada (2026-11-08)** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); matemática de ameaça copiada de `crates/wyd-sim/src/formula/threat.rs` e presa por golden em `tests/integracao_npc.rs`; tabela `npc_behavior` continua ausente (perfil vem por parâmetro) |
+| IA de NPC (aggro/perseguição/ataque/fuga/retorno) | **executada (2026-11-08)** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); matemática de ameaça copiada de `crates/wyd-sim/src/formula/threat.rs` e presa por golden em `tests/integracao/npc.rs`; tabela `npc_behavior` continua ausente (perfil vem por parâmetro) |
 | Bots jogáveis (cliente falso) | **planejado** | ADR-0010 camada B; crate `crates/wyd-bots` (nova) — `FASE-15-3` |
 | LLM para diálogo/quest/nomes | **lacuna (bloqueada por decisão do dono)** | nenhum doc cita LLM; custo/chave exigem aprovação → §7 |
 | Tabelas `npc_behavior`, `npc_dialogue`, `llm_job` | **planejado (não criado)** | `banco-catalogo.md` modela 69 tabelas de jogo/conteúdo (§6.5) |
@@ -77,7 +77,7 @@ crates/wyd-core/src/npc/            # FASE-03-6 (ADR-0010)
 ├── route.rs          # rota do generator/npc_definition (UNVERIFIED até trace)
 └── budget.rs         # cadência de decisão, teto por tick, contadores p/ telemetria
 crates/wyd-core/src/systems/npc.rs  # integração com o tick (ordem documentada)
-crates/wyd-core/tests/integracao_npc.rs        # determinismo: mesmo seed → mesmas decisões
+crates/wyd-core/tests/integracao/npc.rs        # determinismo: mesmo seed → mesmas decisões
 
 crates/wyd-sim/src/bot/             # FASE-15-3
 ├── mod.rs
@@ -119,7 +119,7 @@ verdade do contrato de rede.
   intenção`; `wyd-sim` reusa a mesma função para cenários de balanceamento, sem duplicar
   regra (dívida de duplicação registrada em `06-matematica.md` §4 vale aqui também).
 - Golden de decisão: seed + estado inicial + 100 ticks → lista de intenções. Mudança de
-  comportamento quebra o golden e exige justificativa, como em `tests/golden_formulas.rs`.
+  comportamento quebra o golden e exige justificativa, como em `tests/golden/formulas.rs`.
 - `scenario/` pode explorar hipótese (agressividade, alcance); `formula/` e `npc/` não —
   mesma regra do laboratório matemático.
 
@@ -141,7 +141,7 @@ Propostas iniciais (a medir, não fatos):
 | Grandeza | Alvo inicial | Como será provado |
 |---|---|---|
 | custo da IA no tick | ≤ 10% do orçamento do tick com 500 NPCs ativos | **medido** (5 execuções): `cargo bench -p wyd-core --bench tick` → 88,6–204,5 µs/tick (p99 até 367,8) = 0,18%–0,41% do tick de 50 ms com 500 NPCs + 50 jogadores (pior p99 0,74%); 0,71–1,64 µs/decisão; sem alvos 12,5–31,8 µs |
-| cadência de decisão | 5 Hz por NPC, escalonada por `entity_id % 4` para não concentrar | **feito**: `npc::budget::should_decide` + `DecisionBudget`, teste de cadência em `tests/integracao_npc.rs` |
+| cadência de decisão | 5 Hz por NPC, escalonada por `entity_id % 4` para não concentrar | **feito**: `npc::budget::should_decide` + `DecisionBudget`, teste de cadência em `tests/integracao/npc.rs` |
 | decisões por tick | teto fixo; excedente espera o próximo ciclo | teste de saturação |
 | bots de carga | 200 conexões, P99 de pacote registrado | relatório da `FASE-15-3` |
 | custo de LLM | 0 por padrão; teto por job e por dia quando habilitado | tabela `llm_job` (tokens/custo por linha) |

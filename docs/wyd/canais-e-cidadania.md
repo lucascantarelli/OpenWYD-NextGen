@@ -71,7 +71,7 @@ boot (`channels::effective_role`), publica em `GET /health` (`role`, `pvp`, `sho
 `event=channel role=… source=banco|env`. A política vive em `channels::ChannelRules`:
 `pvp_allowed(map_allows_pvp)` e `personal_shop_allowed()` — o canal só **restringe** o PvP do
 mapa, nunca libera além dele. Os handlers de PvP (checklist 4.5) e de loja pessoal (7.2) ainda
-não existem no fio; até lá a regra é provada como política (`tests/integracao_canal_verde.rs`), sem pacote
+não existem no fio; até lá a regra é provada como política (`tests/integracao/canal_verde.rs`), sem pacote
 inventado.
 
 ## 4. Guildas donas de cidade (por canal)

@@ -28,7 +28,7 @@ entidade viva → pré-condições (orçamento/limites/alcance/cooldown/estoque)
 ```
 
 Consequência verificável: depois de uma recusa, posição, HP, cooldown, item e mochila estão
-**idênticos** e a fila de eventos está vazia (`crates/wyd-core/tests/integracao_autoridade.rs`). Evento é
+**idênticos** e a fila de eventos está vazia (`crates/wyd-core/tests/integracao/autoridade.rs`). Evento é
 registro de aceite, não de tentativa.
 
 ## 3. De onde vêm os números (e por que não do core)
@@ -38,7 +38,7 @@ registro de aceite, não de tentativa.
 | Velocidade (tiles/s), retângulo do mundo | `MoveRules`, montado na configuração do mundo | explícito; valor de jogo a fixar na FASE-10 |
 | Alcance e cooldown de ataque | `AttackRules` | explícito; idem |
 | Dano | `DamageModel` (trait), implementado pelas equações aprovadas | FASE-10 — hoje só existe modelo de teste |
-| Efeito/valor de gema | `refine_gem_effect` (seed `0022`) | **CONFIRMADO** por paridade core × seed (`tests/golden_gema_seed.rs`) |
+| Efeito/valor de gema | `refine_gem_effect` (seed `0022`) | **CONFIRMADO** por paridade core × seed (`tests/golden/gema_seed.rs`) |
 | Slot de equipamento do item | `item_kind.slot` + `item_catalog.kind` (via porta `ItemRules`) | **CONFIRMADO** pela taxonomia (`0017`) + `docs/wyd/itens.md` §5 |
 | Requisito de nível do item | `item_catalog.req_level` (via porta `ItemRules`) | **CONFIRMADO** pelo dado do legado |
 | Limite de pilha | `ItemRules::max_stack` | **UNVERIFIED** — o catálogo só tem `stackable` (booleano); o teto numérico segue sem fonte |

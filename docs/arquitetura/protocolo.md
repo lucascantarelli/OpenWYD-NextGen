@@ -37,7 +37,7 @@
 - Limite conhecido: cada byte contribui com `±f(trans)` para a diferença, logo
   o checksum é função da chave, não do conteúdo — tamper de 1 byte do corpo o
   preserva. Ele detecta corrupção do campo/emissor divergente, não adulteração
-  de conteúdo (prova em `tests/integracao_roundtrip.rs`: `tampered_body_fails_strict_checksum`).
+  de conteúdo (prova em `tests/integracao/roundtrip.rs`: `tampered_body_fails_strict_checksum`).
 - **Decisão da stack nova**: entrada de rede usa política `Strict` (divergência
   é erro tipado e rejeita o pacote); `Tolerant` só em captura/diagnóstico/RE.
   O legado tolerava mismatch (`CPSock.cpp:457-466`) — não repetimos isso no

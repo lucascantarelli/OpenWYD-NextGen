@@ -183,7 +183,7 @@ grep -nE "(^|[ ,])0x270([ ,]|$)" target/wyd-text.asm   # site de envio
 | 3 | `_MSG_CharacterLogin` | resolve conta+slot, loga `stage=in_game` → `CNFCharacterLogin` ou `CharacterLoginFail` |
 | 2b | `_MSG_CreateCharacter` com o slot ocupado | aloca o **primeiro slot livre** de 0–3 (nunca sobrescreve); conta cheia → `NewCharacterFail` |
 | 4 | `_MSG_DeleteCharacter` | exige nome igual ao do slot, soft-delete → `CNFDeleteCharacter` com o `STRUCT_SELCHAR` do roster restante |
-| 4b | `_MSG_CharacterLogout` (`0x0215`) | responde `0x0116`, sai do mundo, salva e libera a sessão **na hora** (fechar a janela não espera timeout); queda sem pacote libera igual (`reason=socket`). Prova: `tests/sistema_selchar.rs::logout_explicito_fecha_a_conexao_e_libera_a_sessao` |
+| 4b | `_MSG_CharacterLogout` (`0x0215`) | responde `0x0116`, sai do mundo, salva e libera a sessão **na hora** (fechar a janela não espera timeout); queda sem pacote libera igual (`reason=socket`). Prova: `tests/sistema/selchar.rs::logout_explicito_fecha_a_conexao_e_libera_a_sessao` |
 | 4c | `_MSG_MessageWhisper` (`0x0334`, canal do `/getout`) | **tolerado** com `event=citizen action=getout`: o corpo não tem layout provado, então nada é lido nem executado e a sessão continua (invariante 5) |
 | 5 | qualquer outro | **tolerado** (`result=tolerated`), sessão continua — antes o primeiro pacote encerrava a conexão |
 
@@ -205,7 +205,7 @@ expectativa a confirmar, não o contrato).
    (`RemoveType` 0 = fora de vista, 1 = morte, 2 = logout). Fonte: `Basedef.h` e o porte Go do
    mesmo alvo 7662 (`tmserver/internal/protocol/createmob.go`, `createMobSize = 232`),
    implementados em `crates/wyd-protocol/src/payload/scene.rs` (ADR-0025). **Provado no fio**
-   por `crates/wyd-server/tests/sistema_cena_mobs.rs` contra o canal em execução: sessão autenticada
+   por `crates/wyd-server/tests/sistema/cena_mobs.rs` contra o canal em execução: sessão autenticada
    (`INITCODE` → `_MSG_AccountLogin` → `_MSG_AccountSecure` → `_MSG_CharacterLogin`) recebeu
    **6100** `CreateMob` de 232 B (`HEADER.ID=30000`, ids únicos, nome e posição do snapshot) e
    o `_MSG_Action` do NPC respondeu `_MSG_MessagePanel` com o `display_name`; na troca de

@@ -101,7 +101,7 @@ está medido no legado.
 
 `pin_failures` e `pin_locked_until` agora vivem em `accounts` (0001 consolidada): reiniciar o
 canal não zera tentativas. 5 falhas → 10 minutos (`auth.rs`), zerado por PIN correto.
-Teste: `crates/wyd-server/tests/sistema_pin_persistencia.rs` (novo `Authenticator` continua bloqueado).
+Teste: `crates/wyd-server/tests/sistema/pin_persistencia.rs` (novo `Authenticator` continua bloqueado).
 
 Desbloqueio manual (staff, auditado pela operação):
 
@@ -120,7 +120,7 @@ O `0x0FDE` traz `change_numeric: i32` em +28. Sem fonte sobre a semântica do 76
 | 2 | `2` | PIN **novo** | grava o hash novo (`change_pin`), zera falhas, responde `0x0FDE` e abre a sessão |
 
 `change_numeric = 2` sem o passo 1, ou passo 1 com PIN errado, recebem `0x0FDF`.
-Prova: `crates/wyd-server/tests/sistema_pin_troca.rs::troca_de_pin_exige_o_atual_e_invalida_o_antigo`
+Prova: `crates/wyd-server/tests/sistema/pin_troca.rs::troca_de_pin_exige_o_atual_e_invalida_o_antigo`
 (inclui o PIN antigo recusado no banco e no fio depois da troca).
 Se o cliente 7662 real usar outro caminho (a fonte diz que o WYD Global troca pelo site),
 este fluxo é o nosso, não uma imposição do protocolo.
@@ -137,6 +137,6 @@ duas etapas do `0x0FDE` descritas acima (`crates/wyd-admin/src/service/pin.rs`).
   guardada em cookie nem em log.
 - `0x0FDF` no passo 1 vira "PIN atual incorreto ou conta bloqueada por tentativas" — o
   servidor usa o mesmo opcode para os dois casos, então a tela não promete distingui-los.
-- Prova: `crates/wyd-server/tests/sistema_portal_pin.rs::troca_de_pin_pelo_portal_funciona_e_invalida_o_antigo`
+- Prova: `crates/wyd-server/tests/sistema/portal_pin.rs::troca_de_pin_pelo_portal_funciona_e_invalida_o_antigo`
   (troca pelo caminho do portal, PIN antigo recusado e novo aceito no fio, hash conferindo só
   o novo) e `wyd-portal/src/app/api/panel/pin/route.test.ts` (sessão, validação e recusa).

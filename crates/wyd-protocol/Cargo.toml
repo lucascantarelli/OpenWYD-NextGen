@@ -8,3 +8,14 @@ publish = false
 [lib]
 name = "wyd_protocol"
 path = "src/lib.rs"
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "golden_pacotes"
+path = "tests/golden/pacotes.rs"
+
+[[test]]
+name = "integracao_roundtrip"
+path = "tests/integracao/roundtrip.rs"

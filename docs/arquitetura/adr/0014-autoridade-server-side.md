@@ -52,7 +52,7 @@ Regras que decorrem dela:
 ## Consequências
 
 - **Positivas:** a borda passa a ter um ponto único de recusa auditável; o teste de pacote
-  forjado vira teste de API pública (`tests/integracao_autoridade.rs`); trocar a fórmula da FASE-10 não
+  forjado vira teste de API pública (`tests/integracao/autoridade.rs`); trocar a fórmula da FASE-10 não
   toca validação, e vice-versa.
 - **Negativas:** o chamador precisa fornecer as regras (velocidade, alcance, cooldown) e o
   modelo de dano — configuração a mais no boot, deliberada: números de jogo não ficam
@@ -75,7 +75,7 @@ Regras que decorrem dela:
 - Issue consumidora: `roadmap-rust/issues/FASE-03-5-autoridade-servidor.md`.
 - Docs: `docs/arquitetura/autoridade-servidor.md` (mapa das ações validadas),
   `docs/arquitetura/estrutura-e-padroes.md` §10, `docs/rust/03-progresso.md` (entrada datada).
-- Evidência: `crates/wyd-core/tests/integracao_autoridade.rs` (7 testes de pacote forjado) +
+- Evidência: `crates/wyd-core/tests/integracao/autoridade.rs` (7 testes de pacote forjado) +
   `systems/movement.rs`/`systems/combat.rs` (13 testes unitários).
 
 ## Adendo (2026-11-08) — `systems/skill.rs` entra na árvore
