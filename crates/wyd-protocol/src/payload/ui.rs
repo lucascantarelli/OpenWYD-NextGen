@@ -5,6 +5,19 @@ use crate::wire::opcode::Opcode;
 
 wire_payload!(MessagePanel, MessagePanel, 140, [(12, text, [u8; 128])]);
 
+// `_MSG_MessageChat` (0x0333): chat digitado. O cliente monta o buffer de 140 B e escreve o
+// texto em `+12` (sender `WYD.exe 0x4695b3`: `memset(140)`, `Type=0x333`, texto em `+12`); é o
+// mesmo recorte de `_MSG_MessagePanel`, sem campos extras.
+wire_payload!(MessageChat, MessageChat, 140, [(12, text, [u8; 128])]);
+
+impl MessageChat {
+    /// Texto digitado até o primeiro `NUL`.
+    #[must_use]
+    pub fn text_bytes(&self) -> &[u8] {
+        nul_trimmed(&self.text)
+    }
+}
+
 impl MessagePanel {
     /// Texto do painel até o primeiro `NUL`.
     #[must_use]
@@ -34,6 +47,12 @@ mod tests {
         assert_eq!(decoded, panel);
         assert_eq!(decoded.text_bytes(), b"hello");
         assert_eq!(MessagePanel::WIRE_LEN, 140);
+
+        let mut chat_text = [0u8; 128];
+        chat_text[..3].copy_from_slice(b"/cp");
+        let chat = MessageChat { text: chat_text };
+        assert_eq!(MessageChat::WIRE_LEN, 140);
+        assert_eq!(round_trip(chat).text_bytes(), b"/cp");
 
         let weather = UpdateWeather { current_weather: 3 };
         assert_eq!(UpdateWeather::WIRE_LEN, 16);

@@ -13,7 +13,7 @@
 | `0x020F` | CreateCharacter | 36 | `create_character.json` | **GERADO** |
 | `0x0213` | CharacterLogin | 20 (cliente 7662: 36) | `character_login.json` | **GERADO** |
 | `0x036C` | Action | 52 | `action.json` | **GERADO** |
-| `0x0333` | (framing) | 12 | `header_only.json` | **GERADO** (só header) |
+| `0x0333` | `MessageChat` | 140 | `text[128] @12` | **RE** (sender `0x4695b3`; receptor `0x48241f` lê `HEADER.ID` = falante; `/cp` + chat social) |
 
 ## S→C (aguardando captura)
 

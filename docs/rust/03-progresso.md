@@ -1623,3 +1623,22 @@ um stat; o cliente (`0x4e2393`) lê `pMob+0x11e`, limita a `10..150` e interpola
 (75 = CP 0) em `0x4d9ae2`. O servidor mandava 0 em `BaseScore`/`CurrentScore`/`CreateMob`; agora
 manda `CP_NEUTRO = 0x4B`, com teste `personagem_nasce_com_cp_neutro_e_nao_com_o_lixo_do_template`.
 Os demais valores da criação já estavam corretos no banco (83/46, 8/4/7/6, 5.000.000, pontos 0/0).
+
+**CP persistido (2026-11-11):** coluna `characters.cp` (`-75..=75`, migration 0048), levada no
+`LiveState`/save e convertida para o byte do fio (`cp + 75`) em `CreateMob`, `UpdateScore` e
+`STRUCT_SELCHAR`. Regra pura em `crates/wyd-sim/src/formula/chaos.rs` (faixa, cor, penalidade de
+kill, piso de PK). No abate PvP o autor perde 2 (vítima `0..24`) ou 3 (`>=25`) de CP, vítima já
+listada não dá penalidade, e autor em `-75` não inicia PK; a vítima volta com HP cheio. PvP é
+ligado pelo papel do canal (`Engine::set_pvp`).
+
+**`/cp` no chat (2026-11-11):** `_MSG_MessageChat` (0x0333) passou a ser lido — 140 B, texto em
+`+12` (sender do cliente `0x4695b3`) — e o comando responde no `_MSG_MessagePanel` com CP, faixa e
+efeito (penalidade de 2 e piso de PK). Chat social no mesmo pacote: `session::ChatHub` guarda uma
+fila por sessão em jogo, o falante entrega só para as sessões cuja vista inclui o próprio id de
+cena (`HEADER.ID` do `_MSG_MessageChat`, que o cliente resolve no mob para desenhar
+`nome : texto`) e cada conexão drena a fila na própria thread, com o `key_word` dela.
+
+**Anti-flood e mute (2026-11-11):** o `ChatHub` limita **3 falas por 5 s** por sessão
+(`/cp`, `/mute` e `/unmute` não consomem cota) e guarda por destinatário a lista de ignorados
+(`/mute Nome`, `/unmute Nome`, `/mute` sem nome lista). Recusa do flood, confirmação do mute e
+lista saem no `_MSG_MessagePanel`; a entrega pula quem silenciou o falante.

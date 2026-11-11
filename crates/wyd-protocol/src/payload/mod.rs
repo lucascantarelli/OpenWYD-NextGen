@@ -211,7 +211,7 @@ pub use inventory::{ApplyBonus, SendItem, TradingItem, UseItem};
 pub use movement::Action;
 pub use quest::Quest;
 pub use scene::{CreateMob, RemoveMob};
-pub use ui::{MessagePanel, UpdateWeather};
+pub use ui::{MessageChat, MessagePanel, UpdateWeather};
 
 /// Exige layout documentado para o opcode (etapa payload do pipeline).
 ///
@@ -242,6 +242,7 @@ pub fn declared_len(opcode: Opcode) -> Option<usize> {
         Opcode::SendItem => Some(SendItem::WIRE_LEN),
         Opcode::AccountSecure => Some(AccountSecure::WIRE_LEN),
         Opcode::MessagePanel => Some(MessagePanel::WIRE_LEN),
+        Opcode::MessageChat => Some(MessageChat::WIRE_LEN),
         Opcode::UpdateWeather => Some(UpdateWeather::WIRE_LEN),
         Opcode::Attack => Some(AttackFull::WIRE_LEN),
         Opcode::AttackOne => Some(AttackOne::WIRE_LEN),
@@ -310,6 +311,7 @@ mod tests {
         assert_eq!(declared_len(Opcode::AttackOne), Some(68));
         assert_eq!(declared_len(Opcode::AttackTwo), Some(76));
         assert_eq!(declared_len(Opcode::MessagePanel), Some(140));
+        assert_eq!(declared_len(Opcode::MessageChat), Some(140));
         assert_eq!(declared_len(Opcode::War), None);
     }
 

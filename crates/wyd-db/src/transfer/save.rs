@@ -253,6 +253,16 @@ impl SaveDrain {
             if res.rows_affected() == 0 {
                 missing += 1;
             } else {
+                // CP mora em `character_chaos` (0048): upsert barato, uma linha por personagem.
+                sqlx::query(
+                    "INSERT INTO character_chaos (character_id, cp) VALUES ($1, $2) \
+                     ON CONFLICT (character_id) DO UPDATE SET cp = EXCLUDED.cp",
+                )
+                .bind(c.id)
+                .bind(i16::try_from(c.cp).unwrap_or(0))
+                .execute(&mut *tx)
+                .await
+                .map_err(crate::pool::pg::map_error("save.chaos", "character_chaos"))?;
                 written += 1;
             }
         }

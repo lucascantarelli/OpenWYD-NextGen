@@ -39,7 +39,7 @@
 | `0x0215` | `CharacterLogout` | sim |
 | `0x026e` | `CreateItem` | não |
 | `0x0292` | `SetHpMode` | não |
-| `0x0333` | `MessageChat` | não |
+| `0x0333` | `MessageChat` | sim (`/cp`, chat social) |
 | `0x0334` | `MessageWhisper` | sim |
 | `0x0336` | `UpdateScore` | sim |
 | `0x0337` | `UpdateEtc` | sim |

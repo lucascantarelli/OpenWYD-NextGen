@@ -8,6 +8,7 @@
 
 pub mod accessory;
 pub mod attributes;
+pub mod chaos;
 pub mod damage;
 pub mod drop;
 pub mod effect;
@@ -20,6 +21,7 @@ pub mod threat;
 
 pub use accessory::*;
 pub use attributes::*;
+pub use chaos::*;
 pub use damage::*;
 pub use drop::*;
 pub use effect::*;

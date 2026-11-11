@@ -98,6 +98,12 @@ pub const LOGIN_ACCOUNT_NAME_LEN: usize = 12;
 /// do `BaseMob` é lixo de dump — mandar `0` é o que pintava o personagem novo de vermelho.
 pub const CP_NEUTRO: u8 = 0x4B;
 
+/// Byte `ChaosRate` que o cliente usa para a cor do nome: `CP + 75` na faixa `0..=150`.
+#[must_use]
+fn chaos_rate_de(cp: i64) -> u8 {
+    wyd_sim::chaos_rate(i16::try_from(cp).unwrap_or(0))
+}
+
 /// `HEADER.ID` de `MSG_CNFAccountLogin` (`IDSelChar`).
 pub const ID_SELCHAR: u16 = 30002;
 /// `HEADER.ID` de `MSG_CNFNewCharacter` (`IDNewCharacter`).
@@ -576,11 +582,12 @@ impl Mob {
         mob.spy = i16_of(personagem.pos_y);
         mob.base_score.apply_character(personagem);
         mob.current_score.apply_character(personagem);
-        // `ChaosRate` é o CP codificado (`CP + 75`), não um stat: para personagem sem PK vale
-        // `CP_NEUTRO` (75). Zero caía no ramo `< 10` da cor do nome — o "matou alguém" do
-        // teste manual. `0xCC` do template nem chega a sair daqui.
-        mob.base_score.chaos_rate = CP_NEUTRO;
-        mob.current_score.chaos_rate = CP_NEUTRO;
+        // `ChaosRate` é o CP codificado (`CP + 75`), não um stat. A cor do nome no cliente
+        // interpola por esse byte (`WYD.exe 0x4e2393`); CP 0 = 75 = amarelo neutro. O `0xCC`
+        // do template é lixo e nem chega a sair daqui.
+        let cor = chaos_rate_de(personagem.cp);
+        mob.base_score.chaos_rate = cor;
+        mob.current_score.chaos_rate = cor;
         mob.score_bonus = u16_of(personagem.score_bonus);
         mob.skill_bonus = u16_of(personagem.skill_bonus);
         mob
@@ -994,6 +1001,20 @@ mod tests {
             update_score_body(&mob)[15],
             CP_NEUTRO,
             "MSG_UpdateScore.ChaosRate@15 é a cor do nome"
+        );
+        // CP persistido vira cor: -75 = 0 (ramo vermelho do cliente), +25 = 100.
+        let mut pk = personagem(0, "Pkzinho", 0);
+        pk.cp = -75;
+        assert_eq!(
+            Mob::from_character(&pk).current_score.chaos_rate,
+            0,
+            "CP -75 no piso da tabela"
+        );
+        pk.cp = 25;
+        assert_eq!(
+            Mob::from_character(&pk).current_score.chaos_rate,
+            100,
+            "CP 25 deslocado em 75"
         );
     }
 

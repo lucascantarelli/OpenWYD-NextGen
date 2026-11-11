@@ -32,7 +32,7 @@ use wyd_protocol::payload::commerce::{ReqShopList, ShopList, MAX_SHOPLIST};
 use wyd_protocol::payload::movement::Action;
 use wyd_protocol::payload::quest::Quest;
 use wyd_protocol::payload::scene::{CreateMob, RemoveMob};
-use wyd_protocol::payload::ui::MessagePanel;
+use wyd_protocol::payload::ui::{MessageChat, MessagePanel};
 use wyd_protocol::payload::WirePayload;
 use wyd_protocol::wire::frame::{inspect, INITCODE};
 use wyd_protocol::wire::header::{Header, HEADER_SIZE};
@@ -834,7 +834,34 @@ fn serve_selection(
             return stage.entity();
         }
     }
+    // Chat social: a inscrição nasce no login do personagem e o `ChatLease` a remove no fim.
+    let mut chat: Option<(
+        crate::session::ChatLease,
+        std::sync::mpsc::Receiver<crate::session::ChatLine>,
+    )> = None;
     loop {
+        // Inscrição no chat nasce assim que o personagem entra em jogo (o `dispatch` mudou o
+        // estágio); o `ChatLease` remove no fim, inclusive em erro.
+        if chat.is_none() {
+            if let Stage::InGame {
+                client_id,
+                selected,
+                ..
+            } = &stage
+            {
+                if *client_id != 0 {
+                    if let Some(store) = selection {
+                        chat = Some(store.chat().join(*client_id, &selected.character.name));
+                    }
+                }
+            }
+        }
+        // Drena antes de bloquear no read: uma linha de outro jogador não espera pacote.
+        if let Some((_, rx)) = &chat {
+            if !drain_chat(stream, chave, rx) {
+                return stage.entity();
+            }
+        }
         let mut head = [0u8; HEADER_SIZE];
         match stream.read_exact(&mut head) {
             Ok(()) => {
@@ -1404,6 +1431,9 @@ fn dispatch(
         Opcode::Attack => handle_attack::<13>(stream, frame, key_word, account, stage, selection),
         // `_MSG_Action` de NPC: o clique vira diálogo com o dado de `npc_definition`.
         Opcode::Action => handle_action(stream, frame, key_word, account, stage, selection),
+        // `_MSG_MessageChat` (0x0333): `/cp` responde no painel; o resto vai para quem está
+        // na vista (o cliente resolve o id do falante e desenha `nome : texto`).
+        Opcode::MessageChat => handle_chat(stream, frame, key_word, account, stage, selection),
         // `_MSG_Quest` (0x028B): treinadores do Campo de Treinamento (FASE-03-18).
         Opcode::Quest => handle_quest(stream, frame, key_word, account, stage, selection),
         // `_MSG_REQShopList` (0x027B): catálogo do mercador clicado (`npc_shop_item`).
@@ -1507,6 +1537,22 @@ fn handle_attack<const N: usize>(
             };
             if !enviado {
                 return false;
+            }
+            // PvP: a vítima continua viva (o motor restaurou o HP) e não há loot/EXP.
+            if report.target_actor {
+                log(
+                    "info",
+                    "pvp",
+                    &format!(
+                        "result=hit account={account} target={} damage={} killed={} cp={} cp_delta={}",
+                        report.target_scene,
+                        report.damage,
+                        report.killed,
+                        report.cp_after,
+                        report.cp_delta
+                    ),
+                );
+                return true;
             }
             if !report.killed {
                 return true;
@@ -2047,6 +2093,174 @@ fn handle_action(
     }
 }
 
+/// `_MSG_MessageChat`: `/cp` no painel e chat social para quem está na vista.
+///
+/// O cliente monta 140 B com o texto em `+12` (`WYD.exe 0x4695b3` — ver `payload::ui`) e o
+/// receptor (`0x48241f`) resolve `HEADER.ID` no mob da vista e mostra `nome : texto`. Por isso
+/// a entrega leva o id de cena do falante e vai só para as sessões cuja vista inclui o
+/// falante (mesmo raio de cena), cada uma drenando na própria thread com o próprio `key_word`.
+fn handle_chat(
+    stream: &mut TcpStream,
+    frame: &[u8],
+    key_word: u8,
+    account: &str,
+    stage: &mut Stage,
+    selection: Option<&SelectionStore>,
+) -> bool {
+    let (
+        Stage::InGame {
+            entity: Some(entity),
+            client_id,
+            ..
+        },
+        Some(store),
+    ) = (&mut *stage, selection)
+    else {
+        log(
+            "warn",
+            "chat",
+            &format!("result=refused account={account} reason=not_in_game"),
+        );
+        return true;
+    };
+    let packet = match MessageChat::decode(frame) {
+        Ok(packet) => packet,
+        Err(error) => {
+            log(
+                "warn",
+                "chat",
+                &format!("result=refused account={account} reason=layout:{error}"),
+            );
+            return true;
+        }
+    };
+    let texto = String::from_utf8_lossy(packet.text_bytes())
+        .trim()
+        .to_string();
+    if texto.is_empty() {
+        return true;
+    }
+    let (comando, resto) = texto
+        .split_once(char::is_whitespace)
+        .unwrap_or((texto.as_str(), ""));
+    let comando = comando.to_ascii_lowercase();
+    if comando == "/cp" {
+        let cp = store.cp(*entity).unwrap_or(0);
+        log(
+            "info",
+            "chat",
+            &format!("result=cp account={account} cp={cp}"),
+        );
+        return reply_panel(stream, key_word, &cp_panel(cp));
+    }
+    if comando == "/mute" || comando == "/unmute" {
+        let alvo = resto.trim();
+        let resposta = if alvo.is_empty() {
+            let lista = store.chat().muted(*client_id);
+            if lista.is_empty() {
+                "Nenhum jogador silenciado.".to_string()
+            } else {
+                format!("Silenciados: {}", lista.join(", "))
+            }
+        } else if comando == "/mute" {
+            match store.chat().mute(*client_id, alvo) {
+                Ok(()) => format!("Silenciado: {alvo}."),
+                Err(crate::session::MuteRefusal::SelfPlayer) => {
+                    "Nao da para silenciar voce mesmo.".to_string()
+                }
+                Err(crate::session::MuteRefusal::NotFound) => {
+                    format!("Nao encontrado no canal: {alvo}.")
+                }
+            }
+        } else if store.chat().unmute(*client_id, alvo) {
+            format!("Voltou a ouvir: {alvo}.")
+        } else {
+            format!("Nao estava silenciado: {alvo}.")
+        };
+        log(
+            "info",
+            "chat",
+            &format!("result=command account={account} cmd={comando} alvo={alvo}"),
+        );
+        return reply_panel(stream, key_word, &resposta);
+    }
+    // Anti-flood só para fala social; comandos acima não consomem cota.
+    if let Some(espera) = store.chat().allow(*client_id, now_ms()) {
+        let segundos = espera.div_ceil(1_000);
+        log(
+            "warn",
+            "chat",
+            &format!("result=flood account={account} wait_ms={espera}"),
+        );
+        return reply_panel(
+            stream,
+            key_word,
+            &format!("Calma: 3 falas a cada 5s. Espere {segundos}s."),
+        );
+    }
+    // Mesmo recorte do pacote: `text[128]` em `+12`, NUL no fim.
+    let mut body = [0u8; 128];
+    let bytes = texto.as_bytes();
+    let limite = bytes.len().min(body.len() - 1);
+    body[..limite].copy_from_slice(&bytes[..limite]);
+    // Quem está na vista de quem falou: os raios são iguais, então a relação é simétrica.
+    let Some(scene) = store.scene_around(*entity, crate::world::DEFAULT_SCENE_VIEW_TILES) else {
+        return true;
+    };
+    let ids: Vec<u16> = scene.mobs.iter().map(|mob| mob.id).collect();
+    let entregues = store.chat().deliver(
+        &ids,
+        &crate::session::ChatLine {
+            speaker: *client_id,
+            text: body,
+        },
+    );
+    log(
+        "info",
+        "chat",
+        &format!("result=broadcast account={account} listeners={entregues} len={limite}"),
+    );
+    true
+}
+
+/// Drena a fila de chat da sessão no socket **dela** (o `key_word` é o da conexão).
+fn drain_chat(
+    stream: &mut TcpStream,
+    key_word: u8,
+    rx: &std::sync::mpsc::Receiver<crate::session::ChatLine>,
+) -> bool {
+    while let Ok(line) = rx.try_recv() {
+        if !reply_with_body(
+            stream,
+            key_word,
+            line.speaker,
+            Opcode::MessageChat,
+            &line.text,
+        ) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Texto do `/cp`: valor, faixa e efeito. ASCII e curto para caber no painel (127 B úteis).
+fn cp_panel(cp: i16) -> String {
+    let faixa = if cp < 0 {
+        "listado"
+    } else if cp == 0 {
+        "neutro"
+    } else {
+        "positivo"
+    };
+    let mut texto = format!(
+        "CP {cp} ({faixa}, faixa -75..75). Matar jogador neutro custa 2; vitima listada nao rende caos."
+    );
+    if cp <= -75 {
+        texto.push_str(" PK bloqueado no piso.");
+    }
+    texto
+}
+
 /// `_MSG_MessagePanel` com texto curto (resposta de portão/recusa ao cliente).
 fn reply_panel(stream: &mut TcpStream, key_word: u8, texto: &str) -> bool {
     let mut painel = [0u8; MessagePanel::WIRE_LEN - HEADER_SIZE];
@@ -2194,9 +2408,8 @@ fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob, create_
         merchant: mob.merchant,
         attack_run: mob.attack_run,
         direction: mob.direction,
-        // CP neutro (`CP + 75`): é o byte que o cliente usa para a cor do nome. Zero cai no
-        // ramo `< 10` (criminoso) e pinta o personagem novo de vermelho.
-        chaos_rate: crate::personagens::CP_NEUTRO,
+        // CP + 75 do personagem: é este byte que o cliente usa para a cor do nome.
+        chaos_rate: mob.chaos_rate,
         max_hp: i32::try_from(mob.max_hp).unwrap_or(i32::MAX),
         max_mp: 0,
         hp: i32::try_from(mob.hp).unwrap_or(i32::MAX),
@@ -2486,6 +2699,46 @@ mod tests {
         (cabecalho, frame)
     }
 
+    #[test]
+    fn chat_social_chega_ao_cliente_com_o_id_do_falante() {
+        let (mut servidor, mut cliente) = par();
+        let hub = Arc::new(crate::session::ChatHub::new());
+        let (licenca, rx) = hub.join(7, "Kae");
+        let mut texto = [0u8; 128];
+        texto[..2].copy_from_slice(b"oi");
+        assert_eq!(
+            hub.deliver(
+                &[7, 8],
+                &crate::session::ChatLine {
+                    speaker: 7,
+                    text: texto,
+                }
+            ),
+            1,
+            "id sem sessão (8) não recebe"
+        );
+        assert!(drain_chat(&mut servidor, 0, &rx));
+        let (cabecalho, frame) = ler_frame(&mut cliente);
+        assert_eq!(cabecalho.message_type, Opcode::MessageChat.wire());
+        assert_eq!(cabecalho.id, 7, "HEADER.ID é o id de cena do falante");
+        assert_eq!(&frame[HEADER_SIZE..HEADER_SIZE + 2], b"oi");
+        drop(licenca);
+        assert_eq!(hub.online(), 0);
+    }
+
+    #[test]
+    fn cp_panel_cabe_no_painel_e_descreve_o_efeito() {
+        let texto = cp_panel(0);
+        assert!(texto.contains("neutro"), "{texto}");
+        assert!(
+            texto.len() < MessagePanel::WIRE_LEN - HEADER_SIZE,
+            "{texto}"
+        );
+        assert!(cp_panel(-75).contains("PK bloqueado"));
+        assert!(cp_panel(30).contains("positivo"));
+        assert!(cp_panel(-30).contains("listado"));
+    }
+
     fn mob(id: u16, name: &[u8], actor: bool) -> SceneMob {
         let mut nome = [0u8; 16];
         nome[..name.len()].copy_from_slice(name);
@@ -2503,6 +2756,7 @@ mod tests {
             attack: 12,
             defense: 5,
             merchant: 0,
+            chaos_rate: crate::personagens::CP_NEUTRO,
             attack_run: 82,
             direction: 3,
             equip,

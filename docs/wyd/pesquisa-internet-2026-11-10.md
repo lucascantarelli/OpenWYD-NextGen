@@ -242,6 +242,11 @@ penalidade" sem número. Estes são os números (`[A/B]`
 | Iniciar PK | o autor fica **temporariamente listado por 1 minuto** (pode ser atacado sem penalidade) |
 | Exceções | **guerra de guilda**, **zona PK das cidades** e **Hall do Kefra** (WYD Int: sem redução de CP lá dentro) |
 | Comando | `/cp` mostra o CP atual |
+
+> **Implementado no servidor (2026-11-11):** `characters.cp` + `wyd-sim/chaos` (faixa, cor,
+> `penalidade_de_kill` 2/3 e piso de PK `-75`), byte do fio `cp + 75` no `CreateMob`,
+> `UpdateScore` e `STRUCT_SELCHAR`, e abate PvP no motor com PvP ligado pelo papel do canal.
+> C.Point, Kill Points e o `/cp` continuam pendentes.
 | Cores | `[C]` **fonte única** (guia 46): < −65 rosa/vermelho; −50…−65 vermelho; −25…−49 laranja; 0…−24 amarelo; 1…24 verde; 25…49 azul; 50…74 branco; 75+ branco. O Kersef só diz que a cor **muda gradualmente** |
 
 **C.Point (EXP retida ao morrer em PvP)** — sistema separado do CP:
