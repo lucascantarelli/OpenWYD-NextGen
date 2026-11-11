@@ -33,6 +33,7 @@ declarado aqui é o do cabeçalho da própria ADR; quando divergirem, vale a ADR
 | [0020](0020-versao-de-cliente-no-login.md) | **Versão de cliente: `APP_VERSION` (7640) é histórico; o gate compara igualdade com a versão medida do cliente oficial (`client/` = 12 000)** | aceita (implementada) |
 | [0021](0021-async-sqlx-adotados.md) | `tokio` + `sqlx` adotados: pool real e save fora do tick | aceita |
 | [0022](0022-binarios-de-servico.md) | Binários de serviço (`wyd-gateway` agora, `tmserver` depois): imagem/tag, healthcheck pelo binário, `/metrics` declarado | aceita (gateway implementado) |
+| [0026](0026-arvore-por-dominio-no-wyd-server.md) | Árvore de `wyd-server/src` por domínio (substitui a lista plana do §16) | aceita — etapa 1 (`boot/`, `auth/`) |
 
 ## Decisões que o código já aplica
 

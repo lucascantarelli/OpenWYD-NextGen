@@ -16,3 +16,14 @@ path = "src/lib.rs"
 [dependencies]
 # Tela de conexão: o launcher usa o MESMO renderizador da CLI headless, sem texto duplicado.
 wyd-bots = { path = "../wyd-bots" }
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "contrato_identidade"
+path = "tests/contrato/identidade.rs"
+
+[[test]]
+name = "golden_serverlist_paridade"
+path = "tests/golden/serverlist_paridade.rs"

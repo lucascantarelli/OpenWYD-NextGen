@@ -24,9 +24,9 @@ Distribuição por tipo depois da reorganização:
 | Tipo | Arquivos | Testes |
 |---|---|---|
 | `unidade` | 116 | 465 |
-| `integracao` | 15 | 100 |
+| `integracao` | 16 | 112 |
 | `contrato` | 10 | 60 |
-| `sistema` | 27 | 78 |
+| `sistema` | 26 | 66 |
 | `golden` | 5 | 28 |
 
 ## 2. Taxonomia
@@ -56,10 +56,11 @@ Regras de fronteira:
 
 ## 3. Nomenclatura e localização
 
-1. Arquivo: `tests/<tipo>_<tema>.rs`, tema em `snake_case` e no singular quando possível
-   (`sistema_login.rs`, `contrato_catalogo.rs`, `golden_pacotes.rs`).
-2. Prefixo em vez de subpasta: o Cargo descobre `tests/*.rs` automaticamente; subpastas
-   exigiriam um `[[test]]` por arquivo no `Cargo.toml` e escondem o tipo na listagem.
+1. Arquivo: `tests/<tipo>/<tema>.rs`, tema em `snake_case` e no singular quando possível
+   (`sistema/login.rs`, `contrato/catalogo.rs`, `golden/pacotes.rs`).
+2. Pasta por tipo + alvo explícito: o Cargo não descobre `tests/<subpasta>/*.rs`, então cada
+   arquivo tem um `[[test]]` no `Cargo.toml` (`name` = `<tipo>_<tema>`, `path` = `tests/<tipo>/<tema>.rs`).
+   O nome do alvo mantém o prefixo para `cargo test --test <tipo>_<tema>` continuar funcionando.
 3. `tests/common/mod.rs` é o único arquivo sem `#[test]` permitido em `tests/`; o Cargo
    não o trata como alvo. Helpers específicos de um arquivo ficam nele mesmo.
 4. Nome do teste descreve **estado esperado + condição**, em português, sem prefixo
@@ -142,7 +143,7 @@ macro_rules! exigir_dsn {
 | `wyd-launcher` | 13/60 | — | 1/4 | 1/3 | — | 15/67 |
 | `wyd-net` | 5/14 | 2/7 | — | — | — | 7/21 |
 | `wyd-protocol` | 16/44 | 1/4 | — | 1/10 | — | 18/58 |
-| `wyd-server` | 9/54 | 4/23 | 1/4 | — | 21/65 | 35/146 |
+| `wyd-server` | 9/54 | 5/35 | 1/4 | — | 20/53 | 35/146 |
 | `wyd-sim` | 18/100 | 1/8 | — | 2/11 | — | 21/119 |
 
 Formato `arquivos/testes`. Contagem de 2026-11-11; atualize ao mover teste de tipo.
@@ -157,73 +158,73 @@ falso verde; **P1** = tipo misturado, monólito ou duplicação; **P2** = higien
 
 | Arquivo | Tipo | Testes | Infra | Veredito |
 |---|---|---|---|---|
-| `contrato_monitoramento.rs` | contrato | 4 | arquivos do repo | OK — doc ↔ consultas/rotas; usa `CARGO_MANIFEST_DIR` |
-| `integracao_canal_verde.rs` | integração | 4 | nenhuma | OK |
-| `integracao_config_gameplay.rs` | integração | 9 | nenhuma | P2 — 842 linhas; dividir refino/loot/EXP quando crescer |
-| `integracao_config_recarga.rs` | integração | 6 | nenhuma | P2 — 2 `sleep` de 5/10 ms viram poll |
-| `integracao_tick_processo.rs` | integração | 4 | nenhuma | P2 — 2 `sleep` (300/120 ms) viram poll com prazo |
-| `sistema_campo_treinamento.rs` | sistema | 12 | DB/FS? | OK — fluxo de quest completo, 12 casos |
-| `sistema_campo_vivo.rs` | sistema | 1 | DB + CPSock | OK — `SKIP` explícito nas duas variáveis |
-| `sistema_cena_armia.rs` | sistema | 1 | DB + CPSock | OK — idem |
-| `sistema_cena_mobs.rs` | sistema | 1 | DB + CPSock | **P1** — 442 linhas/1 teste com 24 asserts; separar handshake, cena e diálogo |
-| `sistema_conta_de_teste.rs` | sistema | 1 | DB + CPSock | OK |
-| `sistema_entrada_mundo.rs` | sistema | 1 | DB | OK |
-| `sistema_gold_inicial.rs` | sistema | 1 | DB + CPSock | OK |
-| `sistema_handshake.rs` | sistema | 5 | CPSock vivo | OK — dois gates nomeados |
-| `sistema_limite_ip.rs` | sistema | 1 | socket local | P2 — 2 `sleep` (200/50 ms) viram poll |
-| `sistema_login.rs` | sistema | 7 | DB + socket | P2 — gate por macro, mas helper `servidor()` ainda faz `.expect` |
-| `sistema_loja_viva.rs` | sistema | 1 | DB + CPSock | OK |
-| `sistema_lotacao.rs` | sistema | 5 | DB | OK — macro de gate nomeada |
-| `sistema_personagens_crud.rs` | sistema | 2 | DB + socket | **P1** — 428 linhas, DSN duplicado, `skip:` minúsculo (L339) |
-| `sistema_pin_persistencia.rs` | sistema | 3 | DB | OK |
-| `sistema_pin_troca.rs` | sistema | 1 | DB | OK |
-| `sistema_portal_pin.rs` | sistema | 1 | DB | OK |
-| `sistema_refino_piedade.rs` | sistema | 5 | DB | OK — gate único `WYD_TEST_DSN` |
-| `sistema_selchar.rs` | sistema | 9 | DB + socket | **P1** — 1279 linhas, contrato+DB+logout; **P2** escreve `tmp/captura` |
-| `sistema_selecao.rs` | sistema | 4 | CPSock + Prometheus | **P0** — `return;` sem mensagem (L327); 3 `sleep` de 2/5/1 s |
-| `sistema_sessao_unica.rs` | sistema | 1 | 2 canais CPSock | P2 — `SKIP` ok, mas `sleep` de 400 ms vira poll |
-| `sistema_status_udp.rs` | sistema | 2 | UDP local | OK — porta efêmera |
+| `contrato/monitoramento.rs` | contrato | 4 | arquivos do repo | OK — doc ↔ consultas/rotas; usa `CARGO_MANIFEST_DIR` |
+| `integracao/canal_verde.rs` | integração | 4 | nenhuma | OK |
+| `integracao/config_gameplay.rs` | integração | 9 | nenhuma | P2 — 842 linhas; dividir refino/loot/EXP quando crescer |
+| `integracao/config_recarga.rs` | integração | 6 | nenhuma | P2 — 2 `sleep` de 5/10 ms viram poll |
+| `integracao/tick_processo.rs` | integração | 4 | nenhuma | P2 — 2 `sleep` (300/120 ms) viram poll com prazo |
+| `integracao/campo_treinamento.rs` | integração | 12 | nenhuma | OK — fluxo de quest completo (gameplay puro), 12 casos |
+| `sistema/campo_vivo.rs` | sistema | 1 | DB + CPSock | OK — `SKIP` explícito nas duas variáveis |
+| `sistema/cena_armia.rs` | sistema | 1 | DB + CPSock | OK — idem |
+| `sistema/cena_mobs.rs` | sistema | 1 | DB + CPSock | **P1** — 442 linhas/1 teste com 24 asserts; separar handshake, cena e diálogo |
+| `sistema/conta_de_teste.rs` | sistema | 1 | DB + CPSock | OK |
+| `sistema/entrada_mundo.rs` | sistema | 1 | DB | OK |
+| `sistema/gold_inicial.rs` | sistema | 1 | DB + CPSock | OK |
+| `sistema/handshake.rs` | sistema | 5 | CPSock vivo | OK — dois gates nomeados |
+| `sistema/limite_ip.rs` | sistema | 1 | socket local | P2 — 2 `sleep` (200/50 ms) viram poll |
+| `sistema/login.rs` | sistema | 7 | DB + socket | P2 — gate por macro, mas helper `servidor()` ainda faz `.expect` |
+| `sistema/loja_viva.rs` | sistema | 1 | DB + CPSock | OK |
+| `sistema/lotacao.rs` | sistema | 5 | DB | OK — macro de gate nomeada |
+| `sistema/personagens_crud.rs` | sistema | 2 | DB + socket | **P1** — 428 linhas, DSN duplicado, `skip:` minúsculo (L339) |
+| `sistema/pin_persistencia.rs` | sistema | 3 | DB | OK |
+| `sistema/pin_troca.rs` | sistema | 1 | DB | OK |
+| `sistema/portal_pin.rs` | sistema | 1 | DB | OK |
+| `sistema/refino_piedade.rs` | sistema | 5 | DB | OK — gate único `WYD_TEST_DSN` |
+| `sistema/selchar.rs` | sistema | 9 | DB + socket | **P1** — 1279 linhas, contrato+DB+logout; **P2** escreve `tmp/captura` |
+| `sistema/selecao.rs` | sistema | 4 | CPSock + Prometheus | **P0** — `return;` sem mensagem (L327); 3 `sleep` de 2/5/1 s |
+| `sistema/sessao_unica.rs` | sistema | 1 | 2 canais CPSock | P2 — `SKIP` ok, mas `sleep` de 400 ms vira poll |
+| `sistema/status_udp.rs` | sistema | 2 | UDP local | OK — porta efêmera |
 
 ### 6.2 `wyd-admin` (7 arquivos)
 
 | Arquivo | Tipo | Testes | Infra | Veredito |
 |---|---|---|---|---|
-| `contrato_autorizacao.rs` | contrato | 4 | nenhuma | OK |
-| `contrato_login.rs` | contrato | 4 | nenhuma | OK |
-| `contrato_painel.rs` | contrato | 6 | nenhuma | OK |
-| `contrato_transporte.rs` | contrato | 14 | nenhuma | OK — paridade com o cliente TS (ADR-0008) |
-| `contrato_conteudo.rs` | contrato | 7 | fake + DB real | **P1** — 2 testes de Postgres no arquivo de contrato; separar `sistema_conteudo.rs` |
-| `contrato_operacao.rs` | contrato | 12 | fake + DB real | **P1** — 1281 linhas; 5 testes reais de DB no contrato |
-| `sistema_seed.rs` | sistema | 1 | processo + DB | OK — `SKIP` explícito |
+| `contrato/autorizacao.rs` | contrato | 4 | nenhuma | OK |
+| `contrato/login.rs` | contrato | 4 | nenhuma | OK |
+| `contrato/painel.rs` | contrato | 6 | nenhuma | OK |
+| `contrato/transporte.rs` | contrato | 14 | nenhuma | OK — paridade com o cliente TS (ADR-0008) |
+| `contrato/conteudo.rs` | contrato | 7 | fake + DB real | **P1** — 2 testes de Postgres no arquivo de contrato; separar `sistema/conteudo.rs` |
+| `contrato/operacao.rs` | contrato | 12 | fake + DB real | **P1** — 1281 linhas; 5 testes reais de DB no contrato |
+| `sistema/seed.rs` | sistema | 1 | processo + DB | OK — `SKIP` explícito |
 
 ### 6.3 `wyd-db`, `wyd-core`, `wyd-net`, `wyd-protocol`, `wyd-sim`, `wyd-launcher`, `wyd-bots`
 
 | Arquivo | Tipo | Testes | Veredito |
 |---|---|---|---|
-| `wyd-db/tests/contrato_catalogo.rs` | contrato | 3 | OK — doc ↔ migrations ↔ `SCHEMA_VERSION` |
-| `wyd-db/tests/contrato_migrations.rs` | contrato | 2 | OK |
-| `wyd-db/tests/sistema_pg.rs` | sistema | 8 | P2 — 9 gates repetidos; extrair `exigir_dsn!` |
-| `wyd-db/tests/sistema_sessoes.rs` | sistema | 1 | P2 — mesmo gate |
-| `wyd-db/tests/sistema_stack_caps.rs` | sistema | 1 | P2 — mesmo gate |
-| `wyd-core/tests/integracao_autoridade.rs` | integração | 10 | OK — pacote forjado recusado |
-| `wyd-core/tests/integracao_compose.rs` | integração | 11 | OK |
-| `wyd-core/tests/integracao_content.rs` | integração | 7 | OK |
-| `wyd-core/tests/integracao_determinism.rs` | integração | 3 | OK |
-| `wyd-core/tests/integracao_gem.rs` | integração | 6 | OK |
-| `wyd-core/tests/integracao_inventario.rs` | integração | 9 | OK |
-| `wyd-core/tests/integracao_npc.rs` | integração | 12 | OK — determinismo com hash |
-| `wyd-core/tests/golden_gema_seed.rs` | golden | 4 | OK — seed SQL citado |
-| `wyd-core/tests/sistema_telemetry.rs` | sistema | 1 | OK — captura stdout e tick reais |
-| `wyd-net/tests/integracao_flood.rs` | integração | 6 | OK |
-| `wyd-net/tests/integracao_metrics.rs` | integração | 1 | OK — feature `metrics` |
-| `wyd-protocol/tests/integracao_roundtrip.rs` | integração | 4 | OK |
-| `wyd-protocol/tests/golden_pacotes.rs` | golden | 10 | OK — bytes reais |
-| `wyd-sim/tests/integracao_determinism.rs` | integração | 8 | OK |
-| `wyd-sim/tests/golden_formulas.rs` | golden | 6 | OK — valor exato por fórmula |
-| `wyd-sim/tests/golden_refino_seed.rs` | golden | 5 | OK — paridade com seed |
-| `wyd-launcher/tests/contrato_identidade.rs` | contrato | 4 | **P1** — 2 `return` mudos quando `client/` não existe (L150/L176) |
-| `wyd-launcher/tests/golden_serverlist_paridade.rs` | golden | 3 | OK — skip com mensagem quando `node` falta |
-| `wyd-bots/tests/sistema_cena_campo.rs` | sistema | 1 | P2 — `sleep` fixo no laço do bot |
+| `wyd-db/tests/contrato/catalogo.rs` | contrato | 3 | OK — doc ↔ migrations ↔ `SCHEMA_VERSION` |
+| `wyd-db/tests/contrato/migrations.rs` | contrato | 2 | OK |
+| `wyd-db/tests/sistema/pg.rs` | sistema | 8 | P2 — 9 gates repetidos; extrair `exigir_dsn!` |
+| `wyd-db/tests/sistema/sessoes.rs` | sistema | 1 | P2 — mesmo gate |
+| `wyd-db/tests/sistema/stack_caps.rs` | sistema | 1 | P2 — mesmo gate |
+| `wyd-core/tests/integracao/autoridade.rs` | integração | 10 | OK — pacote forjado recusado |
+| `wyd-core/tests/integracao/compose.rs` | integração | 11 | OK |
+| `wyd-core/tests/integracao/content.rs` | integração | 7 | OK |
+| `wyd-core/tests/integracao/determinism.rs` | integração | 3 | OK |
+| `wyd-core/tests/integracao/gem.rs` | integração | 6 | OK |
+| `wyd-core/tests/integracao/inventario.rs` | integração | 9 | OK |
+| `wyd-core/tests/integracao/npc.rs` | integração | 12 | OK — determinismo com hash |
+| `wyd-core/tests/golden/gema_seed.rs` | golden | 4 | OK — seed SQL citado |
+| `wyd-core/tests/sistema/telemetry.rs` | sistema | 1 | OK — captura stdout e tick reais |
+| `wyd-net/tests/integracao/flood.rs` | integração | 6 | OK |
+| `wyd-net/tests/integracao/metrics.rs` | integração | 1 | OK — feature `metrics` |
+| `wyd-protocol/tests/integracao/roundtrip.rs` | integração | 4 | OK |
+| `wyd-protocol/tests/golden/pacotes.rs` | golden | 10 | OK — bytes reais |
+| `wyd-sim/tests/integracao/determinism.rs` | integração | 8 | OK |
+| `wyd-sim/tests/golden/formulas.rs` | golden | 6 | OK — valor exato por fórmula |
+| `wyd-sim/tests/golden/refino_seed.rs` | golden | 5 | OK — paridade com seed |
+| `wyd-launcher/tests/contrato/identidade.rs` | contrato | 4 | **P1** — 2 `return` mudos quando `client/` não existe (L150/L176) |
+| `wyd-launcher/tests/golden/serverlist_paridade.rs` | golden | 3 | OK — skip com mensagem quando `node` falta |
+| `wyd-bots/tests/sistema/cena_campo.rs` | sistema | 1 | P2 — `sleep` fixo no laço do bot |
 
 ### 6.4 Unidade (`src`)
 
@@ -240,17 +241,17 @@ falso verde; **P1** = tipo misturado, monólito ou duplicação; **P2** = higien
 
 ### P0 — falso verde (corrigir antes de qualquer release)
 
-1. `sistema_selecao.rs`: gate sem mensagem. Um operador não sabe que 4 casos não rodaram.
+1. `sistema/selecao.rs`: gate sem mensagem. Um operador não sabe que 4 casos não rodaram.
 2. Padronizar mensagem única (`SKIP: ...`) e um macro por crate; eliminar `skip:`
-   minúsculo e `return` mudo (`sistema_personagens_crud.rs`, `contrato_identidade.rs`).
+   minúsculo e `return` mudo (`sistema/personagens_crud.rs`, `contrato/identidade.rs`).
 
 ### P1 — tipo misturado e monólito
 
-1. `contrato_conteudo.rs`/`contrato_operacao.rs`: mover os testes com Postgres para
-   `sistema_conteudo.rs`/`sistema_operacao.rs` (mesma suíte, outro gate).
-2. `sistema_cena_mobs.rs`: quebrar em `sistema_handshake_mobs`, `sistema_cena_mobs` e
+1. `contrato/conteudo.rs`/`contrato/operacao.rs`: mover os testes com Postgres para
+   `sistema/conteudo.rs`/`sistema/operacao.rs` (mesma suíte, outro gate).
+2. `sistema/cena_mobs.rs`: quebrar em `sistema_handshake_mobs`, `sistema_cena_mobs` e
    `sistema_dialogo_npc` com helpers em `tests/common/mod.rs`.
-3. `sistema_selchar.rs`: separar contrato de pacote, CRUD de personagem e logout;
+3. `sistema/selchar.rs`: separar contrato de pacote, CRUD de personagem e logout;
    escrita em `tmp/` sob `WYD_CAPTURE_DIR`.
 4. `wyd-admin/src/main.rs`: extrair `dotenv`/seed para módulo da lib e testar como unidade.
 
@@ -259,7 +260,7 @@ falso verde; **P1** = tipo misturado, monólito ou duplicação; **P2** = higien
 1. Substituir os 12 `sleep` de sincronização por poll com prazo (7 arquivos).
 2. Unificar DSN: `WYD_TEST_DSN` **ou** `WYD_TEST_DATABASE_URL`/`DATABASE_URL` via um
    `tests/common/mod.rs` por crate (`wyd-server`, `wyd-db`, `wyd-admin`).
-3. Reduzir `integracao_config_gameplay.rs` e `contrato_operacao.rs` a ≤400 linhas.
+3. Reduzir `integracao/config_gameplay.rs` e `contrato/operacao.rs` a ≤400 linhas.
 4. Corrigir docs que citam arquivos inexistentes (`tests/movement.rs`, `tests/combat.rs`,
    `tests/logout.rs`) para o módulo/tema real.
 

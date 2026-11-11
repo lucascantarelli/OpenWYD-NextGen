@@ -83,4 +83,4 @@ ADR estava incompleto em dois pontos:
    na fonte pública (valor que o `refine_rate` mantém).
 
 A leitura da tabela é em **`nível + 1`**, documentada em `refine_rate`/`sanc_rate` e provada
-por `crates/wyd-sim/tests/golden_refino_seed.rs`.
+por `crates/wyd-sim/tests/golden/refino_seed.rs`.

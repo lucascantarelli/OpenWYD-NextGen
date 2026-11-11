@@ -79,7 +79,7 @@ Regras que decorrem dela:
 - Issue consumidora: `roadmap-rust/issues/FASE-03-5-autoridade-servidor.md`.
 - Docs: `docs/arquitetura/autoridade-servidor.md`, `estrutura-e-padroes.md` §10,
   `docs/rust/03-progresso.md` (entrada datada).
-- Evidência: `crates/wyd-core/tests/integracao_inventario.rs` (10 testes) +
+- Evidência: `crates/wyd-core/tests/integracao/inventario.rs` (10 testes) +
   `systems/inventory.rs` (7 testes unitários).
 
 ## Revisão

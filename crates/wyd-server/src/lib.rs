@@ -21,6 +21,7 @@
 //! deles é simulado.
 
 pub mod auth;
+pub mod boot;
 pub mod channels;
 pub mod characters;
 pub mod config;

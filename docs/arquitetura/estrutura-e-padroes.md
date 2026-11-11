@@ -91,8 +91,8 @@ crates/wyd-protocol/
 │       └── ui.rs              # MessagePanel, UpdateWeather
 ├── tests/
 │   ├── common/mod.rs          # monta pacote (header + corpo + ofuscação)
-│   ├── integracao_roundtrip.rs # header+payload+codec pela API pública
-│   └── golden_pacotes.rs      # bytes reais dos pacotes (fixtures do cliente 7662)
+│   ├── integracao/roundtrip.rs # header+payload+codec pela API pública
+│   └── golden/pacotes.rs      # bytes reais dos pacotes (fixtures do cliente 7662)
 └── benches/
 ```
 
@@ -149,20 +149,22 @@ Taxonomia completa, regras de higiene, matriz por crate e auditoria caso a caso:
 
 1. **Unidade** (`unidade`): `#[cfg(test)] mod tests` no arquivo que contém a regra;
    sem I/O, rede, banco, processo ou relógio real. Roda em todo `cargo test`.
-2. **Integração** (`integracao`): `crates/<crate>/tests/integracao_<tema>.rs`, usando
+2. **Integração** (`integracao`): `crates/<crate>/tests/integracao/<tema>.rs`, usando
    só a API pública; sem infraestrutura externa (nem Postgres, nem socket, nem processo).
-3. **Contrato** (`contrato`): `tests/contrato_<tema>.rs` — documentação ↔ código,
+3. **Contrato** (`contrato`): `tests/contrato/<tema>.rs` — documentação ↔ código,
    schema ↔ migrations, rota ↔ cliente TS, identidade ↔ assets. Falha se o contrato
    publicado divergir; não prova comportamento de jogo.
-4. **Golden** (`golden`): `tests/golden_<tema>.rs` — bytes/valores exatos com a fonte
+4. **Golden** (`golden`): `tests/golden/<tema>.rs` — bytes/valores exatos com a fonte
    citada no nome ou no comentário (`include_bytes!`, seed SQL, fixture).
-5. **Sistema** (`sistema`): `tests/sistema_<tema>.rs` — Postgres real, socket CPSock,
+5. **Sistema** (`sistema`): `tests/sistema/<tema>.rs` — Postgres real, socket CPSock,
    processo filho ou filesystem. Opt-in por variável de ambiente, com `SKIP` explícito.
 6. **Bench**: `benches/` por crate crítica, comparável entre commits.
 
-Nomes de arquivo têm prefixo porque o Cargo só descobre `tests/*.rs` automaticamente;
-subpastas exigiriam um `[[test]]` por arquivo e escondem o tipo. `tests/common/mod.rs`
-NÃO é alvo de teste (sem `fn main`), é o lugar de helpers compartilhados.
+Pasta por tipo exige **alvo explícito**: o Cargo não descobre `tests/<subpasta>/*.rs`.
+Cada arquivo tem um `[[test]]` no `Cargo.toml` (`name = "<tipo>_<tema>"`,
+`path = "tests/<tipo>/<tema>.rs"`); o nome do alvo mantém o prefixo do tipo, então
+`cargo test --test sistema_login` continua válido. `tests/common/mod.rs` NÃO é alvo de
+teste (sem `fn main`), é o lugar de helpers compartilhados.
 
 **Proibido**: teste que reimplementa a lógica para "provar" a si mesmo; teste sem
 asserção de valor concreto; `#[ignore]` para esconder falha; `return;` silencioso como
@@ -195,8 +197,8 @@ crates/wyd-launcher/
 │   ├── identidade.rs     # parser da fonte única `docs/arquitetura/identidade.tokens`
 │   ├── branding.rs       # Launcher.bmp/.hat gerados da identidade (escrita atômica)
 │   └── gui.rs            # LauncherGUI.html (contrato visual da GUI Tauri, só da identidade)
-└── tests/                # golden_serverlist_paridade.rs (bytes Rust × Node);
-                          # contrato_identidade.rs (identidade × globals.css;
+└── tests/                # golden/serverlist_paridade.rs (bytes Rust × Node);
+                          # contrato/identidade.rs (identidade × globals.css;
                           # assets instalados × gerados)
 ```
 
@@ -251,12 +253,12 @@ crates/wyd-core/
 │       └── clock.rs       # trait: tempo injetável (determinismo em teste)
 ├── tests/
 │   ├── common/mod.rs
-│   ├── integracao_content.rs    # conteúdo inconsistente aborta o boot (ADR-0009)
-│   ├── integracao_determinism.rs # mesmo seed → mesmo resultado
-│   ├── integracao_autoridade.rs / integracao_inventario.rs / integracao_npc.rs
-│   ├── integracao_compose.rs / integracao_gem.rs
-│   ├── golden_gema_seed.rs      # efeito de gema × seed SQL
-│   └── sistema_telemetry.rs     # tracing/métricas com relógio e stdout reais
+│   ├── integracao/content.rs    # conteúdo inconsistente aborta o boot (ADR-0009)
+│   ├── integracao/determinism.rs # mesmo seed → mesmo resultado
+│   ├── integracao/autoridade.rs / integracao/inventario.rs / integracao/npc.rs
+│   ├── integracao/compose.rs / integracao/gem.rs
+│   ├── golden/gema_seed.rs      # efeito de gema × seed SQL
+│   └── sistema/telemetry.rs     # tracing/métricas com relógio e stdout reais
 └── benches/
     └── tick.rs           # executado (03-6 + 03-2): custo da IA (500 NPCs) e baseline SoA (10k entidades)
 ```
@@ -288,8 +290,8 @@ crates/wyd-net/
 │       └── metrics.rs    # pacotes/s, filas, rejeições (sem println!)
 └── tests/
     ├── common/mod.rs
-    ├── integracao_flood.rs       # truncado/desconhecido/limite → erro tipado e rate-limit
-    └── integracao_metrics.rs     # contadores da feature `metrics`
+    ├── integracao/flood.rs       # truncado/desconhecido/limite → erro tipado e rate-limit
+    └── integracao/metrics.rs     # contadores da feature `metrics`
 ```
 
 ## 12. `wyd-db` — árvore alvo (FASE-04)
@@ -329,11 +331,11 @@ crates/wyd-db/
 │       ├── delivery_queue.rs # grants do portal → dreno do servidor
 │       └── save.rs       # executado (04-3): fila de save, política e dreno Cold Path
 └── tests/
-    ├── contrato_catalogo.rs    # doc ↔ migrations ↔ SCHEMA_VERSION (sem Postgres)
-    ├── contrato_migrations.rs  # estrutura das migrations (sem Postgres)
-    ├── sistema_pg.rs           # portas + save contra Postgres real (opt-in)
-    ├── sistema_sessoes.rs      # presença por canal (opt-in)
-    └── sistema_stack_caps.rs   # view item_stack_cap (opt-in)
+    ├── contrato/catalogo.rs    # doc ↔ migrations ↔ SCHEMA_VERSION (sem Postgres)
+    ├── contrato/migrations.rs  # estrutura das migrations (sem Postgres)
+    ├── sistema/pg.rs           # portas + save contra Postgres real (opt-in)
+    ├── sistema/sessoes.rs      # presença por canal (opt-in)
+    └── sistema/stack_caps.rs   # view item_stack_cap (opt-in)
 ```
 
 Nenhum acesso a banco dentro do tick; DSN real nunca versionado.
@@ -376,13 +378,13 @@ crates/wyd-admin/
 │       ├── mod.rs
 │       └── grant_service.rs # regra + idempotência por transação rastreável
 └── tests/
-    ├── contrato_autorizacao.rs # sem sessão → 401; sem papel → 403
-    ├── contrato_transporte.rs  # rota→método, envelope AdminResult, limites (ADR-0008)
-    ├── contrato_conteudo.rs    # 07-5: listas paginadas (fake + Postgres semeado)
-    ├── contrato_painel.rs      # painel do jogador
-    ├── contrato_login.rs       # credenciais/pin pelo Cold Path
-    ├── contrato_operacao.rs    # operação diária/donate/eventos
-    └── sistema_seed.rs         # regressão do seed de staff em boot real (opt-in)
+    ├── contrato/autorizacao.rs # sem sessão → 401; sem papel → 403
+    ├── contrato/transporte.rs  # rota→método, envelope AdminResult, limites (ADR-0008)
+    ├── contrato/conteudo.rs    # 07-5: listas paginadas (fake + Postgres semeado)
+    ├── contrato/painel.rs      # painel do jogador
+    ├── contrato/login.rs       # credenciais/pin pelo Cold Path
+    ├── contrato/operacao.rs    # operação diária/donate/eventos
+    └── sistema/seed.rs         # regressão do seed de staff em boot real (opt-in)
 ```
 
 Transporte decidido na **ADR-0008** (HTTP/1.1 + JSON em loopback); `.proto` não
@@ -428,9 +430,9 @@ crates/wyd-sim/
 │       ├── mod.rs
 │       └── table.rs      # saída comparável (atual × proposto)
 └── tests/
-    ├── golden_formulas.rs    # regressões matemáticas de valor exato (inalteradas)
-    ├── golden_refino_seed.rs # refino × seed SQL
-    └── integracao_determinism.rs # mesma seed → mesma partida; replay com rolls gravados
+    ├── golden/formulas.rs    # regressões matemáticas de valor exato (inalteradas)
+    ├── golden/refino_seed.rs # refino × seed SQL
+    └── integracao/determinism.rs # mesma seed → mesma partida; replay com rolls gravados
 ```
 
 Mapa de sistemas, unidades, ordem no tick e decisões provisórias:
@@ -482,6 +484,10 @@ dono continua proibido: `.gitkeep` só via issue.
 
 ## 16. `wyd-server` — árvore executada (ADR-0022, FASE-03/07/08)
 
+> **ADR-0026 em execução.** Etapas 1–3 concluídas (`boot/`, `auth/`, `cpsock/` e `world/`);
+> os demais arquivos continuam planos até as etapas 4–5 (`character/`, `gameplay/`,
+> `config/`, `status/`). A árvore abaixo já reflete as etapas 1–3.
+
 Raiz de composição do monólito **de um canal**. Não é "mais uma lib": é o único lugar que
 pode conhecer `wyd-core` + `wyd-net` + `wyd-db` + `wyd-admin` ao mesmo tempo. Lógica de jogo
 continua no `wyd-core`; regra de persistência no `wyd-db`; este crate só **liga** as peças e
@@ -492,16 +498,31 @@ crates/wyd-server/
 ├── Cargo.toml            # deps: protocol, core, net (feature metrics), db, admin, tokio (borda)
 ├── src/
 │   ├── lib.rs            # fachada: invariantes do processo em //!
-│   ├── main.rs           # boot: env → migrations → pool → listeners → loops; `--healthcheck`
-│   ├── cpsock.rs         # aceite CPSock, handshake, cerca de sessão, limite por IP, seleção
-│   │                     # e dispatch de `_MSG_UseItem` → `SelectionStore::use_item`,
-│   │                     # `_MSG_Attack*` → `SelectionStore::attack` e `_MSG_Action` → diálogo
-│   ├── auth.rs           # senha (Argon2id) + PIN numérico com bloqueio persistido
+│   ├── main.rs           # só CLI: chama `boot::main()`
+│   ├── boot/
+│   │   ├── mod.rs        # run(): env → migrations → pool → listeners → loops
+│   │   ├── env.rs        # binds e defaults de escuta
+│   │   └── healthcheck.rs# `--healthcheck` (GET /health)
+│   ├── cpsock/
+│   │   ├── mod.rs        # accept loop, `Stage`/`Scene`, respostas e testes de fio
+│   │   ├── handshake.rs  # INITCODE, frame, checksum e versão do cliente
+│   │   ├── login.rs      # senha/PIN e cerca de sessão
+│   │   ├── selection.rs  # seleção e Create/Delete/CharacterLogin
+│   │   ├── action.rs     # dispatch de UseItem/Attack/Action/chat e cena
+│   │   └── limits.rs     # limite de conexões por IP
+│   ├── auth/
+│   │   ├── mod.rs        # Authenticator/AuthError/PinOutcome (fachada do domínio)
+│   │   ├── password.rs   # senha de login (Argon2id)
+│   │   └── pin.rs        # PIN 4..=6, cadastro/troca e bloqueio persistido
 │   ├── characters.rs     # Create/Delete/CharacterLogin com autoridade no Postgres
 │   ├── personagens.rs    # STRUCT_SELCHAR/STRUCT_MOB a partir do banco
-│   ├── world.rs          # tick do canal (03-7): Engine do core, grade, métricas reais e parada
-│   │                     # limpa; entrada/saída do personagem e save (03-8); NPC do snapshot
-│   │                     # (`sync_npcs`), golpe autoritativo e diálogo por `_MSG_Action`
+│   ├── world/
+│   │   ├── mod.rs        # World/Engine, tipos, comandos e porta `EngineHandle`
+│   │   ├── tick.rs       # EngineThread/run_loop, movimento e avanço do relógio
+│   │   ├── scene.rs      # entrada/saída, cena, ids `MobID`/`ESCENE_FIELD`
+│   │   ├── npc.rs        # `npc_specs`/`sync_npcs` e diálogo
+│   │   ├── combat.rs     # golpe autoritativo e dano por template
+│   │   └── save.rs       # `SaveSink`, `SaveQueueSink` e snapshots
 │   ├── session.rs        # sessão única por conta entre canais (0030)
 │   ├── channels.rs       # World: canais habilitados e papéis (normal/verde)
 │   ├── status.rs         # `/serv00.htm` + `/health` + sonda UDP :8281
@@ -514,16 +535,17 @@ crates/wyd-server/
 │   ├── logs.rs           # log estruturado do processo (event=...)
 │   └── metrics.rs        # métricas do processo (uptime, canais, status, IP-limit)
 └── tests/                  # prefixo = tipo (docs/arquitetura/testes.md)
-    ├── contrato_monitoramento.rs # doc ↔ rotas/consultas do /monitoramento
-    ├── integracao_canal_verde.rs / integracao_config_gameplay.rs
-    ├── integracao_config_recarga.rs / integracao_tick_processo.rs
-    ├── sistema_handshake.rs  # INITCODE, versão, checksum (inclusive servidor vivo)
-    ├── sistema_login.rs      # senha, PIN, bloqueio, sem segredo no log
-    ├── sistema_pin_persistencia.rs / sistema_pin_troca.rs / sistema_portal_pin.rs
-    ├── sistema_personagens_crud.rs / sistema_selchar.rs / sistema_selecao.rs
-    ├── sistema_sessao_unica.rs / sistema_limite_ip.rs / sistema_status_udp.rs
-    ├── sistema_campo_*.rs / sistema_cena_*.rs / sistema_gold_inicial.rs
-    └── sistema_loja_viva.rs / sistema_lotacao.rs / sistema_conta_de_teste.rs
+    ├── contrato/monitoramento.rs # doc ↔ rotas/consultas do /monitoramento
+    ├── integracao/canal_verde.rs / integracao/config_gameplay.rs
+    ├── integracao/config_recarga.rs / integracao/tick_processo.rs
+    ├── sistema/handshake.rs  # INITCODE, versão, checksum (inclusive servidor vivo)
+    ├── sistema/login.rs      # senha, PIN, bloqueio, sem segredo no log
+    ├── sistema/pin_persistencia.rs / sistema/pin_troca.rs / sistema/portal_pin.rs
+    ├── sistema/personagens_crud.rs / sistema/selchar.rs / sistema/selecao.rs
+    ├── sistema/sessao_unica.rs / sistema/limite_ip.rs / sistema/status_udp.rs
+    ├── integracao/campo_treinamento.rs / sistema/campo_vivo.rs
+    ├── sistema_cena_*.rs / sistema/gold_inicial.rs
+    └── sistema/loja_viva.rs / sistema/lotacao.rs / sistema/conta_de_teste.rs
 ```
 
 **EXP ligada ao fio (2026-11-10).** `_MSG_Attack`/`AttackOne`/`AttackTwo` chegam por
@@ -534,7 +556,7 @@ crates/wyd-server/
 revisão. O que **continua** sem resolvedor é caixa/pickup e o sorteio de loot no abate.
 
 **Loot sem call site (2026-11-10).** `Gameplay::loot` só aparece em
-`crates/wyd-server/tests/integracao_config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
+`crates/wyd-server/tests/integracao/config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
 nominal do que **não** resolve morte/caixa/pickup:
 
 - `wyd_sim::resolve_attack` / `AttackOutcome` — só `hit`/`crit`/`damage`; não recebe HP e não
@@ -559,7 +581,7 @@ Código legado C++/Go não está na árvore compilada; `origin/main` é referên
 
 Regras que esta árvore carrega:
 
-1. **Sem regra de jogo aqui.** `main.rs`/`cpsock.rs` chamam sistemas do core; não calculam
+1. **Sem regra de jogo aqui.** `main.rs`/`cpsock/` chamam sistemas do core; não calculam
    dano, drop, cooldown nem inventário.
 2. **Um processo por canal** (ADR-0022 §7): canal vem de `WYD_SERVER_CHANNEL` + `server_channel`,
    nunca de build nem de porta nova (o cliente fixa 8281).

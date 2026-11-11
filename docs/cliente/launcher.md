@@ -106,7 +106,7 @@ binário à mão:
 | Regra | Por quê |
 |---|---|
 | Fonte única é o **registro de canais do servidor** (um grupo = um servidor; canais 1..10 = hosts das instâncias), nunca um `.bin` versionado | `client/` e `serverlist.bin` ficam fora do git; o `.bin` é artefato de ambiente |
-| O launcher **gera** o `.bin` pelo mesmo algoritmo (`10 × 11 × 64`, soma de `obfuscationKey[63-i]`), a partir do registro de canais versionado | implementação única em `crates/wyd-launcher/src/serverlist.rs`; o Node (`tools/client/serverlist.mjs`) fica como referência de operação e a paridade de **bytes** é teste (`tests/golden_serverlist_paridade.rs`) |
+| O launcher **gera** o `.bin` pelo mesmo algoritmo (`10 × 11 × 64`, soma de `obfuscationKey[63-i]`), a partir do registro de canais versionado | implementação única em `crates/wyd-launcher/src/serverlist.rs`; o Node (`tools/client/serverlist.mjs`) fica como referência de operação e a paridade de **bytes** é teste (`tests/golden/serverlist_paridade.rs`) |
 | Escrita **atômica com backup**: `serverlist.bin.tmp` → `rename`, guardando `serverlist.bin.bak` | arquivo meio escrito = cliente sem lista, e o jogador não sabe reverter |
 | URL de status com **≤ 32 caracteres** e **um IP por canal** (porta de jogo é 8281 fixa) | limites medidos no cliente 7662; violá-los deixa a coluna Canal vazia |
 | `sn.bin` (nomes + contadores) é **do cliente**, não do servidor: o launcher só o entrega se o build exigir, e nunca zera o contador 0 | é ele que decide quais grupos aparecem e com que rótulo |
@@ -149,7 +149,7 @@ editados à mão. Agora existe **uma** definição de identidade e ela é consum
 | Launcher (Rust) | `include_str!` do mesmo arquivo em `crates/wyd-launcher/src/identidade.rs` (parser estrito, `chave = valor`); nenhum literal de cor ou nome em Rust |
 | Gerador Node | `tools/client/serverlist.mjs` lê `servidor.N` do arquivo (`identidadeServers()`); não existe mais o nome fixo `NextGen` |
 
-Guarda de divergência: `crates/wyd-launcher/tests/contrato_identidade.rs` compara os tokens com o CSS e
+Guarda de divergência: `crates/wyd-launcher/tests/contrato/identidade.rs` compara os tokens com o CSS e
 proíbe qualquer cor de 6 dígitos no CSS fora da identidade; `wyd-portal/src/identidade.test.ts`
 faz a mesma checagem do lado do portal. Mexer num valor sem mexer no outro quebra o gate.
 

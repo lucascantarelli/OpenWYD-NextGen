@@ -8,7 +8,7 @@
 #     (`Launcher.bmp`/`Launcher.hat`) e nomes de servidor do `sn.bin`.
 #   - wyd-portal/src/app/globals.css → teste de paridade
 #     `wyd-portal/src/app/identidade.test.ts` quebra se o CSS divergir daqui.
-#   - crates/wyd-launcher/tests/contrato_identidade.rs → compara este arquivo com o CSS do
+#   - crates/wyd-launcher/tests/contrato/identidade.rs → compara este arquivo com o CSS do
 #     portal e com os assets/sn.bin instalados em `client/`.
 #
 # Unidade: `espaco.*` e `raio*` são pixels; tipografia.tamanho é px e
