@@ -261,6 +261,8 @@
 | `TradingItem` | 0x0376 | 20 | lugares/slots(4×u8)+12, warp+16 |
 | `Buy` | 0x0379 | 22 | npc+12, pos inv.(2×i16)+14, moeda+18 |
 | `Sell` | 0x037A | 18 | npc+12, tipo/pos(2×i16)+14 |
+| `ShopList` | 0x017C | 236 | `ShopType` i32+12, `STRUCT_ITEM List[27]`+16, `Tax` i32+232; `HEADER.ID = ESCENE_FIELD` |
+| `ReqShopList` | 0x027B | 16 | `Target` u16+12 (MobID da cena), `Unk` u16+14 |
 | `ApplyBonus` | 0x0277 | 18 | tipo/detalhe(2×i16)+12, alvo+16 |
 | `AccountSecure` | 0x0FDE | 32 | token[6]+12, desconhecido[10]+18, troca i32+28 |
 | `MessagePanel` | 0x0101 | 140 | texto[128]+12 |
@@ -367,6 +369,12 @@ O template da classe é copiado para `character_items` **apenas na criação**
 |---|---:|---|
 | `_MSG_UpdateEtc` | 48 | `Hold`@0 (u32), `Exp`@4 (i64), `Learn`@12 (i64), `ScoreBonus`@20, `SpecialBonus`@22, `SkillBonus`@24, `Magic`@26 (u16), `Coin`@28 (i32), cauda de alinhamento 32–35 |
 | `_MSG_UpdateScore` | 152 | `STRUCT_SCORE`@0 (48), `Critical`@48, `SaveMana`@49, `Affect[32]`@50 (u16), `Guild`@114, `GuildLevel`@116, `Resist[4]`@118, `RegenHP`@122, `RegenMP`@123, `CurrHp`@124, `CurrMp`@128, `Magic`@132 (i32), `Special[4]`@136 (`0xCC`) |
+
+O par também sai na **entrada no mundo**: depois do `_MSG_CNFCharacterLogin` (que leva o
+`STRUCT_MOB`, com `Coin`) o cliente recebe `_MSG_UpdateScore` e `_MSG_UpdateEtc`, como o
+`sendScoreSelf` + `SendEtc` do legado. É o `Coin@28` do `UpdateEtc` que desenha o ouro — o
+personagem novo é criado com o `Coin@28` do `BaseMob` (5 000 000 nas quatro classes) e, sem
+esse pacote, entra com gold no banco e 0 na tela.
 
 Porte de `_MSG_ApplyBonus.cpp`: **tipo 0** → atributo `Detail` 0–3, `ScoreBonus >= 300` gasta 100
 de uma vez; **tipo 2** → skill `Detail` 5000–5095, `TargetID` na faixa `MAX_USER..MAX_MOB`

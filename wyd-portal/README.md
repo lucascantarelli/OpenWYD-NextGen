@@ -44,9 +44,14 @@ O portal só tem tela para o que o contrato do gateway serve hoje
 | `/monitoramento/logs` | staff | volume e erros por serviço no Loki |
 | `/auditoria` | admin | `audit_admin/recent` (`audit_log`, append-only) |
 | `/economia` | staff | `economy_admin/summary` (`city_tax_ledger` + `delivery_queue`) |
-| `/conta` | jogador | `panel/self`, `panel/characters`, `panel/rankings` e `account_web/change_numeric_pin` |
+| `/` | público | home: notícias, status do servidor, ranking e primeiros passos |
+| `/noticias`, `/noticias/[slug]` | público | JSON versionado gerado de `docs/noticias/` (`npm run noticias`) |
+| `/ranking` | público | `panel/rankings` (nome, classe e nível; sem identidade de conta) |
+| `/downloads` | público | build 7662, protocolo 12000, revisão do gateway e manifesto/pacote reais do launcher |
+| `/api/launcher/manifesto`, `/api/launcher/pacote` | público | pasta `LAUNCHER_DIST_DIR` (`manifest.txt` + `wyd-launcher.exe`); `404` sem publicação |
+| `/conta` | jogador | `panel/self`, `panel/characters`, `panel/rankings`, `panel/history` e `account_web/change_numeric_pin` |
 | `/guias`, `/enciclopedia` | público | JSON versionado gerado de `docs/` e do catálogo |
-| `/login` | público | `account_web/verify_credentials` |
+| `/login` | público | `account_web/verify_credentials` (jogador; staff cai em `/painel`) |
 
 Fora do escopo por falta de contrato no gateway: listagem paginada de contas,
 edição de personagem, escrita de conteúdo (upsert/set/delete de NPC, mob, drop,
@@ -65,6 +70,47 @@ horários + liga/desliga), `account_admin/list_accounts`/`get_account` (sem
 segredo) e `character_admin/grant_item` (fila idempotente com dreno no `Carry`) —
 prontas para as telas de operação do portal. Seguem `501` por falta de tabela:
 `daily_reward_admin/set_reward_item_enabled` e `donate_revenue_admin/*`.
+
+## Público × administração
+
+O site público é a cara do servidor: home, notícias, ranking, downloads, guias e
+enciclopédia. **Nenhuma página pública linka para a administração** — o staff
+chega por URL direta (`/painel`), que segue barrada pelo `proxy.ts`, pelo layout
+de `(admin)` e pela autorização do gateway. `src/app/robots.ts` desindexa as
+rotas de staff e o login.
+
+O login é um só (`/login`, mesma conta do jogo). O papel decide o destino:
+`player` → `/conta`; `moderator`/`admin` → `/painel`.
+
+## Notícias
+
+`docs/noticias/*.md` (frontmatter `title/date/author/tag/summary`) é a fonte;
+`npm run noticias` gera `src/content/noticias.json`, versionado, porque a imagem
+do portal copia só `wyd-portal/`. A home mostra a mais recente em destaque e
+`/noticias` lista todas; `/noticias/[slug]` renderiza o markdown com `marked`.
+
+## Downloads e launcher
+
+A página `/downloads` não inventa versão: ela lê o `manifest.txt` real da pasta
+montada em `LAUNCHER_DIST_DIR` (padrão `/dist/launcher`) e mostra build,
+protocolo, número de arquivos e tamanho total. O pacote sai por
+`/api/launcher/pacote` com `content-disposition` e `x-checksum-sha256`; o
+manifesto sai por `/api/launcher/manifesto`. Sem pasta, ambas as rotas são `404`
+e a página diz que a distribuição não está publicada.
+
+Publicação (artefato de ambiente, `dist/` fora do git):
+
+```bash
+node tools/launcher/dist-manifest.mjs dist/launcher 7662 12000
+```
+
+## Área do jogador: sessões e histórico
+
+`/conta` mostra as últimas sessões (`character_session`) e as tentativas de login
+do **próprio** jogador (`audit_log`, ação `auth.login`). A rota é
+`panel/history`: o `account_id` vem do cookie assinado, o login é lido do banco no
+gateway e a trilha é filtrada pelo id do ator — nunca por texto de login. Sem
+sessão, o gateway responde `401` antes de qualquer leitura.
 
 ## Identidade e desenho
 

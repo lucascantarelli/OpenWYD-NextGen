@@ -24,9 +24,9 @@ use wyd_db::{
 
 use crate::api::{
     create_account, economy_summary, find_account, moderation, own_account, own_characters,
-    recent_audit, request_grant, request_recovery, set_blocked, set_role, top_rankings,
-    AccountSummary, ChannelPresence, ConfigStore, GrantKind, GrantRequest, PanelAccount,
-    PanelCharacter, RankingEntry,
+    own_history, recent_audit, request_grant, request_recovery, set_blocked, set_role,
+    top_rankings, AccountSummary, ChannelPresence, ConfigStore, GrantKind, GrantRequest,
+    PanelAccount, PanelCharacter, PanelEvent, PanelSession, RankingEntry,
 };
 use crate::audit::{log_action, log_denied, log_panel, AuditSink};
 use crate::auth::{Session, StaffSession};
@@ -369,6 +369,8 @@ pub struct Router<A, C, S> {
     game: Option<String>,
     /// Configuração editável (taxas, drops, NPC, teleporte) — nunca estado vivo.
     config: Option<Arc<dyn ConfigStore>>,
+    /// Histórico de sessões do jogador (`character_session`, leitura pura).
+    session_trail: Option<Arc<dyn wyd_db::SessionTrail + Send + Sync>>,
     max_body: usize,
 }
 
@@ -390,6 +392,7 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             grant_trail: None,
             game: None,
             config: None,
+            session_trail: None,
             max_body: http::MAX_BODY,
         }
     }
@@ -425,6 +428,18 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
     }
 
     /// Liga as fontes reais da economia (livro-caixa e fila de entrega).
+    /// Liga a leitura do histórico de sessões (área do jogador).
+    ///
+    /// Sem ela `panel/history` responde `503`: a tela não inventa sessão.
+    #[must_use]
+    pub fn with_session_trail(
+        mut self,
+        trail: Arc<dyn wyd_db::SessionTrail + Send + Sync>,
+    ) -> Self {
+        self.session_trail = Some(trail);
+        self
+    }
+
     #[must_use]
     pub fn with_economy(mut self, economy: Arc<dyn Economy + Send + Sync>) -> Self {
         self.economy = Some(economy);
@@ -531,6 +546,7 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("panel", "self") => self.panel_self(session, &params, trace),
             ("panel", "characters") => self.panel_characters(session, &params, trace),
             ("panel", "rankings") => self.panel_rankings(session, &params, trace),
+            ("panel", "history") => self.panel_history(session, &params, trace),
             ("item_catalog", "list_items") => self.catalog_list_items(session, trace),
             ("account_web", "verify_credentials") => self.verify_credentials(&params, trace),
             ("account_web", "change_numeric_pin") => self.change_pin(&params, trace),
@@ -545,6 +561,8 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             ("npc_admin", "get_npc") => self.config_npc(session, &params, trace),
             ("npc_admin", "list_npcs") => self.config_npc_page(session, &params, trace),
             ("npc_admin", "upsert_npc") => self.config_set_npc(session, &params, trace),
+            ("npc_admin", "list_item_prices") => self.config_item_prices(session, &params, trace),
+            ("npc_admin", "set_item_price") => self.config_set_item_price(session, &params, trace),
             ("mob_admin", "list_mob_templates") => {
                 self.config_mob_templates(session, &params, trace)
             }
@@ -570,6 +588,24 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             }
             ("donate_admin", "credit_donate_balance") => {
                 self.config_donate_credit(session, &params, trace)
+            }
+            ("donate_admin", "debit_donate_balance") => {
+                self.config_donate_debit(session, &params, trace)
+            }
+            ("donate_revenue_admin", "get_revenue_summary") => {
+                self.config_donate_revenue(session, trace)
+            }
+            ("donate_revenue_admin", "list_topup_orders") => {
+                self.config_donate_topups(session, &params, trace)
+            }
+            ("donate_revenue_admin", "list_donate_spend") => {
+                self.config_donate_spend(session, &params, trace)
+            }
+            ("donate_revenue_admin", "list_top_buyers") => {
+                self.config_donate_buyers(session, &params, trace)
+            }
+            ("donate_revenue_admin", "search_accounts") => {
+                self.config_donate_search(session, &params, trace)
             }
             ("world_event_admin", "get_world_event_config") => {
                 self.config_event_get(session, trace)
@@ -1002,6 +1038,77 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         }
     }
 
+    /// `npc_admin/list_item_prices` — preços de NPC (`item_price`), filtrados por item.
+    ///
+    /// Tabela vazia é resposta v‌álida: significa "nenhum preço definido pelo dono do
+    /// servidor", e o portal mostra ausência em vez de zero.
+    fn config_item_prices(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(50);
+        let item_index = params
+            .get("item_index")
+            .and_then(json::Json::as_i64)
+            .and_then(|item| i32::try_from(item).ok());
+        match crate::api::list_item_prices(
+            Some(session),
+            item_index,
+            limit,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"prices\":{}", crate::api::item_prices_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `npc_admin/set_item_price` — grava o preço de (item, NPC).
+    ///
+    /// A forma é validada antes de tocar o store: corpo sem item/NPC responde `INVALID`
+    /// mesmo sem configuração montada, e nunca chega ao banco.
+    fn config_set_item_price(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let (Some(item), Some(npc), Some(buy), Some(sell)) = (
+            params.get("item_index").and_then(json::Json::as_i64),
+            params.get("npc_id").and_then(json::Json::as_i64),
+            params.get("buy_price").and_then(json::Json::as_i64),
+            params.get("sell_price").and_then(json::Json::as_i64),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "item_index, npc_id, buy_price e sell_price obrigatórios",
+            );
+        };
+        let (Ok(item), Ok(npc)) = (i32::try_from(item), i32::try_from(npc)) else {
+            return Reply::business(trace, RESULT_INVALID, "item ou NPC fora da faixa");
+        };
+        let edit = crate::api::ItemPriceEdit {
+            item_index: item,
+            npc_id: npc,
+            buy_price: buy,
+            sell_price: sell,
+            source: params
+                .get("source")
+                .and_then(json::Json::as_str)
+                .unwrap_or_default()
+                .to_string(),
+        };
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        match crate::api::set_item_price(Some(session), &edit, store.as_ref(), &self.audit) {
+            Ok(revision) => Reply::ok(trace, &format!(",\"revision\":{revision}")),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
     /// `mob_admin/list_mob_templates` — templates de mob em páginas por nome (só leitura).
     fn config_mob_templates(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
         let Some(store) = &self.config else {
@@ -1297,6 +1404,140 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         }
     }
 
+    /// `donate_revenue_admin/get_revenue_summary` — receita somada (staff).
+    fn config_donate_revenue(&self, session: Session, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        match crate::api::donate::revenue_summary(Some(session), store.as_ref(), &self.audit) {
+            Ok(row) => Reply::ok(
+                trace,
+                &format!(",\"revenue\":{}", crate::api::donate::revenue_json(&row)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_revenue_admin/list_topup_orders` — extrato de recargas.
+    fn config_donate_topups(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(20);
+        match crate::api::donate::topup_orders(Some(session), limit, store.as_ref(), &self.audit) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"orders\":{}", crate::api::donate::ledger_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_revenue_admin/list_donate_spend` — extrato de débitos.
+    fn config_donate_spend(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(20);
+        match crate::api::donate::spend_orders(Some(session), limit, store.as_ref(), &self.audit) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"spend\":{}", crate::api::donate::ledger_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_revenue_admin/list_top_buyers` — contas que mais compraram.
+    fn config_donate_buyers(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(10);
+        match crate::api::donate::top_buyers(Some(session), limit, store.as_ref(), &self.audit) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"buyers\":{}", crate::api::donate::buyers_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_revenue_admin/search_accounts` — busca conta por login.
+    fn config_donate_search(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let term = params
+            .get("login")
+            .and_then(json::Json::as_str)
+            .unwrap_or("");
+        let limit = params
+            .get("limit")
+            .and_then(json::Json::as_i64)
+            .unwrap_or(10);
+        match crate::api::donate::search_accounts(
+            Some(session),
+            term,
+            limit,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(rows) => Reply::ok(
+                trace,
+                &format!(",\"accounts\":{}", crate::api::donate::lookup_json(&rows)),
+            ),
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
+    /// `donate_admin/debit_donate_balance` — debita saldo da conta, idempotente.
+    fn config_donate_debit(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(store) = &self.config else {
+            return Reply::transport(503, trace, "configuração não montada no gateway");
+        };
+        let (Some(account_id), Some(credits), Some(key)) = (
+            params.get("account_id").and_then(json::Json::as_i64),
+            params.get("credits").and_then(json::Json::as_i64),
+            params.get("idempotency_key").and_then(json::Json::as_str),
+        ) else {
+            return Reply::business(
+                trace,
+                RESULT_INVALID,
+                "account_id, credits e idempotency_key obrigatórios",
+            );
+        };
+        match crate::api::donate::debit_balance(
+            Some(session),
+            account_id,
+            credits,
+            key,
+            store.as_ref(),
+            &self.audit,
+        ) {
+            Ok(receipt) => {
+                let key = json::quote(&receipt.idempotency_key);
+                Reply::ok(
+                    trace,
+                    &format!(
+                        ",\"idempotency_key\":{key},\"debit_id\":{},\"replay\":{}",
+                        receipt.debit_id, receipt.replay
+                    ),
+                )
+            }
+            Err(error) => Reply::from_error(trace, &error),
+        }
+    }
+
     /// `world_event_admin/get_world_event_config` — eventos com horários.
     fn config_event_get(&self, session: Session, trace: &str) -> Reply {
         let Some(store) = &self.config else {
@@ -1576,6 +1817,39 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
             Some(Ok(characters)) => {
                 let lista = characters_json(&characters);
                 Reply::ok(trace, &format!(",\"characters\":{lista}"))
+            }
+            Some(Err(error)) => Reply::from_error(trace, &error),
+            None => Reply::transport(500, trace, "handler pendente de runtime async"),
+        }
+    }
+
+    /// `panel/history` — sessões da conta e tentativas de login do próprio jogador.
+    ///
+    /// `account_id` vem da sessão assinada no BFF; o login é lido do banco no
+    /// gateway. A trilha filtra pelo id do ator, nunca por texto de login.
+    fn panel_history(&self, session: Session, params: &json::Json, trace: &str) -> Reply {
+        let Some(account_id) = params.get("account_id").and_then(json::Json::as_i64) else {
+            return Reply::business(trace, RESULT_INVALID, "campo account_id obrigatório");
+        };
+        let (Some(sessoes), Some(trilha)) = (&self.session_trail, &self.audit_trail) else {
+            return Reply::transport(503, trace, "histórico do jogador não montado no gateway");
+        };
+        match poll_once(own_history(
+            Some(session),
+            account_id,
+            &self.accounts,
+            sessoes.as_ref(),
+            trilha.as_ref(),
+            &self.audit,
+        )) {
+            Some(Ok((sessions, events))) => {
+                let sessions =
+                    json::Json::Arr(sessions.iter().map(session_json).collect()).render();
+                let events = json::Json::Arr(events.iter().map(event_json).collect()).render();
+                Reply::ok(
+                    trace,
+                    &format!(",\"sessions\":{sessions},\"events\":{events}"),
+                )
             }
             Some(Err(error)) => Reply::from_error(trace, &error),
             None => Reply::transport(500, trace, "handler pendente de runtime async"),
@@ -2044,6 +2318,49 @@ fn grants_rows_json(rows: &[wyd_db::QueuedGrantRow]) -> String {
         })
         .collect();
     json::Json::Arr(items).render()
+}
+
+fn session_json(row: &PanelSession) -> json::Json {
+    json::Json::Obj(vec![
+        (
+            "group_id".to_string(),
+            json::Json::Num(f64::from(row.group_id)),
+        ),
+        (
+            "channel".to_string(),
+            json::Json::Num(f64::from(row.channel)),
+        ),
+        (
+            "client_version".to_string(),
+            json::Json::Num(f64::from(row.client_version)),
+        ),
+        (
+            "character_id".to_string(),
+            row.character_id
+                .map_or(json::Json::Null, |id| json::Json::Num(id as f64)),
+        ),
+        (
+            "opened_ms".to_string(),
+            json::Json::Num(row.opened_ms as f64),
+        ),
+        (
+            "renewed_ms".to_string(),
+            json::Json::Num(row.renewed_ms as f64),
+        ),
+        (
+            "released_ms".to_string(),
+            row.released_ms
+                .map_or(json::Json::Null, |ms| json::Json::Num(ms as f64)),
+        ),
+    ])
+}
+
+fn event_json(row: &PanelEvent) -> json::Json {
+    json::Json::Obj(vec![
+        ("at_ms".to_string(), json::Json::Num(row.at_ms as f64)),
+        ("action".to_string(), json::Json::Str(row.action.clone())),
+        ("detail".to_string(), json::Json::Str(row.detail.clone())),
+    ])
 }
 
 fn rankings_json(entries: &[RankingEntry]) -> String {

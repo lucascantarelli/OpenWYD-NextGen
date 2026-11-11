@@ -40,6 +40,27 @@ export interface RankingEntry {
   level: number;
 }
 
+export interface PanelSession {
+  group_id: number;
+  channel: number;
+  client_version: number;
+  character_id: number | null;
+  opened_ms: number;
+  renewed_ms: number;
+  released_ms: number | null;
+}
+
+export interface PanelEvent {
+  at_ms: number;
+  action: string;
+  detail: string;
+}
+
+export interface PanelHistory {
+  sessions: PanelSession[];
+  events: PanelEvent[];
+}
+
 interface Envelope {
   result: number;
   message?: string;
@@ -47,6 +68,8 @@ interface Envelope {
   account?: PanelAccount;
   characters?: PanelCharacter[];
   ranking?: RankingEntry[];
+  sessions?: PanelSession[];
+  events?: PanelEvent[];
   requested?: boolean;
 }
 
@@ -115,12 +138,36 @@ export async function getPanelCharacters(traceId?: string): Promise<PanelCharact
   return res.characters ?? [];
 }
 
-/** Ranking é público: não leva conta e o servidor corta em 100. */
+/** Ranking na área do jogador: exige sessão (o ator é a própria conta). */
 export async function getPanelRankings(limit = 10, traceId?: string): Promise<RankingEntry[]> {
   await ownAccountId();
+  return getPublicRankings(limit, traceId);
+}
+
+/**
+ * Ranking público (home e `/ranking`).
+ *
+ * A rota `panel/rankings` do gateway não leva identidade de conta: o BFF chama
+ * com o token de processo e o gateway audita com a identidade de serviço. Só
+ * nome, classe e nível do personagem saem daqui — nunca id de conta ou login.
+ */
+export async function getPublicRankings(limit = 10, traceId?: string): Promise<RankingEntry[]> {
   const safe = Number.isInteger(limit) && limit > 0 && limit <= 100 ? limit : 10;
   const res = await call<Envelope>("panel/rankings", { limit: safe }, traceId);
   return res.ranking ?? [];
+}
+
+/**
+ * Sessões e tentativas de login da própria conta.
+ *
+ * O `account_id` sai do cookie de sessão; o gateway lê o login no banco. A trilha
+ * devolve só a ação e o resultado (`ok`, bloqueio, credencial recusada) — nunca
+ * senha, hash ou PIN.
+ */
+export async function getPanelHistory(traceId?: string): Promise<PanelHistory> {
+  const accountId = await ownAccountId();
+  const res = await call<Envelope>("panel/history", { account_id: accountId }, traceId);
+  return { sessions: res.sessions ?? [], events: res.events ?? [] };
 }
 
 export interface ChangePinInput {

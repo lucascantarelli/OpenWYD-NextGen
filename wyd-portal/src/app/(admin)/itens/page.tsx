@@ -1,9 +1,12 @@
 import { PackageSearch } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { Badge } from "@/components/Badge";
 import { findCatalogItem, getCatalog, type Catalog } from "@/server/catalog";
+import { listItemPrices, type ItemPriceWire } from "@/server/config";
 
+import { atributosDaFicha, requisitosDaFicha } from "./ficha";
 import { ItemBrowser } from "./item-browser";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,21 @@ export default async function ItemsPage({
 
   const ficha =
     catalog && Number.isInteger(itemIndex) ? findCatalogItem(catalog.items, itemIndex) : null;
+
+  const atributos = ficha ? atributosDaFicha(ficha) : [];
+  const requisitos = ficha ? requisitosDaFicha(ficha) : [];
+  const efeitos = ficha?.effect_names ?? [];
+
+  // Preço de NPC é configuração do dono do servidor (`item_price`), lida do gateway.
+  // Ausência de linha = "sem preço definido", nunca zero.
+  let prices: ItemPriceWire[] | null = null;
+  if (ficha) {
+    try {
+      prices = await listItemPrices(ficha.item_index);
+    } catch {
+      prices = null;
+    }
+  }
 
   return (
     <>
@@ -67,8 +85,8 @@ export default async function ItemsPage({
               <PackageSearch size={22} strokeWidth={1.6} aria-hidden="true" />
               <strong>Nenhum catálogo carregado no servidor</strong>
               <p>
-                O conteúdo é cargado do Postgres no boot do servidor. Sem `item_catalog`
-                preenchido, a lista fica vazia.
+                O catálogo é carregado no boot do servidor de jogo. Assim que ele subir com o
+                catálogo, os itens aparecem aqui.
               </p>
             </div>
           </div>
@@ -81,9 +99,8 @@ export default async function ItemsPage({
             <div>
               <h2 className="card__title">Ficha #{ficha.item_index}</h2>
               <p className="card__sub">
-                Dados do catálogo carregado no servidor. Origem rastreável: concessões deste
-                item entram na fila com chave de idempotência (ver{" "}
-                <Link href="/correio">Correio</Link>).
+                Item como está no catálogo do servidor. Para mandar este item a um jogador,
+                use o <Link href="/correio">Correio</Link>.
               </p>
             </div>
             <div className="page-head__actions">
@@ -99,10 +116,98 @@ export default async function ItemsPage({
               <dt>Nome de exibição</dt>
               <dd>{ficha.display_name || "—"}</dd>
             </dl>
-            <p className="muted small" style={{ marginBottom: 0 }}>
-              Atributos, requisitos e preço de loja só entram aqui quando existirem no payload do
-              gateway — a tabela não mostra coluna que o contrato não fornece.
-            </p>
+          </div>
+          <div className="card__body">
+            <h3 className="card__subtitle">Atributos do template</h3>
+            {atributos.length === 0 ? (
+              <p className="muted small" style={{ margin: 0 }}>
+                Este item não traz atributo no template: só índice e nome.
+              </p>
+            ) : (
+              <dl className="kv">
+                {atributos.map((linha) => (
+                  <Fragment key={linha.rotulo}>
+                    <dt>{linha.rotulo}</dt>
+                    <dd>{linha.valor}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            )}
+          </div>
+          <div className="card__body">
+            <h3 className="card__subtitle">Requisitos para usar</h3>
+            {requisitos.length === 0 ? (
+              <p className="muted small" style={{ margin: 0 }}>
+                Nenhum requisito declarado — qualquer personagem pode usar.
+              </p>
+            ) : (
+              <dl className="kv">
+                {requisitos.map((linha) => (
+                  <Fragment key={linha.rotulo}>
+                    <dt>{linha.rotulo}</dt>
+                    <dd>{linha.valor}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            )}
+          </div>
+          <div className="card__body">
+            <h3 className="card__subtitle">Efeitos do template</h3>
+            {efeitos.length === 0 ? (
+              <p className="muted small" style={{ margin: 0 }}>
+                Nenhum efeito nomeado no template deste item.
+              </p>
+            ) : (
+              <div className="chips">
+                {efeitos.map((efeito) => (
+                  <span key={efeito} className="chip mono">
+                    {efeito}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="card__body card__body--flush">
+            {prices === null ? (
+              <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                Não foi possível ler os preços de loja agora.
+              </p>
+            ) : prices.length === 0 ? (
+              <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                Nenhum mercador vende este item ainda. Defina o preço em{" "}
+                <Link href="/configuracoes?aba=precos">Configurações › Preços de loja</Link>.
+              </p>
+            ) : (
+              <div className="ui-table-scroll">
+                <table className="ui-table" aria-label="Preços de NPC">
+                  <thead>
+                    <tr>
+                      <th>Mercador</th>
+                      <th className="ui-align-right">Compra</th>
+                      <th className="ui-align-right">Venda</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prices.map((price) => (
+                      <tr key={`${price.item_index}-${price.npc_id}`}>
+                        <td>
+                          <span className="mono">#{price.npc_id}</span>{" "}
+                          {price.npc_slug || <span className="muted">sem slug</span>}
+                        </td>
+                        <td className="ui-align-right">{price.buy_price.toLocaleString("pt-BR")}</td>
+                        <td className="ui-align-right">
+                          {price.sell_price.toLocaleString("pt-BR")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <div className="card__foot">
+            Valores lidos do template do item no catálogo do servidor. Preço em ouro, alcance em
+            tiles; “—” aparece quando o template não declara o campo.
           </div>
         </div>
       )}

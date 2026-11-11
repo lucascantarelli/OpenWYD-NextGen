@@ -16,9 +16,10 @@ pub use accounts::{Accounts, CredentialRecord};
 pub use audit::{AuditRow, AuditTrail, NewAuditEntry};
 pub use characters::Characters;
 pub use config::{
-    AccessoryRuleRow, AccountListRow, ConfigRateRow, DailyRewardEdit, DailyRewardRow,
-    DonateItemRow, DropConfigRow, EffectRow, EventScheduleRow, MobTemplateRow, NpcConfigRow,
-    NpcListRow, RouteConfigRow, WorldEventRow,
+    AccessoryRuleRow, AccountListRow, ConfigRateRow, DailyRewardEdit, DailyRewardRow, DebitOutcome,
+    DonateBuyerConfigRow, DonateCreditConfigRow, DonateDebitConfigRow, DonateItemRow,
+    DonateRevenueConfigRow, DropConfigRow, EffectRow, EventScheduleRow, ItemPriceConfigRow,
+    MobTemplateRow, NpcConfigRow, NpcListRow, RouteConfigRow, ShopItemConfigRow, WorldEventRow,
 };
 pub use content::{
     CatalogItemRow, CatalogSnapshot, ChannelCapacity, ChannelRole, ServerChannel, SkillRule,
@@ -27,4 +28,4 @@ pub use content::{
 pub use economy::{CityTaxTotal, Economy, EconomySummary, GrantTotal};
 pub use grants::{Grant, Grants, QueuedGrantRow};
 pub use pg::NO_CREDENTIAL;
-pub use sessions::{ClaimOutcome, Sessions};
+pub use sessions::{ClaimOutcome, SessionHistoryRow, SessionTrail, Sessions};

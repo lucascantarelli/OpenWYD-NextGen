@@ -1599,3 +1599,27 @@ em 0,99% do orçamento; o painel 11 do Grafana renderizou canal 1 em 1 e canal 2
 Depois do FIN, o gauge voltou a 0, o personagem foi removido pelo `DeleteCharacter` e
 `character_session` ficou sem linha aberta. Banco no intervalo: HP 83/83, MP 46/46,
 FOR/INT/DES/CON 8/4/7/6, pontos 5/3 para TransKnight nível 1.
+
+### 2026-11-11 — teste manual do dono: movimento, NPCs e mensagens
+
+O log do canal mostrou a causa raiz dos "NPCs que não abrem": **todo `_MSG_Action` de
+movimento era recusado** (`combate recusado: passo de 22 tiles acima do permitido (4)`) e o
+`talk` exigia o personagem a 5 tiles do clique — a loja nunca chegava a abrir e só o NPC
+colado funcionava. Correções: clique é **destino de caminhada** (`Engine::walk_pending`, um
+orçamento por tick), clique no sprite resolve o NPC a distância (`CLICK_RANGE_TILES = 2`) e o
+raio da cena subiu de 24 para **40** tiles (o anel de mercadores de Armia em `y >= 2121`
+ficava fora). Testes: `clique_longe_e_destino_de_caminhada_e_nao_recusa`,
+`clique_no_sprite_do_npc_longe_devolve_alvo`; gates `fmt`/`clippy -D warnings`/`test` verdes e
+canais 1 e 2 reconstruídos healthy.
+
+Desassemble do `WYD.exe` (7662) fechou a dúvida da senha errada: o cliente **não compara
+`0x0117` (`_MSG_NewAccountFail`)** em nenhum ponto; conhece 87 opcodes do nosso catálogo
+(inventário em `docs/cliente/mensagens-cliente-7662.md`) e desenha texto livre por
+`_MSG_MessagePanel` (`0x0101`). A recusa de senha passou a mandar também o
+`MessagePanel` com "Senha ou conta incorreta" — o `*Fail` continua sendo o pacote de
+contrato. Nome vermelho fechado no mesmo dia: `ChaosRate@15` é o **CP** codificado em `+75`, não
+um stat; o cliente (`0x4e2393`) lê `pMob+0x11e`, limita a `10..150` e interpola a tabela
+`0x6188a4` (vermelho → laranja → amarelo → verde → azul → branco), e inicializa mob com `0x4B`
+(75 = CP 0) em `0x4d9ae2`. O servidor mandava 0 em `BaseScore`/`CurrentScore`/`CreateMob`; agora
+manda `CP_NEUTRO = 0x4B`, com teste `personagem_nasce_com_cp_neutro_e_nao_com_o_lixo_do_template`.
+Os demais valores da criação já estavam corretos no banco (83/46, 8/4/7/6, 5.000.000, pontos 0/0).

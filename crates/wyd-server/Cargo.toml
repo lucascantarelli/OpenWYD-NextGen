@@ -32,6 +32,10 @@ tokio = { version = "1", features = ["rt-multi-thread"] }
 # Guarda de contrato: lê os dashboards JSON do monitoramento (`tests/monitoramento_contrato.rs`).
 serde_json = "1"
 
+# Prova viva da quest do Campo: o teste conecta pelo mesmo protocolo do cliente
+# (`tests/campo_vivo.rs`), criando o personagem pelo `_MSG_CreateCharacter`.
+wyd-bots = { path = "../wyd-bots", version = "0.1.0" }
+
 # Bench do serviço (não só da lib): tick com mundo vazio e com 1 000 entidades.
 [[bench]]
 name = "tick"

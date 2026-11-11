@@ -28,6 +28,30 @@
 | `0x0165` | RemoveMob | 16 | **CORPO PORTADO + PROVADO NO FIO** (`Basedef.h` + porte Go; delta de revisão removendo e recriando NPC na mesma sessão; captura 08-6 pendente) |
 | `0x7530` | ESCENE_FIELD | cena autoritativa | **PENDENTE** |
 
+## O que o build 7662 realmente trata (desassemble 2026-11-11)
+
+O roteador de recebimento compara `HEADER.Type` (`WORD [frame+4]`) com um conjunto finito de
+opcodes. Extraindo **todos** os `cmp reg, imm` do `WYD.exe` e cruzando com a tabela
+`crates/wyd-protocol/src/wire/generated/opcode_table.rs`, os opcodes do nosso catálogo que o
+cliente realmente compara são 91 (de `0x0101 MessagePanel` a `0x0FDE AccountSecure`).
+
+Consequências medidas — não deduzidas:
+
+| Opcode | Nome | Presente no cliente? | Efeito prático |
+|---|---|---|---|
+| `0x0101` | MessagePanel | **sim** | única via de texto livre no jogo |
+| `0x0102` | MessageBoxOk | compara, mas cai no mesmo bloco que só trata `0x0101/0x0105/0x0106` | não desenha caixa por si |
+| `0x0110` | CNFNewCharacter | **sim** | copia 0x348 (840 B) de `frame+0x10` (sel@4 do corpo) |
+| `0x0112` | CNFDeleteCharacter | **sim** | mesmo `memcpy` 840 B de `frame+0x10` → corpo de **844 B** (`sel@4`) |
+| `0x0117` | NewAccountFail | **NÃO** (zero ocorrências) | senha errada com esse pacote não mostra nada — é o caso relatado no teste manual |
+| `0x0119` / `0x011a` / `0x011b` | CharacterLoginFail / NewCharacterFail / DeleteCharacterFail | **sim** | cada um exibe mensagem própria do cliente |
+
+O `CNFDeleteCharacter` com `Size = 852` (12 de header + 844) está **correto**: o cliente lê os
+840 B a partir de `frame+16`, exatamente `sel@4` no corpo. Já o `_MSG_NewAccountFail` (0x0117)
+não existe no binário; para a senha errada aparecer na tela é preciso usar um opcode que o
+cliente desenhe (`MessagePanel`) com o layout provado — **não** foi trocado às cegas nesta
+entrega.
+
 O canal responde hoje com corpo em `0x010A` (`MSG_DBCNFAccountLogin`, 1996 B), `0x0110`
 (`STRUCT_SELCHAR`, 844 B), `0x0112` (o mesmo `STRUCT_SELCHAR` depois da remoção) e `0x0114`
 (`MSG_CNFClientCharacterLogin`, 1820 B); os `*Fail` do domínio continuam só de cabeçalho. O

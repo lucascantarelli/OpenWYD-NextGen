@@ -50,11 +50,31 @@ cd wyd-portal && npx tsc --noEmit && npx vitest run
 
 ## Critérios de aceite
 
-- [ ] Mudança no portal reflete no jogo sem restart (log `config_reload`).
-- [ ] Valor inválido nunca derruba snapshot bom (teste dedicado).
-- [ ] Toda alteração auditada com autor e diff.
+- [ ] Mudança no portal reflete no jogo sem restart (log `config_reload`) — exige stack viva (E2E `multiplier:exp` 1→3 existe, roda com gateway+canal)
+- [x] Valor inválido nunca derruba snapshot bom (`config_gameplay` 9/9: SancRate 101 recusado, revisão 3 segue valendo; `config_recarga` 6/6: `escrita_invalida_e_falha_de_leitura_mantem_o_ultimo_snapshot_bom`)
+- [x] Toda alteração auditada com autor real (`taxa_valida_grava_e_audita` agora confere `actor_id == 7` da sessão; `moderator_id` nunca vem do corpo — `adminCall.withoutModerator`)
 
 ## Riscos / rollback
 
 - Risco: taxa absurda quebra economia → mitigação: tetos + confirmação + rollback.
 - Rollback: revisão anterior (dado, não deploy).
+
+## Verificação on-line (2026-11-11)
+
+- **A tela deixou de ser um rolo único**: virou sete assuntos com parâmetro
+  `?aba=` (Refino, EXP e multiplicadores, Drops, NPCs, Teleportes, Preços de
+  loja, Eventos); só a seção ativa é carregada e renderizada.
+- **Removidos da UI**: campo "Fonte desta edição", todas as menções a módulo
+  Rust/migration/tabela/"snapshot" e o bloco "Restaurar default" que exigia
+  domínio + chave digitados à mão (agora cada linha editada tem "Voltar ao
+  padrão").
+- **Procedência**: derivada da sessão (`portal#<conta>`) nas server actions —
+  a trilha de auditoria continua com autor e valor anterior.
+- **Rótulos/unidades**: "Chance (10.000 = 100%)" + coluna "Equivale",
+  "Preço de compra/venda", "Aparece no mapa", "Peso do item no sorteio".
+- **Controles compactos**: `min-height` do tema vencia o input de linha; a
+  regra foi reforçada (`.ui-table .ui-input--compact`) e `grant-form` ganhou
+  layout de linha.
+- **Pendente conhecido**: o editor grava configuração que o servidor relê na
+  revisão, mas composição, teleporte e spawn de NPC ainda não têm consumidor no
+  jogo — a tela não promete o contrário.

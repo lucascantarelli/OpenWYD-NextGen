@@ -62,9 +62,11 @@ de seleção: `STRUCT_SELCHAR` não tem campo `Class` (`DBGetSelChar`, `CFileDB.
 do slot 0 não é só o índice.
 
 O template também traz `Ac=4`, `Damage=5`, `Merchant=0` (TK/HT) ou `16` (FM/BM) e
-`AttackRun=82` nos dois scores; `Direction`/`ChaosRate` chegam `0xCC` do dump de memória do
-motor antigo e o porte Go **mantém** esses bytes no login (o cliente passa a usar a direção do
-primeiro `_MSG_Action`). `Special[4]`, `LearnedSkill`, `Magic`, `Critical`, `SkillBar` e
+`AttackRun=82` nos dois scores; `Direction` chega `0xCC` do dump de memória do motor antigo e o
+porte Go **mantém** esse byte no login (o cliente passa a usar a direção do primeiro
+`_MSG_Action`). `ChaosRate` **não** é stat: é o CP (−75..+75) codificado em `+75`, e o personagem
+nasce com `CP_NEUTRO = 0x4B` (75 = CP 0) — é esse byte que define a cor do nome no cliente
+(`WYD.exe 0x4e2393`, tabela `0x6188a4`). O `0xCC` do template é lixo e não sai no fio. `Special[4]`, `LearnedSkill`, `Magic`, `Critical`, `SkillBar` e
 `Resist` também vêm do template (zerados, exceto `Critical=0xFF`, `SkillBar=0xFF` e
 `Resist=-11`).
 

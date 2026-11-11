@@ -10,6 +10,11 @@ const MESSAGES: Record<number, string> = {
   502: "O servidor de jogo não respondeu. Tente novamente em instantes.",
 };
 
+/** Destino por papel: jogador vai para a área dele; staff vai para a administração. */
+export function destinoPorPapel(role: string | undefined): string {
+  return role === "admin" || role === "moderator" ? "/painel" : "/conta";
+}
+
 export default function LoginForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -28,7 +33,8 @@ export default function LoginForm() {
         body: JSON.stringify({ name, pass }),
       });
       if (res.ok) {
-        router.replace("/painel");
+        const body = (await res.json().catch(() => ({}))) as { role?: string };
+        router.replace(destinoPorPapel(body.role));
         router.refresh();
         return;
       }

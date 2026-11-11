@@ -24,7 +24,7 @@ export function ItemBrowser({
     () => [
       {
         key: "item_index",
-        header: "Índice",
+        header: "Item",
         align: "right",
         sortValue: (item) => item.item_index,
         render: (item) => (
@@ -51,13 +51,6 @@ export function ItemBrowser({
 
   return (
     <>
-      <div className="ui-filters">
-        <span className="ui-field__hint">
-          {items.length.toLocaleString("pt-BR")} itens
-          {catalogVersion ? ` · versão ${catalogVersion.slice(0, 8)}` : ""}
-        </span>
-      </div>
-
       <DataTable
         rows={items}
         columns={columns}
@@ -67,7 +60,7 @@ export function ItemBrowser({
         pageSizes={[100, 200, 500]}
         initialPageSize={100}
         emptyMessage="Nenhum item combina com a busca."
-        caption={`${items.length} itens carregados no servidor`}
+        caption={`${items.length.toLocaleString("pt-BR")} itens${catalogVersion ? ` · versão ${catalogVersion.slice(0, 8)}` : ""}`}
       />
     </>
   );

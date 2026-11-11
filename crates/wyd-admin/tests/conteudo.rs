@@ -187,6 +187,41 @@ impl ConfigStore for FakeConteudo {
         Ok(18)
     }
 
+    fn donate_revenue(&self) -> Result<wyd_admin::DonateRevenueRow, AdminError> {
+        Ok(wyd_admin::DonateRevenueRow::default())
+    }
+
+    fn donate_credits(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateLedgerRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn donate_debits(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateLedgerRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn donate_top_buyers(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateBuyerRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn debit_donate(
+        &self,
+        _account_id: i64,
+        _credits: i64,
+        _key: &str,
+        _reason: &str,
+        _actor: i64,
+    ) -> Result<wyd_admin::DebitResult, AdminError> {
+        Ok(wyd_admin::DebitResult::Applied(41))
+    }
+
+    fn search_accounts(
+        &self,
+        _term: &str,
+        _limit: i64,
+    ) -> Result<Vec<wyd_admin::AccountLookupRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
     fn world_events(&self) -> Result<Vec<WorldEventRow>, AdminError> {
         Ok(Vec::new())
     }
@@ -232,6 +267,22 @@ impl ConfigStore for FakeConteudo {
         _cost_gold: Option<i32>,
         _req_level: Option<i16>,
         _enabled: Option<bool>,
+        _actor: i64,
+    ) -> Result<i64, AdminError> {
+        unimplemented!("fora do escopo deste teste");
+    }
+
+    fn item_prices(
+        &self,
+        _item_index: Option<i32>,
+        _limit: i64,
+    ) -> Result<Vec<wyd_admin::ItemPriceRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn set_item_price(
+        &self,
+        _edit: &wyd_admin::ItemPriceEdit,
         _actor: i64,
     ) -> Result<i64, AdminError> {
         unimplemented!("fora do escopo deste teste");

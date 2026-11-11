@@ -7,7 +7,15 @@
  * "sem movimento registrado", não "indisponível".
  */
 import { adminCall } from "./admin";
-import { economyAdmin, type EconomyResponse } from "./admin-client";
+import {
+  donateAdmin,
+  donateRevenue,
+  economyAdmin,
+  type DonateDebitWire,
+  type DonateLedgerResponse,
+  type DonateRevenueResponse,
+  type EconomyResponse,
+} from "./admin-client";
 
 export interface CityTaxView {
   city: string;
@@ -59,6 +67,136 @@ export function computeEconomyAlerts(summary: EconomyView): EconomyAlert[] {
     });
   }
   return alerts;
+}
+
+/** Entrada do extrato de donate (recarga ou débito). */
+export interface DonateEntryView {
+  id: number;
+  accountId: number;
+  login: string;
+  credits: number;
+  createdAt: string;
+}
+
+export interface DonateBuyerView {
+  accountId: number;
+  login: string;
+  credits: number;
+  topups: number;
+}
+
+/** Receita de donate + extratos, sempre do razão gravado. */
+export interface DonateRevenueView {
+  creditsTotal: number;
+  debitsTotal: number;
+  balance: number;
+  topups: number;
+  debits: number;
+  topupOrders: DonateEntryView[];
+  spendOrders: DonateEntryView[];
+  buyers: DonateBuyerView[];
+}
+
+function toEntry(row: {
+  id: number;
+  account_id: number;
+  login: string;
+  credits: number;
+  created_at: string;
+}): DonateEntryView {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    login: row.login,
+    credits: row.credits,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Receita de donate (`donate_revenue_admin/*`).
+ *
+ * Quatro leituras independentes: total, recargas, débitos e compradores. Tabela
+ * vazia continua sendo resposta válida — a tela mostra "sem movimento".
+ */
+export async function getDonateRevenue(): Promise<DonateRevenueView> {
+  const [summary, topups, spend, buyers] = await Promise.all([
+    adminCall<Record<string, never>, DonateRevenueResponse>(
+      donateRevenue.getRevenueSummary.bind(donateRevenue),
+      {},
+      { action: "donate.revenue", target: "donate" },
+    ),
+    adminCall<{ limit: number }, DonateLedgerResponse>(
+      donateRevenue.listTopupOrders.bind(donateRevenue),
+      { limit: 20 },
+      { action: "donate.revenue", target: "donate" },
+    ),
+    adminCall<{ limit: number }, DonateLedgerResponse>(
+      donateRevenue.listDonateSpend.bind(donateRevenue),
+      { limit: 20 },
+      { action: "donate.revenue", target: "donate" },
+    ),
+    adminCall<{ limit: number }, DonateLedgerResponse>(
+      donateRevenue.listTopBuyers.bind(donateRevenue),
+      { limit: 10 },
+      { action: "donate.revenue", target: "donate" },
+    ),
+  ]);
+
+  const revenue = summary.revenue ?? {
+    credits_total: 0,
+    debits_total: 0,
+    balance: 0,
+    topups: 0,
+    debits: 0,
+  };
+  return {
+    creditsTotal: revenue.credits_total,
+    debitsTotal: revenue.debits_total,
+    balance: revenue.balance,
+    topups: revenue.topups,
+    debits: revenue.debits,
+    topupOrders: (topups.orders ?? []).map(toEntry),
+    spendOrders: (spend.spend ?? []).map(toEntry),
+    buyers: (buyers.buyers ?? []).map((row) => ({
+      accountId: row.account_id,
+      login: row.login,
+      credits: row.credits,
+      topups: row.topups,
+    })),
+  };
+}
+
+/** Resolve o login digitado para uma conta única (busca por prefixo no gateway). */
+export async function findAccountByLogin(login: string): Promise<number | null> {
+  const res = await adminCall<{ login: string; limit: number }, DonateLedgerResponse>(
+    donateRevenue.searchAccounts.bind(donateRevenue),
+    { login, limit: 5 },
+    { action: "donate.search", target: "account" },
+  );
+  const contas = res.accounts ?? [];
+  const alvo = login.trim().toLowerCase();
+  const exata = contas.filter((conta) => conta.login.toLowerCase() === alvo);
+  if (exata.length === 1) return exata[0].id;
+  if (exata.length === 0 && contas.length === 1) return contas[0].id;
+  return null;
+}
+
+/** Débito de saldo de donate, idempotente pela chave gerada na ação. */
+export async function debitDonateBalance(
+  accountId: number,
+  credits: number,
+  key: string,
+): Promise<{ debitId: number; replay: boolean }> {
+  const res = await adminCall<
+    { account_id: number; credits: number; idempotency_key: string },
+    DonateDebitWire
+  >(
+    donateAdmin.debitDonateBalance.bind(donateAdmin),
+    { account_id: accountId, credits, idempotency_key: key },
+    { action: "donate.debit", target: `account:${accountId}` },
+  );
+  return { debitId: res.debit_id ?? 0, replay: res.replay ?? false };
 }
 
 /** Foto da economia auditada (`economy_admin/summary`, staff). */

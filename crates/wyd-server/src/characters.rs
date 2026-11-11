@@ -172,8 +172,11 @@ fn starting_scores(class: i64) -> StartingScores {
         constitution: base[3],
         hp_max: base[4] + STARTING_LEVEL * INCREMENT_HP[cls],
         mp_max: base[5] + STARTING_LEVEL * INCREMENT_MP[cls],
-        score_bonus: STARTING_LEVEL * SCORE_POINTS_PER_LEVEL,
-        skill_bonus: STARTING_LEVEL * SKILL_POINTS_PER_LEVEL,
+        // Pontos são ganhos **por nível subido**: no nível 1 (recém-criado) são zero. Somar
+        // `STARTING_LEVEL * 5` dava 5 pontos livres no primeiro login, como se o personagem
+        // já tivesse upado uma vez.
+        score_bonus: (STARTING_LEVEL - 1) * SCORE_POINTS_PER_LEVEL,
+        skill_bonus: (STARTING_LEVEL - 1) * SKILL_POINTS_PER_LEVEL,
     }
 }
 
@@ -208,6 +211,8 @@ pub enum SelectionError {
     UseItem(String),
     /// `_MSG_Quest` recusado (nível, ordem, prova, reentrega ou mochila cheia).
     Quest(String),
+    /// Loja de NPC recusada (NPC fora da cena, posição, preço, gold ou mochila cheia).
+    Shop(String),
     /// Combate/Diálogo recusados pelo mundo (`_MSG_Attack`/`_MSG_Action`).
     Combat(String),
     /// Conta com os quatro slots ocupados (criação não sobrescreve personagem).
@@ -231,6 +236,7 @@ impl core::fmt::Display for SelectionError {
             Self::Exp(motivo) => write!(f, "EXP recusada: {motivo}"),
             Self::UseItem(motivo) => write!(f, "uso de item recusado: {motivo}"),
             Self::Quest(motivo) => write!(f, "quest recusada: {motivo}"),
+            Self::Shop(motivo) => write!(f, "loja recusada: {motivo}"),
             Self::Combat(motivo) => write!(f, "combate recusado: {motivo}"),
             Self::Full => write!(f, "conta sem slot livre em 0..={MAX_SLOTS}"),
         }
@@ -275,6 +281,17 @@ pub struct Selected {
     pub items: Vec<ItemRow>,
     pub short_skill: [u8; SHORT_SKILL_LEN],
     pub progression: Progression,
+}
+
+/// Resultado de uma compra em loja de NPC.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShopPurchase {
+    /// Slot **relativo** da mochila (`_MSG_SendItem.slot`, 0..63).
+    pub carry_pos: u16,
+    /// `STRUCT_ITEM` já gravado no personagem.
+    pub item: [u8; 8],
+    /// Personagem com o gold novo (`UpdateEtc`).
+    pub mob: Mob,
 }
 
 impl SelectionStore {
@@ -392,6 +409,103 @@ impl SelectionStore {
         Some((i16::from(mob.merchant), mob.name_str()))
     }
 
+    /// NPC de loja por trás do `MobID` da cena: `(npc_definition.id, merchant, nome)`.
+    ///
+    /// O id do NPC não trafega no fio (o cliente só vê o `MobID`), então a loja sai do
+    /// mundo vivo — o cliente nunca escolhe o catálogo.
+    #[must_use]
+    pub fn npc_shop(&self, scene_id: u16) -> Option<(i32, i16, String)> {
+        let cena = self.scene()?;
+        let mob = cena.mobs.iter().find(|mob| mob.id == scene_id)?;
+        (mob.npc_id > 0).then(|| (mob.npc_id, i16::from(mob.merchant), mob.name_str()))
+    }
+
+    /// Catálogo do mercador, do snapshot de configuração publicado.
+    #[must_use]
+    pub fn shop_items(&self, npc_id: i32) -> Option<Vec<crate::config::ShopSlotRule>> {
+        let gameplay = self.gameplay.as_ref()?;
+        gameplay
+            .config()
+            .shop(npc_id)
+            .map(<[crate::config::ShopSlotRule]>::to_vec)
+    }
+
+    /// `_MSG_Buy` em loja de NPC.
+    ///
+    /// Tudo é conferido no servidor: o NPC tem de estar na cena e ser mercador, a posição
+    /// tem de existir no catálogo, o `Coin` do pacote tem de bater com o preço de
+    /// `item_catalog` e o gold é o persistido. Recusa não muda estado — o cliente só
+    /// aponta o que quer, nunca decide preço nem entrega.
+    pub fn buy(
+        &self,
+        selected: &mut Selected,
+        scene_id: u16,
+        shop_slot: i16,
+        coin: i32,
+    ) -> Result<ShopPurchase, SelectionError> {
+        let (npc_id, merchant, nome) = self
+            .npc_shop(scene_id)
+            .ok_or_else(|| SelectionError::Shop(format!("npc {scene_id} fora da cena")))?;
+        if merchant <= 0 {
+            return Err(SelectionError::Shop(format!("{nome} nao e mercador")));
+        }
+        let catalogo = self
+            .shop_items(npc_id)
+            .ok_or_else(|| SelectionError::Shop(format!("mercador {npc_id} sem catalogo")))?;
+        let regra = catalogo
+            .iter()
+            .find(|regra| regra.slot == shop_slot)
+            .ok_or_else(|| SelectionError::Shop(format!("posicao {shop_slot} fora do catalogo")))?;
+        let qty = i64::from(regra.quantity.max(1));
+        let preco = regra.price.max(0) * qty;
+        if i64::from(coin) != preco {
+            return Err(SelectionError::Shop(format!(
+                "preco divergente (cliente {coin}, catalogo {preco})"
+            )));
+        }
+        let personagem = &selected.character;
+        let mut progression = self
+            .runtime
+            .block_on(self.backend.progression(personagem.id))
+            .map_err(map_db)?;
+        if progression.gold < preco {
+            return Err(SelectionError::Shop(format!(
+                "gold insuficiente (tem {}, custa {preco})",
+                progression.gold
+            )));
+        }
+        let mut items = selected.items.clone();
+        let slot = crate::gameplay::add_item(
+            &mut items,
+            regra.item_index,
+            i32::try_from(qty).unwrap_or(1),
+        )
+        .ok_or_else(|| SelectionError::Shop("mochila cheia".to_string()))?;
+        progression.gold -= preco;
+        self.runtime
+            .block_on(self.backend.replace_items(personagem.id, &items, &[]))
+            .map_err(map_db)?;
+        self.runtime
+            .block_on(self.backend.store_progression(personagem.id, &progression))
+            .map_err(map_db)?;
+        selected.items = items;
+        selected.progression = progression;
+        let linha = selected
+            .items
+            .iter()
+            .find(|linha| linha.slot == slot)
+            .ok_or_else(|| SelectionError::Shop("linha comprada ausente".to_string()))?;
+        let item = crate::personagens::Item::from_row_with_pity(linha, 0).to_bytes();
+        let mut mob = Mob::from_persisted(personagem, &selected.items);
+        apply_progression(&mut mob, &progression);
+        mob.exp = progression.exp;
+        Ok(ShopPurchase {
+            carry_pos: u16::try_from(slot - wyd_db::CARRY_FIRST_SLOT).unwrap_or(0),
+            item,
+            mob,
+        })
+    }
+
     /// `_MSG_Quest` (0x028B): uma etapa do Campo de Treinamento (FASE-03-18).
     ///
     /// O motor (`gameplay::quest_engage`) decide com o estado **persistido** — nível,
@@ -407,18 +521,37 @@ impl SelectionStore {
             apply_quest_reward, quest_engage, QuestEngage, QUEST_AFFECT_HEAL, QUEST_CAMPO_CODE,
         };
         let personagem = &selected.character;
-        let mut state = self
+        let existente = self
             .runtime
             .block_on(self.backend.quest_state(personagem.id, QUEST_CAMPO_CODE))
-            .map_err(map_db)?
-            .unwrap_or(QuestState {
-                quest_code: QUEST_CAMPO_CODE.to_string(),
-                ..QuestState::default()
-            });
+            .map_err(map_db)?;
         let mut progression = self
             .runtime
             .block_on(self.backend.progression(personagem.id))
             .map_err(map_db)?;
+        if existente.is_none() {
+            // Primeiro contato: o treinador inicia a quest (Newbie 0), sem consumir prova.
+            crate::gameplay::quest_accept(progression.level, merchant)
+                .map_err(|recusa| SelectionError::Quest(recusa.to_string()))?;
+            let state = QuestState {
+                quest_code: QUEST_CAMPO_CODE.to_string(),
+                stage: 0,
+                completed: false,
+                reward_mask: 0,
+            };
+            self.runtime
+                .block_on(self.backend.store_quest_state(personagem.id, &state))
+                .map_err(map_db)?;
+            let mut mob = Mob::from_persisted(personagem, &selected.items);
+            apply_progression(&mut mob, &progression);
+            mob.exp = progression.exp;
+            return Ok(QuestOutcome {
+                state,
+                step: None,
+                mob,
+            });
+        }
+        let mut state = existente.expect("estado da quest carregado");
         let ids: Vec<i64> = selected
             .items
             .iter()
@@ -465,7 +598,11 @@ impl SelectionStore {
         let mut mob = Mob::from_persisted(personagem, &selected.items);
         apply_progression(&mut mob, &progression);
         mob.exp = progression.exp;
-        Ok(QuestOutcome { state, step, mob })
+        Ok(QuestOutcome {
+            state,
+            step: Some(step),
+            mob,
+        })
     }
 
     /// Entrega o loot do abate no inventário (empilha, ocupa slot e grava).
@@ -618,6 +755,27 @@ impl SelectionStore {
     ///
     /// O alcance é validado no mundo contra a posição **autoritativa** do personagem; o
     /// `PosX/PosY` que o cliente manda no pacote não autoriza nada.
+    /// Cena visível em volta do personagem (raio em tiles).
+    pub fn scene_around(&self, entity: Entity, radius: u32) -> Option<crate::world::SceneSnapshot> {
+        self.world.as_ref()?.handle.scene_around(entity, radius)
+    }
+
+    /// `_MSG_Action` de movimento: destino validado no tick; devolve a posição gravada.
+    pub fn move_to(
+        &self,
+        entity: Entity,
+        target_x: i32,
+        target_y: i32,
+        now_ms: u64,
+    ) -> Result<(i32, i32), SelectionError> {
+        let bridge = self.world.as_ref().ok_or(SelectionError::Unavailable)?;
+        bridge
+            .handle
+            .move_to(entity, target_x, target_y, now_ms)
+            .map(|posicao| (posicao.x, posicao.y))
+            .map_err(|error| SelectionError::Combat(error.to_string()))
+    }
+
     pub fn talk(
         &self,
         entity: Entity,
@@ -942,7 +1100,8 @@ pub struct ExpGain {
 #[derive(Debug, Clone)]
 pub struct QuestOutcome {
     pub state: QuestState,
-    pub step: crate::gameplay::QuestStep,
+    /// `None` = primeiro contato aceitou a quest; `Some` = etapa entregue agora.
+    pub step: Option<crate::gameplay::QuestStep>,
     pub mob: Mob,
 }
 
@@ -1419,8 +1578,10 @@ mod tests {
                 (forca, int, dex, con, hp, mp),
                 "classe {classe}"
             );
-            assert_eq!(ficha.score_bonus, 5, "5 pontos de atributo no nível 1");
-            assert_eq!(ficha.skill_bonus, 3, "3 pontos de skill no nível 1");
+            // Pontos são ganhos por nível **subido**: recém-criado (nível 1) não tem nenhum.
+            // O cliente mostrava 5 pontos livres porque o servidor somava um nível a mais.
+            assert_eq!(ficha.score_bonus, 0, "nenhum ponto de atributo no nível 1");
+            assert_eq!(ficha.skill_bonus, 0, "nenhum ponto de skill no nível 1");
         }
     }
 

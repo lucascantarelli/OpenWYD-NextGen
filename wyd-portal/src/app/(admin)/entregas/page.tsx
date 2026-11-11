@@ -61,6 +61,9 @@ export default async function EntregasPage({
     error = err instanceof AdminError ? err.message : "não foi possível ler as entregas agora";
   }
 
+  const selectedName =
+    characters.find((character) => character.id === selected)?.name ?? `#${selected}`;
+
   return (
     <>
       <div className="page-head">
@@ -68,8 +71,8 @@ export default async function EntregasPage({
           <p className="page-head__eyebrow">Operação</p>
           <h1 className="page-head__title">Entregas</h1>
           <p className="page-head__sub">
-            Concede ouro a um personagem pela fila durável: a chave de idempotência impede entrega
-            dupla e o servidor de jogo aplica o valor.
+            Ouro concedido ao personagem entra na fila do servidor e cai no próximo ciclo.
+            Reenviar o mesmo pedido não credita duas vezes.
           </p>
         </div>
         <div className="page-head__actions">
@@ -107,85 +110,59 @@ export default async function EntregasPage({
             </button>
           </form>
 
-          <div className="card">
-            <div className="card__body">
-              <table className="table" aria-label="Personagens">
-                <thead>
-                  <tr>
-                    <th>Personagem</th>
-                    <th>Conta</th>
-                    <th>Nível</th>
-                    <th>Ouro</th>
-                    <th>Concessão</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {characters.length === 0 ? (
-                    <tr>
-                      <td colSpan={5}>nenhum personagem encontrado</td>
-                    </tr>
-                  ) : (
-                    characters.map((character) => (
-                      <tr key={character.id} data-testid={`char-${character.id}`}>
-                        <td>
-                          <strong>{character.name}</strong>
-                          <span className="muted"> #{character.id}</span>
-                        </td>
-                        <td>#{character.account_id}</td>
-                        <td>{character.level}</td>
-                        <td data-testid={`gold-${character.id}`}>{fmtInt(character.gold)}</td>
-                        <td>
-                          <GrantForm characterId={character.id} initialKey={initialKey} />
-                          <Link
-                            className="muted"
-                            href={`/entregas?term=${encodeURIComponent(term)}&char=${character.id}`}
-                          >
-                            ver fila
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">Personagens</h2>
+                <p className="card__sub">
+                  {term
+                    ? `${characters.length} resultado(s) para “${term}”.`
+                    : `${characters.length} personagem(ns). Digite um nome para achar um específico.`}
+                </p>
+              </div>
             </div>
-          </div>
-
-          {selected > 0 && (
-            <div className="card">
-              <div className="card__body">
-                <h2>
-                  <Gift size={18} strokeWidth={1.7} aria-hidden="true" /> Fila do personagem #
-                  {selected}
-                </h2>
-                <table className="table" aria-label="Fila de entregas">
+            <div className="card__body card__body--flush">
+              <div className="ui-table-scroll">
+                <table className="ui-table" aria-label="Personagens">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Tipo</th>
-                      <th>Ouro</th>
-                      <th>Estado</th>
-                      <th>Chave</th>
+                      <th>Personagem</th>
+                      <th className="ui-align-right">Conta</th>
+                      <th className="ui-align-right">Nível</th>
+                      <th className="ui-align-right">Ouro</th>
+                      <th className="ui-align-right">Conceder ouro</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {grants.length === 0 ? (
+                    {characters.length === 0 ? (
                       <tr>
-                        <td colSpan={5}>sem entregas registradas</td>
+                        <td colSpan={6} className="ui-table__empty">
+                          Nenhum personagem encontrado.
+                        </td>
                       </tr>
                     ) : (
-                      grants.map((grant) => (
-                        <tr key={grant.id} data-testid={`grant-${grant.id}`}>
-                          <td>#{grant.id}</td>
-                          <td>{grant.kind}</td>
-                          <td>{fmtInt(grant.gold)}</td>
+                      characters.map((character) => (
+                        <tr key={character.id} data-testid={`char-${character.id}`}>
                           <td>
-                            <Badge tone={grant.status === "claimed" ? "ok" : "accent"}>
-                              {STATUS_LABEL[grant.status] ?? grant.status}
-                            </Badge>
+                            <strong>{character.name}</strong>
+                            <span className="muted small"> #{character.id}</span>
                           </td>
-                          <td>
-                            <code>{grant.idempotency_key ?? "—"}</code>
+                          <td className="ui-align-right mono small">#{character.account_id}</td>
+                          <td className="ui-align-right">{character.level}</td>
+                          <td className="ui-align-right" data-testid={`gold-${character.id}`}>
+                            {fmtInt(character.gold)}
+                          </td>
+                          <td className="ui-align-right">
+                            <GrantForm characterId={character.id} initialKey={initialKey} />
+                          </td>
+                          <td className="ui-align-right">
+                            <Link
+                              className="small"
+                              href={`/entregas?term=${encodeURIComponent(term)}&char=${character.id}`}
+                            >
+                              ver fila
+                            </Link>
                           </td>
                         </tr>
                       ))
@@ -194,6 +171,62 @@ export default async function EntregasPage({
                 </table>
               </div>
             </div>
+          </section>
+
+          {selected > 0 && (
+            <section className="card">
+              <div className="card__head">
+                <div>
+                  <h2 className="card__title">
+                    <Gift size={15} strokeWidth={1.8} aria-hidden="true" /> Fila de {selectedName}
+                  </h2>
+                  <p className="card__sub">
+                    Pedidos registrados para este personagem. “Na fila” ainda não foi aplicado;
+                    “entregue” já caiu no personagem.
+                  </p>
+                </div>
+              </div>
+              <div className="card__body card__body--flush">
+                <div className="ui-table-scroll">
+                  <table className="ui-table" aria-label="Fila de entregas">
+                    <thead>
+                      <tr>
+                        <th>Pedido</th>
+                        <th>Tipo</th>
+                        <th className="ui-align-right">Ouro</th>
+                        <th>Estado</th>
+                        <th>Identificador</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {grants.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="ui-table__empty">
+                            Nenhuma entrega registrada para este personagem.
+                          </td>
+                        </tr>
+                      ) : (
+                        grants.map((grant) => (
+                          <tr key={grant.id} data-testid={`grant-${grant.id}`}>
+                            <td className="mono small">#{grant.id}</td>
+                            <td>{grant.kind}</td>
+                            <td className="ui-align-right">{fmtInt(grant.gold)}</td>
+                            <td>
+                              <Badge tone={grant.status === "claimed" ? "ok" : "accent"}>
+                                {STATUS_LABEL[grant.status] ?? grant.status}
+                              </Badge>
+                            </td>
+                            <td className="mono small muted">
+                              {grant.idempotency_key ?? "—"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           )}
         </>
       )}

@@ -1668,6 +1668,60 @@ code {
   margin-bottom: var(--space-3);
 }
 
+/* Controles densos dentro de tabela: mesma aparência, sem estourar a linha.
+   As duas classes vencem o tema (que fixa min-height 42px em .ui-input). */
+.ui-table .ui-input--compact,
+.ui-table .ui-select--compact,
+.grant-form .ui-input--compact {
+  width: 96px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  text-align: right;
+}
+
+.ui-table .ui-select--compact {
+  width: auto;
+  min-width: 96px;
+  text-align: left;
+}
+
+.ui-table .ui-btn--sm,
+.grant-form .ui-btn--sm {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.inline-form,
+.grant-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.grant-form__result {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+  font-size: 11.5px;
+}
+
+/* Texto só para leitor de tela: rótulo de campo que não precisa aparecer. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ============================== responsivo ============================== */
 
 @media (max-width: 1180px) {

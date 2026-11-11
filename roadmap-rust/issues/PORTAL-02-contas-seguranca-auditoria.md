@@ -50,7 +50,9 @@ Saída esperada: typecheck 0, vitest verde, contrato 11/11 + novos testes de 2FA
 - [x] Contas paginadas + ficha com histórico (`account_admin/list_accounts`, `get_account`; `auth.login` filtrado da trilha na ficha)
 - [ ] 2FA staff + recuperação por e-mail + bloqueio automático — BLOQUEADO: sem rota no gateway (sem TOTP, sem envio de e-mail, `accounts/recovery` só registra sem emitir token)
 - [x] Auditoria com filtros/export/relatórios (filtro ator/ação/alvo/período, CSV, resumo por ação + contagem de recusas)
-- [x] Home pública + descoberta de admin (`/` pública com atalho para staff; guarda real segue no proxy/layout/gateway)
+- [x] Home pública + descoberta de admin (`/` pública sem link de staff; guarda real segue no proxy/layout/gateway)
+- [x] Área do jogador: sessões (`character_session`) e histórico de acesso (`auth.login`) em `/conta`, rota `panel/history` (2026-11-11)
+- [x] Downloads reais: `manifest.txt` + pacote do launcher servidos pelo portal (`/api/launcher/manifesto`, `/api/launcher/pacote`), pasta `LAUNCHER_DIST_DIR`
 
 ## Critérios de aceite
 
@@ -62,3 +64,52 @@ Saída esperada: typecheck 0, vitest verde, contrato 11/11 + novos testes de 2FA
 
 - Risco: lockout de staff por 2FA → mitigação: códigos de recuperação + admin break-glass auditado.
 - Rollback: desabilitar 2FA por flag sem remover trilhas.
+
+## Verificação on-line (2026-11-11)
+
+Stack real: `db` + `gateway` + `portal` do compose, com um gateway de QA extra
+(`:7610`, `MIGRATIONS_DIR=crates/wyd-db/migrations`) e o portal em `next dev`
+(`:3010`) apontando para ele, para entrar como staff sem tocar na conta `admin`
+do `.env`. Conta de QA criada pelo seed (`qa-portal`, admin).
+
+- **Contas**: `/contas` abriu com 50 contas, filtro por papel e ficha
+  (`ver ficha`). Corrigido nesta rodada: cópia sem jargão ("sem segredo",
+  "exige leitura de moderação") e coluna de ação alinhada à direita.
+- **Auditoria**: `/auditoria` abriu com 200 ações, resumo por ação, filtros e
+  CSV. Corrigido: ações traduzidas ("leitura do catálogo", "presença do
+  servidor"), removidas as menções a `audit_log`/`auth.denied:*`, rodapé em
+  linguagem de operação.
+- **Ficha/histórico de login**: ainda depende de `auth.login` na janela da
+  trilha; sem rota de histórico por conta no gateway.
+- **2FA / recuperação por e-mail / bloqueio automático**: continua BLOQUEADO.
+  `accounts/recovery` só registra a intenção, não emite token; não há TOTP nem
+  envio de e-mail no gateway. Implementar isso exige migration nova
+  (segredo cifrado, códigos de recuperação) + rota `account_admin/two_factor_*`
+  + transporte de e-mail — não cabe em fatia de UI.
+
+## Portal público (2026-11-11, segunda rodada)
+
+O `/` deixou de ser uma tela de login com atalho de staff e passou a ser um portal
+de jogador de verdade:
+
+| Rota | Conteúdo |
+|---|---|
+| `/` | hero com status vivo (gateway/banco/revisão), últimas notícias, top 5 do ranking, primeiros passos, classes e atalhos |
+| `/noticias`, `/noticias/[slug]` | notícias em markdown em `docs/noticias/`, geradas por `npm run noticias` |
+| `/ranking` | top 50 por nível (nome, classe, nível; sem identidade de conta) |
+| `/downloads` | build 7662, protocolo 12000, revisão de conteúdo e o comando do launcher |
+| `/login` | entrada do jogador (mesma conta do jogo); papel decide `/conta` × `/painel` |
+
+**Separação pública × administrativa:** nenhuma página pública linka a
+administração (verificado por `grep` em `(public)`, home, header e footer);
+`src/app/robots.ts` desindexa `/painel`, `/contas`, `/monitoramento`,
+`/auditoria`, `/economia`, `/login` e as demais rotas de staff. O staff entra por
+URL direta; a guarda continua no `proxy.ts` + `(admin)/layout` + gateway.
+
+## Verificação visual (2026-11-11)
+
+| Tela | Resultado |
+|---|---|
+| `/contas` | lista + ficha + moderação operáveis |
+| `/auditoria` | filtros, resumo e CSV operáveis |
+| `/login` | entrada do jogador; staff segue para `/painel` |

@@ -197,8 +197,8 @@ export default async function AccountsPage({
                 <div>
                   <h2 className="card__title">Histórico de login</h2>
                   <p className="card__sub">
-                    Tentativas `auth.login` com este login como alvo, da trilha de auditoria
-                    (últimas 200 ações do staff). Leitura exclusiva de admin.
+                    Tentativas de login com este login como alvo, dentro das últimas 200 ações
+                    registradas.
                   </p>
                 </div>
               </div>
@@ -256,8 +256,8 @@ export default async function AccountsPage({
             <div>
               <h2 className="card__title">Todas as contas</h2>
               <p className="card__sub">
-                Página por id, sem segredo. O filtro por papel roda sobre a página lida; o
-                bloqueio aparece na ficha (exige leitura de moderação por conta).
+                Lista paginada. O filtro por papel vale para a página exibida; bloqueio,
+                histórico e moderação ficam na ficha de cada conta.
               </p>
             </div>
           </div>
@@ -312,7 +312,7 @@ export default async function AccountsPage({
                       <tr>
                         <th>Login</th>
                         <th>Papel</th>
-                        <th />
+                        <th className="ui-align-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -325,7 +325,7 @@ export default async function AccountsPage({
                           <td>
                             <Badge tone={roleTone(row.role)}>{roleLabel(row.role)}</Badge>
                           </td>
-                          <td>
+                          <td className="ui-align-right">
                             <Link href={`/contas?login=${encodeURIComponent(row.login)}`}>
                               ver ficha
                             </Link>

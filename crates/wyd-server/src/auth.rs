@@ -116,6 +116,22 @@ impl Authenticator {
         }
     }
 
+    /// A conta já tem PIN numérico cadastrado?
+    ///
+    /// O cliente 7662 só envia `_MSG_AccountSecure` para conta que já tem PIN; conta
+    /// nova manda `_MSG_CharacterLogin` direto. Exigir PIN de quem nunca cadastrou
+    /// recusava a entrada com `seleção antes da senha numérica` (o "Falha ao conectar").
+    pub fn pin_registered(&self, login: &str) -> Result<bool, AuthError> {
+        let atual = self
+            .runtime
+            .block_on(self.backend.pin_hash(login))
+            .map_err(|error| match error {
+                DbError::NotFound { .. } | DbError::NotFoundKey { .. } => AuthError::UnknownAccount,
+                outro => AuthError::Db(outro.to_string()),
+            })?;
+        Ok(atual.is_some())
+    }
+
     /// Valida o `_MSG_AccountSecure`: confere o PIN existente ou cadastra o primeiro.
     ///
     /// O bloqueio é por conta e vive na memória do processo (o canal é o dono da conexão);

@@ -206,7 +206,7 @@ pub mod ui;
 pub use auth::{AccountLogin, AccountSecure};
 pub use character::{CharacterLogin, CreateCharacter, DeleteCharacter};
 pub use combat::{Attack, AttackFull, AttackOne, AttackTwo, TargetDamage};
-pub use commerce::{Buy, Sell};
+pub use commerce::{Buy, ReqShopList, Sell, ShopList};
 pub use inventory::{ApplyBonus, SendItem, TradingItem, UseItem};
 pub use movement::Action;
 pub use quest::Quest;
@@ -236,6 +236,8 @@ pub fn declared_len(opcode: Opcode) -> Option<usize> {
         Opcode::TradingItem => Some(TradingItem::WIRE_LEN),
         Opcode::Buy => Some(Buy::WIRE_LEN),
         Opcode::Sell => Some(Sell::WIRE_LEN),
+        Opcode::ShopList => Some(ShopList::WIRE_LEN),
+        Opcode::REQShopList => Some(ReqShopList::WIRE_LEN),
         Opcode::ApplyBonus => Some(ApplyBonus::WIRE_LEN),
         Opcode::SendItem => Some(SendItem::WIRE_LEN),
         Opcode::AccountSecure => Some(AccountSecure::WIRE_LEN),

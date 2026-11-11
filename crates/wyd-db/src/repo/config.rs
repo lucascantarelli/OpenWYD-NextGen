@@ -55,6 +55,24 @@ pub struct DropConfigRow {
     pub source: String,
 }
 
+/// Preço de NPC por (item, mercador) como o portal o edita.
+///
+/// A tabela `item_price` é vazia no seed de propósito: preço é configuração do dono do
+/// servidor (migration `README.md`), não dado do legado. A chave é o par
+/// (item, NPC) porque o mesmo item custa diferente por mercador.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ItemPriceConfigRow {
+    pub item_index: i32,
+    /// Nome do catálogo (`item_catalog`); vazio quando o item não tem nome no catálogo.
+    pub item_name: String,
+    pub npc_id: i32,
+    /// `slug` do NPC; vazio quando a linha aponta para NPC fora da definição.
+    pub npc_slug: String,
+    pub buy_price: i64,
+    pub sell_price: i64,
+    pub source: String,
+}
+
 /// NPC com posição editável (não é estado vivo: é definição de mundo).
 ///
 /// `template` é o `STRUCT_MOB` de 816 B de `npc_template`: é dele que saem nome, EXP,
@@ -72,6 +90,22 @@ pub struct NpcConfigRow {
     pub pos_y: i16,
     pub enabled: bool,
     pub merchant: i16,
+}
+
+/// Uma posição de loja de NPC (`npc_shop_item`) com o preço do catálogo.
+///
+/// O preço vem de `item_catalog.price` — o servidor é a autoridade do preço, nunca o
+/// cliente. Item fora do catálogo entra com preço 0 (o que a loja cobra é o que está
+/// persistido; nada é estimado).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ShopItemConfigRow {
+    pub npc_id: i32,
+    pub slot: i16,
+    pub item_index: i32,
+    pub price: i64,
+    pub quantity: i16,
+    /// `stEffect[3]` (`cEffect`, `cValue`) da posição, como no `STRUCT_ITEM` do fio.
+    pub effects: [[u8; 2]; 3],
 }
 
 /// NPC para a lista do portal (sem o `blob` do template: a lista não precisa de 816 B por
@@ -135,6 +169,59 @@ pub struct DonateItemRow {
     pub price_credits: i32,
     pub duration_days: Option<i16>,
     pub enabled: bool,
+}
+
+/// Crédito de donate no extrato (`donate_credit`, migration 0042).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateCreditConfigRow {
+    pub id: i64,
+    pub account_id: i64,
+    pub login: String,
+    pub credits: i64,
+    pub idempotency_key: String,
+    /// ISO-8601 em UTC (`YYYY-MM-DDTHH:MM:SSZ`).
+    pub created_at: String,
+}
+
+/// Débito de donate no extrato (`donate_debit`, migration 0045).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateDebitConfigRow {
+    pub id: i64,
+    pub account_id: i64,
+    pub login: String,
+    pub credits: i64,
+    pub idempotency_key: String,
+    pub reason: String,
+    pub created_at: String,
+}
+
+/// Comprador com mais créditos (agregado por conta, nunca por personagem).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DonateBuyerConfigRow {
+    pub account_id: i64,
+    pub login: String,
+    pub credits: i64,
+    pub topups: i64,
+}
+
+/// Receita de donate: total creditado, total debitado e contagens.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DonateRevenueConfigRow {
+    pub credits_total: i64,
+    pub debits_total: i64,
+    pub topups: i64,
+    pub debits: i64,
+}
+
+/// Resultado de um débito de saldo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DebitOutcome {
+    /// Débito aplicado; traz o id do razão.
+    Applied(i64),
+    /// Mesma chave de antes: devolve o razão existente sem debitar de novo.
+    Replay(i64),
+    /// Saldo insuficiente: nada foi gravado.
+    Insufficient,
 }
 
 /// Evento de mundo para o painel (`world_event` + `event_schedule`).
@@ -954,10 +1041,145 @@ impl PgBackend {
         Ok(version)
     }
 
+    /// Preços de NPC (`item_price`), filtrados por item quando informado.
+    ///
+    /// Tabela vazia significa "nenhum preço definido pelo dono do servidor" — o portal
+    /// mostra isso como ausência, nunca como zero ou valor estimado.
+    pub async fn config_item_prices(
+        &self,
+        item_index: Option<i32>,
+        limit: i64,
+    ) -> Result<Vec<ItemPriceConfigRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT p.item_index, COALESCE(i.name, '') AS item_name, p.npc_id, \
+             COALESCE(n.slug, '') AS npc_slug, p.buy_price::bigint AS buy_price, \
+             p.sell_price::bigint AS sell_price, p.content_source \
+             FROM item_price p \
+             LEFT JOIN item_catalog i ON i.item_index = p.item_index \
+             LEFT JOIN npc_definition n ON n.id = p.npc_id \
+             WHERE ($1::int IS NULL OR p.item_index = $1) \
+             ORDER BY p.item_index, p.npc_id LIMIT $2",
+        )
+        .bind(item_index)
+        .bind(limit.clamp(1, 200))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.item_prices", "item_price"))?;
+        Ok(rows
+            .iter()
+            .map(|row| ItemPriceConfigRow {
+                item_index: row.try_get("item_index").unwrap_or_default(),
+                item_name: row.try_get("item_name").unwrap_or_default(),
+                npc_id: row.try_get("npc_id").unwrap_or_default(),
+                npc_slug: row.try_get("npc_slug").unwrap_or_default(),
+                buy_price: row.try_get("buy_price").unwrap_or_default(),
+                sell_price: row.try_get("sell_price").unwrap_or_default(),
+                source: row.try_get("content_source").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Grava o preço de (item, NPC) e devolve a nova revisão.
+    ///
+    /// A FK para `item_catalog` recusa item inexistente: preço não cria conteúdo. A
+    /// procedência (`content_source`) fica na própria linha, como nos drops.
+    pub async fn config_set_item_price(
+        &self,
+        item_index: i32,
+        npc_id: i32,
+        buy_price: i64,
+        sell_price: i64,
+        source: &str,
+        actor: i64,
+    ) -> Result<i64, DbError> {
+        if item_index <= 0 || npc_id <= 0 || buy_price < 0 || sell_price < 0 {
+            return Err(invalid("item_price", "price"));
+        }
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.set_item_price",
+        })?;
+        let old: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT buy_price::bigint, sell_price::bigint FROM item_price \
+             WHERE item_index = $1 AND npc_id = $2",
+        )
+        .bind(item_index)
+        .bind(npc_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("config.set_item_price.read", "item_price"))?;
+        sqlx::query(
+            "INSERT INTO item_price (item_index, npc_id, buy_price, sell_price, content_source) \
+             VALUES ($1, $2, $3, $4, $5) \
+             ON CONFLICT (item_index, npc_id) DO UPDATE SET buy_price = EXCLUDED.buy_price, \
+               sell_price = EXCLUDED.sell_price, content_source = EXCLUDED.content_source",
+        )
+        .bind(item_index)
+        .bind(npc_id)
+        .bind(buy_price)
+        .bind(sell_price)
+        .bind(source)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_error("config.set_item_price.write", "item_price"))?;
+        let target = format!("item{item_index}@npc{npc_id}");
+        let old_value = old.map_or_else(String::new, |(buy, sell)| format!("{buy}/{sell}"));
+        let new_value = format!("{buy_price}/{sell_price}");
+        let version = self
+            .bump_revision(&mut tx, actor, "price", &target, &old_value, &new_value)
+            .await?;
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.set_item_price.commit",
+        })?;
+        Ok(version)
+    }
+
     /// NPCs definidos no mundo (posição e visibilidade), para o snapshot do servidor.
     ///
     /// O portal edita um por id; esta leitura em lote é o que o processo de jogo usa para
     /// trocar a foto de NPCs numa recarga, sem consulta no tick.
+    /// Posições de loja de NPC (`npc_shop_item`) com o preço do `item_catalog`.
+    ///
+    /// O preço é lido do catálogo — o servidor é a autoridade de preço, nunca o cliente.
+    /// Item fora do catálogo entra com preço 0 (é o que está persistido; nada é estimado).
+    pub async fn config_shop_items(&self, limit: i64) -> Result<Vec<ShopItemConfigRow>, DbError> {
+        let rows = sqlx::query(
+            "SELECT s.npc_id, s.slot::int AS slot, s.item_index, \
+             COALESCE(c.price, 0)::bigint AS price, s.quantity::int AS quantity, \
+             s.eff1, s.effv1, s.eff2, s.effv2, s.eff3, s.effv3 \
+             FROM npc_shop_item s \
+             LEFT JOIN item_catalog c ON c.item_index = s.item_index \
+             ORDER BY s.npc_id, s.slot LIMIT $1",
+        )
+        .bind(limit.clamp(1, 200_000))
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.shop_items", "npc_shop_item"))?;
+        Ok(rows
+            .iter()
+            .map(|row| ShopItemConfigRow {
+                npc_id: row.try_get("npc_id").unwrap_or_default(),
+                slot: row.try_get::<i32, _>("slot").unwrap_or_default() as i16,
+                item_index: row.try_get("item_index").unwrap_or_default(),
+                price: row.try_get("price").unwrap_or_default(),
+                quantity: row.try_get::<i32, _>("quantity").unwrap_or_default() as i16,
+                effects: [
+                    [
+                        row.try_get::<i16, _>("eff1").unwrap_or_default() as u8,
+                        row.try_get::<i16, _>("effv1").unwrap_or_default() as u8,
+                    ],
+                    [
+                        row.try_get::<i16, _>("eff2").unwrap_or_default() as u8,
+                        row.try_get::<i16, _>("effv2").unwrap_or_default() as u8,
+                    ],
+                    [
+                        row.try_get::<i16, _>("eff3").unwrap_or_default() as u8,
+                        row.try_get::<i16, _>("effv3").unwrap_or_default() as u8,
+                    ],
+                ],
+            })
+            .collect())
+    }
+
     pub async fn config_npcs(&self, limit: i64) -> Result<Vec<NpcConfigRow>, DbError> {
         let rows = sqlx::query(
             "SELECT d.id, d.slug, d.display_name, d.template_name, t.blob, \
@@ -1813,6 +2035,243 @@ impl PgBackend {
             op: "config.credit_donate.commit",
         })?;
         Ok((razao, replay))
+    }
+
+    /// Receita de donate: créditos e débitos somados, com as contagens.
+    ///
+    /// Duas tabelas de razão (`donate_credit` e `donate_debit`): o número é soma de
+    /// linha gravada, nunca estimativa. Tabela vazia devolve zero, não erro.
+    pub async fn config_donate_revenue(&self) -> Result<DonateRevenueConfigRow, DbError> {
+        use sqlx::Row;
+        let row = sqlx::query(
+            "SELECT \
+               COALESCE((SELECT SUM(credits) FROM donate_credit), 0)::bigint AS credits_total, \
+               COALESCE((SELECT SUM(credits) FROM donate_debit), 0)::bigint AS debits_total, \
+               (SELECT COUNT(*) FROM donate_credit)::bigint AS topups, \
+               (SELECT COUNT(*) FROM donate_debit)::bigint AS debits",
+        )
+        .fetch_one(self.pool())
+        .await
+        .map_err(map_error("config.donate_revenue.read", "donate_credit"))?;
+        Ok(DonateRevenueConfigRow {
+            credits_total: row.try_get("credits_total").unwrap_or_default(),
+            debits_total: row.try_get("debits_total").unwrap_or_default(),
+            topups: row.try_get("topups").unwrap_or_default(),
+            debits: row.try_get("debits").unwrap_or_default(),
+        })
+    }
+
+    /// Extrato de créditos (mais recentes primeiro), com o login da conta.
+    pub async fn config_donate_credits(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<DonateCreditConfigRow>, DbError> {
+        use sqlx::Row;
+        if !(1..=200).contains(&limit) {
+            return Err(invalid("donate_credit", "limit"));
+        }
+        let rows = sqlx::query(
+            "SELECT c.id, c.account_id, a.login, c.credits, c.idempotency_key, \
+                    to_char(c.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                      AS created_at \
+             FROM donate_credit c JOIN accounts a ON a.id = c.account_id \
+             ORDER BY c.id DESC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.donate_credits.read", "donate_credit"))?;
+        Ok(rows
+            .iter()
+            .map(|row| DonateCreditConfigRow {
+                id: row.try_get("id").unwrap_or_default(),
+                account_id: row.try_get("account_id").unwrap_or_default(),
+                login: row.try_get("login").unwrap_or_default(),
+                credits: row.try_get("credits").unwrap_or_default(),
+                idempotency_key: row.try_get("idempotency_key").unwrap_or_default(),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Extrato de débitos (mais recentes primeiro).
+    pub async fn config_donate_debits(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<DonateDebitConfigRow>, DbError> {
+        use sqlx::Row;
+        if !(1..=200).contains(&limit) {
+            return Err(invalid("donate_debit", "limit"));
+        }
+        let rows = sqlx::query(
+            "SELECT d.id, d.account_id, a.login, d.credits, d.idempotency_key, d.reason, \
+                    to_char(d.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') \
+                      AS created_at \
+             FROM donate_debit d JOIN accounts a ON a.id = d.account_id \
+             ORDER BY d.id DESC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.donate_debits.read", "donate_debit"))?;
+        Ok(rows
+            .iter()
+            .map(|row| DonateDebitConfigRow {
+                id: row.try_get("id").unwrap_or_default(),
+                account_id: row.try_get("account_id").unwrap_or_default(),
+                login: row.try_get("login").unwrap_or_default(),
+                credits: row.try_get("credits").unwrap_or_default(),
+                idempotency_key: row.try_get("idempotency_key").unwrap_or_default(),
+                reason: row.try_get("reason").unwrap_or_default(),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Compradores com maior crédito acumulado.
+    pub async fn config_donate_top_buyers(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<DonateBuyerConfigRow>, DbError> {
+        use sqlx::Row;
+        if !(1..=100).contains(&limit) {
+            return Err(invalid("donate_buyers", "limit"));
+        }
+        let rows = sqlx::query(
+            "SELECT c.account_id, a.login, SUM(c.credits)::bigint AS credits, \
+                    COUNT(*)::bigint AS topups \
+             FROM donate_credit c JOIN accounts a ON a.id = c.account_id \
+             GROUP BY c.account_id, a.login \
+             ORDER BY credits DESC, a.login LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.donate_buyers.read", "donate_credit"))?;
+        Ok(rows
+            .iter()
+            .map(|row| DonateBuyerConfigRow {
+                account_id: row.try_get("account_id").unwrap_or_default(),
+                login: row.try_get("login").unwrap_or_default(),
+                credits: row.try_get("credits").unwrap_or_default(),
+                topups: row.try_get("topups").unwrap_or_default(),
+            })
+            .collect())
+    }
+
+    /// Débita saldo de donate da carteira, com idempotência por chave.
+    ///
+    /// Uma transação só: razão (`donate_debit`) + `account_wallet.coin`. A baixa é
+    /// condicional (`coin >= credits`), então débito concorrente não deixa saldo
+    /// negativo — quem afeta zero linha recebe [`DebitOutcome::Insufficient`] e nada
+    /// é gravado.
+    pub async fn config_debit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        reason: &str,
+        actor: i64,
+    ) -> Result<DebitOutcome, DbError> {
+        if credits <= 0 {
+            return Err(invalid("donate_debit", "credits"));
+        }
+        if !matches!(reason, "portal" | "shop_purchase") {
+            return Err(invalid("donate_debit", "reason"));
+        }
+        let existe: Option<i64> = sqlx::query_scalar("SELECT id FROM accounts WHERE id = $1")
+            .bind(account_id)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(map_error("config.debit_donate.read", "accounts"))?;
+        if existe.is_none() {
+            return Err(DbError::NotFound {
+                entity: "accounts",
+                id: account_id,
+            });
+        }
+        let mut tx = self.begin().await.map_err(|_e| DbError::Transport {
+            op: "config.debit_donate",
+        })?;
+        let inserido: Option<(i64,)> = sqlx::query_as(
+            "INSERT INTO donate_debit (idempotency_key, account_id, credits, reason, created_by) \
+             VALUES ($1, $2, $3, $4, $5) ON CONFLICT (idempotency_key) DO NOTHING RETURNING id",
+        )
+        .bind(key.trim())
+        .bind(account_id)
+        .bind(credits)
+        .bind(reason)
+        .bind(actor)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_error("config.debit_donate.write", "donate_debit"))?;
+        let outcome = match inserido {
+            Some((id,)) => {
+                let baixado = sqlx::query(
+                    "UPDATE account_wallet SET coin = coin - $2 \
+                     WHERE account_id = $1 AND coin >= $2",
+                )
+                .bind(account_id)
+                .bind(credits)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_error("config.debit_donate.write", "account_wallet"))?;
+                if baixado.rows_affected() == 0 {
+                    tx.rollback().await.ok();
+                    return Ok(DebitOutcome::Insufficient);
+                }
+                DebitOutcome::Applied(id)
+            }
+            None => {
+                let row: Option<(i64,)> =
+                    sqlx::query_as("SELECT id FROM donate_debit WHERE idempotency_key = $1")
+                        .bind(key.trim())
+                        .fetch_optional(&mut *tx)
+                        .await
+                        .map_err(map_error("config.debit_donate.read", "donate_debit"))?;
+                let Some((id,)) = row else {
+                    return Err(DbError::Transport {
+                        op: "config.debit_donate.replay",
+                    });
+                };
+                DebitOutcome::Replay(id)
+            }
+        };
+        tx.commit().await.map_err(|_e| DbError::Transport {
+            op: "config.debit_donate.commit",
+        })?;
+        Ok(outcome)
+    }
+
+    /// Busca de conta por prefixo de login (a tela de débito precisa do id).
+    pub async fn config_search_accounts(
+        &self,
+        term: &str,
+        limit: i64,
+    ) -> Result<Vec<AccountListRow>, DbError> {
+        use sqlx::Row;
+        if !(1..=50).contains(&limit) {
+            return Err(invalid("accounts.search", "limit"));
+        }
+        let termo = term.trim();
+        let rows = sqlx::query(
+            "SELECT id, login, role FROM accounts \
+             WHERE $1 = '' OR login ILIKE $1 || '%' \
+             ORDER BY login LIMIT $2",
+        )
+        .bind(termo)
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await
+        .map_err(map_error("config.accounts.search", "accounts"))?;
+        Ok(rows
+            .iter()
+            .map(|row| AccountListRow {
+                id: row.try_get("id").unwrap_or_default(),
+                login: row.try_get("login").unwrap_or_default(),
+                role: row.try_get("role").unwrap_or_default(),
+            })
+            .collect())
     }
 
     /// Versão atual da configuração (o servidor compara antes de recarregar).

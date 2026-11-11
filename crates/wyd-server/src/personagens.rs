@@ -88,6 +88,16 @@ pub const ACCOUNT_NAME_OFFSET: usize = 1500;
 /// `strncpy` do legado copia só 12 bytes do nome da conta.
 pub const LOGIN_ACCOUNT_NAME_LEN: usize = 12;
 
+/// `ChaosRate` de um personagem **sem PK** — CP 0 deslocado em `+75`.
+///
+/// Neste cliente `ChaosRate@15` não é stat de combate: é o CP (`−75..+75`) codificado em
+/// `0..150`. A função de cor do nome (`WYD.exe` `0x4e2393`) lê o byte de `pMob+0x11e`,
+/// limita a `10..150` e interpola a tabela em `0x6188a4` (vermelho → laranja → amarelo →
+/// verde → azul → branco); abaixo de `10` cai no ramo de criminoso (nome escuro/vermelho).
+/// O próprio cliente grava `0x4B` ao inicializar um mob (`WYD.exe` `0x4d9ae2`), e o `0xCC`
+/// do `BaseMob` é lixo de dump — mandar `0` é o que pintava o personagem novo de vermelho.
+pub const CP_NEUTRO: u8 = 0x4B;
+
 /// `HEADER.ID` de `MSG_CNFAccountLogin` (`IDSelChar`).
 pub const ID_SELCHAR: u16 = 30002;
 /// `HEADER.ID` de `MSG_CNFNewCharacter` (`IDNewCharacter`).
@@ -566,6 +576,11 @@ impl Mob {
         mob.spy = i16_of(personagem.pos_y);
         mob.base_score.apply_character(personagem);
         mob.current_score.apply_character(personagem);
+        // `ChaosRate` é o CP codificado (`CP + 75`), não um stat: para personagem sem PK vale
+        // `CP_NEUTRO` (75). Zero caía no ramo `< 10` da cor do nome — o "matou alguém" do
+        // teste manual. `0xCC` do template nem chega a sair daqui.
+        mob.base_score.chaos_rate = CP_NEUTRO;
+        mob.current_score.chaos_rate = CP_NEUTRO;
         mob.score_bonus = u16_of(personagem.score_bonus);
         mob.skill_bonus = u16_of(personagem.skill_bonus);
         mob
@@ -965,6 +980,21 @@ mod tests {
             skill_bonus: 3,
             ..Character::default()
         }
+    }
+
+    #[test]
+    fn personagem_nasce_com_cp_neutro_e_nao_com_o_lixo_do_template() {
+        let mob = Mob::from_character(&personagem(0, "Novato", 0));
+        assert_eq!(mob.base_score.chaos_rate, CP_NEUTRO, "BaseScore.ChaosRate");
+        assert_eq!(
+            mob.current_score.chaos_rate, CP_NEUTRO,
+            "CurrentScore.ChaosRate"
+        );
+        assert_eq!(
+            update_score_body(&mob)[15],
+            CP_NEUTRO,
+            "MSG_UpdateScore.ChaosRate@15 é a cor do nome"
+        );
     }
 
     #[test]

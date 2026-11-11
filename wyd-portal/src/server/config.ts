@@ -11,11 +11,13 @@ import {
   dropAdmin,
   npcAdmin,
   teleportAdmin,
+  type ItemPriceWire,
   type AccessoryRuleWire,
   type DropWire,
   type GetNpcResponse,
   type GetRatesResponse,
   type ListDropsResponse,
+  type ListItemPricesResponse,
   type ListRoutesResponse,
   type NpcWire,
   type RateWire,
@@ -23,7 +25,91 @@ import {
   type RouteWire,
 } from "./admin-client";
 
-export type { AccessoryRuleWire, DropWire, NpcWire, RateWire, RouteWire };
+export type { AccessoryRuleWire, DropWire, ItemPriceWire, NpcWire, RateWire, RouteWire };
+
+/** Teto de preços por leitura (o mesmo do gateway, `api::npc::MAX_PRICES`). */
+export const MAX_PRICES = 200;
+
+/**
+ * Valida a forma de um preço de NPC antes do `adminCall`.
+ *
+ * Espelha o gateway (`api::npc::validar_preco`): item e mercador obrigatórios (a chave
+ * é o par), preço não-negativo e fonte obrigatória — preço sem procedência não grava.
+ */
+export function checkItemPrice(input: {
+  itemIndex: number;
+  npcId: number;
+  buy: number;
+  sell: number;
+  source: string;
+}): string | null {
+  if (!Number.isInteger(input.itemIndex) || input.itemIndex <= 0) {
+    return "índice do item inválido";
+  }
+  if (!Number.isInteger(input.npcId) || input.npcId <= 0) {
+    return "NPC do preço é obrigatório";
+  }
+  if (!Number.isInteger(input.buy) || input.buy < 0) return "preço de compra inválido";
+  if (!Number.isInteger(input.sell) || input.sell < 0) return "preço de venda inválido";
+  const source = input.source.trim();
+  if (source === "") return "fonte do preço obrigatória";
+  if (source.length > 160) return "fonte do preço longa demais";
+  return null;
+}
+
+/**
+ * Preços de NPC definidos pelo dono do servidor (`npc_admin/list_item_prices`).
+ *
+ * Lista vazia é resposta honesta: a tabela `item_price` nasce vazia e significa
+ * "nenhum preço definido" — a tela mostra ausência, nunca zero.
+ */
+export async function listItemPrices(itemIndex?: number): Promise<ItemPriceWire[]> {
+  const res = await adminCall<{ item_index?: number; limit: number }, ListItemPricesResponse>(
+    npcAdmin.listItemPrices.bind(npcAdmin),
+    {
+      limit: MAX_PRICES,
+      ...(Number.isInteger(itemIndex) && (itemIndex as number) > 0
+        ? { item_index: itemIndex }
+        : {}),
+    },
+    { action: "config.prices", target: itemIndex ? `item:${itemIndex}` : "prices" },
+  );
+  return res.prices ?? [];
+}
+
+/** Grava o preço de (item, NPC) e devolve a revisão. */
+export async function upsertItemPrice(input: {
+  itemIndex: number;
+  npcId: number;
+  buy: number;
+  sell: number;
+  source: string;
+}): Promise<number> {
+  const res = await adminCall<
+    {
+      item_index: number;
+      npc_id: number;
+      buy_price: number;
+      sell_price: number;
+      source: string;
+    },
+    RevisionResponse
+  >(
+    npcAdmin.setItemPrice.bind(npcAdmin),
+    {
+      item_index: input.itemIndex,
+      npc_id: input.npcId,
+      buy_price: input.buy,
+      sell_price: input.sell,
+      source: input.source.trim(),
+    },
+    {
+      action: "config.price.set",
+      target: `item${input.itemIndex}@npc${input.npcId}`,
+    },
+  );
+  return res.revision ?? 0;
+}
 
 export interface RatesView {
   revision: number;

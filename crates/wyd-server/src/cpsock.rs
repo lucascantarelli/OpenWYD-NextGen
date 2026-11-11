@@ -28,6 +28,7 @@ use wyd_net::{VersionGate, NET};
 use wyd_protocol::codec::checksum::{self, ChecksumPolicy};
 use wyd_protocol::codec::keyword::{decode_in_place, encode_in_place};
 use wyd_protocol::payload::combat::Attack;
+use wyd_protocol::payload::commerce::{ReqShopList, ShopList, MAX_SHOPLIST};
 use wyd_protocol::payload::movement::Action;
 use wyd_protocol::payload::quest::Quest;
 use wyd_protocol::payload::scene::{CreateMob, RemoveMob};
@@ -37,7 +38,7 @@ use wyd_protocol::wire::frame::{inspect, INITCODE};
 use wyd_protocol::wire::header::{Header, HEADER_SIZE};
 use wyd_protocol::wire::opcode::Opcode;
 use wyd_protocol::{
-    AccountLogin, AccountSecure, ApplyBonus, CharacterLogin, CreateCharacter, DeleteCharacter,
+    AccountLogin, AccountSecure, ApplyBonus, Buy, CharacterLogin, CreateCharacter, DeleteCharacter,
     SendItem, UseItem,
 };
 
@@ -379,13 +380,22 @@ pub fn handle_connection(
     NET.session_delta(1);
     let resultado = (|| {
         let (mut ok, conta) = handshake(&mut stream, world, gate, auth, selection)?;
-        // A cerca só abre **depois** do PIN: senha errada ou PIN errado não deixam sessão.
-        let lease = authorize_pin(&mut stream, &conta, auth, sessions, ok.client_version)?;
+        // A cerca só abre **depois** da senha: senha errada ou PIN errado não deixam sessão.
+        // O `pendente` é o pacote de seleção que o cliente mandou no lugar do PIN.
+        let (lease, pendente) =
+            authorize_pin(&mut stream, &conta, auth, sessions, ok.client_version)?;
         ok.session_id = lease.as_ref().map(SessionLease::id);
         // Segura a conexão: é a vida da sessão. Sem isso a sessão morreria no CNF e a cerca
         // não impediria nada — e sem o laço de seleção o jogador não passa do login.
         let idle = sessions.map_or(HANDSHAKE_TIMEOUT, SessionGate::idle);
-        let entity = serve_selection(&mut stream, &conta, selection, lease.as_ref(), idle);
+        let entity = serve_selection(
+            &mut stream,
+            &conta,
+            selection,
+            lease.as_ref(),
+            idle,
+            pendente,
+        );
         // Saída (logout, timeout ou queda): tira do mundo e enfileira o save do estado.
         if let Some(selection) = selection {
             selection.leave_world(entity);
@@ -466,6 +476,12 @@ fn handshake(
                 Opcode::NewAccountFail,
                 wyd_protocol::motivo::CodigoRecusa::Senha,
             );
+            // O build 7662 **não** trata `_MSG_NewAccountFail` (0x0117): sem um pacote que ele
+            // desenhe, senha errada não mostra nada na tela. `_MSG_MessagePanel` (0x0101) é o
+            // único texto livre que o roteador do cliente reconhece; vai junto, com o layout
+            // portado. Se o cliente ignorar fora do jogo, nada muda para ele — o `*Fail`
+            // continua sendo o pacote de contrato.
+            let _ = reply_panel(stream, header.key_word, "Senha ou conta incorreta");
             return Err(HandshakeError::Auth(error.to_string()));
         }
     }
@@ -526,16 +542,44 @@ fn handshake(
 /// Pacote de personagem antes do PIN é recusa: sem isso o cliente pularia a segunda senha
 /// usando `_MSG_CharacterLogin` direto. PIN recusado responde `_MSG_AccountSecureFail` e
 /// encerra a conexão — nenhum caminho deixa sessão pela metade.
+/// Pacote que o handshake consumiu antes do PIN: frame já em claro + key word.
+type Pendente = (Vec<u8>, u8);
+
+/// Resultado do passo de PIN: sessão aberta (quando há cerca) e pacote pendente.
+type PinStep = (Option<SessionLease>, Option<Pendente>);
+
 fn authorize_pin(
     stream: &mut TcpStream,
     account: &str,
     auth: Option<&Authenticator>,
     sessions: Option<&SessionGate>,
     version: i32,
-) -> Result<Option<SessionLease>, HandshakeError> {
+) -> Result<PinStep, HandshakeError> {
     let Some(auth) = auth else {
-        return open_session(account, sessions, version);
+        return Ok((open_session(account, sessions, version)?, None));
     };
+    // PIN é segunda senha, não cadastro obrigatório: conta sem PIN cadastrado vai direto
+    // para a seleção, porque o cliente 7662 não manda `_MSG_AccountSecure` nesse caso.
+    // Exigir a etapa aqui recusava todo personagem novo com "Falha ao conectar".
+    match auth.pin_registered(account) {
+        Ok(true) => {}
+        Ok(false) => {
+            log(
+                "info",
+                "pin",
+                &format!("result=skip account={account} reason=not_registered"),
+            );
+            return Ok((open_session(account, sessions, version)?, None));
+        }
+        Err(error) => {
+            log(
+                "warn",
+                "pin",
+                &format!("result=refused account={account} reason={error}"),
+            );
+            return Err(HandshakeError::Pin(error.to_string()));
+        }
+    }
     let _ = stream.set_read_timeout(Some(HANDSHAKE_TIMEOUT));
     // Passo 1 da troca de PIN aceito nesta conexão; o 2 só vale com ele armado.
     let mut troca_armada = false;
@@ -637,7 +681,7 @@ fn authorize_pin(
                                         "falha ao escrever _MSG_AccountSecure".to_string(),
                                     ));
                                 }
-                                return Ok(lease);
+                                return Ok((lease, None));
                             }
                             Err(error) => {
                                 let _ = reply_recusa(
@@ -669,14 +713,17 @@ fn authorize_pin(
                 }
             }
             Opcode::CreateCharacter | Opcode::DeleteCharacter | Opcode::CharacterLogin => {
+                // O cliente 7662 não repete o PIN ao entrar no canal: manda a seleção
+                // direto. A senha já foi conferida no `_MSG_AccountLogin`, então a sessão
+                // abre aqui e o pacote (já em claro) volta para o laço de seleção — o
+                // jogador entra no mundo em vez de receber "Falha ao conectar".
+                let lease = open_session(account, sessions, version)?;
                 log(
-                    "warn",
+                    "info",
                     "pin",
-                    &format!("result=refused account={account} reason=missing_pin"),
+                    &format!("result=deferred account={account} reason=selection_first"),
                 );
-                return Err(HandshakeError::Pin(
-                    "seleção antes da senha numérica".to_string(),
-                ));
+                return Ok((lease, Some((frame, head[2]))));
             }
             outro => log(
                 "info",
@@ -758,12 +805,35 @@ fn serve_selection(
     selection: Option<&SelectionStore>,
     lease: Option<&SessionLease>,
     idle: Duration,
+    pendente: Option<Pendente>,
 ) -> Option<wyd_core::Entity> {
     let _ = stream.set_read_timeout(Some(SCENE_POLL));
     let mut stage = Stage::Selecting;
     let mut ultimo_pacote = Instant::now();
     let mut ultimo_renew = Instant::now();
     let mut chave = 0u8;
+    // Pacote que o handshake já consumiu (seleção antes do PIN): processa agora, com o
+    // frame em claro e o checksum já conferido, antes de esperar o próximo pacote.
+    if let Some((frame, chave_pendente)) = pendente {
+        chave = chave_pendente;
+        let Ok(valid) = inspect(&frame) else {
+            return stage.entity();
+        };
+        if let Some(lease) = lease {
+            lease.renew();
+        }
+        if !dispatch(
+            stream,
+            &frame,
+            chave,
+            valid.opcode,
+            Sessao { account },
+            selection,
+            &mut stage,
+        ) {
+            return stage.entity();
+        }
+    }
     loop {
         let mut head = [0u8; HEADER_SIZE];
         match stream.read_exact(&mut head) {
@@ -912,6 +982,16 @@ fn dispatch(
 ) -> bool {
     let Sessao { account } = sessao;
     match opcode {
+        // `0x0FDE` depois da seleção: conta sem PIN cadastrado pode receber o pacote
+        // ainda assim (cliente que já conhece o fluxo). Confirma sem abrir sessão nova.
+        Opcode::AccountSecure => {
+            log(
+                "info",
+                "pin",
+                &format!("result=ok account={account} mode=late"),
+            );
+            reply(stream, key_word, Opcode::AccountSecure)
+        }
         Opcode::CreateCharacter => {
             let resultado = match selection {
                 Some(store) => create_character(store, frame, account),
@@ -1075,6 +1155,18 @@ fn dispatch(
                                     client_id,
                                     Opcode::UpdateScore,
                                     &crate::personagens::update_score_body(&mob),
+                                )
+                                // `_MSG_UpdateEtc` é quem carrega `Coin@28` (o `SendEtc` do
+                                // legado, `SendFunc.cpp`): o `STRUCT_MOB` do `CNF` traz o gold
+                                // no blob, mas a moeda que o cliente desenha é a do `UpdateEtc`.
+                                // Sem esta metade do par o personagem entra com 5 000 000 no
+                                // banco (Coin do `BaseMob`) e mostra 0 de ouro na tela.
+                                && reply_with_body(
+                                    stream,
+                                    key_word,
+                                    client_id,
+                                    Opcode::UpdateEtc,
+                                    &crate::personagens::update_etc_body(&mob),
                                 );
                             // Cena logo depois do `CNF`: todo NPC materializado pela revisão
                             // vigente de `npc_definition` chega como `_MSG_CreateMob` com
@@ -1314,6 +1406,10 @@ fn dispatch(
         Opcode::Action => handle_action(stream, frame, key_word, account, stage, selection),
         // `_MSG_Quest` (0x028B): treinadores do Campo de Treinamento (FASE-03-18).
         Opcode::Quest => handle_quest(stream, frame, key_word, account, stage, selection),
+        // `_MSG_REQShopList` (0x027B): catálogo do mercador clicado (`npc_shop_item`).
+        Opcode::REQShopList => handle_shop_list(stream, frame, key_word, account, stage, selection),
+        // `_MSG_Buy` (0x0379): compra em loja de NPC (preço e gold são do servidor).
+        Opcode::Buy => handle_buy(stream, frame, key_word, account, stage, selection),
         // Sem layout portado (UNVERIFIED) ou fora do escopo deste processo: tolerar, registrar
         // e seguir. Fechar a conexão aqui era o defeito que derrubava a sessão.
         outro => {
@@ -1535,6 +1631,188 @@ fn handle_attack<const N: usize>(
 /// `Parm1` é o `MobID` do NPC na cena; o **merchant** vem do mundo (`npc_definition`), não do
 /// pacote, e o estágio/prova/recompensa vêm do motor puro (`gameplay::quest_engage`). O
 /// sorteio do treinador 4 é do processo (`loot_seed`), nunca do cliente.
+/// `_MSG_REQShopList` (0x027B): abre o catálogo do mercador clicado.
+///
+/// `Target` é o `MobID` da cena; o id de `npc_definition` sai do mundo vivo. A resposta é o
+/// `_MSG_ShopList` (236 B) com `HEADER.ID = ESCENE_FIELD`, `ShopType = 0` e `Tax = 0`
+/// (imposto de cidade não existe neste servidor — valor explícito, não estimado).
+fn handle_shop_list(
+    stream: &mut TcpStream,
+    frame: &[u8],
+    key_word: u8,
+    account: &str,
+    stage: &mut Stage,
+    selection: Option<&SelectionStore>,
+) -> bool {
+    let (Stage::InGame { .. }, Some(store)) = (&mut *stage, selection) else {
+        log(
+            "warn",
+            "shop",
+            &format!("result=refused account={account} reason=not_in_game"),
+        );
+        return true;
+    };
+    let pedido = match ReqShopList::decode(frame) {
+        Ok(pedido) => pedido,
+        Err(error) => {
+            log(
+                "warn",
+                "shop",
+                &format!("result=refused account={account} reason=layout:{error}"),
+            );
+            return true;
+        }
+    };
+    let Some((npc_id, merchant, nome)) = store.npc_shop(pedido.target) else {
+        log(
+            "warn",
+            "shop",
+            &format!(
+                "result=refused account={account} npc={} reason=no_npc",
+                pedido.target
+            ),
+        );
+        return true;
+    };
+    if merchant <= 0 {
+        log(
+            "warn",
+            "shop",
+            &format!(
+                "result=refused account={account} npc={npc_id} name={nome} reason=not_merchant"
+            ),
+        );
+        return true;
+    }
+    let catalogo = store.shop_items(npc_id).unwrap_or_default();
+    let mut lista = ShopList {
+        shop_type: 0,
+        items: [[0u8; 8]; MAX_SHOPLIST],
+        tax: 0,
+    };
+    for regra in &catalogo {
+        let Ok(posicao) = usize::try_from(regra.slot) else {
+            continue;
+        };
+        if posicao >= MAX_SHOPLIST {
+            continue;
+        }
+        let mut item = [0u8; 8];
+        item[0..2].copy_from_slice(&i16::try_from(regra.item_index).unwrap_or(0).to_le_bytes());
+        for (indice, par) in regra.effects.iter().enumerate() {
+            item[2 + indice * 2] = par[0];
+            item[3 + indice * 2] = par[1];
+        }
+        lista.items[posicao] = item;
+    }
+    let mut corpo = vec![0u8; ShopList::WIRE_LEN];
+    if lista.encode_into(&mut corpo).is_err() {
+        return false;
+    }
+    log(
+        "info",
+        "shop",
+        &format!(
+            "result=list account={account} npc={npc_id} name={nome} itens={} cheios={}",
+            catalogo.len(),
+            lista
+                .items
+                .iter()
+                .filter(|item| item[0] != 0 || item[1] != 0)
+                .count()
+        ),
+    );
+    reply_with_body(
+        stream,
+        key_word,
+        ID_SCENE,
+        Opcode::ShopList,
+        &corpo[HEADER_SIZE..],
+    )
+}
+
+/// `_MSG_Buy` (0x0379): compra em loja de NPC.
+///
+/// Sucesso entrega `_MSG_SendItem` (mochila) + `UpdateEtc`/`UpdateScore` (gold novo).
+/// Recusa não emite pacote de item: o log diz o motivo e o cliente continua com o estado
+/// que o servidor tem.
+fn handle_buy(
+    stream: &mut TcpStream,
+    frame: &[u8],
+    key_word: u8,
+    account: &str,
+    stage: &mut Stage,
+    selection: Option<&SelectionStore>,
+) -> bool {
+    let (
+        Stage::InGame {
+            selected,
+            client_id,
+            ..
+        },
+        Some(store),
+    ) = (&mut *stage, selection)
+    else {
+        log(
+            "warn",
+            "shop",
+            &format!("result=refused account={account} reason=not_in_game"),
+        );
+        return true;
+    };
+    let packet = match Buy::decode(frame) {
+        Ok(packet) => packet,
+        Err(error) => {
+            log(
+                "warn",
+                "shop",
+                &format!("result=refused account={account} reason=layout:{error}"),
+            );
+            return true;
+        }
+    };
+    match store.buy(
+        selected.as_mut(),
+        packet.target_id,
+        packet.target_inven_pos,
+        packet.coin,
+    ) {
+        Ok(compra) => {
+            log(
+                "info",
+                "shop",
+                &format!(
+                    "result=bought account={account} npc={} pos={} coin={} slot={} item={}",
+                    packet.target_id,
+                    packet.target_inven_pos,
+                    packet.coin,
+                    compra.carry_pos,
+                    i16::from_le_bytes([compra.item[0], compra.item[1]])
+                ),
+            );
+            reply_send_item(
+                stream,
+                key_word,
+                *client_id,
+                1,
+                i32::from(compra.carry_pos),
+                compra.item,
+            ) && send_progress(stream, key_word, *client_id, &compra.mob)
+        }
+        Err(error) => {
+            log(
+                "warn",
+                "shop",
+                &format!(
+                    "result=refused account={account} npc={} pos={} coin={} reason={error}",
+                    packet.target_id, packet.target_inven_pos, packet.coin
+                ),
+            );
+            true
+        }
+    }
+}
+
 fn handle_quest(
     stream: &mut TcpStream,
     frame: &[u8],
@@ -1582,23 +1860,33 @@ fn handle_quest(
     let roll = (loot_seed() % 3) as u8;
     match store.quest(selected.as_mut(), merchant, roll) {
         Ok(resultado) => {
+            let recompensa = resultado.step.map_or_else(
+                || "aceita".to_string(),
+                |passo| format!("{:?}", passo.reward),
+            );
             log(
                 "info",
                 "quest",
                 &format!(
-                    "result=ok account={account} npc={scene_id} name={nome} merchant={merchant} stage={} reward={:?} completed={} roll={roll}",
-                    resultado.state.stage, resultado.step.reward, resultado.state.completed
+                    "result=ok account={account} npc={scene_id} name={nome} merchant={merchant} stage={} reward={recompensa} completed={} roll={roll} accepted={}",
+                    resultado.state.stage,
+                    resultado.state.completed,
+                    resultado.step.is_none()
                 ),
             );
-            let texto = format!(
-                "Campo de Treinamento: etapa {}/4{}",
-                resultado.state.stage,
-                if resultado.state.completed {
-                    " (concluido)"
-                } else {
-                    ""
-                }
-            );
+            let texto = if resultado.step.is_none() {
+                "Campo de Treinamento: etapa 1/4 (aceita)".to_string()
+            } else {
+                format!(
+                    "Campo de Treinamento: etapa {}/4{}",
+                    resultado.state.stage,
+                    if resultado.state.completed {
+                        " (concluido)"
+                    } else {
+                        ""
+                    }
+                )
+            };
             let mut painel = [0u8; MessagePanel::WIRE_LEN - HEADER_SIZE];
             let bytes = texto.as_bytes();
             let limite = bytes.len().min(painel.len() - 1);
@@ -1663,6 +1951,28 @@ fn handle_action(
             return true;
         }
     };
+    // `_MSG_Action` também é o passo do personagem (`Route[24]` do legado): o destino é
+    // validado no tick (orçamento por tempo + retângulo do mapa) antes de qualquer NPC.
+    match store.move_to(
+        *entity,
+        i32::from(packet.target_x),
+        i32::from(packet.target_y),
+        now_ms(),
+    ) {
+        Ok((x, y)) => log(
+            "info",
+            "move",
+            &format!("result=ok account={account} to=({x}, {y})"),
+        ),
+        Err(error) => log(
+            "warn",
+            "move",
+            &format!(
+                "result=refused account={account} at=({}, {}) reason={error}",
+                packet.target_x, packet.target_y
+            ),
+        ),
+    }
     // Portão no ponto clicado: chave por `EF_KEYID`, consumida no aceite, aberto por tempo.
     match store.use_key(
         selected,
@@ -1759,20 +2069,22 @@ fn refresh_scene(
 ) -> bool {
     let (
         Stage::InGame {
-            scene, client_id, ..
+            scene,
+            client_id,
+            entity: Some(entity),
+            ..
         },
         Some(store),
     ) = (stage, selection)
     else {
         return true;
     };
-    let Some(atual) = store.scene() else {
+    // Entrega por **proximidade**: o mapa tem 6 110 NPCs e a rajada de 1,4 MB no login não
+    // é desenhada pelo cliente 7662. A varredura é conferida a cada poll (a geração não muda
+    // quando o personagem anda), e o delta tira quem saiu do raio e traz quem entrou.
+    let Some(atual) = store.scene_around(*entity, scene_view_tiles()) else {
         return true;
     };
-    // A geração cobre NPC **e** personagem: entrada/saída de jogador também precisa chegar.
-    if atual.generation == scene.generation {
-        return true;
-    }
     let mut plano = plan_scene(&scene.mobs, &atual, scene_budget());
     // Perto primeiro: quem entra precisa ver a área onde está antes do resto do mapa. Sem
     // isso, um teto de varredura cortava justamente os NPCs criados por último (o Campo).
@@ -1808,6 +2120,10 @@ fn refresh_scene(
         scene.mobs.insert(mob.id, mob.actor);
         criados += 1;
     }
+    if criados == 0 && removidos == 0 {
+        // Nada mudou na vista: nenhum pacote, nenhuma linha de log por segundo.
+        return true;
+    }
     if plano.complete {
         scene.generation = atual.generation;
     } else {
@@ -1832,6 +2148,13 @@ fn refresh_scene(
         ),
     );
     true
+}
+
+/// Raio da cena visível (`WYD_SCENE_VIEW_TILES`), lido uma vez.
+fn scene_view_tiles() -> u32 {
+    use std::sync::OnceLock;
+    static RAIO: OnceLock<u32> = OnceLock::new();
+    *RAIO.get_or_init(crate::world::scene_view_tiles_from_env)
 }
 
 /// Teto de pacotes de cena por varredura (`WYD_SCENE_MAX_PER_REFRESH`), lido uma vez.
@@ -1871,7 +2194,9 @@ fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob, create_
         merchant: mob.merchant,
         attack_run: mob.attack_run,
         direction: mob.direction,
-        chaos_rate: 0,
+        // CP neutro (`CP + 75`): é o byte que o cliente usa para a cor do nome. Zero cai no
+        // ramo `< 10` (criminoso) e pinta o personagem novo de vermelho.
+        chaos_rate: crate::personagens::CP_NEUTRO,
         max_hp: i32::try_from(mob.max_hp).unwrap_or(i32::MAX),
         max_mp: 0,
         hp: i32::try_from(mob.hp).unwrap_or(i32::MAX),
@@ -2169,6 +2494,7 @@ mod tests {
         SceneMob {
             id,
             actor,
+            npc_id: 0,
             name: nome,
             position: wyd_core::Position { x: 300, y: 400 },
             level: 42,

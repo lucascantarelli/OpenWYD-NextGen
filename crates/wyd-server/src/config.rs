@@ -30,6 +30,7 @@ use std::time::Duration;
 
 use wyd_db::{
     AccessoryRuleRow, ConfigRateRow, DropConfigRow, NpcConfigRow, PgBackend, RouteConfigRow,
+    ShopItemConfigRow,
 };
 use wyd_sim::formula::drop::CITIZEN_BONUS_MAX;
 use wyd_sim::formula::refine::{powder_success_bps, Powder, RefinePolicy};
@@ -96,6 +97,22 @@ pub struct NpcRule {
     pub attack_run: u8,
     /// `STRUCT_MOB.CurrentScore.Direction`: direção inicial da criatura.
     pub direction: u8,
+}
+
+/// `MAX_SHOPLIST` (`Basedef.h`): posições de catálogo por mercador.
+pub const SHOP_SLOTS: i16 = 27;
+
+/// Uma posição do catálogo de um mercador (`npc_shop_item` + preço de `item_catalog`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShopSlotRule {
+    /// Índice no `MSG_ShopList` (0..=`SHOP_SLOTS`-1).
+    pub slot: i16,
+    pub item_index: i32,
+    /// Preço unitário em gold; 0 = item gratuito no catálogo (linha de teste).
+    pub price: i64,
+    pub quantity: i16,
+    /// `stEffect[3]` (`cEffect`,`cValue`) da posição, como no `STRUCT_ITEM` do fio.
+    pub effects: [[u8; 2]; 3],
 }
 
 /// Política de uma rota de teleporte.
@@ -189,6 +206,7 @@ pub struct GameConfig {
     settings: BTreeMap<String, i64>,
     drops: BTreeMap<(String, i32), DropRule>,
     npcs: BTreeMap<i32, NpcRule>,
+    shops: BTreeMap<i32, Vec<ShopSlotRule>>,
     routes: BTreeMap<i32, RouteRule>,
     accessories: Vec<AccessoryRule>,
 }
@@ -205,6 +223,27 @@ impl GameConfig {
         drops: Vec<DropConfigRow>,
         npcs: Vec<NpcConfigRow>,
         routes: Vec<RouteConfigRow>,
+    ) -> Result<Self, ConfigError> {
+        Self::from_rows_with_shops(
+            revision,
+            rates,
+            accessories,
+            drops,
+            npcs,
+            routes,
+            Vec::new(),
+        )
+    }
+
+    /// Igual a [`GameConfig::from_rows`], com o catálogo de loja dos mercadores.
+    pub fn from_rows_with_shops(
+        revision: i64,
+        rates: &[ConfigRateRow],
+        accessories: Vec<AccessoryRuleRow>,
+        drops: Vec<DropConfigRow>,
+        npcs: Vec<NpcConfigRow>,
+        routes: Vec<RouteConfigRow>,
+        shops: Vec<ShopItemConfigRow>,
     ) -> Result<Self, ConfigError> {
         if revision < 1 {
             return Err(ConfigError::Revision(revision));
@@ -467,6 +506,41 @@ impl GameConfig {
             );
         }
 
+        let mut shop_rules: BTreeMap<i32, Vec<ShopSlotRule>> = BTreeMap::new();
+        for row in shops {
+            // O legado enche as 27 posições do `MSG_ShopList` com o `Carry` do mercador:
+            // `sIndex` 0 (ou negativo, lixo de slot não usado) é posição **vazia**, não
+            // erro de configuração. É assim que a base tem lojas com buracos.
+            if row.item_index <= 0 {
+                continue;
+            }
+            if !(0..SHOP_SLOTS).contains(&row.slot) {
+                return Err(ConfigError::OutOfRange {
+                    family: "shop",
+                    key: format!("{}:{}", row.npc_id, row.slot),
+                    value: i64::from(row.slot),
+                });
+            }
+            let catalogo = shop_rules.entry(row.npc_id).or_default();
+            if catalogo.iter().any(|regra| regra.slot == row.slot) {
+                return Err(ConfigError::OutOfRange {
+                    family: "shop_duplicado",
+                    key: format!("{}:{}", row.npc_id, row.slot),
+                    value: i64::from(row.slot),
+                });
+            }
+            catalogo.push(ShopSlotRule {
+                slot: row.slot,
+                item_index: row.item_index,
+                price: row.price.max(0),
+                quantity: row.quantity.max(1),
+                effects: row.effects,
+            });
+        }
+        for catalogo in shop_rules.values_mut() {
+            catalogo.sort_by_key(|regra| regra.slot);
+        }
+
         Ok(Self {
             revision,
             refine,
@@ -476,6 +550,7 @@ impl GameConfig {
             settings,
             drops: drop_rules,
             npcs: npc_rules,
+            shops: shop_rules,
             routes: route_rules,
             accessories: accessory_rules,
         })
@@ -568,6 +643,18 @@ impl GameConfig {
     #[must_use]
     pub fn npc(&self, id: i32) -> Option<&NpcRule> {
         self.npcs.get(&id)
+    }
+
+    /// Catálogo de um mercador, na ordem de `slot` (0 = mercador sem loja).
+    #[must_use]
+    pub fn shop(&self, npc_id: i32) -> Option<&[ShopSlotRule]> {
+        self.shops.get(&npc_id).map(Vec::as_slice)
+    }
+
+    /// Posições de loja carregadas (observabilidade).
+    #[must_use]
+    pub fn shop_count(&self) -> usize {
+        self.shops.values().map(Vec::len).sum()
     }
 
     /// Todos os NPCs carregados, em ordem de id (foto determinística).
@@ -728,11 +815,23 @@ impl PgConfigSource {
                 .runtime
                 .block_on(self.backend.config_routes(ROUTE_LIMIT))
                 .map_err(|error| error.to_string())?;
+            let shops = self
+                .runtime
+                .block_on(self.backend.config_shop_items(20_000))
+                .map_err(|error| error.to_string())?;
             if self.revision()? != revision {
                 continue;
             }
-            return GameConfig::from_rows(revision, &rates, accessories, drops, npcs, routes)
-                .map_err(|error| error.to_string());
+            return GameConfig::from_rows_with_shops(
+                revision,
+                &rates,
+                accessories,
+                drops,
+                npcs,
+                routes,
+                shops,
+            )
+            .map_err(|error| error.to_string());
         }
         Err("config_revision mudou durante a leitura cinco vezes".to_string())
     }
