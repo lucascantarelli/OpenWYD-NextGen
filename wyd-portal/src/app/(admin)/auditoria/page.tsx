@@ -21,6 +21,39 @@ const fmtWhen = (when: Date): string => {
 const one = (value: string | string[] | undefined): string =>
   (Array.isArray(value) ? (value[0] ?? "") : (value ?? "")).trim();
 
+/** Nome de ação como o staff o entende; o identificador cru fica no title. */
+const ACTION_LABEL: Record<string, string> = {
+  "auth.login": "tentativa de login",
+  "accounts.find": "busca de conta",
+  "accounts.create": "criação de conta",
+  "accounts.list": "lista de contas",
+  "accounts.get": "ficha de conta",
+  "accounts.set_role": "mudança de papel",
+  "accounts.set_blocked": "bloqueio de conta",
+  "catalog.list": "leitura do catálogo",
+  "catalog.list_items": "leitura do catálogo",
+  "config.rates": "leitura de taxas",
+  "config.teleport": "leitura de teleportes",
+  "config.drops": "leitura de drops",
+  "config.npcs": "leitura de NPCs",
+  "server.presence": "presença do servidor",
+  "character.search": "busca de personagem",
+  "character.grants": "fila do personagem",
+  "character.grant_item": "concessão de item",
+  "drop.list": "leitura de drops",
+  "teleport.list": "leitura de teleportes",
+  "npc.list": "leitura de NPCs",
+  "mob.list": "leitura de monstros",
+  "panel.channels": "canais do painel",
+  "grants.request": "pedido de entrega",
+  "audit.read": "leitura da trilha",
+};
+
+function actionLabel(name: string): string {
+  if (name.startsWith("auth.denied")) return "recusa por permissão";
+  return ACTION_LABEL[name] ?? name;
+}
+
 /**
  * Auditoria: últimas ações de staff, lidas de `audit_log`.
  *
@@ -138,8 +171,7 @@ export default async function AuditoriaPage({
             <div>
               <h2 className="card__title">Resumo da janela</h2>
               <p className="card__sub">
-                Contagem por ação sobre o filtro atual — relatório reproduzível da mesma
-                janela de 200 linhas.
+                Quantas vezes cada ação aparece no filtro atual.
               </p>
             </div>
             <div className="page-head__actions">
@@ -158,7 +190,7 @@ export default async function AuditoriaPage({
                 <tbody>
                   {topActions.map(([name, count]) => (
                     <tr key={name}>
-                      <td className="mono">{name}</td>
+                      <td title={name}>{actionLabel(name)}</td>
                       <td>{count}</td>
                     </tr>
                   ))}
@@ -167,7 +199,7 @@ export default async function AuditoriaPage({
             </div>
           </div>
           <div className="card__foot">
-            Recusadas = ações <span className="mono">auth.denied:*</span> (tentativa sem papel).
+            Recusadas: tentativas sem permissão.
           </div>
         </div>
       )}
@@ -180,7 +212,7 @@ export default async function AuditoriaPage({
               {entries.length} {entries.length === 1 ? "ação" : "ações"}
             </h2>
             <p className="card__sub">
-              Fonte: tabela audit_log (Postgres), janela das últimas 200 linhas.
+              Últimas 200 ações registradas; use os filtros para recortar.
             </p>
           </div>
           <Badge tone={error ? "warn" : "ok"}>{error ? "indisponível" : "no ar"}</Badge>
@@ -221,7 +253,7 @@ export default async function AuditoriaPage({
                         <span className="mono">#{entry.actorId}</span>{" "}
                         <span className="muted small">{entry.actorRole}</span>
                       </td>
-                      <td className="mono">{entry.action}</td>
+                      <td title={entry.action}>{actionLabel(entry.action)}</td>
                       <td className="mono">{entry.target || "—"}</td>
                       <td>{entry.detail || "—"}</td>
                     </tr>
@@ -232,7 +264,7 @@ export default async function AuditoriaPage({
           </div>
         )}
         <div className="card__foot">
-          Recusas por papel aparecem como <span className="mono">auth.denied:&lt;ação&gt;</span>.
+          Tentativas sem permissão aparecem como “recusa por permissão”.
         </div>
       </section>
     </>

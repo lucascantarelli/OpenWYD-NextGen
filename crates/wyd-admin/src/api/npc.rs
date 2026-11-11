@@ -10,7 +10,7 @@ use crate::error::AdminError;
 use crate::transport::json;
 
 use super::accounts::staff_or_deny;
-use super::rates::{ConfigStore, NpcRow};
+use super::rates::{ConfigStore, ItemPriceEdit, ItemPriceRow, NpcRow};
 
 /// Teto de NPCs por leitura (a definição tem 6.100 linhas; sem paginação o portal trava).
 pub const MAX_LIMIT: i64 = 200;
@@ -95,6 +95,114 @@ pub fn set_npc(
     Ok(revision)
 }
 
+/// Teto de preços por leitura (a tabela é configuração, não catálogo).
+pub const MAX_PRICES: i64 = 200;
+
+/// Valida a forma de uma edição de preço **antes** do banco.
+///
+/// Item e NPC são obrigatórios: a chave de `item_price` é o par, e preço sem mercador
+/// não é preço de loja. Os valores aceitam zero (item não vendido/comprado por aquele
+/// mercador), mas fonte vazia é recusada — mesmo rigor das taxas: sem procedência não
+/// grava.
+pub fn validar_preco(edit: &ItemPriceEdit) -> Result<(), AdminError> {
+    if edit.item_index <= 0 || edit.npc_id <= 0 {
+        return Err(AdminError::InvalidInput {
+            reason: "item e NPC do preço são obrigatórios",
+        });
+    }
+    if edit.buy_price < 0 || edit.sell_price < 0 {
+        return Err(AdminError::InvalidInput {
+            reason: "preço não pode ser negativo",
+        });
+    }
+    let source = edit.source.trim();
+    if source.is_empty() {
+        return Err(AdminError::InvalidInput {
+            reason: "fonte do preço obrigatória",
+        });
+    }
+    if source.chars().count() > super::rates::MAX_SOURCE {
+        return Err(AdminError::InvalidInput {
+            reason: "fonte do preço longa demais",
+        });
+    }
+    Ok(())
+}
+
+/// Preços de NPC, filtrados por item quando informado (staff, só leitura).
+///
+/// Sem escrita em `audit_log` para a leitura bem-sucedida (mesma regra de `list_npcs`);
+/// a negação de acesso continua auditada por `staff_or_deny`.
+pub fn list_item_prices(
+    session: Option<Session>,
+    item_index: Option<i32>,
+    limit: i64,
+    store: &dyn ConfigStore,
+    sink: &impl AuditSink,
+) -> Result<Vec<ItemPriceRow>, AdminError> {
+    let _staff = staff_or_deny(session, sink, "config.prices")?;
+    if !(1..=MAX_PRICES).contains(&limit) {
+        return Err(AdminError::InvalidInput {
+            reason: "limite de preços fora da faixa",
+        });
+    }
+    if item_index.is_some_and(|item| item <= 0) {
+        return Err(AdminError::InvalidInput {
+            reason: "item do filtro inválido",
+        });
+    }
+    store.item_prices(item_index, limit)
+}
+
+/// Grava o preço de (item, NPC) e devolve a revisão.
+///
+/// O servidor de jogo relê quando `config_revision` muda; nada aqui toca personagem vivo
+/// nem inventa preço: item fora do catálogo é recusado pela FK do banco.
+pub fn set_item_price(
+    session: Option<Session>,
+    edit: &ItemPriceEdit,
+    store: &dyn ConfigStore,
+    sink: &impl AuditSink,
+) -> Result<i64, AdminError> {
+    let staff = staff_or_deny(session, sink, "config.price.set")?;
+    validar_preco(edit)?;
+    let mut limpo = edit.clone();
+    limpo.source = edit.source.trim().to_string();
+    let revision = store.set_item_price(&limpo, staff.moderator_id())?;
+    log_action(
+        sink,
+        &staff,
+        "config.price.set",
+        &format!("item{}@npc{}", edit.item_index, edit.npc_id),
+        &format!(
+            "compra={} venda={} fonte={} (revisão {revision})",
+            edit.buy_price, edit.sell_price, limpo.source
+        ),
+    );
+    Ok(revision)
+}
+
+/// Lista JSON de preços.
+#[must_use]
+pub fn item_prices_json(rows: &[ItemPriceRow]) -> String {
+    let itens: Vec<String> = rows
+        .iter()
+        .map(|row| {
+            format!(
+                "{{\"item_index\":{},\"item_name\":{},\"npc_id\":{},\"npc_slug\":{},\"buy_price\":{},\"sell_price\":{},\"source\":{}}}",
+                row.item_index,
+                json::quote(&row.item_name),
+                row.npc_id,
+                json::quote(&row.npc_slug),
+                row.buy_price,
+                row.sell_price,
+                json::quote(&row.source)
+            )
+        })
+        .collect();
+    format!("[{}]", itens.join(","))
+}
+
 /// Lista JSON de NPCs.
 #[must_use]
 pub fn npcs_json(rows: &[NpcRow]) -> String {
@@ -117,4 +225,99 @@ pub fn npc_json(row: &NpcRow) -> String {
         row.enabled,
         row.merchant
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn edit() -> ItemPriceEdit {
+        ItemPriceEdit {
+            item_index: 3321,
+            npc_id: 1212,
+            buy_price: 5_000,
+            sell_price: 1_250,
+            source: "tabela do dono do servidor".to_string(),
+        }
+    }
+
+    #[test]
+    fn preco_valido_passa() {
+        assert!(validar_preco(&edit()).is_ok());
+        // Zero é permitido: mercador que não vende (ou não compra) aquele item.
+        assert!(validar_preco(&ItemPriceEdit {
+            buy_price: 0,
+            sell_price: 0,
+            ..edit()
+        })
+        .is_ok());
+    }
+
+    #[test]
+    fn preco_sem_item_ou_npc_e_recusado_antes_do_banco() {
+        for invalido in [
+            ItemPriceEdit {
+                item_index: 0,
+                ..edit()
+            },
+            ItemPriceEdit {
+                npc_id: 0,
+                ..edit()
+            },
+        ] {
+            assert!(matches!(
+                validar_preco(&invalido),
+                Err(AdminError::InvalidInput { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn preco_negativo_e_recusado() {
+        assert!(validar_preco(&ItemPriceEdit {
+            buy_price: -1,
+            ..edit()
+        })
+        .is_err());
+        assert!(validar_preco(&ItemPriceEdit {
+            sell_price: -1,
+            ..edit()
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn fonte_vazia_ou_longa_demais_e_recusada() {
+        // Mesma regra das taxas: preço sem procedência não vira configuração.
+        assert!(matches!(
+            validar_preco(&ItemPriceEdit {
+                source: "   ".to_string(),
+                ..edit()
+            }),
+            Err(AdminError::InvalidInput { reason }) if reason == "fonte do preço obrigatória"
+        ));
+        assert!(validar_preco(&ItemPriceEdit {
+            source: "x".repeat(super::super::rates::MAX_SOURCE + 1),
+            ..edit()
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn json_do_preco_leva_item_mercador_e_fonte() {
+        let linha = ItemPriceRow {
+            item_index: 3321,
+            item_name: "Espada".to_string(),
+            npc_id: 1212,
+            npc_slug: "ferreiro".to_string(),
+            buy_price: 5_000,
+            sell_price: 1_250,
+            source: "dono".to_string(),
+        };
+        let json = item_prices_json(&[linha]);
+        assert!(json.contains("\"item_index\":3321"));
+        assert!(json.contains("\"npc_slug\":\"ferreiro\""));
+        assert!(json.contains("\"buy_price\":5000"));
+        assert!(json.contains("\"source\":\"dono\""));
+    }
 }

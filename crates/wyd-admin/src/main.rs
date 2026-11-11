@@ -263,6 +263,49 @@ impl ConfigStore for Blocking {
             .collect())
     }
 
+    fn item_prices(
+        &self,
+        item_index: Option<i32>,
+        limit: i64,
+    ) -> Result<Vec<wyd_admin::ItemPriceRow>, wyd_admin::AdminError> {
+        let rows = run_on(
+            &self.runtime,
+            self.inner.config_item_prices(item_index, limit),
+        )
+        .map_err(wyd_admin::AdminError::from)?;
+        Ok(rows
+            .into_iter()
+            .map(|row| wyd_admin::ItemPriceRow {
+                item_index: row.item_index,
+                item_name: row.item_name,
+                npc_id: row.npc_id,
+                npc_slug: row.npc_slug,
+                buy_price: row.buy_price,
+                sell_price: row.sell_price,
+                source: row.source,
+            })
+            .collect())
+    }
+
+    fn set_item_price(
+        &self,
+        edit: &wyd_admin::ItemPriceEdit,
+        actor: i64,
+    ) -> Result<i64, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_set_item_price(
+                edit.item_index,
+                edit.npc_id,
+                edit.buy_price,
+                edit.sell_price,
+                &edit.source,
+                actor,
+            ),
+        )
+        .map_err(wyd_admin::AdminError::from)
+    }
+
     fn mob_templates(
         &self,
         limit: i64,
@@ -528,6 +571,117 @@ impl ConfigStore for Blocking {
         .map_err(wyd_admin::AdminError::from)
     }
 
+    fn donate_revenue(&self) -> Result<wyd_admin::DonateRevenueRow, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_donate_revenue())
+            .map(|row| wyd_admin::DonateRevenueRow {
+                credits_total: row.credits_total,
+                debits_total: row.debits_total,
+                topups: row.topups,
+                debits: row.debits,
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn donate_credits(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<wyd_admin::DonateLedgerRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_donate_credits(limit))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::DonateLedgerRow {
+                        id: row.id,
+                        account_id: row.account_id,
+                        login: row.login,
+                        credits: row.credits,
+                        idempotency_key: row.idempotency_key,
+                        created_at: row.created_at,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn donate_debits(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<wyd_admin::DonateLedgerRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_donate_debits(limit))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::DonateLedgerRow {
+                        id: row.id,
+                        account_id: row.account_id,
+                        login: row.login,
+                        credits: row.credits,
+                        idempotency_key: row.idempotency_key,
+                        created_at: row.created_at,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn donate_top_buyers(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<wyd_admin::DonateBuyerRow>, wyd_admin::AdminError> {
+        run_on(&self.runtime, self.inner.config_donate_top_buyers(limit))
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|row| wyd_admin::DonateBuyerRow {
+                        account_id: row.account_id,
+                        login: row.login,
+                        credits: row.credits,
+                        topups: row.topups,
+                    })
+                    .collect()
+            })
+            .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn debit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        reason: &str,
+        actor: i64,
+    ) -> Result<wyd_admin::DebitResult, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner
+                .config_debit_donate(account_id, credits, key, reason, actor),
+        )
+        .map(|outcome| match outcome {
+            wyd_db::DebitOutcome::Applied(id) => wyd_admin::DebitResult::Applied(id),
+            wyd_db::DebitOutcome::Replay(id) => wyd_admin::DebitResult::Replay(id),
+            wyd_db::DebitOutcome::Insufficient => wyd_admin::DebitResult::Insufficient,
+        })
+        .map_err(wyd_admin::AdminError::from)
+    }
+
+    fn search_accounts(
+        &self,
+        term: &str,
+        limit: i64,
+    ) -> Result<Vec<wyd_admin::AccountLookupRow>, wyd_admin::AdminError> {
+        run_on(
+            &self.runtime,
+            self.inner.config_search_accounts(term, limit),
+        )
+        .map(|rows| {
+            rows.into_iter()
+                .map(|row| wyd_admin::AccountLookupRow {
+                    id: row.id,
+                    login: row.login,
+                    role: row.role,
+                })
+                .collect()
+        })
+        .map_err(wyd_admin::AdminError::from)
+    }
+
     fn routes(&self, limit: i64) -> Result<Vec<RouteRow>, wyd_admin::AdminError> {
         let rows = run_on(&self.runtime, self.inner.config_routes(limit))
             .map_err(wyd_admin::AdminError::from)?;
@@ -673,6 +827,49 @@ impl AuditTrail for Blocking {
         let rt = std::sync::Arc::clone(&self.runtime);
         let inner = self.inner.clone();
         Box::pin(async move { run_on(&rt, AuditTrail::recent(&inner, limit)) })
+    }
+
+    fn by_actor(
+        &self,
+        actor_id: i64,
+        action: Option<&str>,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let action = action.map(str::to_string);
+        Box::pin(async move {
+            run_on(
+                &rt,
+                AuditTrail::by_actor(&inner, actor_id, action.as_deref(), limit),
+            )
+        })
+    }
+}
+
+impl wyd_db::SessionTrail for Blocking {
+    fn recent_for_login(
+        &self,
+        login: &str,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<Vec<wyd_db::SessionHistoryRow>, DbError>>
+                + Send
+                + '_,
+        >,
+    > {
+        let rt = std::sync::Arc::clone(&self.runtime);
+        let inner = self.inner.clone();
+        let login = login.to_string();
+        Box::pin(async move {
+            run_on(
+                &rt,
+                wyd_db::SessionTrail::recent_for_login(&inner, &login, limit),
+            )
+        })
     }
 }
 
@@ -887,6 +1084,10 @@ fn run() -> Result<(), String> {
         backend.clone(),
         std::sync::Arc::clone(&runtime),
     ));
+    // Histórico do jogador (sessões vivas/encerradas) — mesma conexão, leitura pura.
+    let sessoes: std::sync::Arc<dyn wyd_db::SessionTrail + Send + Sync> = std::sync::Arc::new(
+        Blocking::new(backend.clone(), std::sync::Arc::clone(&runtime)),
+    );
     let economia: std::sync::Arc<dyn Economy + Send + Sync> = std::sync::Arc::new(Blocking::new(
         backend.clone(),
         std::sync::Arc::clone(&runtime),
@@ -901,6 +1102,7 @@ fn run() -> Result<(), String> {
         .with_login_check(login)
         .with_presence_check(presence)
         .with_audit_trail(trilha)
+        .with_session_trail(sessoes)
         .with_economy(economia)
         .with_config(config_store)
         // Fila durável de grants (migration 0032): o portal enfileira aqui e o

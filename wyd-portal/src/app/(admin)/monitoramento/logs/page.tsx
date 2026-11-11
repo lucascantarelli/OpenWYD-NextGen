@@ -116,7 +116,7 @@ export default async function LogsMonitorPage({
             <h2 className="card__title">
               <ScrollText size={15} strokeWidth={1.8} aria-hidden="true" /> Por serviço
             </h2>
-            <p className="card__sub">Consulta LogQL sobre o rótulo `container`.</p>
+            <p className="card__sub">Linhas recentes de cada serviço.</p>
           </div>
           <Badge tone={logs.reachable ? "ok" : "danger"}>{logs.reachable ? "no ar" : "fora"}</Badge>
         </div>

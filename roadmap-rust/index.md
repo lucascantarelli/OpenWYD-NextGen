@@ -71,6 +71,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-03-16-piedade-updateitem.md` | 3 | Piedade de refino persistida + `UpdateItem` de resposta | ✅ |
 | `issues/FASE-03-17-entrada-no-mundo-fiel.md` | 3 | Entrada no mundo fiel ao legado (`ClientID`, `UpdateScore`, `CreateType`) | ✅ |
 | `issues/FASE-03-18-campo-de-treinamento.md` | 3 | Campo de Treinamento (quest, chaves, buff, boss) | 🟡 |
+| `issues/BUG-02-entrada-no-mundo-pin-opcional.md` | 3 | “Falha ao conectar”: PIN opcional + seleção antes do PIN | 🟢 |
 | `issues/FASE-04-1-modelagem.md` | 4 | Modelo relacional com FKs/CHECKs/índices | ✅ |
 | `issues/FASE-04-2-migrations.md` | 4 | Migrations versionadas + seeds | ✅ |
 | `issues/FASE-04-3-persistencia-async.md` | 4 | Pool async fora do tick | ✅ |

@@ -226,6 +226,62 @@ impl ConfigStore for FakeOperacao {
         Ok(35)
     }
 
+    fn donate_revenue(&self) -> Result<wyd_admin::DonateRevenueRow, AdminError> {
+        Ok(wyd_admin::DonateRevenueRow {
+            credits_total: 1_200,
+            debits_total: 200,
+            topups: 3,
+            debits: 1,
+        })
+    }
+
+    fn donate_credits(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateLedgerRow>, AdminError> {
+        Ok(vec![wyd_admin::DonateLedgerRow {
+            id: 9,
+            account_id: 42,
+            login: "comprador".to_string(),
+            credits: 500,
+            idempotency_key: "qa-topup".to_string(),
+            created_at: "2026-11-11T12:00:00Z".to_string(),
+        }])
+    }
+
+    fn donate_debits(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateLedgerRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn donate_top_buyers(&self, _limit: i64) -> Result<Vec<wyd_admin::DonateBuyerRow>, AdminError> {
+        Ok(vec![wyd_admin::DonateBuyerRow {
+            account_id: 42,
+            login: "comprador".to_string(),
+            credits: 500,
+            topups: 1,
+        }])
+    }
+
+    fn debit_donate(
+        &self,
+        _account_id: i64,
+        _credits: i64,
+        _key: &str,
+        _reason: &str,
+        _actor: i64,
+    ) -> Result<wyd_admin::DebitResult, AdminError> {
+        Ok(wyd_admin::DebitResult::Applied(42))
+    }
+
+    fn search_accounts(
+        &self,
+        _term: &str,
+        _limit: i64,
+    ) -> Result<Vec<wyd_admin::AccountLookupRow>, AdminError> {
+        Ok(vec![wyd_admin::AccountLookupRow {
+            id: 42,
+            login: "comprador".to_string(),
+            role: "player".to_string(),
+        }])
+    }
+
     fn world_events(&self) -> Result<Vec<WorldEventRow>, AdminError> {
         Ok(Self::eventos())
     }
@@ -280,6 +336,22 @@ impl ConfigStore for FakeOperacao {
         _cost_gold: Option<i32>,
         _req_level: Option<i16>,
         _enabled: Option<bool>,
+        _actor: i64,
+    ) -> Result<i64, AdminError> {
+        unimplemented!("fora do escopo deste teste");
+    }
+
+    fn item_prices(
+        &self,
+        _item_index: Option<i32>,
+        _limit: i64,
+    ) -> Result<Vec<wyd_admin::ItemPriceRow>, AdminError> {
+        Ok(Vec::new())
+    }
+
+    fn set_item_price(
+        &self,
+        _edit: &wyd_admin::ItemPriceEdit,
         _actor: i64,
     ) -> Result<i64, AdminError> {
         unimplemented!("fora do escopo deste teste");
@@ -743,24 +815,56 @@ fn sem_tabela_sem_handler_501() {
     );
     assert_eq!(status, 501);
 
-    // Receita de donate não tem tabela que a sustente (D-B07).
+    // Receita de donate tem razão no banco (0042 crédito, 0045 débito): as rotas
+    // respondem 200 com os números do store — nenhuma delas pode sobrar em 501.
     for rota in [
         "get_revenue_summary",
         "list_topup_orders",
         "list_top_buyers",
         "list_donate_spend",
     ] {
-        let (status, _) = dispatch(
+        let (status, body) = dispatch(
             &router,
             &raw(
                 "POST",
                 &format!("/admin/v1/donate_revenue_admin/{rota}"),
                 Some("staff"),
-                r#"{}"#,
+                r#"{"limit":10}"#,
             ),
         );
-        assert_eq!(status, 501, "{rota}");
+        assert_eq!(status, 200, "{rota}");
+        assert_eq!(result_of(&body), 1, "{rota}");
     }
+
+    // Busca de conta e débito de saldo também têm handler (antes: 501).
+    let (status, body) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/donate_revenue_admin/search_accounts",
+            Some("staff"),
+            r#"{"login":"comprador","limit":5}"#,
+        ),
+    );
+    assert_eq!(status, 200);
+    assert_eq!(result_of(&body), 1);
+    assert!(
+        body.render().contains("comprador"),
+        "a busca devolve o login"
+    );
+
+    let (status, body) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/donate_admin/debit_donate_balance",
+            Some("staff"),
+            r#"{"account_id":42,"credits":100,"idempotency_key":"qa-debit-1"}"#,
+        ),
+    );
+    assert_eq!(status, 200);
+    assert_eq!(result_of(&body), 1);
+    assert!(body.render().contains("\"debit_id\":42"));
 }
 
 /// DSN dos testes com Postgres (mesma convenção dos demais testes do repositório).

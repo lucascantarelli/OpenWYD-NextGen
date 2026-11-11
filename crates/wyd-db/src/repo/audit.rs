@@ -53,4 +53,15 @@ pub trait AuditTrail {
         &self,
         limit: usize,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>>;
+
+    /// Últimas `limit` linhas do ator, opcionalmente filtradas por ação.
+    ///
+    /// É o histórico do **próprio** jogador na área dele (`auth.login`); a
+    /// consulta filtra pelo id do ator, nunca por login em texto.
+    fn by_actor(
+        &self,
+        actor_id: i64,
+        action: Option<&str>,
+        limit: usize,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>>;
 }

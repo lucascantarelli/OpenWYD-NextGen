@@ -185,6 +185,26 @@ export interface CatalogItem {
   item_index: number;
   name: string;
   display_name: string;
+  /** Grade do template (0 = comum; sobe com refino/variante). */
+  grade?: number;
+  /** Preço de tabela do template, em ouro. */
+  price?: number;
+  req_level?: number;
+  req_str?: number;
+  req_int?: number;
+  req_dex?: number;
+  req_con?: number;
+  /** Alcance em tiles; `null` = o template não declara. */
+  attack_range?: number | null;
+  /** Slot volátil; `null` = não volátil/não declarado. */
+  volatile?: number | null;
+  kind?: string | null;
+  primary_system?: string | null;
+  event_only?: boolean | null;
+  tradeable?: boolean | null;
+  stackable?: boolean | null;
+  class_mask?: string | null;
+  effect_names?: string[];
 }
 
 export interface ListItemsResponse extends AdminEnvelope {
@@ -372,12 +392,86 @@ export const donateAdmin = svc<{
     { account_id: number; credits: number; idempotency_key: string },
     DonateCreditWire
   >;
+  debitDonateBalance: Unary<
+    { account_id: number; credits: number; idempotency_key: string },
+    DonateDebitWire
+  >;
 }>("donate_admin", [
   "listShopItems",
   "upsertShopItem",
   "setShopItemEnabled",
   "deleteShopItem",
   "creditDonateBalance",
+  "debitDonateBalance",
+]);
+
+/* --------------------------- receita de donate -------------------------- */
+
+/** Receita somada de donate: créditos, débitos e contagens. */
+export interface DonateRevenueWire {
+  credits_total: number;
+  debits_total: number;
+  balance: number;
+  topups: number;
+  debits: number;
+}
+
+/** Linha de extrato (recarga ou débito), já com o login da conta. */
+export interface DonateLedgerWire {
+  id: number;
+  account_id: number;
+  login: string;
+  credits: number;
+  idempotency_key: string;
+  created_at: string;
+}
+
+/** Conta que mais comprou créditos (agregado por conta, nunca por personagem). */
+export interface DonateBuyerWire {
+  account_id: number;
+  login: string;
+  credits: number;
+  topups: number;
+}
+
+/** Conta encontrada pela busca por login (id e papel). */
+export interface AccountLookupWire {
+  id: number;
+  login: string;
+  role: string;
+}
+
+export interface DonateRevenueResponse extends AdminEnvelope {
+  revenue?: DonateRevenueWire;
+}
+
+export interface DonateLedgerResponse extends AdminEnvelope {
+  orders?: DonateLedgerWire[];
+  spend?: DonateLedgerWire[];
+  buyers?: DonateBuyerWire[];
+  accounts?: AccountLookupWire[];
+}
+
+/** Recibo do débito de saldo (`donate_admin/debit_donate_balance`). */
+export interface DonateDebitWire extends AdminEnvelope {
+  idempotency_key?: string;
+  debit_id?: number;
+  replay?: boolean;
+}
+
+/** Receita e extratos de donate, lidos do razão gravado. */
+export const donateRevenue = svc<{
+  getRevenueSummary: Unary<Record<string, never>, DonateRevenueResponse>;
+  listTopupOrders: Unary<{ limit: number }, DonateLedgerResponse>;
+  listDonateSpend: Unary<{ limit: number }, DonateLedgerResponse>;
+  listTopBuyers: Unary<{ limit: number }, DonateLedgerResponse>;
+  searchAccounts: Unary<{ login: string; limit?: number }, DonateLedgerResponse>;
+}>("donate_revenue_admin", [
+  "getRevenueSummary",
+  "listTopupOrders",
+  "listDonateSpend",
+  "listTopBuyers",
+  "searchAccounts",
 ]);
 
 /** Evento de mundo com a grade de horários (`world_event_admin/*`). */
@@ -536,10 +630,30 @@ export const npcAdmin = svc<{
     { id: number; map_id: number; pos_x: number; pos_y: number; enabled: boolean },
     RevisionResponse
   >;
-}>("npc_admin", ["getNpc", "listNpcs", "upsertNpc"]);
+  listItemPrices: Unary<{ item_index?: number; limit: number }, ListItemPricesResponse>;
+  setItemPrice: Unary<
+    { item_index: number; npc_id: number; buy_price: number; sell_price: number; source: string },
+    RevisionResponse
+  >;
+}>("npc_admin", ["getNpc", "listNpcs", "upsertNpc", "listItemPrices", "setItemPrice"]);
 
 export interface ListNpcsResponse extends AdminEnvelope {
   npcs?: NpcWire[];
+}
+
+/** Preço de NPC (`item_price`): o mesmo item custa diferente por mercador. */
+export interface ItemPriceWire {
+  item_index: number;
+  item_name: string;
+  npc_id: number;
+  npc_slug: string;
+  buy_price: number;
+  sell_price: number;
+  source: string;
+}
+
+export interface ListItemPricesResponse extends AdminEnvelope {
+  prices?: ItemPriceWire[];
 }
 
 /** Rota de teleporte: política editável (custo, nível, disponibilidade). */

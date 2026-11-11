@@ -9,7 +9,7 @@
 
 use wyd_db::{ItemRow, CARRY_FIRST_SLOT};
 use wyd_server::gameplay::{
-    apply_quest_reward, quest_engage, QuestEngage, QuestRefusal, QuestReward,
+    apply_quest_reward, quest_accept, quest_engage, QuestEngage, QuestRefusal, QuestReward,
     MERCHANT_TRAINER_CHIEF, MERCHANT_TRAINER_FIRST, MERCHANT_TRAINER_SECOND,
     MERCHANT_TRAINER_THIRD, QUEST_AFFECT_HEAL, QUEST_CAMPO_MAX_LEVEL, QUEST_CARBUNCLE_RUBY,
     QUEST_ENCHANT_BASE, QUEST_ENCHANT_SANC, QUEST_GROWING_EYE, QUEST_HEAL_KIT, QUEST_PROOF_EMBLEM,
@@ -87,6 +87,33 @@ fn prova(itens: &mut Vec<ItemRow>, item_id: i64) {
 
 fn contem(itens: &[ItemRow], item_id: i64) -> bool {
     itens.iter().any(|linha| linha.item_id == item_id)
+}
+
+#[test]
+fn aceite_so_no_primeiro_treinador_e_dentro_do_teto_de_nivel() {
+    assert_eq!(quest_accept(1, MERCHANT_TRAINER_FIRST), Ok(()));
+    assert_eq!(
+        quest_accept(QUEST_CAMPO_MAX_LEVEL, MERCHANT_TRAINER_FIRST),
+        Ok(())
+    );
+    assert_eq!(
+        quest_accept(QUEST_CAMPO_MAX_LEVEL + 1, MERCHANT_TRAINER_FIRST),
+        Err(QuestRefusal::LevelTooHigh {
+            level: QUEST_CAMPO_MAX_LEVEL + 1,
+            max: QUEST_CAMPO_MAX_LEVEL
+        })
+    );
+    // Os outros treinadores só avançam etapa: nunca iniciam a quest.
+    for merchant in [
+        MERCHANT_TRAINER_SECOND,
+        MERCHANT_TRAINER_THIRD,
+        MERCHANT_TRAINER_CHIEF,
+    ] {
+        assert_eq!(
+            quest_accept(1, merchant),
+            Err(QuestRefusal::WrongMerchant { merchant })
+        );
+    }
 }
 
 #[test]

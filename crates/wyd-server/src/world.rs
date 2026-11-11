@@ -32,6 +32,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use wyd_core::systems::combat::{self as combat_system, AttackRules, DamageModel};
+use wyd_core::systems::movement::{self as movement_system, MoveRules};
 use wyd_core::{
     ComponentStore, CoreError, Entity, EntityKind, Grid, GridConfig, Inventory, Metrics, Position,
     Scheduler, SchedulerConfig, SpawnSpec, Stats, Tick,
@@ -75,10 +76,36 @@ const COMMANDS_PER_TURN: usize = 64;
 /// É validação **do servidor** sobre o `TargetX/TargetY` do `_MSG_Action`; o cliente não
 /// define alcance.
 pub const TALK_RANGE_TILES: u32 = 5;
+/// Raio (tiles) em que um clique conta como "no sprite" do NPC.
+///
+/// O sprite do 7662 ocupa mais de um tile; 2 cobre a base sem pegar o vizinho. Clicar no
+/// NPC vale mesmo com o personagem longe: o `_MSG_Action` é destino de caminhada e o
+/// diálogo/loja abre ao chegar — recusar por distância deixava toda loja da cidade sem
+/// resposta (o clique virava passo recusado e `no_npc`).
+pub const CLICK_RANGE_TILES: u32 = 2;
 /// Alcance do golpe corpo a corpo validado no servidor (não vem do `_MSG_Attack`).
 pub const ATTACK_RANGE_TILES: u32 = 2;
 /// Intervalo mínimo entre dois golpes da mesma entidade.
 pub const ATTACK_COOLDOWN_MS: u64 = 800;
+
+/// Tiles por segundo do personagem no `_MSG_Action` de movimento.
+///
+/// **UNVERIFIED:** a velocidade do cliente 7662 ainda não foi medida; entra por ambiente
+/// (`WYD_MOVE_TILES_PER_SECOND`, padrão 4) e quem decide continua sendo o servidor — o
+/// pacote traz destino, nunca velocidade.
+pub const ENV_MOVE_TILES_PER_SECOND: &str = "WYD_MOVE_TILES_PER_SECOND";
+pub const DEFAULT_MOVE_TILES_PER_SECOND: u16 = 4;
+/// Máximo de tiles num `_MSG_Action`: `Route[24]` do legado = 24 passos de 1 tile.
+pub const MOVE_MAX_TILES: u32 = 24;
+
+/// Velocidade configurada (zero ou lixo cai no padrão, nunca em "sem movimento").
+fn move_tiles_per_second() -> u16 {
+    std::env::var(ENV_MOVE_TILES_PER_SECOND)
+        .ok()
+        .and_then(|valor| valor.trim().parse().ok())
+        .filter(|valor: &u16| *valor > 0)
+        .unwrap_or(DEFAULT_MOVE_TILES_PER_SECOND)
+}
 /// Regras de combate do canal (constantes válidas por construção).
 const ATTACK_RULES: AttackRules = AttackRules {
     range_tiles: ATTACK_RANGE_TILES,
@@ -96,9 +123,31 @@ pub const ENV_SCENE_MAX_PER_REFRESH: &str = "WYD_SCENE_MAX_PER_REFRESH";
 ///
 /// Era 64 e isso deixava a cena incompleta por ~95 s (6 100 NPCs a 1 varredura/s): o cliente
 /// que entrava e olhava a área recebia só os primeiros ids e nunca os NPCs criados por último
-/// (caso do Campo, ids 6201..6208). O teto continua existindo para a recarga não virar rajada,
+/// (caso do Campo, ids 6301..6310). O teto continua existindo para a recarga não virar rajada,
 /// mas agora cabe o mapa inteiro em duas varreduras.
 pub const DEFAULT_SCENE_MAX_PER_REFRESH: usize = 4_096;
+
+/// Raio (tiles, Chebyshev) da cena que a sessão recebe em volta do próprio personagem.
+///
+/// O mapa tem 6 110 NPCs: enviar todos no login é uma rajada de ~1,4 MB em `_MSG_CreateMob`
+/// de 232 B, e o cliente 7662 não desenha nenhum deles (buffer/limite do lado C). A sessão
+/// passa a receber só o que está à vista; ao andar, o delta remove quem saiu e cria quem
+/// entrou — a geração do motor não muda, então a varredura confere o conjunto a cada poll.
+/// 56 tiles (Chebyshev) cobrem a câmera do 7662 **e** todos os serviços de Armia em volta do
+/// ponto de save (2096/2096). Medido no banco: raio 24 = 32 NPCs na cena (mercadores de
+/// `y >= 2121` fora), raio 40 = 45, raio 56 = **71** — inclui `ForeLearner` (2090, 2047) e
+/// `9thMaster` (2136, 2115), que a cidade tem e o jogador não via. Continua muito abaixo da
+/// rajada de 6 110 que o cliente 7662 não desenha. Ajustável por `WYD_SCENE_VIEW_TILES`.
+pub const ENV_SCENE_VIEW_TILES: &str = "WYD_SCENE_VIEW_TILES";
+pub const DEFAULT_SCENE_VIEW_TILES: u32 = 56;
+/// Raio da cena pedido no ambiente (valor inválido cai no padrão).
+pub fn scene_view_tiles_from_env() -> u32 {
+    std::env::var(ENV_SCENE_VIEW_TILES)
+        .ok()
+        .and_then(|valor| valor.trim().parse().ok())
+        .filter(|valor: &u32| (1..=128).contains(valor))
+        .unwrap_or(DEFAULT_SCENE_VIEW_TILES)
+}
 /// Faixa aceita do teto (0 e negativo não fazem sentido; a sessão pararia de desenhar o mapa).
 pub const MAX_SCENE_PER_REFRESH: usize = 4_096;
 
@@ -299,6 +348,11 @@ pub struct SceneMob {
     pub id: u16,
     /// `true` para personagem: muda o `RemoveType` na saída (logout) e o `Merchant`.
     pub actor: bool,
+    /// Id em `npc_definition` (0 = personagem): é a chave do catálogo de loja.
+    ///
+    /// Não vai no fio — o cliente só conhece o `MobID` —, então a loja é resolvida
+    /// aqui, no mundo vivo, nunca pelo que o cliente manda.
+    pub npc_id: i32,
     pub name: [u8; 16],
     pub position: Position,
     pub level: u16,
@@ -469,6 +523,12 @@ pub enum Command {
     },
     /// Foto da cena de NPCs (o que o cliente deve ver) + geração.
     Npcs { reply: SyncSender<SceneSnapshot> },
+    /// Foto da cena **visível** em volta de `speaker` (raio em tiles).
+    SceneAround {
+        speaker: Entity,
+        radius: u32,
+        reply: SyncSender<Option<SceneSnapshot>>,
+    },
     /// Golpe corpo a corpo contra o NPC/monstro mais próximo do ponto clicado.
     Attack {
         attacker: Entity,
@@ -476,6 +536,14 @@ pub enum Command {
         y: i32,
         now_ms: u64,
         reply: SyncSender<Result<Option<AttackOutcome>, CoreError>>,
+    },
+    /// `_MSG_Action` de movimento: destino pedido, validado no tick (orçamento + mapa).
+    Move {
+        entity: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+        reply: SyncSender<Result<Position, CoreError>>,
     },
     /// Clique de `_MSG_Action`: quem está no ponto, dentro do alcance do personagem.
     Talk {
@@ -527,6 +595,15 @@ pub struct Engine {
     scene_generation: u64,
     /// Portões abertos por chave (`EF_KEYID`), com fechamento por tempo (FASE-03-18).
     gates: crate::gameplay::GateBook,
+    /// Regras do movimento autoritativo (velocidade + retângulo do mapa).
+    move_rules: MoveRules,
+    /// Último movimento aceito por entidade (ms do processo): base do orçamento.
+    last_move: HashMap<u32, u64>,
+    /// Destino de caminhada pendente por índice de entidade (`_MSG_Action` longe).
+    ///
+    /// O cliente manda **um** destino por clique; o personagem anda até lá nos ticks, um
+    /// orçamento por vez — sem teleporte e sem depender de novos pacotes do cliente.
+    destinations: HashMap<u32, (Entity, Position)>,
 }
 
 impl core::fmt::Debug for Engine {
@@ -565,6 +642,16 @@ impl Engine {
             next_mob_scene: MAX_USER,
             scene_generation: 0,
             gates: crate::gameplay::GateBook::default(),
+            move_rules: MoveRules::new(
+                move_tiles_per_second(),
+                Position { x: 0, y: 0 },
+                Position {
+                    x: WORLD_WIDTH - 1,
+                    y: WORLD_HEIGHT - 1,
+                },
+            )?,
+            last_move: HashMap::new(),
+            destinations: HashMap::new(),
         })
     }
 
@@ -726,6 +813,22 @@ impl Engine {
     /// A ordem determinística importa para o delta da borda: duas leituras iguais devolvem a
     /// mesma lista, então a sessão só emite o que realmente mudou.
     #[must_use]
+    /// Foto da cena **visível** a até `radius` tiles de `center` (Chebyshev).
+    ///
+    /// Inclui o próprio personagem (distância 0) e só as criaturas dentro do raio — é o
+    /// conjunto que a sessão entrega, em vez dos 6 110 NPCs do mapa inteiro.
+    pub fn scene_around(&self, center: Position, radius: u32) -> SceneSnapshot {
+        let mut cena = self.scene_snapshot();
+        cena.mobs.retain(|mob| {
+            mob.position
+                .x
+                .abs_diff(center.x)
+                .max(mob.position.y.abs_diff(center.y))
+                <= radius
+        });
+        cena
+    }
+
     pub fn scene_snapshot(&self) -> SceneSnapshot {
         let mut mobs: Vec<SceneMob> = Vec::with_capacity(self.npcs.len() + self.live.len());
         for npc in self.npcs.values() {
@@ -738,6 +841,7 @@ impl Engine {
             mobs.push(SceneMob {
                 id,
                 actor: false,
+                npc_id: npc.spec.id,
                 name: fixed_name(&npc.spec.name),
                 position,
                 level: npc.spec.stats.level,
@@ -766,6 +870,7 @@ impl Engine {
             mobs.push(SceneMob {
                 id,
                 actor: true,
+                npc_id: 0,
                 name: skin.name,
                 position: Position {
                     x: estado.x,
@@ -859,14 +964,117 @@ impl Engine {
         }))
     }
 
-    /// Quem o personagem clicou em `_MSG_Action`, se houver NPC no alcance.
+    /// Aplica um passo de movimento autoritativo (`_MSG_Action`, `Route[24]` do legado).
+    ///
+    /// O cliente manda **destino**; orçamento por tempo, retângulo do mapa e teto de 24 tiles
+    /// por pacote são do servidor (`MoveRules`). Aceitar move a entidade no SoA e grava a nova
+    /// posição no estado vivo, que é o que vai para o save.
+    pub fn move_to(
+        &mut self,
+        entity: Entity,
+        to: Position,
+        now_ms: u64,
+    ) -> Result<Position, CoreError> {
+        let Some(atual) = self.store.position_of(entity) else {
+            return Err(CoreError::EntityNotAlive {
+                index: entity.index,
+                generation: entity.generation,
+            });
+        };
+        if !self.move_rules.contains(to) {
+            return Err(CoreError::MoveTooFar {
+                distance: movement_system::distance(atual, to),
+                allowed: MOVE_MAX_TILES,
+            });
+        }
+        // Primeiro passo da entidade usa 1 s de orçamento; depois, o tempo real desde o
+        // último passo aceito (cap de 1 s: o que ficou parado não vira teleporte).
+        let anterior = self
+            .last_move
+            .get(&entity.index)
+            .copied()
+            .unwrap_or_else(|| now_ms.saturating_sub(1_000));
+        let elapsed_ms = now_ms.saturating_sub(anterior).min(1_000);
+        // Um clique de 20 tiles é destino, não teleporte: anda o que o orçamento permite
+        // agora e o resto nos ticks (`walk_pending`). Recusar o clique inteiro era o bug que
+        // travava o personagem no spawn e deixava toda loja de Armia fora de alcance.
+        let budget = u32::try_from(self.move_rules.budget(elapsed_ms))
+            .unwrap_or(u32::MAX)
+            .max(1);
+        let alvo = step_toward(atual, to, budget);
+        let posicao =
+            movement_system::step(&mut self.store, entity, alvo, elapsed_ms, self.move_rules)?;
+        if let Some(state) = self.live.get_mut(&entity.index) {
+            state.x = posicao.x;
+            state.y = posicao.y;
+        }
+        self.last_move.insert(entity.index, now_ms);
+        if posicao == to {
+            self.destinations.remove(&entity.index);
+        } else {
+            self.destinations.insert(entity.index, (entity, to));
+        }
+        Ok(posicao)
+    }
+
+    /// Anda um orçamento por tick até o destino pendente de cada entidade.
+    ///
+    /// O passo usa o mesmo `movement_system::step` (orçamento por tempo + retângulo do
+    /// mapa): destino fora do mapa ou entidade morta cancela a caminhada, sem teleporte.
+    fn walk_pending(&mut self, elapsed_ms: u64) {
+        if self.destinations.is_empty() {
+            return;
+        }
+        let pendentes: Vec<(u32, Entity, Position)> = self
+            .destinations
+            .iter()
+            .map(|(indice, (entity, destino))| (*indice, *entity, *destino))
+            .collect();
+        let elapsed_ms = elapsed_ms.min(1_000);
+        let budget = u32::try_from(self.move_rules.budget(elapsed_ms))
+            .unwrap_or(u32::MAX)
+            .max(1);
+        for (indice, entity, destino) in pendentes {
+            let Some(atual) = self.store.position_of(entity) else {
+                self.destinations.remove(&indice);
+                continue;
+            };
+            if atual == destino {
+                self.destinations.remove(&indice);
+                continue;
+            }
+            let alvo = step_toward(atual, destino, budget);
+            match movement_system::step(&mut self.store, entity, alvo, elapsed_ms, self.move_rules)
+            {
+                Ok(posicao) => {
+                    if let Some(state) = self.live.get_mut(&entity.index) {
+                        state.x = posicao.x;
+                        state.y = posicao.y;
+                    }
+                    if posicao == destino {
+                        self.destinations.remove(&indice);
+                    }
+                }
+                Err(_) => {
+                    self.destinations.remove(&indice);
+                }
+            }
+        }
+    }
+
+    /// Quem o personagem clicou em `_MSG_Action`, se houver NPC no ponto clicado.
+    ///
+    /// Clique no sprite (`CLICK_RANGE_TILES`) resolve o NPC mesmo com o personagem longe:
+    /// o `_MSG_Action` também é o destino da caminhada, então a loja/diálogo abre quando ele
+    /// chega. Criatura de combate continua exigindo `TALK_RANGE_TILES` — atacar longe é
+    /// recusado como antes.
     pub fn talk_at(&self, speaker: Entity, x: i32, y: i32) -> Option<TalkTarget> {
         let posicao = self.store.position_of(speaker)?;
         let distancia = posicao.x.abs_diff(x).max(posicao.y.abs_diff(y));
-        if distancia > TALK_RANGE_TILES {
+        let npc = self.npc_near(x, y, CLICK_RANGE_TILES, false)?;
+        if distancia > TALK_RANGE_TILES && npc.spec.kind == EntityKind::Monster {
             return None;
         }
-        let npc = self.npc_near(x, y, TALK_RANGE_TILES, false)?;
         Some(TalkTarget {
             id: npc.spec.id,
             name: npc.spec.name.clone(),
@@ -996,6 +1204,17 @@ impl Engine {
             Command::Npcs { reply } => {
                 let _ = reply.send(self.scene_snapshot());
             }
+            Command::SceneAround {
+                speaker,
+                radius,
+                reply,
+            } => {
+                let cena = self
+                    .store
+                    .position_of(speaker)
+                    .map(|centro| self.scene_around(centro, radius));
+                let _ = reply.send(cena);
+            }
             Command::SyncNpcs { specs, reply } => {
                 let _ = reply.send(self.sync_npcs(specs));
             }
@@ -1017,6 +1236,15 @@ impl Engine {
                 reply,
             } => {
                 let _ = reply.send(self.use_key_at(speaker, x, y, &keys, now_ms));
+            }
+            Command::Move {
+                entity,
+                x,
+                y,
+                now_ms,
+                reply,
+            } => {
+                let _ = reply.send(self.move_to(entity, Position { x, y }, now_ms));
             }
             Command::Talk {
                 speaker,
@@ -1041,6 +1269,7 @@ impl Engine {
 
     /// Avança o tempo real acumulado e executa os passos devidos (0..=5).
     pub fn advance(&mut self, elapsed_ms: u64) -> u64 {
+        self.walk_pending(elapsed_ms);
         let steps = self.scheduler.advance(elapsed_ms);
         for _ in 0..steps {
             let inicio = Instant::now();
@@ -1206,6 +1435,20 @@ impl EngineHandle {
             .unwrap_or_default()
     }
 
+    /// Cena visível em volta de `speaker`; `None` = entidade fora do mundo.
+    #[must_use]
+    pub fn scene_around(&self, speaker: Entity, radius: u32) -> Option<SceneSnapshot> {
+        self.call(
+            |reply| Command::SceneAround {
+                speaker,
+                radius,
+                reply,
+            },
+            COMMAND_TIMEOUT,
+        )
+        .flatten()
+    }
+
     /// Golpe autoritativo no ponto clicado. `None` = sem criatura no alcance.
     pub fn attack(
         &self,
@@ -1255,6 +1498,32 @@ impl EngineHandle {
         .unwrap_or(Err(crate::gameplay::GateError::NoGate))
     }
 
+    /// Paso de movimento pedido por `_MSG_Action`: o tick confere orçamento e mapa.
+    pub fn move_to(
+        &self,
+        entity: Entity,
+        x: i32,
+        y: i32,
+        now_ms: u64,
+    ) -> Result<Position, CoreError> {
+        match self.call(
+            |reply| Command::Move {
+                entity,
+                x,
+                y,
+                now_ms,
+                reply,
+            },
+            COMMAND_TIMEOUT,
+        ) {
+            Some(resultado) => resultado,
+            None => Err(CoreError::EntityNotAlive {
+                index: entity.index,
+                generation: entity.generation,
+            }),
+        }
+    }
+
     /// NPC clicado por `_MSG_Action` (fora do alcance devolve `None`).
     #[must_use]
     pub fn talk(&self, speaker: Entity, x: i32, y: i32) -> Option<TalkTarget> {
@@ -1268,6 +1537,15 @@ impl EngineHandle {
             COMMAND_TIMEOUT,
         )
         .flatten()
+    }
+}
+
+/// Ponto intermediário a até `tiles` de `from` na direção de `to` (Chebyshev).
+fn step_toward(from: Position, to: Position, tiles: u32) -> Position {
+    let limite = i32::try_from(tiles).unwrap_or(i32::MAX);
+    Position {
+        x: from.x + (to.x - from.x).clamp(-limite, limite),
+        y: from.y + (to.y - from.y).clamp(-limite, limite),
     }
 }
 
@@ -1455,6 +1733,74 @@ mod tests {
 
     fn engine() -> Engine {
         Engine::new(20, Arc::new(Metrics::new())).expect("motor com 20 Hz")
+    }
+
+    #[test]
+    fn clique_longe_e_destino_de_caminhada_e_nao_recusa() {
+        let mut engine = engine();
+        let personagem = personagem(1, 100, 100);
+        let entered = engine
+            .enter(&personagem, ActorSkin::default())
+            .expect("entra no mundo");
+        let destino = Position { x: 120, y: 100 };
+        let primeiro = engine
+            .move_to(entered.entity, destino, 1_000)
+            .expect("destino longe é aceito (o bug era recusar)");
+        assert_eq!(
+            primeiro,
+            Position { x: 104, y: 100 },
+            "anda só o orçamento do tick, sem teleporte"
+        );
+        for _ in 0..10 {
+            engine.advance(1_000);
+        }
+        assert_eq!(
+            engine.store().position_of(entered.entity),
+            Some(destino),
+            "os ticks levam até o destino clicado"
+        );
+    }
+
+    #[test]
+    fn clique_no_sprite_do_npc_longe_devolve_alvo() {
+        let mut engine = engine();
+        let personagem = personagem(1, 100, 100);
+        let entered = engine
+            .enter(&personagem, ActorSkin::default())
+            .expect("entra no mundo");
+        engine.sync_npcs(vec![npc(7, "Aylin", 140, 100, 0)]);
+        let alvo = engine
+            .talk_at(entered.entity, 140, 100)
+            .expect("clique no sprite resolve o NPC mesmo longe");
+        assert_eq!(alvo.id, 7);
+        assert!(
+            engine.talk_at(entered.entity, 300, 300).is_none(),
+            "clique no vazio não vira alvo"
+        );
+    }
+
+    #[test]
+    fn cena_por_proximidade_corta_o_que_esta_longe() {
+        let mut engine = engine();
+        engine.sync_npcs(vec![
+            npc(1, "Perto", 2096, 2096, 0),
+            npc(2, "Longe", 2000, 2000, 0),
+            npc(3, "Borda", 2096 + 24, 2096 - 24, 0),
+        ]);
+        let cena = engine.scene_around(Position { x: 2096, y: 2096 }, 24);
+        let nomes: Vec<String> = cena.mobs.iter().map(|mob| mob.name_str()).collect();
+        assert!(nomes.iter().any(|nome| nome == "Perto"), "centro entra");
+        assert!(
+            nomes.iter().any(|nome| nome == "Borda"),
+            "borda do raio entra"
+        );
+        assert!(
+            !nomes.iter().any(|nome| nome == "Longe"),
+            "fora do raio não entra"
+        );
+        assert_eq!(cena.mobs.len(), 2);
+        // O snapshot completo continua disponível para o harness.
+        assert_eq!(engine.scene_snapshot().mobs.len(), 3);
     }
 
     #[test]

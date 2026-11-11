@@ -4,9 +4,15 @@ import { redirect } from "next/navigation";
 
 import { Badge } from "@/components/Badge";
 import { LogoutButton } from "@/components/LogoutButton";
+import { SiteHeader } from "@/components/SiteHeader";
 import { TEXTO } from "@/lib/i18n";
 import { roleLabel, roleTone } from "@/lib/role";
-import { getPanelAccount, getPanelCharacters, getPanelRankings } from "@/server/panel";
+import {
+  getPanelAccount,
+  getPanelCharacters,
+  getPanelHistory,
+  getPanelRankings,
+} from "@/server/panel";
 import { getSession } from "@/server/session";
 
 import PinForm from "./pin-form";
@@ -29,6 +35,16 @@ function fmtClass(code: number): string {
   return CLASSES[code] ?? `classe ${code}`;
 }
 
+/** Milissegundos desde a época → data e hora locais, curtas. */
+function fmtInstante(ms: number): string {
+  const data = new Date(ms);
+  if (Number.isNaN(data.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(data);
+}
+
 /**
  * Área do jogador: conta, personagens, ranking e credenciais.
  *
@@ -39,36 +55,16 @@ export default async function ContaPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [conta, personagens, ranking] = await Promise.all([
+  const [conta, personagens, ranking, historico] = await Promise.all([
     getPanelAccount().catch(() => null),
     getPanelCharacters().catch(() => null),
     getPanelRankings(10).catch(() => null),
+    getPanelHistory().catch(() => null),
   ]);
 
   return (
     <>
-      <header className="sitebar">
-        <Link className="brand" href="/conta" aria-label="WYD2">
-          <span className="brand__mark" aria-hidden="true">
-            W
-          </span>
-          <span className="brand__text">
-            <span className="brand__name">WYD2</span>
-            <span className="brand__tag">Área do jogador</span>
-          </span>
-        </Link>
-        <nav className="sitebar__links" aria-label="Área do jogador">
-          <Link href="/conta" aria-current="page">
-            Minha conta
-          </Link>
-          <Link href="/guias">Guias</Link>
-          <Link href="/enciclopedia">Enciclopédia</Link>
-          {session.role === "admin" || session.role === "moderator" ? (
-            <Link href="/painel">Administração</Link>
-          ) : null}
-        </nav>
-        <LogoutButton />
-      </header>
+      <SiteHeader current="/conta" />
 
       <main className="page page--narrow">
         <div className="player-hero">
@@ -81,6 +77,7 @@ export default async function ContaPage() {
           <div className="chips">
             <span className="status">sessão #{session.accountId}</span>
             <Badge tone={roleTone(session.role)}>{roleLabel(session.role)}</Badge>
+            <LogoutButton />
           </div>
         </div>
 
@@ -173,6 +170,86 @@ export default async function ContaPage() {
                 </dl>
               ) : (
                 <p className="muted small">Não foi possível carregar os dados da conta agora.</p>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="grid-2">
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">Sessões</h2>
+                <p className="card__sub">Entradas no jogo registradas para esta conta.</p>
+              </div>
+              <Badge>{historico === null ? "indisponível" : `${historico.sessions.length} no histórico`}</Badge>
+            </div>
+            <div className="card__body card__body--flush">
+              {historico === null ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Não foi possível ler as sessões agora.
+                </p>
+              ) : historico.sessions.length === 0 ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Nenhuma sessão registrada ainda.
+                </p>
+              ) : (
+                <div className="ui-table-scroll">
+                  <table className="ui-table">
+                    <thead>
+                      <tr>
+                        <th scope="col"><span>Canal</span></th>
+                        <th scope="col"><span>Entrada</span></th>
+                        <th scope="col"><span>Estado</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historico.sessions.map((sessao, indice) => (
+                        <tr key={`${sessao.opened_ms}-${indice}`}>
+                          <td className="mono">{sessao.channel}</td>
+                          <td>{fmtInstante(sessao.opened_ms)}</td>
+                          <td>
+                            <Badge tone={sessao.released_ms === null ? "ok" : "neutral"}>
+                              {sessao.released_ms === null
+                                ? "aberta"
+                                : `saiu ${fmtInstante(sessao.released_ms)}`}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card__head">
+              <div>
+                <h2 className="card__title">Histórico de acesso</h2>
+                <p className="card__sub">Tentativas de login do portal e do jogo.</p>
+              </div>
+            </div>
+            <div className="card__body card__body--flush">
+              {historico === null ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Não foi possível ler o histórico agora.
+                </p>
+              ) : historico.events.length === 0 ? (
+                <p className="muted small" style={{ padding: 20, margin: 0 }}>
+                  Nenhum acesso registrado.
+                </p>
+              ) : (
+                <ul className="rank-list">
+                  {historico.events.map((evento, indice) => (
+                    <li className="rank" key={`${evento.at_ms}-${indice}`}>
+                      <span className="rank__pos">{fmtInstante(evento.at_ms)}</span>
+                      <span className="rank__name">{evento.detail}</span>
+                      <span className="rank__meta">entrada</span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </section>

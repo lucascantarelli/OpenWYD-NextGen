@@ -1438,6 +1438,100 @@ impl AuditTrail for PgBackend {
                 .collect()
         })
     }
+
+    fn by_actor(
+        &self,
+        actor_id: i64,
+        action: Option<&str>,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+    > {
+        let actor = format!("{actor_id}:%");
+        let action = action.map(str::to_string);
+        Box::pin(async move {
+            let rows = sqlx::query(
+                "SELECT (EXTRACT(EPOCH FROM at) * 1000)::bigint AS at_ms, \
+                 CASE WHEN actor ~ '^[0-9]+:' THEN split_part(actor, ':', 1)::bigint ELSE 0 END AS actor_id, \
+                 CASE WHEN actor ~ '^[0-9]+:' THEN split_part(actor, ':', 2) ELSE actor END AS actor_role, \
+                 action, target, detail \
+                 FROM audit_log WHERE actor LIKE $1 \
+                 AND ($2::text IS NULL OR action = $2) \
+                 ORDER BY at DESC, id DESC LIMIT $3",
+            )
+            .bind(actor)
+            .bind(action)
+            .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("audit.by_actor", "audit_log"))?;
+            let op = "audit.by_actor.decode";
+            let decode = |_| DbError::Transport { op };
+            rows.iter()
+                .map(|row| {
+                    let at_ms: i64 = row.try_get("at_ms").map_err(decode)?;
+                    Ok(AuditRow {
+                        at_ms: u64::try_from(at_ms).unwrap_or(0),
+                        actor_id: row.try_get("actor_id").map_err(decode)?,
+                        actor_role: row.try_get("actor_role").map_err(decode)?,
+                        action: row.try_get("action").map_err(decode)?,
+                        target: row.try_get("target").map_err(decode)?,
+                        detail: row.try_get("detail").map_err(decode)?,
+                    })
+                })
+                .collect()
+        })
+    }
+}
+
+impl crate::repo::SessionTrail for PgBackend {
+    fn recent_for_login(
+        &self,
+        login: &str,
+        limit: usize,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<Vec<crate::repo::SessionHistoryRow>, DbError>>
+                + Send
+                + '_,
+        >,
+    > {
+        let login = login.to_string();
+        Box::pin(async move {
+            let rows = sqlx::query(
+                "SELECT (EXTRACT(EPOCH FROM opened_at) * 1000)::bigint AS opened_ms, \
+                 (EXTRACT(EPOCH FROM renewed_at) * 1000)::bigint AS renewed_ms, \
+                 CASE WHEN released_at IS NULL THEN NULL \
+                      ELSE (EXTRACT(EPOCH FROM released_at) * 1000)::bigint END AS released_ms, \
+                 group_id, channel, client_version, character_id \
+                 FROM character_session WHERE account_login = $1 \
+                 ORDER BY opened_at DESC, id DESC LIMIT $2",
+            )
+            .bind(login)
+            .bind(i64::try_from(limit).unwrap_or(i64::MAX))
+            .fetch_all(self.pool())
+            .await
+            .map_err(map_error("sessions.history", "character_session"))?;
+            let op = "sessions.history.decode";
+            let decode = |_| DbError::Transport { op };
+            rows.iter()
+                .map(|row| {
+                    let opened_ms: i64 = row.try_get("opened_ms").map_err(decode)?;
+                    let renewed_ms: i64 = row.try_get("renewed_ms").map_err(decode)?;
+                    let released_ms: Option<i64> = row.try_get("released_ms").map_err(decode)?;
+                    Ok(crate::repo::SessionHistoryRow {
+                        opened_ms: u64::try_from(opened_ms).unwrap_or(0),
+                        renewed_ms: u64::try_from(renewed_ms).unwrap_or(0),
+                        released_ms: released_ms.map(|ms| u64::try_from(ms).unwrap_or(0)),
+                        group_id: row.try_get("group_id").map_err(decode)?,
+                        channel: row.try_get("channel").map_err(decode)?,
+                        client_version: row.try_get("client_version").map_err(decode)?,
+                        character_id: row.try_get("character_id").map_err(decode)?,
+                    })
+                })
+                .collect()
+        })
+    }
 }
 
 impl PgBackend {

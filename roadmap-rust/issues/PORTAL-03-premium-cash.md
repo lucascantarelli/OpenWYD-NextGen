@@ -47,7 +47,7 @@ Saída esperada: claim idempotente (replay = uma linha, sem duplicar item/gold);
 
 ## Subtasks
 
-- [x] Correio staff: conceder item (`character_admin/grant_item`) + fila com status/histórico (`/correio`)
+- [x] Correio staff: conceder item (`character_admin/grant_item`) + fila com status/histórico (`/correio`) + replay de item provado (`item_grant_is_idempotent_across_calls`, mesma chave → mesmo `grant_id`)
 - [x] Financeiro staff: vitrine CRUD + crédito idempotente (`donate_admin/*`, `/financeiro`)
 - [ ] Inbox do jogador — BLOQUEADO: fila só legível por staff (`character_admin/*` exige staff); sem rota nova no gateway não há inbox honesto
 - [ ] Remover `/entregas` — ADIADO de propósito: E2E (`entregas.spec`, `idempotencia.spec`, `login.spec`) prova o fluxo de ouro nela; ouro fica em `/entregas`, item no `/correio`
@@ -63,3 +63,20 @@ Saída esperada: claim idempotente (replay = uma linha, sem duplicar item/gold);
 
 - Risco: dupe em claim concorrente → mitigação: `UNIQUE(idempotency_key)` + claim transacional no jogo.
 - Rollback: manter `grants/request` legada até migração completa (feature flag).
+
+## Verificação on-line (2026-11-11)
+
+- **Entrega de ouro ponta a ponta**: clique → server action → `grants/request`
+  → `delivery_queue`. Recibo exibido: `entrega #1 enfileirada`; a tela
+  `/economia` passou a mostrar **1 pedido / 100 de ouro** na mesma sessão.
+- **`/entregas` foi refeita nesta rodada**: o formulário de concessão ocupava
+  uma célula inteira (linha de ~215 px, tabela estourando a largura e
+  "CHAVE DE IDEMPOTÊNCIA" exposta). Agora é uma linha compacta por personagem
+  com valor + "Conceder" + "ver fila"; a chave é gerada e mantida oculta.
+- **Inbox do jogador**: BLOQUEADO. `character_admin/*` exige staff; não há rota
+  de leitura de caixa para o dono da conta. Precisa de `premium_mail/*` no
+  gateway + tabela `premium_mail` (migration) antes de qualquer tela.
+- **Extrato/receita por comprador**: BLOQUEADO. `donate_revenue_*` está
+  declarado no transporte sem handler (responde 501).
+- **Cash**: só existe crédito de saldo de donate (`donate_admin/credit_*`);
+  débito/compra no jogo e ledger de cash não têm rota.

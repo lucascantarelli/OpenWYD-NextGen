@@ -22,7 +22,7 @@ use wyd_protocol::payload::WirePayload;
 use wyd_protocol::wire::frame::INITCODE;
 use wyd_protocol::wire::header::{Header, HEADER_SIZE};
 use wyd_protocol::wire::opcode::Opcode;
-use wyd_protocol::{AccountLogin, AccountSecure, CharacterLogin, MessagePanel};
+use wyd_protocol::{AccountLogin, AccountSecure, CharacterLogin, CreateCharacter, MessagePanel};
 
 /// Uma raça jogável do 7662 (classe 0–3, ordem de `docs/wyd/classes.md` §1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,7 +145,7 @@ impl Bot {
         self.race
     }
 
-    fn handshake(&mut self, config: &BotConfig) -> std::io::Result<()> {
+    fn autenticar(&mut self, config: &BotConfig) -> std::io::Result<()> {
         self.stream.write_all(&INITCODE.to_le_bytes())?;
 
         let mut nome = [0u8; 16];
@@ -195,7 +195,10 @@ impl Bot {
         })?;
         // O canal confirma o PIN ecoando `_MSG_AccountSecure` (0x0FDE), não um `CNF`.
         self.expect(Opcode::AccountSecure)?;
+        Ok(())
+    }
 
+    fn entrar(&mut self, config: &BotConfig) -> std::io::Result<()> {
         let slot = config.slot;
         self.send(Opcode::CharacterLogin, CharacterLogin::WIRE_LEN, |frame| {
             CharacterLogin { slot, force: 1 }
@@ -204,6 +207,67 @@ impl Bot {
         })?;
         self.expect(Opcode::CNFCharacterLogin)?;
         Ok(())
+    }
+
+    fn handshake(&mut self, config: &BotConfig) -> std::io::Result<()> {
+        self.autenticar(config)?;
+        self.entrar(config)
+    }
+
+    /// Caminho de personagem **novo**: autentica, cria o char no slot e entra com ele.
+    ///
+    /// É o `_MSG_CreateCharacter` real (36 B) + `_MSG_CharacterLogin`, sem atalho de banco:
+    /// o teste vivo prova o mesmo caminho que o cliente 7662 faz na tela de criação.
+    pub fn connect_novo(
+        config: &BotConfig,
+        race: Race,
+        nome: &str,
+        class: i32,
+    ) -> std::io::Result<Self> {
+        let endereco = config
+            .addr
+            .to_socket_addrs()?
+            .next()
+            .ok_or_else(|| Error::new(ErrorKind::AddrNotAvailable, "endereco do canal"))?;
+        let stream = TcpStream::connect_timeout(&endereco, Duration::from_secs(5))?;
+        stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+        stream.set_write_timeout(Some(Duration::from_secs(5)))?;
+        let mut bot = Self {
+            stream,
+            key_word: 11,
+            race,
+        };
+        bot.autenticar(config)?;
+        bot.create_character(config.slot, nome, class)?;
+        bot.entrar(config)?;
+        Ok(bot)
+    }
+
+    /// `_MSG_CreateCharacter` (0x0203) e a confirmação `CNFNewCharacter`.
+    pub fn create_character(&mut self, slot: i32, nome: &str, class: i32) -> std::io::Result<()> {
+        let mut mob_name = [0u8; 16];
+        let bytes = nome.as_bytes();
+        if bytes.len() > mob_name.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "nome acima de 16 bytes",
+            ));
+        }
+        mob_name[..bytes.len()].copy_from_slice(bytes);
+        self.send(
+            Opcode::CreateCharacter,
+            CreateCharacter::WIRE_LEN,
+            |frame| {
+                CreateCharacter {
+                    slot,
+                    mob_name,
+                    mob_class: class,
+                }
+                .encode_into(frame)
+                .expect("corpo do CreateCharacter");
+            },
+        )?;
+        self.expect(Opcode::CNFNewCharacter)
     }
 
     /// `_MSG_Quest` no treinador `npc_index`; devolve o texto do painel de resposta.
@@ -276,6 +340,10 @@ impl Bot {
                                 name: nome_do_campo(&mob.mob_name),
                                 x: i32::from(mob.pos_x),
                                 y: i32::from(mob.pos_y),
+                                level: u16::try_from(mob.level).unwrap_or(0),
+                                hp: u32::try_from(mob.hp).unwrap_or(0),
+                                max_hp: u32::try_from(mob.max_hp).unwrap_or(0),
+                                merchant: mob.merchant,
                             }),
                             Err(erro) => {
                                 break Err(Error::new(ErrorKind::InvalidData, erro.to_string()))
@@ -288,6 +356,154 @@ impl Bot {
                         || erro.kind() == ErrorKind::TimedOut =>
                 {
                     break Ok(vistos)
+                }
+                Err(erro) => break Err(erro),
+            }
+        };
+        self.stream.set_read_timeout(Some(anterior))?;
+        resultado
+    }
+
+    /// Lê por até `millis` e devolve o `Coin` do primeiro `_MSG_UpdateEtc`.
+    ///
+    /// `Coin` é o `i32` do corpo em +28 (`cpsock::send_progress` → `update_etc_body`), logo
+    /// o byte 28 depois do `HEADER` de 12 B. `None` = o pacote não chegou no prazo.
+    pub fn read_etc_coin(&mut self, millis: u64) -> std::io::Result<Option<i32>> {
+        let anterior = self
+            .stream
+            .read_timeout()?
+            .unwrap_or(Duration::from_secs(5));
+        self.stream
+            .set_read_timeout(Some(Duration::from_millis(millis)))?;
+        let resultado = loop {
+            match self.recv() {
+                Ok((header, frame)) => {
+                    if Opcode::from_wire(header.message_type) == Some(Opcode::UpdateEtc) {
+                        let base = HEADER_SIZE + 28;
+                        if frame.len() < base + 4 {
+                            break Err(Error::new(
+                                ErrorKind::InvalidData,
+                                "_MSG_UpdateEtc curto para o Coin@28",
+                            ));
+                        }
+                        let mut bytes = [0u8; 4];
+                        bytes.copy_from_slice(&frame[base..base + 4]);
+                        break Ok(Some(i32::from_le_bytes(bytes)));
+                    }
+                }
+                Err(erro)
+                    if erro.kind() == ErrorKind::WouldBlock
+                        || erro.kind() == ErrorKind::TimedOut =>
+                {
+                    break Ok(None)
+                }
+                Err(erro) => break Err(erro),
+            }
+        };
+        self.stream.set_read_timeout(Some(anterior))?;
+        resultado
+    }
+
+    /// `_MSG_REQShopList`: abre o catálogo do mercador `scene_id`.
+    ///
+    /// Devolve as posições não vazias do `_MSG_ShopList` (até 27), como chegaram no fio.
+    pub fn open_shop(&mut self, scene_id: u16) -> std::io::Result<Vec<[u8; 8]>> {
+        self.send(
+            Opcode::REQShopList,
+            wyd_protocol::ReqShopList::WIRE_LEN,
+            |frame| {
+                wyd_protocol::ReqShopList {
+                    target: scene_id,
+                    unk: 0,
+                }
+                .encode_into(frame)
+                .expect("corpo do ReqShopList");
+            },
+        )?;
+        self.read_shop_list(3_000)
+    }
+
+    /// Lê por até `millis` e devolve o `_MSG_ShopList` recebido (vazio = sem catálogo).
+    pub fn read_shop_list(&mut self, millis: u64) -> std::io::Result<Vec<[u8; 8]>> {
+        let anterior = self
+            .stream
+            .read_timeout()?
+            .unwrap_or(Duration::from_secs(5));
+        self.stream
+            .set_read_timeout(Some(Duration::from_millis(millis)))?;
+        let resultado = loop {
+            match self.recv() {
+                Ok((header, frame)) => {
+                    if Opcode::from_wire(header.message_type) == Some(Opcode::ShopList) {
+                        match wyd_protocol::ShopList::decode(&frame) {
+                            Ok(lista) => {
+                                break Ok(lista
+                                    .items
+                                    .iter()
+                                    .copied()
+                                    .filter(|item| item[0] != 0 || item[1] != 0)
+                                    .collect())
+                            }
+                            Err(erro) => {
+                                break Err(Error::new(ErrorKind::InvalidData, erro.to_string()))
+                            }
+                        }
+                    }
+                }
+                Err(erro)
+                    if erro.kind() == ErrorKind::WouldBlock
+                        || erro.kind() == ErrorKind::TimedOut =>
+                {
+                    break Ok(Vec::new())
+                }
+                Err(erro) => break Err(erro),
+            }
+        };
+        self.stream.set_read_timeout(Some(anterior))?;
+        resultado
+    }
+
+    /// `_MSG_Buy`: pede a posição `shop_slot` do catálogo pagando `coin`.
+    pub fn buy(&mut self, scene_id: u16, shop_slot: i16, coin: i32) -> std::io::Result<()> {
+        self.send(Opcode::Buy, wyd_protocol::Buy::WIRE_LEN, |frame| {
+            wyd_protocol::Buy {
+                target_id: scene_id,
+                target_inven_pos: shop_slot,
+                my_inven_pos: -1,
+                coin,
+            }
+            .encode_into(frame)
+            .expect("corpo do Buy");
+        })
+    }
+
+    /// Lê por até `millis` e devolve o primeiro `_MSG_SendItem` (tipo, slot, item).
+    pub fn read_send_item(&mut self, millis: u64) -> std::io::Result<Option<(u16, u16, [u8; 8])>> {
+        let anterior = self
+            .stream
+            .read_timeout()?
+            .unwrap_or(Duration::from_secs(5));
+        self.stream
+            .set_read_timeout(Some(Duration::from_millis(millis)))?;
+        let resultado = loop {
+            match self.recv() {
+                Ok((header, frame)) => {
+                    if Opcode::from_wire(header.message_type) == Some(Opcode::SendItem) {
+                        match wyd_protocol::SendItem::decode(&frame) {
+                            Ok(pacote) => {
+                                break Ok(Some((pacote.inv_type, pacote.slot, pacote.item)))
+                            }
+                            Err(erro) => {
+                                break Err(Error::new(ErrorKind::InvalidData, erro.to_string()))
+                            }
+                        }
+                    }
+                }
+                Err(erro)
+                    if erro.kind() == ErrorKind::WouldBlock
+                        || erro.kind() == ErrorKind::TimedOut =>
+                {
+                    break Ok(None)
                 }
                 Err(erro) => break Err(erro),
             }
@@ -332,6 +548,9 @@ impl Bot {
     }
 
     /// Mata a criatura `nome` vista na cena, atacando até o `_MSG_RemoveMob` dela.
+    ///
+    /// Só serve para um alvo que ainda vai aparecer: o `_MSG_CreateMob` é consumido na leitura
+    /// da cena, então quem já foi lido deve usar [`Bot::kill_at`] com id/posição.
     pub fn kill(&mut self, nome: &str) -> std::io::Result<(i32, i32)> {
         let limite = std::time::Instant::now() + Duration::from_secs(10);
         let mut alvo = None;
@@ -347,16 +566,23 @@ impl Bot {
                 format!("{}: {nome} ausente da cena", self.race.nome()),
             )
         })?;
+        self.kill_at(alvo.id, alvo.x, alvo.y)?;
+        Ok((alvo.x, alvo.y))
+    }
+
+    /// Ataca o alvo já conhecido (`MobID`/tile vistos na cena) até o `_MSG_RemoveMob` dele.
+    pub fn kill_at(&mut self, id: u16, x: i32, y: i32) -> std::io::Result<()> {
+        let limite = std::time::Instant::now() + Duration::from_secs(20);
         while std::time::Instant::now() < limite {
-            self.attack_at(alvo.x, alvo.y)?;
+            self.attack_at(x, y)?;
             let fim = std::time::Instant::now() + Duration::from_millis(600);
             while std::time::Instant::now() < fim {
                 match self.recv() {
                     Ok((header, _)) => {
                         if Opcode::from_wire(header.message_type) == Some(Opcode::RemoveMob)
-                            && header.id == alvo.id
+                            && header.id == id
                         {
-                            return Ok((alvo.x, alvo.y));
+                            return Ok(());
                         }
                     }
                     Err(erro)
@@ -371,18 +597,25 @@ impl Bot {
         }
         Err(Error::new(
             ErrorKind::TimedOut,
-            format!("{}: {nome} não morreu", self.race.nome()),
+            format!("{}: alvo {id} em ({x},{y}) não morreu", self.race.nome()),
         ))
     }
 
     /// Clica no tile do portão (`_MSG_Action`) e devolve o painel de resposta.
     pub fn open_gate(&mut self, x: i32, y: i32) -> std::io::Result<String> {
+        self.action_at((x, y), (x, y))?;
+        self.painel()
+    }
+
+    /// Envia um `_MSG_Action` de movimento/click de `from` para `to`.
+    pub fn action_at(&mut self, from: (i32, i32), to: (i32, i32)) -> std::io::Result<()> {
         let coord = |valor: i32| i16::try_from(valor).unwrap_or(0);
-        let (target_x, target_y) = (coord(x), coord(y));
+        let (pos_x, pos_y) = (coord(from.0), coord(from.1));
+        let (target_x, target_y) = (coord(to.0), coord(to.1));
         self.send(Opcode::Action, Action::WIRE_LEN, |frame| {
             Action {
-                pos_x: target_x,
-                pos_y: target_y,
+                pos_x,
+                pos_y,
                 effect: 0,
                 speed: 0,
                 route: [0; 24],
@@ -391,8 +624,24 @@ impl Bot {
             }
             .encode_into(frame)
             .expect("corpo do Action");
-        })?;
-        self.painel()
+        })
+    }
+
+    /// Anda até `to` em passos de 3 tiles, esperando o orçamento do servidor entre eles.
+    ///
+    /// O bot não conhece a própria posição pelo fio: `from` é a posição lida na cena.
+    pub fn walk_to(&mut self, from: (i32, i32), to: (i32, i32)) -> std::io::Result<(i32, i32)> {
+        let mut atual = from;
+        while atual != to {
+            let proximo = (
+                atual.0 + (to.0 - atual.0).clamp(-3, 3),
+                atual.1 + (to.1 - atual.1).clamp(-3, 3),
+            );
+            self.action_at(atual, proximo)?;
+            std::thread::sleep(Duration::from_millis(900));
+            atual = proximo;
+        }
+        Ok(atual)
     }
 
     /// Espera o próximo `_MSG_MessagePanel` da conexão.
@@ -506,6 +755,12 @@ pub struct SceneMob {
     pub name: String,
     pub x: i32,
     pub y: i32,
+    /// `STRUCT_SCORE` do `_MSG_CreateMob`: o teste cobra que a criatura chegue desenhável.
+    pub level: u16,
+    pub hp: u32,
+    pub max_hp: u32,
+    /// `Merchant` do `STRUCT_SCORE` (0 = sem loja).
+    pub merchant: u8,
 }
 
 /// Nome do `MobName[16]` sem a cauda NUL.

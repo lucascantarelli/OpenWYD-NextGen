@@ -87,7 +87,7 @@ export default async function PrometheusMonitorPage() {
               <h2 className="card__title">
                 <Gauge size={15} strokeWidth={1.8} aria-hidden="true" /> Alvos
               </h2>
-              <p className="card__sub">`up` por job — 1 = scrape respondendo.</p>
+              <p className="card__sub">Serviços monitorados: 1 significa respondendo.</p>
             </div>
             <a href={PROMETHEUS_PUBLIC_URL} target="_blank" rel="noreferrer">
               Abrir Prometheus

@@ -11,6 +11,7 @@ pub mod gui;
 pub mod identidade;
 pub mod manifest;
 pub mod patch;
+pub mod portal_client;
 pub mod serverlist;
 pub mod sha256;
 pub mod snbin;

@@ -46,14 +46,31 @@ cargo test -p wyd-admin --test contract
 - [x] Ficha de item (`?item=`, link no índice) + auditoria da leitura via `adminCall`
 - [x] Relatórios de economia (CSV) + alertas (ouro ≥ 1M, cidade zerada) + barras por cidade
 - [x] Integração catálogo → correio (link da ficha para `/correio`; concessão com chave rastreável)
-- [ ] Preços/atributos/requisitos na ficha — BLOQUEADO: `npc_admin/list_item_prices` etc. declarados sem handler (501); sem número inventado
+- [x] Preço de loja por (item, mercador): `npc_admin/list_item_prices` + `set_item_price` no gateway, tabela `item_price`, ficha com tabela de preços e editor em `/configuracoes?aba=precos`; sem preço = ausência, nunca zero
+- [ ] Atributos e requisitos na ficha — BLOQUEADO: `item_catalog/list_items` não devolve essas colunas; sem número inventado
 
 ## Critérios de aceite
 
-- [ ] Nenhum item sem fonte; nenhum preço sem `game_setting`.
+- [x] Nenhum preço inventado: preço só existe em `item_price`, com procedência (`portal#<conta>`) e auditoria.
+- [ ] Nenhum item sem fonte no catálogo.
 - [ ] Relatórios reproduzíveis do banco (queries nomeadas).
 
 ## Riscos / rollback
 
 - Risco: expor dado sensível de economia → mitigação: agregados por papel, sem linha por jogador para moderador.
 - Rollback: voltar a somente-leitura.
+
+## Verificação on-line (2026-11-11)
+
+- **Catálogo**: `/itens` abriu com 3.220 itens, busca e ordenação. Corrigido:
+  cabeçalho "Índice" truncado virou "Item"; contadores duplicados (topo +
+  rodapé da tabela) reduzidos a um.
+- **Ficha + preços**: preço por (item, mercador) lido de `item_price` e editável
+  em `/configuracoes?aba=precos`.
+- **Economia**: `/economia` mostrou imposto por cidade (vazio) e concessões por
+  tipo (1 pedido / 100 de ouro após a entrega de teste). Corrigido: dicas dos
+  cards não citam mais `city_tax_ledger`/`delivery_queue`/`gold_amount`.
+- **Atributos/requisitos na ficha**: continua BLOQUEADO porque
+  `item_catalog/list_items` não devolve essas colunas; não há número inventado.
+- **Dados do catálogo**: os nomes reais do seed são genéricos ("TransKnight",
+  "Foema" repetidos por índice) — é conteúdo do catálogo, não defeito da tela.

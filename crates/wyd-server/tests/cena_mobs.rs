@@ -92,6 +92,11 @@ fn autenticar(stream: &mut TcpStream, conta: &str, senha: &str, pin: &str) {
     );
     let (opcode, _, _) = ler_frame(stream, Duration::from_secs(10)).expect("resposta do login");
     assert_eq!(opcode, Opcode::CNFAccountLogin, "senha da conta aceita");
+    // Sequência do cliente 7662 na entrada do mundo (BUG-02): a seleção vai direto,
+    // sem repetir o PIN. Com `WYD_LIVE_SKIP_PIN` o teste prova esse caminho.
+    if std::env::var("WYD_LIVE_SKIP_PIN").is_ok() {
+        return;
+    }
     enviar(
         stream,
         11,

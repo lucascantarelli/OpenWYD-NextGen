@@ -8,7 +8,7 @@
 //! o reset de senha continua ato de staff (FASE-07-3), porque não há provedor de e-mail
 //! aprovado nem tabela de token de recuperação.
 
-use wyd_db::{Accounts, Characters, Role};
+use wyd_db::{Accounts, AuditTrail, Characters, Role, SessionTrail};
 
 use crate::audit::{log_panel, AuditSink};
 use crate::auth::Session;
@@ -48,6 +48,76 @@ pub struct RankingEntry {
 
 /// Limite máximo de linhas do ranking (o BFF pede 10; a rota nunca devolve mais que 100).
 pub const MAX_RANKING: usize = 100;
+
+/// Sessão do jogador vista por ele mesmo (sem login, sem id de conta).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PanelSession {
+    pub group_id: i16,
+    pub channel: i16,
+    pub client_version: i32,
+    pub character_id: Option<i64>,
+    pub opened_ms: u64,
+    pub renewed_ms: u64,
+    /// `None` = sessão ainda viva.
+    pub released_ms: Option<u64>,
+}
+
+/// Evento da trilha que pertence ao jogador (`auth.login`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PanelEvent {
+    pub at_ms: u64,
+    pub action: String,
+    /// `ok`, `conta bloqueada` ou `credencial recusada` — nunca a senha.
+    pub detail: String,
+}
+
+/// Histórico do jogador: últimas sessões e tentativas de login da própria conta.
+///
+/// `login` sai do banco pelo `account_id` da sessão assinada, nunca de parâmetro
+/// do browser. A trilha é filtrada pelo id do ator, não por texto de login.
+pub async fn own_history(
+    session: Option<Session>,
+    account_id: i64,
+    accounts: &impl Accounts,
+    sessions: &dyn SessionTrail,
+    audit: &dyn AuditTrail,
+    sink: &impl AuditSink,
+) -> Result<(Vec<PanelSession>, Vec<PanelEvent>), AdminError> {
+    let session = require_session(session)?;
+    let account_id = check_account(account_id)?;
+    let account = accounts.find_by_id(account_id).await?;
+    let linhas = sessions.recent_for_login(&account.login, 10).await?;
+    let eventos = audit.by_actor(account_id, Some("auth.login"), 20).await?;
+    log_panel(
+        sink,
+        session,
+        "panel.history",
+        &format!("account:{account_id}"),
+        &format!("{} sessão(ões), {} evento(s)", linhas.len(), eventos.len()),
+    );
+    Ok((
+        linhas
+            .into_iter()
+            .map(|row| PanelSession {
+                group_id: row.group_id,
+                channel: row.channel,
+                client_version: row.client_version,
+                character_id: row.character_id,
+                opened_ms: row.opened_ms,
+                renewed_ms: row.renewed_ms,
+                released_ms: row.released_ms,
+            })
+            .collect(),
+        eventos
+            .into_iter()
+            .map(|row| PanelEvent {
+                at_ms: row.at_ms,
+                action: row.action,
+                detail: row.detail,
+            })
+            .collect(),
+    ))
+}
 
 fn require_session(session: Option<Session>) -> Result<Session, AdminError> {
     session.ok_or(AdminError::Unauthorized)
@@ -185,6 +255,188 @@ pub fn request_recovery(
 mod tests {
     use super::*;
     use crate::audit::VecSink;
+    use wyd_db::{AuditRow, DbError, SessionHistoryRow};
+
+    /// Sessões falsas: prova que o histórico usa o login do **banco**, nunca um
+    /// login vindo de parâmetro, e que a janela é a pedida pela rota.
+    struct FakeTrail {
+        linhas: Vec<SessionHistoryRow>,
+        login_pedido: std::cell::RefCell<String>,
+    }
+
+    impl wyd_db::SessionTrail for FakeTrail {
+        fn recent_for_login(
+            &self,
+            login: &str,
+            limit: usize,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<Vec<SessionHistoryRow>, DbError>>
+                    + Send
+                    + '_,
+            >,
+        > {
+            *self.login_pedido.borrow_mut() = login.to_string();
+            let linhas = self.linhas.iter().take(limit).cloned().collect();
+            Box::pin(async move { Ok(linhas) })
+        }
+    }
+
+    struct FakeAudit {
+        linhas: Vec<AuditRow>,
+        ator_pedido: std::cell::RefCell<Option<i64>>,
+    }
+
+    impl wyd_db::AuditTrail for FakeAudit {
+        fn record<'a>(
+            &'a self,
+            _entry: &'a wyd_db::NewAuditEntry,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), DbError>> + Send + 'a>>
+        {
+            Box::pin(async { Ok(()) })
+        }
+
+        fn recent(
+            &self,
+            _limit: usize,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+        > {
+            Box::pin(async { Ok(Vec::new()) })
+        }
+
+        fn by_actor(
+            &self,
+            actor_id: i64,
+            _action: Option<&str>,
+            limit: usize,
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<Vec<AuditRow>, DbError>> + Send + '_>,
+        > {
+            *self.ator_pedido.borrow_mut() = Some(actor_id);
+            let linhas = self.linhas.iter().take(limit).cloned().collect();
+            Box::pin(async move { Ok(linhas) })
+        }
+    }
+
+    fn conta_de(id: i64) -> PanelAccount {
+        PanelAccount {
+            id,
+            login: "jogador".to_string(),
+            role: Role::Player,
+            pin_defined: false,
+        }
+    }
+
+    struct ContaUnica(i64);
+
+    impl Accounts for ContaUnica {
+        async fn find_by_login(&self, _login: &str) -> Result<wyd_db::Account, DbError> {
+            Err(DbError::NotFoundKey { entity: "account" })
+        }
+
+        async fn find_by_id(&self, id: i64) -> Result<wyd_db::Account, DbError> {
+            let login = if id == self.0 { "jogador" } else { "outro" };
+            Ok(wyd_db::Account {
+                id,
+                login: login.to_string(),
+                role: Role::Player,
+            })
+        }
+
+        async fn create_account(
+            &self,
+            login: &str,
+            role: Role,
+        ) -> Result<wyd_db::Account, DbError> {
+            Ok(wyd_db::Account {
+                id: 1,
+                login: login.to_string(),
+                role,
+            })
+        }
+
+        async fn pin_hash(&self, _login: &str) -> Result<Option<String>, DbError> {
+            Ok(None)
+        }
+    }
+
+    #[test]
+    fn historico_usa_o_login_do_banco_e_o_ator_da_conta() {
+        let sink = VecSink::default();
+        let sessoes = FakeTrail {
+            linhas: vec![SessionHistoryRow {
+                opened_ms: 1_700_000_000_000,
+                renewed_ms: 1_700_000_060_000,
+                released_ms: None,
+                group_id: 1,
+                channel: 2,
+                client_version: 76_620,
+                character_id: Some(9),
+            }],
+            login_pedido: std::cell::RefCell::new(String::new()),
+        };
+        let trilha = FakeAudit {
+            linhas: vec![AuditRow {
+                at_ms: 1_700_000_000_000,
+                actor_id: 7,
+                actor_role: "player".to_string(),
+                action: "auth.login".to_string(),
+                target: "jogador".to_string(),
+                detail: "ok".to_string(),
+            }],
+            ator_pedido: std::cell::RefCell::new(None),
+        };
+
+        let (sessoes_lidas, eventos) = crate::block_on(own_history(
+            session(),
+            7,
+            &ContaUnica(7),
+            &sessoes,
+            &trilha,
+            &sink,
+        ))
+        .expect("histórico");
+
+        assert_eq!(sessoes_lidas.len(), 1);
+        assert_eq!(sessoes_lidas[0].channel, 2);
+        assert_eq!(
+            *sessoes.login_pedido.borrow(),
+            "jogador",
+            "login vem do banco"
+        );
+        assert_eq!(
+            *trilha.ator_pedido.borrow(),
+            Some(7),
+            "trilha filtra pelo ator"
+        );
+        assert_eq!(eventos.len(), 1);
+        assert_eq!(sink.entries()[0].action, "panel.history");
+    }
+
+    #[test]
+    fn historico_sem_sessao_e_recusado_antes_de_ler() {
+        let sink = VecSink::default();
+        let sessoes = FakeTrail {
+            linhas: Vec::new(),
+            login_pedido: std::cell::RefCell::new(String::new()),
+        };
+        let trilha = FakeAudit {
+            linhas: Vec::new(),
+            ator_pedido: std::cell::RefCell::new(None),
+        };
+        let erro = crate::block_on(own_history(
+            None,
+            7,
+            &ContaUnica(7),
+            &sessoes,
+            &trilha,
+            &sink,
+        ));
+        assert_eq!(erro, Err(AdminError::Unauthorized));
+        assert!(sessoes.login_pedido.borrow().is_empty());
+        let _ = conta_de(7);
+    }
 
     fn session() -> Option<Session> {
         Some(Session {

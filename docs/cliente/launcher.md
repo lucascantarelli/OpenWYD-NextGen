@@ -67,12 +67,26 @@ inventário de assets: `docs/cliente/inventario.md`.
   Electron (pesado, duplica o que o SO já tem), egui/iced (nativo, mas sem
   HTML — portal não seria reusável na tela de notícias).
 
-## 6. Integração com o portal (proposta)
+## 6. Integração com o portal (contrato, LAUNCHER-01)
 
-O launcher GUI busca no portal (HTTPS, somente leitura): notícias/avisos,
-status dos canais (para montar `serverlist.bin`), versão/manifesto de patch
-e links (cadastro, suporte). Conta/login no launcher v1 = **opcional**
-(o jogo autentica no CPSock; o launcher não guarda senha).
+O launcher lê do portal (somente leitura, `crates/wyd-launcher/src/portal_client.rs`):
+
+| Endpoint | Conteúdo | Fonte | Cache |
+|---|---|---|---|
+| `GET /api/launcher/versao` | `client_build` 7662, `protocol_version` 12000, `config_revision` viva (null com gateway fora), `gateway_up` | constantes documentadas + gateway via token de processo (mesmo padrão de `/api/health`) | 60 s |
+| `GET /api/launcher/eventos` | grade de eventos (código/nome/estado/horários; vazia com gateway fora) | `world_event_admin/get_world_event_config` via token de processo — só sai dado público de jogo | 60 s |
+| `GET /api/launcher/manifesto` | `manifest.txt` real da distribuição (`build`, `protocol`, SHA-256 + tamanho por arquivo); `404` sem publicação | pasta montada em `LAUNCHER_DIST_DIR`, gerada por `tools/launcher/dist-manifest.mjs` | 60 s |
+| `GET /api/launcher/pacote` | binário do launcher com `x-checksum-sha256` no header; `404` sem pacote | mesmo diretório (`LAUNCHER_PACKAGE`, padrão `wyd-launcher.exe`) | 5 min |
+
+Sem TLS neste módulo (`http://` de loopback/rede local; `https://` entra com o canal
+de distribuição assinado). **Publicação real (2026-11-11):** o portal serve o manifesto e o
+pacote a partir de uma pasta de distribuição montada (`LAUNCHER_DIST_DIR`), gerada por
+`node tools/launcher/dist-manifest.mjs dist/launcher 7662 12000`; sem pasta, as duas rotas
+respondem `404` e a página de downloads mostra “não publicada” — nunca manifesto vazio.
+**Ainda fora do contrato:** `/api/launcher/noticias` (as notícias do portal são markdown
+versionado, não tabela), `/admin/patches` + canal de versão publicável (exige migration +
+`ConfigStore` + rotas, escopo backend próprio) e autoupdate do binário. Conta/login no
+launcher v1 = **opcional** (o jogo autentica no CPSock; o launcher não guarda senha).
 
 ## 7. Plano (issue GUI criada: FASE-08-8, decisão Tauri + nome WYD em 2026-11-07)
 

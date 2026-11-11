@@ -48,10 +48,11 @@ Saída esperada: `check` real OK; `update` adulterado recusado; patch gerado no 
 
 ## Subtasks
 
-- [ ] Núcleo `check/launch/serverlist/update` com testes reais
-- [ ] Leitura de notícias/versão do portal
-- [ ] Geração de patch no admin
-- [ ] Autoupdate assinado + GUI Tauri mínima jogável
+- [x] Núcleo `check/launch/serverlist/update` com testes reais (pré-existente: 60+4+3 testes verdes)
+- [x] Leitura de versão/eventos do portal (`portal_client.rs` std-puro + `/api/launcher/{versao,eventos}` públicos com cache de 60 s; 8 testes contra HTTP falso)
+- [ ] `/api/launcher/noticias` — BLOQUEADO: sem tabela de notícias; guias não são notícias
+- [ ] Geração de patch no admin (`/admin/patches`) — BLOQUEADO: exige canal de versão publicável (migration + `ConfigStore` + rotas de patch assinado, escopo backend próprio)
+- [ ] Autoupdate assinado + GUI Tauri mínima jogável (FASE-08-8 🚧)
 
 ## Critérios de aceite
 

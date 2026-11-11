@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cinzel, Manrope } from "next/font/google";
 
 import "./globals.css";
+import "./publico.css";
 
 /*
  * Duas famílias, dois papéis:

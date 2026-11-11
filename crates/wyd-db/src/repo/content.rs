@@ -18,6 +18,29 @@ use crate::pool::pg::PgBackend;
 pub struct CatalogItemRow {
     pub item_index: i64,
     pub name: String,
+    /// Preço de tabela do template (ouro); `0` = sem preço no template.
+    pub price: i64,
+    /// Grade do template (0 = comum; sobe com refino/variante).
+    pub grade: i16,
+    pub req_level: i16,
+    pub req_str: i16,
+    pub req_int: i16,
+    pub req_dex: i16,
+    pub req_con: i16,
+    /// Alcance em tiles; `None` = template não declara.
+    pub attack_range: Option<i16>,
+    /// Slot volátil do template; `None` = não volátil/não declarado.
+    pub volatile: Option<i16>,
+    /// Classificação de domínio (`docs/wyd/itens.md`); `None` = não classificada.
+    pub kind: Option<String>,
+    pub primary_system: Option<String>,
+    pub event_only: Option<bool>,
+    pub tradeable: Option<bool>,
+    pub stackable: Option<bool>,
+    /// Máscara textual de classes que podem equipar.
+    pub class_mask: Option<String>,
+    /// Efeitos nomeados do template (`EF_*`), como o seed grava.
+    pub effect_names: Vec<String>,
 }
 
 /// Teto de pilha e conteúdo de pack de um item (view `item_stack_cap`, migration `0039`).
@@ -157,12 +180,17 @@ impl PgBackend {
             id: 1,
         })?;
 
-        let rows = sqlx::query("SELECT item_index, name FROM item_catalog ORDER BY item_index")
-            .fetch_all(self.pool())
-            .await
-            .map_err(|_| DbError::Transport {
-                op: "catalog.items",
-            })?;
+        let rows = sqlx::query(
+            "SELECT item_index, name, price::bigint AS price, grade, req_level, req_str, \
+                    req_int, req_dex, req_con, attack_range, volatile, kind, primary_system, \
+                    event_only, tradeable, stackable, class_mask, effect_names \
+             FROM item_catalog ORDER BY item_index",
+        )
+        .fetch_all(self.pool())
+        .await
+        .map_err(|_| DbError::Transport {
+            op: "catalog.items",
+        })?;
 
         let mut items = Vec::with_capacity(rows.len());
         for row in &rows {
@@ -170,6 +198,24 @@ impl PgBackend {
             items.push(CatalogItemRow {
                 item_index: i64::from(row.try_get::<i32, _>("item_index").unwrap_or_default()),
                 name: row.try_get::<String, _>("name").unwrap_or_default(),
+                price: row.try_get::<i64, _>("price").unwrap_or_default(),
+                grade: row.try_get::<i16, _>("grade").unwrap_or_default(),
+                req_level: row.try_get::<i16, _>("req_level").unwrap_or_default(),
+                req_str: row.try_get::<i16, _>("req_str").unwrap_or_default(),
+                req_int: row.try_get::<i16, _>("req_int").unwrap_or_default(),
+                req_dex: row.try_get::<i16, _>("req_dex").unwrap_or_default(),
+                req_con: row.try_get::<i16, _>("req_con").unwrap_or_default(),
+                attack_range: row.try_get::<i16, _>("attack_range").ok(),
+                volatile: row.try_get::<i16, _>("volatile").ok(),
+                kind: row.try_get::<String, _>("kind").ok(),
+                primary_system: row.try_get::<String, _>("primary_system").ok(),
+                event_only: row.try_get::<bool, _>("event_only").ok(),
+                tradeable: row.try_get::<bool, _>("tradeable").ok(),
+                stackable: row.try_get::<bool, _>("stackable").ok(),
+                class_mask: row.try_get::<String, _>("class_mask").ok(),
+                effect_names: row
+                    .try_get::<Vec<String>, _>("effect_names")
+                    .unwrap_or_default(),
             });
         }
         Ok(CatalogSnapshot { version, items })

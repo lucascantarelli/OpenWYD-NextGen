@@ -13,6 +13,9 @@ use crate::error::AdminError;
 use crate::transport::json;
 
 use super::accounts::{staff_or_deny, AccountSummary};
+use super::donate::{
+    AccountLookupRow, DebitResult, DonateBuyerRow, DonateLedgerRow, DonateRevenueRow,
+};
 
 /// Teto do texto de fonte/nota aceito do staff.
 pub const MAX_SOURCE: usize = 160;
@@ -145,6 +148,31 @@ pub trait ConfigStore: Send + Sync {
         actor: i64,
     ) -> Result<(i64, bool), AdminError>;
 
+    /// Receita de donate: créditos, débitos e contagens (FASE-07-6, só leitura).
+    fn donate_revenue(&self) -> Result<DonateRevenueRow, AdminError>;
+
+    /// Extrato de recargas, mais recentes primeiro.
+    fn donate_credits(&self, limit: i64) -> Result<Vec<DonateLedgerRow>, AdminError>;
+
+    /// Extrato de débitos, mais recentes primeiro.
+    fn donate_debits(&self, limit: i64) -> Result<Vec<DonateLedgerRow>, AdminError>;
+
+    /// Contas que mais compraram créditos.
+    fn donate_top_buyers(&self, limit: i64) -> Result<Vec<DonateBuyerRow>, AdminError>;
+
+    /// Debita saldo de donate da conta, idempotente por chave.
+    fn debit_donate(
+        &self,
+        account_id: i64,
+        credits: i64,
+        key: &str,
+        reason: &str,
+        actor: i64,
+    ) -> Result<DebitResult, AdminError>;
+
+    /// Busca conta por prefixo de login (id + papel, sem segredo).
+    fn search_accounts(&self, term: &str, limit: i64) -> Result<Vec<AccountLookupRow>, AdminError>;
+
     fn set_route(
         &self,
         id: i32,
@@ -153,6 +181,41 @@ pub trait ConfigStore: Send + Sync {
         enabled: Option<bool>,
         actor: i64,
     ) -> Result<i64, AdminError>;
+
+    /// Preços de NPC (`item_price`), por item quando informado (FASE-07-5, só leitura).
+    fn item_prices(
+        &self,
+        item_index: Option<i32>,
+        limit: i64,
+    ) -> Result<Vec<ItemPriceRow>, AdminError>;
+
+    /// Grava o preço de (item, NPC) e devolve a revisão (auditado).
+    fn set_item_price(&self, edit: &ItemPriceEdit, actor: i64) -> Result<i64, AdminError>;
+}
+
+/// Preço de NPC exposto ao portal (`item_price`).
+///
+/// Tabela vazia = nenhum preço definido pelo dono do servidor: a tela mostra ausência,
+/// nunca zero nem estimativa.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ItemPriceRow {
+    pub item_index: i32,
+    pub item_name: String,
+    pub npc_id: i32,
+    pub npc_slug: String,
+    pub buy_price: i64,
+    pub sell_price: i64,
+    pub source: String,
+}
+
+/// Edição de preço de NPC (`item_index`/`npc_id` obrigatórios: a chave é o par).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ItemPriceEdit {
+    pub item_index: i32,
+    pub npc_id: i32,
+    pub buy_price: i64,
+    pub sell_price: i64,
+    pub source: String,
 }
 
 /// Edição de um peso de drop (agrupada para manter a assinatura curta).
@@ -635,6 +698,53 @@ mod tests {
         ) -> Result<(i64, bool), AdminError> {
             Ok((20, false))
         }
+
+        fn donate_revenue(&self) -> Result<DonateRevenueRow, AdminError> {
+            Ok(DonateRevenueRow::default())
+        }
+
+        fn donate_credits(&self, _limit: i64) -> Result<Vec<DonateLedgerRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn donate_debits(&self, _limit: i64) -> Result<Vec<DonateLedgerRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn donate_top_buyers(&self, _limit: i64) -> Result<Vec<DonateBuyerRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn debit_donate(
+            &self,
+            _account_id: i64,
+            _credits: i64,
+            _key: &str,
+            _reason: &str,
+            _actor: i64,
+        ) -> Result<DebitResult, AdminError> {
+            Ok(DebitResult::Applied(21))
+        }
+
+        fn search_accounts(
+            &self,
+            _term: &str,
+            _limit: i64,
+        ) -> Result<Vec<AccountLookupRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn item_prices(
+            &self,
+            _item_index: Option<i32>,
+            _limit: i64,
+        ) -> Result<Vec<ItemPriceRow>, AdminError> {
+            Ok(Vec::new())
+        }
+
+        fn set_item_price(&self, _edit: &ItemPriceEdit, _actor: i64) -> Result<i64, AdminError> {
+            Ok(21)
+        }
     }
 
     fn staff() -> Session {
@@ -684,7 +794,10 @@ mod tests {
         .expect("grava");
         assert_eq!(revision, 8);
         assert_eq!(store.chamadas.lock().expect("lock")[0], "refine:12=4000");
+        // PORTAL-05: a trilha carrega o autor real (conta de staff da sessão),
+        // nunca o corpo da chamada.
         assert_eq!(sink.entries()[0].action, "config.rate.set");
+        assert_eq!(sink.entries()[0].actor_id, 7);
     }
 
     #[test]

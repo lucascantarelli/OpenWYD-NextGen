@@ -1521,6 +1521,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "wyd-admin",
+ "wyd-bots",
  "wyd-core",
  "wyd-db",
  "wyd-net",

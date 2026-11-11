@@ -1,4 +1,5 @@
-import { SlidersHorizontal, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/Badge";
 import { RetryButton } from "@/components/RetryButton";
@@ -6,23 +7,23 @@ import {
   getNpc,
   getRates,
   listDrops,
+  listItemPrices,
   listRoutes,
   type AccessoryRuleWire,
   type DropWire,
+  type ItemPriceWire,
   type NpcWire,
   type RateWire,
   type RatesView,
   type RouteWire,
 } from "@/server/config";
 import { AdminError } from "@/server/errors";
-
-import { scheduleLabel, weekdayLabel } from "@/server/events";
-import type { WorldEventWire } from "@/server/events";
-import { getWorldEvents } from "@/server/events";
+import { getWorldEvents, scheduleLabel, weekdayLabel, type WorldEventWire } from "@/server/events";
 
 import {
   resetRateAction,
   saveDropAction,
+  saveItemPriceAction,
   saveNpcAction,
   saveRateBatchAction,
   saveRouteAction,
@@ -33,8 +34,24 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Configurações · WYD2" };
 
+/** Seções da tela: uma por vez, para a página não virar um rolo de campos. */
+const TABS = [
+  { id: "refino", label: "Refino" },
+  { id: "progressao", label: "EXP e multiplicadores" },
+  { id: "drops", label: "Drops" },
+  { id: "npc", label: "NPCs" },
+  { id: "teleportes", label: "Teleportes" },
+  { id: "precos", label: "Preços de loja" },
+  { id: "eventos", label: "Eventos" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
+
+const isTab = (value: string): value is TabId => TABS.some((tab) => tab.id === value);
+
+/** 10.000 = 100% nas tabelas de chance. */
 const pct = (bps: number): string =>
-  (bps / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  `${(bps / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 
 const FAIL_MODE: Record<string, string> = {
   keep: "mantém o refino",
@@ -43,336 +60,105 @@ const FAIL_MODE: Record<string, string> = {
 };
 
 const KIND: Record<string, string> = {
-  earring: "brinco",
-  necklace: "colar",
-  belt: "cinto",
-  amulet: "amuleto",
-  ankh: "ankh",
-  spirit_stone: "pedra espiritual",
+  earring: "Brinco",
+  necklace: "Colar",
+  belt: "Cinto",
+  amulet: "Amuleto",
+  ankh: "Ankh",
+  spirit_stone: "Pedra espiritual",
 };
 
-/** Tabela de taxas com um único formulário em lote (só o que mudou é gravado). */
-function RateTable({
+/**
+ * Tabela de chances com gravação em lote (só o que mudou é enviado).
+ *
+ * O valor é inteiro na base 10.000; a coluna "Equivale" mostra o percentual para
+ * quem pensa em porcentagem. Linha editada pode voltar ao padrão pela própria linha.
+ */
+function RateCard({
   title,
-  hint,
+  description,
   rows,
   domain,
-  scale,
-  source,
+  tab,
+  kind,
 }: {
   title: string;
-  hint: string;
+  description: string;
+  /** `rate` = chance (base 10.000); `int` = número puro; `coin` = ouro. */
+  kind: "rate" | "int";
   rows: RateWire[];
   domain: string;
-  scale: "bps" | "percent" | "int";
-  source: string;
+  tab: TabId;
 }) {
-  if (rows.length === 0) {
-    return (
-      <div className="card">
-        <div className="card__head">
-          <div>
-            <h2 className="card__title">{title}</h2>
-            <p className="card__sub">{hint}</p>
-          </div>
-        </div>
-        <div className="card__body">
-          <div className="empty">
-            <SlidersHorizontal size={20} strokeWidth={1.6} aria-hidden="true" />
-            <strong>Sem linhas</strong>
-            <p>O seed não trouxe nenhuma linha para esta família.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <form action={saveRateBatchAction} className="card">
+    <section className="card">
       <div className="card__head">
         <div>
           <h2 className="card__title">{title}</h2>
-          <p className="card__sub">{hint}</p>
-        </div>
-        <label className="login-field">
-          <span>Fonte desta edição</span>
-          <input className="ui-input" name="source" defaultValue={source} maxLength={160} required />
-        </label>
-      </div>
-      <div className="card__body card__body--flush">
-        <div className="ui-table-wrap">
-          <div className="ui-table-scroll">
-            <table className="ui-table">
-              <thead>
-                <tr>
-                  <th>Chave</th>
-                  <th>Valor</th>
-                  <th>{scale === "bps" ? "Percentual" : scale === "percent" ? "Unidade" : "Tipo"}</th>
-                  <th>Fonte</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const name = `rate:${domain}:${row.key}`;
-                  return (
-                    <tr key={name}>
-                      <td>
-                        <code>{row.key}</code>
-                      </td>
-                      <td>
-                        <input type="hidden" name={`orig:${domain}:${row.key}`} value={row.value} />
-                        <input
-                          className="ui-input"
-                          type="number"
-                          name={name}
-                          defaultValue={row.value}
-                          min={0}
-                          max={scale === "percent" ? 100 : undefined}
-                          step={1}
-                        />
-                      </td>
-                      <td>{scale === "bps" ? `${pct(row.value)}%` : row.unit}</td>
-                      <td>
-                        {row.source}
-                        {row.overridden ? " · override" : " · seed"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <p className="card__sub">{description}</p>
         </div>
       </div>
-      <div className="card__foot">
-        <button className="ui-btn ui-btn--primary" type="submit">
-          Gravar alterações
-        </button>
-      </div>
-    </form>
-  );
-}
-
-/** Tabela de refino de acessório: taxa por passo e receita. */
-function AccessoryTable({ rules }: { rules: AccessoryRuleWire[] }) {
-  const kinds = Array.from(new Set(rules.map((rule) => rule.kind)));
-  return (
-    <>
-      <div className="card__head">
-        <div>
-          <h2 className="card__title">Refino de acessório</h2>
-          <p className="card__sub">
-            Sistema posterior ao 7662. Regras do WYD Global/Bahamut; amuleto, ankh e pedra
-            espiritual ficam sem linha até existir fonte — o portal não inventa número. O
-            snapshot carrega as regras na recarga, mas o handler de refino de acessório
-            ainda não existe no servidor de jogo.
-          </p>
-        </div>
-      </div>
-      {kinds.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="card__body">
-          <div className="empty">
-            <SlidersHorizontal size={20} strokeWidth={1.6} aria-hidden="true" />
-            <strong>Nenhuma regra carregada</strong>
-            <p>A migration de seed 0038 não foi aplicada neste banco.</p>
-          </div>
+          <p className="muted small" style={{ margin: 0 }}>
+            Nada configurado nesta tabela.
+          </p>
         </div>
       ) : (
-        kinds.map((kind) => {
-          const rows = rules.filter((rule) => rule.kind === kind);
-          return (
-            <div className="card__body" key={kind}>
-              <h3 className="card__title">{KIND[kind] ?? kind}</h3>
-              <form action={saveRateBatchAction}>
-                <input type="hidden" name="source" value="wydglobal/3390" />
-                <div className="ui-table-wrap">
-                  <div className="ui-table-scroll">
-                    <table className="ui-table">
-                      <thead>
-                        <tr>
-                          <th>Receita</th>
-                          <th>Passo</th>
-                          <th>Taxa</th>
-                          <th>Falha</th>
-                          <th>Insumo</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((rule) => {
-                          const key = `accessory:${rule.kind}:${rule.recipe}:${rule.step_from}`;
-                          return (
-                            <tr key={key}>
-                              <td>
-                                <code>{rule.recipe}</code>
-                              </td>
-                              <td>
-                                +{rule.step_from} → +{rule.step_to}
-                              </td>
-                              <td>
-                                <input
-                                  type="hidden"
-                                  name={`orig:${key}`}
-                                  value={rule.rate_bps}
-                                />
-                                <input
-                                  className="ui-input"
-                                  type="number"
-                                  name={`rate:${key}`}
-                                  defaultValue={rule.rate_bps}
-                                  min={0}
-                                  max={10000}
-                                />
-                                <span> {pct(rule.rate_bps)}%</span>
-                              </td>
-                              <td>
-                                {FAIL_MODE[rule.fail_mode] ?? rule.fail_mode}
-                                {rule.fail_bonus_bps > 0
-                                  ? ` · consolação ${pct(rule.fail_bonus_bps)}%`
-                                  : ""}
-                              </td>
-                              <td>
-                                {rule.material_qty}× {rule.material_name}
-                                {rule.gold_cost > 0
-                                  ? ` · ${rule.gold_cost.toLocaleString("pt-BR")} ouro`
-                                  : ""}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <button className="ui-btn ui-btn--primary" type="submit">
-                  Gravar taxas
-                </button>
-              </form>
-            </div>
-          );
-        })
-      )}
-    </>
-  );
-}
-
-/** Editores de drops, NPC e teleporte. */
-function DropEditor({ drops }: { drops: DropWire[] }) {
-  return (
-    <div className="card">
-      <div className="card__head">
-        <div>
-          <h2 className="card__title">Drops</h2>
-          <p className="card__sub">
-            Peso comparado ao sorteio de 1..1.000.000 por item. Resolvedor pronto:
-            `Gameplay::loot` faz um sorteio por item da tabela. Ainda NÃO consumido em jogo:
-            nenhum caminho de produção o chama. Inspecionados sem resolução de
-            morte/caixa/pickup: `wyd_sim::resolve_attack`/`AttackOutcome`,
-            `wyd_sim::TICK_PHASES`, `wyd_sim::formula::drop::drops`/`effective_rate`/
-            `gem_bonus`, `wyd_sim::formula::accessory::attempt`,
-            `wyd_sim::formula::progression::grant_exp`/`exp_to_next`,
-            `wyd_core::systems::combat::attack`, `wyd_core::systems::npc::decide`,
-            `wyd_server::world::Command`/`Engine::step` e `cpsock::dispatch`
-            (sem Attack/NPC/pickup/teleporte).
-          </p>
-        </div>
-      </div>
-      <div className="card__body">
-        <form action={saveDropAction} className="field-grid">
-          <label className="login-field">
-            <span>Template do monstro</span>
-            <input className="ui-input" name="template_name" maxLength={120} required />
-          </label>
-          <label className="login-field">
-            <span>Item</span>
-            <input className="ui-input" name="item_index" type="number" min={1} required />
-          </label>
-          <label className="login-field">
-            <span>Peso</span>
-            <input className="ui-input" name="weight" type="number" min={1} required />
-          </label>
-          <label className="login-field">
-            <span>Qtd. mín.</span>
-            <input className="ui-input" name="min_qty" type="number" min={1} defaultValue={1} />
-          </label>
-          <label className="login-field">
-            <span>Qtd. máx.</span>
-            <input className="ui-input" name="max_qty" type="number" min={1} defaultValue={1} />
-          </label>
-          <label className="login-field">
-            <span>Fonte</span>
-            <input className="ui-input" name="source" maxLength={160} required />
-          </label>
-          <input type="hidden" name="intent" value="save" />
-          <button className="ui-btn ui-btn--primary" type="submit">
-            Gravar peso
-          </button>
-        </form>
-      </div>
-      <div className="card__body card__body--flush">
-        {drops.length === 0 ? (
-          <div className="empty">
-            <strong>Nenhum peso editado</strong>
-            <p>O servidor usa o seed; o primeiro peso gravado aparece aqui.</p>
-          </div>
-        ) : (
-          <div className="ui-table-wrap">
+        <>
+          <div className="card__body card__body--flush">
             <div className="ui-table-scroll">
               <table className="ui-table">
                 <thead>
                   <tr>
-                    <th>Monstro</th>
-                    <th>Item</th>
-                    <th>Peso</th>
-                    <th>Qtd.</th>
-                    <th>Fonte</th>
+                    <th>{domain === "refine" ? "Refino" : "Linha"}</th>
+                    <th className="ui-align-right">
+                      {kind === "rate" ? "Chance (10.000 = 100%)" : "Valor"}
+                    </th>
+                    <th className="ui-align-right">{kind === "rate" ? "Equivale" : "Unidade"}</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {drops.map((drop) => (
-                    <tr key={`${drop.template_name}#${drop.item_index}`}>
-                      <td>{drop.template_name}</td>
-                      <td>
-                        {drop.item_index} · {drop.item_name}
+                  {rows.map((row) => (
+                    <tr key={row.key}>
+                      <td className="mono">
+                        {domain === "refine" ? `+${row.key}` : row.key}
                       </td>
-                      <td colSpan={4}>
-                        <form action={saveDropAction} className="field-grid">
-                          <input type="hidden" name="template_name" value={drop.template_name} />
-                          <input type="hidden" name="item_index" value={drop.item_index} />
-                          <input
-                            className="ui-input"
-                            name="weight"
-                            type="number"
-                            min={1}
-                            defaultValue={drop.weight}
-                          />
-                          <input
-                            className="ui-input"
-                            name="min_qty"
-                            type="number"
-                            min={1}
-                            defaultValue={drop.min_qty}
-                          />
-                          <input
-                            className="ui-input"
-                            name="max_qty"
-                            type="number"
-                            min={1}
-                            defaultValue={drop.max_qty}
-                          />
-                          <input
-                            className="ui-input"
-                            name="source"
-                            maxLength={160}
-                            defaultValue={drop.source}
-                          />
-                          <button className="ui-btn" type="submit" name="intent" value="save">
-                            Salvar
+                      <td className="ui-align-right">
+                        <input
+                          className="ui-input ui-input--compact"
+                          type="number"
+                          name={`rate:${domain}:${row.key}`}
+                          form={`form-${domain}`}
+                          defaultValue={row.value}
+                          min={0}
+                          step={1}
+                          aria-label={`Valor de ${row.key}`}
+                        />
+                        <input
+                          type="hidden"
+                          name={`orig:${domain}:${row.key}`}
+                          value={row.value}
+                          form={`form-${domain}`}
+                        />
+                      </td>
+                      <td className="ui-align-right muted small">
+                        {kind === "rate" ? pct(row.value) : row.unit || "—"}
+                        {row.overridden ? " · editado" : ""}
+                      </td>
+                      <td className="ui-align-right">
+                        {row.overridden ? (
+                          <button
+                            className="ui-btn ui-btn--ghost ui-btn--sm"
+                            type="submit"
+                            name="key"
+                            value={row.key}
+                            form={`reset-${domain}-${row.key}`}
+                          >
+                            Voltar ao padrão
                           </button>
-                          <button className="ui-btn" type="submit" name="intent" value="reset">
-                            Remover
-                          </button>
-                        </form>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -380,40 +166,288 @@ function DropEditor({ drops }: { drops: DropWire[] }) {
               </table>
             </div>
           </div>
-        )}
+          <form id={`form-${domain}`} action={saveRateBatchAction} className="card__foot">
+            <input type="hidden" name="aba" value={tab} />
+            <span className="muted small">Só as linhas alteradas são gravadas.</span>
+            <button className="ui-btn ui-btn--primary" type="submit">
+              Salvar alterações
+            </button>
+          </form>
+          {rows
+            .filter((row) => row.overridden)
+            .map((row) => (
+              <form
+                key={`reset-form-${row.key}`}
+                id={`reset-${domain}-${row.key}`}
+                action={resetRateAction}
+                hidden
+              >
+                <input type="hidden" name="domain" value={domain} />
+                <input type="hidden" name="key" value={row.key} />
+              </form>
+            ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+function AccessoryCard({ rules }: { rules: AccessoryRuleWire[] }) {
+  const typed = rules;
+  const kinds = Array.from(new Set(typed.map((rule) => rule.kind)));
+  return (
+    <section className="card">
+      <div className="card__head">
+        <div>
+          <h2 className="card__title">Refino de acessório</h2>
+          <p className="card__sub">
+            Chance por passo e o custo em ouro/insumo. Só o que está na tabela aparece — o
+            servidor não inventa regra para acessório sem fonte.
+          </p>
+        </div>
       </div>
-    </div>
+      {kinds.length === 0 ? (
+        <div className="card__body">
+          <p className="muted small" style={{ margin: 0 }}>
+            Nenhuma regra carregada.
+          </p>
+        </div>
+      ) : (
+        <>
+          {kinds.map((kind) => {
+            const rows = typed.filter((rule) => rule.kind === kind);
+            return (
+              <div className="card__body" key={kind}>
+                <h3 className="card__title">{KIND[kind] ?? kind}</h3>
+                <div className="ui-table-scroll">
+                  <table className="ui-table">
+                    <thead>
+                      <tr>
+                        <th>Receita</th>
+                        <th>Passo</th>
+                        <th className="ui-align-right">Chance (10.000 = 100%)</th>
+                        <th className="ui-align-right">Equivale</th>
+                        <th>Se falhar</th>
+                        <th>Insumo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((rule) => {
+                        const key = `accessory:${rule.kind}:${rule.recipe}:${rule.step_from}`;
+                        return (
+                          <tr key={`${rule.recipe}-${rule.step_from}`}>
+                            <td className="mono">{rule.recipe}</td>
+                            <td>
+                              +{rule.step_from} → +{rule.step_to}
+                            </td>
+                            <td className="ui-align-right">
+                              <input
+                                className="ui-input ui-input--compact"
+                                type="number"
+                                name={`rate:${key}`}
+                                form="form-accessory"
+                                defaultValue={rule.rate_bps}
+                                min={0}
+                                step={1}
+                                aria-label={`Chance do passo +${rule.step_from}`}
+                              />
+                              <input
+                                type="hidden"
+                                name={`orig:${key}`}
+                                value={rule.rate_bps}
+                                form="form-accessory"
+                              />
+                            </td>
+                            <td className="ui-align-right muted small">{pct(rule.rate_bps)}</td>
+                            <td className="small">
+                              {FAIL_MODE[rule.fail_mode] ?? rule.fail_mode}
+                              {rule.fail_bonus_bps > 0
+                                ? ` · consolo de ${pct(rule.fail_bonus_bps)}`
+                                : ""}
+                            </td>
+                            <td className="small">
+                              {rule.material_qty}× {rule.material_name}
+                              {rule.gold_cost > 0
+                                ? ` · ${rule.gold_cost.toLocaleString("pt-BR")} de ouro`
+                                : ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+          <form id="form-accessory" action={saveRateBatchAction} className="card__foot">
+            <input type="hidden" name="aba" value="refino" />
+            <span className="muted small">Só as linhas alteradas são gravadas.</span>
+            <button className="ui-btn ui-btn--primary" type="submit">
+              Salvar alterações
+            </button>
+          </form>
+        </>
+      )}
+    </section>
+  );
+}
+
+function DropEditor({ drops }: { drops: DropWire[] }) {
+  return (
+    <section className="card">
+      <div className="card__head">
+        <div>
+          <h2 className="card__title">Drops por monstro</h2>
+          <p className="card__sub">
+            Peso do item no sorteio do monstro. Quanto maior o peso, mais chance de cair.
+          </p>
+        </div>
+      </div>
+      <div className="card__body">
+        <form action={saveDropAction} className="field-grid">
+          <label className="login-field">
+            <span>Monstro</span>
+            <input className="ui-input" name="template_name" maxLength={120} required />
+          </label>
+          <label className="login-field">
+            <span>Item (índice)</span>
+            <input className="ui-input" name="item_index" type="number" min={1} required />
+          </label>
+          <label className="login-field">
+            <span>Peso</span>
+            <input className="ui-input" name="weight" type="number" min={1} required />
+          </label>
+          <label className="login-field">
+            <span>Qtd. mínima</span>
+            <input className="ui-input" name="min_qty" type="number" min={1} defaultValue={1} />
+          </label>
+          <label className="login-field">
+            <span>Qtd. máxima</span>
+            <input className="ui-input" name="max_qty" type="number" min={1} defaultValue={1} />
+          </label>
+          <input type="hidden" name="intent" value="save" />
+          <button className="ui-btn ui-btn--primary" type="submit">
+            Adicionar drop
+          </button>
+        </form>
+      </div>
+      {drops.length === 0 ? (
+        <div className="card__body">
+          <p className="muted small" style={{ margin: 0 }}>
+            Nenhum drop ajustado ainda. O servidor usa a tabela de fábrica enquanto nada é
+            gravado aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="card__body card__body--flush">
+          <div className="ui-table-scroll">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Monstro</th>
+                  <th>Item</th>
+                  <th className="ui-align-right">Peso</th>
+                  <th className="ui-align-right">Qtd.</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {drops.map((drop) => (
+                  <tr key={`${drop.template_name}#${drop.item_index}`}>
+                    <td className="mono">{drop.template_name}</td>
+                    <td>
+                      {drop.item_name || "sem nome"}
+                      <span className="muted small"> #{drop.item_index}</span>
+                    </td>
+                    <td className="ui-align-right" colSpan={2}>
+                      <form action={saveDropAction} className="inline-form">
+                        <input type="hidden" name="template_name" value={drop.template_name} />
+                        <input type="hidden" name="item_index" value={drop.item_index} />
+                        <input
+                          className="ui-input ui-input--compact"
+                          name="weight"
+                          type="number"
+                          min={1}
+                          defaultValue={drop.weight}
+                          aria-label="Peso"
+                        />
+                        <input
+                          className="ui-input ui-input--compact"
+                          name="min_qty"
+                          type="number"
+                          min={1}
+                          defaultValue={drop.min_qty}
+                          aria-label="Quantidade mínima"
+                        />
+                        <input
+                          className="ui-input ui-input--compact"
+                          name="max_qty"
+                          type="number"
+                          min={1}
+                          defaultValue={drop.max_qty}
+                          aria-label="Quantidade máxima"
+                        />
+                        <button className="ui-btn ui-btn--sm" type="submit" name="intent" value="save">
+                          Salvar
+                        </button>
+                        <button
+                          className="ui-btn ui-btn--ghost ui-btn--sm"
+                          type="submit"
+                          name="intent"
+                          value="reset"
+                        >
+                          Remover
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
 function NpcEditor({ npc }: { npc: NpcWire | null }) {
   return (
-    <div className="card">
+    <section className="card">
       <div className="card__head">
         <div>
-          <h2 className="card__title">NPC</h2>
+          <h2 className="card__title">Posição do NPC</h2>
           <p className="card__sub">
-            Posição é definição de mundo: mapa 0..255, x/y 0..4095. O snapshot carrega a
-            linha na revisão, mas o spawn/diálogo de NPC ainda não existe no servidor de
-            jogo: editar aqui não move NPC em jogo ainda.
+            Onde o NPC fica e se aparece no mapa. Mapa 0–255; X e Y 0–4095.
           </p>
         </div>
       </div>
       <div className="card__body">
         <form method="get" action="/configuracoes" className="field-grid">
+          <input type="hidden" name="aba" value="npc" />
           <label className="login-field">
             <span>ID do NPC</span>
-            <input className="ui-input" name="npc" type="number" min={1} required />
+            <input
+              className="ui-input"
+              name="npc"
+              type="number"
+              min={1}
+              defaultValue={npc?.id}
+              required
+            />
           </label>
           <button className="ui-btn" type="submit">
-            Carregar
+            Buscar
           </button>
         </form>
       </div>
-      {npc && (
+      {npc ? (
         <div className="card__body">
           <p className="card__sub">
-            {npc.slug} · {npc.display_name || "sem nome"} · comerciante {npc.merchant}
+            <strong>{npc.display_name || npc.slug}</strong> · {npc.slug} ·{" "}
+            {npc.merchant > 0 ? "comerciante" : "sem loja"} ·{" "}
+            {npc.enabled ? "visível" : "oculto"}
           </p>
           <form action={saveNpcAction} className="field-grid">
             <input type="hidden" name="id" value={npc.id} />
@@ -454,193 +488,294 @@ function NpcEditor({ npc }: { npc: NpcWire | null }) {
               />
             </label>
             <label className="login-field">
-              <span>Visível</span>
+              <span>Aparece no mapa</span>
               <select className="ui-select" name="enabled" defaultValue={String(npc.enabled)}>
                 <option value="true">sim</option>
                 <option value="false">não</option>
               </select>
             </label>
             <button className="ui-btn ui-btn--primary" type="submit">
-              Gravar NPC
+              Salvar NPC
             </button>
           </form>
         </div>
-      )}
-    </div>
+      ) : null}
+    </section>
+  );
+}
+
+function PriceEditor({ itemIndex, prices }: { itemIndex: number; prices: ItemPriceWire[] }) {
+  return (
+    <section className="card">
+      <div className="card__head">
+        <div>
+          <h2 className="card__title">Preço de loja por NPC</h2>
+          <p className="card__sub">
+            O mesmo item pode custar diferente em cada mercador. Zero significa que o
+            mercador não compra (ou não vende) aquele item.
+          </p>
+        </div>
+      </div>
+      <div className="card__body">
+        <form method="get" action="/configuracoes" className="field-grid">
+          <input type="hidden" name="aba" value="precos" />
+          <label className="login-field">
+            <span>Ver preços do item</span>
+            <input
+              className="ui-input"
+              name="item"
+              type="number"
+              min={1}
+              defaultValue={itemIndex > 0 ? itemIndex : undefined}
+              required
+            />
+          </label>
+          <button className="ui-btn" type="submit">
+            Ver preços
+          </button>
+        </form>
+      </div>
+      {itemIndex > 0 ? (
+        prices.length === 0 ? (
+          <div className="card__body">
+            <p className="muted small" style={{ margin: 0 }}>
+              Nenhum mercador tem preço definido para este item.
+            </p>
+          </div>
+        ) : (
+          <div className="card__body card__body--flush">
+            <div className="ui-table-scroll">
+              <table className="ui-table">
+                <thead>
+                  <tr>
+                    <th>Mercador</th>
+                    <th className="ui-align-right">Compra</th>
+                    <th className="ui-align-right">Venda</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prices.map((price) => (
+                    <tr key={`${price.item_index}-${price.npc_id}`}>
+                      <td>
+                        #{price.npc_id} {price.npc_slug || ""}
+                      </td>
+                      <td className="ui-align-right">{price.buy_price.toLocaleString("pt-BR")}</td>
+                      <td className="ui-align-right">{price.sell_price.toLocaleString("pt-BR")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      ) : null}
+      <div className="card__head">
+        <div>
+          <h3 className="card__title">Definir preço</h3>
+          <p className="card__sub">
+            Vale para o par item + mercador. Salvar de novo o mesmo par substitui o preço.
+          </p>
+        </div>
+      </div>
+      <div className="card__body">
+        <form action={saveItemPriceAction} className="field-grid">
+          <label className="login-field">
+            <span>Item</span>
+            <input
+              className="ui-input"
+              name="item_index"
+              type="number"
+              min={1}
+              defaultValue={itemIndex > 0 ? itemIndex : undefined}
+              required
+            />
+          </label>
+          <label className="login-field">
+            <span>Mercador (ID do NPC)</span>
+            <input className="ui-input" name="npc_id" type="number" min={1} required />
+          </label>
+          <label className="login-field">
+            <span>Preço de compra</span>
+            <input className="ui-input" name="buy_price" type="number" min={0} defaultValue={0} required />
+          </label>
+          <label className="login-field">
+            <span>Preço de venda</span>
+            <input className="ui-input" name="sell_price" type="number" min={0} defaultValue={0} required />
+          </label>
+          <button className="ui-btn ui-btn--primary" type="submit">
+            Salvar preço
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
 
 function EventEditor({ events }: { events: WorldEventWire[] }) {
   return (
-    <div className="card">
+    <section className="card">
       <div className="card__head">
         <div>
           <h2 className="card__title">Eventos de mundo</h2>
           <p className="card__sub">
-            Ligar/desligar vale para o próximo leitor do dado (boot/tick que lê a tabela) —
-            nenhum push para o Hot Path. Horários de `event_schedule` com timezone explícita.
+            Liga e desliga eventos já cadastrados. O horário vem do cadastro do evento.
           </p>
         </div>
       </div>
-      <div className="card__body card__body--flush">
-        {events.length === 0 ? (
-          <p className="muted small" style={{ padding: 20, margin: 0 }}>
-            Nenhum evento cadastrado. Eventos entram por seed/captura; não são inventados aqui.
+      {events.length === 0 ? (
+        <div className="card__body">
+          <p className="muted small" style={{ margin: 0 }}>
+            Nenhum evento cadastrado.
           </p>
-        ) : (
-          <div className="ui-table-wrap">
-            <div className="ui-table-scroll">
-              <table className="ui-table">
-                <thead>
-                  <tr>
-                    <th>Evento</th>
-                    <th>Grade</th>
-                    <th>Ativo</th>
-                    <th />
+        </div>
+      ) : (
+        <div className="card__body card__body--flush">
+          <div className="ui-table-scroll">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Quando</th>
+                  <th>Ativo</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((event) => (
+                  <tr key={event.code}>
+                    <td>
+                      <strong>{event.name || event.code}</strong>
+                    </td>
+                    <td className="small">
+                      {event.schedules.length === 0 ? (
+                        <span className="muted">sem horário</span>
+                      ) : (
+                        event.schedules.map((slot) => (
+                          <div key={slot.id}>
+                            {weekdayLabel(slot.weekday)} ·{" "}
+                            {scheduleLabel(slot.start_time, slot.duration_minutes)}
+                            {slot.enabled ? "" : " (pausado)"}
+                          </div>
+                        ))
+                      )}
+                    </td>
+                    <td>
+                      <Badge tone={event.enabled ? "ok" : "neutral"}>
+                        {event.enabled ? "ligado" : "desligado"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <form action={setEventAction}>
+                        <input type="hidden" name="code" value={event.code} />
+                        <button
+                          className="ui-btn ui-btn--sm"
+                          type="submit"
+                          name="enabled"
+                          value={event.enabled ? "false" : "true"}
+                        >
+                          {event.enabled ? "Desligar" : "Ligar"}
+                        </button>
+                      </form>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {events.map((event) => (
-                    <tr key={event.code}>
-                      <td>
-                        <code>{event.code}</code> · {event.name || "sem nome"}
-                        {event.description ? (
-                          <span className="muted small"> — {event.description}</span>
-                        ) : null}
-                      </td>
-                      <td className="small">
-                        {event.schedules.length === 0 ? (
-                          <span className="muted">sem horários</span>
-                        ) : (
-                          <ul style={{ margin: 0, paddingLeft: 18 }}>
-                            {event.schedules.map((slot) => (
-                              <li key={slot.id}>
-                                {weekdayLabel(slot.weekday)} ·{" "}
-                                {scheduleLabel(slot.start_time, slot.duration_minutes)} ·{" "}
-                                {slot.timezone}
-                                {slot.enabled ? "" : " (pausado)"}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </td>
-                      <td>
-                        <Badge tone={event.enabled ? "ok" : "neutral"}>
-                          {event.enabled ? "sim" : "não"}
-                        </Badge>
-                      </td>
-                      <td>
-                        <form action={setEventAction}>
-                          <input type="hidden" name="code" value={event.code} />
-                          <button
-                            className="ui-btn"
-                            type="submit"
-                            name="enabled"
-                            value={event.enabled ? "false" : "true"}
-                          >
-                            {event.enabled ? "Desligar" : "Ligar"}
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
 
 function RouteEditor({ routes }: { routes: RouteWire[] }) {
   return (
-    <div className="card">
+    <section className="card">
       <div className="card__head">
         <div>
           <h2 className="card__title">Teleportes</h2>
           <p className="card__sub">
-            A rota (origem/destino) vem do conteúdo capturado; aqui se edita a política:
-            custo, nível mínimo e disponibilidade. O snapshot carrega a política, mas o
-            handler de teleporte ainda não existe no servidor de jogo.
+            Custo, nível mínimo e disponibilidade de cada rota. Origem e destino vêm do
+            conteúdo do jogo.
           </p>
         </div>
       </div>
-      <div className="card__body card__body--flush">
-        {routes.length === 0 ? (
-          <div className="empty">
-            <strong>Nenhuma rota cadastrada</strong>
-            <p>Rotas de teleporte entram com a captura do cliente; não são inventadas aqui.</p>
-          </div>
-        ) : (
-          <div className="ui-table-wrap">
-            <div className="ui-table-scroll">
-              <table className="ui-table">
-                <thead>
-                  <tr>
-                    <th>Rota</th>
-                    <th>Custo</th>
-                    <th>Nível</th>
-                    <th>Ativa</th>
-                    <th />
+      {routes.length === 0 ? (
+        <div className="card__body">
+          <p className="muted small" style={{ margin: 0 }}>
+            Nenhuma rota cadastrada.
+          </p>
+        </div>
+      ) : (
+        <div className="card__body card__body--flush">
+          <div className="ui-table-scroll">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Rota</th>
+                  <th className="ui-align-right">Ouro</th>
+                  <th className="ui-align-right">Nível</th>
+                  <th>Ativa</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {routes.map((route) => (
+                  <tr key={route.id}>
+                    <td>
+                      {route.from_map_id} ({route.from_x},{route.from_y}) → {route.to_map_id} (
+                      {route.to_x},{route.to_y})
+                    </td>
+                    <td colSpan={4}>
+                      <form action={saveRouteAction} className="inline-form">
+                        <input type="hidden" name="id" value={route.id} />
+                        <input
+                          className="ui-input ui-input--compact"
+                          name="cost_gold"
+                          type="number"
+                          min={0}
+                          defaultValue={route.cost_gold}
+                          aria-label="Custo em ouro"
+                        />
+                        <input
+                          className="ui-input ui-input--compact"
+                          name="req_level"
+                          type="number"
+                          min={1}
+                          defaultValue={route.req_level}
+                          aria-label="Nível mínimo"
+                        />
+                        <select
+                          className="ui-select ui-select--compact"
+                          name="enabled"
+                          defaultValue={String(route.enabled)}
+                          aria-label="Disponível"
+                        >
+                          <option value="true">ativa</option>
+                          <option value="false">inativa</option>
+                        </select>
+                        <button className="ui-btn ui-btn--sm" type="submit">
+                          Salvar
+                        </button>
+                      </form>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {routes.map((route) => (
-                    <tr key={route.id}>
-                      <td>
-                        #{route.id} · {route.from_map_id} ({route.from_x},{route.from_y}) →{" "}
-                        {route.to_map_id} ({route.to_x},{route.to_y})
-                      </td>
-                      <td colSpan={4}>
-                        <form action={saveRouteAction} className="field-grid">
-                          <input type="hidden" name="id" value={route.id} />
-                          <input
-                            className="ui-input"
-                            name="cost_gold"
-                            type="number"
-                            min={0}
-                            defaultValue={route.cost_gold}
-                          />
-                          <input
-                            className="ui-input"
-                            name="req_level"
-                            type="number"
-                            min={1}
-                            defaultValue={route.req_level}
-                          />
-                          <select
-                            className="ui-select"
-                            name="enabled"
-                            defaultValue={String(route.enabled)}
-                          >
-                            <option value="true">sim</option>
-                            <option value="false">não</option>
-                          </select>
-                          <button className="ui-btn" type="submit">
-                            Salvar
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
 
 /**
- * Configurações do servidor: taxas de refino/composição, refino de acessório, drops,
- * posição de NPC e política de teleporte.
+ * Configurações do servidor, divididas por assunto.
  *
- * O portal não escreve estado vivo nem reinicia o jogo: cada gravação incrementa
- * `config_revision`, e o servidor relê a configuração fora do tick.
+ * Uma seção por vez (`?aba=`) para a tela não virar um rolo de caixas de texto.
+ * Nada aqui reinicia o jogo: o servidor relê a configuração quando a revisão muda,
+ * e toda gravação entra na auditoria com quem editou.
  */
 export default async function ConfiguracoesPage({
   searchParams,
@@ -650,29 +785,38 @@ export default async function ConfiguracoesPage({
   const params = await searchParams;
   const one = (value: string | string[] | undefined): string =>
     Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+
+  const abaRaw = one(params.aba);
+  const aba: TabId = isTab(abaRaw) ? abaRaw : "refino";
   const ok = one(params.ok).trim();
   const erro = one(params.erro).trim();
   const npcId = Number(one(params.npc));
+  const priceItem = Number(one(params.item));
+  const priceItemId = Number.isInteger(priceItem) && priceItem > 0 ? priceItem : 0;
 
-  let data: RatesView | null = null;
+  let rates: RatesView | null = null;
   let drops: DropWire[] = [];
   let routes: RouteWire[] = [];
   let events: WorldEventWire[] = [];
+  let prices: ItemPriceWire[] = [];
   let npc: NpcWire | null = null;
   let error: string | null = null;
+
   try {
-    data = await getRates();
-    [drops, routes, events] = await Promise.all([listDrops(), listRoutes(), getWorldEvents()]);
-    if (Number.isInteger(npcId) && npcId > 0) npc = await getNpc(npcId);
+    if (aba === "refino" || aba === "progressao") rates = await getRates();
+    if (aba === "drops") drops = await listDrops();
+    if (aba === "teleportes") routes = await listRoutes();
+    if (aba === "eventos") events = await getWorldEvents();
+    if (aba === "precos" && priceItemId > 0) prices = await listItemPrices(priceItemId);
+    if (aba === "npc" && Number.isInteger(npcId) && npcId > 0) npc = await getNpc(npcId);
   } catch (err) {
     error = err instanceof AdminError ? err.message : "não foi possível ler a configuração agora";
   }
 
-  const refine = data?.rates.filter((row) => row.domain === "refine") ?? [];
-  const sanc = data?.rates.filter((row) => row.domain === "sanc") ?? [];
-  const combine = data?.rates.filter((row) => row.domain === "combine") ?? [];
-  const multipliers = data?.rates.filter((row) => row.domain === "multiplier") ?? [];
-  const settings = (data?.rates.filter((row) => row.domain === "setting") ?? []).slice(0, 40);
+  const byDomain = (domain: string): RateWire[] =>
+    rates?.rates.filter((row) => row.domain === domain) ?? [];
+  const settings = byDomain("setting");
+  const multipliers = byDomain("multiplier");
 
   return (
     <>
@@ -681,19 +825,31 @@ export default async function ConfiguracoesPage({
           <p className="page-head__eyebrow">Conteúdo</p>
           <h1 className="page-head__title">Configurações</h1>
           <p className="page-head__sub">
-            Taxas, drops, NPC e teleportes do servidor, com autor e valor anterior na trilha.
-            A gravação não reinicia o jogo: o servidor relê quando a revisão muda. Cada seção
-            diz se o valor já tem consumidor no servidor e onde ele é lido.
+            Ajustes do servidor, por assunto. O que você salva vale na próxima leitura do
+            servidor, sem reiniciar, e fica registrado na auditoria com o seu nome.
           </p>
         </div>
         <div className="page-head__actions">
           <Badge tone={error ? "warn" : "ok"}>
-            {error ? "indisponível" : `revisão ${data?.revision ?? 0}`}
+            {error ? "indisponível" : rates ? `revisão ${rates.revision}` : "no ar"}
           </Badge>
         </div>
       </div>
 
-      {erro && (
+      <nav className="chips" aria-label="Assuntos da configuração" style={{ marginBottom: 16 }}>
+        {TABS.map((tab) => (
+          <Link
+            key={tab.id}
+            className="chip"
+            href={`/configuracoes?aba=${tab.id}`}
+            aria-current={tab.id === aba ? "page" : undefined}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+
+      {erro ? (
         <div className="card">
           <div className="card__body">
             <p role="alert" className="login-error">
@@ -701,16 +857,14 @@ export default async function ConfiguracoesPage({
             </p>
           </div>
         </div>
-      )}
-      {ok && (
+      ) : null}
+      {ok ? (
         <div className="card">
           <div className="card__body">
-            <p role="status">
-              {ok === "1" ? "Configuração gravada." : `${ok} taxa(s) gravada(s).`}
-            </p>
+            <p role="status">Configuração salva.</p>
           </div>
         </div>
-      )}
+      ) : null}
 
       {error ? (
         <div className="card">
@@ -725,87 +879,62 @@ export default async function ConfiguracoesPage({
         </div>
       ) : (
         <>
-          <RateTable
-            title="Refino +0..+15"
-            hint="Basis points (10000 = 100%). O +12 segue o default documentado; mudar aqui não reescreve o seed. Consumido em jogo: `_MSG_UseItem` (`Opcode::UseItem`) → `cpsock::dispatch` → `SelectionStore::use_item` → `Gameplay::use_item` → `Gameplay::refine` lê a taxa a cada tentativa; `tests/config_gameplay.rs` prova recarga e reversão."
-            rows={refine}
-            domain="refine"
-            scale="bps"
-            source="WYD International"
-          />
-          <RateTable
-            title="SancRate (pó × refino atual)"
-            hint="Tabela do legado preservada: PO cobre 0..5, PL 0..9, Âmago até 11. Consumido em jogo pelo mesmo caminho do refino: `SelectionStore::use_item` → `Gameplay::use_item` → `Gameplay::refine` lê `powder_rate_bps` a cada tentativa; `tests/config_gameplay.rs` prova recarga, reversão e snapshot inválido."
-            rows={sanc}
-            domain="sanc"
-            scale="percent"
-            source="SancRate.txt"
-          />
-          <RateTable
-            title="Composição"
-            hint="Taxas e custos de Aylin, Compositor e Odin. ‘percent’ é ponto percentual; ‘coin’ é ouro. O snapshot recarrega os valores, mas o handler de composição ainda não existe no servidor de jogo."
-            rows={combine}
-            domain="combine"
-            scale="int"
-            source="CompRate.txt"
-          />
-          <RateTable
-            title="Multiplicadores de conteúdo"
-            hint="EXP, drop, ouro e ponto de skill (10000 = 100%). Sem linha = sem multiplicador. EXP tem gancho em `gain_exp`, que ainda não é chamado por pacote; drop tem resolvedor em `Gameplay::loot`, mas só teste o chama — não há morte/caixa/pickup nem handler de `_MSG_Attack`; ouro e ponto de skill não têm consumidor."
-            rows={multipliers}
-            domain="multiplier"
-            scale="bps"
-            source="game_setting"
-          />
-          <RateTable
-            title="Configurações do servidor"
-            hint="Chaves inteiras do gameconfig ligadas a taxa, drop, evento e guerra. As 40 primeiras. O snapshot carrega os valores, mas nenhum sistema de gameplay lê estas chaves ainda."
-            rows={settings}
-            domain="setting"
-            scale="int"
-            source="game_setting"
-          />
+          {aba === "refino" && (
+            <>
+              <RateCard
+                title="Refino de arma e armadura"
+                description="Chance de cada passo, de +0 a +15. 10.000 equivale a 100%."
+                kind="rate"
+                rows={byDomain("refine")}
+                domain="refine"
+                tab="refino"
+              />
+              <RateCard
+                title="Pó de refino"
+                description="Quanto o pó cobre do refino atual. 100 equivale a 100%."
+                kind="rate"
+                rows={byDomain("sanc")}
+                domain="sanc"
+                tab="refino"
+              />
+              <RateCard
+                title="Composição"
+                description="Chance e custo de composição de itens."
+                kind="rate"
+                rows={byDomain("combine")}
+                domain="combine"
+                tab="refino"
+              />
+              <AccessoryCard rules={rates?.accessories ?? []} />
+            </>
+          )}
 
-          <div className="card">
-            <AccessoryTable rules={data?.accessories ?? []} />
-          </div>
+          {aba === "progressao" && (
+            <>
+              <RateCard
+                title="Multiplicadores"
+                description="EXP, drop, ouro e ponto de skill. 10.000 equivale a 100%."
+                kind="rate"
+                rows={multipliers}
+                domain="multiplier"
+                tab="progressao"
+              />
+              <RateCard
+                title="Parâmetros do servidor"
+                description="Valores inteiros usados por eventos, guerra e taxas do jogo."
+                kind="int"
+                rows={settings}
+                domain="setting"
+                tab="progressao"
+              />
+            </>
+          )}
 
-          <DropEditor drops={drops} />
-          <NpcEditor npc={npc} />
-          <RouteEditor routes={routes} />
-          <EventEditor events={events} />
-
-          <div className="card">
-            <div className="card__head">
-              <div>
-                <h2 className="card__title">Restaurar default</h2>
-                <p className="card__sub">
-                  Refino, SancRate, composição e acessório aceitam restauração do valor
-                  documentado. Informe o domínio e a chave exatos.
-                </p>
-              </div>
-            </div>
-            <div className="card__body">
-              <form action={resetRateAction} className="field-grid">
-                <label className="login-field">
-                  <span>Domínio</span>
-                  <select className="ui-select" name="domain" defaultValue="refine">
-                    <option value="refine">refine</option>
-                    <option value="sanc">sanc</option>
-                    <option value="combine">combine</option>
-                    <option value="multiplier">multiplier</option>
-                  </select>
-                </label>
-                <label className="login-field">
-                  <span>Chave</span>
-                  <input className="ui-input" name="key" placeholder="12 · PO:5 · Odin.BASE" required />
-                </label>
-                <button className="ui-btn" type="submit">
-                  Restaurar
-                </button>
-              </form>
-            </div>
-          </div>
+          {aba === "drops" && <DropEditor drops={drops} />}
+          {aba === "npc" && <NpcEditor npc={npc} />}
+          {aba === "teleportes" && <RouteEditor routes={routes} />}
+          {aba === "precos" && <PriceEditor itemIndex={priceItemId} prices={prices} />}
+          {aba === "eventos" && <EventEditor events={events} />}
         </>
       )}
     </>

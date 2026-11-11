@@ -293,8 +293,8 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
     let superficie = superficie_do_portal();
     assert_eq!(
         superficie.len(),
-        15,
-        "15 serviços no admin-client.ts (contas, lista de contas, catálogo, sessão, presença, auditoria, economia, personagens, grants, donate, eventos, taxas, drops, NPC, teleporte)"
+        16,
+        "16 serviços no admin-client.ts (contas, lista de contas, catálogo, sessão, presença, auditoria, economia, personagens, grants, donate, receita de donate, eventos, taxas, drops, NPC, teleporte)"
     );
 
     let mut total = 0usize;
@@ -302,7 +302,7 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
         assert!(!metodos.is_empty(), "serviço {servico} declara métodos");
         total += metodos.len();
     }
-    assert_eq!(total, 36, "36 métodos declarados pelo portal");
+    assert_eq!(total, 44, "44 métodos declarados pelo portal");
 
     // `SERVICOS` ainda mantém o contrato legado para responder 501 auditado a
     // chamadas antigas; a paridade do portal vigente é provada pelo dispatch em
@@ -517,6 +517,48 @@ fn grant_is_idempotent_across_calls() {
     );
 }
 
+/// PORTAL-03: o correio concede item pela mesma fila idempotente do ouro.
+/// Mesma chave em `character_admin/grant_item` devolve o mesmo `grant_id` com
+/// `replay: true` — sem duplicar a linha nem o item no dreno.
+#[test]
+fn item_grant_is_idempotent_across_calls() {
+    let router = router();
+    let body = r#"{"idempotency_key":"correio-9-3321-x","character_id":9,"item_id":3321,"qty":1}"#;
+    let (status, first) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/character_admin/grant_item",
+            Some("staff"),
+            body,
+        ),
+    );
+    assert_eq!(status, 200);
+    assert_eq!(result_of(&first), 1);
+    assert_eq!(
+        first.get("replay").and_then(json::Json::as_bool),
+        Some(false)
+    );
+    let (_, second) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/character_admin/grant_item",
+            Some("staff"),
+            body,
+        ),
+    );
+    assert_eq!(result_of(&second), 1);
+    assert_eq!(
+        second.get("replay").and_then(json::Json::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        second.get("grant_id").and_then(json::Json::as_i64),
+        first.get("grant_id").and_then(json::Json::as_i64)
+    );
+}
+
 #[test]
 fn invalid_params_are_business_invalid_without_touching_repo() {
     let router = router();
@@ -529,6 +571,66 @@ fn invalid_params_are_business_invalid_without_touching_repo() {
     assert!(
         router.audit().entries().is_empty(),
         "validação falha antes de tocar repo/auditoria"
+    );
+}
+
+/// PORTAL-04: `npc_admin/{list_item_prices,set_item_price}` têm handler de verdade.
+///
+/// Sem `ConfigStore` montado a leitura responde 503 (não 501 de contrato pendente), e a
+/// escrita com corpo incompleto responde `INVALID` antes de qualquer store — a validação
+/// de forma acontece antes do acesso a dado.
+#[test]
+fn item_price_routes_have_handler_and_validate_shape_first() {
+    let router = router();
+
+    let (status, body) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/npc_admin/list_item_prices",
+            Some("staff"),
+            r#"{"limit":10}"#,
+        ),
+    );
+    assert_eq!(
+        status, 503,
+        "config não montada: 503, nunca 501 de contrato pendente"
+    );
+    assert!(
+        body.get("message").is_some(),
+        "a recusa explica que a configuração não está montada"
+    );
+
+    let (status, body) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/npc_admin/set_item_price",
+            Some("staff"),
+            r#"{}"#,
+        ),
+    );
+    assert_eq!(status, 200, "recusa de forma viaja no corpo");
+    assert_eq!(result_of(&body), 3);
+
+    let (status, body) = dispatch(
+        &router,
+        &raw(
+            "POST",
+            "/admin/v1/npc_admin/set_item_price",
+            Some("staff"),
+            r#"{"item_index":3321,"npc_id":1212,"buy_price":5000,"sell_price":1250,"source":"dono"}"#,
+        ),
+    );
+    assert_eq!(status, 503, "forma válida chega ao store ausente");
+    assert!(body.get("message").is_some());
+    assert!(
+        router
+            .audit()
+            .entries()
+            .iter()
+            .all(|entrada| entrada.action != "admin.pending"),
+        "nenhuma das duas rotas é pendência de contrato"
     );
 }
 

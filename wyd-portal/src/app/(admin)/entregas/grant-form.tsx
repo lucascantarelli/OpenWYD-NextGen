@@ -1,16 +1,16 @@
 "use client";
 
 import { Coins } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useEffect, useActionState, useState } from "react";
 
 import { grantGoldAction, type GrantGoldState } from "./actions";
 
 /**
- * Formulário de concessão de ouro para um personagem.
+ * Concessão de ouro para um personagem, em uma linha só.
  *
- * A chave de idempotência é visível e editável de propósito: reenviar a mesma
- * chave é um retry seguro (o gateway devolve o mesmo `grant_id` com replay), e
- * o staff vê a chave que está sendo usada.
+ * A chave de idempotência não aparece para o staff: ela é gerada por personagem
+ * e mantida entre reenvios da mesma página, o que já impede entrega dupla. O
+ * resultado da ação fica embaixo do formulário.
  */
 export function GrantForm({
   characterId,
@@ -28,48 +28,46 @@ export function GrantForm({
     grantGoldAction,
     { status: "idle" },
   );
+  // Antes da hidratação o `action` do formulário ainda é o do HTML e o clique não
+  // dispara a server action — o botão espera o React assumir o formulário.
+  const [pronto, setPronto] = useState(false);
+  useEffect(() => setPronto(true), []);
 
   return (
     <form action={formAction} className="grant-form">
       <input type="hidden" name="character_id" value={characterId} />
-      <label className="login-field grant-form__amount">
-        <span>Ouro</span>
-        <input
-          className="ui-input"
-          name="amount"
-          type="number"
-          min={1}
-          max={1_000_000}
-          defaultValue={100}
-          required
-        />
+      <input type="hidden" name="key" value={defaultKey} />
+      <label className="sr-only" htmlFor={`ouro-${characterId}`}>
+        Ouro a conceder para o personagem #{characterId}
       </label>
-      <label className="login-field grant-form__key-field">
-        <span>Chave de idempotência</span>
-        <input
-          className="ui-input"
-          name="key"
-          type="text"
-          defaultValue={defaultKey}
-          minLength={8}
-          maxLength={64}
-          required
-        />
-      </label>
-      <button className="ui-btn ui-btn--primary" type="submit" disabled={pending}>
-        <Coins size={15} strokeWidth={1.8} aria-hidden="true" />
-        {pending ? "Enviando…" : "Conceder ouro"}
+      <input
+        id={`ouro-${characterId}`}
+        className="ui-input ui-input--compact"
+        name="amount"
+        type="number"
+        min={1}
+        max={1_000_000}
+        defaultValue={100}
+        required
+      />
+      <button
+        className="ui-btn ui-btn--sm"
+        type="submit"
+        disabled={pending || !pronto}
+        aria-busy={pending}
+      >
+        <Coins size={13} strokeWidth={1.9} aria-hidden="true" />
+        {!pronto ? "Carregando…" : pending ? "Enviando…" : "Conceder"}
       </button>
-
       {state.status === "ok" && (
-        <p role="status" className="grant-form__result">
+        <span role="status" className="grant-form__result text-ok">
           {state.message}
-        </p>
+        </span>
       )}
       {state.status === "error" && (
-        <p role="alert" className="login-error">
+        <span role="alert" className="grant-form__result login-error">
           {state.message}
-        </p>
+        </span>
       )}
     </form>
   );

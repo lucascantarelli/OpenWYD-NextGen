@@ -313,6 +313,12 @@ impl Gameplay {
         Self { config }
     }
 
+    /// Foto de configuração vigente (NPCs, catálogo de loja, taxas).
+    #[must_use]
+    pub fn config(&self) -> Arc<crate::config::GameConfig> {
+        self.config.snapshot()
+    }
+
     /// Revisão usada pela última leitura (observabilidade/teste).
     #[must_use]
     pub fn revision(&self) -> i64 {
@@ -758,6 +764,24 @@ pub const fn quest_step_for(merchant: i16) -> Option<(i16, i64)> {
         MERCHANT_TRAINER_CHIEF => Some((3, QUEST_PROOF_EMBLEM)),
         _ => None,
     }
+}
+
+/// Aceite da quest no primeiro treinador (`Newbie` 0 do legado).
+///
+/// Sem isto o primeiro clique de um personagem recem-criado morre em `MissingProof` e nao
+/// existe linha em `character_quest`: a quest nunca "aparece". O aceite nao consome prova
+/// nem paga recompensa — so registra o estado inicial (etapa 1 = entregar a 451).
+pub fn quest_accept(level: i64, merchant: i16) -> Result<(), QuestRefusal> {
+    if level > QUEST_CAMPO_MAX_LEVEL {
+        return Err(QuestRefusal::LevelTooHigh {
+            level,
+            max: QUEST_CAMPO_MAX_LEVEL,
+        });
+    }
+    if merchant != MERCHANT_TRAINER_FIRST {
+        return Err(QuestRefusal::WrongMerchant { merchant });
+    }
+    Ok(())
 }
 
 /// Uma etapa do Campo: valida nivel, ordem, prova e reentrega; devolve a recompensa.

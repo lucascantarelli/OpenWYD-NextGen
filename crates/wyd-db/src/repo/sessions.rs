@@ -95,3 +95,33 @@ pub trait Sessions {
         channel: i16,
     ) -> impl Future<Output = Result<Option<ChannelRole>, DbError>> + Send;
 }
+
+/// Uma linha de `character_session` vista pelo dono da conta (área do jogador).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionHistoryRow {
+    /// Milissegundos desde a época UTC.
+    pub opened_ms: u64,
+    pub renewed_ms: u64,
+    /// `None` = sessão ainda viva (não liberada).
+    pub released_ms: Option<u64>,
+    pub group_id: i16,
+    pub channel: i16,
+    pub client_version: i32,
+    pub character_id: Option<i64>,
+}
+
+/// Leitura do histórico de sessões do jogador.
+///
+/// Trait separada de [`Sessions`] porque o gateway guarda a porta como trait
+/// object: `impl Future` no retorno (RPITIT) não é object-safe, então aqui o
+/// futuro vai empacotado, como em `AuditTrail`.
+pub trait SessionTrail {
+    /// Últimas `limit` sessões da conta (vivas e encerradas), da mais nova para a
+    /// mais antiga. A chave é o login — a tabela nasceu antes da autenticação por
+    /// `account_id` (`migration 0030`).
+    fn recent_for_login(
+        &self,
+        login: &str,
+        limit: usize,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<SessionHistoryRow>, DbError>> + Send + '_>>;
+}

@@ -34,3 +34,5 @@
 # Rust (workspace; sem Go no repo desde 2026-11)
 /target/
 **/*.rs.bk
+# Distribuição de artefatos (launcher/cliente): gerada, nunca versionada.
+/dist/

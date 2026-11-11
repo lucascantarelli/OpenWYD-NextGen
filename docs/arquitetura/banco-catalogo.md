@@ -24,7 +24,7 @@
 | catálogo | `content_version`, `game_system`, `game_class`, `skill_lineage`, `item_kind`, `item_effect`, `item_catalog`, `skill_catalog` |
 | combate | `mob_template_stat`, `mob_template_equip`, `drop_rate_override`, `content_rate_override` |
 | configuração | `config_revision`, `config_change` |
-| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet`, `donate_credit` |
+| economia | `city`, `item_price`, `personal_shop`, `city_tax_ledger`, `donate_shop_item`, `daily_reward_item`, `kingdom_cape_price`, `daily_reward_claim`, `account_wallet`, `donate_credit`, `donate_debit` |
 | eventos | `world_event`, `event_schedule`, `kefra_state`, `castle_state`, `event_participation` |
 | inventário | `character_items`, `vault_items`, `character_short_skill` |
 | moderação | `account_moderation` |
@@ -1805,6 +1805,27 @@
 | `credits` | `bigint` | não |
 | `created_by` | `bigint` | sim |
 
+### `donate_debit`
+
+- **Arquivo:** `0045_donate_debito.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** FASE-07-6 — razão de `debit_donate_balance` (idempotência por chave)
+- **Nota:** Débito de saldo de donate com `idempotency_key` UNIQUE: repetir a chave devolve o razão existente sem debitar duas vezes. A baixa é condicional (`account_wallet.coin >= credits`), então débito concorrente não deixa saldo negativo.
+- **PK:** `id`
+- **FK:** `account_id` → `accounts` · `created_by` → `accounts`
+- **CHECK:** `donate_debit_credits`, `donate_debit_reason`
+- **UNIQUE de tabela:** `idempotency_key`
+- **Índices:** `donate_debit_account_at_idx`
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `created_at` | `timestamp with time zone` | não |
+| `idempotency_key` | `text` | não |
+| `account_id` | `bigint` | não |
+| `credits` | `bigint` | não |
+| `reason` | `text` | não |
+| `created_by` | `bigint` | sim |
+
 ### `refine_pity`
 
 - **Arquivo:** `0043_piedade_refino.sql` · **Domínio:** refino · **Estado:** confirmado
@@ -1918,6 +1939,9 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0042 | `0042_credito_donate.sql` | DDL | `donate_credit` |
 | 0043 | `0043_piedade_refino.sql` | DDL | `refine_pity` |
 | 0044 | `0044_seed_quest_campo.sql` | seed | — |
+| 0045 | `0045_donate_debito.sql` | DDL | `donate_debit` |
+| 0046 | `0046_seed_campo_treinamento.sql` | seed | — |
+| 0047 | `0047_seed_limpeza_fixtures_campo.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no
