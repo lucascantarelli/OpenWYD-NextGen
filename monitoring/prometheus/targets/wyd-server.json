@@ -1,6 +1,6 @@
 [
   {
-    "targets": ["server:9898"],
+    "targets": ["server-canal-1:9898"],
     "labels": { "canal": "1", "service": "wyd-server" }
   },
   {

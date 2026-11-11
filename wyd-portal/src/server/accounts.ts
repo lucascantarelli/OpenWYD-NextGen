@@ -7,11 +7,15 @@
  */
 import { adminCall } from "./admin";
 import {
+  accountAdmin,
   accountsAdmin,
   type AccountModerationWire,
   type AccountSummary,
+  type AccountWire,
   type CreateAccountResponse,
   type FindAccountResponse,
+  type GetAccountResponse,
+  type ListAccountsResponse,
   type ModerationResponse,
 } from "./admin-client";
 import { AdminError } from "./errors";
@@ -82,6 +86,68 @@ export async function setAccountBlocked(input: {
   );
   if (!res.moderation) throw new Error("resposta sem o estado de moderação");
   return toModerationView(res.moderation);
+}
+
+/** Teto de contas por página (o mesmo do gateway, `api::accounts::MAX_LIMIT`). */
+export const MAX_ACCOUNT_PAGE = 200;
+
+/** Cursor `after_id` vindo da query string: só inteiro positivo vale. */
+export function parseAccountCursor(raw: string | string[] | undefined): number | undefined {
+  const text = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
+  const id = Number(text);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+}
+
+/** Linha de conta como a tela usa (papel normalizado, sem segredo). */
+export interface AccountRow {
+  id: number;
+  login: string;
+  role: string;
+}
+
+function toRow(wire: AccountWire): AccountRow {
+  return { id: wire.id, login: wire.login, role: wire.role };
+}
+
+/**
+ * Uma página de contas por id, sem segredo (`account_admin/list_accounts`, staff).
+ *
+ * Devolve as linhas e o cursor para a próxima página (último id, ou `undefined`
+ * quando a página veio incompleta — fim da lista).
+ */
+export async function listAccounts(input: {
+  limit?: number;
+  afterId?: number;
+}): Promise<{ rows: AccountRow[]; nextAfterId?: number }> {
+  const limit = Number.isInteger(input.limit)
+    ? Math.min(Math.max(input.limit as number, 1), MAX_ACCOUNT_PAGE)
+    : 50;
+  const res = await adminCall<{ limit: number; after_id?: number }, ListAccountsResponse>(
+    accountAdmin.listAccounts.bind(accountAdmin),
+    { limit, ...(input.afterId ? { after_id: input.afterId } : {}) },
+    { action: "accounts.list", target: "accounts" },
+  );
+  const rows = (res.accounts ?? []).map(toRow);
+  return {
+    rows,
+    nextAfterId: rows.length === limit ? rows[rows.length - 1]?.id : undefined,
+  };
+}
+
+/** Uma conta por id, sem segredo. `null` quando não existe (404 do gateway). */
+export async function getAccountById(id: number): Promise<AccountRow | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  try {
+    const res = await adminCall<{ id: number }, GetAccountResponse>(
+      accountAdmin.getAccount.bind(accountAdmin),
+      { id },
+      { action: "accounts.get", target: `account:${id}` },
+    );
+    return res.account ? toRow(res.account) : null;
+  } catch (error) {
+    if (error instanceof AdminError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /** Busca por login exato. `null` quando a conta não existe (404 do gateway). */

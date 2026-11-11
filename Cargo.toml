@@ -9,6 +9,7 @@ members = [
   "crates/wyd-server",
   "crates/wyd-sim",
   "crates/wyd-launcher",
+  "crates/wyd-bots",
 ]
 
 # Release otimizado (FASE-05-2, ADR-0017): LTO thin, uma unidade de codegen e strip.

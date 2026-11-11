@@ -623,3 +623,516 @@ fn effective_weight(
     // `docs/wyd/sistemas/drops.md` §1 para bônus de canal), com teto na escala do roll.
     Ok(effective_rate_with(escalado, &[citizen_bonus]))
 }
+//
+// Campo de Treinamento (FASE-03-18)
+// ---------------------------------------------------------------------------
+//
+// Fonte: `origin/main:Source/Code/TMSrv/_MSG_Quest.cpp` (switch por `Merchant`) e a
+// pesquisa `docs/wyd/pesquisa-campo-de-treinamento-2026-11-10.md` (decisao A: fiel ao
+// legado). As regras sao puras: quem grava banco/inventario e `SelectionStore`.
+
+/// Código da quest em `character_quest.quest_code` (`0044_seed_quest_campo`).
+pub const QUEST_CAMPO_CODE: &str = "campo_de_treinamento";
+/// Teto do Campo: nivel **1 a 35**; 36 ja e recusado (titulo/FAQ oficiais).
+pub const QUEST_CAMPO_MAX_LEVEL: i64 = 35;
+
+/// Provas das quatro etapas (`ItemDropList.txt`: 451/452/453/524).
+pub const QUEST_PROOF_FIRST: i64 = 451;
+pub const QUEST_PROOF_SECOND: i64 = 452;
+pub const QUEST_PROOF_LAST: i64 = 453;
+pub const QUEST_PROOF_EMBLEM: i64 = 524;
+
+/// Recompensas por item (`g_pItemList` do legado).
+pub const QUEST_HEAL_KIT: i64 = 682;
+pub const QUEST_GROWING_EYE: i64 = 481;
+pub const QUEST_CARBUNCLE_RUBY: i64 = 652;
+
+/// `Merchant` dos treinadores (`npc_definition.merchant`).
+pub const MERCHANT_TRAINER_FIRST: i16 = 36;
+pub const MERCHANT_TRAINER_SECOND: i16 = 40;
+pub const MERCHANT_TRAINER_THIRD: i16 = 41;
+pub const MERCHANT_TRAINER_CHIEF: i16 = 100;
+
+/// Valor do affect 44 da primeira etapa (200,200), aplicado como restauracao imediata.
+pub const QUEST_AFFECT_HEAL: i64 = 200;
+/// Bonus de encantamento do treinador 2/3: `50 + ReqLvl` do equipamento.
+pub const QUEST_ENCHANT_BASE: i64 = 50;
+/// `BASE_SetItemSanc(3)` do terceiro treinador.
+pub const QUEST_ENCHANT_SANC: i64 = 3;
+
+/// Recompensa de uma etapa, como o legado a aplica.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuestReward {
+    /// Entrega do item no primeiro slot de mochila livre.
+    Item(i64),
+    /// `SetItemBonus(50 + ReqLvl, 1, 0)` na arma (`Equip[6]`).
+    EnchantWeapon { bonus: i64 },
+    /// `SetItemBonus` em `Equip[1..7]` + `BASE_SetItemSanc(3)`.
+    EnchantEquip { bonus: i64, sanc: i64 },
+    /// `rand()%3` do legado: 682 / 481 / 652.
+    Random { options: [i64; 3], chosen: i64 },
+}
+
+/// Entrada do motor de quest: so estado, sem I/O.
+#[derive(Debug, Clone, Copy)]
+pub struct QuestEngage<'a> {
+    pub merchant: i16,
+    /// `Newbie` persistido (0..=3 = proxima etapa; 4 = concluida).
+    pub stage: i16,
+    /// Bits das recompensas ja pagas (idempotencia).
+    pub reward_mask: i32,
+    pub level: i64,
+    /// `item_id` de todo o inventario (equipamento + mochila).
+    pub inventory: &'a [i64],
+    /// `ReqLvl` da arma equipada; `None` = sem arma para encantar.
+    pub weapon_req_level: Option<i64>,
+    /// Sorteio do processo (nao do cliente).
+    pub roll: u8,
+}
+
+/// Etapa aceita pelo motor: o que consumir, o que entregar e o estado seguinte.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QuestStep {
+    /// `Newbie` depois da entrega (1..=4).
+    pub stage: i16,
+    pub consumed: i64,
+    pub reward: QuestReward,
+    pub reward_bit: i32,
+    pub completed: bool,
+}
+
+/// Recusas do Campo: todas viram mensagem ao cliente e linha de log, nunca recompensa.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuestRefusal {
+    /// Nivel acima do teto: nao inicia nem prossegue.
+    LevelTooHigh { level: i64, max: i64 },
+    /// NPC que nao e treinador do Campo.
+    WrongMerchant { merchant: i16 },
+    /// Treinador fora de ordem (a prova anterior nao foi entregue).
+    OutOfOrder {
+        merchant: i16,
+        expected: i16,
+        current: i16,
+    },
+    /// Falta a prova da etapa.
+    MissingProof { item: i64 },
+    /// Recompensa da etapa ja paga (reentrega).
+    AlreadyRewarded { stage: i16 },
+    /// Treinador 2/3 sem arma equipada.
+    MissingWeapon,
+}
+
+impl core::fmt::Display for QuestRefusal {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::LevelTooHigh { level, max } => {
+                write!(f, "nivel {level} acima do limite {max} do Campo")
+            }
+            Self::WrongMerchant { merchant } => {
+                write!(f, "NPC {merchant} nao e treinador do Campo")
+            }
+            Self::OutOfOrder {
+                merchant,
+                expected,
+                current,
+            } => write!(
+                f,
+                "treinador {merchant} fora de ordem: esperado {expected}, atual {current}"
+            ),
+            Self::MissingProof { item } => write!(f, "falta a prova {item}"),
+            Self::AlreadyRewarded { stage } => write!(f, "recompensa da etapa {stage} ja entregue"),
+            Self::MissingWeapon => write!(f, "sem arma equipada para encantar"),
+        }
+    }
+}
+
+impl std::error::Error for QuestRefusal {}
+
+/// Etapa e prova de cada `Merchant` (`_MSG_Quest.cpp`).
+#[must_use]
+pub const fn quest_step_for(merchant: i16) -> Option<(i16, i64)> {
+    match merchant {
+        MERCHANT_TRAINER_FIRST => Some((0, QUEST_PROOF_FIRST)),
+        MERCHANT_TRAINER_SECOND => Some((1, QUEST_PROOF_SECOND)),
+        MERCHANT_TRAINER_THIRD => Some((2, QUEST_PROOF_LAST)),
+        MERCHANT_TRAINER_CHIEF => Some((3, QUEST_PROOF_EMBLEM)),
+        _ => None,
+    }
+}
+
+/// Uma etapa do Campo: valida nivel, ordem, prova e reentrega; devolve a recompensa.
+pub fn quest_engage(request: &QuestEngage<'_>) -> Result<QuestStep, QuestRefusal> {
+    if request.level > QUEST_CAMPO_MAX_LEVEL {
+        return Err(QuestRefusal::LevelTooHigh {
+            level: request.level,
+            max: QUEST_CAMPO_MAX_LEVEL,
+        });
+    }
+    let (etapa, prova) = quest_step_for(request.merchant).ok_or(QuestRefusal::WrongMerchant {
+        merchant: request.merchant,
+    })?;
+    if request.stage != etapa {
+        return Err(QuestRefusal::OutOfOrder {
+            merchant: request.merchant,
+            expected: etapa,
+            current: request.stage,
+        });
+    }
+    let bit = 1i32 << etapa;
+    if request.reward_mask & bit != 0 {
+        return Err(QuestRefusal::AlreadyRewarded { stage: etapa });
+    }
+    if !request.inventory.contains(&prova) {
+        return Err(QuestRefusal::MissingProof { item: prova });
+    }
+    let bonus = || -> Result<i64, QuestRefusal> {
+        request
+            .weapon_req_level
+            .map(|req| QUEST_ENCHANT_BASE + req)
+            .ok_or(QuestRefusal::MissingWeapon)
+    };
+    let (reward, completed) = match etapa {
+        1 => (QuestReward::EnchantWeapon { bonus: bonus()? }, false),
+        2 => (
+            QuestReward::EnchantEquip {
+                bonus: bonus()?,
+                sanc: QUEST_ENCHANT_SANC,
+            },
+            false,
+        ),
+        3 => {
+            let options = [QUEST_HEAL_KIT, QUEST_GROWING_EYE, QUEST_CARBUNCLE_RUBY];
+            let chosen = options[usize::from(request.roll % 3)];
+            (QuestReward::Random { options, chosen }, true)
+        }
+        _ => (QuestReward::Item(QUEST_HEAL_KIT), false),
+    };
+    Ok(QuestStep {
+        stage: etapa + 1,
+        consumed: prova,
+        reward,
+        reward_bit: bit,
+        completed,
+    })
+}
+
+/// Recusas ao aplicar a recompensa no inventario.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuestApplyError {
+    /// Mochila (slots 16..79) sem slot livre para a recompensa.
+    InventoryFull,
+    /// Treinador de encantamento sem a arma em `Equip[6]`.
+    MissingWeapon,
+}
+
+impl core::fmt::Display for QuestApplyError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InventoryFull => write!(f, "mochila sem slot livre"),
+            Self::MissingWeapon => write!(f, "sem arma em Equip[6]"),
+        }
+    }
+}
+
+impl std::error::Error for QuestApplyError {}
+
+/// Resultado da aplicacao: onde a recompensa caiu (quando foi item).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QuestApplied {
+    pub granted_slot: Option<i64>,
+}
+
+/// Aplica a etapa no inventario: consome a prova e grava a recompensa.
+///
+/// A prova sai **antes** de a recompensa entrar (o legado devolve o slot); o encantamento
+/// grava `50 + ReqLvl` como par de bonus (`gem_effect`/`gem_value`, FASE-10 leva ao fio) e,
+/// no treinador 3, `refine = 3` (EF_SANC ja vai no `SendItem`).
+pub fn apply_quest_reward(
+    items: &mut Vec<ItemRow>,
+    step: &QuestStep,
+) -> Result<QuestApplied, QuestApplyError> {
+    if let Some(posicao) = items
+        .iter()
+        .position(|linha| linha.item_id == step.consumed && linha.qty > 0)
+    {
+        let linha = items.remove(posicao);
+        if linha.qty > 1 {
+            items.push(ItemRow {
+                qty: linha.qty - 1,
+                ..linha
+            });
+        }
+    }
+    match step.reward {
+        QuestReward::Item(item) | QuestReward::Random { chosen: item, .. } => {
+            let slots = i64::try_from(wyd_db::CARRY_SLOTS).unwrap_or(64);
+            let slot = (wyd_db::CARRY_FIRST_SLOT..wyd_db::CARRY_FIRST_SLOT + slots)
+                .find(|slot| {
+                    !items
+                        .iter()
+                        .any(|linha| linha.slot == *slot && linha.item_id != 0)
+                })
+                .ok_or(QuestApplyError::InventoryFull)?;
+            items.push(ItemRow {
+                slot,
+                item_id: item,
+                qty: 1,
+                ..ItemRow::default()
+            });
+            Ok(QuestApplied {
+                granted_slot: Some(slot),
+            })
+        }
+        QuestReward::EnchantWeapon { bonus } => {
+            let arma = items
+                .iter_mut()
+                .find(|linha| linha.slot == 6 && linha.item_id != 0)
+                .ok_or(QuestApplyError::MissingWeapon)?;
+            arma.gem_effect = 1;
+            arma.gem_value = bonus;
+            Ok(QuestApplied {
+                granted_slot: Some(6),
+            })
+        }
+        QuestReward::EnchantEquip { bonus, sanc } => {
+            let mut encantados = 0usize;
+            let mut primeiro = None;
+            for slot in 1..=7 {
+                if let Some(linha) = items
+                    .iter_mut()
+                    .find(|linha| linha.slot == slot && linha.item_id != 0)
+                {
+                    linha.gem_effect = 1;
+                    linha.gem_value = bonus;
+                    linha.refine = linha.refine.max(sanc);
+                    encantados += 1;
+                    primeiro.get_or_insert(slot);
+                }
+            }
+            if encantados == 0 {
+                return Err(QuestApplyError::MissingWeapon);
+            }
+            Ok(QuestApplied {
+                granted_slot: primeiro,
+            })
+        }
+    }
+}
+//
+// Portões do Campo de Treinamento (FASE-03-18 / chaves)
+// ---------------------------------------------------------------------------
+//
+// Legado: `_MSG_UpdateItem.cpp` trata o item de porta como item de mundo — `ItemID + 10000`,
+// `EF_KEYID` da chave, estado `STATE_LOCKED` (3) → `STATE_OPEN` (1), chave apagada e o
+// `Server.cpp` fecha pelo `Delay`. Aqui o portão é lógico (não há entidade de porta no
+// snapshot), mas as três regras que importam são as mesmas: casa pelo `EF_KEYID`, a chave é
+// consumida e o portão fecha por tempo.
+
+/// Portão do Campo: ponto no mapa e o `EF_KEYID` que o abre.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CampGate {
+    pub id: i16,
+    pub x: i32,
+    pub y: i32,
+    /// `EF_KEYID` da chave: 2 = 451, 3 = 452, 4 = 453 (`0018_seed_item_catalog`).
+    pub key_ef: i32,
+}
+
+/// Os três portões (`docs/wyd/pesquisa-campo-de-treinamento-2026-11-10.md` §1.2).
+pub const CAMP_GATES: [CampGate; 3] = [
+    CampGate {
+        id: 1,
+        x: 2075,
+        y: 2016,
+        key_ef: 2,
+    },
+    CampGate {
+        id: 2,
+        x: 2143,
+        y: 1986,
+        key_ef: 3,
+    },
+    CampGate {
+        id: 3,
+        x: 2081,
+        y: 1962,
+        key_ef: 4,
+    },
+];
+
+/// Tempo que o portão fica aberto (`Delay` do legado; 30 s é valor de servidor).
+pub const CAMP_GATE_OPEN_MS: u64 = 30_000;
+/// Distância máxima entre o personagem e o portão clicado (o `Action` valida no servidor).
+pub const CAMP_GATE_RANGE: i32 = 2;
+
+/// `EF_KEYID` de cada prova do Campo.
+#[must_use]
+pub const fn proof_key_ef(item: i64) -> Option<i32> {
+    match item {
+        QUEST_PROOF_FIRST => Some(2),
+        QUEST_PROOF_SECOND => Some(3),
+        QUEST_PROOF_LAST => Some(4),
+        _ => None,
+    }
+}
+
+/// Item de prova que carrega um `EF_KEYID`.
+#[must_use]
+pub const fn proof_for_key_ef(key_ef: i32) -> Option<i64> {
+    match key_ef {
+        2 => Some(QUEST_PROOF_FIRST),
+        3 => Some(QUEST_PROOF_SECOND),
+        4 => Some(QUEST_PROOF_LAST),
+        _ => None,
+    }
+}
+
+/// Portão no ponto clicado (match exato, como o item de mundo do legado).
+#[must_use]
+pub fn gate_at(x: i32, y: i32) -> Option<CampGate> {
+    CAMP_GATES
+        .iter()
+        .copied()
+        .find(|gate| gate.x == x && gate.y == y)
+}
+
+/// Recusas ao usar a chave.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GateError {
+    /// Nada no ponto clicado.
+    NoGate,
+    /// Personagem longe do portão.
+    OutOfRange,
+    /// Portão já está aberto.
+    AlreadyOpen,
+    /// Nenhuma chave do inventário tem o `EF_KEYID` do portão.
+    WrongKey,
+}
+
+impl core::fmt::Display for GateError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NoGate => write!(f, "nao ha portao neste ponto"),
+            Self::OutOfRange => write!(f, "longe do portao"),
+            Self::AlreadyOpen => write!(f, "portao ja esta aberto"),
+            Self::WrongKey => write!(f, "chave sem o EF_KEYID do portao"),
+        }
+    }
+}
+
+impl std::error::Error for GateError {}
+
+/// Resultado aceito de abrir um portão.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GateOutcome {
+    pub gate: i16,
+    pub key_ef: i32,
+    /// Item consumido (`451`/`452`/`453`).
+    pub key_item: i64,
+    pub closes_at_ms: u64,
+}
+
+/// Portões abertos por id, com o instante de fechamento.
+#[derive(Debug, Default)]
+pub struct GateBook {
+    open: std::collections::BTreeMap<i16, u64>,
+}
+
+impl GateBook {
+    /// Abre o portão se `keys` contém o `EF_KEYID` dele. Não consome nada aqui: quem apaga a
+    /// chave do inventário é o `SelectionStore` (a decisão de cobrar é de quem grava).
+    pub fn open(
+        &mut self,
+        gate: CampGate,
+        keys: &[i32],
+        now_ms: u64,
+    ) -> Result<GateOutcome, GateError> {
+        if self.is_open(gate.id, now_ms) {
+            return Err(GateError::AlreadyOpen);
+        }
+        if !keys.contains(&gate.key_ef) {
+            return Err(GateError::WrongKey);
+        }
+        let closes_at_ms = now_ms.saturating_add(CAMP_GATE_OPEN_MS);
+        self.open.insert(gate.id, closes_at_ms);
+        Ok(GateOutcome {
+            gate: gate.id,
+            key_ef: gate.key_ef,
+            key_item: proof_for_key_ef(gate.key_ef).unwrap_or(0),
+            closes_at_ms,
+        })
+    }
+
+    /// Portão aberto **agora** (fechamento é preguiçoso: comparar o instante basta).
+    #[must_use]
+    pub fn is_open(&self, gate: i16, now_ms: u64) -> bool {
+        self.open
+            .get(&gate)
+            .is_some_and(|closes_at| *closes_at > now_ms)
+    }
+
+    /// Portões ainda abertos em `now_ms` (observabilidade/teste).
+    #[must_use]
+    pub fn abertos(&self, now_ms: u64) -> usize {
+        self.open.values().filter(|fecha| **fecha > now_ms).count()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Entrega de loot ao inventário (FASE-03-18)
+// ---------------------------------------------------------------------------
+//
+// O abate já rolava a tabela de drop (`loot_at_death`), mas o resultado só ia para o log.
+// O legado entrega no `Carry` com teto de pilha (`item_stack_cap`, 120) e recusa o que não
+// cabe (o item fica no chão). É isso que aqui se reproduz: empilhar antes de abrir slot.
+
+/// Teto de pilha do inventário (`item_stack_cap`/`0039`: 120 para aglutinável).
+pub const MAX_STACK: i64 = 120;
+
+/// Entrega `qty` de `item_index` na mochila.
+///
+/// Empilha nas linhas de mochila do mesmo item até [`MAX_STACK`] e só então ocupa o primeiro
+/// slot livre de `16..80`. Devolve o último slot tocado (o que o cliente precisa para o
+/// `_MSG_SendItem`); `None` = não havia slot (nada é inventado, o drop fica no chão).
+pub fn add_item(items: &mut Vec<ItemRow>, item_index: i32, qty: i32) -> Option<i64> {
+    if item_index <= 0 || qty <= 0 {
+        return None;
+    }
+    let alvo = i64::from(item_index);
+    let mut restante = i64::from(qty);
+    let mut ultimo = None;
+    for linha in items
+        .iter_mut()
+        .filter(|linha| linha.item_id == alvo && linha.carry_slot().is_some())
+    {
+        let espaco = MAX_STACK.saturating_sub(linha.qty);
+        if espaco <= 0 {
+            continue;
+        }
+        let entra = espaco.min(restante);
+        linha.qty += entra;
+        restante -= entra;
+        ultimo = Some(linha.slot);
+        if restante == 0 {
+            return ultimo;
+        }
+    }
+    let slots = i64::try_from(wyd_db::CARRY_SLOTS).unwrap_or(64);
+    while restante > 0 {
+        let slot = (wyd_db::CARRY_FIRST_SLOT..wyd_db::CARRY_FIRST_SLOT + slots).find(|slot| {
+            !items
+                .iter()
+                .any(|linha| linha.slot == *slot && linha.item_id != 0)
+        })?;
+        let entra = restante.min(MAX_STACK);
+        items.push(ItemRow {
+            slot,
+            item_id: alvo,
+            qty: entra,
+            ..ItemRow::default()
+        });
+        restante -= entra;
+        ultimo = Some(slot);
+    }
+    ultimo
+}

@@ -16,12 +16,17 @@ import {
 } from "@/server/config";
 import { AdminError } from "@/server/errors";
 
+import { scheduleLabel, weekdayLabel } from "@/server/events";
+import type { WorldEventWire } from "@/server/events";
+import { getWorldEvents } from "@/server/events";
+
 import {
   resetRateAction,
   saveDropAction,
   saveNpcAction,
   saveRateBatchAction,
   saveRouteAction,
+  setEventAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -465,6 +470,90 @@ function NpcEditor({ npc }: { npc: NpcWire | null }) {
   );
 }
 
+function EventEditor({ events }: { events: WorldEventWire[] }) {
+  return (
+    <div className="card">
+      <div className="card__head">
+        <div>
+          <h2 className="card__title">Eventos de mundo</h2>
+          <p className="card__sub">
+            Ligar/desligar vale para o próximo leitor do dado (boot/tick que lê a tabela) —
+            nenhum push para o Hot Path. Horários de `event_schedule` com timezone explícita.
+          </p>
+        </div>
+      </div>
+      <div className="card__body card__body--flush">
+        {events.length === 0 ? (
+          <p className="muted small" style={{ padding: 20, margin: 0 }}>
+            Nenhum evento cadastrado. Eventos entram por seed/captura; não são inventados aqui.
+          </p>
+        ) : (
+          <div className="ui-table-wrap">
+            <div className="ui-table-scroll">
+              <table className="ui-table">
+                <thead>
+                  <tr>
+                    <th>Evento</th>
+                    <th>Grade</th>
+                    <th>Ativo</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event) => (
+                    <tr key={event.code}>
+                      <td>
+                        <code>{event.code}</code> · {event.name || "sem nome"}
+                        {event.description ? (
+                          <span className="muted small"> — {event.description}</span>
+                        ) : null}
+                      </td>
+                      <td className="small">
+                        {event.schedules.length === 0 ? (
+                          <span className="muted">sem horários</span>
+                        ) : (
+                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                            {event.schedules.map((slot) => (
+                              <li key={slot.id}>
+                                {weekdayLabel(slot.weekday)} ·{" "}
+                                {scheduleLabel(slot.start_time, slot.duration_minutes)} ·{" "}
+                                {slot.timezone}
+                                {slot.enabled ? "" : " (pausado)"}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                      <td>
+                        <Badge tone={event.enabled ? "ok" : "neutral"}>
+                          {event.enabled ? "sim" : "não"}
+                        </Badge>
+                      </td>
+                      <td>
+                        <form action={setEventAction}>
+                          <input type="hidden" name="code" value={event.code} />
+                          <button
+                            className="ui-btn"
+                            type="submit"
+                            name="enabled"
+                            value={event.enabled ? "false" : "true"}
+                          >
+                            {event.enabled ? "Desligar" : "Ligar"}
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RouteEditor({ routes }: { routes: RouteWire[] }) {
   return (
     <div className="card">
@@ -568,11 +657,12 @@ export default async function ConfiguracoesPage({
   let data: RatesView | null = null;
   let drops: DropWire[] = [];
   let routes: RouteWire[] = [];
+  let events: WorldEventWire[] = [];
   let npc: NpcWire | null = null;
   let error: string | null = null;
   try {
     data = await getRates();
-    [drops, routes] = await Promise.all([listDrops(), listRoutes()]);
+    [drops, routes, events] = await Promise.all([listDrops(), listRoutes(), getWorldEvents()]);
     if (Number.isInteger(npcId) && npcId > 0) npc = await getNpc(npcId);
   } catch (err) {
     error = err instanceof AdminError ? err.message : "não foi possível ler a configuração agora";
@@ -683,6 +773,7 @@ export default async function ConfiguracoesPage({
           <DropEditor drops={drops} />
           <NpcEditor npc={npc} />
           <RouteEditor routes={routes} />
+          <EventEditor events={events} />
 
           <div className="card">
             <div className="card__head">

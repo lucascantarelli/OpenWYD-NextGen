@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 
 import { DataTable, type Column } from "@/components/DataTable";
@@ -26,7 +27,11 @@ export function ItemBrowser({
         header: "Índice",
         align: "right",
         sortValue: (item) => item.item_index,
-        render: (item) => <span className="mono">{item.item_index}</span>,
+        render: (item) => (
+        <Link href={`/itens?item=${item.item_index}`} className="mono">
+          {item.item_index}
+        </Link>
+      ),
       },
       {
         key: "name",

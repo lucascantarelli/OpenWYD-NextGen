@@ -14,12 +14,24 @@ const fmtInt = (value: number | null): string =>
   value === null ? "—" : value.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 
 /**
- * Logs: volume por serviço nos últimos 15 min (Loki).
+ * Logs: volume por serviço nos últimos 15 min (Loki) + exportação filtrada.
  *
  * O pipeline é Docker → Alloy → Loki; a tela não guarda log, só agrega. O texto
- * completo continua no Loki, alcançável pelo link do topo.
+ * completo sai por `/api/logs/export` (staff, NDJSON, última 1h, até 1000 linhas).
  */
-export default async function LogsMonitorPage() {
+export default async function LogsMonitorPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const pick = (key: string): string => {
+    const raw = params[key];
+    return (Array.isArray(raw) ? raw[0] : raw ?? "").trim();
+  };
+  const container = pick("container") || "all";
+  const level = pick("level") || "all";
+  const q = pick("q");
   const snapshot = await getMonitoringSnapshot();
   const logs = snapshot.logs;
   const errors = logs.services.reduce((acc, row) => acc + row.errors, 0);
@@ -33,9 +45,43 @@ export default async function LogsMonitorPage() {
           <h1 className="page-head__title">Logs</h1>
           <p className="page-head__sub">Volume, erros e avisos por serviço nos últimos 15 minutos.</p>
         </div>
+        <div className="page-head__actions">
+          <a
+            className="ui-btn ui-btn--secondary"
+            href={`/api/logs/export?container=${encodeURIComponent(container)}&level=${encodeURIComponent(level)}&q=${encodeURIComponent(q)}&limit=500`}
+          >
+            Baixar NDJSON (1h)
+          </a>
+        </div>
       </div>
 
       <MonitorNav current="/monitoramento/logs" />
+
+      <form className="ui-filters" action="/monitoramento/logs" method="get" role="search">
+        <select className="ui-input" name="container" defaultValue={container} aria-label="Serviço">
+          {["all", "wyd-canal-1", "wyd-canal-2", "wyd-gateway", "wyd-db", "wyd-portal", "wyd-loki", "wyd-alloy"].map((c) => (
+            <option key={c} value={c}>
+              {c === "all" ? "todos os serviços" : c}
+            </option>
+          ))}
+        </select>
+        <select className="ui-input" name="level" defaultValue={level} aria-label="Nível">
+          <option value="all">todos os níveis</option>
+          <option value="error">erros</option>
+          <option value="warn">avisos</option>
+        </select>
+        <input
+          className="ui-input"
+          type="search"
+          name="q"
+          defaultValue={q}
+          placeholder="texto exato (máx. 64, sem LogQL)"
+          aria-label="Texto exato"
+        />
+        <button className="ui-btn ui-btn--primary" type="submit">
+          Aplicar no download
+        </button>
+      </form>
 
       <div className="stats">
         <Stat

@@ -29,6 +29,7 @@ use wyd_protocol::codec::checksum::{self, ChecksumPolicy};
 use wyd_protocol::codec::keyword::{decode_in_place, encode_in_place};
 use wyd_protocol::payload::combat::Attack;
 use wyd_protocol::payload::movement::Action;
+use wyd_protocol::payload::quest::Quest;
 use wyd_protocol::payload::scene::{CreateMob, RemoveMob};
 use wyd_protocol::payload::ui::MessagePanel;
 use wyd_protocol::payload::WirePayload;
@@ -457,6 +458,14 @@ fn handshake(
                 "login",
                 &format!("result=refused account={conta} reason={error}"),
             );
+            // Senha/versão recusada: mesmo ponto único das demais recusas, com o código
+            // próprio no trailer (`NewAccountFail` é o `*Fail` do login).
+            let _ = reply_recusa(
+                stream,
+                header.key_word,
+                Opcode::NewAccountFail,
+                wyd_protocol::motivo::CodigoRecusa::Senha,
+            );
             return Err(HandshakeError::Auth(error.to_string()));
         }
     }
@@ -575,7 +584,12 @@ fn authorize_pin(
                             "pin",
                             &format!("result=refused account={account} reason=change_not_armed"),
                         );
-                        let _ = reply(stream, head[2], Opcode::AccountSecureFail);
+                        let _ = reply_recusa(
+                            stream,
+                            head[2],
+                            Opcode::AccountSecureFail,
+                            wyd_protocol::motivo::CodigoRecusa::PinIncorreto,
+                        );
                         return Err(HandshakeError::Pin("troca sem PIN atual".to_string()));
                     }
                     _ => auth.secure_pin(account, &pacote.numeric_token),
@@ -602,6 +616,20 @@ fn authorize_pin(
                         );
                         // Sessão só abre com o PIN aceito; conflito de cerca também responde
                         // `0x0FDF` para o cliente não achar que entrou.
+                        // Gancho de operação/teste: força `ContaEmUso` sem depender de uma
+                        // segunda sessão real; mesmo `reply_recusa` do caminho normal.
+                        if std::env::var("WYD_TEST_FORCE_CONTA_EM_USO").is_ok() {
+                            let _ = reply_recusa(
+                                stream,
+                                head[2],
+                                Opcode::AccountSecureFail,
+                                wyd_protocol::motivo::CodigoRecusa::ContaEmUso,
+                            );
+                            return Err(HandshakeError::Session(
+                                "conta em uso (forçado por WYD_TEST_FORCE_CONTA_EM_USO)"
+                                    .to_string(),
+                            ));
+                        }
                         match open_session(account, sessions, version) {
                             Ok(lease) => {
                                 if !reply(stream, head[2], Opcode::AccountSecure) {
@@ -612,7 +640,12 @@ fn authorize_pin(
                                 return Ok(lease);
                             }
                             Err(error) => {
-                                let _ = reply(stream, head[2], Opcode::AccountSecureFail);
+                                let _ = reply_recusa(
+                                    stream,
+                                    head[2],
+                                    Opcode::AccountSecureFail,
+                                    wyd_protocol::motivo::CodigoRecusa::ContaEmUso,
+                                );
                                 return Err(error);
                             }
                         }
@@ -623,7 +656,14 @@ fn authorize_pin(
                             "pin",
                             &format!("result=refused account={account} reason={error}"),
                         );
-                        let _ = reply(stream, head[2], Opcode::AccountSecureFail);
+                        let motivo = if error.to_string().to_lowercase().contains("bloque")
+                            || error.to_string().to_lowercase().contains("aguarde")
+                        {
+                            wyd_protocol::motivo::CodigoRecusa::PinBloqueado
+                        } else {
+                            wyd_protocol::motivo::CodigoRecusa::PinIncorreto
+                        };
+                        let _ = reply_recusa(stream, head[2], Opcode::AccountSecureFail, motivo);
                         return Err(HandshakeError::Pin(error.to_string()));
                     }
                 }
@@ -946,6 +986,16 @@ fn dispatch(
             }
         }
         Opcode::CharacterLogin => {
+            // Gancho de operação/teste: força a recusa de zona sem mexer no caminho normal.
+            // O código é escolhido aqui e sai pelo mesmo `reply_recusa` (ponto único).
+            if std::env::var("WYD_TEST_FORCE_ZONA").is_ok() {
+                return reply_recusa(
+                    stream,
+                    key_word,
+                    Opcode::CharacterLoginFail,
+                    wyd_protocol::motivo::CodigoRecusa::ZonaIndisponivel,
+                );
+            }
             let resultado = match selection {
                 Some(store) => select_character(store, frame, account),
                 None => Err(SelectionError::Unavailable),
@@ -976,9 +1026,11 @@ fn dispatch(
                         None => Ok(None),
                     };
                     match entrada {
-                        Ok(entity) => {
-                            let client_id = entity
-                                .map_or(0, |entidade| u16::try_from(entidade.index).unwrap_or(0));
+                        Ok(entrada) => {
+                            let (entity, client_id) = match entrada {
+                                Some(entrada) => (Some(entrada.entity), entrada.scene_id),
+                                None => (None, 0),
+                            };
                             *stage = Stage::InGame {
                                 entity,
                                 selected: Box::new(selected.clone()),
@@ -996,8 +1048,6 @@ fn dispatch(
                                     )
                                 ),
                             );
-                            let client_id = entity
-                                .map_or(0, |entidade| u16::try_from(entidade.index).unwrap_or(0));
                             let corpo = character_login_body(
                                 &mob,
                                 u16::try_from(personagem.slot).unwrap_or(0),
@@ -1012,7 +1062,20 @@ fn dispatch(
                                 ID_SCENE,
                                 Opcode::CNFCharacterLogin,
                                 &corpo,
-                            );
+                            )
+                                // O legado manda o `UpdateScore` do próprio personagem
+                                // logo depois do `CNF` e **antes** da cena
+                                // (`ProcessDBMessage` → `enterWorldView` → `sendScoreSelf`,
+                                // porte Go `handler/character.go`): é o que pinta as barras
+                                // de HP/MP/EXP na entrada. Sem ele o cliente fica com o
+                                // score do blob de login.
+                                && reply_with_body(
+                                    stream,
+                                    key_word,
+                                    client_id,
+                                    Opcode::UpdateScore,
+                                    &crate::personagens::update_score_body(&mob),
+                                );
                             // Cena logo depois do `CNF`: todo NPC materializado pela revisão
                             // vigente de `npc_definition` chega como `_MSG_CreateMob` com
                             // `HEADER.ID = ESCENE_FIELD` (o id vai em `MobID`).
@@ -1026,7 +1089,12 @@ fn dispatch(
                                     "result=refused action=enter account={account} reason={error}"
                                 ),
                             );
-                            reply(stream, key_word, Opcode::CharacterLoginFail)
+                            reply_recusa(
+                                stream,
+                                key_word,
+                                Opcode::CharacterLoginFail,
+                                wyd_protocol::motivo::CodigoRecusa::ZonaIndisponivel,
+                            )
                         }
                     }
                 }
@@ -1036,7 +1104,12 @@ fn dispatch(
                         "character",
                         &format!("result=refused action=select account={account} reason={error}"),
                     );
-                    reply(stream, key_word, Opcode::CharacterLoginFail)
+                    let motivo = if error.to_string().contains("payload") {
+                        wyd_protocol::motivo::CodigoRecusa::SelecaoInvalida
+                    } else {
+                        wyd_protocol::motivo::CodigoRecusa::PersonagemIndisponivel
+                    };
+                    reply_recusa(stream, key_word, Opcode::CharacterLoginFail, motivo)
                 }
             }
         }
@@ -1239,6 +1312,8 @@ fn dispatch(
         Opcode::Attack => handle_attack::<13>(stream, frame, key_word, account, stage, selection),
         // `_MSG_Action` de NPC: o clique vira diálogo com o dado de `npc_definition`.
         Opcode::Action => handle_action(stream, frame, key_word, account, stage, selection),
+        // `_MSG_Quest` (0x028B): treinadores do Campo de Treinamento (FASE-03-18).
+        Opcode::Quest => handle_quest(stream, frame, key_word, account, stage, selection),
         // Sem layout portado (UNVERIFIED) ou fora do escopo deste processo: tolerar, registrar
         // e seguir. Fechar a conexão aqui era o defeito que derrubava a sessão.
         outro => {
@@ -1358,15 +1433,59 @@ fn handle_attack<const N: usize>(
                     packet.target_y
                 ),
             );
+            let mut envio_ok = true;
             match &report.loot {
-                Some(Ok(loot)) => log(
-                    "info",
-                    "loot",
-                    &format!(
-                        "result=resolved account={account} npc={} template={} rolls={:?} drops={:?}",
-                        report.target_npc, loot.template, loot.rolls, loot.drops
-                    ),
-                ),
+                Some(Ok(loot)) => {
+                    log(
+                        "info",
+                        "loot",
+                        &format!(
+                            "result=resolved account={account} npc={} template={} rolls={:?} drops={:?}",
+                            report.target_npc, loot.template, loot.rolls, loot.drops
+                        ),
+                    );
+                    // Entrega no inventário: empilha/ocupa slot, grava e avisa o cliente por
+                    // `_MSG_SendItem` (o legado manda o slot entregue, não a mochila inteira).
+                    match store.grant_loot(selected, &loot.drops) {
+                        Ok(slots) => {
+                            log(
+                                "info",
+                                "loot",
+                                &format!(
+                                    "result=inventory account={account} npc={} slots={slots:?}",
+                                    report.target_npc
+                                ),
+                            );
+                            for slot in slots {
+                                let Some(linha) =
+                                    selected.items.iter().find(|linha| linha.slot == slot)
+                                else {
+                                    continue;
+                                };
+                                let item = Item::from_row(linha).to_bytes();
+                                if !reply_send_item(
+                                    stream,
+                                    key_word,
+                                    *client_id,
+                                    0,
+                                    i32::try_from(slot).unwrap_or(0),
+                                    item,
+                                ) {
+                                    envio_ok = false;
+                                    break;
+                                }
+                            }
+                        }
+                        Err(error) => log(
+                            "warn",
+                            "loot",
+                            &format!(
+                                "result=refused account={account} npc={} reason=inventory:{error}",
+                                report.target_npc
+                            ),
+                        ),
+                    }
+                }
                 Some(Err(error)) => log(
                     "warn",
                     "loot",
@@ -1383,6 +1502,9 @@ fn handle_attack<const N: usize>(
                         report.target_npc, report.template
                     ),
                 ),
+            }
+            if !envio_ok {
+                return false;
             }
             send_remove_mob(stream, key_word, report.target_scene, RemoveMob::DEATH)
         }
@@ -1408,6 +1530,100 @@ fn handle_attack<const N: usize>(
     }
 }
 
+/// `_MSG_Quest` (0x028B): etapa do Campo de Treinamento no treinador clicado.
+///
+/// `Parm1` é o `MobID` do NPC na cena; o **merchant** vem do mundo (`npc_definition`), não do
+/// pacote, e o estágio/prova/recompensa vêm do motor puro (`gameplay::quest_engage`). O
+/// sorteio do treinador 4 é do processo (`loot_seed`), nunca do cliente.
+fn handle_quest(
+    stream: &mut TcpStream,
+    frame: &[u8],
+    key_word: u8,
+    account: &str,
+    stage: &mut Stage,
+    selection: Option<&SelectionStore>,
+) -> bool {
+    let (
+        Stage::InGame {
+            selected,
+            client_id,
+            ..
+        },
+        Some(store),
+    ) = (&mut *stage, selection)
+    else {
+        log(
+            "warn",
+            "quest",
+            &format!("result=refused account={account} reason=not_in_game"),
+        );
+        return true;
+    };
+    let packet = match Quest::decode(frame) {
+        Ok(packet) => packet,
+        Err(error) => {
+            log(
+                "warn",
+                "quest",
+                &format!("result=refused account={account} reason=layout:{error}"),
+            );
+            return true;
+        }
+    };
+    let scene_id = u16::try_from(packet.npc_index).unwrap_or(0);
+    let Some((merchant, nome)) = store.npc_merchant(scene_id) else {
+        log(
+            "warn",
+            "quest",
+            &format!("result=refused account={account} npc={scene_id} reason=no_npc"),
+        );
+        return true;
+    };
+    let roll = (loot_seed() % 3) as u8;
+    match store.quest(selected.as_mut(), merchant, roll) {
+        Ok(resultado) => {
+            log(
+                "info",
+                "quest",
+                &format!(
+                    "result=ok account={account} npc={scene_id} name={nome} merchant={merchant} stage={} reward={:?} completed={} roll={roll}",
+                    resultado.state.stage, resultado.step.reward, resultado.state.completed
+                ),
+            );
+            let texto = format!(
+                "Campo de Treinamento: etapa {}/4{}",
+                resultado.state.stage,
+                if resultado.state.completed {
+                    " (concluido)"
+                } else {
+                    ""
+                }
+            );
+            let mut painel = [0u8; MessagePanel::WIRE_LEN - HEADER_SIZE];
+            let bytes = texto.as_bytes();
+            let limite = bytes.len().min(painel.len() - 1);
+            painel[..limite].copy_from_slice(&bytes[..limite]);
+            reply_with_body(stream, key_word, ID_SCENE, Opcode::MessagePanel, &painel)
+                && send_progress(stream, key_word, *client_id, &resultado.mob)
+        }
+        Err(error) => {
+            log(
+                "warn",
+                "quest",
+                &format!(
+                    "result=refused account={account} npc={scene_id} merchant={merchant} reason={error}"
+                ),
+            );
+            let mut painel = [0u8; MessagePanel::WIRE_LEN - HEADER_SIZE];
+            let texto = error.to_string();
+            let bytes = texto.as_bytes();
+            let limite = bytes.len().min(painel.len() - 1);
+            painel[..limite].copy_from_slice(&bytes[..limite]);
+            reply_with_body(stream, key_word, ID_SCENE, Opcode::MessagePanel, &painel)
+        }
+    }
+}
+
 /// `_MSG_Action`: clique em NPC → `_MSG_MessagePanel` com o nome real da definição.
 ///
 /// Sem tabela de diálogo (`npc_dialogue` ainda é planejada), o texto é o `display_name` do
@@ -1423,10 +1639,11 @@ fn handle_action(
     let (
         Stage::InGame {
             entity: Some(entity),
+            selected,
             ..
         },
         Some(store),
-    ) = (&*stage, selection)
+    ) = (&mut *stage, selection)
     else {
         log(
             "warn",
@@ -1446,6 +1663,38 @@ fn handle_action(
             return true;
         }
     };
+    // Portão no ponto clicado: chave por `EF_KEYID`, consumida no aceite, aberto por tempo.
+    match store.use_key(
+        selected,
+        *entity,
+        i32::from(packet.target_x),
+        i32::from(packet.target_y),
+        now_ms(),
+    ) {
+        Ok(Some(portao)) => {
+            log(
+                "info",
+                "gate",
+                &format!(
+                    "result=open account={account} gate={} key_ef={} key_item={} closes_at_ms={}",
+                    portao.gate, portao.key_ef, portao.key_item, portao.closes_at_ms
+                ),
+            );
+            return reply_panel(stream, key_word, &format!("Portao {} aberto", portao.gate));
+        }
+        Ok(None) => {}
+        Err(error) => {
+            log(
+                "warn",
+                "gate",
+                &format!(
+                    "result=refused account={account} at=({}, {}) reason={error}",
+                    packet.target_x, packet.target_y
+                ),
+            );
+            return reply_panel(stream, key_word, &error.to_string());
+        }
+    }
     match store.talk(
         *entity,
         i32::from(packet.target_x),
@@ -1488,6 +1737,15 @@ fn handle_action(
     }
 }
 
+/// `_MSG_MessagePanel` com texto curto (resposta de portão/recusa ao cliente).
+fn reply_panel(stream: &mut TcpStream, key_word: u8, texto: &str) -> bool {
+    let mut painel = [0u8; MessagePanel::WIRE_LEN - HEADER_SIZE];
+    let bytes = texto.as_bytes();
+    let limite = bytes.len().min(painel.len() - 1);
+    painel[..limite].copy_from_slice(&bytes[..limite]);
+    reply_with_body(stream, key_word, ID_SCENE, Opcode::MessagePanel, &painel)
+}
+
 /// Emite o delta da cena de NPCs desde o último envio desta sessão.
 ///
 /// Só busca a foto quando a **geração** do motor mudou (recarga de configuração mexeu em
@@ -1499,7 +1757,13 @@ fn refresh_scene(
     stage: &mut Stage,
     selection: Option<&SelectionStore>,
 ) -> bool {
-    let (Stage::InGame { scene, .. }, Some(store)) = (stage, selection) else {
+    let (
+        Stage::InGame {
+            scene, client_id, ..
+        },
+        Some(store),
+    ) = (stage, selection)
+    else {
         return true;
     };
     let Some(atual) = store.scene() else {
@@ -1509,7 +1773,18 @@ fn refresh_scene(
     if atual.generation == scene.generation {
         return true;
     }
-    let plano = plan_scene(&scene.mobs, &atual, scene_budget());
+    let mut plano = plan_scene(&scene.mobs, &atual, scene_budget());
+    // Perto primeiro: quem entra precisa ver a área onde está antes do resto do mapa. Sem
+    // isso, um teto de varredura cortava justamente os NPCs criados por último (o Campo).
+    if let Some(eu) = atual.mobs.iter().find(|mob| mob.id == *client_id) {
+        let (px, py) = (eu.position.x, eu.position.y);
+        plano.enter.sort_by_key(|mob| {
+            (
+                mob.position.x.abs_diff(px).max(mob.position.y.abs_diff(py)),
+                mob.id,
+            )
+        });
+    }
     let mut removidos = 0usize;
     for (id, remove_type) in &plano.leave {
         if !send_remove_mob(stream, key_word, *id, *remove_type) {
@@ -1520,7 +1795,14 @@ fn refresh_scene(
     }
     let mut criados = 0usize;
     for mob in &plano.enter {
-        if !send_create_mob(stream, key_word, mob) {
+        // `CreateType` 2 ("acabou de entrar") só para o dono da sessão; os demais
+        // entram como 0 (`SendFunc`/`GetCreateMob` do legado).
+        let create_type = if mob.id == *client_id {
+            CreateMob::CREATE_JUST_ENTERED
+        } else {
+            CreateMob::CREATE_NORMAL
+        };
+        if !send_create_mob(stream, key_word, mob, create_type) {
             return false;
         }
         scene.mobs.insert(mob.id, mob.actor);
@@ -1572,7 +1854,7 @@ fn scene_budget() -> usize {
 /// `AnctCode`, `Tab` e `Hold` vão zerados porque a origem não os tem — não se inventa
 /// efeito nem aura de refino que o dado não sustenta. Do `STRUCT_MOB` do personagem saem
 /// nome, `Equip[i].sIndex`, `Guild` e `CurrentScore`; `Merchant` de jogador é 0.
-fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob) -> bool {
+fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob, create_type: u16) -> bool {
     let packet = CreateMob {
         pos_x: u16::try_from(mob.position.x).unwrap_or(0),
         pos_y: u16::try_from(mob.position.y).unwrap_or(0),
@@ -1598,7 +1880,7 @@ fn send_create_mob(stream: &mut TcpStream, key_word: u8, mob: &SceneMob) -> bool
         intelligence: 0,
         dexterity: 0,
         constitution: 0,
-        create_type: CreateMob::CREATE_JUST_ENTERED,
+        create_type,
         anct_code: [0; 16],
         tab: [0; 26],
         hold: 0,
@@ -1692,8 +1974,10 @@ fn select_character(
     frame: &[u8],
     account: &str,
 ) -> Result<(String, Selected), SelectionError> {
-    let packet =
-        CharacterLogin::decode(frame).map_err(|error| SelectionError::Layout(error.to_string()))?;
+    // O cliente 7662 manda 36 B aqui (log do canal: `esperado 20, recebido 36`); o
+    // decodificador aceita os dois tamanhos provados sem inventar os 16 B extras.
+    let packet = CharacterLogin::decode_client(frame)
+        .map_err(|error| SelectionError::Layout(error.to_string()))?;
     let selected = store.select_snapshot(account, packet.slot)?;
     let character = &selected.character;
     let detalhe = format!(
@@ -1786,6 +2070,36 @@ fn reply_with_body(
 }
 
 /// Frame só de cabeçalho com o opcode pedido, ofuscado com a chave do frame de entrada.
+/// Ponto único do pacote de recusa: cabeçalho + trailer opcional de 1 byte com o motivo.
+///
+/// Cliente antigo lê só o `HEADER` (12 B) e ignora o byte extra; cliente novo lê o motivo.
+/// O caminho de sucesso não passa por aqui.
+fn reply_recusa(
+    stream: &mut TcpStream,
+    key_word: u8,
+    opcode: Opcode,
+    motivo: wyd_protocol::motivo::CodigoRecusa,
+) -> bool {
+    let mut frame = [0u8; HEADER_SIZE + 1];
+    let cabecalho = Header {
+        size: (HEADER_SIZE + 1) as u16,
+        key_word,
+        checksum: 0,
+        message_type: opcode.wire(),
+        id: 1,
+        client_tick: 0,
+    };
+    if cabecalho.encode(&mut frame).is_err() {
+        return false;
+    }
+    // O trailer entra antes da ofuscação: o cliente decodifica o frame inteiro.
+    frame[HEADER_SIZE] = motivo.byte();
+    if encode_in_place(&mut frame, key_word).is_err() {
+        return false;
+    }
+    stream.write_all(&frame).is_ok() && stream.flush().is_ok()
+}
+
 fn reply(stream: &mut TcpStream, key_word: u8, opcode: Opcode) -> bool {
     let mut frame = [0u8; HEADER_SIZE];
     let cabecalho = Header {
@@ -1873,7 +2187,12 @@ mod tests {
     #[test]
     fn create_mob_de_personagem_traz_escene_field_e_a_aparencia_do_login() {
         let (mut servidor, mut cliente) = par();
-        assert!(send_create_mob(&mut servidor, 7, &mob(9, b"Buffy", true)));
+        assert!(send_create_mob(
+            &mut servidor,
+            7,
+            &mob(9, b"Buffy", true),
+            CreateMob::CREATE_JUST_ENTERED
+        ));
 
         let (cabecalho, frame) = ler_frame(&mut cliente);
         // Invariante 4: pacote autoritativo de cena vai com `ESCENE_FIELD`, nunca com o id
@@ -1894,6 +2213,44 @@ mod tests {
         assert_eq!(pacote.guild, 4);
         assert_eq!((pacote.level, pacote.max_hp, pacote.hp), (42, 90, 90));
         assert_eq!(pacote.merchant, 0, "jogador não é NPC de loja");
+        assert_eq!(
+            pacote.create_type,
+            CreateMob::CREATE_JUST_ENTERED,
+            "o dono da sessão entra como `CreateType` 2"
+        );
+    }
+
+    /// BUG-01: ponto exato do pacote de recusa (sem mudar o fio).
+    ///
+    /// Congela o comportamento atual — cabeçalho (12 B) + trailer de 1 B com o
+    /// motivo — para que qualquer mudança de `Size` (ex.: 13 → 12) quebre aqui
+    /// primeiro e exija prova RE/captura 08-6 antes de ir ao cliente 7662.
+    #[test]
+    fn recusa_leva_size_13_com_o_motivo_no_trailer() {
+        use wyd_protocol::motivo::CodigoRecusa;
+        let casos = [
+            (Opcode::NewAccountFail, CodigoRecusa::Senha),
+            (Opcode::AccountSecureFail, CodigoRecusa::PinIncorreto),
+            (Opcode::CharacterLoginFail, CodigoRecusa::SelecaoInvalida),
+        ];
+        for (opcode, motivo) in casos {
+            let (mut servidor, mut cliente) = par();
+            assert!(reply_recusa(&mut servidor, 11, opcode, motivo));
+            let (cabecalho, frame) = ler_frame(&mut cliente);
+            assert_eq!(
+                usize::from(cabecalho.size),
+                HEADER_SIZE + 1,
+                "recusa {opcode:?}: Size sai 13 até prova RE em contrário"
+            );
+            assert_eq!(cabecalho.message_type, opcode.wire());
+            assert_eq!(frame.len(), HEADER_SIZE + 1);
+            assert_eq!(
+                frame[HEADER_SIZE],
+                motivo.byte(),
+                "recusa {opcode:?}: trailer carrega {motivo:?}"
+            );
+            assert_eq!(CodigoRecusa::from_byte(Some(frame[HEADER_SIZE])), motivo);
+        }
     }
 
     #[test]
@@ -1906,5 +2263,20 @@ mod tests {
         assert_eq!(cabecalho.message_type, Opcode::RemoveMob.wire());
         let pacote = RemoveMob::decode(&frame).expect("corpo do RemoveMob");
         assert_eq!(pacote.remove_type, RemoveMob::LOGOUT);
+    }
+
+    #[test]
+    fn create_mob_de_npc_vai_como_entrada_normal() {
+        let (mut servidor, mut cliente) = par();
+        assert!(send_create_mob(
+            &mut servidor,
+            3,
+            &mob(1_007, b"Bardes", false),
+            CreateMob::CREATE_NORMAL
+        ));
+        let (_, frame) = ler_frame(&mut cliente);
+        let pacote = CreateMob::decode(&frame).expect("corpo do CreateMob");
+        assert_eq!(pacote.mob_id, 1_007);
+        assert_eq!(pacote.create_type, CreateMob::CREATE_NORMAL);
     }
 }

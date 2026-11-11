@@ -18,6 +18,7 @@ import {
   upsertRate,
   upsertRoute,
 } from "@/server/config";
+import { setWorldEventEnabled } from "@/server/events";
 import { AdminError } from "@/server/errors";
 
 const PATH = "/configuracoes";
@@ -113,6 +114,19 @@ export async function saveRouteAction(formData: FormData): Promise<void> {
     });
   } catch (error) {
     fail(error);
+  }
+  revalidatePath(PATH);
+  redirect(`${PATH}?ok=1`);
+}
+
+/** Liga/desliga um evento de mundo (vale para o próximo leitor do dado). */
+export async function setEventAction(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "").trim();
+  if (code === "") redirect(`${PATH}?erro=${encodeURIComponent("código de evento inválido")}`);
+  try {
+    await setWorldEventEnabled(code, String(formData.get("enabled")) === "true");
+  } catch (error) {
+    fail(error instanceof AdminError ? error.message : "falha ao gravar o evento");
   }
   revalidatePath(PATH);
   redirect(`${PATH}?ok=1`);

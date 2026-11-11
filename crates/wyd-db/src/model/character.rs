@@ -66,8 +66,20 @@ pub struct Progression {
     pub special_bonus: i64,
 }
 
-/// Linha de item normalizada — colunas idênticas em `character_items` e `vault_items` (0003).
+/// Progresso de uma quest por personagem (`character_quest`, `0013_quests`).
 ///
+/// `stage` é o `Newbie` do legado (0..=4, um passo por treinador); no banco vira
+/// `step = stage + 1`. `reward_mask` ocupa `progress` e tem um bit por etapa já paga —
+/// a trava de idempotência contra recompensa dupla.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct QuestState {
+    pub quest_code: String,
+    pub stage: i16,
+    pub completed: bool,
+    pub reward_mask: i32,
+}
+
+/// Linha de item normalizada — colunas idênticas em `character_items` e `vault_items` (0003).///
 /// `slot` 0–15 = `Equip[i]`, 16–79 = `Carry[i − 16]`; 80–127 fica reservado. Refino, Ancient
 /// e gema são estado **da linha**, não do catálogo (`docs/wyd/sistemas/refino.md` §3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

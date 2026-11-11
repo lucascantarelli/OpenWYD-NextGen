@@ -152,6 +152,32 @@ export const accountsAdmin = svc<{
   setBlocked: Unary<{ login: string; blocked: boolean; reason: string }, ModerationResponse>;
 }>("accounts", ["find", "create", "getModeration", "setRole", "setBlocked"]);
 
+/** Linha de conta sem segredo (`account_admin/list_accounts`, `get_account`). */
+export interface AccountWire {
+  id: number;
+  login: string;
+  role: string;
+}
+
+export interface ListAccountsResponse extends AdminEnvelope {
+  accounts?: AccountWire[];
+}
+
+export interface GetAccountResponse extends AdminEnvelope {
+  account?: AccountWire;
+}
+
+/**
+ * `account_admin/*` — lista paginada por id e ficha por id (sem hash, e-mail ou PIN).
+ *
+ * O cursor é o último id visto (`after_id`); a ordem é a do banco, sem
+ * ordenação inventada no portal.
+ */
+export const accountAdmin = svc<{
+  listAccounts: Unary<{ limit: number; after_id?: number }, ListAccountsResponse>;
+  getAccount: Unary<{ id: number }, GetAccountResponse>;
+}>("account_admin", ["listAccounts", "getAccount"]);
+
 /* ------------------------------- catálogo ------------------------------ */
 
 /** Item como o gateway o expõe hoje (`item_catalog/list_items`, ADR-0022). */
@@ -303,7 +329,92 @@ export interface GrantReceiptWire extends AdminEnvelope {
 export const characterAdmin = svc<{
   searchCharacters: Unary<{ term: string; limit: number }, SearchCharactersResponse>;
   listCharacterGrants: Unary<{ character_id: number; limit: number }, ListCharacterGrantsResponse>;
-}>("character_admin", ["searchCharacters", "listCharacterGrants"]);
+  grantItem: Unary<
+    { idempotency_key: string; character_id: number; item_id: number; qty: number },
+    GrantReceiptWire
+  >;
+}>("character_admin", ["searchCharacters", "listCharacterGrants", "grantItem"]);
+
+/** Item da loja de donate (`donate_admin/*`, FASE-07-6). */
+export interface ShopItemWire {
+  id: number;
+  item_index: number;
+  price_credits: number;
+  duration_days: number | null;
+  enabled: boolean;
+}
+
+export interface ListShopResponse extends AdminEnvelope {
+  shop_items?: ShopItemWire[];
+}
+
+export interface DonateCreditWire extends AdminEnvelope {
+  idempotency_key: string;
+  credit_id: number;
+  replay: boolean;
+}
+
+/**
+ * `donate_admin/*` — vitrine (CRUD auditado) e crédito de saldo idempotente.
+ *
+ * Dinheiro real nunca passa aqui: o crédito parte de saldo já conciliado fora
+ * do portal e cai em `account_wallet` (saldo de **conta**, nunca personagem vivo).
+ */
+export const donateAdmin = svc<{
+  listShopItems: Unary<{ limit: number; after_id?: number }, ListShopResponse>;
+  upsertShopItem: Unary<
+    { id?: number; item_index: number; price_credits: number; duration_days?: number; enabled: boolean },
+    RevisionResponse
+  >;
+  setShopItemEnabled: Unary<{ id: number; enabled: boolean }, RevisionResponse>;
+  deleteShopItem: Unary<{ id: number }, RevisionResponse>;
+  creditDonateBalance: Unary<
+    { account_id: number; credits: number; idempotency_key: string },
+    DonateCreditWire
+  >;
+}>("donate_admin", [
+  "listShopItems",
+  "upsertShopItem",
+  "setShopItemEnabled",
+  "deleteShopItem",
+  "creditDonateBalance",
+]);
+
+/** Evento de mundo com a grade de horários (`world_event_admin/*`). */
+export interface EventScheduleWire {
+  id: number;
+  weekday: number;
+  start_time: string;
+  duration_minutes: number;
+  timezone: string;
+  every_n_weeks: number;
+  enabled: boolean;
+}
+
+export interface WorldEventWire {
+  code: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  requires_city: boolean;
+  description: string;
+  schedules: EventScheduleWire[];
+}
+
+export interface WorldEventResponse extends AdminEnvelope {
+  events?: WorldEventWire[];
+}
+
+/**
+ * `world_event_admin/*` — foto dos eventos e liga/desliga auditado.
+ *
+ * Ligar/desligar vale para o próximo leitor do dado (boot/tick que lê a
+ * tabela): nenhum push para o Hot Path.
+ */
+export const worldEventAdmin = svc<{
+  getWorldEventConfig: Unary<Record<string, never>, WorldEventResponse>;
+  setWorldEventConfig: Unary<{ code: string; enabled: boolean }, RevisionResponse>;
+}>("world_event_admin", ["getWorldEventConfig", "setWorldEventConfig"]);
 
 /** `grants/request` — enfileira o grant com chave de idempotência. */
 export const grantsAdmin = svc<{
@@ -420,11 +531,16 @@ export interface GetNpcResponse extends AdminEnvelope {
 
 export const npcAdmin = svc<{
   getNpc: Unary<{ id: number }, GetNpcResponse>;
+  listNpcs: Unary<{ limit: number; after_id?: number }, ListNpcsResponse>;
   upsertNpc: Unary<
     { id: number; map_id: number; pos_x: number; pos_y: number; enabled: boolean },
     RevisionResponse
   >;
-}>("npc_admin", ["getNpc", "upsertNpc"]);
+}>("npc_admin", ["getNpc", "listNpcs", "upsertNpc"]);
+
+export interface ListNpcsResponse extends AdminEnvelope {
+  npcs?: NpcWire[];
+}
 
 /** Rota de teleporte: política editável (custo, nível, disponibilidade). */
 export interface RouteWire {

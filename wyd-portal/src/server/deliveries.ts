@@ -43,6 +43,62 @@ export async function listCharacterGrants(characterId: number): Promise<GrantRow
   return res.grants ?? [];
 }
 
+/**
+ * Valida a forma de um grant de item antes do `adminCall`.
+ *
+ * O gateway valida de novo (`api::grants::validate_request`); aqui o erro volta
+ * como mensagem de tela sem gastar a chamada — e sem vazar nada do banco.
+ */
+export function checkItemGrant(input: {
+  characterId: number;
+  itemId: number;
+  qty: number;
+  key: string;
+}): string | null {
+  if (!Number.isInteger(input.characterId) || input.characterId <= 0) {
+    return "personagem inválido";
+  }
+  if (!Number.isInteger(input.itemId) || input.itemId <= 0) {
+    return "índice do item inválido";
+  }
+  if (!Number.isInteger(input.qty) || input.qty <= 0 || input.qty > 999) {
+    return "quantidade precisa ser 1..999";
+  }
+  const key = input.key.trim();
+  if (key.length < 8 || key.length > 120) {
+    return "chave de idempotência precisa de 8..120 caracteres";
+  }
+  return null;
+}
+
+/**
+ * Enfileira um item (`character_admin/grant_item`); a entrega acontece no dreno
+ * do servidor (`claim_item` → slot livre de `Carry`). Mochila cheia deixa a linha
+ * pendente, nunca duplica nem perde. Replay com a mesma chave devolve o recibo
+ * original.
+ */
+export async function requestItemGrant(input: {
+  characterId: number;
+  itemId: number;
+  qty: number;
+  key: string;
+}): Promise<GrantReceiptWire> {
+  const res = await adminCall<
+    { idempotency_key: string; character_id: number; item_id: number; qty: number },
+    GrantReceiptWire
+  >(
+    characterAdmin.grantItem.bind(characterAdmin),
+    {
+      idempotency_key: input.key.trim(),
+      character_id: input.characterId,
+      item_id: input.itemId,
+      qty: input.qty,
+    },
+    { action: "grants.item", target: `char:${input.characterId}` },
+  );
+  return res;
+}
+
 /** Enfileira ouro; a chave é a identidade da entrega (replay não duplica). */
 export async function requestGoldGrant(input: {
   characterId: number;

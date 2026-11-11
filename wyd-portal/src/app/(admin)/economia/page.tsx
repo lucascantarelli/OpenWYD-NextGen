@@ -1,8 +1,8 @@
-import { Coins, Receipt, ShieldAlert } from "lucide-react";
+import { Coins, Receipt, ShieldAlert, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/Badge";
 import { Stat } from "@/components/Stat";
-import { getEconomySummary, type EconomyView } from "@/server/economy";
+import { computeEconomyAlerts, getEconomySummary, type EconomyView } from "@/server/economy";
 import { AdminError } from "@/server/errors";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +39,8 @@ export default async function EconomiaPage() {
   const taxTotal = summary.taxByCity.reduce((acc, row) => acc + row.total, 0);
   const goldGranted = summary.grants.reduce((acc, row) => acc + row.gold, 0);
   const grantsTotal = summary.grants.reduce((acc, row) => acc + row.count, 0);
+  const alerts = error ? [] : computeEconomyAlerts(summary);
+  const maxTax = Math.max(0, ...summary.taxByCity.map((row) => row.total));
 
   return (
     <>
@@ -52,6 +54,7 @@ export default async function EconomiaPage() {
         </div>
         <div className="page-head__actions">
           <Badge tone={error ? "warn" : "ok"}>{error ? "indisponível" : "no ar"}</Badge>
+          {!error && <a className="ui-btn" href="/api/economia/export" download>Exportar CSV</a>}
         </div>
       </div>
 
@@ -92,6 +95,34 @@ export default async function EconomiaPage() {
             />
           </div>
 
+          {alerts.length > 0 && (
+            <div className="card">
+              <div className="card__head">
+                <div>
+                  <h2 className="card__title">
+                    <TriangleAlert size={15} strokeWidth={1.8} aria-hidden="true" /> Alertas
+                  </h2>
+                  <p className="card__sub">
+                    Regras fixas sobre agregado (sem linha por jogador): ouro somado ≥ 1M na fila
+                    e cidade zerada com outras ativas.
+                  </p>
+                </div>
+              </div>
+              <div className="card__body">
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {alerts.map((alert) => (
+                    <li key={alert.title}>
+                      <Badge tone={alert.tone === "warn" ? "warn" : "accent"}>
+                        {alert.title}
+                      </Badge>{" "}
+                      <span className="muted small">{alert.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div className="monitor-grid">
             <section className="card">
               <div className="card__head">
@@ -115,10 +146,21 @@ export default async function EconomiaPage() {
                           <th className="ui-align-right">Imposto</th>
                         </tr>
                       </thead>
-                      <tbody>
+                        <tbody>
                         {summary.taxByCity.map((row) => (
                           <tr key={row.city}>
                             <td className="mono">{row.city}</td>
+                            <td>
+                              <div
+                                aria-hidden="true"
+                                style={{
+                                  height: 8,
+                                  borderRadius: 4,
+                                  background: "var(--chart-bar, #3b82f6)",
+                                  width: `${maxTax > 0 ? Math.max(2, Math.round((row.total / maxTax) * 100)) : 0}%`,
+                                }}
+                              />
+                            </td>
                             <td className="ui-align-right">{fmtInt(row.total)}</td>
                           </tr>
                         ))}

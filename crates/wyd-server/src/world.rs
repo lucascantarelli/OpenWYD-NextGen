@@ -51,6 +51,16 @@ pub const WORLD_WIDTH: i32 = 4096;
 pub const WORLD_HEIGHT: i32 = 4096;
 /// Lado da célula da grade espacial (idem).
 pub const GRID_CELL: i32 = 128;
+/// `MAX_USER` do legado (`Basedef.h`): id de cena **abaixo** deste é jogador.
+///
+/// O cliente decide "é personagem" pela faixa do `MobID`/`ClientID` (o porte Go do
+/// mesmo alvo usa `IsPlayer(id) = id < MaxUser`). Por isso o id de cena não pode ser o
+/// índice cru do armazém: os NPCs nascem primeiro e empurrariam o jogador para a faixa
+/// de criatura.
+pub const MAX_USER: u16 = 1_000;
+/// `MAX_MOB` do legado: teto do espaço de id de cena (jogador `< MAX_USER`, criatura
+/// `MAX_USER..MAX_MOB`).
+pub const MAX_MOB: u16 = 25_000;
 /// Intervalo mínimo entre logs de resumo do tick.
 const LOG_EVERY: Duration = Duration::from_secs(10);
 /// Teto do sono da thread entre verificações (mantém a parada responsiva).
@@ -83,7 +93,12 @@ pub const ENV_SCENE_MAX_PER_REFRESH: &str = "WYD_SCENE_MAX_PER_REFRESH";
 /// por sessão, muito abaixo do que a sessão já tráfega. O teto existe para uma recarga de
 /// `npc_definition` com milhares de criaturas não virar uma rajada — e, quando ele corta, a
 /// sessão **não** avança a geração e continua de onde parou na varredura seguinte.
-pub const DEFAULT_SCENE_MAX_PER_REFRESH: usize = 64;
+///
+/// Era 64 e isso deixava a cena incompleta por ~95 s (6 100 NPCs a 1 varredura/s): o cliente
+/// que entrava e olhava a área recebia só os primeiros ids e nunca os NPCs criados por último
+/// (caso do Campo, ids 6201..6208). O teto continua existindo para a recarga não virar rajada,
+/// mas agora cabe o mapa inteiro em duas varreduras.
+pub const DEFAULT_SCENE_MAX_PER_REFRESH: usize = 4_096;
 /// Faixa aceita do teto (0 e negativo não fazem sentido; a sessão pararia de desenhar o mapa).
 pub const MAX_SCENE_PER_REFRESH: usize = 4_096;
 
@@ -146,6 +161,8 @@ pub enum EnterWorldError {
     InvalidState(String),
     /// O tick não respondeu (thread parada ou sobrecarregada).
     Unavailable,
+    /// Sem id de cena livre no espaço de jogador (`< MAX_USER`): canal cheio.
+    SceneFull,
     /// Falha estrutural do core (spawn/grade) — propagada, nunca silenciada.
     Core(CoreError),
 }
@@ -158,12 +175,26 @@ impl core::fmt::Display for EnterWorldError {
             }
             Self::InvalidState(motivo) => write!(f, "estado do personagem inválido: {motivo}"),
             Self::Unavailable => write!(f, "motor do canal indisponível"),
+            Self::SceneFull => write!(
+                f,
+                "sem id de cena livre no espaço de jogador (< {MAX_USER})"
+            ),
             Self::Core(error) => write!(f, "core recusou o spawn: {error}"),
         }
     }
 }
 
 impl std::error::Error for EnterWorldError {}
+
+/// Personagem encarnado: a entidade do armazém e o id que o cliente conhece.
+///
+/// `scene_id` é o `ClientID` do `CNFCharacterLogin` e o `MobID` do `_MSG_CreateMob` do
+/// próprio jogador — sempre `< MAX_USER`, ao contrário do índice do armazém.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Entered {
+    pub entity: Entity,
+    pub scene_id: u16,
+}
 
 /// Estado vivo serializável do personagem — o que o save grava e o teste inspeciona.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -422,7 +453,7 @@ pub enum Command {
     Enter {
         character: Box<Character>,
         skin: Box<ActorSkin>,
-        reply: SyncSender<Result<Entity, EnterWorldError>>,
+        reply: SyncSender<Result<Entered, EnterWorldError>>,
     },
     /// Tira a entidade do mundo e devolve o estado para o save.
     Leave {
@@ -453,6 +484,15 @@ pub enum Command {
         y: i32,
         reply: SyncSender<Option<TalkTarget>>,
     },
+    /// Uso de chave num portão: `keys` são os `EF_KEYID` que o personagem carrega.
+    UseKey {
+        speaker: Entity,
+        x: i32,
+        y: i32,
+        keys: Vec<i32>,
+        now_ms: u64,
+        reply: SyncSender<Result<crate::gameplay::GateOutcome, crate::gameplay::GateError>>,
+    },
 }
 
 /// Dono do mundo deste processo — um por canal, nenhum mutex global.
@@ -470,8 +510,23 @@ pub struct Engine {
     npcs: HashMap<i32, NpcLive>,
     /// Aparência dos personagens vivos, por índice de entidade (cena de jogador).
     skins: HashMap<u32, ActorSkin>,
+    /// Índice de entidade → id de cena (`MobID`/`ClientID`), estável enquanto ela vive.
+    ///
+    /// Duas faixas, como no legado: jogador (`1..MAX_USER`) e criatura
+    /// (`MAX_USER..MAX_MOB`). O id é liberado na saída e reusado pelo mesmo espaço.
+    scene_ids: HashMap<u32, u16>,
+    /// Ids de jogador devolvidos ao espaço (pilha: reuso imediato e previsível).
+    free_player_ids: Vec<u16>,
+    /// Ids de criatura devolvidos ao espaço.
+    free_mob_ids: Vec<u16>,
+    /// Próximo id de jogador nunca usado.
+    next_player_scene: u16,
+    /// Próximo id de criatura nunca usado.
+    next_mob_scene: u16,
     /// Sobe a cada entidade que nasce ou sai do mundo: a borda difunde o delta.
     scene_generation: u64,
+    /// Portões abertos por chave (`EF_KEYID`), com fechamento por tempo (FASE-03-18).
+    gates: crate::gameplay::GateBook,
 }
 
 impl core::fmt::Debug for Engine {
@@ -503,7 +558,13 @@ impl Engine {
             by_character: HashMap::new(),
             npcs: HashMap::new(),
             skins: HashMap::new(),
+            scene_ids: HashMap::new(),
+            free_player_ids: Vec::new(),
+            free_mob_ids: Vec::new(),
+            next_player_scene: 1,
+            next_mob_scene: MAX_USER,
             scene_generation: 0,
+            gates: crate::gameplay::GateBook::default(),
         })
     }
 
@@ -517,6 +578,56 @@ impl Engine {
     #[must_use]
     pub fn interval_ms(&self) -> u64 {
         self.interval_ms
+    }
+
+    /// Reserva o id de cena da entidade no espaço do legado.
+    ///
+    /// `actor = true` pega da faixa de jogador (`1..MAX_USER`), senão da faixa de
+    /// criatura (`MAX_USER..MAX_MOB`). Id já reservado devolve o mesmo (idempotente).
+    /// `None` = espaço esgotado; quem chamou desfaz o spawn.
+    fn alloc_scene_id(&mut self, entity: Entity, actor: bool) -> Option<u16> {
+        if let Some(id) = self.scene_ids.get(&entity.index) {
+            return Some(*id);
+        }
+        let id = if actor {
+            match self.free_player_ids.pop() {
+                Some(id) => id,
+                None => {
+                    let id = self.next_player_scene;
+                    if id >= MAX_USER {
+                        return None;
+                    }
+                    self.next_player_scene += 1;
+                    id
+                }
+            }
+        } else {
+            match self.free_mob_ids.pop() {
+                Some(id) => id,
+                None => {
+                    let id = self.next_mob_scene;
+                    if id >= MAX_MOB {
+                        return None;
+                    }
+                    self.next_mob_scene += 1;
+                    id
+                }
+            }
+        };
+        self.scene_ids.insert(entity.index, id);
+        Some(id)
+    }
+
+    /// Devolve o id de cena ao espaço de onde ele veio.
+    fn release_scene_id(&mut self, entity: Entity) {
+        let Some(id) = self.scene_ids.remove(&entity.index) else {
+            return;
+        };
+        if id < MAX_USER {
+            self.free_player_ids.push(id);
+        } else {
+            self.free_mob_ids.push(id);
+        }
     }
 
     /// Spawn autoritativo: entra no armazém e na grade, na mesma transação de memória.
@@ -551,6 +662,7 @@ impl Engine {
         self.by_character.retain(|_, atual| *atual != entity);
         self.npcs.retain(|_, npc| npc.entity != entity);
         self.skins.remove(&entity.index);
+        self.release_scene_id(entity);
         let saiu = self.store.despawn(entity);
         if saiu {
             // Saída = mudança de cena (o cliente precisa de `_MSG_RemoveMob`).
@@ -593,6 +705,13 @@ impl Engine {
                 stats: spec.stats,
             }) {
                 Ok(entity) => {
+                    // Id de cena no espaço de criatura: jogadores ficam abaixo de
+                    // `MAX_USER`. Sem id livre o NPC não entra (nunca com id de jogador).
+                    if self.alloc_scene_id(entity, false).is_none() {
+                        self.despawn(entity);
+                        report.rejected += 1;
+                        continue;
+                    }
                     self.npcs.insert(id, NpcLive { entity, spec });
                     report.spawned += 1;
                 }
@@ -613,7 +732,7 @@ impl Engine {
             let Some(position) = self.store.position_of(npc.entity) else {
                 continue;
             };
-            let Ok(id) = u16::try_from(npc.entity.index) else {
+            let Some(id) = self.scene_ids.get(&npc.entity.index).copied() else {
                 continue;
             };
             mobs.push(SceneMob {
@@ -634,7 +753,7 @@ impl Engine {
             });
         }
         for (indice, estado) in &self.live {
-            let Ok(id) = u16::try_from(*indice) else {
+            let Some(id) = self.scene_ids.get(indice).copied() else {
                 continue;
             };
             let skin = self.skins.get(indice).cloned().unwrap_or_default();
@@ -731,7 +850,7 @@ impl Engine {
         }
         Ok(Some(AttackOutcome {
             target_npc: npc_id,
-            target_scene: u16::try_from(entity.index).unwrap_or(0),
+            target_scene: self.scene_ids.get(&entity.index).copied().unwrap_or(0),
             template,
             damage: golpe.amount,
             remaining_hp: golpe.remaining_hp,
@@ -756,6 +875,36 @@ impl Engine {
         })
     }
 
+    /// Uso de chave num portão (`_MSG_UpdateItem` do legado): ponto exato + alcance.
+    ///
+    /// `keys` são os `EF_KEYID` das provas que o personagem carrega (a borda lê o
+    /// inventário); a chave só é apagada depois do aceite, pelo `SelectionStore`.
+    pub fn use_key_at(
+        &mut self,
+        speaker: Entity,
+        x: i32,
+        y: i32,
+        keys: &[i32],
+        now_ms: u64,
+    ) -> Result<crate::gameplay::GateOutcome, crate::gameplay::GateError> {
+        use crate::gameplay::{gate_at, GateError, CAMP_GATE_RANGE};
+        let portao = gate_at(x, y).ok_or(GateError::NoGate)?;
+        let posicao = self
+            .store
+            .position_of(speaker)
+            .ok_or(GateError::OutOfRange)?;
+        if posicao.x.abs_diff(x).max(posicao.y.abs_diff(y)) > CAMP_GATE_RANGE as u32 {
+            return Err(GateError::OutOfRange);
+        }
+        self.gates.open(portao, keys, now_ms)
+    }
+
+    /// Portão aberto agora (`now_ms` do processo).
+    #[must_use]
+    pub fn gate_open(&self, gate: i16, now_ms: u64) -> bool {
+        self.gates.is_open(gate, now_ms)
+    }
+
     /// Quantos NPCs vivem neste mundo (observabilidade/teste).
     #[must_use]
     pub fn npc_actors(&self) -> usize {
@@ -772,7 +921,7 @@ impl Engine {
         &mut self,
         character: &Character,
         skin: ActorSkin,
-    ) -> Result<Entity, EnterWorldError> {
+    ) -> Result<Entered, EnterWorldError> {
         if self.by_character.contains_key(&character.id) {
             return Err(EnterWorldError::AlreadyInWorld {
                 character_id: character.id,
@@ -790,6 +939,11 @@ impl Engine {
                 stats,
             })
             .map_err(EnterWorldError::Core)?;
+        // Faixa de jogador (`< MAX_USER`): é o número que vai em `ClientID`/`MobID`.
+        let Some(scene_id) = self.alloc_scene_id(entity, true) else {
+            self.despawn(entity);
+            return Err(EnterWorldError::SceneFull);
+        };
         let state = LiveState {
             character_id: character.id,
             level: stats.level,
@@ -802,7 +956,7 @@ impl Engine {
         self.live.insert(entity.index, state);
         self.skins.insert(entity.index, skin);
         self.by_character.insert(character.id, entity);
-        Ok(entity)
+        Ok(Entered { entity, scene_id })
     }
 
     /// Tira o personagem do mundo e devolve o estado final (o chamador decide salvar).
@@ -853,6 +1007,16 @@ impl Engine {
                 reply,
             } => {
                 let _ = reply.send(self.attack_at(attacker, x, y, now_ms));
+            }
+            Command::UseKey {
+                speaker,
+                x,
+                y,
+                keys,
+                now_ms,
+                reply,
+            } => {
+                let _ = reply.send(self.use_key_at(speaker, x, y, &keys, now_ms));
             }
             Command::Talk {
                 speaker,
@@ -1002,7 +1166,7 @@ impl EngineHandle {
         &self,
         character: &Character,
         skin: &ActorSkin,
-    ) -> Result<Entity, EnterWorldError> {
+    ) -> Result<Entered, EnterWorldError> {
         self.call(
             |reply| Command::Enter {
                 character: Box::new(character.clone()),
@@ -1066,6 +1230,29 @@ impl EngineHandle {
                 generation: attacker.generation,
             }),
         }
+    }
+
+    /// Abre portão com a chave do inventário (posição autoritativa validada no tick).
+    pub fn use_key(
+        &self,
+        speaker: Entity,
+        x: i32,
+        y: i32,
+        keys: &[i32],
+        now_ms: u64,
+    ) -> Result<crate::gameplay::GateOutcome, crate::gameplay::GateError> {
+        self.call(
+            |reply| Command::UseKey {
+                speaker,
+                x,
+                y,
+                keys: keys.to_vec(),
+                now_ms,
+                reply,
+            },
+            COMMAND_TIMEOUT,
+        )
+        .unwrap_or(Err(crate::gameplay::GateError::NoGate))
     }
 
     /// NPC clicado por `_MSG_Action` (fora do alcance devolve `None`).
@@ -1287,15 +1474,15 @@ mod tests {
     fn entrar_cria_entidade_na_posicao_do_banco_e_sair_devolve_o_estado() {
         let mut engine = engine();
         let personagem = personagem(7, 300, 400);
-        let entity = engine
+        let entrada = engine
             .enter(&personagem, ActorSkin::default())
             .expect("entrada válida");
         assert_eq!(engine.players(), 1);
         assert_eq!(engine.entities(), 1);
-        let posicao = engine.store().position_of(entity).expect("vivo");
+        let posicao = engine.store().position_of(entrada.entity).expect("vivo");
         assert_eq!((posicao.x, posicao.y), (300, 400));
 
-        let estado = engine.leave(entity).expect("estado final");
+        let estado = engine.leave(entrada.entity).expect("estado final");
         assert_eq!(estado.character_id, 7);
         assert_eq!(
             (estado.x, estado.y, estado.hp, estado.mp),
@@ -1397,16 +1584,18 @@ mod tests {
             .enter(&personagem(1, 42, 40), ActorSkin::default())
             .expect("entrada");
 
-        let alvo = engine.talk_at(jogador, 40, 40).expect("NPC no alcance");
+        let alvo = engine
+            .talk_at(jogador.entity, 40, 40)
+            .expect("NPC no alcance");
         assert_eq!(
             (alvo.id, alvo.name.as_str(), alvo.merchant),
             (7, "Aylin", 1)
         );
 
         // `TargetX/TargetY` longe do personagem não abre diálogo nenhum.
-        assert_eq!(engine.talk_at(jogador, 90, 90), None);
+        assert_eq!(engine.talk_at(jogador.entity, 90, 90), None);
         // Ponto sem NPC no alcance também não.
-        assert_eq!(engine.talk_at(jogador, 50, 50), None);
+        assert_eq!(engine.talk_at(jogador.entity, 50, 50), None);
     }
 
     #[test]
@@ -1422,14 +1611,16 @@ mod tests {
 
         // `Npc` de loja nunca é alvo de `_MSG_Attack`: clicar nele não acha criatura.
         assert_eq!(
-            engine.attack_at(jogador, 70, 70, 1_000).expect("sem erro"),
+            engine
+                .attack_at(jogador.entity, 70, 70, 1_000)
+                .expect("sem erro"),
             None,
             "NPC sem EXP não entra em combate"
         );
 
         // O monstro cai no golpe do servidor e libera a EXP que o template declara.
         let golpe = engine
-            .attack_at(jogador, 41, 40, 1_000)
+            .attack_at(jogador.entity, 41, 40, 1_000)
             .expect("sem erro")
             .expect("monstro no alcance");
         assert!(golpe.killed);
@@ -1439,7 +1630,9 @@ mod tests {
         // Morte tira a criatura do mundo: não sobra cadáver no mapa nem alvo para um
         // segundo golpe, e a cena publica a remoção pela geração nova.
         assert_eq!(
-            engine.attack_at(jogador, 41, 40, 9_000).expect("sem erro"),
+            engine
+                .attack_at(jogador.entity, 41, 40, 9_000)
+                .expect("sem erro"),
             None,
             "o NPC abatido deixa de existir no mundo"
         );
@@ -1461,13 +1654,13 @@ mod tests {
     fn handle_da_borda_entra_sai_e_fotografa() {
         let (mut thread, handle) = EngineThread::spawn(engine(), 10).expect("thread do tick");
         let personagem = personagem(21, 100, 200);
-        let entity = handle
+        let entrada = handle
             .enter(&personagem, &ActorSkin::default())
             .expect("entrada pelo handle");
         let fotos = handle.snapshots();
         assert_eq!(fotos.len(), 1);
         assert_eq!(fotos[0].character_id, 21);
-        let estado = handle.leave(entity).expect("saída pelo handle");
+        let estado = handle.leave(entrada.entity).expect("saída pelo handle");
         assert_eq!(estado.character_id, 21);
         assert!(handle.snapshots().is_empty());
         thread.stop_and_join();
@@ -1503,7 +1696,18 @@ mod tests {
             .iter()
             .find(|mob| mob.actor)
             .expect("personagem na cena");
-        assert_eq!(ator.id, u16::try_from(jogador.index).unwrap());
+        assert_eq!(ator.id, jogador.scene_id);
+        assert!(
+            ator.id < MAX_USER,
+            "jogador vive na faixa `< MAX_USER` (o cliente decide personagem por id)"
+        );
+        assert!(
+            cena.mobs
+                .iter()
+                .filter(|mob| !mob.actor)
+                .all(|mob| mob.id >= MAX_USER),
+            "criatura vive na faixa `>= MAX_USER`"
+        );
         assert_eq!(ator.name_str(), "Buffy");
         assert_eq!(ator.equip[0], 831, "aparência vem do STRUCT_MOB do login");
         assert_eq!(ator.guild, 4);
@@ -1530,7 +1734,7 @@ mod tests {
         let antes = engine.scene_snapshot();
         assert_eq!(antes.mobs.len(), 1);
 
-        engine.leave(jogador).expect("estado final");
+        engine.leave(jogador.entity).expect("estado final");
         let depois = engine.scene_snapshot();
         assert!(depois.mobs.is_empty(), "quem saiu não fica na cena");
         assert!(

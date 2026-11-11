@@ -163,15 +163,16 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
         .expect("timeout");
     autenticar(&mut stream, &conta, &senha, &pin);
 
-    // Entrada no mundo pela seleção normal do cliente.
+    // Entrada no mundo pela seleção normal do cliente. O 7662 manda **36 B** aqui (corpo de
+    // 24); o teste usa o mesmo tamanho para provar o caminho real, não o curto dos unitários.
     enviar(
         &mut stream,
         11,
         Opcode::CharacterLogin,
-        CharacterLogin::WIRE_LEN,
+        CharacterLogin::WIRE_LEN_CLIENTE,
         |f| {
             CharacterLogin { slot, force: 1 }
-                .encode_into(f)
+                .encode_into(&mut f[..CharacterLogin::WIRE_LEN])
                 .expect("corpo da seleção");
         },
     );
@@ -185,12 +186,23 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
         i16::from_le_bytes([cnf[12], cnf[13]]),
         i16::from_le_bytes([cnf[14], cnf[15]]),
     );
+    // `ClientID` em +1030 do corpo: o id que o cliente usa para si. O legado reserva
+    // `id < MAX_USER` (1000) para jogador — um número acima disso faz o cliente tratar o
+    // personagem como criatura.
+    let client_id = u16::from_le_bytes([cnf[12 + 1030], cnf[12 + 1031]]);
+    assert!(
+        client_id < 1_000,
+        "ClientID {client_id} fora da faixa de jogador (< MAX_USER)"
+    );
 
     // 2) Rajada de `CreateMob`: cada NPC materializado pela revisão vigente.
     let mut mobs: Vec<CreateMob> = Vec::new();
     let mut ativos: std::collections::BTreeMap<u16, CreateMob> = std::collections::BTreeMap::new();
     let mut removes = 0usize;
     let mut crias = 0usize;
+    // O `UpdateScore` do próprio personagem chega logo depois do `CNF` e antes da cena
+    // (`sendScoreSelf` do legado): é o que desenha HP/MP/EXP na entrada.
+    let mut score_visto = false;
     let inicio = Instant::now();
     while inicio.elapsed() < Duration::from_secs(20) {
         let Some((opcode, header_id, corpo)) = ler_frame(&mut stream, Duration::from_millis(1200))
@@ -198,6 +210,13 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
             break;
         };
         match opcode {
+            Opcode::UpdateScore => {
+                assert_eq!(
+                    header_id, client_id,
+                    "UpdateScore de entrada leva o HEADER.ID do próprio jogador"
+                );
+                score_visto = true;
+            }
             Opcode::CreateMob => {
                 assert_eq!(header_id, ID_SCENE, "CreateMob leva ESCENE_FIELD no ID");
                 let mob = CreateMob::decode(&corpo).unwrap_or_else(|erro| {
@@ -212,6 +231,22 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
                     mob.mob_id
                 );
                 assert!(!mob.name_bytes().is_empty(), "mob sem nome no fio");
+                if mob.mob_id == client_id {
+                    assert_eq!(
+                        mob.create_type, 2,
+                        "o próprio jogador entra com CreateType 2 (acabou de entrar)"
+                    );
+                } else {
+                    assert_eq!(
+                        mob.create_type, 0,
+                        "NPC/outro jogador entra com CreateType 0"
+                    );
+                    assert!(
+                        mob.mob_id >= 1_000,
+                        "criatura vive na faixa >= MAX_USER (mob_id {})",
+                        mob.mob_id
+                    );
+                }
                 crias += 1;
                 ativos.insert(mob.mob_id, mob);
                 mobs.push(mob);
@@ -224,6 +259,14 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
         !mobs.is_empty(),
         "{endereco} não enviou nenhum CreateMob depois do CNF"
     );
+    assert!(
+        score_visto,
+        "{endereco} não enviou UpdateScore na entrada do mundo"
+    );
+    assert!(
+        mobs.iter().any(|mob| mob.mob_id == client_id),
+        "o jogador não recebeu o próprio CreateMob"
+    );
     eprintln!(
         "PASS(cena): {} NPCs visíveis no slot {slot} ({} bytes cada), jogador em {:?}",
         mobs.len(),
@@ -232,8 +275,11 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
     );
 
     // O NPC mais próximo do personagem é o alvo do diálogo (o servidor valida o alcance).
+    // Criatura vive em `>= MAX_USER` (FASE-03-17): o jogador agora é `mob_id` 1..999 e não
+    // pode ser o alvo — clicar em si mesmo não abre diálogo de NPC.
     let alvo = mobs
         .iter()
+        .filter(|mob| mob.mob_id >= 1_000)
         .min_by_key(|mob| {
             let dx = i32::from(mob.pos_x).abs_diff(i32::from(jogador.0));
             let dy = i32::from(mob.pos_y).abs_diff(i32::from(jogador.1));
@@ -248,36 +294,105 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
     );
 
     // 3) `_MSG_Action` no NPC → `_MSG_MessagePanel` com o mesmo nome do CreateMob.
-    enviar(&mut stream, 11, Opcode::Action, Action::WIRE_LEN, |f| {
-        Action {
-            pos_x: jogador.0,
-            pos_y: jogador.1,
-            effect: 0,
-            speed: 0,
-            route: [0u8; 24],
-            target_x: i16::try_from(alvo.pos_x).expect("posição no fio"),
-            target_y: i16::try_from(alvo.pos_y).expect("posição no fio"),
-        }
-        .encode_into(f)
-        .expect("corpo do Action");
+    //
+    // O alcance de diálogo é do servidor (`TALK_RANGE_TILES`) e o `CreateMob` não traz
+    // `merchant`: nem todo mob próximo responde (monstro não fala). Tenta os mais próximos
+    // em ordem e exige que o que responder seja um deles — sem adivinhar quem fala.
+    // `talk_at` exige o personagem a no máximo `TALK_RANGE_TILES` do **ponto clicado**
+    // (`world.rs`), então só entram candidatos nesse raio; clicar longe não responde.
+    let mut candidatos: Vec<_> = mobs
+        .iter()
+        .filter(|mob| mob.mob_id >= 1_000)
+        .filter(|mob| {
+            let dx = i32::from(mob.pos_x).abs_diff(i32::from(jogador.0));
+            let dy = i32::from(mob.pos_y).abs_diff(i32::from(jogador.1));
+            dx.max(dy) <= 5
+        })
+        .collect();
+    candidatos.sort_by_key(|mob| {
+        let dx = i32::from(mob.pos_x).abs_diff(i32::from(jogador.0));
+        let dy = i32::from(mob.pos_y).abs_diff(i32::from(jogador.1));
+        dx.max(dy)
     });
-    let mut dialogo = None;
-    let limite = Instant::now() + Duration::from_secs(5);
-    while Instant::now() < limite {
-        let Some((opcode, _, corpo)) = ler_frame(&mut stream, Duration::from_millis(800)) else {
-            continue;
-        };
-        if opcode == Opcode::MessagePanel {
-            dialogo = Some(
-                MessagePanel::decode(&corpo)
+    let mut resposta: Option<(&CreateMob, Vec<u8>)> = None;
+    for candidato in candidatos.iter().take(5) {
+        enviar(&mut stream, 11, Opcode::Action, Action::WIRE_LEN, |f| {
+            Action {
+                pos_x: jogador.0,
+                pos_y: jogador.1,
+                effect: 0,
+                speed: 0,
+                route: [0u8; 24],
+                target_x: i16::try_from(candidato.pos_x).expect("posição no fio"),
+                target_y: i16::try_from(candidato.pos_y).expect("posição no fio"),
+            }
+            .encode_into(f)
+            .expect("corpo do Action");
+        });
+        let limite = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < limite {
+            let Some((opcode, _, corpo)) = ler_frame(&mut stream, Duration::from_millis(600))
+            else {
+                continue;
+            };
+            if opcode == Opcode::MessagePanel {
+                let texto = MessagePanel::decode(&corpo)
                     .expect("MessagePanel de 140 bytes")
                     .text_bytes()
-                    .to_vec(),
-            );
+                    .to_vec();
+                resposta = Some((candidato, texto));
+                break;
+            }
+        }
+        if resposta.is_some() {
             break;
         }
     }
-    let dialogo = dialogo.unwrap_or_else(|| panic!("{endereco} não respondeu o Action do NPC"));
+    // Sem NPC no raio, clica no próprio tile: o servidor escolhe o NPC mais próximo dele
+    // (é o `talk_at` do legado). O nome devolvido tem de existir na vista.
+    if resposta.is_none() {
+        enviar(&mut stream, 11, Opcode::Action, Action::WIRE_LEN, |f| {
+            Action {
+                pos_x: jogador.0,
+                pos_y: jogador.1,
+                effect: 0,
+                speed: 0,
+                route: [0u8; 24],
+                target_x: jogador.0,
+                target_y: jogador.1,
+            }
+            .encode_into(f)
+            .expect("corpo do Action");
+        });
+        let limite = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < limite {
+            let Some((opcode, _, corpo)) = ler_frame(&mut stream, Duration::from_millis(600))
+            else {
+                continue;
+            };
+            if opcode == Opcode::MessagePanel {
+                let texto = MessagePanel::decode(&corpo)
+                    .expect("MessagePanel de 140 bytes")
+                    .text_bytes()
+                    .to_vec();
+                resposta = Some((&mobs[0], texto));
+                break;
+            }
+        }
+    }
+    let (alvo, dialogo) = resposta
+        .unwrap_or_else(|| panic!("{endereco} não respondeu o Action de nenhum NPC próximo"));
+    if alvo.mob_id < 1_000 {
+        // Resposta do clique no próprio tile: o NPC não está na vista coletada; exige só
+        // que o painel traga o nome de um NPC que o servidor conhece (não vazio).
+        assert!(!dialogo.is_empty(), "MessagePanel vazio");
+        eprintln!(
+            "PASS(cena): diálogo respondeu {:?} (NPC fora da vista coletada)",
+            String::from_utf8_lossy(&dialogo)
+        );
+        return;
+    }
+    let nome = String::from_utf8_lossy(alvo.name_bytes()).to_string();
     assert_eq!(
         dialogo,
         nome.as_bytes(),

@@ -69,6 +69,8 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-03-9-cena-autoritativa.md` | 3 | Cena autoritativa (`ESCENE_FIELD` 30000) | ✅ |
 | `issues/FASE-03-10-cidadania-canal-verde.md` | 3 | Cidadania aplicada + papel do canal verde | ✅ |
 | `issues/FASE-03-16-piedade-updateitem.md` | 3 | Piedade de refino persistida + `UpdateItem` de resposta | ✅ |
+| `issues/FASE-03-17-entrada-no-mundo-fiel.md` | 3 | Entrada no mundo fiel ao legado (`ClientID`, `UpdateScore`, `CreateType`) | ✅ |
+| `issues/FASE-03-18-campo-de-treinamento.md` | 3 | Campo de Treinamento (quest, chaves, buff, boss) | 🟡 |
 | `issues/FASE-04-1-modelagem.md` | 4 | Modelo relacional com FKs/CHECKs/índices | ✅ |
 | `issues/FASE-04-2-migrations.md` | 4 | Migrations versionadas + seeds | ✅ |
 | `issues/FASE-04-3-persistencia-async.md` | 4 | Pool async fora do tick | ✅ |
@@ -108,6 +110,7 @@ Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 1
 | `issues/FASE-14-1-pesquisa.md` | 14 | Notas de pesquisa + PoC | ✅ |
 | `issues/FASE-15-1-suite-concorrencia.md` | 15 | Suite completa + concorrência | ⬜ |
 | `issues/FASE-15-3-bots-carga.md` | 15 | Bots jogáveis e carga (`crates/wyd-bots`) | ⬜ |
+| `issues/FASE-15-4-bots-do-campo-de-treinamento.md` | 15 | Bots autônomos do Campo de Treinamento (4 raças) | 🟡 |
 | `issues/FASE-15-2-carga-banco-release.md` | 15 | Carga + banco + release + relatório | ⬜ |
 
 ## Fila de entregas rápidas (2026-11-09)
@@ -150,3 +153,19 @@ O roadmap abaixo organiza o trabalho; o mapa diz o que já existe de verdade.
 
 Critério global de conclusão (pre-release-rust §16): workspace estável, sem warnings de
 clippy, sem data races, fórmulas críticas cobertas por testes e alta performance determinística.
+
+## Ondas 1–4 — curva de crescimento (2026-11-11)
+
+Issues novas fora do padrão `FASE-NN-N` (não entram no gate `check-issue-status`):
+`DOC-01`, `ROAD-01`, `PORTAL-01..05`, `LAUNCHER-01`, `BUG-01`, `BOTS-01` em `issues/`.
+
+| Onda | Objetivo | Issues | Prova |
+|---|---|---|---|
+| 1 — base sólida | login, PIN, seleção, entrada no mundo, cena `ESCENE_FIELD`, logout explícito | `BUG-01` (reproduzir senha-sem-mensagem + char-no-mundo), FASE-08-2 ✅, 03-7/03-8/03-9/03-17 ✅, 06-2/06-3 ✅, 08-9 ✅ | conta admin: login → mundo → logout → relogin sem timeout (`login`, `selchar`, `cena_mobs`) |
+| 2 — mundo jogável | caçar, upar, refinar com goldens | drops no inventário ✅, `SendItem` ✅, refino/EXP no fio ✅ | `campo_treinamento`, `config_gameplay` |
+| 3 — operação | portal auditável que diagnostica o resto | `PORTAL-01` (monitor/logs/DB/alertas), `PORTAL-02` (contas/2FA/auditoria), `PORTAL-03` (premium/cash), `PORTAL-04` (catálogo/economia), `PORTAL-05` (config viva), 07-5/07-6 ✅ | `portal-test` + `/monitoramento` com fonte fora degradando sem 500 |
+| 4 — escala | bots, carga, balanceamento, release | `BOTS-01`, `LAUNCHER-01`, 10-1 🚧, 10-2/10-3/10-4 ⬜, 15-1/15-2/15-3/15-4 | relatório carga p50/p99 + run id + seed |
+
+Congeladas com critério explícito: `FASE-08-6` (captura ao vivo, exige VM+cliente) e
+`FASE-08-10` (trade, layout `MSG_Trade` UNVERIFIED) — nenhuma onda espera por elas.
+Docs: `DOC-01` (MkDocs `mkdocs.yml` + `docs/index.md`, `mkdocs build --strict` verde).

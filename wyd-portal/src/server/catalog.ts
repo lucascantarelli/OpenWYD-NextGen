@@ -15,6 +15,14 @@ export interface Catalog {
   catalogVersion: string;
 }
 
+/**
+ * Ficha por índice, para `?item=` na tela (sem rota nova: a foto já veio completa).
+ */
+export function findCatalogItem(items: readonly CatalogItem[], index: number): CatalogItem | null {
+  if (!Number.isInteger(index) || index <= 0) return null;
+  return items.find((item) => item.item_index === index) ?? null;
+}
+
 let cached: { value: Catalog; at: number } | null = null;
 
 export async function getCatalog(): Promise<Catalog> {

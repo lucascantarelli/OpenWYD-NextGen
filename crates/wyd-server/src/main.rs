@@ -399,6 +399,41 @@ fn run() -> Result<(), String> {
         )
         .with_overrides(capacity_overrides),
     );
+    // Reaper de sessões: libera no boot e a cada 15 s as linhas cujo `renewed_at` venceu
+    // (cliente morto sem FIN/leave), para o `/health` não contar sessão fantasma. TTL =
+    // `WYD_SERVER_SESSION_STALE_SECS` (default 180 s), o mesmo do lease em memória.
+    {
+        let backend = Arc::new(backend.clone());
+        let runtime = Arc::clone(&runtime);
+        let ttl = i64::try_from(session_stale.as_secs()).unwrap_or(180);
+        std::thread::spawn(move || {
+            log(
+                "info",
+                "reaper",
+                &format!("result=started ttl_s={ttl} interval_s=15"),
+            );
+            loop {
+                match runtime.block_on(wyd_db::Sessions::release_stale_sessions(
+                    backend.as_ref(),
+                    ttl,
+                )) {
+                    Ok(liberadas) if liberadas > 0 => log(
+                        "info",
+                        "session",
+                        &format!("reaper result=released count={liberadas} ttl_s={ttl}"),
+                    ),
+                    Ok(_) => {}
+                    Err(error) => log(
+                        "warn",
+                        "session",
+                        &format!("reaper result=failed reason={error}"),
+                    ),
+                }
+                std::thread::sleep(Duration::from_secs(15));
+            }
+        });
+    }
+
     // Seleção de personagem depois do login: mesmo pool e mesmo runtime do handshake.
     let selection = Arc::new(
         wyd_server::characters::SelectionStore::new(

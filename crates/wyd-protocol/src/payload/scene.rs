@@ -69,6 +69,9 @@ impl CreateMob {
     /// `CreateType` de criatura que acabou de entrar na vista (`Basedef.h`; 0 = normal).
     pub const CREATE_JUST_ENTERED: u16 = 2;
 
+    /// `CreateType` de quem já estava na vista (NPC revelado, outro jogador).
+    pub const CREATE_NORMAL: u16 = 0;
+
     /// Nome do mob até o primeiro `NUL` (o template pode ocupar os 16 bytes).
     #[must_use]
     pub fn name_bytes(&self) -> &[u8] {

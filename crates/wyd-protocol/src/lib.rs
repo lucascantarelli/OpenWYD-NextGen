@@ -118,3 +118,84 @@ mod tests {
         assert!(Opcode::ExpMsgPanel.flows().is_empty());
     }
 }
+
+/// Códigos de motivo dos pacotes de recusa (`*Fail`), no trailer opcional de 1 byte.
+///
+/// Compatibilidade: o pacote antigo é só cabeçalho (12 B); o novo é cabeçalho + 1 B. Quem
+/// ignora o trailer continua lendo o opcode normalmente, e quem o lê sem o byte cai em
+/// [`CodigoRecusa::Desconhecido`] (0). Nunca muda o caminho de sucesso.
+pub mod motivo {
+    /// Motivo enviado imediatamente após o `HEADER` do pacote de recusa.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[repr(u8)]
+    pub enum CodigoRecusa {
+        /// Pacote sem trailer (cliente/servidor antigo) ou motivo não catalogado.
+        Desconhecido = 0,
+        /// Conta/senha ou versão de cliente recusada.
+        Senha = 1,
+        /// PIN numérico não confere.
+        PinIncorreto = 2,
+        /// PIN bloqueado por excesso de tentativas (lockout).
+        PinBloqueado = 3,
+        /// Corpo de `_MSG_CharacterLogin` inválido (tamanho/payload).
+        SelecaoInvalida = 4,
+        /// Slot vazio, personagem inexistente ou já em uso.
+        PersonagemIndisponivel = 5,
+        /// Conta já tem sessão ativa em outro canal (cerca de sessão).
+        ContaEmUso = 6,
+        /// Zona/canal sem capacidade de entrada no momento.
+        ZonaIndisponivel = 7,
+    }
+
+    impl CodigoRecusa {
+        /// Lê o byte do trailer; ausente/desconhecido vira [`Self::Desconhecido`].
+        #[must_use]
+        pub fn from_byte(byte: Option<u8>) -> Self {
+            match byte {
+                Some(1) => Self::Senha,
+                Some(2) => Self::PinIncorreto,
+                Some(3) => Self::PinBloqueado,
+                Some(4) => Self::SelecaoInvalida,
+                Some(5) => Self::PersonagemIndisponivel,
+                Some(6) => Self::ContaEmUso,
+                Some(7) => Self::ZonaIndisponivel,
+                _ => Self::Desconhecido,
+            }
+        }
+
+        /// Byte gravado no trailer.
+        #[must_use]
+        pub const fn byte(self) -> u8 {
+            self as u8
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn cada_causa_tem_codigo_proprio_e_o_ausente_cai_em_desconhecido() {
+            let codigos = [
+                CodigoRecusa::Senha,
+                CodigoRecusa::PinIncorreto,
+                CodigoRecusa::PinBloqueado,
+                CodigoRecusa::SelecaoInvalida,
+                CodigoRecusa::PersonagemIndisponivel,
+                CodigoRecusa::ContaEmUso,
+                CodigoRecusa::ZonaIndisponivel,
+            ];
+            let mut vistos = std::collections::BTreeSet::new();
+            for codigo in codigos {
+                assert_ne!(codigo.byte(), 0);
+                assert!(vistos.insert(codigo.byte()), "código repetido: {codigo:?}");
+                assert_eq!(CodigoRecusa::from_byte(Some(codigo.byte())), codigo);
+            }
+            assert_eq!(CodigoRecusa::from_byte(None), CodigoRecusa::Desconhecido);
+            assert_eq!(
+                CodigoRecusa::from_byte(Some(99)),
+                CodigoRecusa::Desconhecido
+            );
+        }
+    }
+}

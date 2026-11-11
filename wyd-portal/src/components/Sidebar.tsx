@@ -5,10 +5,12 @@ import {
   Coins,
   Gift,
   LayoutDashboard,
+  Mail,
   Package,
   ScrollText,
   SlidersHorizontal,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,11 +21,13 @@ const ICONS: Record<NavIcon, typeof Activity> = {
   overview: LayoutDashboard,
   accounts: Users,
   grants: Gift,
+  mail: Mail,
   monitoring: Activity,
   catalog: Package,
   config: SlidersHorizontal,
   audit: ScrollText,
   economy: Coins,
+  cash: Wallet,
 };
 
 export function Sidebar() {
