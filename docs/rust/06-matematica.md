@@ -89,7 +89,7 @@ Mitigação aplicada:
 Estado atual da dívida: a **regra** existe só como tabela duplicada; a **transação** existe
 só no core. `ComponentStore::apply_gem` é o caminho único de aplicação — valida sem escrever,
 consome uma unidade da mochila, publica o evento e só então grava o efeito. Recusa é erro
-tipado e o inventário fica idêntico (`crates/wyd-core/tests/gem.rs`). `Inventory::{plan_gem,
+tipado e o inventário fica idêntico (`crates/wyd-core/tests/integracao_gem.rs`). `Inventory::{plan_gem,
 consume_gem, commit_gem, apply_gem_from_bag}` são `pub(crate)`: de fora do crate não há como
 aplicar gema numa cópia solta.
 
@@ -98,9 +98,9 @@ aplicar gema numa cópia solta.
 | Nível | O que valida | Onde |
 |---|---|---|
 | unitário | faixa, borda, erro tipado, saturação | `#[cfg(test)]` no próprio módulo |
-| golden | **valor exato** de tabela publicada | `tests/goldens.rs` |
+| golden | **valor exato** de tabela publicada | `tests/golden_formulas.rs` |
 | composição | sistemas na mesma unidade (derivado → dano → drop) | `formula/mod.rs` (teste de composição) |
-| determinismo | mesma seed → mesma partida; replay com rolls gravados | `tests/determinism.rs` |
+| determinismo | mesma seed → mesma partida; replay com rolls gravados | `tests/integracao_determinism.rs` |
 | servidor | a regra aplicada de verdade | teste de `wyd-core` com o mesmo número |
 
 Regra: golden novo entra **com a fonte citada no nome do teste** (`gem_scale_matches_kersef`)

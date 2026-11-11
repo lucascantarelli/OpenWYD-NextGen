@@ -147,6 +147,7 @@ fn cliente() -> Option<PathBuf> {
 #[test]
 fn sn_bin_instalado_vem_da_identidade_e_do_registro() {
     let Some(dir) = cliente() else {
+        eprintln!("SKIP: client/ ausente — sn.bin instalado não comparado com a identidade");
         return;
     };
     let id = identidade::padrao().expect("identidade");
@@ -173,6 +174,7 @@ fn sn_bin_instalado_vem_da_identidade_e_do_registro() {
 #[test]
 fn skin_instalada_e_a_gerada_pela_identidade() {
     let Some(dir) = cliente() else {
+        eprintln!("SKIP: client/ ausente — skin instalada não comparada com a gerada");
         return;
     };
     let id = identidade::padrao().expect("identidade");

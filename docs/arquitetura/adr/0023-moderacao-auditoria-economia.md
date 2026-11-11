@@ -15,7 +15,7 @@ A FASE-07-3 exige painel de staff com três coisas que o control plane ainda nã
 3. **estatísticas de economia** com fonte real, nunca número inventado.
 
 O `AGENTS.md` §7 exige ADR para arquivo novo fora da árvore da ADR-0002, e o catálogo do banco
-(`crates/wyd-db/tests/catalogo.rs`) proíbe `ALTER TABLE` no bloco `up` das migrations: coluna nova
+(`crates/wyd-db/tests/contrato_catalogo.rs`) proíbe `ALTER TABLE` no bloco `up` das migrations: coluna nova
 nasce com a tabela. Blocking em `accounts` exigiria `ALTER`; bloquear sem motivo auditável não
 atende ao critério de aceite.
 

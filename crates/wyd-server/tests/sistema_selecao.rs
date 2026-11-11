@@ -324,6 +324,9 @@ fn esperar_gauge(
 #[test]
 fn sessao_viva_publica_entidade_no_gauge() {
     let Ok(endereco) = std::env::var("WYD_LIVE_CPSOCK") else {
+        eprintln!(
+            "SKIP: WYD_LIVE_CPSOCK ausente — gauge de sessão viva não provado (requer WYD_LIVE_ACCOUNT/WYD_LIVE_PASSWORD)"
+        );
         return;
     };
     let conta = std::env::var("WYD_LIVE_ACCOUNT").expect("WYD_LIVE_ACCOUNT com a conta real");

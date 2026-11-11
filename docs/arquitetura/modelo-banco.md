@@ -90,12 +90,12 @@ over-engineering nesta escala; CHECK documenta o domínio).
   descartável — produção futura exige política própria, ver 04-2).
 - Runner embutido (`sqlx::migrate!`/`refinery`) **não** entrou na FASE-04-3: o pool e os adapters
   `pg` foram adotados (ADR-0021), mas a aplicação das migrations continua por `psql -f` com split
-  nos marcadores (`tools/content/migrate-cycle.mjs`; validação estrutural em `tests/constraints.rs`).
+  nos marcadores (`tools/content/migrate-cycle.mjs`; validação estrutural em `tests/contrato_migrations.rs`).
   Trocar o runner exige issue própria.
 - **Nenhum `ALTER TABLE` no `up`**: coluna nova nasce na criação da tabela. O banco ainda não
   foi para produção, então desenho corrigido se reescreve na origem, não por cima (foi o que
   aconteceu em 2026-11-08 com `0023_inventario_gema`/`0024_catalogo_skill_nota`, consolidados
-  em `0003`/`0007`). `crates/wyd-db/tests/catalogo.rs` falha se um `ALTER` voltar.
+  em `0003`/`0007`). `crates/wyd-db/tests/contrato_catalogo.rs` falha se um `ALTER` voltar.
 - **Catálogo gerado**: `docs/arquitetura/banco-catalogo.md` vem de `make banco-catalogo`
   (migrations + `tools/content/banco-fontes.mjs`) e lista, por tabela, colunas/tipos/nulidade,
   PK/FK/CHECK/índices, arquivo de origem, fonte da decisão e o que é provisório (D-Bxx).
@@ -194,14 +194,14 @@ fonte de verdade do servidor.
 > **Exceção registrada (2026-11-08):** `0028_estado_de_jogo.sql` traz **DDL depois** do bloco de
 > seed (`0017–0027`), porque as cinco tabelas da §8 só foram decididas depois da série de seed.
 > A regra que continua valendo é a que importa: nenhum seed insere em tabela que não existe —
-> cobrado por `crates/wyd-db/tests/catalogo.rs` (`seed_insere_so_em_tabela_ja_criada`). Renumerar
+> cobrado por `crates/wyd-db/tests/contrato_catalogo.rs` (`seed_insere_so_em_tabela_ja_criada`). Renumerar
 > a série para manter a ordem posicional não vale o custo em histórico e em referências de ADR.
 
 Regra da série: **DDL primeiro (0001–0016), seed depois (0017–0024)**, um domínio por
 arquivo, nenhuma tabela partida entre arquivos, nenhuma FK para tabela criada depois e
 nenhum `ALTER TABLE` no `up`. Verificação em três camadas:
 `node tools/content/check-migrations.mjs` (ordem/FK/down/INSERT, sem banco),
-`cargo test -p wyd-db` (`tests/catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
+`cargo test -p wyd-db` (`tests/contrato_catalogo.rs`: doc ↔ SQL, `SCHEMA_VERSION`, seed depois do DDL)
 e `node tools/content/verify-schema.mjs` (banco vazio → `up` → `information_schema` ↔ catálogo).
 Números atuais: **47 arquivos, 85 tabelas, 157 `INSERT`s**, sem problema (medidos pelo `check-migrations`, 2026-11-11; colunas não recontadas aqui).
 
@@ -408,7 +408,7 @@ a lista de colunas com tipo e nulidade. As seções finais registram as decisõe
 (`D-B01`..`D-B08`, mesmo padrão `D-xx` de `matematica-sim.md`) e o mapa tabela legada → nova,
 com as pendências nomeadas em vez de silenciadas.
 
-O catálogo **não** é escrito à mão: `cargo test -p wyd-db --test catalogo` falha se ele
+O catálogo **não** é escrito à mão: `cargo test -p wyd-db --test contrato_catalogo` falha se ele
 divergir das migrations (tabela, coluna, PK, `SCHEMA_VERSION`, seed antes do DDL) e
 `make banco-verify` falha se o Postgres real divergir dele. É por isso que os números deste
 documento podem ser cobrados.
@@ -526,7 +526,7 @@ diante):
 
 1. As 5 tabelas entraram em **`0028_estado_de_jogo.sql`** (DDL com `-- migrate:up` e
    `-- migrate:down`), com a exceção à ordem "DDL antes de seed" registrada na §6.5 e cobrada por
-   `tests/catalogo.rs`.
+   `tests/contrato_catalogo.rs`.
 2. `kingdom_cape_price` precisa de `version` (revisão otimista) para reproduzir
    `PurchaseKingdomCape(expectedRevision)` — sem isso duas compras concorrentes pagam o preço velho.
 3. `character_affects` só faz sentido se o save do personagem for por agregado (contrato de

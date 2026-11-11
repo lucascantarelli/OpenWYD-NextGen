@@ -118,7 +118,7 @@ Status: ✅ implementado · 🟡 fórmula pronta em `wyd-sim`, falta fiação de
 ## 5. O que já estava certo (não mexer)
 
 - **4 gemas** (3386–3389), efeito por aplicação direta, troca ilimitada, Anct aceito abaixo
-  de +10 (`apply_gem` + `refine_gem_effect` + `tests/gema_seed.rs`).
+  de +10 (`apply_gem` + `refine_gem_effect` + `tests/golden_gema_seed.rs`).
 - **40 × (nível − 9)** para perfuração/absorção; **8%** drop e **2%** EXP fixos.
 - **15 passos** em `refine_rate` com família `dust`/`compose` e fonte por linha.
 - **Escada +0..+9 publicada** e tetos do legado (6/9/10/11) agora explícitos.
@@ -137,7 +137,7 @@ Status: ✅ implementado · 🟡 fórmula pronta em `wyd-sim`, falta fiação de
 
 - `crates/wyd-sim/src/formula/refine.rs` — escada de 15 passos, `Powder`, `RefinePolicy`,
   piedade, falha, bênção, Anct (duas réguas), +12..+15, gemas. 16 testes de unidade.
-- `crates/wyd-sim/tests/refino_seed.rs` — a fórmula contra `0022`/`0025`/`0026`: 15 passos e
+- `crates/wyd-sim/tests/golden_refino_seed.rs` — a fórmula contra `0022`/`0025`/`0026`: 15 passos e
   36 células, leitura em `nível+1`, passos especiais fora da tabela.
 - `crates/wyd-db/migrations/0026_seed_sanc_rate_defaults.sql` — 8 células de default compilado.
 - Gates: `cargo test -p wyd-sim`, `cargo test --workspace`, `check-migrations`,

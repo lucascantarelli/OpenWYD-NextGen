@@ -155,7 +155,7 @@ gateway --seed-staff`). Ele usa o `.env` montado e o banco da stack, e só sai c
 confirmar o hash (`verified=true`). Não sobe portal/canais, não publica porta e não para o stack.
 
 O job de CI `seed-boot`
-sobe um Postgres efêmero, aplica só `0001_contas` e roda `cargo test -p wyd-admin --test seed`
+sobe um Postgres efêmero, aplica só `0001_contas` e roda `cargo test -p wyd-admin --test sistema_seed`
 em toda pull request. Não existe mais serviço one-shot `staff-seed` no compose: um job que termina deixa
 um container parado em `docker compose ps` (estado normal de job, mas vira ruído e some do `up`
 se alguém filtrar por "Up"). Seed no boot do processo que já tem `DATABASE_URL` e argon2id é

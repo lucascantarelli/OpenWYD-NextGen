@@ -89,8 +89,8 @@ Config: `WYD_LOG` (nível) e, no binário, `WYD_METRICS_ADDR` (default `127.0.0.
 
 ## Evidência
 
-`cargo test -p wyd-core --test telemetry -- --nocapture` (nível `debug`) imprime os eventos
+`cargo test -p wyd-core --test sistema_telemetry -- --nocapture` (nível `debug`) imprime os eventos
 `tracing` e a resposta HTTP real de `GET /metrics` com `wyd_ticks_total 40`,
 `wyd_tick_duration_microseconds_count 40`, buckets cumulativos e `wyd_entities_active 104`;
-`cargo test -p wyd-net --features metrics --test metrics` cobre pacotes/recusas/gauges.
+`cargo test -p wyd-net --features metrics --test integracao_metrics` cobre pacotes/recusas/gauges.
 Gates e números da passada em `roadmap-rust/issues/FASE-06-1-telemetria.md`.

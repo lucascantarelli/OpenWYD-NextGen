@@ -61,7 +61,7 @@
 
 ## Evidência
 
-`cargo test -p wyd-admin --test painel` (6 casos: 401, conta, personagens escopados, ranking
+`cargo test -p wyd-admin --test contrato_painel` (6 casos: 401, conta, personagens escopados, ranking
 ordenado sem `account_id`, recuperação sem vazar existência, parâmetros inválidos) e
 `cargo test -p wyd-db` (catálogo/`SCHEMA_VERSION`). Números e corpos em
 `roadmap-rust/issues/FASE-07-2-painel-usuario.md`.
@@ -83,4 +83,4 @@ ADR estava incompleto em dois pontos:
    na fonte pública (valor que o `refine_rate` mantém).
 
 A leitura da tabela é em **`nível + 1`**, documentada em `refine_rate`/`sanc_rate` e provada
-por `crates/wyd-sim/tests/refino_seed.rs`.
+por `crates/wyd-sim/tests/golden_refino_seed.rs`.

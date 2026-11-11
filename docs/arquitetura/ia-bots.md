@@ -19,7 +19,7 @@ partes, porque a palavra "IA" aparece na árvore com dois sentidos diferentes:
 | Existem issues de roadmap para as duas camadas de jogo | **CONFIRMADO** | `roadmap-rust/issues/FASE-03-6-ia-npc.md`, `roadmap-rust/issues/FASE-15-3-bots-carga.md` |
 | As árvores de módulos já reservam os diretórios | **CONFIRMADO** | `docs/arquitetura/estrutura-e-padroes.md:16` (`wyd-bots` no DAG), `:199` (`systems/npc.rs`), `:206` (`npc/`), `:358` (`bot/`), `:381` ("reservados") |
 | A matemática de aggro/alvo existe e é pura | **CONFIRMADO** | `crates/wyd-sim/src/formula/threat.rs` (275 linhas: `ThreatTable`, `MAX_THREAT_ENTRIES = 8`, `select_target`, `NpcMode::should_aggro`) |
-| Existe comportamento de NPC no tick (FSM + utilidade) | **CONFIRMADO** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); `tests/npc.rs` com 12 testes, golden FNV-1a e recusa atômica |
+| Existe comportamento de NPC no tick (FSM + utilidade) | **CONFIRMADO** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); `tests/integracao_npc.rs` com 12 testes, golden FNV-1a e recusa atômica |
 | Existe crate de bots jogáveis | **NÃO** — `crates/` não tem `wyd-bots`; a crate está só no DAG (§2) | `estrutura-e-padroes.md:16` |
 | Existe LLM em qualquer lugar | **NÃO** — nenhum código, nenhuma tabela; camada C depende de decisão do dono (custo/chave/provedor) | `07-ia-e-bots.md` §9, §11.3 |
 | "FASE 9 — IA" do planejamento mestre é IA de jogo | **NÃO** — trata de skills/instruções de agentes de desenvolvimento | `pre-release-rust.md:173–178` e `:80–83` |
@@ -84,7 +84,7 @@ Formato verificável (planejado):
 saída por decisão: <tick>,<entity>,<kind>,<arg0>,<arg1>
 golden:            fixtures/npc/decision_golden.txt
 verificação:       hash FNV-1a 64 do fluxo + diff da primeira divergência
-teste:             crates/wyd-core/tests/npc.rs  (2 execuções → mesmo hash)
+teste:             crates/wyd-core/tests/integracao_npc.rs  (2 execuções → mesmo hash)
                    + execução com entidades inseridas em ordem invertida → mesmas decisões
                    + replay a partir de snapshot → mesmo fluxo
 ```
@@ -136,7 +136,7 @@ crates/wyd-core/src/npc/            # FASE-03-6, camada A
 ├── route.rs          # rota do generator (semântica UNVERIFIED até trace)
 └── budget.rs         # cadência (4 ticks), teto por tick, contadores
 crates/wyd-core/src/systems/npc.rs  # integração com o tick (ordem documentada)
-crates/wyd-core/tests/npc.rs        # determinismo e golden de decisão
+crates/wyd-core/tests/integracao_npc.rs        # determinismo e golden de decisão
 crates/wyd-core/benches/tick.rs     # custo da IA no orçamento do tick
 
 crates/wyd-sim/src/bot/             # FASE-15-3, camada B (política pura)
@@ -175,7 +175,7 @@ wyd-net, wyd-protocol}` e **nada depende de `wyd-bots`**; `wyd-core` consome `wy
    `NPCGener` que só o trace do cliente resolve; até lá, patrulha fica limitada a âncora.
 3. **Tabelas de comportamento/diálogo/LLM não criadas**: pendência declarada (D-IA05, §5), sem
    migração especulativa.
-4. **Golden de decisão existe para o fluxo de 24 ticks** (`tests/npc.rs`, hash FNV-1a): cobre
+4. **Golden de decisão existe para o fluxo de 24 ticks** (`tests/integracao_npc.rs`, hash FNV-1a): cobre
    percepção, alvo e intenção; o cenário de 100 ticks do §4 e o bench de custo continuam
    pendentes.
 5. **Nenhum bot de carga existe**: `FASE-15-3` está aberta; o harness citado em

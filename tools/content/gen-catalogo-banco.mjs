@@ -60,7 +60,7 @@ push(
   '> Regenere com `make banco-catalogo`.',
   '>',
   '> Duas verificações prendem este documento ao banco:',
-  '> 1. `cargo test -p wyd-db --test catalogo` — documento ↔ migrations, sem Postgres;',
+  '> 1. `cargo test -p wyd-db --test contrato_catalogo` — documento ↔ migrations, sem Postgres;',
   '> 2. `node tools/content/verify-schema.mjs` — `information_schema` de um Postgres real',
   '>    aplicado do zero ↔ documento (tabela/coluna/tipo/nulidade/PK, sem sobra nem falta).',
   '',

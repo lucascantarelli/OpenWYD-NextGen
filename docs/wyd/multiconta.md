@@ -54,7 +54,7 @@ Não há trava de instância única no `wyd-launcher`: `launch` só faz `spawn` 
 
 - **Sessão única por conta** (`0030`) + **limite por IP** no `cpsock`: `WYD_MAX_CONNECTIONS_PER_IP`
   (padrão **6**, `0` desliga). A vaga é liberada no `Drop` da conexão, inclusive em pânico.
-  Teste: `crates/wyd-server/tests/limite_ip.rs` (2ª conexão do mesmo IP é fechada; ao sair a
+  Teste: `crates/wyd-server/tests/sistema_limite_ip.rs` (2ª conexão do mesmo IP é fechada; ao sair a
   vaga volta). 4–5 janelas continuam passando; 20 contas do mesmo IP, não.
 - **Launcher**: `launch ... --instances N` (1–5) abre N janelas independentes e imprime os PIDs;
   não existe trava de instância única.

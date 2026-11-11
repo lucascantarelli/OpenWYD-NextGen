@@ -336,7 +336,9 @@ fn cria_e_deleta_personagem_pelo_protocolo() {
 #[test]
 fn cria_quatro_personagens_em_slots_distintos_sem_sobrescrever() {
     let Some(dsn) = dsn() else {
-        eprintln!("skip: sem DSN — teste de alocação de slots não executado");
+        eprintln!(
+            "SKIP: WYD_TEST_DATABASE_URL/DATABASE_URL ausente — alocação de slots não testada"
+        );
         return;
     };
     let rt = runtime();

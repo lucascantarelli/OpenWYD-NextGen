@@ -31,7 +31,7 @@ Duas pressões apareceram na entrega:
 1. **A IA emite intenção, nunca efeito.** `systems/npc::decide` devolve
    `Option<Decision { mode, target, intention }>`; `Intention` é `Idle | MoveTo | Attack |
    Flee | Return`. Quem move é `movement::step` e quem fere é `combat::attack`, com as
-   mesmas validações de um pedido de cliente. `tests/npc.rs` prova que uma intenção forjada
+   mesmas validações de um pedido de cliente. `tests/integracao_npc.rs` prova que uma intenção forjada
    (destino além do orçamento) é recusada com posição e fila intactas.
 2. **Decisão é função pura e determinística.** `npc::brain::decide(&mut NpcState, Observed,
    &[Observed], tick, NpcProfile) -> Decision` não lê relógio, banco nem `HashMap`; RNG é
@@ -47,7 +47,7 @@ Duas pressões apareceram na entrega:
 5. **Cópia presa por golden da tabela de ameaça.** `npc::state::ThreatTable` (teto 8, empate
    pelo menor `entity`, TTL em ticks) reimplementa a semântica de
    `crates/wyd-sim/src/formula/threat.rs` **porque o DAG proíbe a dependência**. A dívida de
-   unificação continua registrada (`06-matematica.md` §4, FASE-10-1) e `tests/npc.rs` fixa a
+   unificação continua registrada (`06-matematica.md` §4, FASE-10-1) e `tests/integracao_npc.rs` fixa a
    decisão por hash FNV-1a: mudança de comportamento quebra o golden.
 6. **Rota ancorada, não inventada.** `npc::route::Route` limita a patrulha ao raio da âncora
    até o trace do cliente confirmar `route_type`/`generator_data` (UNVERIFIED). Nenhum
@@ -113,4 +113,4 @@ para mundo maior/carga hostil. O custo é dominado pela percepção (com 50 joga
 
 Continua UNVERIFIED: medição em hardware de servidor (o número é do host de desenvolvimento,
 Windows/release) e o custo de `step`/`attack` aplicados no mesmo tick (o bench mede a decisão;
-movimento e combate têm gates próprios em `tests/autoridade.rs`).
+movimento e combate têm gates próprios em `tests/integracao_autoridade.rs`).

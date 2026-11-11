@@ -48,7 +48,7 @@ fila de save nem o teste de integração. Criados, e a árvore atualizada na mes
 | `src/pool/pg.rs` | pool `sqlx` + mapeamento `sqlx::Error → DbError` (adapter) |
 | `src/repo/pg.rs` | `impl Accounts/Characters/Grants for PgBackend` (adapter das portas) |
 | `src/transfer/save.rs` | `SavePolicy`, `SaveQueue`, `SaveDrain`, `FlushReport` |
-| `tests/pg.rs` | integração real contra Postgres descartável |
+| `tests/sistema_pg.rs` | integração real contra Postgres descartável |
 
 Nenhum `mod.rs` ganhou lógica: os três continuam só declarando e re-exportando.
 
@@ -71,7 +71,7 @@ Nenhum `mod.rs` ganhou lógica: os três continuam só declarando e re-exportand
 | `cargo clippy --workspace --all-targets -- -D warnings` | exit 0 |
 | `cargo build --workspace` | exit 0 (58 s com `sqlx`) |
 | `cargo test --workspace` | todos os alvos de teste, **0 failed** (exit 0) |
-| Integração `tests/pg.rs` (Postgres 17, 28 migrations + seed) | **6/6 ok** |
+| Integração `tests/sistema_pg.rs` (Postgres 17, 28 migrations + seed) | **6/6 ok** |
 | Custo de `enqueue` no Hot Path (N=20 000, dreno real em paralelo) | **p50 500 ns · p99 1 600 ns · max 257 µs** |
 | Orçamento do tick a 20 Hz | 50 ms — o enqueue fica em **0,003%** do p99 |
 
@@ -96,7 +96,7 @@ não custo do caminho: p99 é a métrica que decide.
 - Docs atualizadas nesta ADR: `docs/arquitetura/estrutura-e-padroes.md` §12,
   `docs/rust/01-dependencias.md`, `docs/arquitetura/contrato-persistencia.md` §7–§8,
   `docs/rust/03-progresso.md`, `roadmap-rust/index.md`
-- Evidência: comandos e números na tabela acima; log da integração em `crates/wyd-db/tests/pg.rs`
+- Evidência: comandos e números na tabela acima; log da integração em `crates/wyd-db/tests/sistema_pg.rs`
 
 ## Revisão
 

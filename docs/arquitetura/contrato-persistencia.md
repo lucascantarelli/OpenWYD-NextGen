@@ -312,7 +312,7 @@ que impede o tick de bloquear em I/O.
 Gatilhos: periódico (`periodic_ms`, padrão 5 s), por lote (`max_batch`, padrão 256) e shutdown
 (`shutdown_timeout_ms`, padrão 3 s). `SavePolicy` é validada — zero/desligado é recusado.
 
-Medido em 2026-11-08 (Postgres 17 descartável, 28 migrations + seed, integração `tests/pg.rs` 6/6):
+Medido em 2026-11-08 (Postgres 17 descartável, 28 migrations + seed, integração `tests/sistema_pg.rs` 6/6):
 `enqueue` com N=20 000 e dreno real gravando em paralelo → **p50 500 ns, p99 1 600 ns**
 (p99 = 0,003% do tick de 50 ms); shutdown gravou 2/2 sem perda e o personagem apagado contou como
 `missing`, não como sucesso.

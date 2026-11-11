@@ -158,6 +158,7 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
 | Preciso de… | Leia (normativo) |
 |-------------|------------------|
 | Estrutura de módulos, nomenclatura, padrões, SOLID | `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002) |
+| Tipos de teste, nomes, gates e auditoria da suíte | `docs/arquitetura/testes.md` + skill `rust-test-quality` |
 | Protocolo CPSock (HEADER, ofuscação, catálogo, payloads, UNVERIFIED) | `docs/arquitetura/protocolo.md` + `crates/wyd-protocol/` |
 | Tabelas congeladas (opcodes, keyword) | `crates/wyd-protocol/src/wire/generated/`, `codec/generated/` |
 | Banco (ER, CHECKs, migrations, delivery_queue, seeds) | `docs/arquitetura/modelo-banco.md` + `crates/wyd-db/` |
@@ -213,6 +214,7 @@ Vigentes (use estas):
 | `wyd-client-reverso` | RE do `client/` (inventário, offsets, manifesto do launcher) |
 | `wyd-server-ops` | operação da stack Docker (subir, logs, banco, diagnóstico) |
 | `rust-code-quality` | qualidade de código Rust (ownership, erros, testes) |
+| `rust-test-quality` | taxonomia e higiene dos testes (unidade/integração/contrato/golden/sistema) |
 | `software-architecture` | arquitetura (Hot/Cold, DOD/ECS, fronteiras, ADRs) |
 | `solid-design-patterns` | SOLID/patterns idiomáticos em Rust |
 | `github-actions-docs` | sintaxe de workflows (CI Rust) |
