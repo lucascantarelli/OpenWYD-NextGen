@@ -12,7 +12,7 @@ import { formatarData, getNoticia, listNoticias, renderNoticia } from "@/server/
  */
 // `noticias.ts` está em `wyd-portal/src/server/`; o JSON nasce de `docs/noticias/`
 // na raiz do repositório.
-const raiz = fileURLToPath(new URL("../../..", import.meta.url));
+const raiz = fileURLToPath(new URL("../../../../", import.meta.url));
 const dir = `${raiz}/docs/noticias`;
 
 interface DoDoc {

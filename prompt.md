@@ -182,7 +182,13 @@ a pasta docs deve ser um projeto mkdocs(ou similar, com index, navegação, link
 - implementar funcionalidades completas do launcher, configurações do jogo, atualizações, patches, downloads, etc., garantindo que os jogadores tenham acesso a todas as funcionalidades necessárias para jogar o jogo de forma eficiente e satisfatória.
 - implementar funcionalidades de autenticação e login unificado entre o launcher e o portal, permitindo que os jogadores possam acessar suas contas e informações de forma integrada e segura.
 - implementar funcionalidades de sincronização de dados entre o launcher e o portal, garantindo que as informações estejam sempre atualizadas e consistentes entre os dois sistemas.
-
+- Launcher 100% funcional
+- Todos os testes criados e organizados seguindo as boas praticas, coveragem 100%
+- Testes automaticados, abrindo o laucher, executando as funções, verificando logs, verificando erros, verificando mensagens, verificando atualizações, verificando downloads, verificando patches, verificando configurações, etc.
+- Icone do launcher usando mesmo da logo do portal, para manter a identidade visual do projeto consistente e reconhecível pelos jogadores.
+- icone do wyd.exe usando mesmo da logo do portal, para manter a identidade visual do projeto consistente e reconhecível pelos jogadores.
+- Duvida: voce acha que devemos criar um projeto no com o wyd-client, o cliente é grande, existe alguma boas pratica ? git-lfs ? para subir  e versionar nossas alterações do cliente, é uma boa pratica ? como pode ser feito da melhor forma ?
+- Atualmente, minha idéia para gerar os patchs do launcher é, no nosso projeto criar um wyd-client, com o código do cliente, e gerar os patchs a partir desse projeto, para que possamos versionar as alterações do cliente e gerar os patchs de forma eficiente e segura. O que você acha dessa abordagem ? existe alguma outra abordagem melhor para gerar os patchs do launcher ? os patches serão gerados via CI no github, empacotados e o launcher vai baixar os patchs do portal, para que possamos manter o cliente sempre atualizado e garantir que os jogadores tenham acesso a todas as funcionalidades do jogo de forma eficiente e segura, seja critico na alise dessa proposta, e sugira melhorias, otimizações, boas praticas, etc, para que possamos ter um processo de geração de patchs eficiente e seguro.
 
 ## Bugs e problemas
 

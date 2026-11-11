@@ -276,3 +276,38 @@ falso verde; **P1** = tipo misturado, monólito ou duplicação; **P2** = higien
 - [ ] Referências em Makefile/CI/docs atualizadas no mesmo commit?
 - [ ] `cargo fmt --all --check` e `cargo clippy --workspace --all-targets -- -D warnings`
       limpos; teste afetado executado (com `-j 1` em `wyd-server` no Windows)?
+
+## 9. Portal (`wyd-portal`) — taxonomia TypeScript
+
+O portal não usa `cargo test`; a mesma ideia de tipo vale para o Vitest/Playwright. A
+divisão mora em `wyd-portal/tests/`, nunca em `src/`:
+
+| Tipo | Pasta | Precisa de | Prova |
+|---|---|---|---|
+| Unidade | `tests/unidade/**` | só CPU | regra pura de `lib/`/`server/` |
+| Contrato | `tests/contrato/**` | arquivos do repositório/JSON gerado | token/CSS, rota de guia, notícia, enciclopédia |
+| Integração | `tests/integracao/**` | módulos reais com borda mockada | rota/handler + validação + sessão |
+| Componente | `tests/componente/**` | jsdom + Testing Library | componente real sem browser |
+| E2E | `tests/e2e/**` | Docker + banco/gateway/canal/portal efêmeros | fluxo real de staff |
+
+Regras:
+
+- Vitest inclui `tests/**/*.test.ts`/`.test.tsx`; Playwright usa `.spec.ts` em
+  `tests/e2e/` e é executado por `npm run test:e2e` (`scripts/e2e.mjs`), nunca pelo
+  `npm test`.
+- Imports de código do portal dentro de `tests/` usam o alias `@/`; caminho relativo
+  ao arquivo de teste só para helper local do mesmo diretório.
+- Componente que precisa de DOM declara `// @vitest-environment jsdom` no topo; o
+  restante roda no ambiente `node` do `vitest.config.ts`.
+- `playwright.config.ts` fixa `testDir: ./tests/e2e`, `baseURL` do portal E2E
+  (`127.0.0.1:3110`) e `workers: 1` — as specs compartilham o mesmo gateway/banco.
+- Teste que lê arquivo do repositório calcula a raiz a partir de `import.meta.url`
+  (ou `process.cwd()` quando o comando é sempre `wyd-portal`), como nos contratos
+  de identidade, notícias e guias.
+- Comandos: `npm test` (todas as pastas Vitest), `npm run test:unidade`,
+  `npm run test:contrato`, `npm run test:integracao`, `npm run test:componente` e
+  `npm run test:e2e`.
+
+O gate do portal continua `make portal-test` (`tsc --noEmit` + Vitest). O E2E exige
+Docker e as imagens `wyd/gateway:dev`/`wyd/server:dev`/`wyd/portal:dev`, por isso é
+separado do gate rápido.

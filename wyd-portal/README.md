@@ -9,7 +9,9 @@ cd wyd-portal
 npm install
 npm run dev          # http://127.0.0.1:3000
 npm run typecheck    # tsc --noEmit
-npm test             # vitest
+npm test             # Vitest: unidade + contrato + integração + componente
+npm run test:unidade # só um tipo (idem contrato/integracao/componente)
+npm run test:e2e     # Playwright: provisiona a stack efêmera (Docker)
 npm run build        # next build (standalone)
 ```
 
@@ -204,6 +206,24 @@ src/server/session.ts       cookie httpOnly HS256, getSession/requireStaff
 src/proxy.ts                guarda de rota (matcher literal, coberto por teste)
 scripts/build-guias.mjs     gerador de /guias a partir de docs/ (npm run guias)
 ```
+
+## Testes
+
+A suíte fica em `tests/` separada pelo que o teste precisa para rodar:
+
+| Pasta | Tipo | Precisa de |
+|---|---|---|
+| `tests/unidade/` | regra pura de `lib/`/`server/` | só CPU |
+| `tests/contrato/` | tokens, rotas, JSON gerado de notícias/guias/enciclopédia | arquivos do repositório |
+| `tests/integracao/` | rota/handler com sessão e gateway mockados | módulos reais |
+| `tests/componente/` | React + Testing Library | jsdom |
+| `tests/e2e/` | fluxo real de staff | Docker + stack efêmera |
+
+Vitest cobre as quatro primeiras pastas (`npm test` ou o script do tipo); Playwright
+cobre só `tests/e2e/` via `npm run test:e2e`. O `scripts/e2e.mjs` provisiona banco,
+gateway, canal e portal efêmeros; o Playwright usa a `baseURL` de
+`playwright.config.ts` (`127.0.0.1:3110`). Dentro de `tests/`, imports de `src/` usam
+o alias `@/` — não há mais `*.test.ts` espalhado em `src/`.
 
 ## Docker
 
