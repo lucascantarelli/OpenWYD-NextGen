@@ -1,6 +1,6 @@
 //! Movimento server-authoritative: o cliente pede um destino, o core decide se é possível.
 //!
-//! Regra (FASE-03-5): a posição gravada é sempre a do servidor. O pedido traz **destino**;
+//! Regra (GAME-05): a posição gravada é sempre a do servidor. O pedido traz **destino**;
 //! distância, orçamento por tempo e limites do mundo são conferidos aqui. Teleporte (andar mais
 //! tiles do que o tempo decorrido permite) e destino fora do mapa são recusados com erro
 //! tipado, **sem** mover a entidade e **sem** publicar evento.

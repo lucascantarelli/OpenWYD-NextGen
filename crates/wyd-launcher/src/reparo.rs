@@ -1,4 +1,4 @@
-//! Reparo do cliente a partir do manifesto servido pelo portal (FASE-08-7).
+//! Reparo do cliente a partir do manifesto servido pelo portal (CLIENT-07).
 //!
 //! Fluxo: baixa o manifesto do cliente → confere o diretório → para cada arquivo
 //! divergente baixa o byte-exato do portal e confere tamanho + SHA-256 antes de

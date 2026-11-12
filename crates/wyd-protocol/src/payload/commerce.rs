@@ -1,7 +1,7 @@
 //! Comércio com NPC (`_MSG_Buy`, `_MSG_Sell`, `_MSG_ShopList`, `_MSG_REQShopList`).
 //!
 //! Troca entre jogadores (`MSG_Trade`) tem layout UNVERIFIED e fica fora até a
-//! captura real (FASE-08-2).
+//! captura real (CLIENT-02).
 
 use super::{check_len, PayloadError, WireField, WirePayload};
 use crate::wire::opcode::Opcode;

@@ -11,7 +11,7 @@
 
 | Peça | Valor | Evidência no binário | Status |
 |---|---|---|---|
-| Header | 12 B: `Size(2) KeyWord(1) CheckSum(1) Type(2) ID(2) Tick(4)` | tabela de 512 B embutida + INITCODE + limite 8192 | **CONFIRMADO INDIRETO** (offsets de campo UNVERIFIED até 08-6) |
+| Header | 12 B: `Size(2) KeyWord(1) CheckSum(1) Type(2) ID(2) Tick(4)` | tabela de 512 B embutida + INITCODE + limite 8192 | **CONFIRMADO INDIRETO** (offsets de campo UNVERIFIED até CLIENT-06) |
 | INITCODE | `0x1F11F311` | constante `11 f3 11 1f` presente em `.data` | **CONFIRMADO (dado)**; referência em código **NÃO LOCALIZADA** |
 | Tabela `pKeyWord` | 512 B, `SHA-256 e47996fe5e92de5d…` | bloco byte-idêntico localizado | **CONFIRMADO** |
 | Ofuscação | mod-4 sobre `4..Size`, `pKeyWord[rst*2+1]` | implementada e testada no crate `wyd-protocol` | CONFIRMADO por paridade de tabela |
@@ -82,7 +82,7 @@ Estrutura inicial documentada em `docs/cliente/formatos.md`:
 `STRUCT_SELCHAR` 840 vs 904 B, `MSG_CNFAccountLogin` 2008 vs ~1920 B. Transporte é idêntico;
 **struct é o dialeto do build** e não se mistura. O servidor fala 7662 — nunca outro fork.
 
-## 7. Trace dinâmico (08-6, em curso)
+## 7. Trace dinâmico (CLIENT-06, em curso)
 
 - Roteiro publicado em `docs/cliente/depuracao.md` (breakpoints, fases, reprodução do freeze).
 - Goldens **gerados** do caminho C→S validados: `crates/wyd-protocol/tests/fixtures/cliente/*.json` (5/5, `captura.mjs --check`).

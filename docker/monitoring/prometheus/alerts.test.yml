@@ -1,4 +1,4 @@
-# Teste de regra do Prometheus (FASE-12-1): dispara e resolve sem esperar tempo real.
+# Teste de regra do Prometheus (QA-08): dispara e resolve sem esperar tempo real.
 #
 # Roda com: `promtool test rules monitoring/prometheus/alerts.test.yml`
 # (ou `make monitoring-rules`, que usa a imagem oficial do Prometheus).

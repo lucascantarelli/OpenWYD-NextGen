@@ -5,7 +5,7 @@ description: Balanceia economia e progressão do WYD (preços, drops, refino, co
 
 # Economia e progressão (Rust)
 
-> Sucessão 09-2: mantido o nome; fonte de dados migrada para Postgres + `wyd-sim`. Fonte: `crates/wyd-db/`, `crates/wyd-sim/`, `docs/arquitetura/modelo-banco.md`.
+> Sucessão PROC-18: mantido o nome; fonte de dados migrada para Postgres + `wyd-sim`. Fonte: `crates/wyd-db/`, `crates/wyd-sim/`, `docs/arquitetura/modelo-banco.md`.
 
 ## Regras
 

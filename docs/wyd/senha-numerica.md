@@ -51,7 +51,7 @@ Confirmação independente dos dois opcodes, com pacotes de exemplo (tentativa, 
 
 **UNVERIFIED (não inventar):** quantos dígitos o campo aceita (6 bytes dão de 1 a 6 dígitos, com
 NUL de padding); o significado de `unknown[10]`; e se `change_numeric` significa "estou trocando a
-senha" ou "primeiro cadastro". Nada disso vira regra antes da captura da FASE-08-6.
+senha" ou "primeiro cadastro". Nada disso vira regra antes da captura da CLIENT-06.
 
 ## 3. Estado no nosso servidor (2026-11-09)
 

@@ -2,11 +2,11 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-07
-- **Governa:** todas as fases com código (FASE-03 em diante) e a reorganização da FASE-08-1
+- **Governa:** todas as fases com código (FASE-03 em diante) e a reorganização da CLIENT-01
 
 ## Contexto
 
-A primeira execução da FASE-08-1 criou cinco módulos soltos na raiz de
+A primeira execução da CLIENT-01 criou cinco módulos soltos na raiz de
 `crates/wyd-protocol/src/` (`header.rs`, `payload.rs`, `obfuscation.rs`,
 `opcodes.rs`, `keyword.rs`), com um arquivo de 1.256 linhas gerado e sem plano de
 nomenclatura. Funciona como protótipo, mas viola SRP, mistura domínios
@@ -28,7 +28,7 @@ Builder, Adapter). Nenhum arquivo novo fora dessa árvore sem ADR.
 - **Positivas:** fronteiras claras, arquivo pequeno por responsabilidade, testes
   previsíveis, geração separada do código escrito à mão, onboarding direto.
 - **Negativas:** mais arquivos pequenos e um `mod.rs` por diretório; reorganização
-  imediata do protótipo de `wyd-protocol` (custo assumido na FASE-08-1).
+  imediata do protótipo de `wyd-protocol` (custo assumido na CLIENT-01).
 - **Invariantes afetados:** proibido `utils.rs`/`helpers.rs`/`misc.rs`; proibido
   lógica em `mod.rs`; proibido arquivo gerado fora de `generated/`; dependência
   só na direção do DAG (ADR-0001).
@@ -44,8 +44,8 @@ Builder, Adapter). Nenhum arquivo novo fora dessa árvore sem ADR.
 ## Rastreabilidade
 
 - Doc normativo: `docs/arquitetura/estrutura-e-padroes.md`.
-- Issues: `roadmap-rust/issues/FASE-02-4-estrutura-e-padroes.md`,
-  `FASE-08-1-tabela-protocolo.md`, `FASE-08-2-parsers.md`.
+- Issues: `PROC-11` (fechada em 2026-11-12; registro em `roadmap-rust/changelog.md`),
+  `CLIENT-01` e `CLIENT-02` (também no changelog).
 - Skills: `software-architecture`, `wyd-rust-net`, `rust-code-quality`.
 
 ## Revisão

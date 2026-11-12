@@ -42,7 +42,7 @@ Vigentes usadas nesta fase: `wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`,
 `wyd-rust-sim`, `wyd-rust-obs`, `wyd-rust-toolchain`, `wyd-rust-testing`,
 `wyd-launcher`, `wyd-client-reverso` (+ `software-architecture`, `rust-code-quality`
 como pano de fundo). Legadas Go (`wyd-server-dev`, `wyd-database`, etc.)
-**não usadas como norma** — sucessão em `docs/manual-técnico/skills.md` (FASE-09-2).
+**não usadas como norma** — sucessão em `docs/manual-técnico/skills.md` (PROC-18).
 
 Normas lidas: `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002),
 `docs/arquitetura/protocolo.md` (416 linhas), `docs/cliente/pacotes.md` (189),
@@ -61,7 +61,7 @@ Normas lidas: `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002),
 - **Jogo ponta-a-ponta parcial:** login + PIN Argon2id + `STRUCT_SELCHAR/MOB` do banco,
   `CreateMob 0x0364` / `RemoveMob 0x0165` no fio, `Attack*` → `Engine::attack_at` →
   `gain_exp` + `loot_at_death` (sorteio) + `UseItem`→refino com SancRate viva.
-  **Falta materializar:** `ESCENE_FIELD` (03-9), caixa no chão (`CreateItem`) + pickup
+  **Falta materializar:** `ESCENE_FIELD` (GAME-09), caixa no chão (`CreateItem`) + pickup
   (`GetItem`/`CNFGetItem`), `UpdateItem` de resposta, regen/respawn próprio.
 - **Conteúdo no banco:** 34–38 migrations conforme a entrega (ver `03-progresso.md`;
   medir com `make banco-verify` antes de citar número novo), `item_catalog` 3.220,
@@ -76,13 +76,13 @@ Legenda: ✅ coberto com profundidade · ⚠️ parcial/genérico · ❌ ausente
 
 | Domínio wyd2.md | Roadmap/docs | Veredito |
 |---|---|---|
-| 4.1 atributos/pontos | FASE-03-5, FASE-10-1; `classes.md`, checklist 2.2 🚧 | ⚠️ base existe, distribuição em jogo (`ApplyBonus`) pendente |
-| 4.2 combate (vel/crit/evasão/imun/def/HP-MP) | FASE-03 + FASE-10-1/10-2; `wyd-sim` | ⚠️ ordem de modificadores e anomalia 200% em aberto (único ⛔ matemático) |
+| 4.1 atributos/pontos | GAME-05, GAME-19; `classes.md`, checklist 2.2 🚧 | ⚠️ base existe, distribuição em jogo (`ApplyBonus`) pendente |
+| 4.2 combate (vel/crit/evasão/imun/def/HP-MP) | FASE-03 + GAME-19/GAME-20; `wyd-sim` | ⚠️ ordem de modificadores e anomalia 200% em aberto (único ⛔ matemático) |
 | 4.3 EXP/progressão | `progressao.md` + `grant_exp` + `game_setting` | ⚠️ curva LEGACY portada; coluna skill/nível (P-1) lacuna doc |
 | 4.4 Mortal/Arch/Celestial/Sub | `classes.md`, `progressao.md`, pesquisa 2026-11-10 §2.1 (números novos) | ⚠️ mecânica mapeada; números de bônus Cythera/pontos ainda D/fonte única |
-| 4.5 cidadania/Kibita/reinos | FASE-03-10 ⬜; `canais-e-cidadania.md` | ⚠️ cidadania = `canal+1`, sem regra de reino/bônus |
+| 4.5 cidadania/Kibita/reinos | GAME-10 ⬜; `canais-e-cidadania.md` | ⚠️ cidadania = `canal+1`, sem regra de reino/bônus |
 | 4.6 mapas/teleportes | 52 regiões seed; `sistemas/mundo.md`; checklist 3.3 ✅ / 3.6 ⬜ | ⚠️ dado existe, handler de teleporte não |
-| 4.7 monstros/bosses/IA | FASE-03-6 ✅; 6100 `npc_definition` spawna sem duplicar | ✅ IA no tick; ❌ respawn próprio/loot→caixa |
+| 4.7 monstros/bosses/IA | GAME-06 ✅; 6100 `npc_definition` spawna sem duplicar | ✅ IA no tick; ❌ respawn próprio/loot→caixa |
 | 4.8–4.9 itens/drop/catálogo | `itens.md`, `sistemas/drops.md`, `aglutinacao.md`; loot até sorteio | ⚠️ catálogo ✅ como dado; drop→caixa→pickup ❌ no fio |
 | 4.10 refino/composição (+10…+15, Anct, gemas) | `sistemas/refino.md` + auditoria; `Gameplay::refine` no fio | ✅ melhor cobertura da missão; falta `UpdateItem` + piedade persistida |
 | 4.11 montarias/crias | `multiconta.md`? doc em pesquisa §2.6; checklist 2.6 ⬜ | ❌ sem regra |
@@ -101,18 +101,18 @@ Legenda: ✅ coberto com profundidade · ⚠️ parcial/genérico · ❌ ausente
 | 4.24 chat/Trombeta/eros | pesquisa §2.9 (chat/Trombeta) nova; checklist 10.1 ⬜ | ❌ fio |
 | 4.25 cash/premium-mail/rastreabilidade | pesquisa §2.10; `donate` só no portal (invariante 7) | ⚠️ decisão correta; rastreabilidade ❌ |
 | 4.26 canais/troca de canal | hipótese 8 passos no wyd2.md; sessão única ✅ | ⚠️ hipótese plausível, sem transferência viva |
-| 4.27 login/logout/sessões | FASE-08-9 ⬜; sessão única + idle 120 s | ⚠️ logout explícito é a próxima entrega S |
-| 4.28 tela personagem | `STRUCT_SELCHAR` 844 B do banco; layout `rust-v1` UNVERIFIED | ⚠️ dado ✅; layout só fecha com captura 08-6 |
+| 4.27 login/logout/sessões | CLIENT-09 ⬜; sessão única + idle 120 s | ⚠️ logout explícito é a próxima entrega S |
+| 4.28 tela personagem | `STRUCT_SELCHAR` 844 B do banco; layout `rust-v1` UNVERIFIED | ⚠️ dado ✅; layout só fecha com captura CLIENT-06 |
 | 4.29 barra de skills/persistência | `ShortSkill[16]` persistido ✅ | ✅ persistência; ❌ edição em jogo |
 | 4.30 efeitos/aparência | `Effect/*.wys` inventariado; sem vínculo servidor→cliente | ❌ |
 | 4.31 itens iniciais/experiência inicial | ficha por classe (`BaseSIDCHM`) ✅ | ✅ criação; tutorial ❌ |
 | 4.32 buffs/scripts/temporizadores | campos UNVERIFIED; temporizador = `LiveConfig` poll 1 s | ⚠️ config viva ✅; buff no fio ❌ |
 | 4.33 tempos/resets/ciclos | `game_setting` + calendário doc; scheduler ❌ | ❌ |
 | §5 funcionalidades básicas | checklist §§1–11 cobre caminho login→mundo parcial | ⚠️ sem cena não há "personagem funcional" |
-| §6 bugs/hacks/vulns | FASE-06-2 ✅ (DoS/rate-limit) + `ingame-bugs` arquivado; catálogo WYD ❌ | ❌ catálogo de ameaças é gap puro |
+| §6 bugs/hacks/vulns | QA-05 ✅ (DoS/rate-limit) + `ingame-bugs` arquivado; catálogo WYD ❌ | ❌ catálogo de ameaças é gap puro |
 | §7 XP dos jogadores | `referencia-externa` §7 + pesquisa §6 pendente | ❌ sem levantamento próprio |
-| §8 matemática central | FASE-10-1 🚧; ordem base→…→resultado como contrato | ⚠️ contrato definido, equações em aberto |
-| §9 bots + LLM + stress | FASE-15-3 ⬜ (`crates/wyd-bots` não existe); ADR-0010 | ❌ maior gap estrutural |
+| §8 matemática central | GAME-19 🚧; ordem base→…→resultado como contrato | ⚠️ contrato definido, equações em aberto |
+| §9 bots + LLM + stress | QA-11 ⬜ (`crates/wyd-bots` não existe); ADR-0010 | ❌ maior gap estrutural |
 
 **Gaps que o roadmap não cobre hoje:** catálogo de ameaças/exploits (§6),
 levantamento de XP de jogadores (§7), economia-fluxo ponta a ponta, troca/grupo/loja,
@@ -145,7 +145,7 @@ provisório, donate). Somam-se P-9…P-14 da pesquisa 2026-11-10 e a lista de
 2. Fase 3: para cada domínio 4.1–4.33, preencher os 26 campos (§11.2) só onde houver
    evidência; o resto fica `DESCONHECIDO` com fonte pendente.
 3. Fase 4: recontar checklist (grep por estado) e reconciliar com `index.md` +
-   `03-progresso.md` (rito FASE-02-6).
+   `03-progresso.md` (rito PROC-13).
 4. Fase 5: propor issues fatiadas (uma por entrega testável) para os gaps do §3 —
    sem duplicar as existentes, sem remover histórico.
 

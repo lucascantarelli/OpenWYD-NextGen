@@ -2,7 +2,7 @@
 
 > **Norma:** a árvore de `crates/wyd-sim/src/` é a desta página (§2), decidida na
 > [`ADR-0011`](adr/0011-estrutura-matematica-sim.md). Arquivo novo fora dela exige ADR
-> (rito FASE-13-1, `estrutura-e-padroes.md` §14).
+> (rito PROC-21, `estrutura-e-padroes.md` §14).
 >
 > **Relação com o planejamento mestre:** `pre-release-rust.md` FASE 10 §10.1 (equações),
 > §10.2 (velocidade) e §10.3 (laboratório em milhões de iterações) definem o *objetivo*;
@@ -40,14 +40,14 @@ Três regras valem para todo módulo abaixo:
 | 6 | Resistências elementais | `formula/resist.rs` | dano, `ResistProfile`, `Element` | dano reduzido | `u32` + `Bps` | ✅ implementado (3 elementos) |
 | 7 | Drop e taxa por item | `formula/drop.rs` | `rate`, roll, bônus de gema | `bool`, taxa efetiva | escala `1..1.000.000` | ✅ implementado (teto do bônus = topo da escala) |
 | 8 | Regeneração | `formula/regen.rs` | taxa/s, `tick_hz` | HP por tick + `RegenAccumulator` | `u32` absoluto | ✅ implementado |
-| 9 | Aggro / IA de criatura | `formula/threat.rs` | entidade, dano, tick, TTL | `ThreatTable`, alvo, `NpcMode` | ameaça `u32` | ✅ **matemática**; FSM no core (FASE-03-6) |
-| 10 | Refino e gemas | `formula/refine.rs` | `item_index`, refino, pó, piedade, Anct | `AppliedGem`, taxas em bps | `Bps` / `u32` | ✅ (FASE-03-2/10 + auditoria 2026-11-08): escada de 15 passos, pó com piedade/tetos, Anct e +12..+15; aplicação no core consome a gema (D-12/D-13) |
-| 11 | Velocidade e hits | `formula/speed.rs` | — | — | — | ⛔ bloqueado (FASE-10-2, causa não provada) |
+| 9 | Aggro / IA de criatura | `formula/threat.rs` | entidade, dano, tick, TTL | `ThreatTable`, alvo, `NpcMode` | ameaça `u32` | ✅ **matemática**; FSM no core (GAME-06) |
+| 10 | Refino e gemas | `formula/refine.rs` | `item_index`, refino, pó, piedade, Anct | `AppliedGem`, taxas em bps | `Bps` / `u32` | ✅ (GAME-02/10 + auditoria 2026-11-08): escada de 15 passos, pó com piedade/tetos, Anct e +12..+15; aplicação no core consome a gema (D-12/D-13) |
+| 11 | Velocidade e hits | `formula/speed.rs` | — | — | — | ⛔ bloqueado (GAME-20, causa não provada) |
 | 12 | Ordem do tick e do golpe | `scenario/combat.rs` | `Combatant`, `AttackProfile`, `Die` | `AttackOutcome` | — | ✅ implementado |
 | 13 | Saída comparável | `report/table.rs` | linhas de texto | `Table.render()` | texto | ✅ implementado |
 | — | Sorteio determinístico | `roll/xorshift64.rs` | seed `u64` | rolls `1..=max` e `0..10.000` | inteiro | ✅ implementado |
 | — | Unidades | `units.rs` | — | `Bps`, `Tenths`, `mul_bps` | — | ✅ implementado |
-| — | Política de bot | `bot/{persona,policy}.rs` | perfil, estado | intenção | — | ⬜ planejado (FASE-15-3) |
+| — | Política de bot | `bot/{persona,policy}.rs` | perfil, estado | intenção | — | ⬜ planejado (QA-11) |
 
 Fronteiras por trait (as duas que existem, e por quê):
 
@@ -170,9 +170,9 @@ estrutura, não de expectativa de jogo. Golden novo entra com a fonte citada no 
 acerto/crítico, efeitos, resistência, drop, regeneração, aggro) + refino existente, ordem do
 tick, sorteio determinístico, relatório e testes de determinismo.
 
-**Plano, com dono:** `formula/speed.rs` (FASE-10-2, ⛔ até provar a anomalia de ~200%),
-`bot/{persona,policy}.rs` (FASE-15-3), laboratório em milhões de iterações com CLI
-(FASE-10-3 — o crate já é biblioteca pura, falta o *harness* de lote).
+**Plano, com dono:** `formula/speed.rs` (GAME-20, ⛔ até provar a anomalia de ~200%),
+`bot/{persona,policy}.rs` (QA-11), laboratório em milhões de iterações com CLI
+(GAME-21 — o crate já é biblioteca pura, falta o *harness* de lote).
 
 **Divergências registradas, não silenciadas:**
 
@@ -180,7 +180,7 @@ tick, sorteio determinístico, relatório e testes de determinismo.
 |---|---|---|
 | `pre-release-rust.md` §10.1 | "documentar e codificar as equações **exatas**" | a composição está codificada; a ordem exata é hipótese (D-02..D-04) porque `docs/wyd/skills.md` §5 a marca UNVERIFIED |
 | `pre-release-rust.md` §10.2 | investigar velocidade ~200% | nada implementado: módulo marcado ⛔ para ninguém "resolver" por chute |
-| `pre-release-rust.md` §10.3 | simular milhões de interações | funções puras prontas e testadas; falta o *harness* de lote/CLI (FASE-10-3) |
+| `pre-release-rust.md` §10.3 | simular milhões de interações | funções puras prontas e testadas; falta o *harness* de lote/CLI (GAME-21) |
 | `start-rust.md` | "não escrever código até tudo documentado" | cumprido nesta ordem: ADR-0011 + esta página antes do código; o que a fonte não prova ficou como parâmetro |
 | `estructura-e-padroes.md` §14 (antes) | `formula/{damage,refine,speed,crit}.rs` | árvore substituída por sistema (§2) — `crit` virou `hit`, `speed` segue bloqueado |
 
@@ -190,5 +190,5 @@ tick, sorteio determinístico, relatório e testes de determinismo.
 |---|---|---|
 | Curva de EXP do 7662 | `ExpTable` sem conteúdo real; cenários usam curva sintética | `docs/wyd/progressao.md` §7 |
 | `mob_template_stat`/`mob_template_equip` vazias | sem stats de criatura, `GrowthProfile` é hipótese | `crates/wyd-db/migrations/README.md` §Lacunas |
-| Trace de combate do cliente | D-02..D-04 e D-06 não fecham | `docs/cliente/depuracao.md`, FASE-08-6 🚧 |
+| Trace de combate do cliente | D-02..D-04 e D-06 não fecham | `docs/cliente/depuracao.md`, CLIENT-06 🚧 |
 | `drop_entry` parcial | drop roda com taxa de fonte secundária | `docs/wyd/sistemas/drops.md` §7 |

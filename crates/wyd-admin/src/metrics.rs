@@ -2,7 +2,7 @@
 //!
 //! O Cold Path não importa `wyd-core` (ADR-0001): repetir aqui um renderizador de 30 linhas é
 //! mais barato — e mais honesto — que arrastar o motor para dentro do processo administrativo.
-//! Os nomes são os declarados na ADR-0022 §4 e consumidos pelas regras da FASE-12-1.
+//! Os nomes são os declarados na ADR-0022 §4 e consumidos pelas regras da QA-08.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
@@ -47,7 +47,7 @@ impl GatewayMetrics {
         counter.fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Texto Prometheus 0.0.4 (mesmo contrato do exporter da FASE-06-1).
+    /// Texto Prometheus 0.0.4 (mesmo contrato do exporter da QA-04).
     #[must_use]
     pub fn render(&self) -> String {
         let mut out = String::with_capacity(512);

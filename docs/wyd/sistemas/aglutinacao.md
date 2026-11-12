@@ -87,7 +87,7 @@ onde parar. A confirmação mais recente é **de servidor oficial** (WYD Global,
 30/04/2026: "limite máximo de 120 unidades por slot do mesmo item"), o que promove o número de
 "observação de comunidade" para **regra vigente de servidor oficial (B)**. Ainda assim, a
 constante do cliente/servidor continua sem leitura: entra como regra nossa (`STACK_CAP = 120`) e a
-lacuna fica em FASE-03-12.
+lacuna fica em GAME-12.
 
 ### Regra por família (decisão, com o porquê)
 
@@ -186,5 +186,5 @@ Consulta reexecutável e a lista por família/item estão em `docs/wyd/itens.md`
 | onde o cliente lê slots além de 63 | **UNVERIFIED** |
 | layout de `CNFGetItem` | **UNVERIFIED** (fonte se contradiz) |
 | quais dos 1.532 nulos são item real | **resolvido**: 1.414 real · 96 ruído · 22 placeholder (view `item_bucket`) |
-| que configuração do catálogo está errada | registrado em FASE-03-15 (`400`/`406` mesmo nome, `419` sem `EF_*`, placeholder com preço) |
+| que configuração do catálogo está errada | registrado em GAME-15 (`400`/`406` mesmo nome, `419` sem `EF_*`, placeholder com preço) |
 | `EF_AMOUNT` como teto em algum item específico | improvável: 94 casos são conteúdo de pack |

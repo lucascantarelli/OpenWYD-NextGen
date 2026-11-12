@@ -210,7 +210,7 @@ ovos/âmagos, Griupan, Refinações, Skill Soul, Drops 7.54, Celestial.
   mostrar item a estranhos; mostrar sem grupo; não equipar de imediato;
   negar com ESC (nunca clicar p/ cancelar/equipar); equipar via Ctrl+botão
   direito; comando **"whisper"** bloqueia todo pedido de troca/chat.
-  Relevante p/ FASE-06-4 (catálogo de ameaças) e segurança de trade.
+  Relevante p/ QA-07 (catálogo de ameaças) e segurança de trade.
 - **Correção do Alastar 1ª fase (23/06/2009, `id=2214`):** remoção
   permanente de montarias e itens ilegais/duplicados do servidor, com
   limpeza contínua nas semanas seguintes. Precedente oficial de correção
@@ -231,7 +231,7 @@ ovos/âmagos, Griupan, Refinações, Skill Soul, Drops 7.54, Celestial.
 - **Ação anti-bad-user (05/11/2009, `id=3867`):** varredura diária dos
   logs; punição estendida a **todas as contas ligadas (CPF/e-mail)** e a
   quem receber itens transferidos das punidas. Precedente oficial p/
-  FASE-06-4/07 (rastreio de transferência).
+  QA-07/07 (rastreio de transferência).
 - **Batalha Real (18–26/06/2009, `id=2210`):** 150 Medalhas Douradas por
   drop global em Kersef + 150 Azuis no BIG SALE (3100 cash); entrada via
   NPC em Armia canal 3 (tolerância 20 min); finalistas: Eirenus Anct +10

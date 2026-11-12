@@ -3,8 +3,8 @@
 - **Estado:** aceita
 - **Data:** 2026-11-07
 - **Decisores:** dono do projeto + agente (decidido nesta sessão, a pedido do dono)
-- **Governa:** `roadmap-rust/issues/FASE-07.md`, `FASE-07-1-gateway.md`,
-  `FASE-07-2`/`07-3`/`07-4` (telas e E2E consomem este contrato)
+- **Governa:** `roadmap-rust/issues/FASE-07.md`, `WEB-01-gateway.md`,
+  `WEB-02`/`WEB-03`/`WEB-04` (telas e E2E consomem este contrato)
 
 ## Contexto
 
@@ -120,7 +120,7 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
   (`admin.ts`) não muda de contrato: sessão, `moderator_id` da sessão, auditoria,
   `AdminResult` → HTTP do browser.
 - `@grpc/grpc-js` e `@grpc/proto-loader` saem do `package.json` quando a fiação
-  terminar (FASE-07-1), não antes.
+  terminar (WEB-01), não antes.
 - **Implementado em 2026-11-08:** `grpc.ts` removido, `admin-client.ts` com as 16
   exportações sobre `fetch`, `promisify.ts` sem `@grpc/*`, dependências e
   referências de `.proto` fora do `package.json`/lock e do `Dockerfile.portal`.
@@ -154,8 +154,8 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
 ## Rastreabilidade
 
 - Issues consumidoras: `roadmap-rust/issues/FASE-07.md`,
-  `FASE-07-1-gateway.md` (transporte + contrato), `FASE-07-2`/`07-3` (telas),
-  `FASE-07-4` (E2E).
+  `WEB-01-gateway.md` (transporte + contrato), `WEB-02`/`WEB-03` (telas),
+  `WEB-04` (E2E).
 - Docs atualizadas nesta ADR: `docs/arquitetura/estrutura-e-padroes.md` §13
   (árvore do `wyd-admin`), `docs/arquitetura/visao-pastas.md`,
   `docs/rust/00-visao-estrutura.md`, `docs/rust/05-stack-docker.md`,

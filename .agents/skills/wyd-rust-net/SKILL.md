@@ -5,8 +5,7 @@ description: Desenvolve o transporte async do WYD em Rust (crates/wyd-net + wyd-
 
 # Transporte Rust (wyd-net)
 
-Sucessora parcial da `wyd-server-dev` para rede. Referências:
-`pre-release-rust.md` FASE 8, `roadmap-rust/issues/FASE-08.md`.
+Referências: `pre-release-rust.md` FASE 8, `roadmap-rust/issues/FASE-08.md`.
 
 ## Regras
 

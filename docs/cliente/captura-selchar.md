@@ -2,7 +2,7 @@
 
 O que falta para a tela de personagens mostrar dados reais não é decisão, é **byte**: os 14 campos
 de `STRUCT_SELCHAR` e os 6 de `STRUCT_MOB` (tabela na issue
-`FASE-08-6` (issue fora do site: `roadmap-rust/issues/FASE-08-6-cliente-reverso-dinamico.md`) continuam sem offset
+`CLIENT-06` (issue fora do site: `roadmap-rust/issues/CLIENT-06-cliente-reverso-dinamico.md`) continuam sem offset
 confirmado. Este runbook é o caminho curto para produzi-los, com os instrumentos que já existem.
 
 Pré-requisitos: stack de pé (`make stack-up`), cliente `client/WYD.exe` apontando para o proxy,

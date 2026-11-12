@@ -2,7 +2,7 @@
 
 > Norma vigente desde 2026-11-11. Complementa `estrutura-e-padroes.md` §7 e
 > `docs/rust/02-execucao.md` §3 (DoD). Vale para todo teste novo e para a revisão
-> de teste existente; mudança de taxonomia exige ADR (rito FASE-13-1).
+> de teste existente; mudança de taxonomia exige ADR (rito PROC-21).
 
 ## 1. Escopo e método da auditoria
 

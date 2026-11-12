@@ -280,7 +280,7 @@ fn cena_entrega_create_mob_do_snapshot_e_o_npc_responde_ao_dialogo() {
     );
 
     // O NPC mais próximo do personagem é o alvo do diálogo (o servidor valida o alcance).
-    // Criatura vive em `>= MAX_USER` (FASE-03-17): o jogador agora é `mob_id` 1..999 e não
+    // Criatura vive em `>= MAX_USER` (GAME-17): o jogador agora é `mob_id` 1..999 e não
     // pode ser o alvo — clicar em si mesmo não abre diálogo de NPC.
     let alvo = mobs
         .iter()

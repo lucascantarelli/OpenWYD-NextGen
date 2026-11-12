@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
@@ -31,13 +31,16 @@ test: ## testes do workspace (skill: wyd-rust-toolchain)
 test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
 	$(CARGO) test --workspace --all-targets
 
-check: fmt clippy build test migrations-check issue-status-check tools-test ## gate completo — exigido por toda issue
+check: fmt clippy build test migrations-check issue-status-check docs-check tools-test ## gate completo — exigido por toda issue
 
 migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
 	node tools/content/check-migrations.mjs
 
 issue-status-check: ## status de issue igual no índice e no painel (tools/content/check-issue-status.mjs)
 	node tools/content/check-issue-status.mjs
+
+docs-check: ## links de README/AGENTS e contagem de crates (tools/dev/check-docs-consistency.mjs)
+	node tools/dev/check-docs-consistency.mjs
 
 migrations-apply: ## aplica a série num Postgres efêmero: up → down → up (exige Docker)
 	node tools/content/migrate-cycle.mjs
@@ -63,14 +66,14 @@ bench-build: ## compila os benches sem rodar (gate de compilação do CI)
 bench-gate: ## mede e falha em regressão de baseline por cenário (tools/dev/bench-gate.mjs)
 	node tools/dev/bench-gate.mjs
 
-telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (FASE-06-1)
+telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (QA-04)
 	$(CARGO) test -p wyd-core --test sistema_telemetry -- --nocapture
 	$(CARGO) test -p wyd-net --features metrics --test integracao_metrics -- --nocapture
 
 release: ## release otimizado (LTO thin, codegen-units=1, strip — ADR-0017)
 	$(CARGO) build --release --workspace
 
-docker: ## imagem mínima do launcher (distroless, non-root — FASE-05-2)
+docker: ## imagem mínima do launcher (distroless, non-root — QA-03)
 	docker build -f docker/Dockerfile.launcher -t wyd/launcher:$${TAG:-dev} \
 		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
 		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
@@ -122,7 +125,7 @@ db-migrate: ## aplica as migrations no banco da stack (mesmo runner do boot)
 db-reset: ## recria o schema do banco da stack do zero (DROP SCHEMA + série)
 	docker compose run --rm gateway --migrate --reset
 
-gateway-image: ## imagem do gateway HTTP/JSON do portal (ADR-0022, FASE-07-1)
+gateway-image: ## imagem do gateway HTTP/JSON do portal (ADR-0022, WEB-01)
 	docker build -f docker/Dockerfile.gateway -t wyd/gateway:$${TAG:-dev} \
 		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
 		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
@@ -166,7 +169,7 @@ stack-logs: ## segue os logs da stack
 
 # MSYS_NO_PATHCONV=1: sem isso o Git Bash no Windows converte /etc/prometheus em caminho
 # de host e o container recebe um workdir inválido. Em Linux a variável é inerte.
-monitoring-rules: ## promtool: config + regras + teste de disparo/resolução (FASE-12-1)
+monitoring-rules: ## promtool: config + regras + teste de disparo/resolução (QA-08)
 	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
 	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
 	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml

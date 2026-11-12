@@ -1,4 +1,4 @@
-//! Leitura de conteúdo do portal (FASE-07-5): NPCs, templates de mob e efeitos.
+//! Leitura de conteúdo do portal (WEB-05): NPCs, templates de mob e efeitos.
 //!
 //! Sem banco, o `Router` com `FakeConteudo` prova o contrato: `result:1` com dado,
 //! lista vazia sem erro, teto de paginação (`result:3`), 401 sem sessão e `result:2`

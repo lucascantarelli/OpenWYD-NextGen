@@ -9,13 +9,12 @@ responsabilidade única por skill e critérios de qualidade executáveis.
 
 ## Contexto / evidência
 
-Estado atual (verificado): 6 skills Rust criadas (`wyd-rust-core`, `wyd-rust-net`,
-`wyd-rust-db`, `wyd-rust-sim`, `wyd-rust-obs`, `wyd-rust-toolchain`) + 3 de boas
-práticas (`rust-code-quality`, `software-architecture`, `solid-design-patterns`) +
-`AGENTS.md` §0 vigente. Pendente: `wyd-testing-bots` → harness Rust, `wyd-server-ops`
-→ operação Compose+Rust, `wyd-web-admin-ui` → portal contra `wyd-admin`,
-`wyd-game-admin`/`wyd-economy`/`wyd-client-connect`/`wyd-database` → sucessoras ou
-atualização. Pedido original: `start-rust.md` ("analisar `.agents/skills/*`").
+Estado atual (verificado em 2026-11-12): **23 skills** vigentes, roteador em
+`.agents/skills/README.md` e `AGENTS.md` enxuto apontando para docs/skills. As sucessoras
+Rust existem; `wyd-testing-bots` e `wyd-server-dev` foram removidas, `wyd-database` foi
+fundida em `wyd-rust-db`, e `wyd-server-ops` opera a stack real (gateway, canais, portal e
+monitoramento). Evidência: `docs/rust/evidencias/AUDIT-IA-2026-11-12.md`. Pedido original:
+`start-rust.md` ("analisar `.agents/skills/*`").
 
 ## Passos
 
@@ -67,9 +66,9 @@ como vigente).
 
 ## Critérios de aceite
 
-- [ ] Toda skill Go tem sucessora ou nota de sucessão (tabela nesta issue).
-- [ ] Zero conflito Go↔Rust nas skills vigentes (grep acima limpo).
-- [ ] Evidência anexada.
+- [x] Toda skill Go tem sucessora ou nota de sucessão (tabela nesta issue).
+- [x] Zero conflito Go↔Rust nas skills vigentes (grep acima limpo).
+- [x] Evidência anexada em `docs/rust/evidencias/AUDIT-IA-2026-11-12.md`.
 
 ## Riscos / rollback
 

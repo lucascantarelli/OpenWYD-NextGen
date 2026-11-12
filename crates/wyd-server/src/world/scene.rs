@@ -277,7 +277,7 @@ impl Engine {
 ///
 /// Só entrada e saída: entidade que **mudou** de posição/HP não é reenviada como `CreateMob`
 /// (o cliente recusaria o id repetido e o pacote de movimento não está provado — resíduo
-/// declarado na FASE-03-9). Saídas vêm primeiro: liberar o cliente de um fantasma vale mais
+/// declarado na GAME-09). Saídas vêm primeiro: liberar o cliente de um fantasma vale mais
 /// que desenhar um novo.
 #[must_use]
 pub fn plan_scene(

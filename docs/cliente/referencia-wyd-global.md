@@ -71,7 +71,7 @@ família de formatos (`.msa`/`.wyt`), escala maior. **Não redistribuir** nenhum
 Confirmado no disco:
 
 1. **Shell web + backend nativo + jogo em subpasta** (Electron aqui; Tauri no nosso desenho) —
-   valida `docs/cliente/launcher.md` §3 e a decisão da FASE-08-8.
+   valida `docs/cliente/launcher.md` §3 e a decisão da CLIENT-08.
 2. **Autoupdate do launcher é independente do update do jogo**: Squirrel cuida do app
    (`Update.exe` + `.nupkg` + `RELEASES`); o jogo tem **outro atualizador** dentro da pasta
    (`Updater.exe` .NET 4.6.1) e um `info.json` em CDN (`cloudfront`) como manifesto remoto.
@@ -82,7 +82,7 @@ Confirmado no disco:
 
 Rejeitar do modelo deles:
 
-- **SHA1 no `RELEASES`** como única integridade → nós usamos SHA-256 por arquivo + assinatura **Ed25519** do manifesto (FASE-08-3; HMAC simétrico trocado em 2026-11-11).
+- **SHA1 no `RELEASES`** como única integridade → nós usamos SHA-256 por arquivo + assinatura **Ed25519** do manifesto (CLIENT-03; HMAC simétrico trocado em 2026-11-11).
 - **Delta/full `.nupkg` sem fail-closed**: nosso patch é atômico (tmp + rename) e recusa pacote sem
   assinatura **antes** de tocar o disco.
 - **Configurador Flash** (`WydConfig.swf`/`Adobe AIR`) e `.NET Framework 4.6.1` como dependência
@@ -106,10 +106,10 @@ Rejeitar do modelo deles:
 | Achado | Uso no nosso projeto |
 |---|---|
 | Dois canais (launcher × jogo) com manifestos distintos | manter **um** manifesto com escopo declarado (app + jogo) e documentar por que é melhor |
-| `info.json` em CDN como "versão + notícias" | formato de notícias/status do portal para a GUI (FASE-08-8) sem segredo no binário |
+| `info.json` em CDN como "versão + notícias" | formato de notícias/status do portal para a GUI (CLIENT-08) sem segredo no binário |
 | `serverlist.bin` entregue pelo launcher (ausente na instalação do jogo) | confirma nosso desenho: o launcher escreve `serverlist.bin` (`launcher.md` §1 papel 4) |
 | `ZoneXY.txt`/`Lang/` como dados de config fora do executável | reforça ADR-0009: configuração e conteúdo são dados (banco), não código |
-| Domínios `ItemSet`/`MountData`/`CollectionData`/`Missionitems` | lista de **perguntas** para a FASE-03-4/10-1 sobre o que o 7662 carrega embutido |
+| Domínios `ItemSet`/`MountData`/`CollectionData`/`Missionitems` | lista de **perguntas** para a GAME-04/GAME-19 sobre o que o 7662 carrega embutido |
 
 ## 7. Como revalidar (comandos usados)
 

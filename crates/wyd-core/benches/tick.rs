@@ -1,4 +1,4 @@
-//! Custo da IA de NPC no orçamento do tick — critério de aceite da FASE-03-6.
+//! Custo da IA de NPC no orçamento do tick — critério de aceite da GAME-06.
 //!
 //! Roda com `cargo bench -p wyd-core --bench tick` (release, `harness = false`, sem
 //! dependência nova: o projeto mantém build offline e `criterion` não está no lock).
@@ -209,14 +209,14 @@ fn resumo(id: &str, nome: &str, medicao: &Medicao, orcamento_us: f64) {
     }
 }
 
-/// Entidades por rodada do cenário ECS (FASE-03-2).
+/// Entidades por rodada do cenário ECS (GAME-02).
 const ECS_BATCH: u32 = 10_000;
 /// Rodadas medidas do cenário ECS.
 const ECS_ROUNDS: u32 = 40;
 /// Teto do cenário ECS: spawn + iteração + despawn de um lote ≤ 50% de um tick.
 const ECS_MAX_SHARE_PCT: f64 = 50.0;
 
-/// Baseline de estrutura de dados (FASE-03-2): spawn em lote, uma passada contígua nas
+/// Baseline de estrutura de dados (GAME-02): spawn em lote, uma passada contígua nas
 /// posições (como o tick faz) e despawn em lote, `ECS_ROUNDS` vezes com o **mesmo** lote.
 ///
 /// Não mede regra de jogo nenhuma — mede o custo de manter `Vec<Position>`/`Vec<Stats>`
@@ -287,7 +287,7 @@ fn main() {
     }
     let intervalo = tick_interval_ms();
     let orcamento_us = intervalo as f64 * 1_000.0;
-    println!("=== IA de NPC — custo no orçamento do tick (FASE-03-6) ===");
+    println!("=== IA de NPC — custo no orçamento do tick (GAME-06) ===");
     println!(
         "cenário: {NPCS} NPCs vivos + {PLAYERS} jogadores | {TICK_HZ} Hz ({intervalo} ms/tick, orçamento {orcamento_us:.0} µs) | decisões/tick esperadas: {}",
         NPCS / DECISION_EVERY_TICKS
@@ -316,6 +316,6 @@ fn main() {
     println!("veredito: DENTRO do teto de {MAX_SHARE_PCT:.0}% — custo da IA medido, não estimado");
 
     println!();
-    println!("=== ECS — spawn/despawn em lote e iteração contígua (FASE-03-2) ===");
+    println!("=== ECS — spawn/despawn em lote e iteração contígua (GAME-02) ===");
     cenario_ecs(orcamento_us);
 }

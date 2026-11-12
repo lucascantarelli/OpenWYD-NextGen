@@ -1,4 +1,4 @@
-//! Janela do launcher GUI (FASE-08-8) — HTML de uma página gerado da identidade **efetiva**.
+//! Janela do launcher GUI (CLIENT-08) — HTML de uma página gerado da identidade **efetiva**.
 //!
 //! A GUI ainda não existe como app Tauri; o que existe é o **contrato visual**: este módulo
 //! emite a janela (login, notícias, canais, botão Jogar) usando **só** `cor.*`, `espaco.*`,

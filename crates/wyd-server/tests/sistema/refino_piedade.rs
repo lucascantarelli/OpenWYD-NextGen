@@ -1,4 +1,4 @@
-//! Piedade de refino persistida + `SendItem` (FASE-03-16).
+//! Piedade de refino persistida + `SendItem` (GAME-16).
 //!
 //! Cobre o caminho de pó ponta a ponta contra um Postgres descartável: a piedade
 //! acumula na falha qualificada, zera no sucesso, vai no fio empacotada no par

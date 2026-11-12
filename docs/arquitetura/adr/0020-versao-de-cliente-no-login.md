@@ -119,7 +119,7 @@ Prova executada em 2026-11-08 (`cargo test -p wyd-net session::`): **4/4 ok** �
 
 ## Rastreabilidade
 
-- Issues consumidoras: FASE-08 (transporte/sessão), FASE-08-6 (captura de login)
+- Issues consumidoras: FASE-08 (transporte/sessão), CLIENT-06 (captura de login)
 - Docs atualizadas nesta ADR: `docs/arquitetura/contrato-dispatch-opcode.md` §4 (D-D1/U-A),
   `docs/arquitetura/contrato-transporte-cpsock.md` §11 (U3), `docs/rust/03-progresso.md`
 - Evidência: `docs/cliente/superficie-conhecida.md:20` (12000 confirmado em runtime);

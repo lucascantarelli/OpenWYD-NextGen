@@ -1,6 +1,6 @@
 # Dossiê do cliente — `client/`
 
-> **Estado:** inventário e baseline publicados em 2026-11-07 (FASE-08-4).
+> **Estado:** inventário e baseline publicados em 2026-11-07 (CLIENT-04).
 > Plano de engenharia reversa: [`engenharia-reversa.md`](engenharia-reversa.md).
 > O que já se sabe: [`superficie-conhecida.md`](superficie-conhecida.md).
 > O cliente **não é versionado** (`.gitignore`): esta pasta documenta um artefato local,
@@ -26,7 +26,7 @@ desassemble (`tools/client/`). Este dossiê é a fonte canônica desse conhecime
 |---|---|
 | [`inventario.md`](inventario.md) | Binários, SHA-256, arquitetura PE, camadas de proteção, dados e assets |
 | [`superficie-conhecida.md`](superficie-conhecida.md) | CPSock, hooks confirmados por endereço, pontos de extensão, formatos, lacunas |
-| [`analise-estatica.md`](analise-estatica.md) | Resultado da 08-5: PE, strings, âncoras, patches, limites do método |
+| [`analise-estatica.md`](analise-estatica.md) | Resultado da CLIENT-05: PE, strings, âncoras, patches, limites do método |
 | [`formatos.md`](formatos.md) | Estrutura inicial de `.wyt`, `.msa`, `sn.bin`, `serverlist.bin` |
 | [`mapa.md`](mapa.md) | Mapa do cliente: documentado×lacuna, relação com o launcher, roadmap e plano de desassemble |
 | [`customizacao.md`](customizacao.md) | Estratégia de customização, manifesto do launcher e fluxo de patch |
@@ -59,8 +59,8 @@ Histórico consolidado neste dossiê: `docs/cliente/customizacao.md` (patches/ho
 | Mapa client↔launcher + visão de pastas do repo | ✅ gate de arquitetura (`mapa.md`, `visao-pastas.md`) |
 | Inventário de arquivos e hashes | ✅ publicado (`inventario.md`) |
 | CPSock/hooks mapeados por endereço | ✅ documentado (`superficie-conhecida.md`) |
-| Cabeçalho PE, imports, âncoras e patches | ✅ FASE-08-5 (`analise-estatica.md`) |
+| Cabeçalho PE, imports, âncoras e patches | ✅ CLIENT-05 (`analise-estatica.md`) |
 | Estrutura inicial de `.wyt`/`.msa`/`sn.bin` | ✅ parcial (`formatos.md`) — `serverlist.bin` **decodificado** (`formatos.md` §4) |
-| Roteiro de trace + goldens gerados C→S | 🚧 FASE-08-6 (`depuracao.md`, `crates/wyd-protocol/tests/fixtures/cliente/`) |
-| Captura ao vivo e structs S→C | ⬜ FASE-08-6 (exige servidor executável + VM) |
-| Camada de customização + manifesto do launcher | ✅ FASE-08-7 (launcher implementado, 19/19 testes) |
+| Roteiro de trace + goldens gerados C→S | 🚧 CLIENT-06 (`depuracao.md`, `crates/wyd-protocol/tests/fixtures/cliente/`) |
+| Captura ao vivo e structs S→C | ⬜ CLIENT-06 (exige servidor executável + VM) |
+| Camada de customização + manifesto do launcher | ✅ CLIENT-07 (launcher implementado, 19/19 testes) |

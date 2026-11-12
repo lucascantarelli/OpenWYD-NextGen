@@ -98,7 +98,7 @@ pub fn status_url(world: &World) -> &str {
     world.status_url().unwrap_or("")
 }
 
-/// Sobrescritas de política do canal por processo (FASE-06-3): o banco é a fonte,
+/// Sobrescritas de política do canal por processo (QA-06): o banco é a fonte,
 /// o env sobrescreve. `WYD_SERVER_MAX_PLAYERS` fixa o teto de sessões vivas;
 /// `WYD_SERVER_MAINTENANCE` (`1`/`true`/`yes`/`on` liga, qualquer outro valor não vazio
 /// desliga) recusa entrada nova sem derrubar sessão viva. Ausente, vazio ou com parse que
@@ -146,7 +146,7 @@ pub fn effective_role(db: Option<ChannelRole>, env: Option<ChannelRole>) -> Chan
     env.or(db).unwrap_or_default()
 }
 
-/// Regras que o papel do canal decide (FASE-03-10).
+/// Regras que o papel do canal decide (GAME-10).
 ///
 /// O papel é do **processo**, não do jogador (`docs/wyd/canais-e-cidadania.md` §3): o canal
 /// verde é o canal novato do legado — PvP desligado e loja pessoal aberta. Canal normal segue

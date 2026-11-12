@@ -2,7 +2,7 @@
 //!
 //! PostgreSQL via migrations versionadas (`migrations/`, 0001–0036; seeds em `seeds/`
 //! só com dados de desenvolvimento). O pool `sqlx` e as implementações `pg` das portas
-//! entraram na FASE-04-3 (ADR-0021); a fila de save (`SaveQueue`/`SaveDrain`) leva o
+//! entraram na PROC-16 (ADR-0021); a fila de save (`SaveQueue`/`SaveDrain`) leva o
 //! estado do Hot Path ao banco **fora** do tick.
 //!
 //! Duas pontes, nenhuma no quente:

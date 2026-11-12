@@ -1485,7 +1485,7 @@
 
 - **Arquivo:** `0030_sessao_unica.sql` · **Domínio:** acesso · **Estado:** provisorio
 - **Fonte:** docs/wyd/canais-e-cidadania.md §5 + migration 0030
-- **Nota:** Cerca de sessão por `account_login` (a autenticação da FASE-08-2 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.
+- **Nota:** Cerca de sessão por `account_login` (a autenticação da CLIENT-02 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.
 - **PK:** `id`
 - **FK:** `character_id` → `characters`
 - **CHECK:** `character_session_release_after_open`
@@ -1751,7 +1751,7 @@
 ### `channel_capacity`
 
 - **Arquivo:** `0040_capacidade_canal.sql` · **Domínio:** canal de servidor · **Estado:** confirmado
-- **Fonte:** FASE-06-3 (checklist 1.14) — limite e manutencao por canal
+- **Fonte:** QA-06 (checklist 1.14) — limite e manutencao por canal
 - **Nota:** Tabela propria (a serie proibe ALTER TABLE no up): max_players default 1000 = MAX_USER do legado; maintenance recusa entrada nova sem derrubar sessao viva. Env WYD_SERVER_MAX_PLAYERS/_MAINTENANCE sobrescreve por processo.
 - **PK:** `group_id`, `channel`
 - **FK:** `group_id, channel` → `server_channel`
@@ -1770,7 +1770,7 @@
 ### `channel_role`
 
 - **Arquivo:** `0041_papel_do_canal.sql` · **Domínio:** canal de servidor · **Estado:** confirmado
-- **Fonte:** FASE-03-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3
+- **Fonte:** GAME-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3
 - **Nota:** Papel do canal: normal (PvP conforme o mapa) ou verde (novato: sem PvP, loja pessoal aberta). Tabela propria (a serie proibe ALTER TABLE no up); env WYD_SERVER_CHANNEL_ROLE sobrescreve por processo.
 - **PK:** `group_id`, `channel`
 - **FK:** `group_id, channel` → `server_channel`
@@ -1788,7 +1788,7 @@
 ### `donate_credit`
 
 - **Arquivo:** `0042_credito_donate.sql` · **Domínio:** economia · **Estado:** confirmado
-- **Fonte:** FASE-07-6 — razão de `credit_donate_balance` (idempotência por chave)
+- **Fonte:** WEB-06 — razão de `credit_donate_balance` (idempotência por chave)
 - **Nota:** Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem creditar duas vezes. O saldo mora em `account_wallet` (conta, não personagem); tabela própria (a série proíbe ALTER TABLE no up).
 - **PK:** `id`
 - **FK:** `account_id` → `accounts` · `created_by` → `accounts`
@@ -1808,7 +1808,7 @@
 ### `refine_pity`
 
 - **Arquivo:** `0043_piedade_refino.sql` · **Domínio:** refino · **Estado:** confirmado
-- **Fonte:** FASE-03-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)
+- **Fonte:** GAME-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)
 - **Nota:** Piedade por (personagem, slot), 0..20; linha ausente = 0. Tabela própria (a série proíbe ALTER TABLE no up). `replace_items` grava itens + piedade na mesma transação e poda slots que saíram do inventário; destruir o item apaga a linha.
 - **PK:** `character_id`, `slot`
 - **FK:** `character_id` → `characters`
@@ -1825,7 +1825,7 @@
 ### `donate_debit`
 
 - **Arquivo:** `0045_donate_debito.sql` · **Domínio:** economia · **Estado:** confirmado
-- **Fonte:** migration 0045 + FASE-07-6 (razão de débito de donate)
+- **Fonte:** migration 0045 + WEB-06 (razão de débito de donate)
 - **Nota:** Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem debitar duas vezes. O saldo continua em `account_wallet.coin`; receita = `donate_credit` − `donate_debit`.
 - **PK:** `id`
 - **FK:** `account_id` → `accounts` · `created_by` → `accounts`

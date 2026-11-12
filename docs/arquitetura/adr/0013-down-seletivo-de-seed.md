@@ -60,7 +60,7 @@ Regras que decorrem dela:
 
 ## Rastreabilidade
 
-- Issue consumidora: `roadmap-rust/issues/FASE-02-2-persistencia.md` (migrations/seed).
+- Issue consumidora: `roadmap-rust/changelog.md` (PROC-09, concluída; migrations/seed).
 - Docs atualizadas: `docs/wyd/classes.md` (fim da limitação), `docs/wyd/decisoes-servidor.md`
   (números e `down` seletivo), `docs/rust/03-progresso.md` (entrada datada),
   `crates/wyd-db/migrations/README.md` (regra do `down` de seed).

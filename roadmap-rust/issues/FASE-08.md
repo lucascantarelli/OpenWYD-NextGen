@@ -9,7 +9,7 @@ limites, zero-copy) com transporte em `wyd-net`, e entregar o launcher mínimo
 (`wyd-launcher`) com verificação de integridade.
 
 O outro lado desse contrato é o cliente fechado (`client/`, build 7662): inventário,
-superfície conhecida e plano de desassemble vivem em `docs/cliente/` (FASE-08-4 a 08-7).
+superfície conhecida e plano de desassemble vivem em `docs/cliente/` (CLIENT-04 a CLIENT-07).
 
 ## Contexto / evidência
 

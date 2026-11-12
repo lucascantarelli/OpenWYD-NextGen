@@ -278,7 +278,7 @@
 crus (nunca UTF-8 assumido); leitura até o primeiro `NUL`.
 
 `_MSG_SendItem` atualiza **um slot** do inventário no cliente após mutação
-server-side (ex.: refino, FASE-03-16): o `HEADER.ID` é o id da **conexão**
+server-side (ex.: refino, GAME-16): o `HEADER.ID` é o id da **conexão**
 (não `ESCENE_FIELD`), e o par sanc no fio carrega nível + 10×piedade
 (`encode_sanc_cvalue`, `wyd-sim`). Layout conferido por RE do cliente 7662
 (handler `0x182`) e pelo porte do mesmo alvo (`EncodeSendItemBody`);
@@ -290,9 +290,9 @@ Na recusa do refino nada é reenviado (o cliente já mostra o estado correto).
 (+16); `_MSG_RemoveMob` é o inverso (`HEADER.ID` = id, corpo `RemoveType`). Layout conferido
 em `Basedef.h` (`struct MSG_CreateMob`/`MSG_RemoveMob`) e no porte Go do mesmo alvo 7662
 (`tmserver/internal/protocol/createmob.go`); implementação em `payload/scene.rs` (ADR-0025).
-A captura ao vivo do 7662 recebendo esses bytes segue pendente (FASE-08-6).
+A captura ao vivo do 7662 recebendo esses bytes segue pendente (CLIENT-06).
 
-Desde a FASE-03-9 o `MobID` é o **índice da entidade** no armazém do canal — um espaço
+Desde a GAME-09 o `MobID` é o **índice da entidade** no armazém do canal — um espaço
 único para NPCs e personagens (o id de `npc_definition` **não** vai para o fio), porque o
 cliente indexa as criaturas por `MobID` e dois espaços colidiriam. Personagens vivos entram
 na cena com `MobName`/`Equip[16]` (só os `sIndex`)/`Guild`/`CurrentScore` vindos do
@@ -307,7 +307,7 @@ Quando o teto corta o delta, a sessão **não** avança a geração e continua d
 varredura seguinte (saídas têm prioridade sobre entradas). Entidade que só **mudou** de
 posição/HP não é reenviada como `CreateMob` (o cliente recusaria o id repetido e o pacote
 de movimento não está provado), e não há filtragem por raio de visão (nenhuma fonte prova a
-distância) — os dois resíduos declarados da FASE-03-9, que dependem da captura 08-6.
+distância) — os dois resíduos declarados da GAME-09, que dependem da captura CLIENT-06.
 
 ### 5.1 Seletor e criação de personagem (S→C)
 
@@ -434,7 +434,7 @@ conta na hora, sem esperar o timeout de ociosidade. O mesmo endereço de sessão
 **retomada no próprio canal** (`event=session result=takeover`): cliente que reconecta no mesmo
 processo não fica preso na linha antiga; outro canal continua recusado.
 
-## 6. UNVERIFIED (não vira tipo até a captura real, FASE-08-2)
+## 6. UNVERIFIED (não vira tipo até a captura real, CLIENT-02)
 
 - `MSG_Trade` (troca entre jogadores) — layout não documentado.
 - `MSG_SetHpMp` — layout não documentado.

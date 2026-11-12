@@ -4,7 +4,7 @@
 //! tamanho → opcode → payload e prova que o corpo recodificado é idêntico
 //! ao `payloadHex` do fixture. Os fixtures são sintéticos (gerados por
 //! `node tools/client/captura.mjs --gen` a partir dos offsets documentados),
-//! NÃO captura de rede — o golden contra captura real aguarda a FASE-08-6.
+//! NÃO captura de rede — o golden contra captura real aguarda a CLIENT-06.
 //! Se um fixture mudar, este teste deve acompanhar (o JSON é lido em tempo
 //! de teste, não copiado para cá).
 

@@ -47,7 +47,7 @@ reproduzir esses endereços, **pare**: o binário ou o mapa está errado.
 2. **Depois dinâmico**: x64dbg **32-bit** + ScyllaHide, em VM descartável; breakpoints nos
    hooks conhecidos; trace de opcode/tamanho/hash por evento.
 3. **Correlacione** com `crates/wyd-protocol`: o teste byte-exato é a prova de entendimento.
-4. **Documente** em `docs/cliente/{mapa-funcoes,structs,pacotes}.md` conforme o marco (M1–M5). Roteiro de trace e fixtures em `docs/cliente/depuracao.md` + `tools/client/captura.mjs` (FASE-08-6).
+4. **Documente** em `docs/cliente/{mapa-funcoes,structs,pacotes}.md` conforme o marco (M1–M5). Roteiro de trace e fixtures em `docs/cliente/depuracao.md` + `tools/client/captura.mjs` (CLIENT-06).
 
 ## 5. Higiene e limites
 
@@ -57,13 +57,13 @@ reproduzir esses endereços, **pare**: o binário ou o mapa está errado.
 - **XTrap/JProtect**: diagnóstico, não combate. Se estiver ativo, teste em VM e documente o
   efeito; não escreva bypass.
 - **Licença**: `ClientPatch_v7662` é GPL-3.0 (© Victor Klafke/Charles TheHouse); herdar código
-  mantém a obrigação. Decisão de estratégia de patch vai em ADR (FASE-08-7).
+  mantém a obrigação. Decisão de estratégia de patch vai em ADR (CLIENT-07).
 
 ## 6. Verificação mínima
 
 ```bash
 sha256sum client/WYD.exe                                   # build correto
-node tools/client/pe.mjs client/WYD.exe | head            # seções/imports (08-5)
+node tools/client/pe.mjs client/WYD.exe | head            # seções/imports (CLIENT-05)
 cargo test -p wyd-protocol                                 # golden dos pacotes
 cargo fmt --all -- --check && cargo clippy --workspace -- -D warnings && cargo test --workspace
 ```

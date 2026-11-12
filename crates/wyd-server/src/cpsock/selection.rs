@@ -3,7 +3,7 @@
 use super::action::{dispatch, drain_chat, refresh_scene};
 use super::*;
 
-/// Atende a conexão depois do `CNF` enquanto o cliente estiver do outro lado (FASE-08-2).
+/// Atende a conexão depois do `CNF` enquanto o cliente estiver do outro lado (CLIENT-02).
 ///
 /// Cada iteração consome **o frame inteiro** antes de decidir: ler só o cabeçalho deixaria o
 /// corpo no socket e o `Size` seguinte seria lido do meio do pacote anterior.

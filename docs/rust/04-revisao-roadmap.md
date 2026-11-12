@@ -12,7 +12,7 @@ Revisão completa do planejado com as skills vigentes como base
 - `roadmap-rust/index.md`: referencia os 60 (15 pais + 45 filhos) — **100%**.
 - Todas têm: Skills, Subtasks, Riscos/rollback, Arquivos (criados/alterados/
   proibido tocar) e Critérios de aceite. 4 usam "Resultados" em vez de
-  "Passos" (02-5, 08-5, 08-6, 08-7) porque já foram **executadas** — ok.
+  "Passos" (PROC-12, CLIENT-05, CLIENT-06, CLIENT-07) porque já foram **executadas** — ok.
 - Painel: **23 ✅ / 5 🚧**, idêntico em `roadmap-rust/index.md` e
   `docs/rust/03-progresso.md` (verificado por diff).
 
@@ -20,13 +20,13 @@ Revisão completa do planejado com as skills vigentes como base
 
 | Issue | Base | Veredito |
 |---|---|---|
-| 05-2 (compose/docker) | `wyd-rust-toolchain` | ✅ após reparo (nota Dockerfile por serviço já registrada na issue) |
-| 06-2 (handshake/flood) | `wyd-rust-net` | ✅ balde+porte, 10 testes |
+| QA-03 (compose/docker) | `wyd-rust-toolchain` | ✅ após reparo (nota Dockerfile por serviço já registrada na issue) |
+| QA-05 (handshake/flood) | `wyd-rust-net` | ✅ balde+porte, 10 testes |
 | 07-núcleo (admin/billing) | `wyd-rust-db`, `solid` (DIP) | ✅ `BillingPort`, 15 testes |
-| 09-1 (auditoria skills) | `skill-creator` | ✅ plano executivo, sem conflito |
-| 10-1/10-3 (equações/lab) | `wyd-rust-sim`, `rust-code-quality` | ✅ funções puras, sem float indevido |
-| 12-1 (dashboards) | `wyd-rust-obs` | ✅ contrato 06-1 como única fonte |
-| 00-2/00-3, 01-2, 11-1, 14-1, 15-x | skills próprias | ✅ estrutura conforme; conteúdo diferido p/ execução (dependem de fases 🚧) |
+| PROC-17 (auditoria skills) | `skill-creator` | ✅ plano executivo, sem conflito |
+| GAME-19/GAME-21 (equações/lab) | `wyd-rust-sim`, `rust-code-quality` | ✅ funções puras, sem float indevido |
+| QA-08 (dashboards) | `wyd-rust-obs` | ✅ contrato QA-04 como única fonte |
+| PROC-03/PROC-04, PROC-06, PROC-19, PROC-23, 15-x | skills próprias | ✅ estrutura conforme; conteúdo diferido p/ execução (dependem de fases 🚧) |
 
 Caminhos citados nas issues existem no arquivo: `combat/`, `docker/monitoring/`,
 `game-rules.md`, `config-ops.md`, `webserver/` (todos OK em
@@ -67,9 +67,9 @@ histórico git do próprio repo:
 
 ## 5. Bloqueadores que permanecem (fora do escopo deste turno)
 
-- Transporte async/tokio + rede/vendor (04-3 pg, 06-1, 07-2/07-3/07-4):
+- Transporte async/tokio + rede/vendor (PROC-16 pg, QA-04, WEB-02/WEB-03/WEB-04):
   exigem ADR + ambiente com rede.
-- Captura ao vivo 08-6: sem servidor executável + VM.
+- Captura ao vivo CLIENT-06: sem servidor executável + VM.
 - Desinstalar Go da máquina: exige elevação do dono.
 - Imagens Docker não puxadas aqui (`node:22-alpine` sem rede): `build`
   do portal validado por `tsc` + `next build` prévio (`.next/` presente),
@@ -78,7 +78,7 @@ histórico git do próprio repo:
 ## Adendo 2026-11-07 (pós-revisão): rename + GUI
 - Projeto renomeado para **WYD** (decisão do dono; repo `lucascantarelli/wyd`).
   49 arquivos atualizados, zero restos fora de paths locais reais.
-- Nova issue **FASE-08-8** (GUI Tauri, ADR-0007 aceita) + skill `wyd-launcher` +
+- Nova issue **CLIENT-08** (GUI Tauri, ADR-0007 aceita) + skill `wyd-launcher` +
   `docs/cliente/launcher.md`. Inventário passa a **61/61, 23✅/6🚧**.
 
 ---
@@ -111,32 +111,32 @@ issues, ordenadas por tamanho. Base normativa usada: `AGENTS.md` §3, `docs/rust
 |---|---|---|---|
 | D-1 | **Gate vermelho**: **quatro** alvos de `wyd-server` exigiam `DATABASE_URL` e **panicavam** sem ela (`pin_persistencia`, `pin_troca`, `portal_pin`, `selchar`), derrubando `cargo test --workspace` em máquina sem stack | `expect("WYD_TEST_DATABASE_URL…")` nos 4 arquivos; log `EXIT=101` | corrigido: os quatro **pulam com aviso**, mesmo contrato de `wyd-db/tests/sistema/pg.rs` e do macro de `login.rs` |
 | D-2 | **Crate fora da árvore normativa**: `wyd-server` existe no workspace (e roda em produção) mas não estava em `AGENTS.md` §0/§1, `README.md`, DAG/árvore de `estrutura-e-padroes.md` nem na tabela do `05-stack-docker.md` §1 | `Cargo.toml` members vs docs | corrigido: linha em AGENTS/README/stack, aresta no DAG e **§16** com a árvore real do crate |
-| D-3 | **Status divergente em 8 issues** entre índice, painel e cabeçalho (03-2, 03-4, 04-2, 07-1, 08-7, 08-8, 09-2, 11-1, 11-2, 15-3) | tabelas de `index.md` × `03-progresso.md` | reconciliado nos três lugares; issue 02-6 cria gate para não voltar |
+| D-3 | **Status divergente em 8 issues** entre índice, painel e cabeçalho (GAME-02, GAME-04, PROC-15, WEB-01, CLIENT-07, CLIENT-08, PROC-18, PROC-19, PROC-20, QA-11) | tabelas de `index.md` × `03-progresso.md` | reconciliado nos três lugares; issue PROC-13 cria gate para não voltar |
 | D-4 | **Número errado de schema**: painel dizia “24 migrations / 59 tabelas” com 31/69 no repo e 70 no banco | `ls migrations`, `information_schema` | corrigido para 31/69 (+ledger) em 2026-11-09; **reaberto em 2026-11-10**: o código tem 36 migrations / 74 tabelas (`check-migrations`, `cargo test -p wyd-db --test contrato_catalogo`, `SCHEMA_VERSION = 36`), e `docs/wyd/README.md` e `modelo-banco.md` foram alinhados a esse número |
 | D-5 | **Contagem de skills contraditória**: “69 de 151” e “63 de 154” no mesmo parágrafo, com 82 `unmapped` | `decisoes-servidor.md` §6 | medido: **72 de 154**, 82 unmapped; texto corrigido com a query |
 | D-6 | **Doc de operação mentindo**: `AGENTS.md` §2 prometia 502 do `/api/health` “esperado sem gateway”, e `05-stack-docker.md` dizia `tmserver` bloqueado — gateway e dois canais existem e rodam | `docker ps`, `/health` | corrigido nos dois docs |
-| D-7 | **Issue 03-4 com status 🚧 apesar de “Concluído” na mesma página** (loader + 2 testes entregues) | `FASE-03-4` §§“Concluído” × “Status” | status ✅ + nota do que falta é o processo (03-7) |
-| D-8 | **Issue 03-2 com “ainda aberto” obsoleto** (`systems/`, ADR, bench já entregues) | `FASE-03-2` notas finais | fechamento registrado |
-| D-9 | **Issue 03-5 sem teste dedicado?** — falso: `cast` tem 3 testes de recusa/custo em `tests/integracao/autoridade.rs` | checklist 4.3 | checklist corrigido (🚧 só pelo fio) |
+| D-7 | **Issue GAME-04 com status 🚧 apesar de “Concluído” na mesma página** (loader + 2 testes entregues) | `GAME-04` §§“Concluído” × “Status” | status ✅ + nota do que falta é o processo (GAME-07) |
+| D-8 | **Issue GAME-02 com “ainda aberto” obsoleto** (`systems/`, ADR, bench já entregues) | `GAME-02` notas finais | fechamento registrado |
+| D-9 | **Issue GAME-05 sem teste dedicado?** — falso: `cast` tem 3 testes de recusa/custo em `tests/integracao/autoridade.rs` | checklist 4.3 | checklist corrigido (🚧 só pelo fio) |
 | D-10 | **`docs/rust/00-visao-estrutura.md`** descreve 7 crates, 15 skills e Go no PATH como estado “efetivo” | doc de 07/11 | marcado como **snapshot histórico**; estado vigente é o §16 + `03-progresso.md` |
 
 ## 6.3 Gaps de implementação (o que o roadmap não tinha registrado)
 
 O achado estrutural da revisão: **o motor não roda em processo nenhum**. `wyd-server` não
-depende de `wyd-core`; as regras de 03-5/03-6 passam em teste, mas não há tick, nem spawn, nem
+depende de `wyd-core`; as regras de GAME-05/GAME-06 passam em teste, mas não há tick, nem spawn, nem
 cena no serviço. O checklist já marcava 1.11/4.8/10.4 como ⬜, mas **o roadmap não tinha issue
 para isso** — era o maior buraco entre “entregue” e “jogável”.
 
 | Gap | Onde estava escondido | Issue criada |
 |---|---|---|
-| tick real no canal, métricas de motor reais | implicitamente “FASE-03/04/06” na ADR-0022 | **03-7** |
-| personagem como entidade + save na saída | checklist 1.11/3.5 | **03-8** |
-| `ESCENE_FIELD` nunca emitido | invariante 4 e checklist 4.8/10.4 | **03-9** |
-| cidadania e canal verde sem regra | checklist 2.3 | **03-10** |
-| lotação/manutenção de canal | checklist 1.14 | **06-3** |
-| 13 serviços do gateway em `501` | “ainda aberto” da 07-1, sem issue | **07-5** (leitura) e **07-6** (operação) |
-| logout explícito | checklist 1.13 | **08-9** |
-| status divergente crônico | revisão 04 (2026-11-07) já apontava | **02-6** |
+| tick real no canal, métricas de motor reais | implicitamente “FASE-03/04/06” na ADR-0022 | **GAME-07** |
+| personagem como entidade + save na saída | checklist 1.11/3.5 | **GAME-08** |
+| `ESCENE_FIELD` nunca emitido | invariante 4 e checklist 4.8/10.4 | **GAME-09** |
+| cidadania e canal verde sem regra | checklist 2.3 | **GAME-10** |
+| lotação/manutenção de canal | checklist 1.14 | **QA-06** |
+| 13 serviços do gateway em `501` | “ainda aberto” da WEB-01, sem issue | **WEB-05** (leitura) e **WEB-06** (operação) |
+| logout explícito | checklist 1.13 | **CLIENT-09** |
+| status divergente crônico | revisão 04 (2026-11-07) já apontava | **PROC-13** |
 
 ## 6.4 Revisão dos sistemas de jogo (itens, skills, cidadania, canais)
 
@@ -154,7 +154,7 @@ Isso merece teste de dados quando a curadoria avançar — hoje é lacuna de fon
 
 **Cidadania.** Documentada com evidência do legado (`citizen = ServerIndex + 1`, Kibita
 4.000.000, `/getout`, bônus de canal), implementada **só como campo** do `STRUCT_SELCHAR`. É o
-item 2.3: sem bônus aplicado, cidadania é decoração. Issue 03-10 assume o escopo seguro
+item 2.3: sem bônus aplicado, cidadania é decoração. Issue GAME-10 assume o escopo seguro
 (bônus por `game_setting` + papel verde), deixando compra por diálogo de NPC para quando houver
 sistema de NPC no fio.
 
@@ -169,7 +169,7 @@ portado (cada canal tinha DB próprio; o nosso compartilha), decisão já regist
 
 | Área | Veredito |
 |---|---|
-| `wyd-rust-core` (sem I/O no tick, DOD) | ✅ no core; ⬜ no processo (03-7) |
+| `wyd-rust-core` (sem I/O no tick, DOD) | ✅ no core; ⬜ no processo (GAME-07) |
 | `wyd-rust-net` (validar antes de parsear, sem panic) | ✅ `cpsock`/`handshake` sem `unwrap` de entrada; testes de flood/limite |
 | `wyd-rust-db` (migrations reversíveis, integridade) | ✅ 31 migrations + catálogo + verify-schema |
 | `rust-code-quality` (sem `unwrap` fora de teste) | ✅ nos caminhos de rede; os 351 hits são majoritariamente `#[cfg(test)]`/locks de fake — revisão pontual recomendada no `inventory.rs` (26) |
@@ -195,11 +195,11 @@ escopo do Arch, uso de layout W2PP como provisório e escopo da loja de donate.
 
 ## 6.8 Fechamento
 
-- **Issues novas:** 9 (02-6, 03-7, 03-8, 03-9, 03-10, 06-3, 07-5, 07-6, 08-9), com fila por
+- **Issues novas:** 9 (PROC-13, GAME-07, GAME-08, GAME-09, GAME-10, QA-06, WEB-05, WEB-06, CLIENT-09), com fila por
 tamanho em `roadmap-rust/index.md`. Nenhuma depende de captura, de decisão do dono ou de
 serviço externo.
-- **Issues reabertas/corrigidas:** 03-2 (fechamento), 03-4 (status), 04-2 (números/runner),
-  07-1 (split dos handlers).
+- **Issues reabertas/corrigidas:** GAME-02 (fechamento), GAME-04 (status), PROC-15 (números/runner),
+  WEB-01 (split dos handlers).
 - **Docs corrigidos:** `AGENTS.md`, `README.md`, `estrutura-e-padroes.md`, `05-stack-docker.md`,
   `03-progresso.md`, `08-checklist-funcionalidades.md`, `docs/wyd/README.md`,
   `docs/wyd/decisoes-servidor.md`, `docs/wyd/fontes.md` + nova `referencia-externa-2026-11.md`.

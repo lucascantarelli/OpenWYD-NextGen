@@ -6,7 +6,7 @@
 //!
 //! Recusas (alvo morto, fora de alcance, auto-ataque, cooldown, entidade inexistente) são
 //! erros tipados e acontecem antes de qualquer escrita: HP, cooldown e fila de eventos ficam
-//! idênticos depois de um ataque forjado (FASE-03-5 passo 3).
+//! idênticos depois de um ataque forjado (GAME-05 passo 3).
 
 use crate::ecs::components::{ComponentStore, Entity, Stats};
 use crate::ecs::resources::DomainEvent;

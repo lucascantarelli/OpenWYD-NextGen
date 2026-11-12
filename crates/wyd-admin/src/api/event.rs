@@ -1,4 +1,4 @@
-//! `world_event_admin/*` — estado de eventos de mundo (FASE-07-6).
+//! `world_event_admin/*` — estado de eventos de mundo (WEB-06).
 //!
 //! Linha de configuração: ligar/desligar vale para o próximo leitor do dado
 //! (boot/tick que lê a tabela) — nenhum push para o Hot Path. Horários vêm de

@@ -1,6 +1,6 @@
 -- 0040 — capacidade do canal: lotação e manutenção sem parar o processo.
 --
--- Regra nova (FASE-06-3): cada canal recusa entrada nova quando atinge
+-- Regra nova (QA-06): cada canal recusa entrada nova quando atinge
 -- `max_players` sessões vivas, e recusa tudo em `maintenance`, sem derrubar
 -- quem já está dentro. Tabela própria em vez de `ALTER TABLE server_channel`:
 -- a série proíbe `ALTER TABLE` no `up` (coluna nova nasce na criação).

@@ -5,7 +5,6 @@ description: Opera o laboratório matemático do WYD em Rust (crates/wyd-sim): s
 
 # Laboratório matemático Rust (wyd-sim)
 
-Sucessora da parte investigativa de `wyd-testing-bots`/`wyd-economy` para Rust.
 Referências: `pre-release-rust.md` FASE 10, `roadmap-rust/issues/FASE-10.md`.
 
 ## Regras

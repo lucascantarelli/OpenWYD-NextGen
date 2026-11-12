@@ -3,7 +3,7 @@
 - **Estado:** aceita
 - **Data:** 2026-11-09
 - **Decisores:** dono do projeto + agente
-- **Governa:** stack local (FASE-07-1/07-4), operação (`05-stack-docker`), CI (`seed-boot`)
+- **Governa:** stack local (WEB-01/WEB-04), operação (`05-stack-docker`), CI (`seed-boot`)
 
 ## Contexto
 

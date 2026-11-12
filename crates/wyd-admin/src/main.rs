@@ -1492,7 +1492,7 @@ fn log(level: &str, event: &str, fields: &str) {
 
 /// Destino de auditoria do serviço: `audit_log` no Postgres **e** stdout.
 ///
-/// A trilha do banco é o que o painel lê (FASE-07-3); o stdout continua existindo
+/// A trilha do banco é o que o painel lê (WEB-03); o stdout continua existindo
 /// para `docker logs`/Loki. Falha ao gravar no banco não engole a ação — fica
 /// registrada como erro no log do processo (append-only, sem retry inventado).
 struct PersistentSink {

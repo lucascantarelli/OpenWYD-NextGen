@@ -18,7 +18,7 @@ houver. Diff proposto (aplicar com `str_replace`, não aplicado aqui):
 
 | Linha | Texto atual | Proposta (estado + texto) |
 |---|---|---|
-| 1.13 (logout) | "só o timeout de ociosidade tem código; pacote de saída não é tratado nem testado" → sem marca | `🚧` + "handler de saída existe (`cpsock.rs:1012-1023`, `CNFCharacterLogout` + `leave_world` + `Drop`); falta **teste dedicado** e golden do frame de saída (captura 08-6)" |
+| 1.13 (logout) | "só o timeout de ociosidade tem código; pacote de saída não é tratado nem testado" → sem marca | `🚧` + "handler de saída existe (`cpsock.rs:1012-1023`, `CNFCharacterLogout` + `leave_world` + `Drop`); falta **teste dedicado** e golden do frame de saída (captura CLIENT-06)" |
 | 4.3 (skill em combate) | "`systems/skill.rs` sem teste dedicado e sem fio" → sem marca | `🚧` + texto mantido (correto e atual) |
 | 11.7 (re-tema `.wyt`) | "CLI existe; nenhum teste de ida-e-volta de paleta" → sem marca | `🚧` + texto mantido (correto e atual) |
 | 5.4 / 5.6 no fio | "regra no core testada, emissão de pacote não" → sem marca | `🚧` + texto mantido (correto e atual) |
@@ -29,10 +29,10 @@ Pendente só a aplicação (2 min, fora do escopo "apenas este artefato" desta f
 ## 2. Correção do texto desatualizado 1.13 (proposta, não aplicada)
 
 Linha 48 atual: "libera a sessão por ociosidade (120 s) em `session.rs` e na queda
-de socket; pacote de saída não tratado. **Sem teste dedicado** — issue `FASE-08-9`".
+de socket; pacote de saída não tratado. **Sem teste dedicado** — issue `CLIENT-09`".
 Texto proposto: "libera a sessão por ociosidade (120 s), na queda de socket **e no
 pacote de saída** (`CharacterLogout → CNFCharacterLogout + leave_world + Drop`,
-`cpsock.rs:1012-1023`). **Sem teste dedicado** — issue `FASE-08-9`".
+`cpsock.rs:1012-1023`). **Sem teste dedicado** — issue `CLIENT-09`".
 Motivo: o handler existe desde a entrega que fechou o defeito "cliente fechado
 continua online"; o que falta é prova (teste + golden), não código. Evidência:
 Fase 3 item 3 campos 11/22; Fase 4 §2 linha item 3.
@@ -54,7 +54,7 @@ Corpo: emitir `CreateItem (0x026E)` S→C 30 B packed por item sorteado
 `opcode_table.rs:881-883` (`CreateItem` → `Game2Client`) pelo rito de tabela
 congelada. Aceite: golden 30/28 B por VA (`0x486c25`, `0x4fee1b-7e`); coleta grava
 e some para todos; concorrência num id só entrega uma vez; `DestType≠1` e 30-vs-32 B
-registrados como UNVERIFIED (captura 08-6). Ref: Fase 3 item 1 (26 campos).
+registrados como UNVERIFIED (captura CLIENT-06). Ref: Fase 3 item 1 (26 campos).
 
 ### Issue 2 — Cena autoritativa `ESCENE_FIELD` (30000) no ataque/morte/XP
 `labels: fase-03, tamanho-M, sistema-cena`
@@ -63,7 +63,7 @@ com `ID=ESCENE_FIELD` (nunca id da conexão); `MobID` em +16; `RemoveType` 0/1/2
 Aceite: header de ataque-mob = 30000; barra de XP anda e morte aplica no 7662;
 regressão melee `SkillIndex=0` (B12) e guarda `HP<=0` (B9). Ref: Fase 3 item 2; L5 B8/B9.
 
-### Issue 3 — Logout explícito com teste (FASE-08-9)
+### Issue 3 — Logout explícito com teste (CLIENT-09)
 `labels: fase-08, tamanho-S, sistema-sessao`
 Corpo: handler já existe — adicionar `tests/sistema/logout.rs`: `0x0215` responde `0x0116`,
 libera `character_session` na hora, salva, segunda conexão entra sem timeout;
@@ -71,7 +71,7 @@ queda sem pacote continua no timeout. Atualizar linha 48 (texto §2 acima) e as 
 linhas (§1) na mesma entrega. Aceite: `cargo test` novo verde; sem órfãos no mundo.
 Ref: Fase 3 item 3.
 
-### Issue 4 — Cadeia de dano com goldens (FASE-10-1, núcleo)
+### Issue 4 — Cadeia de dano com goldens (GAME-19, núcleo)
 `labels: fase-10, tamanho-M, sistema-combate`
 Corpo: portar L3 §4 para `wyd-sim` com goldens (`BASE_GetDamage/SkillDamage`,
 `rnd` por maestria, pisos, `Ac*=3` PvP, parry `rand()%1000+1`, reflect, mín 1);
@@ -111,13 +111,13 @@ publicada. Ref: Fase 3 item 8.
 ### Issue 9 — Harness de replay/paridade (LCG) — base de `wyd-bots`
 `labels: fase-15, tamanho-M, sistema-testes`
 Corpo: fixture + replay + proxy nos 3 links + paridade LCG MSVC + matriz de
-cobertura (espelho de `parity-tests.md`); goldens S→C após 08-6; sanitize de
+cobertura (espelho de `parity-tests.md`); goldens S→C após CLIENT-06; sanitize de
 fixtures; sem `#[ignore]`; bot descobre, teste reproduz sem rede. Aceite:
 determinismo antes de carga; benches com números. Ref: Fase 3 item 9.
 
 ## 4. Pendentes por dado faltante (não bloqueiam as demais)
 
-Captura 08-6 (frames `0x0215`/`Trade`/S→C, `DestType≠1`, 30-vs-32 B, ids de caixa,
+Captura CLIENT-06 (frames `0x0215`/`Trade`/S→C, `DestType≠1`, 30-vs-32 B, ids de caixa,
 taxas 7662, `SkillData`/curva EXP); rito da tabela congelada; decisão P-10 (5% vs
 4%); `HALFGRIDX/Y` exatos. Tudo registrado como UNVERIFIED nos itens da Fase 3 —
 nenhuma issue acima depende deles para existir, só a 7 depende de layout para

@@ -355,7 +355,7 @@ export const characterAdmin = svc<{
   >;
 }>("character_admin", ["searchCharacters", "listCharacterGrants", "grantItem"]);
 
-/** Item da loja de donate (`donate_admin/*`, FASE-07-6). */
+/** Item da loja de donate (`donate_admin/*`, WEB-06). */
 export interface ShopItemWire {
   id: number;
   item_index: number;

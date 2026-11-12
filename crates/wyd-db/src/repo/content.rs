@@ -74,7 +74,7 @@ pub struct ServerChannel {
     pub enabled: bool,
 }
 
-/// Lotação de sessões por canal (FASE-06-3, migration `0040`).
+/// Lotação de sessões por canal (QA-06, migration `0040`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ChannelCapacity {
     /// Teto de sessões vivas; `1000` é o `MAX_USER` do legado.
@@ -94,7 +94,7 @@ impl ChannelCapacity {
     }
 }
 
-/// Papel do canal (FASE-03-10, migration `0041`).
+/// Papel do canal (GAME-10, migration `0041`).
 ///
 /// `Normal` aplica a regra completa (PvP conforme o mapa); `Verde` é o canal novato do legado:
 /// PvP desligado e loja pessoal permitida (`docs/wyd/canais-e-cidadania.md` §3). O papel é do
@@ -221,7 +221,7 @@ impl PgBackend {
         Ok(CatalogSnapshot { version, items })
     }
 
-    /// O template do item carrega o efeito (`item_catalog.effect_names`, FASE-03-16)?
+    /// O template do item carrega o efeito (`item_catalog.effect_names`, GAME-16)?
     ///
     /// Porta do `EF_NOSANC` (126) no refino: o bloqueio é dado do catálogo semeado, não
     /// regra chutada — item sem linha ou sem a chave devolve `false` (refinável). Leitura

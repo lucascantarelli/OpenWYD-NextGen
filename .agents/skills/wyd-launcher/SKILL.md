@@ -27,7 +27,7 @@ Conceito e referências: `docs/cliente/launcher.md`. Estratégia de patch:
 ## 2. Fluxo de trabalho
 
 1. Mudança de lógica de update/patch → teste em pasta temporária, nunca em
-   `client/` (padrão FASE-08-3: adulterado recusado exit 1, resume, backup).
+   `client/` (padrão CLIENT-03: adulterado recusado exit 1, resume, backup).
 2. Mudança de GUI → rodar o fluxo instalar → atualizar → jogar contra stack
    local antes de qualquer instalador distribuível.
 3. Integração portal (notícias/status/manifesto): só endpoints GET públicos;

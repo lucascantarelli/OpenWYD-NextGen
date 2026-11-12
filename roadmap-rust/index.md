@@ -1,172 +1,258 @@
-# Roadmap Rust — WYD (planejamento e execução)
+# Roadmap Rust — índice executável
 
-> Fonte: `pre-release-rust.md` (§16 ordem estratégica + FASES 1–15) e `start-rust.md`
-> (planejamento/limpeza/organização; código só após documentação).
-> Planejamento Go histórico removido com o arquivo em 2026-11; auditoria preservada em
-> `docs/manual-técnico/auditoria-roadmap.md`. Este diretório é o planejamento vigente.
-> Esqueleto compilável já existente: workspace raiz + `crates/wyd-{protocol,core,net,db,admin,sim,launcher}`.
+> **Estado:** 2026-11-12 · **33 issues ativas** + 15 descritores de fase. 49 issues concluídas estão em [`changelog.md`](changelog.md).
 >
-> **Execução em curso.** Painel vivo: `docs/rust/03-progresso.md`. Ciclo e gates:
-> `docs/rust/02-execucao.md`. Status: ✅ concluída · 🚧 em curso · ⬜ pendente · ⛔ bloqueada.
+> **ID único:** cada issue usa `CATEGORIA-NN` no arquivo, título, índice, dependências, changelog, painel e gate. O ID antigo (`FASE-xx-y` ou onda) aparece **somente** como metadado no arquivo e na tabela de mapeamento no fim deste índice.
+> **Regra de ouro:** puxar primeiro os itens de esforço **S** e sem dependência aberta; tarefas **L** só entram depois de decompostas em subtasks no próprio arquivo.
 
-## Ordem estratégica (§16)
+## Próximos ganhos rápidos (sem dependência externa)
 
-1. Auditoria e reorganização do roadmap → `issues/FASE-01.md`
-2. Contrato de protocolo/tipos (`wyd-protocol`) → `issues/FASE-08.md` (mapeamento) + `issues/FASE-03.md`
-3. Engine core ECS + spatial grid (`wyd-core`) → `issues/FASE-03.md`
-4. Persistência assíncrona (`wyd-db`/PostgreSQL) → `issues/FASE-04.md`
-5. CI/CD Rust + observabilidade → `issues/FASE-05.md` + `issues/FASE-06.md`
-6. Portal Next.js + launcher → `issues/FASE-07.md` + `issues/FASE-08.md`
-7. Simulação matemática (`wyd-sim`) → `issues/FASE-10.md`
-8. Validação final/carga/release → `issues/FASE-15.md`
+> A fila anterior (`QA-07`, `PROC-05`, `PROC-11`) foi concluída e está no changelog. A próxima
+> tarefa curta é `PROC-23`; as demais são M/L e não entram aqui como “ganho rápido”.
 
-Caminho crítico: `00 → 01 → 08-1 → 08-2 → 03 → 04 → 07` e `03 → 10 → 15`.
-
-## Fases
-
-| Issue | Fase | Título |
-|---|---|---|
-| `issues/FASE-01.md` | 1 | Auditoria do roadmap e organização das issues |
-| `issues/FASE-02.md` | 2 | Execução controlada e evolução sequencial |
-| `issues/FASE-03.md` | 3 | Engine `wyd-core` (tick, ECS, spatial grid) |
-| `issues/FASE-04.md` | 4 | Banco de dados e persistência (`wyd-db`) |
-| `issues/FASE-05.md` | 5 | DevOps e CI/CD (stack Rust) |
-| `issues/FASE-06.md` | 6 | Observabilidade, monitoramento e segurança |
-| `issues/FASE-07.md` | 7 | Portal web e ecossistema digital |
-| `issues/FASE-08.md` | 8 | Engenharia reversa e cliente/launcher |
-| `issues/FASE-09.md` | 9 | IA, skills e ferramentas auxiliares |
-| `issues/FASE-10.md` | 10 | Matemática, bug hunting e balanceamento |
-| `issues/FASE-11.md` | 11 | Documentação e padronização |
-| `issues/FASE-12.md` | 12 | Dashboard e visualização |
-| `issues/FASE-13.md` | 13 | ADRs (decisões de arquitetura) |
-| `issues/FASE-14.md` | 14 | Pesquisa técnica contínua |
-| `issues/FASE-15.md` | 15 | Auditoria final e release |
-
-## Execução (issues específicas, uma por entrega)
-
-| Issue | Fase | Entrega | Status |
-|---|---|---|---|
-| `issues/FASE-00-1-limpeza-ambiente.md` | 0 | Limpeza do ambiente Windows (Go → Rust) | 🚧 |
-| `issues/FASE-00-2-vscode-rust.md` | 0 | VS Code reconfigurado para Rust | ✅ |
-| `issues/FASE-00-3-branch-develop.md` | 0 | `develop` como branch principal | ✅ |
-| `issues/FASE-01-1-auditoria-estado.md` | 1 | Inventário auditado das issues (Go + Rust) | 🚧 |
-| `issues/FASE-01-2-varredura-dividas.md` | 1 | TODO/FIXME/HACK, código morto e lacunas | ✅ |
-| `issues/FASE-01-3-inventario-skills.md` | 1 | Tabela de sucessão Go→Rust das skills | ✅ |
-| `issues/FASE-02-1-ciclo-execucao.md` | 2 | `docs/rust/02-execucao.md` (ciclo obrigatório) | ✅ |
-| `issues/FASE-02-2-revisao-consolidada.md` | 2 | Checklist de revisão a cada 10 issues | ✅ |
-| `issues/FASE-02-3-ordem-priorizacao.md` | 2 | Grafo de dependências e caminho crítico | ✅ |
-| `issues/FASE-02-4-estrutura-e-padroes.md` | 2 | Estrutura de módulos, nomenclatura e padrões (gate de código) | ✅ |
-| `issues/FASE-02-5-visao-pastas.md` | 2 | Visão de pastas + mapa do cliente (gate de arquitetura) | ✅ |
-| `issues/FASE-02-6-consistencia-docs.md` | 2 | Gate de consistência índice ↔ painel ↔ código (`make docs-check`) | ✅ |
-| `issues/FASE-03-1-tick.md` | 3 | Tick determinístico 20–50 Hz | ✅ |
-| `issues/FASE-03-2-ecs.md` | 3 | ECS: componentes contíguos + gema no inventário | ✅ |
-| `issues/FASE-03-3-spatial-grid.md` | 3 | Spatial grid e interest management O(1) | ✅ |
-| `issues/FASE-03-4-dados-estaticos.md` | 3 | Fim dos TXT/CSV; validação de schema no boot | ✅ |
-| `issues/FASE-03-5-autoridade-servidor.md` | 3 | Autoridade server-side (física/dano/skills/inventário) | ✅ |
-| `issues/FASE-03-6-ia-npc.md` | 3 | IA de NPC no Hot Path (FSM + utilidade determinística) | ✅ |
-| `issues/FASE-03-7-motor-no-canal.md` | 3 | Motor no canal: tick real dentro do `wyd-server` | ✅ |
-| `issues/FASE-03-8-entrada-no-mundo.md` | 3 | Entrada no mundo: spawn do personagem + save do estado vivo | ✅ |
-| `issues/FASE-03-9-cena-autoritativa.md` | 3 | Cena autoritativa (`ESCENE_FIELD` 30000) | ✅ |
-| `issues/FASE-03-10-cidadania-canal-verde.md` | 3 | Cidadania aplicada + papel do canal verde | ✅ |
-| `issues/FASE-03-16-piedade-updateitem.md` | 3 | Piedade de refino persistida + `UpdateItem` de resposta | ✅ |
-| `issues/FASE-03-17-entrada-no-mundo-fiel.md` | 3 | Entrada no mundo fiel ao legado (`ClientID`, `UpdateScore`, `CreateType`) | ✅ |
-| `issues/FASE-03-18-campo-de-treinamento.md` | 3 | Campo de Treinamento (quest, chaves, buff, boss) | 🟡 |
-| `issues/BUG-02-entrada-no-mundo-pin-opcional.md` | 3 | “Falha ao conectar”: PIN opcional + seleção antes do PIN | 🟢 |
-| `issues/FASE-04-1-modelagem.md` | 4 | Modelo relacional com FKs/CHECKs/índices | ✅ |
-| `issues/FASE-04-2-migrations.md` | 4 | Migrations versionadas + seeds | ✅ |
-| `issues/FASE-04-3-persistencia-async.md` | 4 | Pool async fora do tick | ✅ |
-| `issues/FASE-05-1-pipeline-ci.md` | 5 | CI (fmt/clippy/test/bench/audit/deny) | ✅ |
-| `issues/FASE-05-2-release-docker.md` | 5 | Release LTO + imagem mínima | ✅ |
-| `issues/FASE-06-1-telemetria.md` | 6 | tracing + Prometheus no motor | ✅ |
-| `issues/FASE-06-2-hardening.md` | 6 | DoS, rate limiting, sanitização | ✅ |
-| `issues/FASE-06-3-lotacao-manutencao.md` | 6 | Lotação e manutenção do canal (recusa tipada) | ✅ |
-| `issues/FASE-06-4-catalogo-ameacas.md` | 6 | Catálogo de ameaças B1–B17 + §6 do `wyd2.md` | ⬜ |
-| `issues/FASE-07-1-gateway.md` | 7 | Transporte + contrato + binário `wyd-gateway` em Docker (ADR-0008; [ADR-0022](../docs/arquitetura/adr/0022-binarios-de-servico.md)) | 🚧 |
-| `issues/FASE-07-2-painel-usuario.md` | 7 | Painel do jogador | ✅ |
-| `issues/FASE-07-3-painel-admin.md` | 7 | Painel de staff auditável | ✅ |
-| `issues/FASE-07-4-e2e-playwright.md` | 7 | E2E (auth, painel, entrega idempotente) | ✅ |
-| `issues/FASE-07-5-handlers-conteudo.md` | 7 | Handlers de leitura de conteúdo (npc/mob/item/efeito/mapa/teleporte) | ✅ |
-| `issues/FASE-07-6-handlers-operacao.md` | 7 | Handlers de operação (rates/daily/donate/evento/conta) | ✅ |
-| `issues/FASE-08-1-tabela-protocolo.md` | 8 | Tabela do protocolo com UNVERIFIED | ✅ |
-| `issues/FASE-08-2-parsers.md` | 8 | `wyd-protocol` zero-copy + golden | ✅ |
-| `issues/FASE-08-3-launcher.md` | 8 | Distribuição do launcher/patch (updater substituto) | ✅ |
-| `issues/FASE-08-4-cliente-dossie.md` | 8 | Dossiê, inventário e baseline do cliente | ✅ |
-| `issues/FASE-08-5-cliente-reverso-estatico.md` | 8 | RE estático profundo (`WYD.exe` 7662) | ✅ |
-| `issues/FASE-08-6-cliente-reverso-dinamico.md` | 8 | Trace dinâmico e correlação de pacotes | 🚧 |
-| `issues/FASE-08-7-cliente-customizacao.md` | 8 | Customização sustentável + manifesto do launcher | ✅ |
-| `issues/FASE-08-8-launcher-gui-tauri.md` | 8 | GUI do launcher em Tauri v2 (notícias + Jogar) | 🚧 |
-| `issues/FASE-08-9-logout-explicito.md` | 8 | Logout explícito (sair sem esperar timeout) | ✅ |
-| `issues/FASE-08-10-trade-atomica.md` | 8 | Trade atômica por par (bloqueada em layout) | ⛔ |
-| `issues/FASE-09-1-auditoria-skills.md` | 9 | Auditoria das skills Go restantes | ✅ |
-| `issues/FASE-09-2-criar-skills.md` | 9 | Skills sucessoras Rust | ✅ |
-| `issues/FASE-10-1-equacoes.md` | 10 | Equações exatas de combate | 🚧 |
-| `issues/FASE-10-2-velocidade.md` | 10 | Causa raiz da anomalia de velocidade | ⬜ |
-| `issues/FASE-10-3-laboratorio.md` | 10 | Laboratório `wyd-sim` em lote | ⬜ |
-| `issues/FASE-10-4-exp-por-flags.md` | 10 | Árvore de EXP por flags (default inalterado) | ⬜ |
-| `issues/FASE-11-1-guia.md` | 11 | Guia de contribuição + manuais | ✅ |
-| `issues/FASE-11-2-c4-pacotes.md` | 11 | C4 + specs de pacotes | ✅ |
-| `issues/FASE-12-1-dashboards.md` | 12 | Dashboards + alertas + runbooks | ✅ |
-| `issues/FASE-13-1-rito-adr.md` | 13 | Rito ADR + template | ✅ |
-| `issues/FASE-13-2-primeiras-adrs.md` | 13 | ADRs (monolito, ECS, binário, async) | ✅ |
-| `issues/FASE-14-1-pesquisa.md` | 14 | Notas de pesquisa + PoC | ✅ |
-| `issues/FASE-15-1-suite-concorrencia.md` | 15 | Suite completa + concorrência | ⬜ |
-| `issues/FASE-15-3-bots-carga.md` | 15 | Bots jogáveis e carga (`crates/wyd-bots`) | ⬜ |
-| `issues/FASE-15-4-bots-do-campo-de-treinamento.md` | 15 | Bots autônomos do Campo de Treinamento (4 raças) | 🟡 |
-| `issues/FASE-15-2-carga-banco-release.md` | 15 | Carga + banco + release + relatório | ⬜ |
-
-## Fila de entregas rápidas (2026-11-09)
-
-Ordem por **tamanho** e por **desbloqueio**: cada linha entrega valor sozinha e não deixa a
-seguinte esperando. A coluna “depende” só cita o que já está pronto ou o que vem antes na
-mesma fila — nenhuma issue abaixo espera captura de cliente, decisão do dono ou serviço externo.
-
-| # | Issue | Tamanho | Depende de | Entrega |
+| ID | Issue | Categoria | Esforço | Próximo passo |
 |---|---|---|---|---|
-| 1 | `FASE-02-6` consistência de docs | **S** | — | gate que impede status divergente voltar |
-| 2 | `FASE-06-3` lotação/manutenção | **S** | 06-2 ✅ | canal cheio e manutenção com recusa observável |
-| 3 | `FASE-08-9` logout explícito | **S** | 08-2 ✅ | sessão liberada na hora, relogin imediato |
-| 4 | `FASE-03-7` motor no canal | **M** | 03-6 ✅, 04-3 ✅ | tick real + métricas de motor verdadeiras |
-| 5 | `FASE-07-5` handlers de conteúdo ✅ | **M** | 07-1 🚧 | leituras de conteúdo com dado real; mapa de atributos e carry seguem `501` (sem tabela) |
-| 6 | `FASE-07-6` handlers de operação ✅ | **M** | 07-1 🚧, 07-3 ✅ | daily/donate/evento/contas/`grant_item` auditados; `501` só sem tabela |
-| 7 | `FASE-03-8` entrada no mundo | **M** | 03-7 (fila) | personagem vira entidade e é salvo |
-| 8 | `FASE-03-10` cidadania/canal verde ✅ | **M** | 03-7 ✅ | cidadania deixa de ser campo e vira regra |
-| 9 | `FASE-03-9` cena autoritativa | **L** | 03-8 (fila) | primeiro mundo visível no cliente |
+| `PROC-23` | [Notas de pesquisa (ECS, io_uring, serialização) + PoC](issues/PROC-23-pesquisa.md) | Processo, documentação e arquitetura | S | Medir as PoCs pendentes (ex.: SoA × `hecs`) e publicar os números. |
+| `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | Portal e gateway | M | Fechar a tela sobre `WEB-05` e `WEB-06`. |
+| `WEB-11` | [Configurações 100% via portal](issues/WEB-11-configuracoes.md) | Portal e gateway | M | Auditar settings e remover configuração manual. |
 
-Depois da fila, o que resta aberto é: `FASE-08-8` (GUI Tauri, M), `FASE-10-1` (fechar a ordem
-matemática, M), `FASE-10-2` (velocidade, M), `FASE-10-3` (laboratório em lote, M), `FASE-10-4`
-(EXP por flags, M), `FASE-06-4` (catálogo de ameaças, S),
-`FASE-15-3` (bots, M), `FASE-15-1` (suite/concorrência, L), `FASE-15-2` (carga/release, L),
-`FASE-00-1` (desinstalar Go — **ação do dono**, exige elevação) e `FASE-01-1` (auditoria do
-planejamento Go, valor histórico). `FASE-08-6` continua ⛔ por depender de VM + cliente em
-execução e `FASE-08-10` (trade) herda o mesmo bloqueio; são os únicos bloqueios externos da árvore.
+## Resíduos de prova (não são ganhos rápidos)
 
-## Lotes paralelos
+| Issue | Status | O que já está provado | O que falta | Dependência |
+|---|---|---|---|---|
+| `BUG-01` | ⬜ | Recusas com motivo no log, testes de fio e entrada com `ClientID`/`UpdateScore`/cena. | Matriz mensagem × exibe/não-exibe e reprodução de cada recusa no 7662. | Cliente/VM (`CLIENT-06`). |
+| `BUG-02` | 🟢 | Código, testes de fio e `clippy`; seleção antes do PIN devolve o frame. | Prova viva com `WYD_LIVE_SKIP_PIN=1` e entrada no cliente 7662. | Cliente/VM (`CLIENT-06`). |
+| `GAME-17` | 🚧 | Faixa de `ClientID`, `UpdateScore`, `CreateType` e rajada real de `CreateMob`. | Render da entrada no cliente 7662, sem “Falha ao conectar”. | Cliente/VM (`CLIENT-06`). |
+| `GAME-18` | 🟡 | 10 NPCs no seed `0046`, 4 etapas, portões/chaves, loot no inventário e `GremlinDecoy`/451 no combate real. | Demais guardiões/boss no fluxo completo, Sephira +9, buff do `Cabuncle`, portão visível e prova visual. | Templates + cliente/VM. |
+| `PROC-23` | 🚧 | Notas datadas e decisão manter/descartar por candidato. | Números medidos das PoCs (ex.: SoA × `hecs`). | Nenhuma; é o próximo da fila curta. |
+| `GAME-05` | 🚧 | Física, dano, skills e inventário autoritativos; recusa de pacote forjado. | `req_str/int/dex/con`, layout de rede do inventário e baú (`vault_items`). | `CLIENT-06` para o layout. |
 
-Duas frentes podem rodar ao mesmo tempo sem tocar os mesmos arquivos:
+## Fila de desbloqueio (quem trava o quê)
 
-- **Motor** — 03-7 → 03-8 → 03-9 (+ 03-10 em paralelo com 03-8, no `wyd-sim`/`wyd-core`).
-- **Cold Path** — 07-5 e 07-6 (gateway/DB) em paralelo com o motor; `02-6`, `06-3` e `08-9`
-  são curtas e podem entrar entre qualquer uma das duas.
-
-**Mapa de funcionalidades (checklist viva do jogo):** o que cada sistema, item e skill precisa ter,
-com estado e evidência por linha, fica em [`docs/rust/08-checklist-funcionalidades.md`](../docs/rust/08-checklist-funcionalidades.md).
-O roadmap abaixo organiza o trabalho; o mapa diz o que já existe de verdade.
-
-Critério global de conclusão (pre-release-rust §16): workspace estável, sem warnings de
-clippy, sem data races, fórmulas críticas cobertas por testes e alta performance determinística.
-
-## Ondas 1–4 — curva de crescimento (2026-11-11)
-
-Issues novas fora do padrão `FASE-NN-N` (não entram no gate `check-issue-status`):
-`DOC-01`, `ROAD-01`, `PORTAL-01..05`, `LAUNCHER-01`, `BUG-01`, `BOTS-01` em `issues/`.
-
-| Onda | Objetivo | Issues | Prova |
+| Ordem | ID | Issue | Por que agora |
 |---|---|---|---|
-| 1 — base sólida | login, PIN, seleção, entrada no mundo, cena `ESCENE_FIELD`, logout explícito | `BUG-01` (reproduzir senha-sem-mensagem + char-no-mundo), FASE-08-2 ✅, 03-7/03-8/03-9/03-17 ✅, 06-2/06-3 ✅, 08-9 ✅ | conta admin: login → mundo → logout → relogin sem timeout (`login`, `selchar`, `cena_mobs`) |
-| 2 — mundo jogável | caçar, upar, refinar com goldens | drops no inventário ✅, `SendItem` ✅, refino/EXP no fio ✅ | `campo_treinamento`, `config_gameplay` |
-| 3 — operação | portal auditável que diagnostica o resto | `PORTAL-01` (monitor/logs/DB/alertas), `PORTAL-02` (contas/2FA/auditoria), `PORTAL-03` (premium/cash), `PORTAL-04` (catálogo/economia), `PORTAL-05` (config viva), 07-5/07-6 ✅ | `portal-test` + `/monitoramento` com fonte fora degradando sem 500 |
-| 4 — escala | bots, carga, balanceamento, release | `BOTS-01`, `LAUNCHER-01`, 10-1 🚧, 10-2/10-3/10-4 ⬜, 15-1/15-2/15-3/15-4 | relatório carga p50/p99 + run id + seed |
+| 1 | `BUG-02` | [BUG-02 — PIN opcional](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | Código e testes verdes; restam duas provas no cliente real. |
+| 2 | `GAME-17` | [Entrada fiel ao legado](issues/GAME-17-entrada-no-mundo-fiel.md) | Só falta prova visual; destrava a experiência do cliente e o Campo. |
+| 3 | `CLIENT-06` | [RE dinâmica](issues/CLIENT-06-cliente-reverso-dinamico.md) | Captura de layout destrava trade (CLIENT-10), pacotes S→C e as provas visuais acima. |
+| 4 | `WEB-01` | [Gateway](issues/WEB-01-gateway.md) | Handlers entregues; resta decidir o `501` legado de `set_reward_item_enabled`. |
 
-Congeladas com critério explícito: `FASE-08-6` (captura ao vivo, exige VM+cliente) e
-`FASE-08-10` (trade, layout `MSG_Trade` UNVERIFIED) — nenhuma onda espera por elas.
-Docs: `DOC-01` (MkDocs `mkdocs.yml` + `docs/index.md`, `mkdocs build --strict` verde).
+## Grafo de dependências das fases
+
+Fonte única: o cabeçalho `Depende de`/`Bloqueia` de cada `roadmap-rust/issues/FASE-NN.md`.
+A aresta `A → B` significa **B depende de A**; `FASE-02` é um portão de ritmo, não uma
+dependência dura de todas as fases.
+
+| Fase | Tema | Depende de | Bloqueia |
+|---|---|---|---|
+| `FASE-01` | Auditoria do roadmap e issues | — (raiz) | FASE-02 a FASE-15 |
+| `FASE-02` | Execução controlada e ritmo | FASE-01 | FASE-03 a FASE-15 (ritmo) |
+| `FASE-03` | Engine `wyd-core` (tick, ECS, grid) | FASE-01, FASE-08 | FASE-06, FASE-10 |
+| `FASE-04` | Banco e persistência (`wyd-db`) | FASE-01 | FASE-07 |
+| `FASE-05` | DevOps e CI/CD | FASE-01 | FASE-15 |
+| `FASE-06` | Observabilidade e segurança | FASE-03 | FASE-12 |
+| `FASE-07` | Portal web e ecossistema | FASE-04 | — |
+| `FASE-08` | Protocolo, rede e launcher | FASE-01 | FASE-03 |
+| `FASE-09` | IA, skills e ferramentas | FASE-01 | — (contínua) |
+| `FASE-10` | Matemática e balanceamento | FASE-03, FASE-08 | FASE-15 |
+| `FASE-11` | Documentação e padronização | FASE-01 | — (contínua) |
+| `FASE-12` | Dashboards e visualização | FASE-06 | — |
+| `FASE-13` | ADRs | FASE-01 | — (contínua) |
+| `FASE-14` | Pesquisa técnica | — (contínua) | — (contínua) |
+| `FASE-15` | Auditoria final e release | FASE-03 a FASE-08, FASE-10 | release |
+
+```text
+FASE-01 (raiz)
+├── FASE-02 ──(ritmo)──> FASE-03..15
+├── FASE-08 ──> FASE-03 ──> FASE-06 ──> FASE-12
+│                          ├──> FASE-10 ──┐
+│                          └──────────────┼──> FASE-15 (release)
+├── FASE-04 ──> FASE-07 ──────────────────┤
+├── FASE-05 ──────────────────────────────┤
+├── FASE-09 / FASE-11 / FASE-13 (contínuas)
+└── FASE-14 (contínua, sem aresta)
+```
+
+**Ordem topológica:** `01 → 02 → 08 → 04 → 05 → 09 → 11 → 13 → 03 → 06 → 10 → 07 → 12 → 15`;
+`FASE-14` é contínua e pode rodar em qualquer ponto.
+
+**Caminho crítico de release:** `FASE-01 → FASE-08 → FASE-03 → FASE-10 → FASE-15`.
+É a maior cadeia de dependências duras (5 fases). `FASE-03 → FASE-06 → FASE-12` tem o mesmo
+comprimento, mas termina no dashboard; `FASE-15` também espera `FASE-04`, `FASE-05`,
+`FASE-06` e `FASE-07`, então atraso em qualquer um desses ramos atrasa o release.
+
+**Caminho crítico de produto/portal:** `FASE-08 → FASE-03 → FASE-04 → FASE-07`.
+A aresta `03→04` é a ordem de valor do §16 (contratos → engine → persistência → APIs), **não**
+uma dependência declarada: `FASE-04` pode começar após `FASE-01`, mas o portal só fecha com o
+contrato de rede e a engine estáveis.
+
+Nenhuma fase fica fora do grafo: `FASE-01` é a raiz, `FASE-15` é o sorvedouro e `FASE-14` é
+isolada por desenho contínuo. Não há fase órfã acidental.
+
+## Issues ativas por categoria
+
+### Bugs de fio (2)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `BUG-01` | [Mensagens do cliente ausentes + personagem não entra no mundo](issues/BUG-01-mensagens-char-mundo.md) | ⬜ | M | PROC-24 |
+| `BUG-02` | [“Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | 🟢 | S | GAME-17 ✅ |
+
+### Jogo e gameplay (13)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `GAME-05` | [Autoridade total do servidor (física, dano, skills, inventário)](issues/GAME-05-autoridade-servidor.md) | 🚧 | M | GAME-02, GAME-03, GAME-04 |
+| `GAME-11` | [Drop no inventário e caixa no chão com posse](issues/GAME-11-drop-inventario-e-caixa.md) | ⬜ | M | — |
+| `GAME-12` | [Aglutinação item a item e teto de pilha no catálogo](issues/GAME-12-aglutinacao-e-catalogo.md) | ⬜ | M | — |
+| `GAME-13` | [Familiares: slot, Nyerds, Imp, Griupan e Trajes](issues/GAME-13-familiares-slot-e-itens.md) | ⬜ | M | — |
+| `GAME-14` | [Fadas: bônus de drop/EXP, duração e auto-coleta](issues/GAME-14-fadas-bonus-e-auto-coleta.md) | ⬜ | M | GAME-11 (drop no inventário + caixa) |
+| `GAME-15` | [Baldes do catálogo, teto por item e o que a classificação revelou](issues/GAME-15-classificacao-baldes-e-teto.md) | 🟡 | M | GAME-12 (aglutinação e catálogo) |
+| `GAME-17` | [Entrada no mundo fiel ao legado (id de jogador, `UpdateScore`, `CreateType`)](issues/GAME-17-entrada-no-mundo-fiel.md) | 🚧 | M | GAME-08 ✅, GAME-09 ✅ |
+| `GAME-18` | [Campo de Treinamento: quest, portões, buff, boss e recompensas](issues/GAME-18-campo-de-treinamento.md) | 🟡 | L | GAME-17 (entrada no mundo), PROC-15 ✅, WEB-05 ✅ |
+| `GAME-19` | [Equações exatas de combate](issues/GAME-19-equacoes.md) | 🚧 | L | GAME-05 |
+| `GAME-20` | [Anomalia de velocidade (~200%) e hits duplicados](issues/GAME-20-velocidade.md) | ⬜ | M | GAME-19 |
+| `GAME-21` | [Laboratório `wyd-sim` (milhões de iterações)](issues/GAME-21-laboratorio.md) | ⬜ | M | GAME-19, GAME-20 |
+| `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 ✅ (entrada/salva) |
+| `GAME-23` | [Bots autônomos do Campo de Treinamento (um por raça)](issues/GAME-23-bots-do-campo-de-treinamento.md) | 🟡 | M | QA-11 (bots jogáveis) ⬜, GAME-18 (quest) 🟡 |
+
+### Cliente, protocolo e launcher (4)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `CLIENT-06` | [Engenharia reversa dinâmica e correlação](issues/CLIENT-06-cliente-reverso-dinamico.md) | 🚧 | L | CLIENT-05 (mapa de funções), CLIENT-02 (parsers) |
+| `CLIENT-08` | [GUI do launcher em Tauri v2](issues/CLIENT-08-launcher-gui-tauri.md) | 🚧 | L | CLIENT-03, CLIENT-07 |
+| `CLIENT-10` | [Trade atômica por par (bloqueada em layout)](issues/CLIENT-10-trade-atomica.md) | ⛔ | M | CLIENT-06 🚧 (captura do layout) |
+| `CLIENT-11` | [Launcher completo + integração com o portal + autoupdate](issues/CLIENT-11-portal-autoupdate.md) | 🚧 | L | PROC-24, CLIENT-03 ✅, CLIENT-08 🚧 |
+
+### Portal e gateway (6)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `WEB-01` | [Gateway Next.js ↔ `wyd-admin` (transporte + contrato)](issues/WEB-01-gateway.md) | 🚧 | M | PROC-16 |
+| `WEB-07` | [Monitoramento customizado: logs ao vivo, servidor, DB e alertas](issues/WEB-07-monitoramento-custom.md) | ⬜ | L | PROC-24, WEB-01 🚧 |
+| `WEB-08` | [Contas, segurança, auditoria e área pública × administrativa](issues/WEB-08-contas-seguranca-auditoria.md) | 🚧 | L | PROC-24, WEB-03 ✅ |
+| `WEB-09` | [Entregas → Premium Mail + Cash + gestão financeira](issues/WEB-09-premium-cash.md) | 🚧 | L | PROC-24, WEB-04 ✅ |
+| `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | 🚧 | M | PROC-24, WEB-05 ✅ |
+| `WEB-11` | [Configurações 100% via portal (sem arquivo manual)](issues/WEB-11-configuracoes.md) | 🚧 | M | PROC-24 |
+
+### Qualidade, carga e segurança (4)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `QA-01` | [Bots população real + LLM + gestão de logs de teste](issues/QA-01-populacao-llm-carga.md) | ⬜ | L | PROC-24, BUG-01 |
+| `QA-09` | [Suite completa + concorrência (tarpaulin/miri)](issues/QA-09-suite-concorrencia.md) | ⬜ | M | QA-02, GAME-21 |
+| `QA-10` | [Carga de rede + integridade do banco + build de produção](issues/QA-10-carga-banco-release.md) | ⬜ | M | QA-09, QA-08 |
+| `QA-11` | [Bots jogáveis e carga (`crates/wyd-bots`)](issues/QA-11-bots-carga.md) | ⬜ | M | GAME-06, CLIENT-02, QA-05 |
+
+### Processo, documentação e arquitetura (4)
+
+| ID | Issue | Status | Esforço | Depende de |
+|---|---|---|---|---|
+| `PROC-01` | [Organização da `docs/`, dedup e MkDocs](issues/PROC-01-organizacao-docs-mkdocs.md) | ⬜ | M | PROC-13 ✅ |
+| `PROC-02` | [Limpeza do ambiente Windows (Go → Rust)](issues/PROC-02-limpeza-ambiente.md) | 🚧 | S | — |
+| `PROC-23` | [Notas de pesquisa (ECS, io_uring, serialização) + PoC](issues/PROC-23-pesquisa.md) | 🚧 | S | — (contínua) |
+| `PROC-24` | [Reorganização do roadmap: caminho crítico, curva de crescimento e entregas reais](issues/PROC-24-curva-crescimento.md) | ⬜ | M | PROC-01 |
+
+## Descritores de fase (contexto, não são issues)
+
+Os arquivos `FASE-00.md` … `FASE-15.md` descrevem o escopo de cada fase e permanecem em `issues/` como referência.
+
+## Convenções
+
+- **Status:** ✅ concluída (só permanece aqui se o aceite ainda tem pendência) · 🚧 em andamento · ⬜ não iniciada · ⛔ bloqueada · 🟡 parcial · 🟢 pronta para validar.
+- **Concluída de verdade:** critérios de aceite 100% marcados + evidência no arquivo. Ao fechar, remover o arquivo e registrar em `changelog.md`.
+- **Skills:** cada issue referencia as skills de código, teste, docs e domínio na seção `Skills`; roteador em `.agents/skills/README.md`.
+
+## Mapeamento histórico → canônico
+
+O ID antigo não é usado como identificador de trabalho; serve apenas para localizar o registro histórico.
+
+<details>
+<summary>82 issues mapeadas</summary>
+
+| ID histórico | ID canônico | Onde está |
+|---|---|---|
+| `BUG-01` | `BUG-01` | [`BUG-01-mensagens-char-mundo.md`](issues/BUG-01-mensagens-char-mundo.md) |
+| `BUG-02` | `BUG-02` | [`BUG-02-entrada-no-mundo-pin-opcional.md`](issues/BUG-02-entrada-no-mundo-pin-opcional.md) |
+| `FASE-03-1` | `GAME-01` | [`changelog.md`](changelog.md) |
+| `FASE-03-2` | `GAME-02` | [`changelog.md`](changelog.md) |
+| `FASE-03-3` | `GAME-03` | [`changelog.md`](changelog.md) |
+| `FASE-03-4` | `GAME-04` | [`changelog.md`](changelog.md) |
+| `FASE-03-5` | `GAME-05` | [`GAME-05-autoridade-servidor.md`](issues/GAME-05-autoridade-servidor.md) |
+| `FASE-03-6` | `GAME-06` | [`changelog.md`](changelog.md) |
+| `FASE-03-7` | `GAME-07` | [`changelog.md`](changelog.md) |
+| `FASE-03-8` | `GAME-08` | [`changelog.md`](changelog.md) |
+| `FASE-03-9` | `GAME-09` | [`changelog.md`](changelog.md) |
+| `FASE-03-10` | `GAME-10` | [`changelog.md`](changelog.md) |
+| `FASE-03-11` | `GAME-11` | [`GAME-11-drop-inventario-e-caixa.md`](issues/GAME-11-drop-inventario-e-caixa.md) |
+| `FASE-03-12` | `GAME-12` | [`GAME-12-aglutinacao-e-catalogo.md`](issues/GAME-12-aglutinacao-e-catalogo.md) |
+| `FASE-03-13` | `GAME-13` | [`GAME-13-familiares-slot-e-itens.md`](issues/GAME-13-familiares-slot-e-itens.md) |
+| `FASE-03-14` | `GAME-14` | [`GAME-14-fadas-bonus-e-auto-coleta.md`](issues/GAME-14-fadas-bonus-e-auto-coleta.md) |
+| `FASE-03-15` | `GAME-15` | [`GAME-15-classificacao-baldes-e-teto.md`](issues/GAME-15-classificacao-baldes-e-teto.md) |
+| `FASE-03-16` | `GAME-16` | [`changelog.md`](changelog.md) |
+| `FASE-03-17` | `GAME-17` | [`GAME-17-entrada-no-mundo-fiel.md`](issues/GAME-17-entrada-no-mundo-fiel.md) |
+| `FASE-03-18` | `GAME-18` | [`GAME-18-campo-de-treinamento.md`](issues/GAME-18-campo-de-treinamento.md) |
+| `FASE-10-1` | `GAME-19` | [`GAME-19-equacoes.md`](issues/GAME-19-equacoes.md) |
+| `FASE-10-2` | `GAME-20` | [`GAME-20-velocidade.md`](issues/GAME-20-velocidade.md) |
+| `FASE-10-3` | `GAME-21` | [`GAME-21-laboratorio.md`](issues/GAME-21-laboratorio.md) |
+| `FASE-10-4` | `GAME-22` | [`GAME-22-exp-por-flags.md`](issues/GAME-22-exp-por-flags.md) |
+| `FASE-15-4` | `GAME-23` | [`GAME-23-bots-do-campo-de-treinamento.md`](issues/GAME-23-bots-do-campo-de-treinamento.md) |
+| `FASE-08-1` | `CLIENT-01` | [`changelog.md`](changelog.md) |
+| `FASE-08-2` | `CLIENT-02` | [`changelog.md`](changelog.md) |
+| `FASE-08-3` | `CLIENT-03` | [`changelog.md`](changelog.md) |
+| `FASE-08-4` | `CLIENT-04` | [`changelog.md`](changelog.md) |
+| `FASE-08-5` | `CLIENT-05` | [`changelog.md`](changelog.md) |
+| `FASE-08-6` | `CLIENT-06` | [`CLIENT-06-cliente-reverso-dinamico.md`](issues/CLIENT-06-cliente-reverso-dinamico.md) |
+| `FASE-08-7` | `CLIENT-07` | [`changelog.md`](changelog.md) |
+| `FASE-08-8` | `CLIENT-08` | [`CLIENT-08-launcher-gui-tauri.md`](issues/CLIENT-08-launcher-gui-tauri.md) |
+| `FASE-08-9` | `CLIENT-09` | [`changelog.md`](changelog.md) |
+| `FASE-08-10` | `CLIENT-10` | [`CLIENT-10-trade-atomica.md`](issues/CLIENT-10-trade-atomica.md) |
+| `LAUNCHER-01` | `CLIENT-11` | [`CLIENT-11-portal-autoupdate.md`](issues/CLIENT-11-portal-autoupdate.md) |
+| `FASE-07-1` | `WEB-01` | [`WEB-01-gateway.md`](issues/WEB-01-gateway.md) |
+| `FASE-07-2` | `WEB-02` | [`changelog.md`](changelog.md) |
+| `FASE-07-3` | `WEB-03` | [`changelog.md`](changelog.md) |
+| `FASE-07-4` | `WEB-04` | [`changelog.md`](changelog.md) |
+| `FASE-07-5` | `WEB-05` | [`changelog.md`](changelog.md) |
+| `FASE-07-6` | `WEB-06` | [`changelog.md`](changelog.md) |
+| `PORTAL-01` | `WEB-07` | [`WEB-07-monitoramento-custom.md`](issues/WEB-07-monitoramento-custom.md) |
+| `PORTAL-02` | `WEB-08` | [`WEB-08-contas-seguranca-auditoria.md`](issues/WEB-08-contas-seguranca-auditoria.md) |
+| `PORTAL-03` | `WEB-09` | [`WEB-09-premium-cash.md`](issues/WEB-09-premium-cash.md) |
+| `PORTAL-04` | `WEB-10` | [`WEB-10-catalogo-economia.md`](issues/WEB-10-catalogo-economia.md) |
+| `PORTAL-05` | `WEB-11` | [`WEB-11-configuracoes.md`](issues/WEB-11-configuracoes.md) |
+| `BOTS-01` | `QA-01` | [`QA-01-populacao-llm-carga.md`](issues/QA-01-populacao-llm-carga.md) |
+| `FASE-05-1` | `QA-02` | [`changelog.md`](changelog.md) |
+| `FASE-05-2` | `QA-03` | [`changelog.md`](changelog.md) |
+| `FASE-06-1` | `QA-04` | [`changelog.md`](changelog.md) |
+| `FASE-06-2` | `QA-05` | [`changelog.md`](changelog.md) |
+| `FASE-06-3` | `QA-06` | [`changelog.md`](changelog.md) |
+| `FASE-06-4` | `QA-07` | [`changelog.md`](changelog.md) |
+| `FASE-12-1` | `QA-08` | [`changelog.md`](changelog.md) |
+| `FASE-15-1` | `QA-09` | [`QA-09-suite-concorrencia.md`](issues/QA-09-suite-concorrencia.md) |
+| `FASE-15-2` | `QA-10` | [`QA-10-carga-banco-release.md`](issues/QA-10-carga-banco-release.md) |
+| `FASE-15-3` | `QA-11` | [`QA-11-bots-carga.md`](issues/QA-11-bots-carga.md) |
+| `DOC-01` | `PROC-01` | [`PROC-01-organizacao-docs-mkdocs.md`](issues/PROC-01-organizacao-docs-mkdocs.md) |
+| `FASE-00-1` | `PROC-02` | [`PROC-02-limpeza-ambiente.md`](issues/PROC-02-limpeza-ambiente.md) |
+| `FASE-00-2` | `PROC-03` | [`changelog.md`](changelog.md) |
+| `FASE-00-3` | `PROC-04` | [`changelog.md`](changelog.md) |
+| `FASE-01-1` | `PROC-05` | [`changelog.md`](changelog.md) · [evidência](../docs/rust/evidencias/PROC-05-auditoria-2026-11-12.md) |
+| `FASE-01-2` | `PROC-06` | [`changelog.md`](changelog.md) |
+| `FASE-01-3` | `PROC-07` | [`changelog.md`](changelog.md) |
+| `FASE-02-1` | `PROC-08` | [`changelog.md`](changelog.md) |
+| `FASE-02-2` | `PROC-09` | [`changelog.md`](changelog.md) |
+| `FASE-02-3` | `PROC-10` | [`changelog.md`](changelog.md) |
+| `FASE-02-4` | `PROC-11` | [`changelog.md`](changelog.md) |
+| `FASE-02-5` | `PROC-12` | [`changelog.md`](changelog.md) |
+| `FASE-02-6` | `PROC-13` | [`changelog.md`](changelog.md) |
+| `FASE-04-1` | `PROC-14` | [`changelog.md`](changelog.md) |
+| `FASE-04-2` | `PROC-15` | [`changelog.md`](changelog.md) |
+| `FASE-04-3` | `PROC-16` | [`changelog.md`](changelog.md) |
+| `FASE-09-1` | `PROC-17` | [`changelog.md`](changelog.md) |
+| `FASE-09-2` | `PROC-18` | [`changelog.md`](changelog.md) |
+| `FASE-11-1` | `PROC-19` | [`changelog.md`](changelog.md) |
+| `FASE-11-2` | `PROC-20` | [`changelog.md`](changelog.md) |
+| `FASE-13-1` | `PROC-21` | [`changelog.md`](changelog.md) |
+| `FASE-13-2` | `PROC-22` | [`changelog.md`](changelog.md) |
+| `FASE-14-1` | `PROC-23` | [`PROC-23-pesquisa.md`](issues/PROC-23-pesquisa.md) |
+| `ROAD-01` | `PROC-24` | [`PROC-24-curva-crescimento.md`](issues/PROC-24-curva-crescimento.md) |
+
+</details>

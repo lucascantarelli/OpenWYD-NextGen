@@ -1,4 +1,4 @@
-//! Entrada no mundo e save de saída (FASE-03-8), contra banco real.
+//! Entrada no mundo e save de saída (GAME-08), contra banco real.
 //!
 //! Prova o caminho que o `_MSG_CharacterLogin` usa: personagem persistido → entidade no
 //! motor → saída → snapshot na fila de save → `UPDATE` no banco. Sem `DATABASE_URL` o teste

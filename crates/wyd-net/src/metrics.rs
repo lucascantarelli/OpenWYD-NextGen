@@ -112,7 +112,7 @@ impl NetMetrics {
     }
 
     /// Pacote recusado; `reason` espelha `Deny` (`rate`, `ip`, `total`, `timeout`) mais as
-    /// recusas de canal da FASE-06-3 (`canal_lotado`, `manutencao`).
+    /// recusas de canal da QA-06 (`canal_lotado`, `manutencao`).
     #[inline]
     pub fn packet_rejected(&self, reason: &str) {
         #[cfg(feature = "metrics")]

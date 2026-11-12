@@ -1,4 +1,4 @@
-//! `donate_admin/*` — loja de donate e crédito de saldo (FASE-07-6).
+//! `donate_admin/*` — loja de donate e crédito de saldo (WEB-06).
 //!
 //! A loja vende itens por créditos já conciliados (dinheiro real nunca entra aqui).
 //! `credit_donate_balance` credita `account_wallet` (saldo de **conta**, nunca personagem

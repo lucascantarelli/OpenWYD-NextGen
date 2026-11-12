@@ -13,7 +13,7 @@ members = [
   "apps/launcher-ui",
 ]
 
-# Release otimizado (FASE-05-2, ADR-0017): LTO thin, uma unidade de codegen e strip.
+# Release otimizado (QA-03, ADR-0017): LTO thin, uma unidade de codegen e strip.
 # Medido em 2026-11-08: wyd-launcher 323.072 → 223.232 bytes (ver docs/rust/02-execucao.md).
 [profile.release]
 lto = "thin"

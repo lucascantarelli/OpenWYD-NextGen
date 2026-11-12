@@ -64,7 +64,7 @@ No legado **não existe flag "novato"**: PvP é decidido por mapa/zona (`Attribu
 `Regions.txt`). Portanto canal verde = configuração do processo (mesmos mapas, PvP desligado e
 loja permitida), aplicada por `-novice-channel`/`W2PP_NOVICE_CHANNEL` no desenho Go antigo.
 
-**No Rust (FASE-03-10)** o papel é dado do canal: tabela `channel_role` (migration `0041`,
+**No Rust (GAME-10)** o papel é dado do canal: tabela `channel_role` (migration `0041`,
 seed `1 = normal`, `2 = verde`), sobrescrita por processo em `WYD_SERVER_CHANNEL_ROLE`
 (`normal`/`verde`; valor desconhecido é ignorado e vale o banco). O processo resolve o papel no
 boot (`channels::effective_role`), publica em `GET /health` (`role`, `pvp`, `shop`) e loga
@@ -99,7 +99,7 @@ processo daquele canal.
 3. Canal novato como flag por processo (PvP desligado, loja permitida) e o conjunto de eventos
    presos a ele — não como rotação diária escolhida por nós.
 4. Bônus de cidadania **efetivamente aplicado** no cálculo de drop antes de vender cidadania.
-   **Feito (FASE-03-10) como parâmetro:** `game_setting` (`Channel Settings.citizen_bonus_bps`,
+   **Feito (GAME-10) como parâmetro:** `game_setting` (`Channel Settings.citizen_bonus_bps`,
    default `0`, teto 50%) entra em `Gameplay::loot*` pelo argumento `citizen`; o cidadão usa a
    taxa corrigida (`peso + peso × bônus`), o visitante fica na taxa do legado. Sem número com
    fonte o default `0` mantém o drop idêntico ao original — nenhuma taxa foi inventada. Falta

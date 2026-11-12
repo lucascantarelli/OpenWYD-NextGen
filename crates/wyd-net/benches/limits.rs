@@ -1,4 +1,4 @@
-//! Custo dos limites de transporte (FASE-05-1) — balde por conexão e porte de handshake.
+//! Custo dos limites de transporte (QA-02) — balde por conexão e porte de handshake.
 //!
 //! `cargo bench -p wyd-net --bench limits` (`harness = false`, sem dependência nova).
 //! Mede o caminho quente de `limits/rate.rs`: cada pacote que chega passa por
@@ -53,7 +53,7 @@ fn medir_porte() -> f64 {
 }
 
 fn main() {
-    println!("=== limites de transporte — custo por operação (FASE-05-1) ===");
+    println!("=== limites de transporte — custo por operação (QA-02) ===");
     println!("avalie antes de qualquer parse: balde por conexão + porte de handshake");
     let balde = medir_balde();
     let porte = medir_porte();

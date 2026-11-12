@@ -2,8 +2,8 @@
 
 - **Estado:** aceita (2026-11-08)
 - **Data:** 2026-11-08
-- **Decisores:** dono do projeto + agente (fechamento da FASE-03-6)
-- **Governa:** `crates/wyd-core/src/npc/`, `crates/wyd-core/src/systems/npc.rs`, FASE-03-6
+- **Decisores:** dono do projeto + agente (fechamento da GAME-06)
+- **Governa:** `crates/wyd-core/src/npc/`, `crates/wyd-core/src/systems/npc.rs`, GAME-06
 - **Depende de:** ADR-0001 (Hot Path), ADR-0002 (estrutura), ADR-0004 (ECS SoA),
   ADR-0010 (IA de NPC e bots), ADR-0011 (matemática em `wyd-sim`), ADR-0014 (autoridade),
   ADR-0015 (inventário autoritativo)
@@ -47,7 +47,7 @@ Duas pressões apareceram na entrega:
 5. **Cópia presa por golden da tabela de ameaça.** `npc::state::ThreatTable` (teto 8, empate
    pelo menor `entity`, TTL em ticks) reimplementa a semântica de
    `crates/wyd-sim/src/formula/threat.rs` **porque o DAG proíbe a dependência**. A dívida de
-   unificação continua registrada (`06-matematica.md` §4, FASE-10-1) e `tests/integracao/npc.rs` fixa a
+   unificação continua registrada (`06-matematica.md` §4, GAME-19) e `tests/integracao/npc.rs` fixa a
    decisão por hash FNV-1a: mudança de comportamento quebra o golden.
 6. **Rota ancorada, não inventada.** `npc::route::Route` limita a patrulha ao raio da âncora
    até o trace do cliente confirmar `route_type`/`generator_data` (UNVERIFIED). Nenhum
@@ -70,7 +70,7 @@ Duas pressões apareceram na entrega:
 
 | Alternativa | Por que não |
 |---|---|
-| Fazer `wyd-core` depender de `wyd-sim` para reusar `threat.rs` | fura o DAG (§1, regra 1) e cria caminho de dependência que a ADR-0011 negou; a unificação pertence à FASE-10-1 |
+| Fazer `wyd-core` depender de `wyd-sim` para reusar `threat.rs` | fura o DAG (§1, regra 1) e cria caminho de dependência que a ADR-0011 negou; a unificação pertence à GAME-19 |
 | Mover a FSM para `wyd-sim` e chamá-la do core | inverteria a direção: a simulação descreveria o jogo em vez de medir cenários |
 | IA escrevendo posição/HP direto no `ComponentStore` | criaria segundo caminho de escrita sem as validações de `step`/`attack` (ADR-0014) |
 | `HashMap<Entity, NpcState>` | alocação e hashing no quente; o estado é `Vec` contíguo indexado por `Entity.index` |
@@ -79,7 +79,7 @@ Duas pressões apareceram na entrega:
 ## UNVERIFIED que permanece
 
 1. `mob_template_stat`/`mob_template_equip` vazias — o perfil é parâmetro do chamador, não
-   derivado do banco ainda (FASE-03-4/04-3).
+   derivado do banco ainda (GAME-04/PROC-16).
 2. `route_type`/`generator_data` sem trace — patrulha limitada à âncora.
 3. Custo por tick em hardware de produção (o número medido é do host de desenvolvimento,
    build release); o teto de 133 decisões/tick não precisa mudar com a folga mínima de ~13×.

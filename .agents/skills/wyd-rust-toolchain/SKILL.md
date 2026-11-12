@@ -18,7 +18,7 @@ Referências: `rust-toolchain.toml`, `.github/workflows/rust.yml`,
    (performance/memória/manutenibilidade), atualizar `Cargo.lock` e manter build
    verificável offline ou com rede declarada; preferir `cargo deny`/`audit`.
 4. **Repo 100% Rust.** Arquivo Go removido em 2026-11 (sem `go build`, sem
-   `deprecate-go`); toolchain verificada só com `cargo` + `rustc` (ver FASE-00-1).
+   `deprecate-go`); toolchain verificada só com `cargo` + `rustc` (ver PROC-02).
 
 ## Diagnóstico rápido
 

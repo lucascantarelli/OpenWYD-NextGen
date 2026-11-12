@@ -5,7 +5,7 @@ description: Administra o jogo (papéis, bans, grants, auditoria) via portal e c
 
 # Administração do jogo (Rust)
 
-> Sucessão 09-2: mantido o nome; backend migrado para `wyd-admin` + `delivery_queue`. Fonte: `crates/wyd-admin/`, `docs/arquitetura/modelo-banco.md`.
+> Sucessão PROC-18: mantido o nome; backend migrado para `wyd-admin` + `delivery_queue`. Fonte: `crates/wyd-admin/`, `docs/arquitetura/modelo-banco.md`.
 
 ## Regras
 

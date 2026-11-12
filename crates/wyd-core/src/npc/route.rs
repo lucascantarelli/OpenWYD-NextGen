@@ -1,7 +1,7 @@
 //! Rota de patrulha — hoje **ancorada**, porque `route_type`/`generator_data` é UNVERIFIED.
 //!
 //! `docs/arquitetura/ia-bots.md` §9.2: a semântica de rota do `NPCGener` só se confirma com o
-//! trace do cliente (FASE-08-6). Até lá o NPC patrulha dentro de um raio da âncora, sem inventar
+//! trace do cliente (CLIENT-06). Até lá o NPC patrulha dentro de um raio da âncora, sem inventar
 //! waypoint que o jogo original não tem.
 
 use crate::ecs::components::Position;

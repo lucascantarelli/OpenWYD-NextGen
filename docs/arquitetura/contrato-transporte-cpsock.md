@@ -18,7 +18,7 @@
 > | `AGENTS.md` §3 invariante 2 | HEADER 12 B LE, `Size` em [12, 8192], `INITCODE = 0x1F11F311`, transformação a partir do offset 4, `repr(C)` provado por teste; **entrada de rede em política `Strict`**, `Tolerant` só em captura |
 > | `AGENTS.md` §3 invariante 4 | pacote autoritativo de cena vai com `HEADER.ID = ESCENE_FIELD` (30000) |
 > | `AGENTS.md` §3 invariante 1 | nada de I/O no tick; persistência por portas e canais async |
-> | `AGENTS.md` §7 | estrutura antes de código; arquivo novo fora da árvore exige ADR (rito FASE-13-1 em `docs/arquitetura/adr/`) |
+> | `AGENTS.md` §7 | estrutura antes de código; arquivo novo fora da árvore exige ADR (rito PROC-21 em `docs/arquitetura/adr/`) |
 > | `.agents/skills/wyd-rust-net/SKILL.md` | regras 1–4 (validar antes de parsear, sem `panic` em input de rede, `MAX_PACKET_BYTES` como teto explícito, `ESCENE_FIELD`, rate-limit desde o handshake) e a árvore obrigatória `session/`, `transport/`, `dispatch/`, `limits/`, `telemetry/` |
 > | `docs/arquitetura/estrutura-e-padroes.md` §11 (ADR-0002) | árvore arquivo-a-arquivo do `wyd-net` (`session/{state,handshake}`, `transport/{tcp,framing}`, `dispatch/router`, `error.rs`) |
 > | `docs/arquitetura/protocolo.md` §1–§3 | contrato de fio vigente do HEADER, do enquadramento e da ofuscação |
@@ -278,7 +278,7 @@ implementado** (`Strict` é o default do `wyd-protocol`). Nenhum dos dois é UNV
 build de referência, `APP_VERSION` não é comparado com nada, e o gate (`VersionGate`, igualdade
 com `PROTOCOL_VERSION` = 12 000) vive em `crates/wyd-net/src/session/handshake.rs`. Ver
 `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md`. O antigo "U3" fica fechado como decisão;
-segue pendente só a captura de confirmação em runtime (FASE-08-6).
+segue pendente só a captura de confirmação em runtime (CLIENT-06).
 
 ## 11. Lacunas UNVERIFIED e a pergunta que fecha cada uma
 
@@ -286,8 +286,8 @@ segue pendente só a captura de confirmação em runtime (FASE-08-6).
 |---:|---|---|---|
 | U1 | reset de `Init` no aceite | *um slot reciclado pode pular o INITCODE?* | ler `CUser`/`CloseUser` + captura com 2 conexões no mesmo slot |
 | U2 | `ID` × socket | *o servidor usa `HEADER.ID` para algo além de diagnóstico?* | xrefs de `std->ID` em `ProcessClientMessage.cpp` |
-| U3 | versão do cliente | **resolvida** — o cliente oficial mede 12000 (`superficie-conhecida.md:20`); ADR-0020 decide `APP_VERSION` (7640) como histórico e `PROTOCOL_VERSION = 12_000` (`wyd-protocol/src/lib.rs:40`) como valor de gate | `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md`; falta só a captura de confirmação em FASE-08-6 |
-| U4 | teto real do cliente | *o cliente já enviou frame > 8192 B?* (o teto do legado é 8192; acima disso o próprio CPSock cortaria) | captura de `CreateMob`/`ESCENE_FIELD` + contagem de `Size` em FASE-08-6 |
+| U3 | versão do cliente | **resolvida** — o cliente oficial mede 12000 (`superficie-conhecida.md:20`); ADR-0020 decide `APP_VERSION` (7640) como histórico e `PROTOCOL_VERSION = 12_000` (`wyd-protocol/src/lib.rs:40`) como valor de gate | `docs/arquitetura/adr/0020-versao-de-cliente-no-login.md`; falta só a captura de confirmação em CLIENT-06 |
+| U4 | teto real do cliente | *o cliente já enviou frame > 8192 B?* (o teto do legado é 8192; acima disso o próprio CPSock cortaria) | captura de `CreateMob`/`ESCENE_FIELD` + contagem de `Size` em CLIENT-06 |
 | U5 | timeout de inatividade | *qual timeout o servidor de referência praticava?* | evidência em `WYD.log`/produção; hoje não há código |
 
 ## 12. Reprodução da evidência

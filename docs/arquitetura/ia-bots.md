@@ -3,7 +3,7 @@
 > Documento de **arquitetura** do subsistema de IA. Complementa (não substitui) a decisão em
 > `docs/arquitetura/adr/0010-ia-npc-e-bots.md` e a execução em `docs/rust/07-ia-e-bots.md`.
 > Cada afirmação abaixo leva `CONFIRMADO` (com caminho:linha) ou `UNVERIFIED/provisório`.
-> **Camada A executada em 2026-11-08** (FASE-03-6, ADR-0016): `crates/wyd-core/src/npc/` e
+> **Camada A executada em 2026-11-08** (GAME-06, ADR-0016): `crates/wyd-core/src/npc/` e
 > `crates/wyd-core/src/systems/npc.rs` rodam a FSM descrita abaixo. Bots jogáveis (camada B)
 > e LLM (camada C) seguem plano.
 
@@ -16,7 +16,7 @@ partes, porque a palavra "IA" aparece na árvore com dois sentidos diferentes:
 |---|---|---|
 | Existe decisão de arquitetura para IA de NPC, bots jogáveis e LLM | **CONFIRMADO** | `docs/arquitetura/adr/0010-ia-npc-e-bots.md` (estado: "proposta (planejamento; nada implementado)") |
 | Existe documento de execução com estado por item, orçamento e ordem | **CONFIRMADO** | `docs/rust/07-ia-e-bots.md` §1–§12 |
-| Existem issues de roadmap para as duas camadas de jogo | **CONFIRMADO** | `roadmap-rust/issues/FASE-03-6-ia-npc.md`, `roadmap-rust/issues/FASE-15-3-bots-carga.md` |
+| Existem issues de roadmap para as duas camadas de jogo | **CONFIRMADO** | `roadmap-rust/changelog.md`, `roadmap-rust/issues/QA-11-bots-carga.md` |
 | As árvores de módulos já reservam os diretórios | **CONFIRMADO** | `docs/arquitetura/estrutura-e-padroes.md:16` (`wyd-bots` no DAG), `:199` (`systems/npc.rs`), `:206` (`npc/`), `:358` (`bot/`), `:381` ("reservados") |
 | A matemática de aggro/alvo existe e é pura | **CONFIRMADO** | `crates/wyd-sim/src/formula/threat.rs` (275 linhas: `ThreatTable`, `MAX_THREAT_ENTRIES = 8`, `select_target`, `NpcMode::should_aggro`) |
 | Existe comportamento de NPC no tick (FSM + utilidade) | **CONFIRMADO** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); `tests/integracao/npc.rs` com 12 testes, golden FNV-1a e recusa atômica |
@@ -107,7 +107,7 @@ recomeçar (D-IA04).
 | Perfil de comportamento (agressividade, alcance, cadência, skills, fuga) | tabela de conteúdo carregada no boot | **tabela `npc_behavior` — planejada, NÃO criada** | `07-ia-e-bots.md` §9 |
 | Falas revisadas | tabela `npc_dialogue` — **planejada** | — | idem |
 | Fila de geração LLM | tabela `llm_job` — **planejada** | — | idem |
-| Métricas (decisões/s, NPCs por estado, tempo por sistema, fila) | contadores no processo | não persiste; exposto por telemetria | `roadmap-rust/issues/FASE-06-1-telemetria.md` |
+| Métricas (decisões/s, NPCs por estado, tempo por sistema, fila) | contadores no processo | não persiste; exposto por telemetria | `roadmap-rust/changelog.md` |
 
 Regra de schema: **nada de tabela nova sem produtor no código.** Hoje nenhum código consulta
 `npc_behavior`/`npc_dialogue`/`llm_job`, então elas seguem como pendência declarada no
@@ -128,7 +128,7 @@ Regra de schema: **nada de tabela nova sem produtor no código.** Hoje nenhum c�
 ## 7. Mapa de pastas e arquivos (planejado; nada é movido nem renomeado)
 
 ```text
-crates/wyd-core/src/npc/            # FASE-03-6, camada A
+crates/wyd-core/src/npc/            # GAME-06, camada A
 ├── mod.rs            # fachada (sem lógica)
 ├── state.rs          # NpcState em SoA: modo, alvo, rota, âncoras, cooldown, rng
 ├── behavior.rs       # FSM: uma função por transição, sem I/O
@@ -139,7 +139,7 @@ crates/wyd-core/src/systems/npc.rs  # integração com o tick (ordem documentada
 crates/wyd-core/tests/integracao/npc.rs        # determinismo e golden de decisão
 crates/wyd-core/benches/tick.rs     # custo da IA no orçamento do tick
 
-crates/wyd-sim/src/bot/             # FASE-15-3, camada B (política pura)
+crates/wyd-sim/src/bot/             # QA-11, camada B (política pura)
 ├── mod.rs
 ├── persona.rs        # perfil: classe, nível, objetivo (dado)
 └── policy.rs         # estado → ação, mesma FSM, testável sem rede
@@ -161,14 +161,14 @@ wyd-net, wyd-protocol}` e **nada depende de `wyd-bots`**; `wyd-core` consome `wy
 |---|---|---|---|---|
 | D-IA01 | Cadência de decisão | 5 Hz = 1 decisão a cada 4 ticks (20 Hz), `fase = entity_id % 4` | 5 Hz foi a proposta da ADR; a fase `% 10` daria 2 Hz e concentraria carga | bench com 500 NPCs: decisões/s e custo por tick |
 | D-IA02 | Ameaça por dano | 1:1, teto 8 entradas, TTL em ticks, empate pelo menor `entity` | única proporção com respaldo no código (`threat.rs`), marcada provisória | trace do cliente: quem o mob persegue após vários atacantes |
-| D-IA03 | Métrica de distância da percepção | a do `spatial/` (FASE-03-3), recebida pronta por `should_aggro` | a fórmula não decide a métrica; o grid já é a autoridade de vizinhança | comparar alcance de aggro com captura do cliente |
+| D-IA03 | Métrica de distância da percepção | a do `spatial/` (GAME-03), recebida pronta por `should_aggro` | a fórmula não decide a métrica; o grid já é a autoridade de vizinhança | comparar alcance de aggro com captura do cliente |
 | D-IA04 | RNG | estado `u64` por NPC, semeado por `(seed, entity_id)`, salvo no snapshot | replay/religamento precisam da mesma sequência | golden: salvar → recarregar → mesmo fluxo |
 | D-IA05 | LLM | fora do processo, no Cold Path, desligado por padrão, sem tabela até o dono decidir | latência/custo por token × tick de 50 ms; chave nunca no jogo | decisão do dono sobre provedor/custo/revisor |
-| D-IA06 | Persistência do comportamento | conteúdo em tabela no boot; estado vivo só no snapshot | NPC não é linha de banco; salvar por NPC a 5 Hz violaria o Hot Path | FASE-04-3 (carga) + save/restore do snapshot |
+| D-IA06 | Persistência do comportamento | conteúdo em tabela no boot; estado vivo só no snapshot | NPC não é linha de banco; salvar por NPC a 5 Hz violaria o Hot Path | PROC-16 (carga) + save/restore do snapshot |
 
 ## 9. Lacunas declaradas (o que o plano **não** resolve)
 
-1. **Stats de monstro vazios** (`mob_template_stat`/`mob_template_equip`): a FASE-03-6 não
+1. **Stats de monstro vazios** (`mob_template_stat`/`mob_template_equip`): a GAME-06 não
    depende mais delas para rodar — o perfil chega por `NpcProfile` (parâmetro do chamador,
    ADR-0016) —, mas sem os números do banco o perfil ainda é informado à mão.
 2. **`route_type`/`generator_data` UNVERIFIED**: patrulha depende de semântica de rota do
@@ -178,13 +178,13 @@ wyd-net, wyd-protocol}` e **nada depende de `wyd-bots`**; `wyd-core` consome `wy
 4. **Golden de decisão existe para o fluxo de 24 ticks** (`tests/integracao/npc.rs`, hash FNV-1a): cobre
    percepção, alvo e intenção; o cenário de 100 ticks do §4 e o bench de custo continuam
    pendentes.
-5. **Nenhum bot de carga existe**: `FASE-15-3` está aberta; o harness citado em
+5. **Nenhum bot de carga existe**: `QA-11` está aberta; o harness citado em
    `docs/manual-técnico/skills.md:25` é skill de teste, não código.
 6. **LLM não tem provedor, orçamento nem revisor definidos** — decisão do dono, não do agente.
 
 ## 10. Como este plano é cobrado
 
-- `docs/rust/07-ia-e-bots.md` §11 fixa a ordem: FASE-03-6 (core) → FASE-15-3 (bots) → LLM.
+- `docs/rust/07-ia-e-bots.md` §11 fixa a ordem: GAME-06 (core) → QA-11 (bots) → LLM.
 - Cada item da camada A nasce com teste de determinismo (golden) e bench antes de entrar no
   tick; sem bench, o "≤ 10% do orçamento" continua UNVERIFIED.
 - Schema só muda quando houver código consultando o dado; até lá, `banco-catalogo.md` §3

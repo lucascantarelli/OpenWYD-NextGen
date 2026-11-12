@@ -1,7 +1,7 @@
 //! Integração real: portas `pg` e fila de save contra um Postgres descartável.
 //!
 //! Não roda no `cargo test` sem banco. A ausência de `WYD_TEST_DSN` **pula** com
-//! mensagem explícita (nada de fake-pass silencioso); a evidência da FASE-04-3 foi
+//! mensagem explícita (nada de fake-pass silencioso); a evidência da PROC-16 foi
 //! produzida com `postgres:17-alpine` + migrations aplicadas:
 //!
 //! ```bash

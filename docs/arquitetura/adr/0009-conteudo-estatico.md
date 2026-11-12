@@ -3,10 +3,10 @@
 - **Estado:** aceita
 - **Data:** 2026-11-08 (reescrita no mesmo dia: a primeira versão propunha CSV versionado
   e foi vetada pelo dono — arquivo plano é prática do servidor Go, não do projeto atual)
-- **Decisores:** dono do projeto + agente (análise na FASE-03-4)
-- **Governa:** `roadmap-rust/issues/FASE-04-2-migrations.md`,
-  `FASE-04-3-persistencia-async.md`, `FASE-03-4-dados-estaticos.md`,
-  `FASE-03-5-autoridade-servidor.md`, `FASE-07-1-gateway.md`, `FASE-10-1-equacoes.md`
+- **Decisores:** dono do projeto + agente (análise na GAME-04)
+- **Governa:** `roadmap-rust/changelog.md`,
+  `PROC-16-persistencia-async.md`, `GAME-04-dados-estaticos.md`,
+  `GAME-05-autoridade-servidor.md`, `WEB-01-gateway.md`, `GAME-19-equacoes.md`
 
 ## Contexto
 
@@ -35,7 +35,7 @@ O estado atual confirma o problema:
    parcial/UNVERIFIED). Servem para conferir `item_index`/nome, não para alimentar o tick.
 
 A ADR-0006 difere `sqlx`/`refinery`; por isso o carregamento de conteúdo passa a ser
-**dependência explícita da FASE-04-3**, não algo que a FASE-03-4 resolve sozinha.
+**dependência explícita da PROC-16**, não algo que a GAME-04 resolve sozinha.
 
 ## Decisão
 
@@ -98,7 +98,7 @@ Regras que decorrem da decisão:
   catálogo e overlays têm uma autoridade só; segue o que `pre-release-rust.md` §3.2/§4.1
   manda.
 - **Negativas:** **o servidor não sobe sem PostgreSQL** — o boot passa a depender da
-  FASE-04-3 (`sqlx`/`refinery`, ADR-0006); seed grande em SQL (~17 mil linhas somadas)
+  PROC-16 (`sqlx`/`refinery`, ADR-0006); seed grande em SQL (~17 mil linhas somadas)
   aumenta o tempo de migração; rollback de conteúdo é migração, não `git checkout`;
   insumo legado precisa de gerador confiável com `sha256` para não perder dado na
   conversão.
@@ -121,10 +121,10 @@ Regras que decorrem da decisão:
 
 ## Rastreabilidade
 
-- Issues consumidoras: `FASE-04-2` (migrações de schema/seed), `FASE-04-3` (`sqlx` +
-  carga no boot), `FASE-03-4` (validador tipado e relatório de inconsistência),
-  `FASE-03-5` (autoridade usa as tabelas), `FASE-07-1` (portal lê base + overlays),
-  `FASE-10-1` (fórmulas).
+- Issues consumidoras: `PROC-15` (migrações de schema/seed), `PROC-16` (`sqlx` +
+  carga no boot), `GAME-04` (validador tipado e relatório de inconsistência),
+  `GAME-05` (autoridade usa as tabelas), `WEB-01` (portal lê base + overlays),
+  `GAME-19` (fórmulas).
 - Docs atualizadas nesta ADR: `docs/arquitetura/modelo-banco.md` §6,
   `docs/arquitetura/estrutura-e-padroes.md` §10 (`ports/content.rs`) e §15
   (`tools/content/` gera SQL), `docs/arquitetura/visao-pastas.md`.

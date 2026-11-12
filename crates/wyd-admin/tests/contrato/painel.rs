@@ -1,4 +1,4 @@
-//! Contrato do painel do jogador (FASE-07-2): escopo por conta, ranking e recuperação.
+//! Contrato do painel do jogador (WEB-02): escopo por conta, ranking e recuperação.
 //!
 //! Prova o que o BFF consome: `POST /admin/v1/panel/*` e `/accounts/recovery` no mesmo
 //! roteador do ADR-0008, com envelope, auditoria sem login e recusa tipada. O `account_id`

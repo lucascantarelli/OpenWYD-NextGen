@@ -1,6 +1,6 @@
-# Observabilidade — operação e runbooks (FASE-12-1)
+# Observabilidade — operação e runbooks (QA-08)
 
-Como subir a stack de monitoramento, quais métricas existem (contrato da FASE-06-1) e o
+Como subir a stack de monitoramento, quais métricas existem (contrato da QA-04) e o
 que fazer em cada alerta. Nada aqui cria métrica nova: a fonte é
 `crates/wyd-core/src/metrics/` + `crates/wyd-net/src/metrics.rs` (`--features metrics`), e o
 mapa de serviços é `docs/rust/05-stack-docker.md`.
@@ -20,12 +20,13 @@ Arquivos versionados: `docker-compose.monitoring.yml`, `docker/monitoring/promet
 `docker/monitoring/grafana/` (`provisioning/` + `dashboards/wyd-saude.json`). Segredos
 (`GRAFANA_PASSWORD`) vêm do `.env`, nunca destes arquivos.
 
-**Alvos do motor:** `docker/monitoring/prometheus/targets/wyd-server.json` está **vazio** de
-propósito — não existe binário de servidor de jogo no workspace (só `wyd-launcher` tem
-`[[bin]]`), logo não há `/metrics` para raspar. Quando o serviço `tmserver` existir, o
-arquivo passa a listar `tmserver:9898` (um alvo por canal) e o Prometheus recarrega em 30 s.
+**Alvos do motor:** `docker/monitoring/prometheus/targets/wyd-server.json` lista **um alvo por
+canal** (`server-canal-1:9898` e `server-canal-2:9898`), com labels `canal` e `service`; o
+Prometheus recarrega o `file_sd` em 30 s. Se o job `wyd-server` não aparecer, confira primeiro
+se o container monta `docker/monitoring/prometheus` (o caminho antigo `monitoring/prometheus`
+foi removido) e recrie só o Prometheus com `docker compose up -d --no-deps prometheus`.
 
-## 2. Contrato de métricas (FASE-06-1, fechado)
+## 2. Contrato de métricas (QA-04, fechado)
 
 | Métrica | Tipo | Significado |
 |---|---|---|
@@ -95,7 +96,7 @@ P99 do tick acima de 40% do orçamento do processo por 10 min. O orçamento vem 
 1. Confirmar no dashboard "Tick P50/P95/P99" que é o P99 e não um pico isolado.
 2. Comparar com `wyd_entities_active` e `wyd_packets_total`: crescimento de entidades ou
    pacotes normalmente explica o aumento.
-3. Checar se o build é `--features metrics` (contadores custam ~24 ns/pacote, medido na 06-1).
+3. Checar se o build é `--features metrics` (contadores custam ~24 ns/pacote, medido na QA-04).
 4. Regra de ouro do projeto: nada de I/O, alocação ou lock no tick. Se a causa for nova
    chamada no laço, reverter antes de qualquer ajuste de bucket.
 
@@ -135,7 +136,7 @@ RSS acima de 1,5 GB por 15 min.
 `wyd_memory_samples_total` parado com o motor no ar.
 
 1. Esperado fora de Linux: a amostragem lê `/proc/self/statm` e devolve `None` nas demais
-   plataformas (lacuna declarada na 06-1).
+   plataformas (lacuna declarada na QA-04).
 2. Se o motor roda em container Linux e a métrica está parada, é bug de amostragem — abrir
    issue; não mascarar o alerta.
 
@@ -161,18 +162,17 @@ processo; o limiar acompanha `WYD_TICK_HZ`, não um valor fixo).
    iniciou; boot com `reason=WYD_TICK_HZ` = configuração recusada (faixa 20–50).
 3. `docker logs <canal> | grep event=tick`: se havia `ticks=` e parou, o processo travou no
    laço (ver stack com `SIGQUIT`/profiler) — abrir issue com o horário.
-4. Confirmar que a métrica não foi renomeada: `wyd_ticks_total` é contrato da FASE-06-1 e só
+4. Confirmar que a métrica não foi renomeada: `wyd_ticks_total` é contrato da QA-04 e só
    existe quando o motor roda (ADR-0022 §7).
 
 ## 4. Lacunas declaradas
 
-- **Série do motor depende da imagem em execução:** os painéis do motor ficam vazios enquanto
-  os containers `server`/`server-canal-2` rodarem imagem anterior à FASE-03-7, mesmo com
-  `up{job="wyd-server"} == 1`. Recriar só esses containers (`docker compose up -d --build
-  server server-canal-2`) publica `wyd_ticks_total`, `wyd_tick_duration_microseconds`,
-  `wyd_tick_budget_microseconds` e `wyd_entities_active`. O gateway (`wyd_gateway_*`) não
-  depende disso.
+- **Série do motor:** com os canais atuais, `up{job="wyd-server"}` está 1/1 e os painéis de
+  tick/entidades têm série. Se ficarem vazios, verifique se o container do motor roda imagem
+  posterior à GAME-07 e se `wyd-server.json` aponta para os dois canais; recriar só os canais
+  publica `wyd_ticks_total`, `wyd_tick_duration_microseconds`, `wyd_tick_budget_microseconds`
+  e `wyd_entities_active`. O gateway (`wyd_gateway_*`) não depende disso.
 - **Sem métrica de memória do gateway:** `process_resident_memory_bytes` é do exporter do motor;
-  no Cold Path a leitura viria de `/proc` (mesma lacuna de plataforma da 06-1) — declarado, não inventado.
-- **Sem alerta de migration:** a 12-1 pede "falha de migration", mas a 06-1 não expõe métrica
+  no Cold Path a leitura viria de `/proc` (mesma lacuna de plataforma da QA-04) — declarado, não inventado.
+- **Sem alerta de migration:** a QA-08 pede "falha de migration", mas a QA-04 não expõe métrica
   de migration. Criar a métrica é mudança de contrato (ADR/issue dona), não deste entrega.

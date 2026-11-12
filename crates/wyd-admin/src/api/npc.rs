@@ -15,7 +15,7 @@ use super::rates::{ConfigStore, ItemPriceEdit, ItemPriceRow, NpcRow};
 /// Teto de NPCs por leitura (a definição tem 6.100 linhas; sem paginação o portal trava).
 pub const MAX_LIMIT: i64 = 200;
 
-/// Lista NPCs em páginas por id (só leitura, FASE-07-5).
+/// Lista NPCs em páginas por id (só leitura, WEB-05).
 ///
 /// Sem escrita em `audit_log`: leitura pura não é ação auditável (a negação de acesso
 /// continua auditada por `staff_or_deny`). `after_id` é o cursor (`None` = primeira página).

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Régua de regressão dos baselines medidos (FASE-03-2 ECS, FASE-03-6 IA de NPC).
+ * Régua de regressão dos baselines medidos (GAME-02 ECS, GAME-06 IA de NPC).
  *
  * O bench `crates/wyd-core/benches/tick.rs` imprime, por cenário, uma linha
  * `BENCH_PONTO {json}` com p50/p99 em µs e (no ECS) ns por entidade. Este gate
@@ -10,7 +10,7 @@
  *
  * Por que limite por cenário e não um único número: IA de NPC e estrutura SoA têm
  * custos e réguas diferentes. IA é fração do orçamento do tick (teto de 10% do
- * ADR-0016); ECS é spawn+iteração+despawn de um lote (teto de 50%, FASE-03-2).
+ * ADR-0016); ECS é spawn+iteração+despawn de um lote (teto de 50%, GAME-02).
  *
  * Por que 2,5–3× o baseline: o baseline foi medido nesta máquina (Windows,
  * 2026-11-08) e o runner do CI é outro hardware. Fator folgado absorve a

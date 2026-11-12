@@ -128,7 +128,7 @@ nav:
     - Observabilidade/runbooks: rust/06-observabilidade-runbooks.md
     - IA e bots: rust/07-ia-e-bots.md
     - Checklist funcional: rust/08-checklist-funcionalidades.md
-    - Duplicidades (DOC-01): rust/09-duplicidades.md
+    - Duplicidades (PROC-01): rust/09-duplicidades.md
   - Manual técnico:
     - Guia de contribuição: manual-técnico/guia-contribuicao.md
     - Auditoria do roadmap: manual-técnico/auditoria-roadmap.md

@@ -1,4 +1,4 @@
--- 0044_seed_quest_campo: conteúdo do Campo de Treinamento (FASE-03-18).
+-- 0044_seed_quest_campo: conteúdo do Campo de Treinamento (GAME-18).
 -- As tabelas já existem desde `0013_quests` (`quest`, `quest_step`, `quest_reward`,
 -- `character_quest`); aqui entra só o dado do legado, sem DDL.
 --

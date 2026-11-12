@@ -1,12 +1,12 @@
 # ADR-0007 — Interface gráfica do launcher em Tauri v2
 
 - **Status:** aceita (2026-11-07, decisão do dono).
-- **Governa:** FASE-08-8 (`roadmap-rust/issues/FASE-08-8-launcher-gui-tauri.md`).
+- **Governa:** CLIENT-08 (`roadmap-rust/issues/CLIENT-08-launcher-gui-tauri.md`).
 
 ## Contexto
 
 O núcleo do launcher existe e é testado (`crates/wyd-launcher`: `check`/
-`update`/`launch`, patch atômico, assinatura — FASE-08-3, 27 testes), mas é
+`update`/`launch`, patch atômico, assinatura — CLIENT-03, 27 testes), mas é
 só CLI. O jogador precisa de janela: notícias, progresso de patch, botão
 Jogar. O launcher oficial de referência (instalado nesta máquina,
 `C:\Users\Canta\AppData\Local\wyd_launcher` 2.7.3) é Electron + Squirrel:

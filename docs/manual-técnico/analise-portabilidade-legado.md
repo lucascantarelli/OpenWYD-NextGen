@@ -78,11 +78,11 @@ Legenda: ✅ existe · 🚧 parcial · ❌ ausente.
 | Eventos, clima, água, nightmare, campo de treino | Go `worldevent.go`, `weather.go`, `water.go`, `nightmare*.go`, `training_field.go` | nenhum crate | ❌ |
 | IA de NPC | `CMob.cpp`, `CNPCGene.cpp`, Go `mobai.go` | `core/npc/*` + `systems/npc.rs` ✅ (5 Hz, orçamento por tick) | ✅ |
 | Autoridade de movimento/dano/skill/inventário | `CUser.cpp`, `Server.cpp` | `systems/*` com teste de pacote forjado | ✅ |
-| Persistência | `DBSrv/CFileDB.cpp` (arquivos `account/<Key>/<NOME>`), Go `internal/dbclient` | `crates/wyd-db/` model/repo/pool/transfer; `sqlx` adiado (FASE-04-3) | 🚧 |
+| Persistência | `DBSrv/CFileDB.cpp` (arquivos `account/<Key>/<NOME>`), Go `internal/dbclient` | `crates/wyd-db/` model/repo/pool/transfer; `sqlx` adiado (PROC-16) | 🚧 |
 | Conteúdo estático (itens, skills, NPCs, mundo) | `content/TMsrv` (46), `ItemList.bin`/`SkillData.bin` | PostgreSQL, 24 migrations, 59 tabelas (ADR-0009); carga no boot ❌ | 🚧 |
 | Billing | `BISrv/`, Go `billing.go` | nenhum crate; `_AUTH_GAME` fora de `payload/` por contrato | ❌ |
-| Plataforma web / portal | `webserver/` (94), `portal/` (186), `api/` (12) | `wyd-portal/` Next.js + `wyd-admin` (HTTP/JSON, ADR-0008) | 🚧 (painel admin 07-3 ⬜) |
-| Bots de carga | Go `internal/bot` (14) | `crates/wyd-bots` inexistente (FASE-15-3) | ❌ |
+| Plataforma web / portal | `webserver/` (94), `portal/` (186), `api/` (12) | `wyd-portal/` Next.js + `wyd-admin` (HTTP/JSON, ADR-0008) | 🚧 (painel admin WEB-03 ⬜) |
+| Bots de carga | Go `internal/bot` (14) | `crates/wyd-bots` inexistente (QA-11) | ❌ |
 | Launcher / patch | `WYDLauncher.exe`, Go `client-tools` | `crates/wyd-launcher` (manifest+patch+distribuição+bootstrap) | ✅ |
 
 ## 4. Cobertura atual do workspace Rust (medido)
@@ -108,8 +108,8 @@ personagens, batalha, comércio e quests funcionando*.
 
 | # | Lacuna | Consequência hoje |
 |---|---|---|
-| L1 | **Transporte CPSock servidor não existe** (`wyd-net` = limites + métricas) | o cliente 7662 **não consegue conectar**; não há login ponta-a-ponta; não há captura ao vivo (FASE-08-6 bloqueada) |
-| L2 | **Persistência real** (`sqlx`) e carga do conteúdo no boot fora (FASE-04-3 🚧) | o core não sobe sem Postgres e ninguém carrega `item_catalog`/`npc_template` para dentro da engine |
+| L1 | **Transporte CPSock servidor não existe** (`wyd-net` = limites + métricas) | o cliente 7662 **não consegue conectar**; não há login ponta-a-ponta; não há captura ao vivo (CLIENT-06 bloqueada) |
+| L2 | **Persistência real** (`sqlx`) e carga do conteúdo no boot fora (PROC-16 🚧) | o core não sobe sem Postgres e ninguém carrega `item_catalog`/`npc_template` para dentro da engine |
 | L3 | **Camada de dispatch por opcode** (o `_MSG_*` do legado) não existe | 199 opcodes mapeados, 7 payloads tipados, nenhum caminho "pacote → intenção → `systems`" |
 | L4 | **Comércio, party, guilda, guerra, quests, eventos, refino/combine** ausentes | dos 5 itens do objetivo, só "batalha" tem base |
 | L5 | **Billing, ranking, painel admin do portal, E2E** | operação real do servidor fica sem retaguarda |
@@ -160,13 +160,13 @@ personagens, batalha, comércio e quests funcionando*.
    limpeza de histórico. (Sugerido como issue nova da FASE-01/FASE-11.)
 2. **L1 — transporte CPSock em `wyd-net`** (framing 12 B, ofuscação por `pKeyWord`, sessão,
    8281) com ADR de fronteira. É o que transforma protocolo em servidor e libera a captura ao vivo
-   da FASE-08-6 (goldens reais em vez de sintéticos).
-3. **L2 — FASE-04-3 (`sqlx` + pool + carga de conteúdo no boot)** — sem isso o core não é
+   da CLIENT-06 (goldens reais em vez de sintéticos).
+3. **L2 — PROC-16 (`sqlx` + pool + carga de conteúdo no boot)** — sem isso o core não é
    configurável nem persistente.
 4. **L3 — camada de dispatch** (opcode → intenção tipada → `systems/*`), decidindo onde mora
    (ADR-0002 manda não inventar arquivo fora da árvore).
 5. **L4 por ordem de valor**: comércio → quests → party/guilda → refino/combine → guerra/castelo.
-6. **FASE-10-2** (anomalia de velocidade) só depois da captura real: sem trace, é chute.
+6. **GAME-20** (anomalia de velocidade) só depois da captura real: sem trace, é chute.
 
 ## 9. Como revalidar esta análise
 

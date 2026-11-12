@@ -42,7 +42,7 @@ services:
       - wyd
 
   gateway:
-    # Gateway HTTP/JSON do Cold Path (ADR-0022, FASE-07-1) — o upstream real do
+    # Gateway HTTP/JSON do Cold Path (ADR-0022, WEB-01) — o upstream real do
     # portal em `:7600`. `GET /health` consulta o Postgres (SELECT 1) e só então
     # devolve 200; `GET /metrics` publica wyd_gateway_requests_total/uptime.
     # Imagem distroless: o healthcheck é o próprio binário (`--healthcheck`).
@@ -100,12 +100,12 @@ services:
       WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
       WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
       WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
-      # Lotação/manutenção do canal (FASE-06-3): vazio = vale o banco
+      # Lotação/manutenção do canal (QA-06): vazio = vale o banco
       # (`channel_capacity`, migration 0040). Teto em sessões vivas; manutenção
       # (`1`/`true`/`yes`/`on`) recusa entrada nova sem derrubar sessão viva.
       WYD_SERVER_MAX_PLAYERS: ""
       WYD_SERVER_MAINTENANCE: ""
-      # Papel do canal (FASE-03-10): vazio = vale o banco (`channel_role`, migration
+      # Papel do canal (GAME-10): vazio = vale o banco (`channel_role`, migration
       # 0041). `normal`/`verde` sobrescreve por processo — o build é o mesmo.
       WYD_SERVER_CHANNEL_ROLE: ""
     depends_on:
@@ -143,10 +143,10 @@ services:
       WYD_SERVER_CPSOCK_BIND: 0.0.0.0:8281
       WYD_SERVER_STATUS_BIND: 0.0.0.0:8080
       WYD_SERVER_METRICS_BIND: 0.0.0.0:9898
-      # Lotação/manutenção do canal (FASE-06-3): vazio = vale o banco.
+      # Lotação/manutenção do canal (QA-06): vazio = vale o banco.
       WYD_SERVER_MAX_PLAYERS: ""
       WYD_SERVER_MAINTENANCE: ""
-      # Papel do canal (FASE-03-10): vazio = vale o banco (`channel_role`, 0041).
+      # Papel do canal (GAME-10): vazio = vale o banco (`channel_role`, 0041).
       WYD_SERVER_CHANNEL_ROLE: ""
     depends_on:
       db:

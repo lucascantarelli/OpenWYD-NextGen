@@ -296,7 +296,7 @@ mod chat_hub_tests {
     }
 }
 
-/// Lotação de um canal (FASE-06-3): fonte = `channel_capacity` no banco, com
+/// Lotação de um canal (QA-06): fonte = `channel_capacity` no banco, com
 /// sobrescrita por processo via env (`WYD_SERVER_MAX_PLAYERS` e
 /// `WYD_SERVER_MAINTENANCE`, lidos no boot em `channels::policy_overrides_from_env`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -345,7 +345,7 @@ pub enum SessionError {
         /// Canal onde a sessão viva está.
         channel: i16,
     },
-    /// Canal lotado: sessões vivas atingiram `max_players` — recusa tipada (FASE-06-3).
+    /// Canal lotado: sessões vivas atingiram `max_players` — recusa tipada (QA-06).
     Capacity {
         /// Teto vigente quando a entrada foi recusada.
         limit: u32,

@@ -45,14 +45,14 @@ rastreável requisito → evidência → gap → issue planejada, conforme §§1
 
 ## 4. Nove issues planejadas (Fase 5, prontas para abrir)
 
-Caixa+pickup (+rito tabela) · cena `ESCENE_FIELD` · logout com teste (FASE-08-9) ·
-cadeia de dano com goldens (FASE-10-1) · EXP por flags · pity + `UpdateItem` ·
+Caixa+pickup (+rito tabela) · cena `ESCENE_FIELD` · logout com teste (CLIENT-09) ·
+cadeia de dano com goldens (GAME-19) · EXP por flags · pity + `UpdateItem` ·
 trade atômica (bloqueada-em-layout) · catálogo B1–B17+§6 · harness LCG (base
 `wyd-bots`). Ordem e aceite na Fase 5 §3.
 
 ## 5. Pendentes / bloqueados (com o que fecha cada um)
 
-Captura 08-6 (frames `0x0215`/`Trade`/S→C, `DestType≠1`, 30-vs-32 B, ids de caixa,
+Captura CLIENT-06 (frames `0x0215`/`Trade`/S→C, `DestType≠1`, 30-vs-32 B, ids de caixa,
 taxas 7662, `SkillData`/curva EXP); rito da tabela congelada; P-10 (5% vs 4%);
 `HALFGRIDX/Y`; aplicar diffs Fase 5 §1–§2; abrir as 9 issues; contagem oficial da
 checklist após normalizar as 4 linhas. Nada disso impede o uso das Fases 1–5 como

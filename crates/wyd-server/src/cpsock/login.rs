@@ -218,7 +218,7 @@ pub(super) fn open_session(
             Ok(Some(lease))
         }
         Err(error) => {
-            // Lotação/manutenção (FASE-06-3) têm motivo próprio na métrica; a origem é
+            // Lotação/manutenção (QA-06) têm motivo próprio na métrica; a origem é
             // o próprio canal, que é quem recusa.
             let motivo = match &error {
                 SessionError::Capacity { .. } => "canal_lotado",

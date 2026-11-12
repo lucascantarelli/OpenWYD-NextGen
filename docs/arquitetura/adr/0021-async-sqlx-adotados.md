@@ -2,9 +2,9 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-08
-- **Decisores:** dono do projeto + agente (issue FASE-04-3)
-- **Governa:** `crates/wyd-db/` (pool, adapters `pg`, fila de save), FASE-04-3, FASE-07-1
-  (transporte Cold Path), FASE-15-2 (carga de banco)
+- **Decisores:** dono do projeto + agente (issue PROC-16)
+- **Governa:** `crates/wyd-db/` (pool, adapters `pg`, fila de save), PROC-16, WEB-01
+  (transporte Cold Path), QA-10 (carga de banco)
 - **Substitui parcialmente:** ADR-0006 (runtime async diferido) — a decisão de "std até haver
   rede" deixa de valer para o `wyd-db`; o resto da ADR-0006 continua histórico.
 
@@ -54,8 +54,8 @@ Nenhum `mod.rs` ganhou lógica: os três continuam só declarando e re-exportand
 
 ## Consequências
 
-- **Positivas:** o servidor grava e lê personagem de verdade; a FASE-03-4 (carga de conteúdo no
-  boot) e a FASE-07-1 (BFF do portal) deixam de estar bloqueadas por dependência; o erro de
+- **Positivas:** o servidor grava e lê personagem de verdade; a GAME-04 (carga de conteúdo no
+  boot) e a WEB-01 (BFF do portal) deixam de estar bloqueadas por dependência; o erro de
   banco é tipado e não vaza DSN.
 - **Negativas:** `Cargo.lock` cresce (~90 crates de `sqlx`/`tokio`); o build passa a exigir
   toolchain de C para `ring` (rustls); `cargo test --workspace` agora pode **pular** a integração
@@ -82,7 +82,7 @@ não custo do caminho: p99 é a métrica que decide.
 
 | Alternativa | Por que foi descartada |
 |---|---|
-| continuar com `psql -f` e portas sem adapter | não grava personagem; bloqueia FASE-03-4/07/15 |
+| continuar com `psql -f` e portas sem adapter | não grava personagem; bloqueia GAME-04/07/15 |
 | `postgres` (crate síncrono) + thread pool próprio | reinventa pool, timeout e transação; perderia `PgPool` maduro por nenhum ganho no Cold Path |
 | `sqlx` com macros (`query!`) | exige banco no build (quebra build limpo e CI sem DB) |
 | `diesel`/`sea-orm` | ORM fora do estilo do projeto (SQL explícito, modelo espelhado) |
@@ -90,8 +90,8 @@ não custo do caminho: p99 é a métrica que decide.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-04-3-persistencia-async.md` (fechada),
-  `FASE-03-4` (carga no boot), `FASE-07-1` (BFF), `FASE-15-2` (carga de banco)
+- Issues consumidoras: `roadmap-rust/changelog.md` (fechada),
+  `GAME-04` (carga no boot), `WEB-01` (BFF), `QA-10` (carga de banco)
 - Substitui: `docs/arquitetura/adr/0006-async-diferido.md` (parcial — só a parte de runtime/sqlx)
 - Docs atualizadas nesta ADR: `docs/arquitetura/estrutura-e-padroes.md` §12,
   `docs/rust/01-dependencias.md`, `docs/arquitetura/contrato-persistencia.md` §7–§8,
@@ -100,7 +100,7 @@ não custo do caminho: p99 é a métrica que decide.
 
 ## Revisão
 
-- Revisar quando: o pool virar gargalo medido (FASE-15-2), ou a carga de conteúdo no boot exigir
+- Revisar quando: o pool virar gargalo medido (QA-10), ou a carga de conteúdo no boot exigir
   outro caminho de leitura.
 - Sinais de que a decisão envelheceu: `sqlx` pedir `query!` em massa (aí o build precisa de
   banco e a decisão muda), ou `tokio` vazar para dentro de `wyd-core`.

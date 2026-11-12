@@ -47,7 +47,7 @@ assinado + jogo em subpasta**. É exatamente o desenho do Tauri (§5).
 `crates/wyd-launcher` — CLI `check`/`update`/`launch` + biblioteca
 (`manifest`, `patch` atômico, `bootstrap`, `distribuicao`, `sha256`),
 estratégia em ADR-0003, contrato em `docs/cliente/customizacao.md` §3–§4,
-entregue na FASE-08-3 (27 testes, pacote adulterado recusado, resume).
+entregue na CLIENT-03 (27 testes, pacote adulterado recusado, resume).
 É o **backend do futuro launcher GUI**: a interface chama essas funções, não
 as reimplementa.
 
@@ -67,7 +67,7 @@ inventário de assets: `docs/cliente/inventario.md`.
   Electron (pesado, duplica o que o SO já tem), egui/iced (nativo, mas sem
   HTML — portal não seria reusável na tela de notícias).
 
-## 6. Integração com o portal (contrato, LAUNCHER-01)
+## 6. Integração com o portal (contrato, CLIENT-11)
 
 O launcher lê do portal (somente leitura, `crates/wyd-launcher/src/portal_client.rs`):
 
@@ -103,7 +103,7 @@ envia patch.
 próprio) e autoupdate do binário. Conta/login no
 launcher v1 = **opcional** (o jogo autentica no CPSock; o launcher não guarda senha).
 
-## 7. Plano (issue GUI criada: FASE-08-8, decisão Tauri + nome WYD em 2026-11-07)
+## 7. Plano (issue GUI criada: CLIENT-08, decisão Tauri + nome WYD em 2026-11-07)
 
 1. ADR GUI (Tauri v2 + fronteiras com `wyd-launcher`) — **aceita** (ADR-0007).
 2. **Frente mínima entregue (2026-11-12):** `apps/launcher-ui` (bin
@@ -387,7 +387,7 @@ O que continua faltando não é o formato, é a **carga**: `strings client/wyd.e
 `NUI\ServerList.wyt` — o caminho até esse diretório passa por um `%s` montado em runtime. Antes de
 substituir o arquivo no `client/` é preciso provar esse caminho (ou aceitar o teste com o cliente
 aberto). A segunda aba de cidadania/atributos continua dependente da captura de
-`STRUCT_SELCHAR`/`STRUCT_MOB` (FASE-08-6) — checklist de campos na issue.
+`STRUCT_SELCHAR`/`STRUCT_MOB` (CLIENT-06) — checklist de campos na issue.
 
 ## 10. Configuração remota assinada (2026-11-11)
 
@@ -464,7 +464,7 @@ escape de nome de canal e o motivo visível no fallback.
 O pacote (`manifesto` + `arquivos/`) é assinado com **Ed25519** pela chave privada do
 operador/CI; o launcher confere com a chave **pública embutida**
 (`distribuicao::CHAVE_PUBLICA_HEX`) e o `update` não aceita `--key-file`. Isso substitui o
-HMAC simétrico da FASE-08-3, em que quem tivesse o binário também tinha a chave que assina.
+HMAC simétrico da CLIENT-03, em que quem tivesse o binário também tinha a chave que assina.
 
 | Peça | Onde vive |
 |---|---|

@@ -1,4 +1,4 @@
-# Políticas de supply-chain do WYD (FASE-05-1, skill wyd-rust-toolchain).
+# Políticas de supply-chain do WYD (QA-02, skill wyd-rust-toolchain).
 # Verificado no CI (`cargo deny check`) e localmente (`make deny`).
 # O workspace não tem dependência externa hoje; a política existe para que a primeira
 # dependência aprovada por ADR (tokio, sqlx, …) entre já sob contrato, não depois.

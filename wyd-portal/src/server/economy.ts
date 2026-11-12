@@ -1,5 +1,5 @@
 /**
- * Estatísticas de economia do painel (FASE-07-3).
+ * Estatísticas de economia do painel (WEB-03).
  *
  * Cada número mostra de onde veio: imposto somado de `city_tax_ledger` e
  * concessões contadas em `delivery_queue`. Nada é estimado no portal —

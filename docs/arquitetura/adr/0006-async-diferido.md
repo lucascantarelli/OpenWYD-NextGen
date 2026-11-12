@@ -2,8 +2,8 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-07
-- **Decisores:** dono do projeto + agente (registrado na issue FASE-13-2)
-- **Governa:** `roadmap-rust/issues/FASE-04-2-migrations.md`, `FASE-04-3-persistencia-async.md`, `FASE-05-1-pipeline-ci.md`, `FASE-06-1-telemetria.md`, transporte do `wyd-admin` (FASE-07)
+- **Decisores:** dono do projeto + agente (registrado na issue PROC-22)
+- **Governa:** `roadmap-rust/changelog.md`, `PROC-16-persistencia-async.md`, `QA-02-pipeline-ci.md`, `QA-04-telemetria.md`, transporte do `wyd-admin` (FASE-07)
 
 ## Contexto
 
@@ -24,8 +24,8 @@ portas, não como reescrita.
 
 - **Positivas:** `cargo test --workspace` verde offline; fronteiras async já definidas
   (`async fn` em traits, `sync_channel` com backpressure).
-- **Negativas:** sem pool real, sem servidor HTTP, sem telemetria exportada — FASE-04-3,
-  06-1, 07-transporte e 05-1 ficam explicitamente pendentes.
+- **Negativas:** sem pool real, sem servidor HTTP, sem telemetria exportada — PROC-16,
+  QA-04, 07-transporte e QA-02 ficam explicitamente pendentes.
 - **Invariantes afetados:** nenhum `await` no tick (regra permanente); DSN nunca versionado;
   `sqlx`/`tokio` entram juntos, via ADR filha, com vendor auditado.
 
@@ -39,10 +39,7 @@ portas, não como reescrita.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-04-2-migrations.md`,
-  `roadmap-rust/issues/FASE-04-3-persistencia-async.md`,
-  `roadmap-rust/issues/FASE-05-1-pipeline-ci.md`,
-  `roadmap-rust/issues/FASE-06-1-telemetria.md`, `roadmap-rust/issues/FASE-07.md`
+- Issues consumidoras: `roadmap-rust/changelog.md`, `roadmap-rust/issues/FASE-07.md`
 - Docs atualizadas nesta ADR: nenhuma (decisão registra o estado vigente)
 - Evidência: `cargo test -p wyd-db` (8 lib + 2 constraints), `cargo test -p wyd-net`
   (4 lib + 6 flood), `cargo test -p wyd-admin` (11 lib + 4 integração)

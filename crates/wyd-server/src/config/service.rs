@@ -1,4 +1,4 @@
-//! Configuração viva do servidor de jogo (FASE-07-6): snapshot em memória, revisão e recarga.
+//! Configuração viva do servidor de jogo (WEB-06): snapshot em memória, revisão e recarga.
 //!
 //! O portal grava `refine_rate_override`, `sanc_rate_override`, `combine_value_override`,
 //! `content_rate_override`, `drop_rate_override`, `npc_definition`, `teleport_route` e

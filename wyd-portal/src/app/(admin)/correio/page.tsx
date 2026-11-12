@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 /**
- * Correio (PORTAL-03, lado staff): concede itens pela fila durável e confere o estado.
+ * Correio (WEB-09, lado staff): concede itens pela fila durável e confere o estado.
  *
  * A escrita é `character_admin/grant_item` (idempotente por chave); a entrega
  * acontece no dreno do servidor, como o ouro em `/entregas` — esta tela não

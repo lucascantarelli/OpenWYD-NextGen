@@ -1,4 +1,4 @@
-//! Porta de leitura da economia real (FASE-07-3).
+//! Porta de leitura da economia real (WEB-03).
 //!
 //! Duas fontes, nenhuma inventada:
 //!

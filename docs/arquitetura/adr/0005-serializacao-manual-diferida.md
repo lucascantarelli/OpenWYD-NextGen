@@ -2,12 +2,12 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-07
-- **Decisores:** dono do projeto + agente (registrado na issue FASE-13-2)
-- **Governa:** `roadmap-rust/issues/FASE-08-2-parsers.md` (parsers, goldens, migração futura)
+- **Decisores:** dono do projeto + agente (registrado na issue PROC-22)
+- **Governa:** `roadmap-rust/changelog.md` (parsers, goldens, migração futura)
 
 ## Contexto
 
-A FASE-08-2 entregou parsers por leitura explícita little-endian + `#[repr(C)]` com offsets
+A CLIENT-02 entregou parsers por leitura explícita little-endian + `#[repr(C)]` com offsets
 provados por teste (`crates/wyd-protocol/src/wire/header.rs`), pipeline tamanho → opcode →
 payload e 9 goldens byte-idênticos. Os candidatos `zerocopy`/`nom`/`rkyv` exigem rede/vendor
 (`docs/rust/01-dependencias.md` linha 24; `pre-release-rust.md` §0.2) e estão indisponíveis
@@ -35,7 +35,7 @@ trocar, porque 16 payloads + 198 opcodes já passam em goldens sem nenhuma depen
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-08-2-parsers.md`
+- Issues consumidoras: `roadmap-rust/changelog.md`
 - Docs atualizadas nesta ADR: nenhuma (decisão registra o estado vigente)
 - Evidência: `cargo test -p wyd-protocol` (35 lib + 9 golden + 4 integração)
 

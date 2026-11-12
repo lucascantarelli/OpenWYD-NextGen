@@ -3,7 +3,7 @@ import { contentRates, promisify, type GetRatesResponse } from "@/server/admin-c
 export const dynamic = "force-dynamic";
 
 /**
- * Versão que o launcher lê antes de abrir o jogo (LAUNCHER-01, pública).
+ * Versão que o launcher lê antes de abrir o jogo (CLIENT-11, pública).
  *
  * - `client_build`/`protocol_version` são constantes documentadas (não
  *   inventadas): build 7662 (`docs/arquitetura/protocolo.md`) e fio 12000

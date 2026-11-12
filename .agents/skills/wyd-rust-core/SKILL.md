@@ -5,8 +5,8 @@ description: Desenvolve a engine Hot Path do WYD em Rust (crates/wyd-core): tick
 
 # Engine Rust (wyd-core)
 
-Sucessora da `wyd-server-dev` para o Hot Path. Referências: `pre-release-rust.md`
-FASE 3, `roadmap-rust/issues/FASE-03.md`, `docs/rust/00-visao-estrutura.md`.
+Referências: `pre-release-rust.md` FASE 3, `roadmap-rust/issues/FASE-03.md`,
+`docs/rust/00-visao-estrutura.md`.
 
 ## Regras que quebram o servidor se ignoradas
 

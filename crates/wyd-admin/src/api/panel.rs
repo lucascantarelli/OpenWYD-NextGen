@@ -1,11 +1,11 @@
-//! Painel do jogador (FASE-07-2): conta, personagens, ranking e recuperação.
+//! Painel do jogador (WEB-02): conta, personagens, ranking e recuperação.
 //!
 //! Escopo de leitura: o BFF injeta `account_id` a partir do cookie de sessão assinado — o
 //! browser nunca escolhe de quem é o dado. O backend confia no processo do portal (loopback,
 //! token processo→processo) e audita autoria + alvo interno em toda leitura.
 //!
 //! Nada aqui escreve estado vivo: `request_recovery` registra uma **solicitação auditada**;
-//! o reset de senha continua ato de staff (FASE-07-3), porque não há provedor de e-mail
+//! o reset de senha continua ato de staff (WEB-03), porque não há provedor de e-mail
 //! aprovado nem tabela de token de recuperação.
 
 use wyd_db::{Accounts, AuditTrail, Characters, Role, SessionTrail};

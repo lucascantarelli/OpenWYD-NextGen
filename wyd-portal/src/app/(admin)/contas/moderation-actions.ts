@@ -1,5 +1,5 @@
 /**
- * Ações de moderação do painel de contas (FASE-07-3).
+ * Ações de moderação do painel de contas (WEB-03).
  *
  * Toda escrita passa por `adminCall` (sessão de staff + auditoria) e pelo
  * gateway, que relê o papel da sessão e aplica as travas (auto-lockout, staff

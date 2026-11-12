@@ -1,4 +1,4 @@
-# Prometheus do WYD (FASE-12-1) — contrato fechado com a telemetria da FASE-06-1.
+# Prometheus do WYD (QA-08) — contrato fechado com a telemetria da QA-04.
 #
 # Só consulta métricas que existem: wyd_ticks_total, histograma
 # wyd_tick_duration_microseconds, wyd_entities_active, process_resident_memory_bytes,
@@ -41,7 +41,7 @@ scrape_configs:
 
   # Motor de jogo: alvo descoberto por arquivo, NÃO fixo no YAML.
   #
-  # O endpoint `/metrics` do motor (default 127.0.0.1:9898, `MetricsServer` da FASE-06-1)
+  # O endpoint `/metrics` do motor (default 127.0.0.1:9898, `MetricsServer` da QA-04)
   # só existe quando o binário do servidor existir (FASE-03/04/06 → serviço `tmserver`,
   # ver docs/rust/05-stack-docker.md §3). Até lá `targets/wyd-server.json` é uma lista
   # vazia: o Prometheus não fica tentando scrape de uma porta inexistente e nenhum alerta

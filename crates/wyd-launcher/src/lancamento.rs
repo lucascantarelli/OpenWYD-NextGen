@@ -1,4 +1,4 @@
-//! Pipeline de lançamento compartilhado entre a CLI e a janela Tauri (FASE-08-8).
+//! Pipeline de lançamento compartilhado entre a CLI e a janela Tauri (CLIENT-08).
 //!
 //! Fail-closed (ADR-0003): manifesto vermelho não escreve nada e não abre o jogo.
 //! Toda a escrita no disco continua em `manifest`/`serverlist`/`snbin`; aqui só

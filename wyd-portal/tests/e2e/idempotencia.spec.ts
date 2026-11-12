@@ -17,13 +17,12 @@ test("repetir a mesma chave não duplica entrega nem ouro", async ({ page }) => 
   await expect(row).toBeVisible();
   const id = characterId(await row.getAttribute("data-testid"));
 
-  await expect(row.getByLabel("Chave de idempotência")).toHaveValue(key);
-  await row.getByLabel("Ouro").fill("300");
+  await row.getByLabel(`Ouro a conceder para o personagem #${id}`).fill("300");
 
-  await row.getByRole("button", { name: "Conceder ouro" }).click();
+  await row.getByRole("button", { name: "Conceder" }).click();
   await expect(row.getByRole("status")).toContainText("enfileirada");
 
-  await row.getByRole("button", { name: "Conceder ouro" }).click();
+  await row.getByRole("button", { name: "Conceder" }).click();
   await expect(row.getByRole("status")).toContainText("replay");
 
   await expect

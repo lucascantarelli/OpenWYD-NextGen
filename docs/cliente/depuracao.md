@@ -1,7 +1,7 @@
 # Roteiro de trace dinâmico do cliente
 
 > Playbook executável da captura ao vivo (marcos M3–M5 de `engenharia-reversa.md`).
-> Status: **roteiro publicado** (FASE-08-6); a captura ao vivo ainda não foi feita — exige
+> Status: **roteiro publicado** (CLIENT-06); a captura ao vivo ainda não foi feita — exige
 > servidor executável + VM com o jogo, fora deste ambiente. Nada aqui inventa endereço:
 > todos os VAs vêm de `docs/cliente/analise-estatica.md`.
 
@@ -14,7 +14,7 @@
 4. Rede: servidor de teste acessível em `tcp/8281` + `http/80` (status `serv00.htm`).
 5. Conta de teste dedicada **sem nenhum dado pessoal** (ver §5).
 
-## 2. Breakpoints (endereços confirmados na 08-5)
+## 2. Breakpoints (endereços confirmados na CLIENT-05)
 
 | VA | Instrução | Para quê | O que registrar |
 |---|---|---|---|

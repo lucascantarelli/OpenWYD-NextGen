@@ -19,7 +19,7 @@ export const FONTES = {
     dominio: 'acesso',
     fonte: 'docs/wyd/canais-e-cidadania.md §5 + migration 0030',
     estado: 'provisorio',
-    nota: 'Cerca de sessão por `account_login` (a autenticação da FASE-08-2 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.',
+    nota: 'Cerca de sessão por `account_login` (a autenticação da CLIENT-02 troca por account_id/character_id); `renewed_at` é o sinal de vida que retoma sessão órfã.',
   },
   characters: {
     dominio: 'personagem',
@@ -118,7 +118,7 @@ export const FONTES = {
   },
   channel_capacity: {
     dominio: 'canal de servidor',
-    fonte: 'FASE-06-3 (checklist 1.14) — limite e manutencao por canal',
+    fonte: 'QA-06 (checklist 1.14) — limite e manutencao por canal',
     estado: 'confirmado',
     nota:
       'Tabela propria (a serie proibe ALTER TABLE no up): max_players default 1000 = MAX_USER do legado; ' +
@@ -126,7 +126,7 @@ export const FONTES = {
   },
   channel_role: {
     dominio: 'canal de servidor',
-    fonte: 'FASE-03-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3',
+    fonte: 'GAME-10 (checklist 2.3) + docs/wyd/canais-e-cidadania.md §3',
     estado: 'confirmado',
     nota:
       'Papel do canal: normal (PvP conforme o mapa) ou verde (novato: sem PvP, loja pessoal aberta). ' +
@@ -140,7 +140,7 @@ export const FONTES = {
   },
   donate_credit: {
     dominio: 'economia',
-    fonte: 'FASE-07-6 — razão de `credit_donate_balance` (idempotência por chave)',
+    fonte: 'WEB-06 — razão de `credit_donate_balance` (idempotência por chave)',
     estado: 'confirmado',
     nota:
       'Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem creditar duas vezes. ' +
@@ -148,7 +148,7 @@ export const FONTES = {
   },
   donate_debit: {
     dominio: 'economia',
-    fonte: 'migration 0045 + FASE-07-6 (razão de débito de donate)',
+    fonte: 'migration 0045 + WEB-06 (razão de débito de donate)',
     estado: 'confirmado',
     nota:
       'Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem debitar duas vezes. ' +
@@ -314,7 +314,7 @@ export const FONTES = {
   },
   refine_pity: {
     dominio: 'refino',
-    fonte: 'FASE-03-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)',
+    fonte: 'GAME-16 + docs/wyd/pesquisa-wyd2-missao-fase3-2026-11-10.md item 6 (legado empacota nível + piedade no par EF_SANC, Basedef.cpp:2282)',
     estado: 'confirmado',
     nota:
       'Piedade por (personagem, slot), 0..20; linha ausente = 0. Tabela própria (a série proíbe ALTER TABLE no up). ' +

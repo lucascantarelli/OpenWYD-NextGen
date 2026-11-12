@@ -1,4 +1,4 @@
-//! Sistemas do tick — aqui mora a **autoridade** do servidor (FASE-03-5).
+//! Sistemas do tick — aqui mora a **autoridade** do servidor (GAME-05).
 //!
 //! Cada sistema recebe a intenção vinda da rede (destino, alvo) e **nunca** o resultado
 //! (posição final, dano, HP restante): o resultado é calculado no core a partir do estado

@@ -1,4 +1,4 @@
-//! Moderação de contas (FASE-07-3): papel, bloqueio e trilha de auditoria.
+//! Moderação de contas (WEB-03): papel, bloqueio e trilha de auditoria.
 //!
 //! Toda função exige sessão de staff, decide o alcance pelo papel **da sessão**
 //! (nunca do corpo) e registra a ação com autor/alvo. Duas travas de segurança

@@ -84,7 +84,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 7. Entidades: todas visíveis na cena.
 8. NPCs/mapas: `sync_npcs` já reconcilia sem duplicar (Fase 1).
 9. Requisitos: motor no processo (existe); `reply_with_body` com `ID_SCENE`.
-10. Dependências: entrada no mundo (existe); captura 08-6 (confirmação final).
+10. Dependências: entrada no mundo (existe); captura CLIENT-06 (confirmação final).
 11. Fluxos: ataque → `Engine::attack_at` → broadcast cena → `RemoveMob(DEATH)` +
     `UpdateEtc/UpdateScore` no abate (hoje parcial).
 12. Cliente: aplica `Dam[]` independente do header, mas só aplica
@@ -108,7 +108,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 23. Gaps: ligar `ESCENE_FIELD` no broadcast de ataque/morte/XP.
 24. Issues: (a criar) "cena autoritativa"; desbloqueia mundo visível.
 25. Fontes: L1 §3.2, L5 B8/B9/B12, E1 `scene.rs:19-22`, `cpsock.rs` attack.
-26. Pendências: captura 08-6. Grau: VALIDADO (legado + binário via sintomas).
+26. Pendências: captura CLIENT-06. Grau: VALIDADO (legado + binário via sintomas).
 
 ## Item 3 — Logout explícito `0x0215`
 
@@ -133,11 +133,11 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
     (`cpsock.rs:1008-1023`, comentário "sem esperar o timeout").
 12. Comportamento do cliente: envia `0x0215` ao voltar à seleção ou fechar a
     janela (comentário E1 `cpsock.rs:1008-1010`); UNVERIFIED o byte-exato do
-    frame de saída — fechar pela captura 08-6.
+    frame de saída — fechar pela captura CLIENT-06.
 13. Comportamento do servidor: responder `0x0116` e encerrar aqui; queda de
     socket e ociosidade (120 s) continuam como rede de segurança.
 14. Persistência: save do estado vivo na saída (posição/HP/MP/EXP via caminho
-    FASE-03-8); sem `DBNoSave` salvo decisão explícita.
+    GAME-08); sem `DBNoSave` salvo decisão explícita.
 15. Protocolos: `0x0215` C→S (só header, `MSG_STANDARD`), `0x0116` S→C só header
     (E1; `pacotes.md` registra `CNFCharacterLogout` como PORTADO).
 16. Estados e transições: `InGame → seleção`; sessão `ativa → liberada`; relogin
@@ -155,20 +155,20 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 22. Implementação atual no Rust: handler implementado (`cpsock.rs:1012-1023`);
     checklist 1.13 segue 🚧 por falta de teste dedicado ("só o timeout tem código"
     está desatualizado no texto, mas o teste continua pendente).
-23. Gaps identificados: teste dedicado de logout explícito (FASE-08-9); captura
+23. Gaps identificados: teste dedicado de logout explícito (CLIENT-09); captura
     do frame real de saída.
-24. Issues relacionadas: (a criar) FASE-08-9 "logout explícito"; sem dependência
+24. Issues relacionadas: (a criar) CLIENT-09 "logout explícito"; sem dependência
     de captura para o código, com captura para o golden do frame.
 25. Fontes e evidências: L1 §3.1/§3.3, L4 §2, E1 `cpsock.rs:1008-1023`,
     `session.rs` (`SessionGate`/`SessionLease`), migration `0030_sessao_unica`.
-26. Pendências de investigação: byte-exato do `0x0215` no 7662 (captura 08-6).
+26. Pendências de investigação: byte-exato do `0x0215` no 7662 (captura CLIENT-06).
     Grau: PROVÁVEL (fluxo) / UNVERIFIED (frame de saída).
 
 ## Item 4 — Cadeia de dano em `wyd-sim`
 
 1. Visão geral: reconstruir a ordem de modificadores do dano ponta a ponta com
    goldens, antes de tocar a engine.
-2. Objetivo: fechar FASE-10-1 com fórmulas provadas, não opinião.
+2. Objetivo: fechar GAME-19 com fórmulas provadas, não opinião.
 3. Funcionamento original: `dam = atacante.CurrentScore.Damage`; crítico parcial
    ×1.3–1.4 (player) / ×1.5–1.6 (mob) (`DoubleCritical&2`); `Ac` do alvo
    (player `Ac*=3`); `BASE_GetDamage(dam, Ac, master)`; área extra FM/skill
@@ -219,8 +219,8 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
     (`damage.rs:1-13`, decisões D-02/D-03/D-04 em `matematica-sim.md` §4);
     único passo provado = `damage_after_absorb` (saturação).
 23. Gaps identificados: portar L3 §4 com goldens; tabelar coeficientes
-    Dex/Str por classe×arma (`Basedef.cpp:3245+`); anomalia 200% (FASE-10-2).
-24. Issues relacionadas: (a criar) FASE-10-1 "cadeia de dano com goldens";
+    Dex/Str por classe×arma (`Basedef.cpp:3245+`); anomalia 200% (GAME-20).
+24. Issues relacionadas: (a criar) GAME-19 "cadeia de dano com goldens";
     bloqueia FASE-15.
 25. Fontes e evidências: L3 §4/§7, L5 B8/B9/B12/B16, E1 `damage.rs`, `mod.rs`,
     `lib.rs:26`, `skills.md` §5 + `matematica-sim.md` §4.
@@ -381,7 +381,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 22. Implementação atual: catálogo com opcodes, sem payload sem handler (E1).
 23. Gaps: layout `MSG_Trade` (captura), handler atômico, `QuitTrade`, testes de
     contenção.
-24. Issues: (a criar) "trade atômica por par"; bloqueada em layout (captura 08-6).
+24. Issues: (a criar) "trade atômica por par"; bloqueada em layout (captura CLIENT-06).
 25. Fontes: L1 §3.1/§3.5/Apêndice B, L4 §5, E1 `opcode_table.rs`, `commerce.rs`,
     `payload/mod.rs`.
 26. Pendências: captura do `MSG_Trade` real 7662. Grau: FLUXO PROVÁVEL /
@@ -429,7 +429,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
     timer, persistência, auth (lista §6 do `wyd2.md`, uma linha cada).
 21. Testes: matriz B1–B17 contra o Rust (passa/falha/aberto); fuzz de framing
     (`Strict`); carga com bots (item 9).
-22. Implementação atual: FASE-06-2 ✅ (DoS/rate-limit); checklist §6 ❌ (sem
+22. Implementação atual: QA-05 ✅ (DoS/rate-limit); checklist §6 ❌ (sem
     catálogo próprio).
 23. Gaps: o catálogo em si; validação linha a linha no Rust.
 24. Issues: (a criar) "catálogo de ameaças B1–B17 + §6"; sem bloqueio externo.
@@ -442,7 +442,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 
 1. Visão geral: reproduzir exatamente o legado (RNG inclusive) fora do jogo,
    antes de qualquer carga ou bot jogável.
-2. Objetivo: base objetiva para FASE-10-3 e FASE-15-3 (`crates/wyd-bots`
+2. Objetivo: base objetiva para GAME-21 e QA-11 (`crates/wyd-bots`
     inexistente; `03-progresso.md:273` confirma "harness cobre protocolo, não
     sessão jogável").
 3. Funcionamento original: `parity-tests.md` do legado — golden por subsistema,
@@ -454,14 +454,14 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 5. Fórmulas: LCG MSVC como oráculo de `rand()` para drop/crítico/refino
    (`03-progresso.md:382`, `game-rules.md`).
 6. Estruturas: `crates/wyd-protocol/tests/fixtures/cliente/*.json` + `captura.mjs --check` (5/5 C→S hoje;
-   S→C quando 08-6 liberar); `scenario::{resolve_attack, AttackOutcome}`,
+   S→C quando CLIENT-06 liberar); `scenario::{resolve_attack, AttackOutcome}`,
    `TICK_PHASES` (E1 `wyd-sim/src/lib.rs:26`).
 7. Entidades: harness headless (sem cliente gráfico); bots com conta dedicada
    depois.
 8. NPCs/mapas: `npc_definition` 6100 como massa de spawn para replay.
 9. Requisitos: `make check` verde; benches `tick.rs`/`limits.rs`
    (`harness=false`, E1 `03-progresso.md:829,856`).
-10. Dependências: itens 4–6 (fórmulas) como casos do harness; captura 08-6 para
+10. Dependências: itens 4–6 (fórmulas) como casos do harness; captura CLIENT-06 para
     os goldens S→C.
 11. Fluxos: fixture → replay → diff byte-exato (divergência = bug, nunca ajuste
     silencioso de golden); carga só após determinismo.
@@ -486,9 +486,9 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
 22. Implementação atual: harness de protocolo ✅; sessão jogável ❌;
     `wyd-bots` ⬜ (ADR-0010).
 23. Gaps: goldens S→C; LCG; matriz de cobertura; bots jogáveis.
-24. Issues: (a criar) "harness de replay + LCG"; base de FASE-10-3/15-3.
+24. Issues: (a criar) "harness de replay + LCG"; base de GAME-21/QA-11.
 25. Fontes: `parity-tests.md` (via L4), `06-matematica.md`, `03-progresso.md`,
     E1 (`determinism.rs`, benches, `captura.mjs`).
-26. Pendências: captura 08-6; LCG exato. Grau: DESENHO VALIDADO / OURO PENDENTE.
+26. Pendências: captura CLIENT-06; LCG exato. Grau: DESENHO VALIDADO / OURO PENDENTE.
 
 *Branch `develop`; árvore suja intocada; nenhum commit; nenhuma issue criada.*

@@ -1,6 +1,8 @@
 # Auditoria do planejamento legado (Go) — inventário
 
-> Resultado da FASE-01-1 (`roadmap-rust/issues/FASE-01-1-auditoria-estado.md`).
+> Resultado da **PROC-05, concluída em 2026-11-12**; a auditoria das 36 issues está em
+> `docs/rust/evidencias/PROC-05-auditoria-2026-11-12.md` e o fechamento em
+> `roadmap-rust/changelog.md`.
 > Fonte auditada: `roadmap-rust/` (arquivo do projeto Go). Status
 > declarado **não** é tratado como prova: onde não há evidência, o item é
 > marcado **hipótese**.
@@ -48,20 +50,20 @@ o código foi traduzido em massa (commit "Arquivos com comentários traduzidos
 para PT-BR") e comentários originais podem ter sido perdidos na tradução.
 Verificar amostralmente antes de concluir que não há dívida.
 
-### 3.1 Classificação das 16 ocorrências (C++) — FASE-01-2
+### 3.1 Classificação das 16 ocorrências (C++) — PROC-06
 
 | Fonte | Teor | Destino | Onde resolve |
 |---|---|---|---|
-| `Basedef.h` (2×) | renomear/confirmar `MSG_CNFAccountLogin` | **portar** | FASE-08-1 (tabela de opcodes) |
-| `Basedef.h` | "Use MSG_STANDARDPARM" | **portar** | FASE-08-1 |
-| `Basedef.h` | "check, confirm structure" | **investigar** | FASE-08-1 (UNVERIFIED) |
-| `DBSrv/CRanking.cpp` (3×) | leitura de arquivo inicial/ranking | **descartar** | substituído por `wyd-db` + ranking no portal (FASE-07-2) |
+| `Basedef.h` (2×) | renomear/confirmar `MSG_CNFAccountLogin` | **portar** | CLIENT-01 (tabela de opcodes) |
+| `Basedef.h` | "Use MSG_STANDARDPARM" | **portar** | CLIENT-01 |
+| `Basedef.h` | "check, confirm structure" | **investigar** | CLIENT-01 (UNVERIFIED) |
+| `DBSrv/CRanking.cpp` (3×) | leitura de arquivo inicial/ranking | **descartar** | substituído por `wyd-db` + ranking no portal (WEB-02) |
 | `DBSrv/Server.cpp` (2×) | leitura de arquivo inicial | **descartar** | idem |
-| `TMSrv/MobKilled.cpp` | renomear `UNK_s` | **investigar** | FASE-10-1 (equações/drop) |
-| `TMSrv/ProcessDBMessage.cpp` (4×) | `break` vs `return` no fluxo DB | **investigar** | FASE-08-1 (`docs/cliente/pacotes.md + crates/wyd-net/tests/`) |
-| `TMSrv/ProcessSecMinTimer.cpp` | timer periódico: manter? | **investigar** | FASE-03-1 (tick substitui timers) |
-| `TMSrv/Server.cpp` | "TODO: EVERYTHING" | **investigar** | FASE-03-1 (boot/validação de conteúdo) |
-| `TMSrv/_MSG_AcceptParty.cpp` | trecho marcado `HACK` | **portar com cautela** | FASE-08-1 + FASE-03-5 (autoridade) |
+| `TMSrv/MobKilled.cpp` | renomear `UNK_s` | **investigar** | GAME-19 (equações/drop) |
+| `TMSrv/ProcessDBMessage.cpp` (4×) | `break` vs `return` no fluxo DB | **investigar** | CLIENT-01 (`docs/cliente/pacotes.md + crates/wyd-net/tests/`) |
+| `TMSrv/ProcessSecMinTimer.cpp` | timer periódico: manter? | **investigar** | GAME-01 (tick substitui timers) |
+| `TMSrv/Server.cpp` | "TODO: EVERYTHING" | **investigar** | GAME-01 (boot/validação de conteúdo) |
+| `TMSrv/_MSG_AcceptParty.cpp` | trecho marcado `HACK` | **portar com cautela** | CLIENT-01 + GAME-05 (autoridade) |
 
 Regra aplicada: nada é portado cegamente do C++/Go; cada item foi destinado a
 uma issue dona, com o critério `portar` (comportamento necessário),

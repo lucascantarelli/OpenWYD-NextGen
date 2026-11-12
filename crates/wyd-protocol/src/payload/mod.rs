@@ -9,7 +9,7 @@
 //! - nada de `unwrap`/`panic` em bytes de rede: toda entrada é validada por
 //!   [`PayloadError::BadLength`] antes de qualquer leitura;
 //! - somente layouts **documentados** viram tipo aqui. Pacote com layout
-//!   UNVERIFIED (ex.: `MSG_Trade`) fica de fora até a captura real (FASE-08-2);
+//!   UNVERIFIED (ex.: `MSG_Trade`) fica de fora até a captura real (CLIENT-02);
 //! - strings do protocolo são `char[N]` em bytes crus — nada de UTF-8 assumido.
 //!
 //! Um domínio por arquivo (SRP); este `mod.rs` só tem o contrato, as macros e o
@@ -24,7 +24,7 @@ use crate::wire::opcode::Opcode;
 pub enum PayloadError {
     /// Buffer não tem exatamente o tamanho de fio do pacote.
     BadLength { expected: usize, got: usize },
-    /// Opcode conhecido mas sem layout documentado (UNVERIFIED, FASE-08-2).
+    /// Opcode conhecido mas sem layout documentado (UNVERIFIED, CLIENT-02).
     Unported { opcode: Opcode },
 }
 
@@ -222,7 +222,7 @@ pub fn require_ported(opcode: Opcode) -> Result<usize, PayloadError> {
 
 /// Tamanho documentado do pacote, quando o layout já foi portado para um tipo.
 ///
-/// `None` = layout ainda não documentado/UNVERIFIED (vai para a FASE-08-2).
+/// `None` = layout ainda não documentado/UNVERIFIED (vai para a CLIENT-02).
 #[must_use]
 pub fn declared_len(opcode: Opcode) -> Option<usize> {
     match opcode {

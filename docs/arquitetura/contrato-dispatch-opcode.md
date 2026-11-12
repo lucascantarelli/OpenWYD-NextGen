@@ -217,7 +217,7 @@ Medições e leituras sobre o binário alvo (`client/WYD.exe`, 2.347.008 B, SHA-
 |---|---|---|
 | L1 sessão | `0x020D`, `0x020F`, `0x0211`, `0x0213`, `0x0215`, `0x0289`, `0x0FDE` | sem login não há teste ponta-a-ponta |
 | L2 movimento/visão | `0x036C`, `0x0366`, `0x0368`, `0x0369`, `0x036A`, `0x0290`, `0x0291` | é o que o cliente manda em todo tick |
-| L3 combate | `0x0367`, `0x039D`, `0x039E`, `0x0270`, `0x0272`, `0x0373` | núcleo da autoridade (FASE-03-5) |
+| L3 combate | `0x0367`, `0x039D`, `0x039E`, `0x0270`, `0x0272`, `0x0373` | núcleo da autoridade (GAME-05) |
 | L4 inventário/comércio | `0x0374`, `0x02E4`, `0x0379`, `0x037A`, `0x027B`, `0x0383`, `0x0384`, `0x0376`, `0x0387`, `0x0388` | comércio é item do objetivo |
 | L5 social | `0x0333`, `0x0334`, `0x037E`, `0x037F`, `0x03AB`, `0x03D5`, `0x0E12`, `0x0E0E`, `0x028C` | party/guilda |
 | L6 progressão | `0x0277`, `0x0336` (saída), `0x0378`, `0x039F`, `0x02CD`, `0x02E5` | skills/pontos/ranking |
@@ -237,7 +237,7 @@ Medições e leituras sobre o binário alvo (`client/WYD.exe`, 2.347.008 B, SHA-
 |---|---|---|
 | catálogo de `Type` (198) com flags e `wire()` | ✅ | `opcode_table.rs` (1.272 linhas, 198 mapeamentos) |
 | payloads tipados de 7 domínios | ✅ parcial | `wyd-protocol/src/payload/{auth,character,combat,commerce,inventory,movement,ui}.rs` |
-| validação de tamanho → opcode → payload (`require_ported`) | ✅ | FASE-08-2 |
+| validação de tamanho → opcode → payload (`require_ported`) | ✅ | CLIENT-02 |
 | `dispatch/router.rs` (Type → intenção → `systems`) | ❌ | hoje o crate tem `lib.rs`, `limits/` e `src/metrics.rs`; `error.rs`, `session/`, `transport/`, `dispatch/` e `telemetry/` são a árvore §11 e ainda não existem |
 | resposta S→C por opcode (`ESCENE_FIELD` na cena) | ❌ | nenhum emissor; `SendFunc` do legado tem 2.145 linhas de referência |
 | rota por sessão autenticada (`USER_PLAY`) | ❌ | árvore prevê `session/{state,handshake}`; nada existe ainda |

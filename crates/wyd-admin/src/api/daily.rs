@@ -1,4 +1,4 @@
-//! `daily_reward_admin/*` — recompensa diária (CRUD auditado, FASE-07-6).
+//! `daily_reward_admin/*` — recompensa diária (CRUD auditado, WEB-06).
 //!
 //! Linha de configuração (`day` 1..7 ou `None` para todo dia; item e/ou ouro): o jogo
 //! lê a tabela, nunca recebe push. Escrita audita autor/alvo/antes/depois; leitura é

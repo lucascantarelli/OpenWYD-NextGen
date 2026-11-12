@@ -465,7 +465,7 @@ impl<A: Accounts, C: Characters, S: AuditSink> Router<A, C, S> {
         self
     }
 
-    /// Liga a configuração editável (FASE-07-6).
+    /// Liga a configuração editável (WEB-06).
     ///
     /// Sem ela, as rotas de taxa/drop/NPC/teleporte respondem `503`: o gateway não
     /// inventa leitura nem escrita de config sem a porta montada.

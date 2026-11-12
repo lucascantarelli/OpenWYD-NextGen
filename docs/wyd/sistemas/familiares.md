@@ -71,4 +71,4 @@ mecânica sem fonte.
 | Trajes: cosmético com duração | fora do escopo do servidor clássico |
 | Quests de familiar | nenhuma confirmada — **UNVERIFIED** |
 
-Issue de acompanhamento: `roadmap-rust/issues/FASE-03-13-familiares-slot-e-itens.md`.
+Issue de acompanhamento: `roadmap-rust/issues/GAME-13-familiares-slot-e-itens.md`.

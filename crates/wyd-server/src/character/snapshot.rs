@@ -325,7 +325,7 @@ impl Item {
         Self::from_row_with_pity(row, 0)
     }
 
-    /// `STRUCT_ITEM` com o par EF_SANC do refino (`FASE-03-16`).
+    /// `STRUCT_ITEM` com o par EF_SANC do refino (`GAME-16`).
     ///
     /// O legado empacota nível + piedade no próprio item
     /// (`cValue = nível + 10×piedade`, `Basedef.cpp:2282`); o par entra no primeiro slot

@@ -17,7 +17,7 @@
 | Ghidra / IDA / rabin2 | **ausentes** | sem decompilação e sem xrefs completos |
 
 Consequência declarada: o pipeline confirma **endereços e instruções**, não reconstrói funções
-inteiras. Decompilação e xrefs completos ficam para 08-6, quando houver ferramenta adequada.
+inteiras. Decompilação e xrefs completos ficam para CLIENT-06, quando houver ferramenta adequada.
 
 ## 2. Cabeçalho PE (confirmado)
 
@@ -81,7 +81,7 @@ build de referência.
 | `INITCODE = 0x1F11F311` | constante `11 f3 11 1f` presente em `.data` | **CONFIRMADO (dado)** |
 | Referência de código ao INITCODE | padrões `push imm32` / `mov reg, imm32` **não localizados** nesta passada | **NÃO LOCALIZADO** |
 | Header de 12 B (`Size/KeyWord/CheckSum/Type/ID/Tick`) | tabela embutida + INITCODE presente + limite 8192 | **CONFIRMADO INDIRETO** |
-| Offsets de campo do header por instrução | obtidos por instrução na 08-6: envio de `GetItem` grava `Type` em +4 (`0x4fee36`) e `ID` em +6 (`0x4fee32`), com o resto do header completado por `SendPacket` (`0x54da23`, recebe o tamanho) | **CONFIRMADO** para os opcodes de caixa/pickup (ver `pacotes.md`); demais `Type`s seguem sem leitura |
+| Offsets de campo do header por instrução | obtidos por instrução na CLIENT-06: envio de `GetItem` grava `Type` em +4 (`0x4fee36`) e `ID` em +6 (`0x4fee32`), com o resto do header completado por `SendPacket` (`0x54da23`, recebe o tamanho) | **CONFIRMADO** para os opcodes de caixa/pickup (ver `pacotes.md`); demais `Type`s seguem sem leitura |
 
 Candidatos a checagem de tamanho (`cmp reg, 0x2000`) foram registrados em
 `gerado/evidencia.json` (`cpsock.sizeLimit.candidates`) para o trace dinâmico usar como breakpoint.

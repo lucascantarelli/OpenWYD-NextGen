@@ -1,4 +1,4 @@
--- 0043 — piedade de refino por item (FASE-03-16): o contador que o legado guarda no item.
+-- 0043 — piedade de refino por item (GAME-16): o contador que o legado guarda no item.
 --
 -- O legado empacota nível + piedade no par EF_SANC do próprio STRUCT_ITEM
 -- (`cValue = nível + 10×piedade`, `Basedef.cpp:2282`); o esquema normalizado não tem

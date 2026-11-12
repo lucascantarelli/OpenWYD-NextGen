@@ -1,6 +1,6 @@
-# C4 + especificações de pacotes (FASE-11-2)
+# C4 + especificações de pacotes (PROC-20)
 
-> **Gate de arquitetura** (FASE-11-2, 2026-11-07). Regra: **zero componente inventado** —
+> **Gate de arquitetura** (PROC-20, 2026-11-07). Regra: **zero componente inventado** —
 > cada caixa cita o código que a implementa (tabela de rastreabilidade no §5).
 > Fonte de pacotes: `protocolo.md` §4–§6 (normativo de fio); este documento não duplica
 > o catálogo, só ancora cada fluxo no módulo que o produz/consome.
@@ -38,7 +38,7 @@ Fora do caminho de jogo: `wyd-launcher` (valida/patcha `client/` via manifesto) 
 
 | Container | Código que o implementa | Sobe onde |
 |---|---|---|
-| Servidor de jogo (Hot Path) | workspace `crates/` (`Cargo.toml` members: `wyd-protocol`, `wyd-core`, `wyd-net`, `wyd-db`, `wyd-admin`, `wyd-sim`, `wyd-launcher`) | binário futuro da FASE-07 (hoje: testes + harness; `docker-compose.yml` reserva o nome `gateway:7600` p/ FASE-07-1) |
+| Servidor de jogo (Hot Path) | workspace `crates/` (`Cargo.toml` members: `wyd-protocol`, `wyd-core`, `wyd-net`, `wyd-db`, `wyd-admin`, `wyd-sim`, `wyd-launcher`) | binário futuro da FASE-07 (hoje: testes + harness; `docker-compose.yml` reserva o nome `gateway:7600` p/ WEB-01) |
 | Banco | `crates/wyd-db/migrations/` + `seeds/dev.sql` (modelo em `docs/arquitetura/modelo-banco.md`) | compose service `db` (Postgres + volume `pgdata`) |
 | Portal | `wyd-portal/` (BFF; `src/server/admin.ts` → `adminCall`) | compose service `portal` (`:3000`) |
 | Cliente | `client/` (WYD.exe 7662, fora do git) | máquina do jogador; `serverlist.bin` aponta p/ `IP:8281` |
@@ -114,5 +114,5 @@ Diagnóstico de fio: `docs/cliente/pacotes.md` + `crates/wyd-net/tests/`.
 
 Todas as caixas dos §1–§3 citam caminho existente acima; exceções declaradas como
 futuras estão marcadas com a FASE dona (07). Regra de manutenção: qualquer mudança
-de árvore exige ADR (rito FASE-13-1) e este documento muda na mesma entrega
+de árvore exige ADR (rito PROC-21) e este documento muda na mesma entrega
 (`docs/rust/02-execucao.md` §3).

@@ -6,34 +6,39 @@
 >
 > Este documento existe porque a execução anterior criou módulos soltos na raiz da
 > crate (`header.rs`, `payload.rs`, `opcodes.rs`…) sem plano de organização. O
-> `wyd-protocol` foi **reorganizado na FASE-08-1** exatamente nesta árvore
+> `wyd-protocol` foi **reorganizado na CLIENT-01** exatamente nesta árvore
 > (movimento sem mudança de comportamento); nada novo é escrito fora dela.
 
 ## 1. Fronteiras entre crates (DAG, sem ciclos)
 
 ```
-wyd-launcher ──► (nenhuma crate interna)
-wyd-bots     ──► wyd-sim, wyd-net, wyd-protocol   # PLANEJADO (ADR-0010, FASE-15-3)
-wyd-server   ──► wyd-core, wyd-net, wyd-protocol, wyd-db, wyd-admin   # raiz de composição (§16, ADR-0022)
-wyd-admin    ──► wyd-db
-wyd-db       ──► (independente)
-wyd-sim      ──► wyd-protocol
-wyd-net      ──► wyd-protocol
+wyd-launcher ──► wyd-bots ──► wyd-protocol
+wyd-server   ──► wyd-protocol, wyd-core, wyd-net, wyd-db, wyd-sim, wyd-admin   # raiz de composição (§16, ADR-0022)
+wyd-admin    ──► wyd-db, wyd-protocol
+wyd-db       ──► wyd-core                 # ADR-0009: entrega os tipos da porta de conteúdo
 wyd-core     ──► wyd-protocol
+wyd-net      ──► wyd-protocol
+wyd-sim      ──► (independente; não usa protocol)
+wyd-bots     ──► wyd-protocol             # wyd-sim/wyd-net seguem PLANEJADOS (ADR-0010, QA-11)
 wyd-protocol ──► (base, sem dependência interna)
 ```
 
 Regras:
 
-1. Dependência só aponta para baixo neste diagrama. `wyd-core` **nunca** depende
-   de `wyd-db`/`wyd-net`: engine recebe portas (traits) e canais.
+1. Dependência só aponta para baixo neste diagrama e não forma ciclo. `wyd-core` **nunca**
+   depende de `wyd-db`/`wyd-net`: engine recebe portas (traits) e canais. A aresta
+   `wyd-db → wyd-core` é a inversão da ADR-0009 (o core define a porta, o db entrega os
+   tipos), não uma licença para o core conhecer SQL.
 2. `wyd-protocol` não conhece regra de jogo: só bytes, layout e erro de parse.
 3. Sem ciclo, sem feature flag para "furar" a direção.
-4. Cold Path (admin/db) pode depender de contratos do core, nunca do estado vivo.
+4. Cold Path (admin/db) pode depender de contratos do core, nunca do estado vivo. É por isso
+   que `wyd-db → wyd-core` existe e `wyd-core → wyd-db` não.
 5. **Só `wyd-server` conhece todas as crates** (raiz de composição, ADR-0022 §1): ele
    monta o monólito de um canal. `wyd-core` continua sem saber o que é Postgres/socket e
    `wyd-db` sem saber o que é transporte; dependência nova entre crates fora deste DAG
    exige ADR.
+6. `wyd-sim` é independente de `wyd-protocol` hoje; a aresta para o protocolo era plano e
+   foi removida. `wyd-bots → wyd-sim/wyd-net` continua **planejada** (ADR-0010/QA-11).
 
 ## 2. Estrutura canônica de uma crate
 
@@ -61,7 +66,7 @@ crates/<crate>/
 Proibido: `utils.rs`, `helpers.rs`, `misc.rs`, `mod.rs` com lógica, arquivo com
 dois domínios, tabela gerada na raiz de `src/`.
 
-## 3. `wyd-protocol` — árvore alvo (FASE-08-1)
+## 3. `wyd-protocol` — árvore alvo (CLIENT-01)
 
 ```
 crates/wyd-protocol/
@@ -87,6 +92,7 @@ crates/wyd-protocol/
 │       ├── combat.rs          # Attack<N> (13/1/2 alvos)
 │       ├── scene.rs           # CreateMob, RemoveMob (entidades na vista — ADR-0025)
 │       ├── inventory.rs       # UseItem, TradingItem, ApplyBonus
+│       ├── quest.rs           # _MSG_Quest (MSG_STANDARDPARM2, 20 B)
 │       ├── commerce.rs        # Buy, Sell, Trade
 │       └── ui.rs              # MessagePanel, UpdateWeather
 ├── tests/
@@ -97,7 +103,7 @@ crates/wyd-protocol/
 ```
 
 Layout UNVERIFIED (`MSG_Trade`, `MSG_SetHpMp`, `_AUTH_GAME`) fica fora de
-`payload/` até captura real (FASE-08-2): sem tipo inventado.
+`payload/` até captura real (CLIENT-02): sem tipo inventado.
 
 ## 4. Nomenclatura
 
@@ -179,7 +185,10 @@ com prazo); asserção enfraquecida para "passar no CI".
 4. Escrever o menor código que fecha o contrato, com teste no mesmo commit.
 5. Atualizar `docs/rust/03-progresso.md` e a issue com evidência.
 
-## 9. `wyd-launcher` — árvore executada (FASE-08-7/08-3)
+## 9. `wyd-launcher` — árvore executada (CLIENT-07/CLIENT-03)
+
+> Executado em 2026-11-12; a lista abaixo inclui os módulos que não estavam no plano
+> original (`cliente_zip`, `portal_client`, `reparo`, `wyt`).
 
 ```
 crates/wyd-launcher/
@@ -197,11 +206,16 @@ crates/wyd-launcher/
 │   ├── identidade.rs     # parser da fonte única `docs/arquitetura/identidade.tokens`
 │   ├── branding.rs       # Launcher.bmp/.hat gerados da identidade (escrita atômica)
 │   ├── configuracao.rs   # config remota assinada (Ed25519) → identidade + URLs efetivas
+│   ├── portal_client.rs  # cliente HTTP do portal para config/entrega
+│   ├── reparo.rs         # reparo de instalação a partir do manifesto
+│   ├── cliente_zip.rs    # leitura do client.zip publicado
+│   ├── wyt.rs            # re-tema de .wyt pela paleta (CLIENT-07)
 │   ├── gui.rs            # LauncherGUI.html da identidade efetiva + cópia do launcher p/ a pasta do jogo
 │   └── lancamento.rs     # pipeline compartilhado CLI/Tauri (planejar → preparar → abrir)
 └── tests/                # golden/serverlist_paridade.rs (bytes Rust × Node);
+                          # golden/assinatura_ed25519.rs (pacote assinado);
                           # contrato/identidade.rs (identidade × globals.css;
-                          # assets instalados × gerados)
+                          # assets instalados × gerados); integracao/cliente_zip.rs
 ```
 
 Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,
@@ -209,7 +223,7 @@ Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,
 ele) em vez de `error.rs` único: exceção deliberada a §2, coberta pela skill
 `solid-design-patterns` ("um erro por fronteira").
 
-### 9.1 `apps/launcher-ui` — janela Tauri (FASE-08-8, ADR-0007)
+### 9.1 `apps/launcher-ui` — janela Tauri (CLIENT-08, ADR-0007)
 
 Fica fora de `crates/` de propósito: é frente de apresentação, não núcleo. Não
 tem marca nem escrita própria — chama `wyd-launcher` como biblioteca.
@@ -221,6 +235,9 @@ apps/launcher-ui/
 ├── tauri.conf.json       # janela 720×660, frontendDist ../ui, withGlobalTauri
 ├── capabilities/
 │   └── default.json      # só `core:default` na janela `main`
+├── assets/
+│   └── fundo-original.jpg
+├── gen/                  # schemas gerados pelo Tauri (não editar)
 ├── ui/
 │   └── index.html        # shell: invoke("pagina") injeta o HTML da identidade; submit → invoke("jogar")
 └── src/
@@ -232,6 +249,10 @@ Regra: nenhum `patch`/`manifest`/`serverlist` reimplementado aqui — o comando
 
 ## 10. `wyd-core` — árvore alvo (FASE-03)
 
+> **Alvo, não inventário.** A árvore executada em 2026-11-12 está na §18: não existem
+> `rules/`, `world/`, `systems/visibility.rs` nem `ports/persistence.rs`; existem
+> `metrics/`, `telemetry.rs` e `systems/compose.rs`.
+
 ```
 crates/wyd-core/
 ├── Cargo.toml            # deps ECS/arena só via ADR (ver 01-dependencias.md)
@@ -240,7 +261,7 @@ crates/wyd-core/
 │   ├── error.rs          # CoreError
 │   ├── ecs/
 │   │   ├── mod.rs
-│   │   ├── components.rs # Position, Stats, Inventory + spawn/despawn em lote (03-2) — dados, sem lógica
+│   │   ├── components.rs # Position, Stats, Inventory + spawn/despawn em lote (GAME-02) — dados, sem lógica
 │   │   └── resources.rs  # recursos globais (tempo, seed) + DomainEvents (fila limitada)
 │   ├── tick/
 │   │   ├── mod.rs
@@ -249,20 +270,20 @@ crates/wyd-core/
 │   │   ├── mod.rs
 │   │   └── grid.rs       # visibilidade / interest management O(1)
 │   ├── systems/
-│   │   ├── mod.rs        # executado (03-5): só declara e re-exporta
-│   │   ├── movement.rs   # executado (03-5): orçamento de velocidade + limites do mundo
-│   │   ├── combat.rs     # executado (03-5): dano por `DamageModel` (ADR-0014), não o inventa
-│   │   ├── skill.rs      # executado (03-5): skill aprendida, MP, cooldown e alcance
-│   │   ├── inventory.rs  # executado (03-5): equipar/desequipar/mover (ADR-0015)
+│   │   ├── mod.rs        # executado (GAME-05): só declara e re-exporta
+│   │   ├── movement.rs   # executado (GAME-05): orçamento de velocidade + limites do mundo
+│   │   ├── combat.rs     # executado (GAME-05): dano por `DamageModel` (ADR-0014), não o inventa
+│   │   ├── skill.rs      # executado (GAME-05): skill aprendida, MP, cooldown e alcance
+│   │   ├── inventory.rs  # executado (GAME-05): equipar/desequipar/mover (ADR-0015)
 │   │   ├── visibility.rs
-│   │   └── npc.rs        # executado (03-6): integra npc/ ao tick (ADR-0016)
+│   │   └── npc.rs        # executado (GAME-06): integra npc/ ao tick (ADR-0016)
 │   ├── rules/            # fórmulas puras aplicadas (dano/EXP aprovados)
 │   │   └── mod.rs
 │   ├── world/
 │   │   ├── mod.rs
 │   │   ├── state.rs      # dono do estado do mundo (um por nó)
 │   │   └── snapshot.rs   # save/load do estado
-│   ├── npc/              # executado (03-6, ADR-0016) — IA determinística
+│   ├── npc/              # executado (GAME-06, ADR-0016) — IA determinística
 │   │   ├── mod.rs
 │   │   ├── state.rs      # NpcMode, NpcState/NpcStates SoA, ThreatTable, RNG semeado — dado
 │   │   ├── behavior.rs   # FSM: idle→patrol→aggro→chase→attack→flee→return (precedência)
@@ -283,10 +304,14 @@ crates/wyd-core/
 │   ├── golden/gema_seed.rs      # efeito de gema × seed SQL
 │   └── sistema/telemetry.rs     # tracing/métricas com relógio e stdout reais
 └── benches/
-    └── tick.rs           # executado (03-6 + 03-2): custo da IA (500 NPCs) e baseline SoA (10k entidades)
+    └── tick.rs           # executado (GAME-06 + GAME-02): custo da IA (500 NPCs) e baseline SoA (10k entidades)
 ```
 
 ## 11. `wyd-net` — árvore alvo (FASE-08)
+
+> **Alvo, não inventário.** Hoje existem `session/handshake.rs`, `limits/` e `metrics.rs`;
+> `transport/`, `dispatch/` e `session/state.rs` ainda são plano. A árvore executada está
+> na §18.
 
 ```
 crates/wyd-net/
@@ -340,19 +365,21 @@ crates/wyd-db/
 │   │   ├── mod.rs
 │   │   ├── accounts.rs   # porta: create_account/find_by_login/find_by_id + moderação (ADR-0023)
 │   │   ├── characters.rs # porta: list/create_character/top_by_level/soft_delete
+│   │   ├── config.rs     # taxas, doações e configuração viva
 │   │   ├── grants.rs     # leitura de delivery_queue (Cold Path)
 │   │   ├── content.rs    # carga única no boot + validação (ADR-0009)
 │   │   ├── audit.rs      # trilha append-only: record/recent (ADR-0023)
 │   │   ├── economy.rs    # imposto + concessões com fonte real (ADR-0023)
-│   │   └── pg.rs         # executado (04-3): impl das portas sobre sqlx
+│   │   ├── sessions.rs   # claim/release de character_session (sessão única)
+│   │   └── pg.rs         # executado (PROC-16): impl das portas sobre sqlx
 │   ├── pool/
 │   │   ├── mod.rs
 │   │   ├── config.rs     # pool dimensionado, timeouts, transações curtas
-│   │   └── pg.rs         # executado (04-3, ADR-0021): pool sqlx + mapeamento de erro
+│   │   └── pg.rs         # executado (PROC-16, ADR-0021): pool sqlx + mapeamento de erro
 │   └── transfer/
 │       ├── mod.rs
 │       ├── delivery_queue.rs # grants do portal → dreno do servidor
-│       └── save.rs       # executado (04-3): fila de save, política e dreno Cold Path
+│       └── save.rs       # executado (PROC-16): fila de save, política e dreno Cold Path
 └── tests/
     ├── contrato/catalogo.rs    # doc ↔ migrations ↔ SCHEMA_VERSION (sem Postgres)
     ├── contrato/migrations.rs  # estrutura das migrations (sem Postgres)
@@ -375,23 +402,28 @@ crates/wyd-admin/
 │   │   ├── mod.rs        # só declara e reexporta; cada domínio no seu módulo
 │   │   ├── accounts.rs
 │   │   ├── catalog.rs    # `list_items` da foto do banco (ADR-0022)
+│   │   ├── daily.rs      # recompensa diária (WEB-06)
+│   │   ├── donate.rs     # saldo/crédito de donate (WEB-06)
 │   │   ├── drop.rs       # pesos de drop: leitura sem auditoria, escrita auditada
 │   │   ├── economy.rs    # estatísticas com fonte auditada (ADR-0023)
+│   │   ├── event.rs      # evento de mundo (WEB-06)
 │   │   ├── grants.rs     # intenções → delivery_queue (idempotente)
-│   │   ├── item_effect.rs # `list_effects`: símbolo EF_*, sem código inventado (07-5)
-│   │   ├── mob.rs        # `list_mob_templates` de `npc_template` (07-5)
+│   │   ├── item_effect.rs # `list_effects`: símbolo EF_*, sem código inventado (WEB-05)
+│   │   ├── mob.rs        # `list_mob_templates` de `npc_template` (WEB-05)
 │   │   ├── moderation.rs # papel/bloqueio + trilha (ADR-0023)
-│   │   ├── npc.rs        # `get_npc`/`set_npc` + `list_npcs` paginado (07-5)
+│   │   ├── npc.rs        # `get_npc`/`set_npc` + `list_npcs` paginado (WEB-05)
 │   │   ├── panel.rs      # painel do jogador (conta, personagens, ranking)
 │   │   ├── presence.rs   # presença por canal (só leitura)
 │   │   ├── rates.rs      # `ConfigStore` (porta) + taxas/editáveis
 │   │   └── teleport.rs   # `list_routes` + política de rota
+│   ├── metrics.rs        # contadores do processo de admin
 │   ├── transport/        # Cold Path: HTTP/1.1 + JSON em loopback (ADR-0008)
 │   │   ├── mod.rs        # roteador servico/metodo → api/*, envelope + trace_id
 │   │   ├── http.rs       # HTTP/1.1 mínimo em std (limite de corpo, close)
 │   │   └── json.rs       # JSON do subconjunto do contrato (escape/números)
 │   ├── auth/
 │   │   ├── mod.rs
+│   │   ├── password.rs   # Argon2id do login do portal
 │   │   ├── session.rs    # sessão de staff (moderator_id da sessão!)
 │   │   └── roles.rs
 │   ├── audit/
@@ -399,11 +431,12 @@ crates/wyd-admin/
 │   │   └── log.rs        # quem/o quê/quando em toda ação
 │   └── service/
 │       ├── mod.rs
-│       └── grant_service.rs # regra + idempotência por transação rastreável
+│       ├── grant_service.rs # regra + idempotência por transação rastreável
+│       └── pin.rs           # troca de PIN pelo contrato de fio
 └── tests/
     ├── contrato/autorizacao.rs # sem sessão → 401; sem papel → 403
     ├── contrato/transporte.rs  # rota→método, envelope AdminResult, limites (ADR-0008)
-    ├── contrato/conteudo.rs    # 07-5: listas paginadas (fake + Postgres semeado)
+    ├── contrato/conteudo.rs    # WEB-05: listas paginadas (fake + Postgres semeado)
     ├── contrato/painel.rs      # painel do jogador
     ├── contrato/login.rs       # credenciais/pin pelo Cold Path
     ├── contrato/operacao.rs    # operação diária/donate/eventos
@@ -436,16 +469,17 @@ crates/wyd-sim/
 │   │   ├── hit.rs        # acerto, evasão, crítico
 │   │   ├── effect.rs     # efeitos com duração em ticks
 │   │   ├── resist.rs     # resistência elemental
+│   │   ├── chaos.rs      # taxa de chaos/PK
 │   │   ├── drop.rs       # roll por item (1..1.000.000)
 │   │   ├── regen.rs      # HP/MP por tick com resto acumulado
 │   │   ├── threat.rs     # aggro e estado de criatura (matemática da IA)
 │   │   ├── refine.rs     # +0..+15 em bps, composição +10 e gemas de efeito
-│   │   ├── speed.rs      # ⛔ BLOQUEADO até FASE-10-2 (anomalia ~200% sem causa)
+│   │   ├── speed.rs      # ⛔ RESERVADO até GAME-20 (não existe no código)
 │   │   └── economia.rs   # ⬜ planejado (imposto, preço, drop de gold)
 │   ├── scenario/         # ordem do tick e do golpe
 │   │   ├── mod.rs
 │   │   └── combat.rs     # TICK_PHASES + resolve_attack (acerto→crítico→dano)
-│   ├── bot/              # PLANEJADO (ADR-0010, FASE-15-3) — política de bot
+│   ├── bot/              # PLANEJADO (ADR-0010, QA-11) — ainda NÃO existe no crate
 │   │   ├── mod.rs
 │   │   ├── persona.rs    # perfil (classe, nível, objetivo) — dado, sem lógica
 │   │   └── policy.rs     # decisão pura: estado → ação (mesma FSM do core)
@@ -479,20 +513,26 @@ Equações documentadas fora do código, no manual técnico (`docs/`).
 tools/
 ├── client/               # pipeline de análise estática do cliente (Node)
 │   ├── README.md         # ordem do pipeline + como reproduzir
-│   ├── pe.mjs            # seções/imports/entry (08-5)
+│   ├── pe.mjs            # seções/imports/entry (CLIENT-05)
 │   ├── strings.mjs       # indexação de strings
 │   ├── analyse.mjs       # relatório consolidado
 │   ├── evidence.mjs      # prova por âncora (endereço+bytes)
 │   ├── formats.mjs       # .wyt/.msa/sn.bin (parcial)
 │   ├── keytable.mjs      # tabela de keywords
-│   └── captura.mjs       # --gen/--check de capturas (08-6)
+│   └── captura.mjs       # --gen/--check de capturas (CLIENT-06)
 ├── protocol/
 │   ├── gen-protocol.mjs  # tabelas a partir do C++ arquivado
 │   └── README.md         # PREVISTO: fonte canônica + reprodução
 ├── content/
 │   ├── gen-seed.mjs      # legado (origin/main) → migração SQL de seed (ADR-0009)
 │   └── README.md         # comando + sha256 do insumo; nada vai para runtime
-└── dev/                  # placeholder: só .gitkeep até ter propósito declarado
+└── dev/                  # gates e smokes operacionais (README.md, check-docs-consistency,
+                          # monitoring-smoke, bench-gate, clean-tmp)
+
+apps/tools/               # app Node do inventário/RE (ADR-0028), fora de tools/
+├── bin/wyd-tools.mjs     # CLI inventario/binarios/strings/pacotes/zip-check
+├── lib/                  # parsers compartilhados
+└── test/                 # `make tools-test`
 ```
 
 **Nenhum dado de jogo é lido de arquivo em runtime** (ADR-0009): a fonte é o PostgreSQL,
@@ -583,11 +623,13 @@ crates/wyd-server/
 `wyd_core::systems::combat`) e, no abate, `gain_exp` → `Gameplay::exp_reward` (multiplicador
 `exp` do snapshot). `_MSG_Action` abre diálogo com o `display_name` de `npc_definition`
 (`MessagePanel`). NPCs nascem de `npc_specs(&GameConfig, mapa)` e são reconciliados a cada
-revisão. O que **continua** sem resolvedor é caixa/pickup e o sorteio de loot no abate.
+revisão. O que **continua** sem resolvedor é caixa/pickup (o sorteio de loot já está ligado).
 
-**Loot sem call site (2026-11-10).** `Gameplay::loot` só aparece em
-`crates/wyd-server/tests/integracao/config_gameplay.rs`; nenhum caminho de produção o chama. Inspeção
-nominal do que **não** resolve morte/caixa/pickup:
+**Loot no abate (2026-11-12).** `cpsock::handle_attack` resolve `Gameplay::loot_at_death`,
+entrega os drops com `SelectionStore::grant_loot` no inventário e responde `_MSG_SendItem`; o
+`campo_vivo` prova o GremlinDecoy dropando a chave 451. Caixa/pickup continuam sem call site de
+produção (o sorteio e a entrega **têm** call site). Inspeção nominal do que **não** resolve
+caixa/pickup:
 
 - `wyd_sim::resolve_attack` / `AttackOutcome` — só `hit`/`crit`/`damage`; não recebe HP e não
   devolve morte nem callback de loot.
@@ -604,8 +646,9 @@ nominal do que **não** resolve morte/caixa/pickup:
   `SyncNpcs`/`Attack`/`Talk`; o `step` só drena eventos, não resolve morte/loot.
 - `cpsock::dispatch` — trata `CreateCharacter`, `DeleteCharacter`, `CharacterLogin`,
   `CharacterLogout`, `UseItem`, `ApplyBonus`, `Attack*` e `Action`; caixa, pickup e teleporte
-  caem em `outro` tolerado. O abate credita EXP (`gain_exp` → `exp_reward`) mas **não**
-  rola loot: a tabela de drop continua sem call site de produção.
+  caem em `outro` tolerado. O abate credita EXP (`gain_exp` → `exp_reward`) **e rola loot**
+  (`loot_at_death` → `grant_loot`); o que falta é materializar a caixa no chão e tratar o
+  pickup, não o sorteio.
 
 Código legado C++/Go não está na árvore compilada; `origin/main` é referência histórica.
 
@@ -615,13 +658,13 @@ Regras que esta árvore carrega:
    dano, drop, cooldown nem inventário.
 2. **Um processo por canal** (ADR-0022 §7): canal vem de `WYD_SERVER_CHANNEL` + `server_channel`,
    nunca de build nem de porta nova (o cliente fixa 8281).
-3. **Sem I/O no tick.** Listeners e banco vivem em threads/tokio próprios; o tick (FASE-03-7)
+3. **Sem I/O no tick.** Listeners e banco vivem em threads/tokio próprios; o tick (GAME-07)
    recebe intenção por fila e devolve evento por fila.
 4. **Migrations no boot** (ADR-0024) antes do pool; DDL nunca no tick.
 5. **Teste que exige banco pula com aviso** quando `WYD_TEST_DATABASE_URL`/`DATABASE_URL`
    não existe — `cargo test --workspace` tem de passar em máquina limpa.
 
-## 17. `wyd-bots` — árvore executada (ADR-0027, FASE-15-4)
+## 17. `wyd-bots` — árvore executada (ADR-0027, GAME-23)
 
 Cliente de teste/QA que fala o protocolo real do canal; não é runtime de servidor. A
 fachada pública (`Bot`, `BotConfig`, `Race`, `SceneMob`, `parse_etapa`, `nome_do_campo` e
@@ -654,3 +697,33 @@ Regras:
 3. `tela/` é UI de conexão, não protocolo de jogo; `main.rs` e os consumidores externos
    continuam usando `wyd_bots::tela::*`.
 4. Nenhuma regra de servidor mora aqui: o bot apenas envia pacotes e lê a cena/painéis.
+
+## 18. Árvore executada — inventário da revisão fria (2026-11-12)
+
+> **Esta seção prevalece sobre as árvores “alvo” acima em caso de divergência.** Ela foi
+> medida com `find crates/*/src`, `find crates/*/tests`, leitura dos `Cargo.toml` e
+> `make check`. O registro completo, incluindo o que continua plano, está em
+> `docs/rust/evidencias/PROC-11-revisao-fria-2026-11-12.md`.
+
+| Crate | `src` executado (fora `lib/main/error`) | Testes presentes |
+|---|---|---|
+| `wyd-protocol` | `wire/{header,frame,opcode,generated}`, `codec/{keyword,checksum,generated}`, `payload/{auth,character,movement,combat,scene,inventory,quest,commerce,ui}` | `golden/pacotes.rs`, `integracao/roundtrip.rs` |
+| `wyd-core` | `ecs/`, `spatial/`, `tick/`, `npc/`, `ports/{content,clock}`, `systems/{movement,combat,skill,inventory,compose,npc}`, `metrics/`, `telemetry.rs` | `autoridade`, `inventario`, `compose`, `gem`, `npc`, `content`, `determinism`, `golden/gema_seed`, `sistema/telemetry` |
+| `wyd-net` | `session/handshake.rs`, `limits/rate.rs`, `metrics.rs` | `integracao/flood.rs`, `integracao/metrics.rs` |
+| `wyd-db` | `migrate`, `model/{account,character,guild,content,audit}`, `repo/{accounts,characters,config,content,audit,economy,grants,sessions,pg}`, `pool/{config,pg}`, `transfer/{delivery_queue,save}` | `contrato/{catalogo,migrations}`, `sistema/{pg,sessoes,stack_caps}` |
+| `wyd-admin` | `api/` (17 módulos), `transport/{mod,http,json}`, `auth/{password,session,roles}`, `audit`, `service/{grant_service,pin}`, `metrics.rs` | `contrato/{autorizacao,conteudo,login,operacao,painel,transporte}`, `sistema/seed` |
+| `wyd-launcher` | 18 módulos listados na §9, incluindo `cliente_zip`, `portal_client`, `reparo`, `wyt` | `golden/{serverlist_paridade,assinatura_ed25519}`, `contrato/identidade`, `integracao/cliente_zip` |
+| `wyd-sim` | `formula/{attributes,progression,damage,hit,effect,resist,chaos,drop,regen,threat,refine,accessory}`, `scenario/combat`, `roll/xorshift64`, `report/table` | `golden/{formulas,refino_seed}`, `integracao/determinism` |
+| `wyd-bots` | `bot/{config,cena,campanha,comercio,combate,movimento,recusa}`, `tela/mod` | `sistema/cena_campo` |
+| `wyd-server` | `boot/`, `cpsock/` (6), `auth/` (3), `character/` (4), `world/` (6), `status/`, `config/`, `gameplay/`, `channels`, `metrics`, `logs` | `contrato/monitoramento`, `integracao/{campo_treinamento,canal_verde,config_gameplay,config_recarga,tick_processo}`, 17 alvos `sistema/*` |
+
+**O que é plano, não arquivo executado:** `wyd-net/transport`, `wyd-net/dispatch`,
+`wyd-net/session/state.rs`; `wyd-core/rules`, `wyd-core/world`,
+`wyd-core/systems/visibility.rs`, `wyd-core/ports/persistence.rs`; `wyd-sim/bot`,
+`wyd-sim/formula/speed.rs` e `wyd-sim/formula/economia.rs`; `wyd-db/seeds/`.
+Esses caminhos não são citados como existentes nas issues; quando uma issue precisar deles,
+a árvore-alvo acima é o contrato.
+
+**Divergências que viraram issue/decisão:** B6 (posição exata versus spawn por cidade) está
+registrada no catálogo de ameaças e depende de decisão do dono; a falta de prova visual do
+7662 continua em `CLIENT-06` e não é suprida por esta revisão.

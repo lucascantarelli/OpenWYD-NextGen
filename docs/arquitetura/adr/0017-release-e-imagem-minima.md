@@ -2,8 +2,8 @@
 
 - **Estado:** aceita (2026-11-08)
 - **Data:** 2026-11-08
-- **Decisores:** dono do projeto + agente (fechamento da FASE-05-2)
-- **Governa:** `Cargo.toml` (`[profile.release]`), `docker/Dockerfile.launcher`, FASE-05-2
+- **Decisores:** dono do projeto + agente (fechamento da QA-03)
+- **Governa:** `Cargo.toml` (`[profile.release]`), `docker/Dockerfile.launcher`, QA-03
 - **Depende de:** ADR-0007 (launcher Tauri/CLI), ADR-0016 (bench da IA que serve de linha de base)
 
 ## Contexto
@@ -42,7 +42,7 @@ O risco declarado na issue é LTO estourar tempo/memória de build e valer a pen
 ## Consequências
 
 - Tamanho e tempo de build medidos antes/depois ficam em `docs/rust/02-execucao.md`; a issue
-  05-2 carrega a tabela. Imagem final reportada por `docker image inspect`.
+  QA-03 carrega a tabela. Imagem final reportada por `docker image inspect`.
 - `strip`/LTO removem símbolos: backtrace de release não mostra nomes — depuração usa build
   dev/`bench`, como já era.
 - `panic = "abort"` em release significa que um panic **derruba o processo** (sem unwind): é o
@@ -59,7 +59,7 @@ O risco declarado na issue é LTO estourar tempo/memória de build e valer a pen
 | `panic = "unwind"` em release | mantém tabelas de unwind num binário que não as usa; abort reduz tamanho e superfície |
 | `gcr.io/distroless/static` | o binário é gnu/dinâmico; static exigiria alvo musl e mudaria o link |
 | `alpine` como runtime | precisa de `libgcc`/`libc6-compat` extras e ainda carrega apk; distroless cc é menor e sem shell |
-| Buildar o portal nesta issue | `npm ci` + `next build` já têm Dockerfile e entram no compose; o alvo da 05-2 é o binário Rust |
+| Buildar o portal nesta issue | `npm ci` + `next build` já têm Dockerfile e entram no compose; o alvo da QA-03 é o binário Rust |
 
 ## UNVERIFIED / aberto
 

@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Débito de saldo de donate pela tela de Economia (FASE-07-6).
+ * Débito de saldo de donate pela tela de Economia (WEB-06).
  *
  * A ação aceita login (ou id) da conta, resolve o id no gateway e chama o débito
  * com uma chave nova por envio — repetir o clique com a mesma chave devolve o

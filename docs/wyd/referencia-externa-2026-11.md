@@ -145,7 +145,7 @@ documentado e isola o que é número de servidor.
 | P-3 | Queremos **8 canais** como o Global ou os 2 do plano (normal + verde)? | custo por canal e guerra entre canais | 2 canais; crescer é linha em `server_channel` |
 | P-4 | Bônus de cidadania: usamos +1%/1bi de imposto até 50% (Global) ou valor fixo? | afeta drop e guerra | 0 até haver número aprovado (`game_setting`) |
 | P-5 | Limite de nível: 400 por camada com transformação, ou servidor custom? | define `exp_table` e teto de skill | 400 por camada |
-| P-6 | O Arch precisa das 4 pedras + Sephirot já no primeiro corte, ou entra depois do jogo base? | escopo de progressão | depois do mundo visível (03-9) |
+| P-6 | O Arch precisa das 4 pedras + Sephirot já no primeiro corte, ou entra depois do jogo base? | escopo de progressão | depois do mundo visível (GAME-09) |
 | P-7 | Aceitamos `STRUCT_SELCHAR` de fonte W2PP como layout provisório (marcado UNVERIFIED)? | destrava a tela de personagens antes da captura | sim, com golden e marca UNVERIFIED |
 | P-8 | A loja de donate/NP entra no escopo do servidor ou fica só no portal? | mexe em economia e invariante 7 | só portal (fila), nunca estado vivo |
 

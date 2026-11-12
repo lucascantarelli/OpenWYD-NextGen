@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Concessão de ouro pela tela de entregas (FASE-07-4).
+ * Concessão de ouro pela tela de entregas (WEB-04).
  *
  * A ação só valida a forma e delega ao `adminCall` + gateway: o autor vem da
  * sessão, a conta vem do personagem e a idempotência é a chave informada. O

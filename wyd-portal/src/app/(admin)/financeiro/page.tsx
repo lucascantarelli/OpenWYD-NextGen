@@ -15,7 +15,7 @@ const fmtInt = (value: number): string =>
   value.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 
 /**
- * Financeiro (PORTAL-03, lado staff): vitrine de donate e crédito de saldo.
+ * Financeiro (WEB-09, lado staff): vitrine de donate e crédito de saldo.
  *
  * A loja vende itens por créditos já conciliados — dinheiro real nunca passa
  * aqui. O crédito cai em `account_wallet` com idempotência por chave

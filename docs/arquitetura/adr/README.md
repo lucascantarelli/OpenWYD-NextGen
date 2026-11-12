@@ -1,6 +1,6 @@
 # ADRs — índice das decisões de arquitetura
 
-Uma ADR por decisão estrutural (rito em `docs/rust/02-execucao.md`, FASE-13-1). O arquivo
+Uma ADR por decisão estrutural (rito em `docs/rust/02-execucao.md`, PROC-21). O arquivo
 `0000-template.md` é o molde; toda ADR nova entra **nesta tabela** na mesma entrega. O estado
 declarado aqui é o do cabeçalho da própria ADR; quando divergirem, vale a ADR.
 

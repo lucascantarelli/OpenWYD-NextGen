@@ -1,5 +1,5 @@
 /**
- * Entregas (FASE-07-4): busca de personagem, fila e concessão de ouro.
+ * Entregas (WEB-04): busca de personagem, fila e concessão de ouro.
  *
  * Toda chamada passa por `adminCall` (sessão de staff + auditoria) e chega ao
  * gateway pelo contrato real (`character_admin/*`, `grants/request`). O portal

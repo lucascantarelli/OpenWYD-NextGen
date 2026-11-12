@@ -5,7 +5,7 @@ description: Constrói e mantém o portal Next.js do WYD (BFF puro sobre `wyd-ad
 
 # Portal BFF sobre `wyd-admin` (Next.js)
 
-> Sucessão 09-2: mantido o nome; backend migrado de web-api Go para `wyd-admin` (FASE-07-1). Fonte: `wyd-portal/`, `crates/wyd-admin/`, `docs/rust/05-stack-docker.md`.
+> Sucessão PROC-18: mantido o nome; backend migrado de web-api Go para `wyd-admin` (WEB-01). Fonte: `wyd-portal/`, `crates/wyd-admin/`, `docs/rust/05-stack-docker.md`.
 
 ## Regras
 

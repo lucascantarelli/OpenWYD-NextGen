@@ -1,5 +1,5 @@
 /**
- * Configuração do servidor (FASE-07-6) — taxas, drops, NPC e teleporte.
+ * Configuração do servidor (WEB-06) — taxas, drops, NPC e teleporte.
  *
  * Tudo passa por `adminCall`: sessão de staff, `moderator_id` da sessão, auditoria e
  * mapeamento `AdminResult` → HTTP. O portal não fala com o banco: lê e grava pelo

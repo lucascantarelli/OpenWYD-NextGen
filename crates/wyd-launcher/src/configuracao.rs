@@ -1,4 +1,4 @@
-//! Configuração remota assinada do launcher (LAUNCHER-01).
+//! Configuração remota assinada do launcher (CLIENT-11).
 //!
 //! A identidade embutida (`identidade.rs`, `include_str!`) continua sendo o padrão. Este
 //! módulo permite que **marca, canais e URLs** venham do portal sem recompilar: o launcher
@@ -178,7 +178,7 @@ impl Efetiva {
     }
 }
 
-/// Resolve a identidade efetiva exatamente como a CLI e a janela Tauri (FASE-08-8).
+/// Resolve a identidade efetiva exatamente como a CLI e a janela Tauri (CLIENT-08).
 ///
 /// `config` é o caminho de operador e é **estrito** (assinatura inválida é erro, não
 /// fallback). Sem ele, resolve `<dir>/launcher.conf` com `key_file` e cai para a

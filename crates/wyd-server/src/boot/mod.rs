@@ -9,8 +9,8 @@
 //!
 //! - `:8281` CPSock (handshake + gate de versão) e a sonda UDP de status do canal;
 //! - `:80` status (`/serv00.htm` e `/health`) — publicado no host só pelo canal de status;
-//! - `:9898` `/metrics` (contrato da FASE-06-1), agora com as métricas **reais** do motor;
-//! - thread `wyd-tick` (FASE-03-7): `Engine` do `wyd-core` a `WYD_TICK_HZ`, dona do mundo.
+//! - `:9898` `/metrics` (contrato da QA-04), agora com as métricas **reais** do motor;
+//! - thread `wyd-tick` (GAME-07): `Engine` do `wyd-core` a `WYD_TICK_HZ`, dona do mundo.
 //!
 //! `--healthcheck` faz `GET /health` no próprio processo e só sai `0` com 200 (banco real).
 
@@ -77,7 +77,7 @@ fn run() -> Result<(), String> {
     );
     let canal_i16 = i16::try_from(channel).map_err(|_| "WYD_SERVER_CHANNEL fora de 1..10")?;
     let tick_hz = crate::world::tick_hz_from_env()?;
-    // Teto de cena por varredura (FASE-03-9): validado no boot, nunca corrigido em silêncio.
+    // Teto de cena por varredura (GAME-09): validado no boot, nunca corrigido em silêncio.
     let scene_budget = crate::world::scene_budget_from_env()?;
 
     log(
@@ -85,7 +85,7 @@ fn run() -> Result<(), String> {
         "boot",
         &format!("channel={channel} version={}", env!("CARGO_PKG_VERSION")),
     );
-    // Lotação/manutenção (FASE-06-3): o banco é a fonte, o env sobrescreve por processo.
+    // Lotação/manutenção (QA-06): o banco é a fonte, o env sobrescreve por processo.
     let capacity_overrides = crate::channels::policy_overrides_from_env();
     // Teto baixo por engano trava o canal: o aviso é no boot, antes de recusar ninguém.
     let nivel = if capacity_overrides.max_players.is_some_and(|teto| teto < 10) {
@@ -133,7 +133,7 @@ fn run() -> Result<(), String> {
         .block_on(backend.server_channels())
         .map_err(|error| format!("server_channel indisponível (migrations aplicadas?): {error}"))?;
     let world = Arc::new(World::new(canais)?);
-    // Papel do canal (FASE-03-10): o banco é a fonte, o env sobrescreve. Canal sem linha =
+    // Papel do canal (GAME-10): o banco é a fonte, o env sobrescreve. Canal sem linha =
     // `normal`, então nenhum comportamento muda por omissão.
     let role_env = crate::channels::role_overrides_from_env();
     let role_db = runtime
@@ -213,7 +213,7 @@ fn run() -> Result<(), String> {
         ),
     );
 
-    // Fila de save do mundo (FASE-03-8): `enqueue` é `try_send` na borda; o dreno grava
+    // Fila de save do mundo (GAME-08): `enqueue` é `try_send` na borda; o dreno grava
     // fora do tick, coalescendo por personagem. Sem banco no laço de simulação.
     let (save_queue, mut save_drain) = wyd_db::SaveQueue::bounded(wyd_db::SavePolicy::local())
         .map_err(|error| format!("fila de save: {error}"))?;
@@ -228,7 +228,7 @@ fn run() -> Result<(), String> {
         })
     };
 
-    // Dreno de grants duráveis (FASE-07-4): o portal/admin enfileira na
+    // Dreno de grants duráveis (WEB-04): o portal/admin enfileira na
     // `delivery_queue`; este processo entrega ao personagem. Gold credita e baixa
     // na mesma instrução (`claim_gold`). Item e nível seguem pendentes porque o
     // inventário/nível do Hot Path ainda não consome a fila.
@@ -338,7 +338,7 @@ fn run() -> Result<(), String> {
 
     // NPCs do snapshot: materializa `npc_definition` do mapa do canal e reconcilia a cada
     // revisão nova — a edição no portal muda o mundo sem reiniciar o processo. O mapa vem do
-    // ambiente porque `character` ainda não persiste mapa (FASE-03-9).
+    // ambiente porque `character` ainda não persiste mapa (GAME-09).
     let map_id: i16 = std::env::var("WYD_SERVER_MAP_ID")
         .unwrap_or_else(|_| "0".to_string())
         .parse()

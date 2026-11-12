@@ -1,6 +1,6 @@
 # Modelo do banco (`wyd-db`) — FASE-04
 
-> Fonte: `roadmap-rust/issues/FASE-04.md` (+ 04-1/04-2/04-3). Implementação:
+> Fonte: `roadmap-rust/issues/FASE-04.md` (+ PROC-14/PROC-15/PROC-16). Implementação:
 > `crates/wyd-db/{migrations,seeds,src/{model,repo,pool,transfer}}`.
 
 ## 0. Origem do modelo (arquivo Go/C++ removido em 2026-11)
@@ -87,8 +87,8 @@ over-engineering nesta escala; CHECK documenta o domínio).
 - `crates/wyd-db/migrations/NNNN_descricao.sql`, uma por domínio, com
   marcadores `-- migrate:up` e `-- migrate:down` (estilo dbmate/refinery).
 - Down reverte exatamente o up (ordem inversa); `audit_log` incluída (ambiente
-  descartável — produção futura exige política própria, ver 04-2).
-- Runner embutido (`sqlx::migrate!`/`refinery`) **não** entrou na FASE-04-3: o pool e os adapters
+  descartável — produção futura exige política própria, ver PROC-15).
+- Runner embutido (`sqlx::migrate!`/`refinery`) **não** entrou na PROC-16: o pool e os adapters
   `pg` foram adotados (ADR-0021), mas a aplicação das migrations continua por `psql -f` com split
   nos marcadores (`tools/content/migrate-cycle.mjs`; validação estrutural em `tests/contrato/migrations.rs`).
   Trocar o runner exige issue própria.
@@ -112,7 +112,7 @@ over-engineering nesta escala; CHECK documenta o domínio).
 
 Conteúdo de jogo é **dado de referência**, não estado de jogador: nunca entra em
 `audit_log`, nunca é escrito pela web e nunca mistura linha de conta. O que a
-árvore Rust tem hoje são só as tabelas de jogador (§2); o catálogo deconteúdo ainda **não foi portado** — esta seção registra de onde ele vem, para a FASE-03-4
+árvore Rust tem hoje são só as tabelas de jogador (§2); o catálogo deconteúdo ainda **não foi portado** — esta seção registra de onde ele vem, para a GAME-04
 (seed + validação de schema no boot) e a FASE-10 (fórmulas) não inventarem dado.
 
 **Fonte canônica decidida na ADR-0009:** o **PostgreSQL**, em tabelas tipadas
@@ -353,7 +353,7 @@ Prova (2026-11-08, Postgres do compose, banco descartável `wyd_seedcheck`, `ON_
 
 Fronteira mantida: **nada aqui é escrito pela web** e nada entra no tick. Overlay de
 cold path (preço, taxa, agenda) chega ao servidor por `delivery_queue` (0006); o core lê
-uma cópia em memória carregada no boot (FASE-04-3). `character_quest` e `arena_match`
+uma cópia em memória carregada no boot (PROC-16). `character_quest` e `arena_match`
 são escrita **do servidor**, nunca de portal.
 
 Pendente declarado: receita de **mix/craft** (`Mixlist` 272 KB) ainda não tem tabela porque
@@ -446,7 +446,7 @@ Descartado, com motivo — para não reabrir a discussão:
 | migração única de conteúdo | 6 arquivos por domínio mantêm diff e rollback revisáveis |
 
 Pendências que **não** são de arquitetura, são de entrega: carga tipada no boot
-(FASE-04-3), `ContentError { tabela, pk, coluna, motivo }`, e o servidor logando
+(PROC-16), `ContentError { tabela, pk, coluna, motivo }`, e o servidor logando
 `content_version` + `content_source.sha256` para provar que duas máquinas têm o mesmo mundo.
 
 ## 8. Tabelas do legado sem espelho — decisão (2026-11-08)

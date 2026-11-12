@@ -42,8 +42,8 @@ Erro clássico = ler save com `pack(1)` (805 B, −11 B). Nosso caminho
 `INITCODE → 0x020D → DB → 0x010A/SELCHAR → 0x020F/0x0211 → 0x0213 → 0x0114/PLAY`
 é o mesmo esqueleto do legado. Diferenças conscientes: senha/PIN **Argon2id**
 (legado era texto plano — dívida fechada), sessão única por conta, `STRUCT_SELCHAR`
-844 B provisório `rust-v1` (P-7). Entrada no mundo vira entidade + save (FASE-03-8).
-Falta: `ESCENE_FIELD` 30000 como cena autoritativa (FASE-03-9) — o legado confirma
+844 B provisório `rust-v1` (P-7). Entrada no mundo vira entidade + save (GAME-08).
+Falta: `ESCENE_FIELD` 30000 como cena autoritativa (GAME-09) — o legado confirma
 a regra pelos bugs B8/B9: sem `ID=ESCENE_FIELD` a barra de XP e a morte **não**
 aplicam no cliente, embora `Dam[]` aplique.
 
@@ -51,9 +51,9 @@ aplicam no cliente, embora `Dam[]` aplique.
 L3 dá as fórmulas exatas (`BASE_GetDamage`, `BASE_GetSkillDamage`, pipeline
 `_MSG_Attack`, parry, reflect, críticos, pisos, dano mín 1). Nosso `wyd-sim`
 resolve `AttackOutcome` (hit/crit/dano) e `grant_exp`, mas **não** implementa essa
-cadeia — FASE-10-1 continua 🚧. Proibido copiar número sem golden: rolls usam
+cadeia — GAME-19 continua 🚧. Proibido copiar número sem golden: rolls usam
 `rand()` MSVC/LCG; paridade exige o harness de `parity-tests.md`, não transcrição.
-Anomalia 200% (FASE-10-2) ganha hipótese testável: `FreeWyd` publica tabela
+Anomalia 200% (GAME-20) ganha hipótese testável: `FreeWyd` publica tabela
 velocidade/duplo/triplo e declara que lista **o que muda vs original** (fonte C,
 nunca constante).
 
@@ -100,8 +100,8 @@ Nenhum pacote novo foi emitido nesta fase.
 | P-3 | 8 vs 2 canais | Legado e Global confirmam multicanal; `serverlist.bin` suporta 10/grupo; guerra entre canais é estado por canal | 2 canais (linha em `server_channel`) |
 | P-4 | bônus cidadania | Sem número no legado; imposto castelo 40% / portal 700 (B, Global atual) | 0 até número aprovado |
 | P-5 | teto 400/camada | Legado: divisores até 400 e `g_pNextLevel[MAX+1]`; 800/1500 = custom | 400/camada |
-| P-6 | Arch (4 pedras+Sephirot) no 1º corte? | `celestial-system-plan.md` + L4: Arch/Celestial têm máquinas próprias, depois do mundo visível | depois de 03-9 |
-| P-7 | `STRUCT_SELCHAR` provisório? | L2 dá o layout canônico, mas offsets de fio 7662 só fecham com captura 08-6 | sim, `rust-v1` + UNVERIFIED + golden |
+| P-6 | Arch (4 pedras+Sephirot) no 1º corte? | `celestial-system-plan.md` + L4: Arch/Celestial têm máquinas próprias, depois do mundo visível | depois de GAME-09 |
+| P-7 | `STRUCT_SELCHAR` provisório? | L2 dá o layout canônico, mas offsets de fio 7662 só fecham com captura CLIENT-06 | sim, `rust-v1` + UNVERIFIED + golden |
 | P-8 | donate no servidor? | `web-platform-plan.md`: web-api + `delivery_queue`, nunca estado vivo (invariante 7) | só portal/fila |
 | P-9 | Soul 70/40+30 e 120/80+40? +20% Reinforce? | D-4: "20% em cada" era a passiva Reinforce, não o percentual; números worldwyd = fonte única | não aplicar; +20% como multiplicador separado configurável |
 | P-10 | +12 em 5% e abençoada 2–15%? | Legado `CompRate/Odin` dá a família; 4% vs 5% = versão | default 5%/2–15% doc; seed em 4%/1–10 até decisão |
@@ -162,8 +162,8 @@ Ordem por desbloqueio; cada uma testável e sem inventar número:
 
 1. `CreateItem/GetItem` no fio (S→C 30 B / C→S 28 B + `CNFGetItem`, `DecayItem`, pickup `dist≤3`, `ItemID=id+10000`) + rito da tabela congelada — desbloqueia drop→caixa→pickup.
 2. `ESCENE_FIELD` 30000 como cena autoritativa (B8/B9) — barra XP e morte no cliente.
-3. Logout explícito `0x0215` (FASE-08-9) — fecha §4.27.
-4. Cadeia de dano L3 em `wyd-sim` com goldens (`BASE_GetDamage/SkillDamage`, parry, reflect, pisos, mín 1) — pré-requisito de FASE-10-1.
+3. Logout explícito `0x0215` (CLIENT-09) — fecha §4.27.
+4. Cadeia de dano L3 em `wyd-sim` com goldens (`BASE_GetDamage/SkillDamage`, parry, reflect, pisos, mín 1) — pré-requisito de GAME-19.
 5. Árvore de EXP L3 por trás de flags (`DOUBLEMODE`, `KefraLive`, RvR, newbie ±15%) em `game_setting` — sem mudar o default atual.
 6. Pity/limites de refino indexados (`sanc+1`, 3/4, travas +6/+9/selado) + `UpdateItem` + piedade persistida.
 7. Trade atômica por par (L4 §5) + `QuitTrade` — com teste de concorrência, sem `MSG_Trade` inventado.

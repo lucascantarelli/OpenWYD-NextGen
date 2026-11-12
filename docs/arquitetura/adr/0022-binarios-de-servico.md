@@ -3,7 +3,7 @@
 - **Estado:** aceita
 - **Data:** 2026-11-08
 - **Decisores:** dono do projeto + agente (per instrução do dono: infra em Docker antes do teste de cliente)
-- **Governa:** FASE-07-1 (gateway), FASE-03/04/06 (monólito de jogo), FASE-05-2 (release/imagem), FASE-12-1 (observabilidade)
+- **Governa:** WEB-01 (gateway), FASE-03/04/06 (monólito de jogo), QA-03 (release/imagem), QA-08 (observabilidade)
 
 ## Contexto
 
@@ -71,15 +71,15 @@ responde de verdade — `/api/health` chama `item_catalog/listItems`, não um `p
 
 ### 4. `/metrics` e nomes de métrica
 
-- Formato Prometheus 0.0.4 em `GET /metrics` (mesmo contrato do exporter da FASE-06-1, sem
+- Formato Prometheus 0.0.4 em `GET /metrics` (mesmo contrato do exporter da QA-04, sem
   dependência do core no Cold Path).
 - **Gateway** publica (declarado aqui, primeira vez):
   `wyd_gateway_requests_total{result="ok|business|transport|unauthorized"}` (counter) e
   `wyd_gateway_uptime_seconds` (gauge).
-- **Monólito** publica os nomes já fechados na FASE-06-1 (`wyd_ticks_total`,
+- **Monólito** publica os nomes já fechados na QA-04 (`wyd_ticks_total`,
   `wyd_tick_duration_microseconds`, `wyd_entities_active`, `wyd_packets_total`,
   `wyd_packets_rejected_total{reason}`, `wyd_handshakes_total`, `wyd_connections_pending`,
-  `wyd_sessions_open`, `process_resident_memory_bytes`) — **nenhum nome novo**. A FASE-03-7
+  `wyd_sessions_open`, `process_resident_memory_bytes`) — **nenhum nome novo**. A GAME-07
   acrescentou só `wyd_tick_budget_microseconds` (§7), porque o orçamento do tick depende de
   `WYD_TICK_HZ` (20–50 Hz) e um limiar fixo mentiria no alerta.
 - Scrape: um job por serviço no `docker/monitoring/prometheus/prometheus.yml`; o job `wyd-server` segue
@@ -103,7 +103,7 @@ nada desta ADR toca o Hot Path.
 - **Invariantes afetados:**
   - serviço só existe com binário e imagem próprios (nada de processo `latest` sem tag);
   - healthcheck tem de tocar dependência real (banco, socket), nunca só o processo;
-  - `/metrics` só publica nome declarado (aqui ou na ADR-0018/FASE-06-1);
+  - `/metrics` só publica nome declarado (aqui ou na ADR-0018/QA-04);
   - gateway nunca escreve estado de personagem vivo (invariante 7 do `AGENTS.md`).
 
 ## Alternativas consideradas
@@ -118,7 +118,7 @@ nada desta ADR toca o Hot Path.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-07-1-gateway.md`, `FASE-03/04/06` (monólito), `FASE-05-2`, `FASE-12-1`.
+- Issues consumidoras: `roadmap-rust/issues/WEB-01-gateway.md`, `FASE-03/04/06` (monólito), `QA-03`, `QA-08`.
 - Docs atualizadas nesta ADR: `docs/rust/05-stack-docker.md`, `docs/rust/06-observabilidade-runbooks.md`, `docs/arquitetura/estrutura-e-padroes.md` §13, `docs/rust/03-progresso.md`.
 - Evidência: `docker compose ps` (gateway + portal `healthy`), `curl :7600/health`, `curl :7600/metrics`,
   chamada real `POST /admin/v1/item_catalog/list_items`, query `up{job="wyd-gateway"}` no Prometheus.
@@ -139,11 +139,11 @@ linhas de banco compartilhadas; `docs/wyd/canais-e-cidadania.md` §5). Decidimos
   status e `enabled`. Registrar canal novo = uma linha + um container; nenhum binário recompilado;
 - **status `:80` é do canal 1** e publica o CSV de **todos** os canais habilitados (é o que popula a
   coluna Canal do cliente); os demais canais expõem o status só na rede interna, para `/health`;
-- **métricas novas declaradas aqui** (o resto vem do contrato da FASE-06-1):
+- **métricas novas declaradas aqui** (o resto vem do contrato da QA-04):
   `wyd_server_uptime_seconds`, `wyd_server_channels_published`, `wyd_status_requests_total`,
   `wyd_status_health_failures_total`.`wyd_ticks_total`/`wyd_tick_duration_microseconds`/`wyd_entities_active` **não** eram
   publicados enquanto o loop de `wyd-core` não rodava no processo — publicá-los zerados seria
-  mentira. Desde a **FASE-03-7** (2026-11-09) o `Engine` roda na thread `wyd-tick`
+  mentira. Desde a **GAME-07** (2026-11-09) o `Engine` roda na thread `wyd-tick`
   (`crates/wyd-server/src/world.rs`) e os três passam a vir do registro real do motor,
   anexado ao `/metrics` antes do primeiro scrape. O mesmo registro publica
   `wyd_tick_budget_microseconds` (`1e6 / WYD_TICK_HZ`), que o painel de orçamento e as regras

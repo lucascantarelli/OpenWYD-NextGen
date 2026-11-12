@@ -90,7 +90,7 @@ Saída esperada: `test result: ok`; migrations aplicam do zero e rollback funcio
 - Prova ao vivo em PG17 descartável: 6 ups → 8 tabelas; FK/CHECK/UNIQUE
   violados falham; revert → 0 tabelas; re-apply + `seeds/dev.sql` OK.
   Container e senha efêmera destruídos; DSN nunca versionado.
-- Escopo consciente: implementação `pg`/pool async (04-3) aguarda rede + ADR;
+- Escopo consciente: implementação `pg`/pool async (PROC-16) aguarda rede + ADR;
   traits e fila prontos para ela.
 
 ## Riscos / rollback

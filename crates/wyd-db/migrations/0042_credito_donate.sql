@@ -1,4 +1,4 @@
--- 0042 — razão de crédito de donate (FASE-07-6): idempotência de `credit_donate_balance`.
+-- 0042 — razão de crédito de donate (WEB-06): idempotência de `credit_donate_balance`.
 --
 -- O saldo mora em `account_wallet.coin` (conta, não personagem); a idempotência por chave
 -- mora aqui: `idempotency_key` UNIQUE garante que repetir a mesma chave devolve o mesmo

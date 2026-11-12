@@ -2,7 +2,7 @@
 //!
 //! `NpcMode` e a tabela de ameaça são a **cópia presa por golden** da matemática de
 //! `crates/wyd-sim/src/formula/threat.rs` (D-IA02): o DAG proíbe `wyd-core → wyd-sim`, e a
-//! unificação exige contrato em `wyd-protocol` (dívida da FASE-10-1, ADR-0011). O golden de
+//! unificação exige contrato em `wyd-protocol` (dívida da GAME-19, ADR-0011). O golden de
 //! decisão (`tests/npc.rs`) impede que as duas cópias divirjam em silêncio.
 //!
 //! Nada aqui consulta banco, relógio de parede ou `HashMap`: o estado é `Copy`, indexado por

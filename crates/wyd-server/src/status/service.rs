@@ -29,7 +29,7 @@ pub const HEALTH_PATH: &str = "/health";
 pub const UDP_PROBE_LEN: usize = 4;
 
 /// Dependências do servidor de status (`:80`): o `overrides` carrega a política efetiva
-/// de manutenção para o `/health` (FASE-06-3).
+/// de manutenção para o `/health` (QA-06).
 pub struct StatusDeps {
     /// Socket do `:80` (publicado como `:80` só pelo canal de status).
     pub listener: TcpListener,
@@ -47,7 +47,7 @@ pub struct StatusDeps {
     pub channel: i16,
     /// Sobrescritas de lotação/manutenção por processo (env).
     pub overrides: PolicyOverrides,
-    /// Regras do papel do canal (FASE-03-10): o `/health` publica o papel vigente.
+    /// Regras do papel do canal (GAME-10): o `/health` publica o papel vigente.
     pub rules: ChannelRules,
 }
 
@@ -133,7 +133,7 @@ fn handle(stream: TcpStream, deps: &StatusDeps) {
                 let online = runtime
                     .block_on(backend.live_sessions(group_id, channel))
                     .unwrap_or(0);
-                // Manutenção efetiva (FASE-06-3): env sobrescreve o banco; banco fora
+                // Manutenção efetiva (QA-06): env sobrescreve o banco; banco fora
                 // do ar aqui é impossível (o `ping` acima passou), então linha ausente
                 // ou erro de leitura = sem manutenção.
                 let manutencao = overrides.maintenance.or_else(|| {

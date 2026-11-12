@@ -27,7 +27,7 @@ pub const LAUNCHER_NAME: &str = "wyd-launcher";
 /// Mensagem de bootstrap exibida pelo binario minimo.
 #[must_use]
 pub fn bootstrap_message() -> &'static str {
-    "wyd-launcher: manifesto, patch e bootstrap (FASE-08-7)"
+    "wyd-launcher: manifesto, patch e bootstrap (CLIENT-07)"
 }
 
 /// Texto da tela de conexão para um código de recusa do servidor.

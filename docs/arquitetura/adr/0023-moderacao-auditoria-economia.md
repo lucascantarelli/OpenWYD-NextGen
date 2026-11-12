@@ -3,11 +3,11 @@
 - **Estado:** aceita
 - **Data:** 2026-11-09
 - **Decisores:** dono do projeto + agente
-- **Governa:** FASE-07-3 (painel de staff), FASE-07-4 (E2E do painel), FASE-12-1 (painéis)
+- **Governa:** WEB-03 (painel de staff), WEB-04 (E2E do painel), QA-08 (painéis)
 
 ## Contexto
 
-A FASE-07-3 exige painel de staff com três coisas que o control plane ainda não tinha:
+A WEB-03 exige painel de staff com três coisas que o control plane ainda não tinha:
 
 1. **moderação** de conta (papel e bloqueio de acesso) com trilha do autor;
 2. **auditoria** consultável — `auth.denied` e recibos de grant já existiam em memória/stdout,

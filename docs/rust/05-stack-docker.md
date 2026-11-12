@@ -21,7 +21,7 @@ Regra-mãe: **arquivo Go/C++ removido em 2026-11 — nunca fonte** (nomes, porta
 Binários existentes: `wyd-launcher` (fora do compose), `wyd-gateway` (`crates/wyd-admin/src/main.rs`)
 e `wyd-server` (`crates/wyd-server/src/main.rs`), todos pela ADR-0022. Sem binário não há serviço: o
 compose não antecipa o que a issue dona não entregou. **O motor (`wyd-core`) ainda não roda dentro
-do `wyd-server`** (o tick é a FASE-03-7): o processo hoje entrega conexão, login, seleção e status,
+do `wyd-server`** (o tick é a GAME-07): o processo hoje entrega conexão, login, seleção e status,
 não simulação de mundo.
 
 ## 2. O que sobe hoje (`docker compose up`)
@@ -33,12 +33,12 @@ não simulação de mundo.
    manutenção vêm de `channel_capacity` (migration `0040`, seed 1000 = `MAX_USER` do legado
    por canal 1–10), com sobrescrita por processo via `WYD_SERVER_MAX_PLAYERS` /
    `WYD_SERVER_MAINTENANCE` (vazio = vale o banco; ver `docker-compose.yml`). O **papel** do canal
-   (`normal`/`verde`, FASE-03-10) vem de `channel_role` (migration `0041`; seed `1 = normal`,
+   (`normal`/`verde`, GAME-10) vem de `channel_role` (migration `0041`; seed `1 = normal`,
    `2 = verde`) e é sobrescrito por `WYD_SERVER_CHANNEL_ROLE` (vazio = banco); o `/health` publica
-   `role`, `pvp` e `shop`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281. Roda o motor do core na thread `wyd-tick` a `WYD_TICK_HZ` (20–50, default 20) desde a FASE-03-7 |
+   `role`, `pvp` e `shop`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281. Roda o motor do core na thread `wyd-tick` a `WYD_TICK_HZ` (20–50, default 20) desde a GAME-07 |
 | `gateway` | `docker/Dockerfile.gateway` (multi-stage, distroless non-root) | Gateway HTTP/JSON do portal (`:7600`, ADR-0022): `GET /health` faz `SELECT 1` no Postgres, `GET /metrics` publica `wyd_gateway_requests_total{result}` + `wyd_gateway_uptime_seconds`, `POST /admin/v1/{servico}/{metodo}` serve o contrato já existente. `--healthcheck` é o próprio binário (imagem sem shell). Sobe depois do `db` saudável |
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
-| `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd` e é o **índice** do monitoramento, com subpáginas `/monitoramento/servidor` (motor: ticks/s, p99, entidades por canal), `/monitoramento/grafana` (dashboards em kiosk), `/monitoramento/prometheus` (alvos/regras de alerta) e `/monitoramento/logs` (Loki). FASE-12-1 ✅ — dashboards/alertas/runbooks em `docker/monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
+| `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd` e é o **índice** do monitoramento, com subpáginas `/monitoramento/servidor` (motor: ticks/s, p99, entidades por canal), `/monitoramento/grafana` (dashboards em kiosk), `/monitoramento/prometheus` (alvos/regras de alerta) e `/monitoramento/logs` (Loki). QA-08 ✅ — dashboards/alertas/runbooks em `docker/monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
 | `loki` | `grafana/loki:3.5.5` | **Logs duráveis** (2026-11-09): grava em volume `wyd-loki-data` com retenção de 14 d (`docker/monitoring/loki/loki.yml`). Sem porta no host — só o portal (server-side) e o Grafana consultam `loki:3100`. Resolve o problema do `json-file`: o stdout do Docker morre quando o container é recriado, o Loki não |
 | `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`docker/monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
@@ -51,8 +51,8 @@ com `-p`), rede/volume `wyd_*`.
 
 | Serviço futuro | Origem | Issue que libera |
 |---|---|---|
-| tick do mundo dentro do canal (ECS + cena) | `wyd-core` no `wyd-server` | FASE-03-7/03-8/03-9 |
-| `launcher` | — | Fora do compose (exe). Imagem `docker/Dockerfile.launcher` só como artefato de release/smoke (FASE-05-2): `docker build` + `docker run --rm` |
+| tick do mundo dentro do canal (ECS + cena) | `wyd-core` no `wyd-server` | GAME-07/GAME-08/GAME-09 |
+| `launcher` | — | Fora do compose (exe). Imagem `docker/Dockerfile.launcher` só como artefato de release/smoke (QA-03): `docker build` + `docker run --rm` |
 
 Cada novo serviço entra com: `docker/Dockerfile.<svc>`, registro no
 `docker-compose.yml` (sem portas; porta só no override de dev; limites no
@@ -60,22 +60,22 @@ prod), linha nesta tabela e `make stack-config` verde nos dois modos.
 
 ## 4. Observabilidade (integração, sem código nesta rodada)
 
-Cadeia normativa (skill `wyd-rust-obs`, FASE-06-1 → FASE-12-1):
+Cadeia normativa (skill `wyd-rust-obs`, QA-04 → QA-08):
 
-1. **Instrumentação no motor** (FASE-06-1 ✅, ADR-0018): `tracing` + histograma de tick
+1. **Instrumentação no motor** (QA-04 ✅, ADR-0018): `tracing` + histograma de tick
    (`crates/wyd-core/src/metrics/`, `telemetry.rs`), contadores de rede em
    `crates/wyd-net/src/metrics.rs` (feature `metrics`, desligada no build default por custo
    medido). Nomes fechados: `wyd_ticks_total`, `wyd_tick_duration_microseconds`,
    `wyd_entities_active`, `process_resident_memory_bytes`, `wyd_memory_samples_total`,
    `wyd_packets_total`, `wyd_packets_rejected_total{reason}`, `wyd_handshakes_total`,
-   `wyd_connections_pending`, `wyd_sessions_open`. Motivos de recusa declarados (FASE-06-3
+   `wyd_connections_pending`, `wyd_sessions_open`. Motivos de recusa declarados (QA-06
    acrescenta `canal_lotado` e `manutencao`, contados em `NetMetrics::rejected_full` /
    `rejected_maintenance`): `rate`, `ip`, `total`, `timeout`, `canal_lotado`, `manutencao`.
    Zero segredo em log/métrica.
 2. **Exposição**: `MetricsServer` serve `GET /metrics` em texto Prometheus 0.0.4
    (endereço decidido pelo binário, default `127.0.0.1:9898`); o fragmento do `wyd-net`
-   entra por `Metrics::render(extra)`. Dashboard só consulta o que 06-1 expõe.
-3. **Coleta/visualização** (FASE-12-1 ✅): no próprio `docker-compose.yml`
+   entra por `Metrics::render(extra)`. Dashboard só consulta o que QA-04 expõe.
+3. **Coleta/visualização** (QA-08 ✅): no próprio `docker-compose.yml`
    (Prometheus v3.5.0 + Grafana 12.2.0 + node-exporter v1.9.1 + Loki 3.5.5 + Alloy v1.9.2,
    imagens oficiais com tag fixa), configs em `docker/monitoring/` (`prometheus.yml`,
    `alerts.yml`, `alerts.test.yml`, alvos por arquivo, `loki/loki.yml`,

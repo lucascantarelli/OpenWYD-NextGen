@@ -19,6 +19,7 @@ código tem de cumprir.
 | `sistemas/mundo.md` | cidades e NPCs, teleportes, **as 52 regiões**, dungeons, zonas |
 | `sistemas/quests.md` | story line, Kefra, **Pista de Runas sala por sala**, Arch, destraves |
 | `sistemas/eventos.md` | evento de drop, Kefra, invasões, calendário, sazonais |
+| `sistemas/ameacas.md` | catálogo B1–B17 + §6 do `wyd2.md`, com estado real no Rust, teste/aberto e decisão pendente |
 | `canais-e-cidadania.md` | **servidor × canal**, cidadania (Kibita, bônus, `/getout`), canal verde/novato e guildas donas de cidade por canal |
 | `fontes.md` | **de onde vem cada afirmação** e onde cada site engana |
 | `referencia-externa-2026-11.md` | pesquisa de 2026-11-09: fontes, confirmações, lacunas e perguntas abertas |

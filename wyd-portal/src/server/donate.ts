@@ -1,5 +1,5 @@
 /**
- * Loja de donate e crédito de saldo (PORTAL-03, FASE-07-6).
+ * Loja de donate e crédito de saldo (WEB-09, WEB-06).
  *
  * Tudo passa por `adminCall` (sessão de staff + auditoria) e chega ao gateway
  * pelo contrato real (`donate_admin/*`). Dinheiro real nunca passa aqui: o

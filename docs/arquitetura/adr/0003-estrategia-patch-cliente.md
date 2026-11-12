@@ -2,8 +2,8 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-07
-- **Decisores:** dono do projeto + agente (registrado na issue FASE-08-7)
-- **Governa:** `roadmap-rust/issues/FASE-08-3-launcher.md`, `FASE-08-7-cliente-customizacao.md`
+- **Decisores:** dono do projeto + agente (registrado na issue CLIENT-07)
+- **Governa:** `roadmap-rust/changelog.md`, `CLIENT-07-cliente-customizacao.md`
 
 ## Contexto
 
@@ -44,7 +44,7 @@ herdar código do ClientPatch.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-08-3-launcher.md`, `FASE-08-7-cliente-customizacao.md`
+- Issues consumidoras: `roadmap-rust/changelog.md`, `CLIENT-07-cliente-customizacao.md`
 - Docs atualizadas nesta ADR: `docs/cliente/customizacao.md`, `docs/cliente/mapa.md`
 - Evidência: hashes medidos em `client/` (2026-11-07, todos conferem com `inventario.md`)
 

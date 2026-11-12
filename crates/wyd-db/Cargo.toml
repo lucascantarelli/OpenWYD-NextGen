@@ -9,7 +9,7 @@ publish = false
 name = "wyd_db"
 path = "src/lib.rs"
 
-# FASE-04-3 / ADR-0021: pool real e runtime async como *implementação* das portas.
+# PROC-16 / ADR-0021: pool real e runtime async como *implementação* das portas.
 # `default-features = false` evita o conjunto pesado (macros/derive de query e TLS
 # nativo): só runtime, driver Postgres e rustls.
 [dependencies]

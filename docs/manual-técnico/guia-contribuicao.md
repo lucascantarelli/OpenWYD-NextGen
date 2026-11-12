@@ -1,6 +1,6 @@
 # Guia de contribuição (Rust)
 
-> **FASE-11-1** (2026-11-07). Público: quem chega agora e precisa compilar, testar e
+> **PROC-19** (2026-11-07). Público: quem chega agora e precisa compilar, testar e
 > abrir a primeira contribuição sem ler o repo inteiro. Norma de ciclo e DoD:
 > `docs/rust/02-execucao.md`; invariantes: `AGENTS.md` §3. Este guia não duplica
 > nenhum dos dois — aponta e resume o caminho.
@@ -57,7 +57,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
    dependências, stack).
 3. Branch `fase/NN-slug` a partir de `develop`.
 4. Mudança mínima nos arquivos que a issue lista. Arquivo novo fora da árvore de
-   `estrutura-e-padroes.md` exige **ADR** em `docs/arquitetura/adr/` (rito FASE-13-1).
+   `estrutura-e-padroes.md` exige **ADR** em `docs/arquitetura/adr/` (rito PROC-21).
 5. Teste do próprio crate/issue + `make check`.
 6. Atualizar na mesma entrega: `docs/rust/03-progresso.md`, o status em
    `roadmap-rust/index.md` e qualquer doc invalidado.

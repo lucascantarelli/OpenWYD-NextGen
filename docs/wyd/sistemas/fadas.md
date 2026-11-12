@@ -103,7 +103,7 @@ mecânica de servidor moderno (**B**). Para auditoria, cada venda automática pr
 | agrupamento garantido (prateada/dourada) | `deposit_into_bag` | regra pronta; falta a lista de itens da fada |
 | log `event=autosell` | `cpsock` | **não existe** |
 
-Issue: `roadmap-rust/issues/FASE-03-14-fadas-bonus-e-auto-coleta.md`.
+Issue: `roadmap-rust/issues/GAME-14-fadas-bonus-e-auto-coleta.md`.
 
 ---
 

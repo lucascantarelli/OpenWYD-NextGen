@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * E2E (FASE-07-4): provisiona banco e containers efêmeros, roda o Playwright e
+ * E2E (WEB-04): provisiona banco e containers efêmeros, roda o Playwright e
  * derruba tudo no `finally`.
  *
  * Regras:

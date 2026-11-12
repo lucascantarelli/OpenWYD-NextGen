@@ -62,7 +62,7 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 - docs/rust/01-dependencias.md - candidatos ECS/arena (hecs/bevy_ecs, bumpalo).
 - docs/arquitetura/adr/0001-hot-path-monolitico.md - decisão do monolito.
 - pre-release-rust.md (FASE 3) - escopo da engine.
-- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md - fórmulas de referência.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/GAME-19-equacoes.md - fórmulas de referência.
 - docs/arquitetura/protocolo.md §5 - alinhamentos de save.
 
 ## Subtasks
@@ -103,9 +103,9 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 - Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
   (`wyd-core`: 12 lib + 3 integração); zero `unsafe`; `Cargo.toml` intocado
   (sem `hecs`/`bevy_ecs`/`bumpalo`: exigem rede/vendor + ADR — SoA manual;
-  revisitar em FASE-13-2).
+  revisitar em PROC-22).
 - Escopo consciente: sistemas de jogo (`systems/`), validador de dados
-  estáticos (03-4, depende FASE-04) e pontos de autoridade (03-5) ficam nas
+  estáticos (GAME-04, depende FASE-04) e pontos de autoridade (GAME-05) ficam nas
   sub-issues; árvore §10 restante inalterada.
 
 ## Riscos / rollback

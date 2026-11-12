@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
-# FASE-06-1 / ADR-0018: log estruturado (sem `env-filter`, que arrastaria regex).
+# QA-04 / ADR-0018: log estruturado (sem `env-filter`, que arrastaria regex).
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = [
     "fmt",

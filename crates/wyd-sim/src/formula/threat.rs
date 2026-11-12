@@ -3,7 +3,7 @@
 //! Esta é a **matemática** da camada A de `docs/arquitetura/adr/0010-ia-npc-e-bots.md`: a
 //! tabela de ameaça e a escolha de alvo. A máquina de estados (`idle → patrol → aggro →
 //! chase → attack → flee → return`) e a cadência de 5 Hz vivem em `crates/wyd-core/src/npc/`
-//! (FASE-03-6), que consome estas funções puras — a mesma função roda no laboratório.
+//! (GAME-06), que consome estas funções puras — a mesma função roda no laboratório.
 //!
 //! **Hipótese (D-09):** ameaça = dano causado, tabela com teto fixo, alvo = maior ameaça e,
 //! no empate, **menor `entity`**. Sem desempate por ordem de chegada ou por `HashMap`, dois

@@ -1,4 +1,4 @@
-//! FASE-03-18 — Campo de Treinamento (sequência A, fiel ao legado do 7662).
+//! GAME-18 — Campo de Treinamento (sequência A, fiel ao legado do 7662).
 //!
 //! Fluxo completo sem GUI: personagem com equipamento da classe recebe as provas (drops dos
 //! guardiões), entrega nos quatro treinadores e recebe cada recompensa com o valor exato.

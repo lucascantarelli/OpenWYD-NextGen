@@ -3,7 +3,7 @@
 - **Estado:** aceita — implementada em 2026-11-11
 - **Data:** 2026-11-11
 - **Decisores:** dono do projeto + agente
-- **Governa:** `crates/wyd-bots` (árvore §17 de `estrutura-e-padroes.md`), FASE-15-4
+- **Governa:** `crates/wyd-bots` (árvore §17 de `estrutura-e-padroes.md`), GAME-23
 
 ## Contexto
 

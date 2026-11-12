@@ -1,4 +1,4 @@
-//! IA de NPC (camada A, FASE-03-6) — determinística, sem I/O e sem alocação no quente.
+//! IA de NPC (camada A, GAME-06) — determinística, sem I/O e sem alocação no quente.
 //!
 //! Contrato de `docs/arquitetura/ia-bots.md` §3–§4: a decisão é uma **função pura** de
 //! `VisãoDoMundo × NpcState → Intenção`, roda a **5 Hz** (1 decisão a cada 4 ticks de 20 Hz,

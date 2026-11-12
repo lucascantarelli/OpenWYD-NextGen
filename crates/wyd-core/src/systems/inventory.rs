@@ -1,4 +1,4 @@
-//! Inventário e equipamento server-authoritative (FASE-03-5, eixo inventário).
+//! Inventário e equipamento server-authoritative (GAME-05, eixo inventário).
 //!
 //! A intenção aceita é mínima: **qual** item da mochila e, quando o protocolo pedir slot, qual
 //! slot o cliente *diz* querer. O servidor decide o resto — slot de equipamento derivado do

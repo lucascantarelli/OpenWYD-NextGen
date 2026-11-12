@@ -1,6 +1,6 @@
 # Autoridade do servidor — o que o cliente pode e o que ele nunca decide
 
-> FASE-03-5. Implementação: `crates/wyd-core/src/systems/` (ADR-0014). Regra de ouro: a borda de
+> GAME-05. Implementação: `crates/wyd-core/src/systems/` (ADR-0014). Regra de ouro: a borda de
 > rede entrega **intenção** (destino, alvo, slot, gema); o estado que vale é o que o core grava.
 
 ## 1. Ações e onde cada uma é validada
@@ -50,13 +50,13 @@ FASE-10, onde há trace e laboratório.
 ## 4. O que ainda é UNVERIFIED
 
 - **Movimento**: o cliente 7662 pode mandar destino (aqui modelado) ou passo por passo; a
-  captura da FASE-08-6 decide se o orçamento é por passo ou por destino. O sistema aceita
+  captura da CLIENT-06 decide se o orçamento é por passo ou por destino. O sistema aceita
   destino; trocar a unidade é mudar `MoveRules::budget`, não a validação.
 - **Alcance**: `AttackRules` é hipótese até o trace de um ataque real (arco × espada).
 - **Atributos de item**: `req_str/int/dex/con` existem em `item_catalog` mas o `Stats` do core
   ainda não carrega os quatro; hoje só o nível é validado. Declarado, não fingido.
 - **Layout de rede do inventário**: qual pacote pede equipar/mover (`MSG_*`) segue `UNVERIFIED`
-  até a captura da FASE-08-6; o core valida a intenção (item/slots), não o layout.
+  até a captura da CLIENT-06; o core valida a intenção (item/slots), não o layout.
 
 ## 5. Onde testar
 

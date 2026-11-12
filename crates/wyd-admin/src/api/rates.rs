@@ -1,5 +1,5 @@
 //! `content_rates/*` — taxas de refino, SancRate, composição, multiplicadores e
-//! refino de acessório, lidas/gravadas pelo portal (FASE-07-6).
+//! refino de acessório, lidas/gravadas pelo portal (WEB-06).
 //!
 //! Toda escrita exige fonte (`content_source`) e passa por `ConfigStore`, que grava o
 //! override, incrementa `config_revision` e registra `config_change` na mesma transação.
@@ -54,17 +54,17 @@ pub trait ConfigStore: Send + Sync {
 
     fn npc(&self, id: i32) -> Result<Option<NpcRow>, AdminError>;
 
-    /// Página de NPCs por id para a lista do portal (FASE-07-5, só leitura).
+    /// Página de NPCs por id para a lista do portal (WEB-05, só leitura).
     fn npcs(&self, limit: i64, after_id: Option<i32>) -> Result<Vec<NpcRow>, AdminError>;
 
-    /// Templates de mob por nome para a lista do portal (FASE-07-5, só leitura).
+    /// Templates de mob por nome para a lista do portal (WEB-05, só leitura).
     fn mob_templates(
         &self,
         limit: i64,
         after: Option<&str>,
     ) -> Result<Vec<MobTemplateRow>, AdminError>;
 
-    /// Efeitos de item por nome para a lista do portal (FASE-07-5, só leitura).
+    /// Efeitos de item por nome para a lista do portal (WEB-05, só leitura).
     fn effects(&self, limit: i64, after: Option<&str>) -> Result<Vec<EffectRow>, AdminError>;
 
     fn set_npc(
@@ -79,7 +79,7 @@ pub trait ConfigStore: Send + Sync {
 
     fn routes(&self, limit: i64) -> Result<Vec<RouteRow>, AdminError>;
 
-    /// Recompensas diárias em páginas por id (FASE-07-6, só leitura).
+    /// Recompensas diárias em páginas por id (WEB-06, só leitura).
     fn daily_rewards(
         &self,
         limit: i64,
@@ -92,7 +92,7 @@ pub trait ConfigStore: Send + Sync {
     /// Remove uma recompensa diária (auditado).
     fn delete_daily_reward(&self, id: i32, actor: i64) -> Result<i64, AdminError>;
 
-    /// Loja de donate em páginas por id (FASE-07-6, só leitura).
+    /// Loja de donate em páginas por id (WEB-06, só leitura).
     fn donate_items(
         &self,
         limit: i64,
@@ -113,10 +113,10 @@ pub trait ConfigStore: Send + Sync {
     /// Remove um item da loja (auditado).
     fn delete_donate_item(&self, id: i32, actor: i64) -> Result<i64, AdminError>;
 
-    /// Eventos de mundo com estado (FASE-07-6, só leitura).
+    /// Eventos de mundo com estado (WEB-06, só leitura).
     fn world_events(&self) -> Result<Vec<WorldEventRow>, AdminError>;
 
-    /// Horários de todos os eventos (FASE-07-6, só leitura).
+    /// Horários de todos os eventos (WEB-06, só leitura).
     fn event_schedules(&self) -> Result<Vec<EventScheduleRow>, AdminError>;
 
     /// Liga/desliga um evento (auditado; efeito no próximo leitor do dado).
@@ -127,7 +127,7 @@ pub trait ConfigStore: Send + Sync {
         actor: i64,
     ) -> Result<i64, AdminError>;
 
-    /// Contas em páginas por id, sem segredo (FASE-07-6, só leitura).
+    /// Contas em páginas por id, sem segredo (WEB-06, só leitura).
     fn accounts(
         &self,
         limit: i64,
@@ -148,7 +148,7 @@ pub trait ConfigStore: Send + Sync {
         actor: i64,
     ) -> Result<(i64, bool), AdminError>;
 
-    /// Receita de donate: créditos, débitos e contagens (FASE-07-6, só leitura).
+    /// Receita de donate: créditos, débitos e contagens (WEB-06, só leitura).
     fn donate_revenue(&self) -> Result<DonateRevenueRow, AdminError>;
 
     /// Extrato de recargas, mais recentes primeiro.
@@ -182,7 +182,7 @@ pub trait ConfigStore: Send + Sync {
         actor: i64,
     ) -> Result<i64, AdminError>;
 
-    /// Preços de NPC (`item_price`), por item quando informado (FASE-07-5, só leitura).
+    /// Preços de NPC (`item_price`), por item quando informado (WEB-05, só leitura).
     fn item_prices(
         &self,
         item_index: Option<i32>,
@@ -794,7 +794,7 @@ mod tests {
         .expect("grava");
         assert_eq!(revision, 8);
         assert_eq!(store.chamadas.lock().expect("lock")[0], "refine:12=4000");
-        // PORTAL-05: a trilha carrega o autor real (conta de staff da sessão),
+        // WEB-11: a trilha carrega o autor real (conta de staff da sessão),
         // nunca o corpo da chamada.
         assert_eq!(sink.entries()[0].action, "config.rate.set");
         assert_eq!(sink.entries()[0].actor_id, 7);

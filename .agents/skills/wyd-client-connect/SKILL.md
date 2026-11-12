@@ -5,7 +5,7 @@ description: Liga o cliente Windows 7662 ao servidor Rust local (serverlist.bin,
 
 # Conectar o cliente ao servidor Rust
 
-> Sucessão 09-2: mantido o nome; servidor alvo migrado para Rust. Fonte canônica: `docs/cliente/`, `docs/arquitetura/protocolo.md`, `crates/wyd-launcher/`.
+> Sucessão PROC-18: mantido o nome; servidor alvo migrado para Rust. Fonte canônica: `docs/cliente/`, `docs/arquitetura/protocolo.md`, `crates/wyd-launcher/`.
 
 ## Regras
 

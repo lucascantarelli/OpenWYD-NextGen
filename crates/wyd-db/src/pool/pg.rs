@@ -1,4 +1,4 @@
-//! Pool `sqlx` — o **adapter**, não a porta (FASE-04-3, ADR-0021).
+//! Pool `sqlx` — o **adapter**, não a porta (PROC-16, ADR-0021).
 //!
 //! Regras que este arquivo garante:
 //!

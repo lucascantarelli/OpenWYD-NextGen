@@ -1,4 +1,4 @@
-//! Bots do Campo de Treinamento (FASE-15-4): quatro raças, um bot por classe,
+//! Bots do Campo de Treinamento (GAME-23): quatro raças, um bot por classe,
 //! falando o protocolo real do canal (ADR-0027). A implementação vive em `bot/`.
 
 mod bot;

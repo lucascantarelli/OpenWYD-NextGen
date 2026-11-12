@@ -17,9 +17,9 @@ path = "src/main.rs"
 
 [dependencies]
 wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
-# FASE-03-7: o processo do canal roda o motor — tick, ECS e grade saem do crate de engine.
+# GAME-07: o processo do canal roda o motor — tick, ECS e grade saem do crate de engine.
 wyd-core = { path = "../wyd-core", version = "0.1.0" }
-# `metrics`: o daemon publica o fragmento de rede no `/metrics` (FASE-06-1).
+# `metrics`: o daemon publica o fragmento de rede no `/metrics` (QA-04).
 wyd-net = { path = "../wyd-net", version = "0.1.0", features = ["metrics"] }
 wyd-db = { path = "../wyd-db", version = "0.1.0" }
 # FASE-10: curva e máquina de EXP puras (`ExpTable`/`grant_exp`), sem I/O no tick.

@@ -119,7 +119,7 @@ pub(super) fn dispatch(
                     // `STRUCT_MOB` do personagem escolhido: equipamento e mochila
                     // de `character_items`, nunca do template da classe. A montagem vem antes
                     // da entrada no mundo porque a mesma aparência vira `_MSG_CreateMob` na
-                    // cena dos outros personagens do canal (FASE-03-9).
+                    // cena dos outros personagens do canal (GAME-09).
                     let mut mob = Mob::from_persisted(personagem, &selected.items);
                     // Atributos, pontos e `LearnedSkill` vêm do banco (`character_scores`
                     // + `character_learned_skill`), não do template da classe.
@@ -440,7 +440,7 @@ pub(super) fn dispatch(
         // `_MSG_MessageChat` (0x0333): `/cp` responde no painel; o resto vai para quem está
         // na vista (o cliente resolve o id do falante e desenha `nome : texto`).
         Opcode::MessageChat => handle_chat(stream, frame, key_word, account, stage, selection),
-        // `_MSG_Quest` (0x028B): treinadores do Campo de Treinamento (FASE-03-18).
+        // `_MSG_Quest` (0x028B): treinadores do Campo de Treinamento (GAME-18).
         Opcode::Quest => handle_quest(stream, frame, key_word, account, stage, selection),
         // `_MSG_REQShopList` (0x027B): catálogo do mercador clicado (`npc_shop_item`).
         Opcode::REQShopList => handle_shop_list(stream, frame, key_word, account, stage, selection),

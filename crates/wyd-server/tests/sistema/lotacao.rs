@@ -1,4 +1,4 @@
-//! Lotação e manutenção do canal (FASE-06-3): a cerca conta **sessões vivas** no
+//! Lotação e manutenção do canal (QA-06): a cerca conta **sessões vivas** no
 //! `character_session` (`released_at IS NULL`), não conexões TCP.
 //!
 //! Sem `WYD_TEST_DATABASE_URL`/`DATABASE_URL` os testes **pulam** (o CI sem stack imprime
@@ -217,7 +217,7 @@ fn env_sobrescreve_politica_do_banco() {
     );
 }
 
-/// A recusa de lotação/manutenção tem motivo próprio no Prometheus (FASE-06-3 §4).
+/// A recusa de lotação/manutenção tem motivo próprio no Prometheus (QA-06 §4).
 #[test]
 fn recusa_de_lotacao_e_manutencao_tem_metrica_propria() {
     let metricas = NetMetrics::new();

@@ -12,7 +12,7 @@
 //! - nenhum `panic`/`unwrap` em bytes vindos da rede — erros tipados;
 //! - layout é contrato: offsets explícitos, little-endian, sem `repr(Rust)`;
 //! - o que não está documentado **não é inventado**: fica marcado UNVERIFIED e
-//!   fora dos tipos até a captura real (FASE-08-2).
+//!   fora dos tipos até a captura real (CLIENT-02).
 
 pub mod codec;
 pub mod error;

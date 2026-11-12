@@ -1,4 +1,4 @@
-// Smoke da stack de observabilidade (FASE-12-1) — ferramenta de dev, sem runtime de jogo.
+// Smoke da stack de observabilidade (QA-08) — ferramenta de dev, sem runtime de jogo.
 //
 // Verifica o que um humano verificaria a mão, com exit code de verdade:
 //   1. Prometheus pronto (`/-/ready`);

@@ -1,6 +1,6 @@
 # Manual do usuário
 
-> **FASE-11-1** (2026-11-07). Público: jogador e operador do dia a dia — quem joga, quem
+> **PROC-19** (2026-11-07). Público: jogador e operador do dia a dia — quem joga, quem
 > sobe a stack local e quem usa o portal. Sem jargão de implementação: para isso existe
 > `docs/manual-técnico/`.
 

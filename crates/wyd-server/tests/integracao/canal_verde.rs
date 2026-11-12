@@ -1,4 +1,4 @@
-//! Cidadania e canal verde (FASE-03-10): o papel do processo e o bônus de drop do canal.
+//! Cidadania e canal verde (GAME-10): o papel do processo e o bônus de drop do canal.
 //!
 //! Três provas, todas determinísticas e sem banco:
 //!

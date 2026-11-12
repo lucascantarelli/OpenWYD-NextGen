@@ -1,5 +1,5 @@
 /**
- * Telemetria pública do launcher (LAUNCHER-01, item 5 do plano).
+ * Telemetria pública do launcher (CLIENT-11, item 5 do plano).
  *
  * O launcher não tem sessão: o POST chega anônimo. Por isso o contrato é
  * **fechado** (nada de chave extra), os números são limitados e o único texto

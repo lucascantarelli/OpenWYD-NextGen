@@ -1,4 +1,4 @@
--- 0045 — razão de débito de donate (FASE-07-6): extrato e idempotência do débito.
+-- 0045 — razão de débito de donate (WEB-06): extrato e idempotência do débito.
 --
 -- O saldo continua em `account_wallet.coin`; este razão registra cada débito com
 -- `idempotency_key` UNIQUE (repetir a chave devolve o mesmo razão, sem debitar duas

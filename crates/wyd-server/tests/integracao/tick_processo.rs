@@ -1,4 +1,4 @@
-//! Tick do motor dentro do processo do canal (FASE-03-7), sem banco.
+//! Tick do motor dentro do processo do canal (GAME-07), sem banco.
 //!
 //! Prova o contrato que o `/metrics` publica: a thread `wyd-tick` roda de verdade, conta
 //! ticks, mede o passo e morre quando pedida — sem tick órfão depois do `stop_and_join`.

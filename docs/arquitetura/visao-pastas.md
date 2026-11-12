@@ -1,6 +1,6 @@
 # Visão de pastas do repositório
 
-> **Gate de arquitetura** (FASE-02-5, 2026-11-07). Regra vigente: **estrutura antes de
+> **Gate de arquitetura** (PROC-12, 2026-11-07). Regra vigente: **estrutura antes de
 > código** (`estrutura-e-padroes.md` §8, ADR-0002). Este documento é o mapa oficial de
 > onde cada coisa mora — e de onde nada novo pode nascer sem ADR.
 > Nenhuma implementação foi criada para escrevê-lo: é inventário + norma.
@@ -61,7 +61,7 @@
 | `crates/wyd-protocol/tests/fixtures/cliente/` | 5 goldens sintéticos validados (`captura.mjs`) |
 | `client/` | **~344 MB, fora do git**: `WYD.exe` 7662 + DLLs + XTrap + 5.361 `.msa` + 350 `.wyt` + catálogos — dossiê em `docs/cliente/` |
 | `wyd-portal/` | UI Next.js (BFF; nunca escreve estado vivo) |
-| `roadmap-rust/` | `index.md` + `issues/` (fases 00–15, incl. 02-4/02-5 e 08-4…08-7) |
+| `roadmap-rust/` | `index.md` + `issues/` (fases 00–15, incl. PROC-11/PROC-12 e CLIENT-04…CLIENT-07) |
 | `docker/`, `.github/`, `.vscode/` | container (inclui `docker/monitoring/`: Prometheus, Grafana, Loki, Alloy), CI, editor |
 | `.agents/skills/` | skills vigentes (`wyd-rust-*`, `wyd-client-reverso`, boas práticas) |
 | ~~arquivo Go/C++~~ | **removido em 2026-11** — sem leitura, sem cópia; fonte canônica é `docs/` + `crates/` (mudança exige ADR) |

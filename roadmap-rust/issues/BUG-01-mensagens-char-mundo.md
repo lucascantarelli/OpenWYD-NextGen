@@ -1,6 +1,10 @@
-# Issue BUG-01 — Mensagens do cliente ausentes + personagem não entra no mundo
+# BUG-01 — Mensagens do cliente ausentes + personagem não entra no mundo
 
-**Tipo:** Bug · **Esforço:** M · **Depende de:** ROAD-01 · **Bloqueia:** onda 1 (jogável)
+> **ID canônico:** `BUG-01`
+> **ID histórico:** `BUG-01`
+> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+
+**Tipo:** Bug · **Esforço:** M · **Depende de:** PROC-24 · **Bloqueia:** onda 1 (jogável)
 
 ## Objetivo
 
@@ -9,7 +13,7 @@
 ## Contexto / evidência
 
 - Relato `prompt.md`: senha incorreta não mostra mensagem (só não loga); char não entra no mundo.
-- Código atual: senha errada → `reply_recusa(NewAccountFail, CodigoRecusa::Senha)` com trailer 1 B (`Size=13`); PIN errado → `AccountSecureFail` + fecha; `CharacterLogin` monta `STRUCT_MOB` do banco, entra via `Engine::enter` com `scene_id < MAX_USER`, responde `CNFCharacterLogin` + `UpdateScore` + cena `ESCENE_FIELD` (FASE-03-17). Testes de fio passam (`login`, `selchar`, `cena_mobs`), mas prova visual no 7662 segue pendente (resíduo FASE-03-17/08-6).
+- Código atual: senha errada → `reply_recusa(NewAccountFail, CodigoRecusa::Senha)` com trailer 1 B (`Size=13`); PIN errado → `AccountSecureFail` + fecha; `CharacterLogin` monta `STRUCT_MOB` do banco, entra via `Engine::enter` com `scene_id < MAX_USER`, responde `CNFCharacterLogin` + `UpdateScore` + cena `ESCENE_FIELD` (GAME-17). Testes de fio passam (`login`, `selchar`, `cena_mobs`), mas prova visual no 7662 segue pendente (resíduo GAME-17/CLIENT-06).
 - Hipótese principal (não conclusão): o 7662 pode esperar `Size=12` sem trailer ou outro `*Fail`/painel para exibir texto — `reply_recusa` documenta "cliente antigo lê só HEADER", mas sem captura isso é UNVERIFIED.
 
 ## Passos
@@ -57,7 +61,15 @@ Saída esperada: cada recusa com motivo distinto no log; admin entra, aparece na
 
 - [ ] Senha/PIN errados exibem recusa visível ou motivo documentado como limitação do 7662 com evidência.
 - [ ] Admin entra no mundo, vê cena, sai e reloga imediatamente.
-- [ ] Nenhum `panic!` em byte de rede (Strict).
+- [x] Nenhum `panic!` em byte de rede (Strict).
+
+## Revisão de prova (2026-11-12)
+
+- **Provado:** as recusas têm motivo distinto no log e os testes de fio (`login`, `selchar`,
+  `cena_mobs`) passam; a entrada no mundo entrega `ClientID` de jogador, `UpdateScore` e cena.
+- **Pendente:** a matriz mensagem × exibe/não-exibe no 7662 e a reprodução de cada recusa com
+  conta admin. Sem captura, o `Size=12` puro continua **UNVERIFIED** e não vira correção.
+- **Dependência:** cliente/VM (`CLIENT-06`); a prova visual de entrada é a mesma da `GAME-17`.
 
 ## Riscos / rollback
 

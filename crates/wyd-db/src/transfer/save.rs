@@ -1,4 +1,4 @@
-//! Política de save e dreno da fila de persistência (FASE-04-3).
+//! Política de save e dreno da fila de persistência (PROC-16).
 //!
 //! **Nenhum `await` no tick:** o Hot Path só chama [`SaveQueue::enqueue`], que é
 //! `try_send` em canal limitado (custo de nanossegundos, sem lock global). Quem abre

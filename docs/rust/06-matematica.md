@@ -38,7 +38,7 @@ crates/wyd-sim/
 │   │   ├── drop.rs         # roll por item (1..1.000.000)
 │   │   ├── regen.rs        # HP/MP por tick com resto acumulado
 │   │   ├── threat.rs       # aggro e estado de criatura (matemática)
-│   │   └── refine.rs       # +0..+15, gemas (FASE-03-2/10)
+│   │   └── refine.rs       # +0..+15, gemas (GAME-02/10)
 │   ├── scenario/combat.rs  # ordem do golpe e do tick
 │   └── report/table.rs     # saída comparável em texto
 └── tests/
@@ -61,12 +61,12 @@ crates/wyd-sim/
 | Resistência elemental | `formula/resist.rs` | ✅ (D-11) | `classes.md` §2 (fogo/gelo) |
 | Drop por item | `formula/drop.rs` | ✅ | `sistemas/drops.md` §1 (roll 1..1.000.000) |
 | Regeneração | `formula/regen.rs` | ✅ | `classes.md` §2 (2.000 HP/s) |
-| Aggro / IA de criatura | `formula/threat.rs` | ✅ matemática; FSM na FASE-03-6 | `adr/0010-ia-npc-e-bots.md` §5 |
+| Aggro / IA de criatura | `formula/threat.rs` | ✅ matemática; FSM na GAME-06 | `adr/0010-ia-npc-e-bots.md` §5 |
 | Refino +0→+15 (taxa por passo) | `formula/refine.rs` | ✅ | WYD International (90…50%) + Aylin 30% + Lac 3% + Odin 4/3/2/1% |
 | Refino com pó do legado (piedade, tetos) | `formula/refine.rs` | ✅ | `SancRate.txt` (36 células efetivas) + `RefineRate.txt` + `g_pSuccessRate` |
 | Gema de efeito (+10..+15) | `formula/refine.rs` | ✅ | Kersef + ABC (40 × (nível−9); drop 8%, EXP 2%) |
 | Composição Anct / +12..+15 (bônus) | `formula/refine.rs` | ✅ taxas; fiação ⬜ | `docs/wyd/sistemas/refino-auditoria.md` §3 |
-| Velocidade / hits duplicados | `formula/speed.rs` | ⛔ bloqueado | FASE-10-2 (causa não provada) |
+| Velocidade / hits duplicados | `formula/speed.rs` | ⛔ bloqueado | GAME-20 (causa não provada) |
 | Economia (imposto, preço, drop de gold) | `formula/economia.rs` | ⬜ planejado | Kersef (10% loja, 40% castelo) |
 | Arena / Battle Royale (pontuação) | `formula/arena.rs` | ⬜ planejado | `docs/wyd/sistemas/battle-royale.md` |
 
@@ -83,7 +83,7 @@ Mitigação aplicada:
 
 - os **números** são os mesmos e estão presos por golden nos dois crates;
 - a **fonte** é o manual (`docs/wyd/sistemas/refino.md` §3) e o banco (`refine_gem_effect`);
-- a unificação (enum/contrato em `wyd-protocol`) é dívida registrada para a FASE-10-1, quando
+- a unificação (enum/contrato em `wyd-protocol`) é dívida registrada para a GAME-19, quando
   a ordem de combate fechar e o contrato de efeito estabilizar.
 
 Estado atual da dívida: a **regra** existe só como tabela duplicada; a **transação** existe

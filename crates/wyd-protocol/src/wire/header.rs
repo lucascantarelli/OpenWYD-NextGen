@@ -71,7 +71,7 @@ impl std::error::Error for HeaderError {}
 /// `repr(C)` fixa o layout na ordem declarada (sem reordenação do compilador);
 /// os offsets de fio são provados por teste (`repr_c_matches_wire_offsets`).
 /// O parse continua por leitura explícita little-endian (sem `unsafe`, sem
-/// dependência externa) — veja a decisão na issue FASE-08-2.
+/// dependência externa) — veja a decisão na issue CLIENT-02.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Header {

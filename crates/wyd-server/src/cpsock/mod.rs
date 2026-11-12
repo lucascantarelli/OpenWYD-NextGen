@@ -9,7 +9,7 @@
 //! conta já em jogo é recusa de sessão (protocolo está ok). Sem banco a conexão é recusada em
 //! vez de abrir sessão sem lastro.
 //!
-//! Depois do `CNF` a conexão **continua** na seleção de personagem (`FASE-08-2`): o laço
+//! Depois do `CNF` a conexão **continua** na seleção de personagem (`CLIENT-02`): o laço
 //! `serve_selection` consome cada frame inteiro (sem dessincronizar o `Size` seguinte), renova
 //! a cerca e atende `_MSG_CreateCharacter`/`_MSG_DeleteCharacter`/`_MSG_CharacterLogin` por
 //! `characters.rs`. Pacote que este processo ainda não serve (chat, `_MSG_Ping`, mundo) é
@@ -94,7 +94,7 @@ const RENEW_EVERY: Duration = Duration::from_secs(30);
 #[derive(Debug, Clone)]
 enum Stage {
     Selecting,
-    /// Encarnado: entidade do mundo (FASE-03-8), quando o processo tem mundo, mais o
+    /// Encarnado: entidade do mundo (GAME-08), quando o processo tem mundo, mais o
     /// personagem escolhido — `_MSG_ApplyBonus` precisa dele para gravar a progressão.
     InGame {
         entity: Option<wyd_core::Entity>,
@@ -112,7 +112,7 @@ enum Stage {
 /// entrada/saída de jogador: quem saiu vira `_MSG_RemoveMob`, quem entrou vira
 /// `_MSG_CreateMob`, e nada é reenviado sem necessidade — nem fica mob órfão no cliente.
 /// (Entidade que só mudou de posição não é reenviada: o pacote de movimento não está provado,
-/// resíduo declarado na FASE-03-9.)
+/// resíduo declarado na GAME-09.)
 #[derive(Debug, Clone, Default)]
 struct Scene {
     generation: u64,

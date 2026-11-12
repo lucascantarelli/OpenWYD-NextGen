@@ -1,5 +1,5 @@
 /**
- * Eventos de mundo (PORTAL-05, FASE-07-6).
+ * Eventos de mundo (WEB-11, WEB-06).
  *
  * Foto (`world_event_admin/get_world_event_config`) e liga/desliga auditado
  * (`set_world_event_config`), via `adminCall`. Ligar/desligar vale para o

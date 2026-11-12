@@ -3,8 +3,8 @@
 - **Estado:** proposta (planejamento; nada implementado)
 - **Data:** 2026-11-08
 - **Decisores:** dono do projeto + agente (a dúvida "os bots com IA estão planejados?" abriu a análise)
-- **Governa:** `roadmap-rust/issues/FASE-03-6-ia-npc.md`,
-  `roadmap-rust/issues/FASE-15-3-bots-carga.md`, `docs/rust/07-ia-e-bots.md`
+- **Governa:** `roadmap-rust/changelog.md`,
+  `roadmap-rust/issues/QA-11-bots-carga.md`, `docs/rust/07-ia-e-bots.md`
 - **Depende de:** ADR-0001 (monolito Hot Path), ADR-0002 (estrutura de módulos),
   ADR-0004 (ECS), ADR-0006 (async diferido), ADR-0009 (conteúdo no banco)
 
@@ -114,8 +114,8 @@ Regras que decorrem da decisão:
   orçamento, divergências dos docs legados).
 - Modelo de decisão e determinismo verificável: `docs/arquitetura/ia-bots.md` (unidades,
   cadência de 4 ticks, golden de decisão, estado/observação, mapa de pastas, D-IA01..D-IA06).
-- Issues: `roadmap-rust/issues/FASE-03-6-ia-npc.md`,
-  `roadmap-rust/issues/FASE-15-3-bots-carga.md`.
+- Issues: `roadmap-rust/changelog.md`,
+  `roadmap-rust/issues/QA-11-bots-carga.md`.
 - Árvores atualizadas nesta ADR: `docs/arquitetura/estrutura-e-padroes.md` §1 (DAG),
   §10 (`wyd-core/src/npc/`), §14 (`wyd-sim/src/bot/`), §15 (inalterado: `tools/` segue
   sem runtime).
@@ -125,7 +125,7 @@ Regras que decorrem da decisão:
 
 ## Revisão
 
-- Revisar quando: a FASE-03-6 medir o custo real da IA no tick; o dono decidir sobre LLM
+- Revisar quando: a GAME-06 medir o custo real da IA no tick; o dono decidir sobre LLM
   (custo/chave/provedor); `mob_template_stat` for populado (a IA depende de stats de
   monstro que hoje estão vazios — `crates/wyd-db/migrations/README.md`, "Lacunas
   declaradas").

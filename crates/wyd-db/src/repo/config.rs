@@ -1,4 +1,4 @@
-//! Configuração editável pelo portal (FASE-07-6): taxas, drops, NPC e teleporte.
+//! Configuração editável pelo portal (WEB-06): taxas, drops, NPC e teleporte.
 //!
 //! Duas camadas de propósito: o **seed** continua sendo a fonte histórica e a edição do
 //! staff vira `*_override`, com autor, fonte e data. O `reset` apaga o override e o valor
@@ -1382,7 +1382,7 @@ impl PgBackend {
         Ok(version)
     }
 
-    /// NPCs definidos no mundo em páginas por id (lista do portal, FASE-07-5).
+    /// NPCs definidos no mundo em páginas por id (lista do portal, WEB-05).
     ///
     /// `after_id` é o cursor: `None` começa do primeiro. Sem o `blob` do template para a
     /// lista de 6.100 caber no teto sem pesar a resposta.
@@ -1419,7 +1419,7 @@ impl PgBackend {
             .collect())
     }
 
-    /// Templates de mob em páginas por nome (lista do portal, FASE-07-5).
+    /// Templates de mob em páginas por nome (lista do portal, WEB-05).
     ///
     /// A fonte é `npc_template` (semeada); `mob_template_stat`/`mob_template_equip` estão
     /// vazias até a FASE-10 e não servem lista nenhuma. Cursor sobre `template_name`.
@@ -1450,7 +1450,7 @@ impl PgBackend {
             .collect())
     }
 
-    /// Efeitos de item em páginas por nome (lista do portal, FASE-07-5).
+    /// Efeitos de item em páginas por nome (lista do portal, WEB-05).
     ///
     /// O código numérico do `ItemEffect.h` não foi provado (`confirmed = false`): a lista
     /// mostra o símbolo `EF_*`, o rótulo e a categoria que o seed declara, sem número.
@@ -1482,7 +1482,7 @@ impl PgBackend {
             .collect())
     }
 
-    /// Recompensas diárias em páginas por id (lista do portal, FASE-07-6).
+    /// Recompensas diárias em páginas por id (lista do portal, WEB-06).
     ///
     /// Base semeada vazia: lista vazia é resposta válida, nunca erro.
     pub async fn config_daily_rewards(
@@ -1642,7 +1642,7 @@ impl PgBackend {
         Ok(version)
     }
 
-    /// Loja de donate em páginas por id (lista do portal, FASE-07-6).
+    /// Loja de donate em páginas por id (lista do portal, WEB-06).
     pub async fn config_donate_items(
         &self,
         limit: i64,
@@ -1832,7 +1832,7 @@ impl PgBackend {
         Ok(version)
     }
 
-    /// Eventos de mundo com estado (lista do portal, FASE-07-6).
+    /// Eventos de mundo com estado (lista do portal, WEB-06).
     pub async fn config_world_events(&self) -> Result<Vec<WorldEventRow>, DbError> {
         let rows = sqlx::query(
             "SELECT code, name, kind, enabled, requires_city, description \
@@ -1921,7 +1921,7 @@ impl PgBackend {
         Ok(version)
     }
 
-    /// Contas em páginas por id, sem hash/PIN/segredo (lista do portal, FASE-07-6).
+    /// Contas em páginas por id, sem hash/PIN/segredo (lista do portal, WEB-06).
     pub async fn config_accounts(
         &self,
         limit: i64,

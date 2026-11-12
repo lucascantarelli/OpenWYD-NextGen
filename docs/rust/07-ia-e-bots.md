@@ -2,8 +2,8 @@
 
 > Documento de execução (irmão de `06-matematica.md`). Decisão de arquitetura:
 > `docs/arquitetura/adr/0010-ia-npc-e-bots.md`. Árvores: `estrutura-e-padroes.md`
-> §10 (`wyd-core`) e §14 (`wyd-sim`). Issues: `FASE-03-6` (IA de NPC) e
-> `FASE-15-3` (bots de carga). Painel: `03-progresso.md`.
+> §10 (`wyd-core`) e §14 (`wyd-sim`). Issues: `GAME-06` (IA de NPC) e
+> `QA-11` (bots de carga). Painel: `03-progresso.md`.
 
 ## 1. Resposta curta
 
@@ -12,7 +12,7 @@ O que existia — e continua existindo — é (a) a fase "IA" do planejamento me
 de **skills de agentes de desenvolvimento**, e (b) a skill de **harness de bots de teste**,
 sem código de bot em `crates/`. A definição da suíte de bots citada pelo `start-rust.md`
 (`pre-release-bots.md`) **não está na árvore**.Este documento fechou a lacuna de planejamento; a **camada A** foi executada em 2026-11-08
-(FASE-03-6, ADR-0016) — `crates/wyd-core/src/npc/` + `systems/npc.rs`. As camadas B e C
+(GAME-06, ADR-0016) — `crates/wyd-core/src/npc/` + `systems/npc.rs`. As camadas B e C
 seguem sem código.
 
 ## 2. Estado por item (existente · planejado · lacuna)
@@ -24,7 +24,7 @@ seguem sem código.
 | Simulação massiva de combate (`wyd-sim`) | **existente (estrutura)** | `pre-release-rust.md` FASE 10 §10.3; `estrutura-e-padroes.md` §14; `docs/rust/06-matematica.md` |
 | `pre-release-bots.md` (definições da suíte) | **lacuna** | citado em `start-rust.md` l. 6; ausente na raiz (`ls *.md`: `AGENTS.md`, `README.md`, `pre-release-rust.md`, `start-rust.md`) |
 | IA de NPC (aggro/perseguição/ataque/fuga/retorno) | **executada (2026-11-08)** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); matemática de ameaça copiada de `crates/wyd-sim/src/formula/threat.rs` e presa por golden em `tests/integracao/npc.rs`; tabela `npc_behavior` continua ausente (perfil vem por parâmetro) |
-| Bots jogáveis (cliente falso) | **planejado** | ADR-0010 camada B; crate `crates/wyd-bots` (nova) — `FASE-15-3` |
+| Bots jogáveis (cliente falso) | **planejado** | ADR-0010 camada B; crate `crates/wyd-bots` (nova) — `QA-11` |
 | LLM para diálogo/quest/nomes | **lacuna (bloqueada por decisão do dono)** | nenhum doc cita LLM; custo/chave exigem aprovação → §7 |
 | Tabelas `npc_behavior`, `npc_dialogue`, `llm_job` | **planejado (não criado)** | `banco-catalogo.md` modela 69 tabelas de jogo/conteúdo (§6.5) |
 | Stats de monstro (insumo da IA) | **lacuna** | `mob_template_stat`/`mob_template_equip` vazias — `crates/wyd-db/migrations/README.md` §Lacunas; por isso `NpcProfile` é informado pelo chamador, não derivado do banco |
@@ -69,7 +69,7 @@ Nunca no tick, nunca no cliente, chave só em segredo de ambiente.
 ## 6. Módulos e arquivos (planejados, com caminho real)
 
 ```
-crates/wyd-core/src/npc/            # FASE-03-6 (ADR-0010)
+crates/wyd-core/src/npc/            # GAME-06 (ADR-0010)
 ├── mod.rs            # fachada do módulo (sem lógica)
 ├── state.rs          # NpcState em SoA: alvo, rota, cooldown, âncoras, humor
 ├── behavior.rs       # FSM (transições explícitas, uma função por estado)
@@ -79,7 +79,7 @@ crates/wyd-core/src/npc/            # FASE-03-6 (ADR-0010)
 crates/wyd-core/src/systems/npc.rs  # integração com o tick (ordem documentada)
 crates/wyd-core/tests/integracao/npc.rs        # determinismo: mesmo seed → mesmas decisões
 
-crates/wyd-sim/src/bot/             # FASE-15-3
+crates/wyd-sim/src/bot/             # QA-11
 ├── mod.rs
 ├── persona.rs        # perfil (classe, nível, objetivo) — dado, sem lógica
 └── policy.rs         # estado → ação, pura e testável (mesma FSM do core)
@@ -143,7 +143,7 @@ Propostas iniciais (a medir, não fatos):
 | custo da IA no tick | ≤ 10% do orçamento do tick com 500 NPCs ativos | **medido** (5 execuções): `cargo bench -p wyd-core --bench tick` → 88,6–204,5 µs/tick (p99 até 367,8) = 0,18%–0,41% do tick de 50 ms com 500 NPCs + 50 jogadores (pior p99 0,74%); 0,71–1,64 µs/decisão; sem alvos 12,5–31,8 µs |
 | cadência de decisão | 5 Hz por NPC, escalonada por `entity_id % 4` para não concentrar | **feito**: `npc::budget::should_decide` + `DecisionBudget`, teste de cadência em `tests/integracao/npc.rs` |
 | decisões por tick | teto fixo; excedente espera o próximo ciclo | teste de saturação |
-| bots de carga | 200 conexões, P99 de pacote registrado | relatório da `FASE-15-3` |
+| bots de carga | 200 conexões, P99 de pacote registrado | relatório da `QA-11` |
 | custo de LLM | 0 por padrão; teto por job e por dia quando habilitado | tabela `llm_job` (tokens/custo por linha) |
 
 Telemetria (FASE-06, `docs/rust/…`, skill `wyd-rust-obs`): decisões/s, profundidade da
@@ -152,10 +152,10 @@ funciona" é opinião.
 
 ## 11. Ordem de execução
 
-1. `FASE-03-6` — IA de NPC no core (FSM + utilidade + determinismo + bench). **Entregue em
+1. `GAME-06` — IA de NPC no core (FSM + utilidade + determinismo + bench). **Entregue em
    2026-11-08** (ADR-0016) sem depender de `mob_template_stat`: o perfil de comportamento é
    parâmetro validado no boot. Bench de custo por tick executável e medido (§10).
-2. `FASE-15-3` — crate `wyd-bots`, política em `wyd-sim`, carga e relatório.
+2. `QA-11` — crate `wyd-bots`, política em `wyd-sim`, carga e relatório.
 3. LLM (camada C) — sem issue até o dono decidir provedor, custo e quem revisa.
 
 ## 12. O que este plano **não** faz

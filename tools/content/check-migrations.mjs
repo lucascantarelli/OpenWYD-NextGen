@@ -90,7 +90,7 @@ for (const { file, table } of inserts) {
 const tables = created.size;
 
 // Gate de deriva: a contagem do código tem de bater com a contagem registrada nos documentos.
-// Ao criar uma migration, atualize os números abaixo e os documentos citados (FASE-02-6).
+// Ao criar uma migration, atualize os números abaixo e os documentos citados (PROC-13).
 const DOCUMENTED = { migrations: 48, tables: 86 };
 if (files.length !== DOCUMENTED.migrations) {
   problems.push(`${files.length} migrations no código, ${DOCUMENTED.migrations} documentadas`);

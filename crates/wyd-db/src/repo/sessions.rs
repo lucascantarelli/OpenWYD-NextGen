@@ -81,14 +81,14 @@ pub trait Sessions {
         ttl_secs: i64,
     ) -> impl Future<Output = Result<u64, DbError>> + Send;
 
-    /// Lotação e manutenção do canal (FASE-06-3); linha ausente = [`ChannelCapacity::permissive`].
+    /// Lotação e manutenção do canal (QA-06); linha ausente = [`ChannelCapacity::permissive`].
     fn channel_capacity(
         &self,
         group_id: i16,
         channel: i16,
     ) -> impl Future<Output = Result<ChannelCapacity, DbError>> + Send;
 
-    /// Papel do canal (FASE-03-10); linha ausente = `None` (o chamador assume `normal`).
+    /// Papel do canal (GAME-10); linha ausente = `None` (o chamador assume `normal`).
     fn channel_role(
         &self,
         group_id: i16,

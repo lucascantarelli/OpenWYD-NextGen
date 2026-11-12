@@ -17,9 +17,8 @@ test("concessão pela tela credita o ouro do personagem", async ({ page }) => {
 
   await expect(page.getByTestId(`gold-${id}`)).toHaveText("0");
 
-  await row.getByLabel("Chave de idempotência").fill(`e2e-hero-${Date.now()}`);
-  await row.getByLabel("Ouro").fill("250");
-  await row.getByRole("button", { name: "Conceder ouro" }).click();
+  await row.getByLabel(`Ouro a conceder para o personagem #${id}`).fill("250");
+  await row.getByRole("button", { name: "Conceder" }).click();
 
   await expect(row.getByRole("status")).toContainText("enfileirada");
 

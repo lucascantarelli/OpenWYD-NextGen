@@ -1,11 +1,11 @@
 # ADR-0018 — Telemetria: `tracing` + exporter Prometheus próprio
 
-**Status:** aceito · **Data:** 2026-11-08 · **Fase:** 06-1 · **Depende de:** ADR-0006 (deps diferidas),
+**Status:** aceito · **Data:** 2026-11-08 · **Fase:** QA-04 · **Depende de:** ADR-0006 (deps diferidas),
 ADR-0017 (perfil de release/imagem)
 
 ## Contexto
 
-O motor não tinha observabilidade: nenhum log estruturado, nenhuma métrica, e a issue 06-1 pede
+O motor não tinha observabilidade: nenhum log estruturado, nenhuma métrica, e a issue QA-04 pede
 tick P50/P95/P99, pacotes/s, entidades ativas e memória **sem `println!` como telemetria**, com
 overhead medido e possibilidade de desligar a exportação. O `Cargo.lock` era fechado em 7 pacotes
 (só crates do workspace + `wyd-protocol`): qualquer dependência nova precisa de decisão explícita,
@@ -35,7 +35,7 @@ DAG de crates `protocolo ← net ← core` (net **não** depende de core).
    `process_resident_memory_bytes 0` + `wyd_memory_samples_total 0` (ausência declarada, sem FFI
    `unsafe` e sem número inventado).
 
-## Nomes publicados (contrato da 06-1)
+## Nomes publicados (contrato da QA-04)
 
 | Métrica | Tipo | Origem |
 |---|---|---|
@@ -93,4 +93,4 @@ Config: `WYD_LOG` (nível) e, no binário, `WYD_METRICS_ADDR` (default `127.0.0.
 `tracing` e a resposta HTTP real de `GET /metrics` com `wyd_ticks_total 40`,
 `wyd_tick_duration_microseconds_count 40`, buckets cumulativos e `wyd_entities_active 104`;
 `cargo test -p wyd-net --features metrics --test integracao_metrics` cobre pacotes/recusas/gauges.
-Gates e números da passada em `roadmap-rust/issues/FASE-06-1-telemetria.md`.
+Gates e números da passada em `roadmap-rust/changelog.md`.

@@ -21,7 +21,7 @@
 //! `MobID` (+16). Já o `_MSG_RemoveMob` (16 B) usa `HEADER.ID` = id da entidade e corpo
 //! `int RemoveType` (0 fora de vista, 1 morte, 2 logout).
 //!
-//! O que **não** está provado aqui: a captura ao vivo (FASE-08-6) — o cliente 7662 ainda não
+//! O que **não** está provado aqui: a captura ao vivo (CLIENT-06) — o cliente 7662 ainda não
 //! foi observado recebendo estes bytes. Este crate garante o layout das fontes acima, não o
 //! comportamento do binário fechado; por isso `docs/cliente/pacotes.md` registra o status de
 //! cada pacote separadamente.

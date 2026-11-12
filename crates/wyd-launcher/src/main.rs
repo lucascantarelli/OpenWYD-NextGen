@@ -553,7 +553,7 @@ fn noticias_da_janela(efetiva: &configuracao::Efetiva) -> gui::Noticias {
     }
 }
 
-/// Gera a janela do launcher GUI (contrato visual da FASE-08-8) na identidade efetiva.
+/// Gera a janela do launcher GUI (contrato visual da CLIENT-08) na identidade efetiva.
 fn cmd_gui(dir: &str, dry_run: bool, efetiva: &configuracao::Efetiva) -> ExitCode {
     relatar_identidade(efetiva);
     let noticias = noticias_da_janela(efetiva);

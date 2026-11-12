@@ -22,7 +22,7 @@
 Gate único, executado ao fim de **toda** issue:
 
 ```bash
-make check      # fmt --check + clippy -D warnings + build + test
+make check      # fmt + clippy + build + test + migrations + issues + docs (links/crates)
 ```
 
 Sem `make` no host Windows (Git Bash), os quatro comandos `cargo` equivalentes
@@ -31,7 +31,7 @@ valem como gate (registrar qual foi usado na evidência).
 ## 2. Fluxo de branch
 
 - `develop` é a branch principal de desenvolvimento (`start-rust.md`).
-- Uma issue = uma branch: `fase/NN-slug` (ex.: `fase/03-1-tick`), criada de
+- Uma issue = uma branch: `fase/NN-slug` (ex.: `fase/GAME-01-tick`), criada de
   `develop`, mergeada de volta com `--no-ff`.
 - Commits pequenos, descritivos, em português, um por passo relevante.
 - Proibido: force-push em `develop`/`main`, commit de segredo, `client/`,
@@ -53,14 +53,14 @@ Checklist fixo, registrado em `docs/rust/03-progresso.md`:
 
 1. `make check` + `cargo test --all-targets`.
 2. `cargo bench` comparado ao baseline anterior (sem baseline = criar agora). Baseline
-   registrado na FASE-05-1 (2026-11-08): IA de NPC 88,6–205,9 µs/tick com 500 NPCs + 50
+   registrado na QA-02 (2026-11-08): IA de NPC 88,6–205,9 µs/tick com 500 NPCs + 50
    jogadores; balde de transporte 1,4–8,1 ns/op e porte 234–595 ns por handshake.
 3. Testes de integração entre módulos tocados nas 10 issues.
 4. ADRs pendentes/propostas que precisam ser decididas.
 5. Docs vivos: `03-progresso.md`, `roadmap-rust/index.md`, `docs/arquitetura/`.
 6. Débito aberto pelas 10 issues (TODO registrado, nunca silencioso).
 
-## 6. Release e imagem (FASE-05-2, ADR-0017)
+## 6. Release e imagem (QA-03, ADR-0017)
 
 `[profile.release]` do workspace: `lto = "thin"`, `codegen-units = 1`,
 `strip = "symbols"`, `panic = "abort"`. Não existe `[profile.bench]`: o Cargo ignora `panic`
@@ -81,7 +81,7 @@ Comandos: `make release`, `make docker`, `make docker-smoke` (exige Docker; o sm
 `target/smoke` com manifesto gerado localmente, fora do git). Build do portal valida sintaxe
 por `docker build --check`; o build completo é do artefato do portal.
 
-## 7. Telemetria (FASE-06-1, ADR-0018)
+## 7. Telemetria (QA-04, ADR-0018)
 
 **Log estruturado:** `tracing` + `tracing-subscriber` (`fmt`, sem `env-filter`) em `wyd-core`.
 Nível por `WYD_LOG` (fallback `RUST_LOG`; `error|warn|info|debug|trace|off`, default `info`).

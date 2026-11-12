@@ -240,7 +240,7 @@ Nenhuma tabela ❌ vira migration por causa deste contrato. O rito é o do proje
    `AGENTS.md` §4) e com que nome — `banco-catalogo.md` é gerado por `make banco-catalogo` e
    precisa passar (`cargo test -p wyd-db`, `make banco-verify`, ver `modelo-banco.md` §4);
 2. se a mudança for estrutural (nova entidade, novo `kind`, mudança de autoridade), ADR antes do
-   SQL (`docs/arquitetura/adr/`, rito FASE-13-1);
+   SQL (`docs/arquitetura/adr/`, rito PROC-21);
 3. só então a migration `NNNN_descricao.sql` **com** `-- migrate:up` e `-- migrate:down`, onde o
    down reverte exatamente o up (`modelo-banco.md` §4; skill `wyd-rust-db` regra 1) — sem
    `ALTER TABLE` no `up` (coluna nova nasce na criação da tabela).
@@ -278,7 +278,7 @@ exp, hp, mp, pos_x, pos_y, created_at, updated_at, deleted_at`
 
 ## 7. `sqlx` e o caminho de execução
 
-O crate tem **28 migrations e 66 tabelas** e, desde a FASE-04-3, **usa `sqlx`** (ADR-0021): pool
+O crate tem **28 migrations e 66 tabelas** e, desde a PROC-16, **usa `sqlx`** (ADR-0021): pool
 real, adapters `pg` das três portas e fila de save drenada fora do tick. Destino normativo
 (`visao-pastas.md` §2): `wyd-db` = `model/`, `repo/`, `pool/`, `transfer/`, `migrations/`.
 
@@ -298,7 +298,7 @@ Correção de rumo registrada: o legado **grava personagem inteiro** por `UPDATE
 (§3); o Rust deve gravar por **diff/agregado** e fora do tick — a diferença não é cosmética, é o
 que impede o tick de bloquear em I/O.
 
-### 7.1 Fila de save e política (FASE-04-3)
+### 7.1 Fila de save e política (PROC-16)
 
 | Peça | Onde | Contrato |
 |---|---|---|

@@ -2,8 +2,8 @@
 
 - **Estado:** aceita (2026-11-08)
 - **Data:** 2026-11-08
-- **Decisores:** dono do projeto + agente (fechamento do eixo inventário da FASE-03-5)
-- **Governa:** `crates/wyd-core/src/systems/inventory.rs`, FASE-03-5
+- **Decisores:** dono do projeto + agente (fechamento do eixo inventário da GAME-05)
+- **Governa:** `crates/wyd-core/src/systems/inventory.rs`, GAME-05
 - **Depende de:** ADR-0001 (Hot Path), ADR-0004 (ECS SoA), ADR-0009 (conteúdo no banco),
   ADR-0012 (gema), ADR-0014 (autoridade)
 
@@ -76,7 +76,7 @@ Regras que decorrem dela:
 
 ## Rastreabilidade
 
-- Issue consumidora: `roadmap-rust/issues/FASE-03-5-autoridade-servidor.md`.
+- Issue consumidora: `roadmap-rust/issues/GAME-05-autoridade-servidor.md`.
 - Docs: `docs/arquitetura/autoridade-servidor.md`, `estrutura-e-padroes.md` §10,
   `docs/rust/03-progresso.md` (entrada datada).
 - Evidência: `crates/wyd-core/tests/integracao/inventario.rs` (10 testes) +
@@ -84,7 +84,7 @@ Regras que decorrem dela:
 
 ## Revisão
 
-- Revisar quando: o protocolo 7662 provar o layout de `MSG_ItemMove`/equipar (FASE-08-6), os
+- Revisar quando: o protocolo 7662 provar o layout de `MSG_ItemMove`/equipar (CLIENT-06), os
   atributos `req_str/int/dex/con` entrarem no `Stats` (FASE-10), ou o baú/`vault_items` ganhar
   operação (fora do core hoje).
 - Sinais de que envelheceu: cliente escolhendo slot de equipamento, item desaparecendo em troca,

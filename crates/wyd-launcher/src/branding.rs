@@ -5,7 +5,7 @@
 //! (`<img src="Launcher.bmp">`). Os dois arquivos são formatos totalmente decodificáveis —
 //! BMP 24 bits sem compressão e HTML —, então esta é a superfície da tela inicial que dá para
 //! pintar **sem** RE do `.wyt` (a tela de seleção de servidor do `WYD.exe`, que fica para a
-//! FASE-08-6).
+//! CLIENT-06).
 //!
 //! A escrita é atômica com backup (`.bak`), igual ao `serverlist.bin`: nunca um arquivo meio
 //! escrito no lugar do válido.

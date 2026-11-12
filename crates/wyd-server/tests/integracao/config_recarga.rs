@@ -1,4 +1,4 @@
-//! Recarga de configuração viva (FASE-07-6): portal → `config_revision` → snapshot.
+//! Recarga de configuração viva (WEB-06): portal → `config_revision` → snapshot.
 //!
 //! Sem banco externo: `MemDb` faz o papel das tabelas, **com as mesmas validações** de
 //! `config_set_rate`, e incrementa a revisão na mesma "transação" (escrita + bump). O teste

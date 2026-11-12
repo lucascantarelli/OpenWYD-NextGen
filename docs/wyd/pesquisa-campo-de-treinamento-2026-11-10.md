@@ -153,7 +153,7 @@ Observações:
 ## 5. Encaixe no nosso servidor (o que falta)
 
 1. **Entrada no mundo visível** — o bloqueio atual: id de cena do jogador acima de `MAX_USER`
-   (1000) e falta do `UpdateScore` de entrada (corrigido em `FASE-03-17`).
+   (1000) e falta do `UpdateScore` de entrada (corrigido em `GAME-17`).
 2. **Handler `_MSG_Quest` (0x028B)** com validação de NPC por `merchant`, estágio
    `Newbie` persistido por personagem (tabela própria, sem escrever em tabela de personagem
    vivo) e as recompensas escolhidas.
@@ -161,7 +161,7 @@ Observações:
    tempo — hoje o opcode cai em `outro`.
 4. **Buff NPC**: affect 44 do legado (200,200) ou o que o snapshot do nosso servidor definir.
 5. **Boss e drops**: `npc_definition` + `drop_table` do `OrcWarrior` e dos três guardiões.
-6. **Bots**: 4 bots autônomos (um por raça) executando a quest inteira (`FASE-15-4`).
+6. **Bots**: 4 bots autônomos (um por raça) executando a quest inteira (`GAME-23`).
 
 ### 2.6 Tabela de implementação fixada pela decisão do dono
 
@@ -175,5 +175,5 @@ Observações:
 Limite: nível **1..=35** (36 já recusa). Arma inicial: **Unicorn**, sem Sephira. Pré-requisitos
 comuns: `MORTAL`, nível no limite, estágio anterior concluído.
 
-Issues: `FASE-03-17` (entrada no mundo fiel ao legado, entregue), `FASE-03-18` (Campo de
-Treinamento), `FASE-15-4` (bots).
+Issues: `GAME-17` (entrada no mundo fiel ao legado, entregue), `GAME-18` (Campo de
+Treinamento), `GAME-23` (bots).

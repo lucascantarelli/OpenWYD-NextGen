@@ -213,7 +213,7 @@ distinção completa está em `sistemas/aglutinacao.md`):
 As 1.532 sem `kind` **misturam três coisas**: ruído (índices 1/6/7/8/9 com nome de classe,
 `TransKnight`/`Foema`), **item real não classificado** (`416 Antídoto`, `419 Resto_de_Oriharucon`,
 `4141 Lactolerium_100`) e placeholder (`not_used`). Separar os três é a primeira tarefa da
-FASE-03-12 — sem isso, a regra "sem classificação ⇒ teto 1" transformaria poeira real em item não
+GAME-12 — sem isso, a regra "sem classificação ⇒ teto 1" transformaria poeira real em item não
 empilhável.
 
 Duas consequências para o código, medidas agora:
@@ -221,7 +221,7 @@ Duas consequências para o código, medidas agora:
 1. **`ItemRules::max_stack` de produção existe agora** (`inventory::StackCaps`: aglutinável = 120,
    resto = 1, conteúdo de pack em mapa separado), com testes. Falta **alimentá-la do banco**: a
    consulta `item_stack_caps` precisa ler `fields` como **array** (`fields ? 'EF_AMOUNT'` funciona,
-   `->>` devolve NULL em todas as linhas) — item 3 da FASE-03-12.
+   `->>` devolve NULL em todas as linhas) — item 3 da GAME-12.
 2. **`EF_AMOUNT` é conteúdo de pack, não teto.** O legado multiplica o preço pelo `EF_AMOUNT`
    com o comentário *"itens no pack"*; no catálogo os 94 valores são 5 (37×), 10 (24×), 20 (12×),
    100 (15×), 1 (3×) e 120 (3×) — kits, pacotes e restos ".x N". Em poção, `effects[0]` é a **cura**

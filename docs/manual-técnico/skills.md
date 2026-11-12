@@ -1,52 +1,55 @@
 # Mapa de skills — Go → Rust
 
-> Resultado da FASE-01-3 (`roadmap-rust/issues/FASE-01-3-inventario-skills.md`).
-> Insumo obrigatório da FASE-09 (auditoria profunda em 09-1, execução em 09-2).
-> Fonte de verdade para agentes: `AGENTS.md` §0.
+> Resultado da PROC-07 (2026-11-12) e da auditoria de instruções de IA de 2026-11-12
+> (evidência: `docs/rust/evidencias/AUDIT-IA-2026-11-12.md`).
+> Roteador de uso para agentes: `.agents/skills/README.md`. Instruções sempre ativas: `AGENTS.md`.
 
-## 1. Skills Rust vigentes (não mexer sem ADR)
+## 1. Inventário vigente (23 `SKILL.md`)
 
-`wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`, `wyd-rust-sim`, `wyd-rust-obs`,
-`wyd-rust-toolchain`, `wyd-rust-testing` — cobrem engine/Hot Path, transporte/protocolo,
-persistência, laboratório matemático, observabilidade/hardening e build/CI.
+**Domínio Rust (10):** `wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`, `wyd-rust-sim`,
+`wyd-rust-obs`, `wyd-rust-toolchain`, `wyd-rust-testing`, `wyd-launcher`,
+`wyd-client-reverso`, `wyd-server-ops`.
 
-Boas práticas transversais: `rust-code-quality`, `software-architecture`,
-`solid-design-patterns`.
+**Jogo, portal e cliente (4):** `wyd-client-connect`, `wyd-game-admin`, `wyd-economy`,
+`wyd-web-admin-ui`.
 
-## 2. Skills de domínio herdadas do Go
+**Transversais (6):** `rust-code-quality`, `rust-test-quality`, `software-architecture`,
+`solid-design-patterns`, `frontend-design`, `github-actions-docs`.
 
-| Skill | Destino | Motivo | Conflito atual |
-|---|---|---|---|
-| `wyd-server-dev` | **aposentada** (09-2 ✅) | Go do tmserver; sucessoras `wyd-rust-core`/`-net`/`-db` | — |
-| `wyd-server-ops` | **suceder** → `wyd-rust-ops` (09-2) | operar stack, portas, logs, migrations, backup continua necessário, mas sobre Compose Rust | comandos `docker compose` de serviços Go, `make run-local` |
-| `wyd-database` | **suceder** → `wyd-rust-db` + apêndice Postgres | schema/migrations/backup seguem válidos; ferramenta passa a `sqlx`/`refinery` | migrations em `internal/migrations/` (Go) |
-| `wyd-client-connect` | **atualizar** (mesmo nome) | serverlist, versão de protocolo e diagnóstico do cliente seguem reais; muda o servidor alvo | descreve handshake do tmserver Go |
-| `wyd-client-reverso` (nova) | **criada na 08-4** | RE do cliente fechado: PE/hashes, hooks por endereço, structs, Ghidra/x64dbg, evidência presa ao build | não existia no legado Go |
-| `wyd-testing-bots` | **sucedida** → `wyd-rust-testing` (09-2 ✅) | harness/bots/carga em Rust | — |
-| `wyd-game-admin` | **atualizar** | comandos GM e papéis são regra de jogo; backend passa a `wyd-admin` | assume binServer/webserver Go |
-| `wyd-economy` | **atualizar** | preços, drops, refino e curva de EXP são domínio atemporal; ferramenta passa a `wyd-sim` | scripts/consultas no Postgres antigo |
-| `wyd-web-admin-ui` | **atualizar** | o portal continua Next.js; BFF passa a falar com `wyd-admin` | `adminCall` aponta para web-api Go |
+**Processo (3):** `documentation-writer`, `writing-plans`, `skill-creator`.
 
-## 3. Skills de engenharia (genéricas — manter)
+Cada uma tem `name`, `description` com gatilho de uso, regras acionáveis e referências que
+existem hoje. O roteador escolhe **uma principal por tarefa**; o corpo só é carregado sob demanda.
 
-`documentation-writer`, `finishing-a-development-branch`, `frontend-design`,
-`github-actions-docs`, `skill-creator`, `ui-ux-practices`, `writing-plans`.
+## 2. Histórico de sucessão e limpeza
 
-Nenhuma delas cita stack Go como vigente; são reaproveitáveis como estão.
+| Skill | Destino | Motivo |
+|---|---|---|
+| `wyd-server-dev` | **removida** (2026-11-12) | stub Go; sucessoras `wyd-rust-core`/`-net`/`-db` |
+| `wyd-testing-bots` | **removida** (2026-11-12) | alias; sucessora `wyd-rust-testing` |
+| `wyd-database` | **fundida** em `wyd-rust-db` (2026-11-12) | mesma responsabilidade: persistência técnica + operação (schema, migrations, backup, diagnóstico) |
+| `ui-ux-practices` | **removida** (2026-11-12) | conteúdo de outro projeto (`packages/app/ui`, `gp100-*`, `github-flow`); UI do WYD fica em `frontend-design` + `wyd-web-admin-ui` + `wyd-portal/README.md` |
+| `finishing-a-development-branch` | **removida** (2026-11-12) | fluxo de commit/PR não usado e conflitante com a regra de não integrar sem pedido; ciclo em `docs/rust/02-execucao.md` |
+| `writing-plans` | **reescrita** (2026-11-12) | removidos caminhos externos (`docs/superpowers/`, `superpowers:*`) e duplicação com o ciclo; agora decompõe a issue no próprio arquivo |
+| `wyd-server-ops` | **atualizada** (2026-11-12) | stack real: gateway, dois canais, portal e monitoramento; removido `tmserver` |
+| `wyd-rust-core`/`-net`/`-sim`/`-testing` | **atualizadas** (2026-11-12) | removidas notas de sucessão para stubs que já não existem |
+| `wyd-client-connect`, `wyd-game-admin`, `wyd-economy`, `wyd-web-admin-ui` | **atualizadas** (PROC-18) | já apontam para servidor/portal Rust |
+| `wyd-client-reverso` | **criada** (CLIENT-04) | RE do cliente fechado: PE/hashes, hooks, structs e evidência presa ao build |
 
-## 4. Regras para a FASE-09
+## 3. Regras de manutenção
 
-1. Skill sucessora nasce com frontmatter (`name`, `description`), regras
-   numeradas e referências a caminhos que existem hoje.
-2. Skill aposentada recebe nota de sucessão no topo (link para a nova) — o
-   conhecimento atemporal é extraído antes, nunca apagado sem registro.
-3. Nenhuma skill vigente pode citar `tmserver/*.go`, `make run-local` ou gate Go
-   como fluxo atual (grep de conferência em 09-2).
-4. Uma skill = uma responsabilidade; sobreposição é resolvida movendo a regra,
-   não duplicando.
+1. Skill nova só com lacuna demonstrada; uma skill = uma responsabilidade.
+2. `AGENTS.md` não replica catálogo nem regra detalhada: aponta para este mapa e para o roteador.
+3. Skill removida/fundida exige atualização do roteador, deste mapa, de `AGENTS.md` e de todas as
+   issues que a citam, com busca provando zero caminho morto.
+4. Nenhuma skill vigente pode citar `tmserver/*.go`, `make run-local`, `go test` ou gate Go como
+   fluxo atual.
 
-## 5. Verificação (executada em 09-2)
+## 4. Verificação
 
 ```bash
-grep -rln 'tmserver/.*\.go\|make run-local' .agents/skills/wyd-rust-* .agents/skills/rust-* .agents/skills/software-* .agents/skills/solid-* || echo SKILLS-LIMPAS
+grep -rlnE 'tmserver/.*\.go|make run-local|go test|\.agents/skills/(ui-ux-practices|finishing-a-development-branch|wyd-database)' \
+  .agents/skills AGENTS.md roadmap-rust docs || echo SKILLS-LIMPAS
+find .agents/skills -name SKILL.md | wc -l   # 23
+find .agents/skills -type f | wc -l          # 44 (23 SKILL.md + 21 de apoio)
 ```

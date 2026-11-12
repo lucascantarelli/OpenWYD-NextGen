@@ -12,11 +12,11 @@
 | Implementar protocolo/rede | [Protocolo CPSock](arquitetura/protocolo.md) · [Contrato de transporte](arquitetura/contrato-transporte-cpsock.md) · [Pacotes do cliente](cliente/pacotes.md) |
 | Mexer no banco | [Modelo de banco](arquitetura/modelo-banco.md) · [Catálogo gerado](arquitetura/banco-catalogo.md) · [Stack Docker](rust/05-stack-docker.md) |
 | Balancear o jogo | [Matemática (SIM)](arquitetura/matematica-sim.md) · [Checklist funcional](rust/08-checklist-funcionalidades.md) |
-| Operar / auditar | [Progresso vivo](rust/03-progresso.md) · Planejamento vigente (`roadmap-rust/index.md`, fora do site) · [ADRs](arquitetura/adr/README.md) |
+| Operar / auditar | [Progresso vivo](rust/03-progresso.md) · [índice de evidências](rust/evidencias/README.md) · Planejamento vigente (`roadmap-rust/index.md`, fora do site) · [ADRs](arquitetura/adr/README.md) |
 
 ## Regras da casa (não pule)
 
-1. **Estrutura antes de código** — árvore normativa em [estrutura-e-padroes](arquitetura/estrutura-e-padroes.md) §3 e §9–§15. Arquivo novo em `crates/` fora da árvore exige ADR ([rito FASE-13-1](arquitetura/adr/README.md)).
+1. **Estrutura antes de código** — árvore normativa em [estrutura-e-padroes](arquitetura/estrutura-e-padroes.md) §3 e §9–§15. Arquivo novo em `crates/` fora da árvore exige ADR ([rito PROC-21](arquitetura/adr/README.md)).
 2. **Servidor é autoridade** — cliente nunca dita posição/dano/inventário ([autoridade-servidor](arquitetura/autoridade-servidor.md)).
 3. **UNVERIFIED não vira regra** — comportamento não capturado: tolerar, logar, seguir pelo caminho conservador. Nunca inventar layout de pacote.
 4. **Ciclo por issue** — uma issue por vez, gate `make check`, docs atualizadas na mesma entrega ([execução](rust/02-execucao.md)).
@@ -34,7 +34,7 @@
 - Português, links relativos, tabelas com fonte e confiança por linha.
 - Toda afirmação técnica não confirmada leva **hipótese** ou **UNVERIFIED**.
 - Doc que descreve comportamento muda **na entrega que muda o comportamento**.
-- Duplicidade é defeito: ao encontrar dois docs dizendo o mesmo, fundir e redirecionar (ver issue `DOC-01`, em `roadmap-rust/issues/`).
+- Duplicidade é defeito: ao encontrar dois docs dizendo o mesmo, fundir e redirecionar (ver issue `PROC-01`, em `roadmap-rust/issues/`).
 
 ## Servir localmente
 

@@ -1,7 +1,11 @@
 # BUG-02 — “Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN
 
-**Tipo:** Bug · **Esforço:** S · **Depende de:** FASE-03-17 ✅ · **Bloqueia:** onda 1 (jogável),
-FASE-03-18 (Campo de Treinamento), FASE-15-4 (bots)
+> **ID canônico:** `BUG-02`
+> **ID histórico:** `BUG-02`
+> **Estado 2026-11-12:** 🟢 · ver `roadmap-rust/index.md`.
+
+**Tipo:** Bug · **Esforço:** S · **Depende de:** GAME-17 ✅ · **Bloqueia:** onda 1 (jogável),
+GAME-18 (Campo de Treinamento), GAME-23 (bots)
 
 ## Objetivo
 
@@ -81,8 +85,26 @@ rajada de `CreateMob` e diálogo de NPC respondendo.
 - [x] PIN informado continua sendo verificado (recusa com `PinIncorreto`/`PinBloqueado`).
 - [ ] Cliente 7662 entra no mundo sem “Falha ao conectar”.
 
+## Revisão de prova (2026-11-12)
+
+**Decisão:** manter 🟢; o código está pronto, mas o aceite ainda tem duas provas externas.
+
+- **Provado:** a seleção antes do PIN devolve o frame já decodificado, a conta sem PIN abre a
+  sessão e o PIN tardio não cria segunda sessão; `clippy -D warnings` 0 e `wyd-server` 43/43.
+- **Pendente:** rodar `cena_mobs` com `WYD_LIVE_SKIP_PIN=1` numa conta real (procurar
+  `pin result=skip`/`deferred` e `character ok action=select`) e abrir o cliente 7662.
+- **Dependência:** o cliente/VM é a mesma prova que falta em `GAME-17` e `CLIENT-06`; sem ela a
+  issue não fecha, mas o código não precisa de nova alteração conhecida.
+
 ## Riscos / rollback
 
 - Risco: PIN deixa de proteger a entrada → mitigação: a senha argon2id continua obrigatória antes;
   o PIN segue verificado quando enviado, e a decisão fica registrada em `docs/wyd/senha-numerica.md`.
 - Rollback: voltar a recusar seleção antes do PIN em `authorize_pin` (ponto único).
+
+## Skills relacionadas
+
+- `wyd-client-connect` — handshake, serverlist e diagnóstico do cliente 7662.
+- `wyd-rust-net` — parsers e sessão de entrada.
+- `rust-code-quality` / `rust-test-quality` — correção e prova de regressão.
+- `documentation-writer` — registro no painel e no changelog.

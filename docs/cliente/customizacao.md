@@ -1,7 +1,7 @@
 # Customização do cliente e manifesto do launcher
 
 > Estratégia decidida em ADR-0003. Este documento é a **especificação** que a
-> implementação (`crates/wyd-launcher`, FASE-08-7) deve seguir — ainda sem código.
+> implementação (`crates/wyd-launcher`, CLIENT-07) deve seguir — ainda sem código.
 > Build de referência: 7662 (`04c9d2a1…27ddf8`).
 
 ## 1. Estratégia (ADR-0003, resumo)
@@ -55,7 +55,7 @@ atômico), nunca aplicar patch parcial como sucesso.
 ## 4. Bootstrap
 
 O launcher inicia `WYD.exe` com *workdir* = pasta do jogo, sem passar pelo updater legado
-(`settings.txt` → endpoint não suportado).Ordem: `check` verde → `patch` se necessário → `verify` → `spawn`. Falha em qualquer etapa = jogo não abre, com motivo no relatório. A entrega do pacote de patch (download) pertence à distribuição (FASE-07/08-3); sem pacote, o `launch` recusa diretório divergente em vez de adivinhar (fail-closed).
+(`settings.txt` → endpoint não suportado).Ordem: `check` verde → `patch` se necessário → `verify` → `spawn`. Falha em qualquer etapa = jogo não abre, com motivo no relatório. A entrega do pacote de patch (download) pertence à distribuição (FASE-07/CLIENT-03); sem pacote, o `launch` recusa diretório divergente em vez de adivinhar (fail-closed).
 
 ## 5. Licença
 

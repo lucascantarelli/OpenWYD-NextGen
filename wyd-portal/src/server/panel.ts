@@ -1,5 +1,5 @@
 /**
- * Painel do jogador (FASE-07-2) — leitura no `wyd-admin` para quem está logado.
+ * Painel do jogador (WEB-02) — leitura no `wyd-admin` para quem está logado.
  *
  * Diferença para `adminCall`: aqui qualquer papel autenticado pode ler **a própria**
  * conta. O `account_id` sai do cookie de sessão assinado (`getSession`), nunca de

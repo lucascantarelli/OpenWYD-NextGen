@@ -3,7 +3,7 @@ import { promisify, worldEventAdmin, type WorldEventResponse } from "@/server/ad
 export const dynamic = "force-dynamic";
 
 /**
- * Grade pública de eventos para o launcher (LAUNCHER-01).
+ * Grade pública de eventos para o launcher (CLIENT-11).
  *
  * Lê `world_event_admin/get_world_event_config` com o token de processo do BFF
  * (mesmo padrão de `/api/health`): a rota do gateway exige staff, e aqui quem

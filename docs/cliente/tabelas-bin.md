@@ -36,7 +36,7 @@ coluna com sequência 1..124 — o índice não está no início do registro. No
 delas agora seria inventar estrutura; o artefato mantém `offset + estatística` e nada mais.
 
 > Consequência prática: o **mapeamento das 151 skills** (classe/linhagem) continua
-> `UNVERIFIED` no banco. O caminho para fechar é trace dinâmico (FASE-08-6) ou decompilação com
+> `UNVERIFIED` no banco. O caminho para fechar é trace dinâmico (CLIENT-06) ou decompilação com
 > Ghidra — nenhum dos dois existe neste ambiente.
 
 ## 3. `ItemList.bin` — 6.500 × 140 B

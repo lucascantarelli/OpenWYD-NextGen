@@ -1,5 +1,5 @@
 /**
- * Trilha de auditoria vista pelo painel (FASE-07-3).
+ * Trilha de auditoria vista pelo painel (WEB-03).
  *
  * A fonte é `audit_log` no Postgres, lida pelo gateway (`audit_admin/recent`)
  * com `adminCall` — o browser nunca vê o token nem fala com o banco. Leitura

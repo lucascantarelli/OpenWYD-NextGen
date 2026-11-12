@@ -1,4 +1,4 @@
-//! Custo do tick **do serviço** (FASE-03-7), não só da lib.
+//! Custo do tick **do serviço** (GAME-07), não só da lib.
 //!
 //! Mede `Engine::advance(50)` — o mesmo caminho que a thread `wyd-tick` executa a 20 Hz —
 //! com mundo vazio e com 1 000 entidades. Sem dependência nova: `std::time::Instant`, igual

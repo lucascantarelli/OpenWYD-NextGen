@@ -179,7 +179,7 @@ skill da mesma linhagem.
 
 ### 2.3 Combate: velocidade, golpe duplo/triplo, crítico e evasão
 
-**O item mais relevante da rodada**, porque a `FASE-10-2` está **bloqueada** por falta de causa
+**O item mais relevante da rodada**, porque a `GAME-20` está **bloqueada** por falta de causa
 provada da anomalia de velocidade (`docs/rust/06-matematica.md` §3: `formula/speed.rs` ⛔).
 
 Fonte: **`[C/D]`** — [FreeWyd, velocidade de ataque](https://pathoflords.com/mecanicas/velocidade-de-ataque)
@@ -208,7 +208,7 @@ própria matemática e **declara que lista o que muda em relação ao original**
 | Modificadores | itens de evasão **somam** (e a evasão do atacante **subtrai**, como precisão); buffs/montaria (**0 a +8%**) só valem se já existe base |
 | Penalidades | atacante **TK** reduz **30 pontos percentuais**; contra **Tempestade de Raios** e **Exterminar** sobra só **30%** da esquiva |
 
-> **Por que isso importa para a FASE-10-2:** a hipótese do projeto é que a "anomalia de ~200%" não é
+> **Por que isso importa para a GAME-20:** a hipótese do projeto é que a "anomalia de ~200%" não é
 > bug de leitura, e sim **duplo golpe 100% garantido em 200 de velocidade**. A tabela explica
 > numericamente o DPS dobrado e o ×3 acima de 500. Ela **não prova** o 7662 — prova que existe um
 > modelo coerente. O caminho de prova continua sendo captura/golden, como a issue exige.
@@ -479,12 +479,12 @@ Guild Master; é a guilda dona de Noatun que taxa o comércio do servidor), `/su
 | Requisito do `wyd2.md` | Documento | Estado após esta rodada |
 |---|---|---|
 | 4.1 atributos e pontos | `classes.md` §1.1–1.2, `progressao.md` §2 | ✅ documentado; derivados por equipamento/skill/buff **parcial** |
-| 4.2 combate (velocidade, crítico, evasão) | **este dossiê §2.3** | ⛔ bloqueado na `FASE-10-2`; modelo candidato registrado |
+| 4.2 combate (velocidade, crítico, evasão) | **este dossiê §2.3** | ⛔ bloqueado na `GAME-20`; modelo candidato registrado |
 | 4.3 EXP e progressão | `progressao.md` §7 | ⛔ curva não publicada; só tabelas de recompensa por faixa (B) |
 | 4.4 Mortal/Arch/Celestial/Sub | `progressao.md`, `classes.md` §4 | 🚧 **§2.1** preenche os números de criação |
 | 4.5 cidadania/Kibita/reinos | `canais-e-cidadania.md`, `lore.md` §7 | ✅ |
 | 4.6 mapas e zonas | `sistemas/mundo.md` | 🚧 **§2.8** acrescenta Água, Dragon Field, Kefra e NPCs de Armia |
-| 4.7 monstros e bosses | `sistemas/drops.md`, `sistemas/quests.md` | 🚧 IA/FSM na `FASE-03-6`; catálogo vem do banco (E) |
+| 4.7 monstros e bosses | `sistemas/drops.md`, `sistemas/quests.md` | 🚧 IA/FSM na `GAME-06`; catálogo vem do banco (E) |
 | 4.8 itens e equipamentos | `itens.md` | 🚧 **§2.7** acrescenta acessórios, Pedra Espiritual, repleção |
 | 4.9 drop | `sistemas/drops.md` §1 | ✅ algoritmo 1..1.000.000 por item |
 | 4.10 refino e composição | `sistemas/refino.md`, `refino-auditoria.md` | 🚧 D-1 (4/5%), D-2 (tabela de bless) e D-8 (brinco) seguem abertas |
@@ -504,7 +504,7 @@ Guild Master; é a guilda dona de Noatun que taxa o comércio do servidor), `/su
 | 4.24 comunicação e Trombeta | **este dossiê §2.9** | 🚧 tabela de prefixos e comandos; consumo da trombeta em aberto |
 | 4.25 cash e premium mail | **este dossiê §2.10** | 🚧 corrigido (cápsula grátis); rastreabilidade por item é **lacuna** |
 | 4.26 troca de canal | `canais-e-cidadania.md` §5.2 | 🚧 plano desenhado, sem prova de campo |
-| 4.27 login/logout/sessão | `senha-numerica.md`, `FASE-08-9` | ✅ com PIN |
+| 4.27 login/logout/sessão | `senha-numerica.md`, `CLIENT-09` | ✅ com PIN |
 | 4.28 tela de personagem | `classes.md` §1.2 | ✅ layout por offset |
 | 4.29 barra de skills | `classes.md` §1.2 (`ShortSkill[16]`) | ✅ persistida |
 | 4.30 efeitos visuais | `docs/cliente/` | 🚧 fora do escopo desta rodada |

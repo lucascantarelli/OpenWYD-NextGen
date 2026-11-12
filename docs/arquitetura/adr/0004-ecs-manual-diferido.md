@@ -2,8 +2,8 @@
 
 - **Estado:** aceita
 - **Data:** 2026-11-07
-- **Decisores:** dono do projeto + agente (registrado na issue FASE-13-2)
-- **Governa:** `roadmap-rust/issues/FASE-03-2-ecs.md` (sistemas, bench, migração futura)
+- **Decisores:** dono do projeto + agente (registrado na issue PROC-22)
+- **Governa:** `roadmap-rust/changelog.md` (sistemas, bench, migração futura)
 
 ## Contexto
 
@@ -16,7 +16,7 @@ compilar, testar e medir **agora**, sem travar o caminho crítico em download.
 ## Decisão
 
 Adotamos SoA manual em `wyd-core` até o bench de guerra mandar o contrário, porque
-zero dependência externa desbloqueia FASE-03/06-2/10 hoje com disciplina equivalente
+zero dependência externa desbloqueia FASE-03/QA-05/10 hoje com disciplina equivalente
 (contíguo, sem alloc no quente, sem `unsafe`).
 
 ## Consequências
@@ -37,7 +37,7 @@ zero dependência externa desbloqueia FASE-03/06-2/10 hoje com disciplina equiva
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-03-2-ecs.md`
+- Issues consumidoras: `roadmap-rust/changelog.md`
 - Docs atualizadas nesta ADR: nenhuma (decisão registra o estado vigente)
 - Evidência: `cargo test -p wyd-core` (12 lib + 3 determinismo, guerra medida)
 

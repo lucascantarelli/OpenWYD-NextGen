@@ -1,4 +1,4 @@
-//! `GET :9898/metrics` — contrato da FASE-06-1, sem nome inventado.
+//! `GET :9898/metrics` — contrato da QA-04, sem nome inventado.
 //!
 //! O fragmento de rede vem de `wyd_net::NetMetrics::render_prometheus`
 //! (`wyd_packets_total`, `wyd_packets_rejected_total{reason}`, `wyd_handshakes_total`,
@@ -8,7 +8,7 @@
 //! `wyd_status_requests_total`, `wyd_status_health_failures_total`.
 //!
 //! `wyd_ticks_total`/`wyd_tick_duration_microseconds`/`wyd_entities_active` vêm do registro do
-//! motor (`wyd_core::Metrics`) da thread de tick (FASE-03-7): são número medido, não gauge
+//! motor (`wyd_core::Metrics`) da thread de tick (GAME-07): são número medido, não gauge
 //! zerado. Antes do loop existir eles **não** eram publicados — publicá-los em zero seria
 //! mentira (ADR-0022 §7).
 
@@ -200,7 +200,7 @@ mod tests {
         assert!(texto.contains("wyd_status_requests_total 1"));
         assert!(texto.contains("wyd_status_health_failures_total 1"));
         assert!(texto.contains("# TYPE wyd_server_uptime_seconds gauge"));
-        // O fragmento de rede continua sendo a fonte dos nomes da FASE-06-1.
+        // O fragmento de rede continua sendo a fonte dos nomes da QA-04.
         assert!(texto.contains("wyd_handshakes_total"));
     }
 }

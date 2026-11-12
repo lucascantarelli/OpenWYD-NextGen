@@ -1,4 +1,4 @@
-//! Estatísticas de economia do painel (FASE-07-3).
+//! Estatísticas de economia do painel (WEB-03).
 //!
 //! O número vem de fonte auditável, nunca de estimativa: imposto somado do
 //! livro-caixa (`city_tax_ledger`) e concessões contadas na fila de entrega

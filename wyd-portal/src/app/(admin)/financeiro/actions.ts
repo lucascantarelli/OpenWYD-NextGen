@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Loja de donate e crédito de saldo (PORTAL-03, lado staff).
+ * Loja de donate e crédito de saldo (WEB-09, lado staff).
  *
  * Cada ação valida a forma (`checkShopItem`/`checkDonateCredit`), delega ao
  * `adminCall` (autor da sessão, auditoria) e confirma com a revisão ou o recibo
@@ -77,13 +77,16 @@ export async function creditDonateAction(formData: FormData): Promise<void> {
   };
   const invalid = checkDonateCredit(input);
   if (invalid) fail(invalid);
+  let receipt: Awaited<ReturnType<typeof creditDonateBalance>>;
   try {
-    const receipt = await creditDonateBalance({ ...input, key: input.key.trim() });
-    revalidatePath(PATH);
-    redirect(
-      `${PATH}?ok=${encodeURIComponent(receipt.replay ? `replay #${receipt.credit_id}` : `crédito #${receipt.credit_id}`)}`,
-    );
+    receipt = await creditDonateBalance({ ...input, key: input.key.trim() });
   } catch (error) {
     fail(error instanceof AdminError ? error.message : "falha ao creditar o saldo");
   }
+  // `redirect()` lança `NEXT_REDIRECT`; mantê-lo fora do `try` evita que o
+  // `catch` converta um crédito já gravado em mensagem de falha.
+  revalidatePath(PATH);
+  redirect(
+    `${PATH}?ok=${encodeURIComponent(receipt.replay ? `replay #${receipt.credit_id}` : `crédito #${receipt.credit_id}`)}`,
+  );
 }

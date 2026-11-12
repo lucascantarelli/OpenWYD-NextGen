@@ -517,7 +517,7 @@ fn grant_is_idempotent_across_calls() {
     );
 }
 
-/// PORTAL-03: o correio concede item pela mesma fila idempotente do ouro.
+/// WEB-09: o correio concede item pela mesma fila idempotente do ouro.
 /// Mesma chave em `character_admin/grant_item` devolve o mesmo `grant_id` com
 /// `replay: true` — sem duplicar a linha nem o item no dreno.
 #[test]
@@ -574,7 +574,7 @@ fn invalid_params_are_business_invalid_without_touching_repo() {
     );
 }
 
-/// PORTAL-04: `npc_admin/{list_item_prices,set_item_price}` têm handler de verdade.
+/// WEB-10: `npc_admin/{list_item_prices,set_item_price}` têm handler de verdade.
 ///
 /// Sem `ConfigStore` montado a leitura responde 503 (não 501 de contrato pendente), e a
 /// escrita com corpo incompleto responde `INVALID` antes de qualquer store — a validação

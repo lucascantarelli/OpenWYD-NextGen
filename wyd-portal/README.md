@@ -59,13 +59,13 @@ Fora do escopo por falta de contrato no gateway: listagem paginada de contas,
 edição de personagem, escrita de conteúdo (upsert/set/delete de NPC, mob, drop,
 preço, evento) e faturamento (`donate_revenue_admin`). Essas telas existiam
 sobre o servidor antigo e foram removidas — não há chamada para rota que o
-`wyd-admin` não exponha. **Leitura de conteúdo já tem contrato** (FASE-07-5):
+`wyd-admin` não exponha. **Leitura de conteúdo já tem contrato** (WEB-05):
 `npc_admin/list_npcs`, `mob_admin/list_mob_templates` e
 `item_effect_admin/list_effects` (paginadas, teto 200) mais as já servidas
 `item_catalog/list_items`, `drop_admin/list_drop_rates` e
 `teleport_admin/list_routes` — prontas para as telas de conteúdo do portal.
 Economia existe no recorte que tem fonte auditada (imposto e concessões);
-receita de doacao continua sem contrato. **Operação já tem contrato** (FASE-07-6,
+receita de doacao continua sem contrato. **Operação já tem contrato** (WEB-06,
 sem telas novas): `daily_reward_admin` (lista/upsert/delete), `donate_admin`
 (loja + `credit_donate_balance` idempotente), `world_event_admin` (foto com
 horários + liga/desliga), `account_admin/list_accounts`/`get_account` (sem

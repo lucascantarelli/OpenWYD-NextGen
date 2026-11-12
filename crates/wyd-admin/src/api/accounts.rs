@@ -5,7 +5,7 @@
 //! repo `pg` (04-3) + coluna de bloqueio — documentados como pendência, não
 //! improvisados aqui.
 //!
-//! Listagem e detalhe (`list_accounts`/`get_account`, FASE-07-6) devolvem o mesmo
+//! Listagem e detalhe (`list_accounts`/`get_account`, WEB-06) devolvem o mesmo
 //! `AccountSummary` da busca: id, login e papel — nunca hash, PIN ou segredo.
 
 use wyd_db::{Account, AccountListRow, Accounts, Role};

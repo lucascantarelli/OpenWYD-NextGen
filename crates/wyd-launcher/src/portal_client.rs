@@ -1,4 +1,4 @@
-//! Cliente da API pública do portal (`/api/launcher/*`, LAUNCHER-01).
+//! Cliente da API pública do portal (`/api/launcher/*`, CLIENT-11).
 //!
 //! O launcher lê do portal a versão esperada e a grade de eventos sem segunda
 //! senha: é leitura pública de dado de jogo, com cache curto no servidor. Sem

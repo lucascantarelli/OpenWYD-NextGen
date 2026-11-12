@@ -59,8 +59,8 @@ atual e o proposto diverge de forma explicada (números anexados).
 
 ## Documentação de referencia
 
-- crates/wyd-sim/src/formula/ + roadmap-rust/issues/FASE-10-1-equacoes.md - fórmulas de referência.
-- roadmap-rust/issues/FASE-10-2-velocidade.md - histórico de bugs.
+- crates/wyd-sim/src/formula/ + roadmap-rust/issues/GAME-19-equacoes.md - fórmulas de referência.
+- roadmap-rust/issues/GAME-20-velocidade.md - histórico de bugs.
 - crates/wyd-sim/src/ + crates/wyd-core/src/systems/ - implementação arquivada.
 - pre-release-rust.md (FASE 10) - roteiro da investigação.
 - docs/rust/01-dependencias.md - candidatos numéricos.

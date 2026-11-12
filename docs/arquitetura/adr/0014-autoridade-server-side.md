@@ -2,13 +2,13 @@
 
 - **Estado:** aceita (2026-11-08)
 - **Data:** 2026-11-08
-- **Decisores:** dono do projeto + agente (FASE-03-5)
-- **Governa:** `crates/wyd-core/src/systems/{mod,movement,combat}.rs`, FASE-03-5, FASE-10
+- **Decisores:** dono do projeto + agente (GAME-05)
+- **Governa:** `crates/wyd-core/src/systems/{mod,movement,combat}.rs`, GAME-05, FASE-10
 - **Depende de:** ADR-0001 (Hot Path), ADR-0002 (estrutura), ADR-0004 (ECS SoA), ADR-0012 (gema)
 
 ## Contexto
 
-A FASE-03-5 exige que física, dano, skills e inventário sejam validados pelo servidor, com
+A GAME-05 exige que física, dano, skills e inventário sejam validados pelo servidor, com
 "pacote forjado recusado sem alterar estado". O core já tinha validação pontual de inventário
 (`ComponentStore::apply_gem`, ADR-0012), mas **nenhum** ponto de validação de movimento ou
 combate: não existia caminho pelo qual uma intenção vinda do cliente pudesse ser aceita ou
@@ -66,13 +66,13 @@ Regras que decorrem dela:
 |---|---|
 | Validar na camada de rede (`wyd-net`) | core seria confiável por omissão; a autoridade precisa morar onde o estado vive, e a rede só entrega intenção |
 | Aceitar dano do chamador e limitar por faixa | cliente vira autor do número; viola "servidor é autoridade" |
-| Escrever fórmula de dano agora | proibido pela FASE-03-5 e pela FASE-10; fórmula entra por trait aprovado |
+| Escrever fórmula de dano agora | proibido pela GAME-05 e pela FASE-10; fórmula entra por trait aprovado |
 | Cooldown em `HashMap`/recurso global | alocação no quente e lookup por hash; o SoA já indexa por entidade |
 | Guardar `next_attack_ms` em `Stats` | `Stats` é dado de personagem persistido; cooldown é estado de tick, não de ficha |
 
 ## Rastreabilidade
 
-- Issue consumidora: `roadmap-rust/issues/FASE-03-5-autoridade-servidor.md`.
+- Issue consumidora: `roadmap-rust/issues/GAME-05-autoridade-servidor.md`.
 - Docs: `docs/arquitetura/autoridade-servidor.md` (mapa das ações validadas),
   `docs/arquitetura/estrutura-e-padroes.md` §10, `docs/rust/03-progresso.md` (entrada datada).
 - Evidência: `crates/wyd-core/tests/integracao/autoridade.rs` (7 testes de pacote forjado) +
@@ -83,7 +83,7 @@ Regras que decorrem dela:
 O eixo **skills** da issue não podia ficar declarado como pendência sem código: a validação
 não depende do banco, só do que o servidor já sabe. `systems/skill.rs` (novo arquivo, registrado
 no §10 de `estrutura-e-padroes.md`) recebe a lista de skills **aprendidas** (`known`, carregada de
-`character_skills` na FASE-04-3) e o `SkillBook` do catálogo (id, custo de MP, cooldown,
+`character_skills` na PROC-16) e o `SkillBook` do catálogo (id, custo de MP, cooldown,
 alcance), validando na mesma ordem transacional dos demais sistemas. O evento `SkillCast`
 registra quem usou e o custo; o **efeito** da skill continua na fórmula aprovada (FASE-10), como
 no combate. Componente novo: `next_skill_ms` (contíguo, `Vec<u64>`, zerado no spawn).
@@ -91,7 +91,7 @@ no combate. Componente novo: `next_skill_ms` (contíguo, `Vec<u64>`, zerado no s
 ## Revisão
 
 - Revisar quando: a FASE-10 entregar a fórmula aprovada (o trait ganha implementação de
-  produção), a FASE-03-6 precisar de alvo/ameaça no `combat.rs`, ou o cliente provar que o
+  produção), a GAME-06 precisar de alvo/ameaça no `combat.rs`, ou o cliente provar que o
   movimento é passo-a-passo em vez de destino (muda a unidade do orçamento).
 - Sinais de que envelheceu: sistema aceitando número do chamador, `AttackRules` fixo no core,
   cooldown por `HashMap`, evento publicado antes da validação final.

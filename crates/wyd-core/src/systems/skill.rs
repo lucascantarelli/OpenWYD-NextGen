@@ -4,7 +4,7 @@
 //! MP, cooldown, alvo no alcance) e publica o fato (`SkillCast`). O efeito em si é da fórmula
 //! aprovada (FASE-10) e do domínio da skill — aqui não se inventa nem um nem outro.
 //!
-//! A lista de skills **aprendidas** vem do servidor (`character_skills` carregado na FASE-04-3),
+//! A lista de skills **aprendidas** vem do servidor (`character_skills` carregado na PROC-16),
 //! nunca do pacote: o cliente só manda o id.
 //!
 //! Os números de balanceamento (custo de MP, cooldown, alcance) vêm de [`SkillBook`], montado no

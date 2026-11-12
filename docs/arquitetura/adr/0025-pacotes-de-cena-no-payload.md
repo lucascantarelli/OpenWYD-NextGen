@@ -3,7 +3,7 @@
 - **Estado:** aceita
 - **Data:** 2026-11-10
 - **Decisores:** dono do projeto + agente
-- **Governa:** `crates/wyd-protocol` (árvore §3 de `estrutura-e-padroes.md`), FASE-03/08-6
+- **Governa:** `crates/wyd-protocol` (árvore §3 de `estrutura-e-padroes.md`), FASE-03/CLIENT-06
 
 ## Contexto
 
@@ -23,7 +23,7 @@ O layout está provado nas duas fontes que o repositório já usa para os demais
   `createMobSize = 232` / `removeMobSize = 16`), que fixa os offsets em teste
   (`createmob_test.go`).
 
-Isto **não** é captura ao vivo (FASE-08-6): o documento `docs/cliente/pacotes.md` mantém a
+Isto **não** é captura ao vivo (CLIENT-06): o documento `docs/cliente/pacotes.md` mantém a
 distinção entre "corpo portado" e "captura pendente".
 
 ## Decisão
@@ -55,5 +55,5 @@ Regras que o arquivo carrega:
   opcode e o pipeline de decodificação reconhece o pacote; a árvore ganha um domínio real, com
   ADR, em vez de um arquivo "misc".
 - **Negativas:** oitavo arquivo em `payload/` (custo de manutenção trivial).
-- **Pendente:** captura ao vivo do 7662 recebendo `0x0364`/`0x0165` (FASE-08-6) — se ela
+- **Pendente:** captura ao vivo do 7662 recebendo `0x0364`/`0x0165` (CLIENT-06) — se ela
   divergir, o porte é que está errado, nunca o cliente.

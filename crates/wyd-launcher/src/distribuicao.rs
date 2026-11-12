@@ -1,4 +1,4 @@
-//! Distribuição: pacote assinado com Ed25519 e `update` com rollback (FASE-08-3).
+//! Distribuição: pacote assinado com Ed25519 e `update` com rollback (CLIENT-03).
 //!
 //! Formato do pacote (tudo relativo à raiz do pacote):
 //! `manifesto` (formato de `manifest::parse`), `assinatura` (Ed25519 da chave

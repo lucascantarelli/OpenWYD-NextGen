@@ -44,7 +44,7 @@ pub enum DomainEvent {
         /// Refino usado no cálculo (Anct abaixo de +10 conta como +10).
         refine: u8,
     },
-    /// A entidade andou por um passo autorizado (FASE-03-5).
+    /// A entidade andou por um passo autorizado (GAME-05).
     ///
     /// Publicado **depois** de distância/limites/orçamento validados e **antes** da gravação,
     /// então a borda só vê passo que o servidor aceitou.

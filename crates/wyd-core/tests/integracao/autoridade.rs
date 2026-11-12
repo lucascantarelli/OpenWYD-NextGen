@@ -1,4 +1,4 @@
-//! Autoridade do servidor (FASE-03-5): pacote forjado é recusado **sem** alterar estado.
+//! Autoridade do servidor (GAME-05): pacote forjado é recusado **sem** alterar estado.
 //!
 //! Usa só a API pública do core, como a borda de rede faria: o teste entrega intenção (destino,
 //! alvo) e confere que o resultado é do servidor. Nenhum teste aqui passa dano ou posição

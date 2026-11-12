@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [features]
 # Contadores por pacote/porta ficam fora do build default: o `fetch_add` no balde custa
-# ~8,8 ns sobre um consumo de 2,7 ns (medido na FASE-06-1). O daemon liga `metrics`;
+# ~8,8 ns sobre um consumo de 2,7 ns (medido na QA-04). O daemon liga `metrics`;
 # o bench default mede o caminho sem instrumentação.
 default = []
 metrics = []

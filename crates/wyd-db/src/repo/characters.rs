@@ -66,7 +66,7 @@ pub trait Characters {
         async { Ok(()) }
     }
 
-    /// Piedade de refino do slot (`refine_pity`, FASE-03-16; 0 = linha ausente).
+    /// Piedade de refino do slot (`refine_pity`, GAME-16; 0 = linha ausente).
     ///
     /// O legado empacota a piedade no próprio item (`cValue = nível + 10×piedade`); aqui
     /// ela mora na tabela própria, chaveada por (personagem, slot). Default para os

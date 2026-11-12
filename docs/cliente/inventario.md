@@ -106,9 +106,9 @@ tela de login, desenha o *server select* e conclui o handshake (prova em
 
 - Conteúdo de `.wyt`, `.msa`, `.xt` — só a estrutura inicial foi documentada (`formatos.md`);
   `.xt` (XTrap) segue sem análise.
-- Mapa completo de funções do `WYD.exe` — a 08-5 confirmou **6 âncoras** e os **3 sites de
+- Mapa completo de funções do `WYD.exe` — a CLIENT-05 confirmou **6 âncoras** e os **3 sites de
   checksum**, não o grafo de chamadas (sem decompilador neste ambiente).
-- Structs de jogo (`STRUCT_MOB`/`ITEM`/`SELCHAR`) — 08-6.
+- Structs de jogo (`STRUCT_MOB`/`ITEM`/`SELCHAR`) — CLIENT-06.
 - Assinatura Authenticode — não verificada; não há sinal de packer (seções legíveis, imports
   completos, strings em claro).
 
@@ -131,4 +131,4 @@ done
 ```
 
 Se algum hash divergir do §1/§2, o build **não é** o 7662 de referência: todo offset do
-`superficie-conhecida.md` deixa de valer e o dossiê precisa ser reaberto (FASE-08-5).
+`superficie-conhecida.md` deixa de valer e o dossiê precisa ser reaberto (CLIENT-05).

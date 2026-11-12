@@ -24,8 +24,8 @@
 | `0x0112` | CNFDeleteCharacter | `STRUCT_SELCHAR` (844) | **CORPO PORTADO** (mesmo layout do `CNFNewCharacter`) |
 | `0x0116` | CNFCharacterLogout | só header | **PORTADO** (resposta ao `0x0215`) |
 | `0x0114` | CNFCharacterLogin | STRUCT_MOB + cauda | **PENDENTE** |
-| `0x0364` | CreateMob | 232 | **CORPO PORTADO + PROVADO NO FIO** (`Basedef.h` + porte Go; sessão de jogo real decodificou 6100 frames; captura 08-6 pendente) |
-| `0x0165` | RemoveMob | 16 | **CORPO PORTADO + PROVADO NO FIO** (`Basedef.h` + porte Go; delta de revisão removendo e recriando NPC na mesma sessão; captura 08-6 pendente) |
+| `0x0364` | CreateMob | 232 | **CORPO PORTADO + PROVADO NO FIO** (`Basedef.h` + porte Go; sessão de jogo real decodificou 6100 frames; captura CLIENT-06 pendente) |
+| `0x0165` | RemoveMob | 16 | **CORPO PORTADO + PROVADO NO FIO** (`Basedef.h` + porte Go; delta de revisão removendo e recriando NPC na mesma sessão; captura CLIENT-06 pendente) |
 | `0x7530` | ESCENE_FIELD | cena autoritativa | **PENDENTE** |
 
 ## O que o build 7662 realmente trata (desassemble 2026-11-11)
@@ -211,4 +211,4 @@ expectativa a confirmar, não o contrato).
    o `_MSG_Action` do NPC respondeu `_MSG_MessagePanel` com o `display_name`; na troca de
    revisão o servidor emitiu `RemoveMob` (16 B) do NPC desligado e `CreateMob` de volta ao
    religá-lo, sem duplicata e sem mob órfão (`creates=6101 removes=1 ativos=6100`). O desenho
-   desses bytes pelo cliente 7662 continua pendente da FASE-08-6.
+   desses bytes pelo cliente 7662 continua pendente da CLIENT-06.

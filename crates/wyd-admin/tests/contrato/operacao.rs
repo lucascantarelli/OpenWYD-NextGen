@@ -1,4 +1,4 @@
-//! Handlers de operação do portal (FASE-07-6): recompensa diária, loja de donate
+//! Handlers de operação do portal (WEB-06): recompensa diária, loja de donate
 //! com crédito idempotente, eventos de mundo, contas e `grant_item` na fila.
 //!
 //! Sem banco, o `Router` com `FakeOperacao` prova o contrato: `result:1` com dado,

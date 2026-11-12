@@ -1,4 +1,4 @@
-//! Seleção de personagem do canal (FASE-08-2): `_MSG_CreateCharacter`,
+//! Seleção de personagem do canal (CLIENT-02): `_MSG_CreateCharacter`,
 //! `_MSG_DeleteCharacter` e `_MSG_CharacterLogin` traduzidos em operações de `characters`.
 //!
 //! A conta **nunca** vem do corpo do pacote: ela é a que abriu a sessão no
@@ -255,7 +255,7 @@ pub struct SelectionStore {
     chat: Arc<crate::session::ChatHub>,
 }
 
-/// Ponte para o mundo vivo (FASE-03-8): entrada/saída por comando e save pela fila.
+/// Ponte para o mundo vivo (GAME-08): entrada/saída por comando e save pela fila.
 struct WorldBridge {
     handle: EngineHandle,
     saves: Arc<dyn SaveSink>,
@@ -315,7 +315,7 @@ impl SelectionStore {
         &self.chat
     }
 
-    /// Piedade persistida do slot de inventário (`refine_pity`, FASE-03-16).
+    /// Piedade persistida do slot de inventário (`refine_pity`, GAME-16).
     ///
     /// Slot fora do inventário persistido cai no `default` da porta (0): vale para o
     /// mundo ligado e para o modo sem porta, que responde como antes.
@@ -363,7 +363,7 @@ impl SelectionStore {
     ///
     /// A mutação acontece numa cópia; o banco é gravado antes de a sessão passar a ver o
     /// novo estado. Falha de banco devolve erro e deixa `selected.items` como estava.
-    /// FASE-03-16: a resolução recebe a piedade persistida do alvo, o catálogo veta
+    /// GAME-16: a resolução recebe a piedade persistida do alvo, o catálogo veta
     /// `EF_NOSANC` sem mutação e a piedade resultante é gravada junto com os itens.
     pub fn use_item(
         &self,
@@ -521,7 +521,7 @@ impl SelectionStore {
         })
     }
 
-    /// `_MSG_Quest` (0x028B): uma etapa do Campo de Treinamento (FASE-03-18).
+    /// `_MSG_Quest` (0x028B): uma etapa do Campo de Treinamento (GAME-18).
     ///
     /// O motor (`gameplay::quest_engage`) decide com o estado **persistido** — nível,
     /// ordem, prova e máscara de recompensas. Aqui só se carrega e grava: inventário,
@@ -766,7 +766,7 @@ impl SelectionStore {
         // O abate resolve o loot **agora**: tabela do template no snapshot vigente e os rolls
         // do `die` desta sessão. Sem resolvedor no processo (teste/legado) não há sorteio —
         // nunca um drop inventado.
-        // Cidadania (FASE-03-10): hoje ela é **derivada do canal** (não persistida, checklist
+        // Cidadania (GAME-10): hoje ela é **derivada do canal** (não persistida, checklist
         // 2.1), então quem está neste mundo é cidadão dele e o bônus de drop do canal vale. O
         // parâmetro fica explícito para o dia em que `MobExtra.Citizen` for gravado: visitante
         // de outro reino entra com `false` e cai na taxa do legado.

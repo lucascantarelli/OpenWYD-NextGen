@@ -45,7 +45,7 @@ impl SaveSink for SaveQueueSink {
             ..Character::default()
         };
         // Ouro **não** entra no save do mundo: quem escreve `gold` é o claim de grant, e
-        // sobrescrever aqui poderia regredir uma concessão já auditada (FASE-07-4).
+        // sobrescrever aqui poderia regredir uma concessão já auditada (WEB-04).
         if let Err(error) = self.queue.enqueue(SaveRequest::Character(character)) {
             println!(
                 "level=warn event=save result=enqueue_failed character={} reason={error}",

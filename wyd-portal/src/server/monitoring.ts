@@ -42,7 +42,7 @@ export interface ChannelHealth {
   handshakes: number;
   sessions: number;
   memoryBytes: number | null;
-  /** Ticks por segundo medidos no processo (FASE-03-7). */
+  /** Ticks por segundo medidos no processo (GAME-07). */
   ticksPerSecond: number | null;
   /** P99 do tick em µs (histograma do motor). */
   tickP99Us: number | null;

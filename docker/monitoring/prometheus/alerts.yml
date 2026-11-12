@@ -1,4 +1,4 @@
-# Regras de alerta do WYD (FASE-12-1) — só métricas do contrato da FASE-06-1.
+# Regras de alerta do WYD (QA-08) — só métricas do contrato da QA-04.
 #
 # Cada alerta tem runbook em `docs/rust/06-observabilidade-runbooks.md`. Os testes de
 # regra (disparo e resolução, sem esperar tempo real) ficam em `alerts.test.yml` e rodam

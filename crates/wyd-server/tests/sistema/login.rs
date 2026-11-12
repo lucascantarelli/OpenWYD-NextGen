@@ -435,7 +435,7 @@ fn pin_e_senha_nunca_aparecem_no_log() {
     assert!(!linhas.contains("$argon2"), "hash não vaza no log");
 }
 
-/// Bloqueio de moderação vale na entrada do canal (FASE-07-3).
+/// Bloqueio de moderação vale na entrada do canal (WEB-03).
 ///
 /// Senha correta + conta bloqueada → nenhum `CNF` (recusa antes da sessão).
 /// Liberar volta a autenticar sem exigir novo cadastro de PIN.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// E2E real da janela do launcher (FASE-08-8) com tauri-driver + msedgedriver.
+// E2E real da janela do launcher (CLIENT-08) com tauri-driver + msedgedriver.
 //
 // Sobe o portal falso (notícias), inicia o tauri-driver apontando para o
 // `WYDLauncher.exe` que está DENTRO da pasta do jogo e conduz a janela real:

@@ -248,7 +248,7 @@ select c.item_index, c.name, c.kind, c.stackable, s.cap, s.contained, s.source
 | `2433`–`2435 N/A` | placeholder com `EF_AMOUNT 5` |
 | `4045 NONAME` | placeholder com preço 4.000.000 |
 
-Registrado em `roadmap-rust/issues/FASE-03-15-classificacao-baldes-e-teto.md`; nada foi "corrigido"
+Registrado em `roadmap-rust/issues/GAME-15-classificacao-baldes-e-teto.md`; nada foi "corrigido"
 por chute no catálogo.
 
 ---

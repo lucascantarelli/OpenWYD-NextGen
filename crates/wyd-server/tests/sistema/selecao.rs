@@ -1,4 +1,4 @@
-//! Sessão do canal **depois** do handshake (FASE-08-2): a conexão não fecha no `CNF`.
+//! Sessão do canal **depois** do handshake (CLIENT-02): a conexão não fecha no `CNF`.
 //!
 //! O defeito corrigido: o laço antigo lia só o cabeçalho e encerrava no primeiro pacote — o
 //! cliente era desconectado (e a conta liberada) antes de escolher personagem. Aqui o listener

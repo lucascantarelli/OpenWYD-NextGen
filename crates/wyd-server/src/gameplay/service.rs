@@ -213,7 +213,7 @@ pub enum UseItemError {
     /// O alvo é pó, rosto ou item fora da faixa de refino.
     NotRefinable { item_index: i64, slot: i64 },
     /// O catálogo marca o item com `EF_NOSANC` (126): não é erro de protocolo, é veto
-    /// de dado (FASE-03-16). Recusa sem mutação, como o legado faz na sanitização.
+    /// de dado (GAME-16). Recusa sem mutação, como o legado faz na sanitização.
     BlockedByCatalog { item_index: i64 },
     /// Refino persistido fora de `0..=15`.
     InvalidTargetLevel { level: i64 },
@@ -349,7 +349,7 @@ impl Gameplay {
     ///
     /// É a forma pura do resolvedor (teste/golden): `rolls` precisa ter um sorteio por item
     /// da tabela; a ausência é erro explícito. `citizen` liga o bônus de cidadania do canal
-    /// (FASE-03-10) — desligado, a taxa é exatamente a do legado.
+    /// (GAME-10) — desligado, a taxa é exatamente a do legado.
     pub fn loot(
         &self,
         template: &str,
@@ -397,7 +397,7 @@ impl Gameplay {
     /// sempre; sucesso sobe um nível, falha comum mantém o item e falha de selado em +7..+9
     /// destrói o alvo. A taxa é lida **nesta chamada** por [`Self::refine`], nunca no boot.
     ///
-    /// `pity` é a piedade persistida do alvo (tabela `refine_pity`, FASE-03-16): quem chama
+    /// `pity` é a piedade persistida do alvo (tabela `refine_pity`, GAME-16): quem chama
     /// lê antes e grava `resolution.next_pity` depois. A sessão passa a lista completa de
     /// linhas; o chamador persiste depois. Recusa não consome pó nem altera o alvo.
     pub fn use_item(
@@ -630,7 +630,7 @@ fn effective_weight(
     Ok(effective_rate_with(escalado, &[citizen_bonus]))
 }
 //
-// Campo de Treinamento (FASE-03-18)
+// Campo de Treinamento (GAME-18)
 // ---------------------------------------------------------------------------
 //
 // Fonte: `origin/main:Source/Code/TMSrv/_MSG_Quest.cpp` (switch por `Merchant`) e a
@@ -943,7 +943,7 @@ pub fn apply_quest_reward(
     }
 }
 //
-// Portões do Campo de Treinamento (FASE-03-18 / chaves)
+// Portões do Campo de Treinamento (GAME-18 / chaves)
 // ---------------------------------------------------------------------------
 //
 // Legado: `_MSG_UpdateItem.cpp` trata o item de porta como item de mundo — `ItemID + 10000`,
@@ -1103,7 +1103,7 @@ impl GateBook {
 }
 
 // ---------------------------------------------------------------------------
-// Entrega de loot ao inventário (FASE-03-18)
+// Entrega de loot ao inventário (GAME-18)
 // ---------------------------------------------------------------------------
 //
 // O abate já rolava a tabela de drop (`loot_at_death`), mas o resultado só ia para o log.

@@ -56,8 +56,7 @@ ação admin sem sessão retorna 401 (teste dedicado).
 
 - .agents/skills/wyd-web-admin-ui - BFF, sessão, papéis, auditoria.
 - .agents/skills/wyd-rust-db - leitura/auditoria no banco.
-- .agents/skills/frontend-design - direção visual do portal.
-- .agents/skills/ui-ux-practices - revisão de UX.
+- .agents/skills/frontend-design - direção visual e revisão de UI/UX do portal.
 
 ## Documentação de referencia
 
@@ -101,9 +100,9 @@ implementação do transporte (runtime async segue na ADR-0006).
 - Gate: `fmt` + `clippy -D warnings` + `cargo test --workspace` verdes
   (`wyd-admin`: 11 lib + 4 integração); zero `unsafe`; wyd-portal/ intocado de
   propósito (apontá-lo para backend sem transporte quebraria o portal Go vivo).
-- Pendências honestas: troca de papel/bloqueio (repo `pg` + coluna, 04-3),
+- Pendências honestas: troca de papel/bloqueio (repo `pg` + coluna, PROC-16),
   dedup durável da chave (UNIQUE no `pg`), transporte HTTP/JSON (ADR-0008),
-  telas 07-2/07-3 e E2E 07-4.
+  telas WEB-02/WEB-03 e E2E WEB-04.
 
 ## Riscos / rollback
 

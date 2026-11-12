@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Concessão de item pela tela de correio (PORTAL-03).
+ * Concessão de item pela tela de correio (WEB-09).
  *
  * A ação só valida a forma e delega ao `adminCall` + gateway
  * (`character_admin/grant_item`): o autor vem da sessão, a idempotência é a

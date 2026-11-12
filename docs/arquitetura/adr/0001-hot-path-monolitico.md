@@ -35,8 +35,8 @@ porque qualquer salto de rede no tick compra jitter que não se recupera.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/FASE-03-1-tick.md`,
-  `FASE-03-2-ecs.md`, `FASE-04-3-persistencia-async.md`.
+- Issues consumidoras: `roadmap-rust/changelog.md`,
+  `GAME-02-ecs.md`, `PROC-16-persistencia-async.md`.
 - Docs: `docs/rust/00-visao-estrutura.md`, `docs/rust/02-execucao.md`.
 
 ## Revisão

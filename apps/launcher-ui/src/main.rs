@@ -1,4 +1,4 @@
-//! Frente Tauri mínima do launcher (FASE-08-8, ADR-0007).
+//! Frente Tauri mínima do launcher (CLIENT-08, ADR-0007).
 //!
 //! A janela não tem marca própria: ela pede `pagina` ao núcleo, que devolve o
 //! HTML da identidade **efetiva** já resolvida (`configuracao::resolver_flags`),

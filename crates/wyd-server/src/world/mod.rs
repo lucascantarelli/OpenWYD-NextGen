@@ -1,4 +1,4 @@
-//! Motor do canal dentro do processo (FASE-03-7) e mundo vivo do personagem (FASE-03-8).
+//! Motor do canal dentro do processo (GAME-07) e mundo vivo do personagem (GAME-08).
 //!
 //! O `Engine` é **dono** do estado do mundo deste processo: `ComponentStore` (ECS SoA),
 //! grade espacial, acumulador de tick e o mapa `personagem → entidade`. Ele não conhece
@@ -10,18 +10,18 @@
 //! - O tempo real entra por `Instant` na thread do tick; o `Scheduler` do core recebe só
 //!   `elapsed_ms`, então o passo continua determinístico e testável sem relógio real.
 //! - `Metrics::record_tick` publica `wyd_ticks_total`, `wyd_tick_duration_microseconds` e
-//!   `wyd_entities_active` — os nomes da FASE-06-1, com número medido.
+//!   `wyd_entities_active` — os nomes da QA-04, com número medido.
 //! - Entrada/saída (03-8) passam por [`EngineHandle`]: a thread de rede envia o comando e
 //!   espera a resposta; o tick nunca bloqueia em I/O e nenhum mutex global é necessário.
 //!
-//! Cena autoritativa (FASE-03-9): [`Engine::scene_snapshot`] devolve **uma** lista de
+//! Cena autoritativa (GAME-09): [`Engine::scene_snapshot`] devolve **uma** lista de
 //! entidades visíveis — NPCs do mapa e personagens no mundo — com o **índice de entidade**
 //! como id de cena (espaço único: o cliente indexa `MobID`, então NPC e jogador não podem
 //! colidir) e [`plan_scene`] calcula o delta de entrada/saída por sessão, com teto de pacotes
 //! por varredura. Quem escreve no fio é a borda, sempre com `HEADER.ID = ESCENE_FIELD`.
 //!
 //! O que este módulo **ainda não** faz (issues donas): movimento do jogador no fio (a tabela
-//! de opcodes provada não tem `_MSG_Move`, FASE-08-6) e atualização de barra de outro jogador.
+//! de opcodes provada não tem `_MSG_Move`, CLIENT-06) e atualização de barra de outro jogador.
 //! O save usa a fila de `wyd-db` (`SaveQueue`), que é *try_send*: nunca escreve no tick.
 
 use std::collections::HashMap;
@@ -56,7 +56,7 @@ pub use tick::EngineThread;
 pub const ENV_TICK_HZ: &str = "WYD_TICK_HZ";
 /// Frequência default (a mesma do `wyd_core::TICK_HZ`).
 pub const DEFAULT_TICK_HZ: u32 = 20;
-/// Largura do mundo provisória até o mapa virar dado (`map_definition`, FASE-03-9).
+/// Largura do mundo provisória até o mapa virar dado (`map_definition`, GAME-09).
 pub const WORLD_WIDTH: i32 = 4096;
 /// Altura do mundo provisória (idem).
 pub const WORLD_HEIGHT: i32 = 4096;
@@ -526,7 +526,7 @@ pub struct Engine {
     next_mob_scene: u16,
     /// Sobe a cada entidade que nasce ou sai do mundo: a borda difunde o delta.
     scene_generation: u64,
-    /// Portões abertos por chave (`EF_KEYID`), com fechamento por tempo (FASE-03-18).
+    /// Portões abertos por chave (`EF_KEYID`), com fechamento por tempo (GAME-18).
     gates: crate::gameplay::GateBook,
     /// PvP ligado neste canal/mapa (papel do canal × mapa, decidido na borda).
     pvp: bool,

@@ -1,4 +1,4 @@
-//! Instalação/atualização do cliente a partir do `client.zip` (FASE-08-7/08-8).
+//! Instalação/atualização do cliente a partir do `client.zip` (CLIENT-07/08-8).
 //!
 //! O `client.zip` é o pacote publicado pelo operador (GitHub Releases, Drive ou
 //! qualquer HTTP que sirva o arquivo). A origem é **configurável** por argumento
