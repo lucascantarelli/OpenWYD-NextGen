@@ -50,6 +50,15 @@ herdar código do ClientPatch.
 
 ## Revisão
 
+- **2026-11-11 — assinatura do pacote trocada de HMAC para Ed25519.** O registry passou a
+  estar disponível (a decisão "offline" do contexto histórico não vale mais) e o HMAC
+  simétrico exigia distribuir a mesma chave que assina: quem espelhasse o binário também
+  podia publicar pacote. `ed25519-dalek` 2.x entra verify-only (`default-features = false`,
+  `std`), a chave pública é embutida (`distribuicao::CHAVE_PUBLICA_HEX`) e a privada fica
+  no CI/secret (`tools/launcher/sign-package.mjs`). Sem mudança no formato do manifesto nem
+  no pipeline patch/rollback; `assinatura` passa de 64 para 128 hex. Custo: rotação de
+  chave exige launcher novo; benefício: o cliente não guarda segredo. Evidência:
+  `cargo test -p wyd-launcher` + golden cross-language (`tests/golden/assinatura_ed25519.rs`).
 - Revisar quando: mudar o build de referência do cliente, ou surgir registry offline.
 - Sinais de que a decisão envelheceu: patch real divergir do manifesto em produção, ou
   offsets por build virarem manutenção maior que um diff binário versionado.

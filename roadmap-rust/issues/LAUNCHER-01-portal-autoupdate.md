@@ -50,8 +50,13 @@ Saída esperada: `check` real OK; `update` adulterado recusado; patch gerado no 
 
 - [x] Núcleo `check/launch/serverlist/update` com testes reais (pré-existente: 60+4+3 testes verdes)
 - [x] Leitura de versão/eventos do portal (`portal_client.rs` std-puro + `/api/launcher/{versao,eventos}` públicos com cache de 60 s; 8 testes contra HTTP falso)
-- [ ] `/api/launcher/noticias` — BLOQUEADO: sem tabela de notícias; guias não são notícias
+- [x] Configuração remota assinada (2026-11-11): `configuracao.rs` + `GET /api/launcher/configuracao` + `tools/launcher/sign-config.mjs` — marca, canais e URLs sem recompilar
+- [x] `/api/launcher/noticias` (2026-11-11) — vitrine pública do JSON de `docs/noticias` (mesma fonte do site), cache 60 s + `stale-while-revalidate`, sem corpo markdown; consumida pelo `gui` desde 2026-11-12 (painel `Notícias`, timeout 700 ms, fallback com motivo no stderr e na janela)
+- [x] `POST /api/launcher/telemetria` (2026-11-11) — contrato fechado (sem PII, corpo 4 KiB, `no-store`), agregação por `versao+operacao` no processo e log estruturado; enviada por `check/config/update/launch` desde 2026-11-12 (best-effort, falha só no stderr); exposição no painel de monitoramento pendente
+- [x] Publicação da config assinada no portal (2026-11-12): `/configuracoes/launcher` revisa forma, recusa revisão repetida/regressiva, preserva os bytes assinados e grava histórico append-only com autor e SHA-256 (`server/launcher-dist.ts`)
+- [x] Painel de telemetria (2026-11-12): `/monitoramento/launcher` + `GET /api/admin/launcher/telemetria` (staff), agregado por `versao + operacao` com eventos, falhas, taxa, média e pior duração
 - [ ] Geração de patch no admin (`/admin/patches`) — BLOQUEADO: exige canal de versão publicável (migration + `ConfigStore` + rotas de patch assinado, escopo backend próprio)
+- [x] Assinatura assimétrica do pacote (2026-11-11): Ed25519 com chave pública embutida (`distribuicao::CHAVE_PUBLICA_HEX`), `update` sem `--key-file`, emissor `tools/launcher/sign-package.mjs`, golden Node↔Rust + rollback no meio do patch
 - [ ] Autoupdate assinado + GUI Tauri mínima jogável (FASE-08-8 🚧)
 
 ## Critérios de aceite

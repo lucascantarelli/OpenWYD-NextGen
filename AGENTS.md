@@ -64,6 +64,7 @@ externo — tudo num único repositório.
 | `crates/wyd-server/` | Binário do monólito de jogo: um processo por canal (CPSock, status, sessão, seleção de personagem) | Rust |
 | `crates/wyd-sim/` | Laboratório matemático (fórmulas puras, cenários, goldens) | Rust |
 | `crates/wyd-launcher/` | Launcher/patcher (manifest, patch atômico, bootstrap, update) | Rust std puro |
+| `apps/launcher-ui/` | Janela do launcher (Tauri 2, bin `WYDLauncher`): identidade efetiva + Jogar | Rust + Tauri/HTML |
 | `wyd-portal/` | UI de administração: BFF puro sobre `wyd-admin`, sem tocar estado vivo | Next.js 15, TypeScript |
 | `client/` | Cliente Windows 7662 (PE32/i386) — usuário do `wyd-launcher`; dossiê em `docs/cliente/`, **ignorado no git** | Binários fechados |
 | `roadmap-rust/` | Planejamento vigente: 15 fases + issues por entrega | Markdown |

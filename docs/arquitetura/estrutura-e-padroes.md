@@ -183,7 +183,7 @@ com prazo); asserção enfraquecida para "passar no CI".
 
 ```
 crates/wyd-launcher/
-├── Cargo.toml            # sem dependências externas (decisão offline, ADR-0003)
+├── Cargo.toml            # ed25519-dalek verify-only (assinatura do pacote, ADR-0003)
 ├── src/
 │   ├── lib.rs            # Facade: re-exports + invariantes em //!
 │   ├── main.rs           # binário: CLI fina (check/launch/update + exit codes)
@@ -191,21 +191,44 @@ crates/wyd-launcher/
 │   ├── patch.rs          # apply/rollback atômico (PatchError)
 │   ├── bootstrap.rs      # plan/describe/spawn (LaunchError)
 │   ├── sha256.rs         # digest em std puro (integridade, não anti-adversário)
-│   ├── distribuicao.rs   # pacote + HMAC + resume + update (DistError)
+│   ├── distribuicao.rs   # pacote Ed25519 + chave embutida + resume + update (DistError)
 │   ├── serverlist.rs     # serverlist.bin/txt da grade 10×11×64 (ServerlistError)
 │   ├── snbin.rs          # sn.bin: nomes vindos de `identidade.tokens` (143 B medidos)
 │   ├── identidade.rs     # parser da fonte única `docs/arquitetura/identidade.tokens`
 │   ├── branding.rs       # Launcher.bmp/.hat gerados da identidade (escrita atômica)
-│   └── gui.rs            # LauncherGUI.html (contrato visual da GUI Tauri, só da identidade)
+│   ├── configuracao.rs   # config remota assinada (Ed25519) → identidade + URLs efetivas
+│   ├── gui.rs            # LauncherGUI.html da identidade efetiva + cópia do launcher p/ a pasta do jogo
+│   └── lancamento.rs     # pipeline compartilhado CLI/Tauri (planejar → preparar → abrir)
 └── tests/                # golden/serverlist_paridade.rs (bytes Rust × Node);
                           # contrato/identidade.rs (identidade × globals.css;
                           # assets instalados × gerados)
 ```
 
 Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,
-`PatchError`, `LaunchError`, `DistError` com `From` entre eles) em vez de
-`error.rs` único: exceção deliberada a §2, coberta pela skill
+`PatchError`, `LaunchError`, `DistError`, `LancamentoError` com `From` entre
+ele) em vez de `error.rs` único: exceção deliberada a §2, coberta pela skill
 `solid-design-patterns` ("um erro por fronteira").
+
+### 9.1 `apps/launcher-ui` — janela Tauri (FASE-08-8, ADR-0007)
+
+Fica fora de `crates/` de propósito: é frente de apresentação, não núcleo. Não
+tem marca nem escrita própria — chama `wyd-launcher` como biblioteca.
+
+```
+apps/launcher-ui/
+├── Cargo.toml            # tauri 2 + wyd-launcher (path); bin `WYDLauncher`
+├── build.rs              # tauri_build::build()
+├── tauri.conf.json       # janela 720×660, frontendDist ../ui, withGlobalTauri
+├── capabilities/
+│   └── default.json      # só `core:default` na janela `main`
+├── ui/
+│   └── index.html        # shell: invoke("pagina") injeta o HTML da identidade; submit → invoke("jogar")
+└── src/
+    └── main.rs           # comandos `pagina`/`jogar`, `--instalar <dir>`, `--dir`, `--check`
+```
+
+Regra: nenhum `patch`/`manifest`/`serverlist` reimplementado aqui — o comando
+`jogar` chama `lancamento::iniciar` (mesmo caminho do `launch` da CLI).
 
 ## 10. `wyd-core` — árvore alvo (FASE-03)
 

@@ -6,12 +6,16 @@
 
 pub mod bootstrap;
 pub mod branding;
+pub mod cliente_zip;
+pub mod configuracao;
 pub mod distribuicao;
 pub mod gui;
 pub mod identidade;
+pub mod lancamento;
 pub mod manifest;
 pub mod patch;
 pub mod portal_client;
+pub mod reparo;
 pub mod serverlist;
 pub mod sha256;
 pub mod snbin;

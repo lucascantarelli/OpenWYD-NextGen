@@ -23,7 +23,7 @@ enviada pelo cliente 7662 é **12000** — divergência derruba o login com falh
 cargo run -p wyd-launcher -- check <dir-do-jogo> <manifesto>
 cargo run -p wyd-launcher -- launch <dir-do-jogo> <manifesto> <registro-de-canais> [--dry-run] [-- args]
 cargo run -p wyd-launcher -- serverlist <registro-de-canais> <dir-do-jogo> [--dry-run]
-cargo run -p wyd-launcher -- update <dir-do-jogo> <pacote> --key-file <arquivo> [--dry-run]
+cargo run -p wyd-launcher -- update <dir-do-jogo> <pacote> [--dry-run]
 ```
 
 - `check` compara hash de cada arquivo com o manifesto (nada é alterado).

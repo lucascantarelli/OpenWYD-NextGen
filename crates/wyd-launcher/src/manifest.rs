@@ -1,7 +1,9 @@
 //! Manifesto de integridade (`docs/cliente/customizacao.md` §2).
 //!
 //! Formato: UTF-8, uma entrada por linha, `#` = comentário, caminhos relativos
-//! com `/` (sem espaços — nenhum arquivo do cliente os usa).
+//! com `/`. O caminho é **o resto da linha** (pode conter espaços e não-ASCII,
+//! como `Mesh/MeshTextureList - Cópia.bin` do cliente 7662); os dois primeiros
+//! campos são tokens e o terceiro é tudo o que sobra.
 
 use std::fmt;
 use std::fs;
@@ -104,9 +106,19 @@ pub fn parse(text: &str) -> Result<Manifest, ManifestError> {
             })?);
             continue;
         }
-        let mut parts = line.split_whitespace();
-        let (hex, size_s, path) = match (parts.next(), parts.next(), parts.next(), parts.next()) {
-            (Some(h), Some(s), Some(p), None) => (h, s, p),
+        // `<hex> <tamanho> <caminho>`: o caminho é o resto da linha (espaços ok).
+        let mut resto = line;
+        let mut token = |resto: &mut &str| -> Option<String> {
+            let inicio = resto.find(|c: char| !c.is_whitespace())?;
+            let depois = &resto[inicio..];
+            let fim = depois.find(char::is_whitespace)?;
+            let (valor, cauda) = depois.split_at(fim);
+            let valor = valor.to_string();
+            *resto = cauda;
+            Some(valor)
+        };
+        let (hex, size_s) = match (token(&mut resto), token(&mut resto)) {
+            (Some(h), Some(s)) => (h, s),
             _ => {
                 return Err(ManifestError::BadLine {
                     line: line_no,
@@ -114,7 +126,14 @@ pub fn parse(text: &str) -> Result<Manifest, ManifestError> {
                 });
             }
         };
-        let sha256 = sha256::parse_hex(hex).ok_or(ManifestError::BadLine {
+        let path = resto.trim_start();
+        if path.is_empty() {
+            return Err(ManifestError::BadLine {
+                line: line_no,
+                reason: "caminho vazio",
+            });
+        }
+        let sha256 = sha256::parse_hex(&hex).ok_or(ManifestError::BadLine {
             line: line_no,
             reason: "sha256 deve ter 64 hexadecimais",
         })?;

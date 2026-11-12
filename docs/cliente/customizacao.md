@@ -66,11 +66,25 @@ Qualquer contribuição que copie lógica dele exige reavaliação desta ADR ant
 
 ```
 wyd-launcher check <dir-do-jogo> <manifesto>   # exit 0 = íntegro; relatório por arquivo senão
+wyd-launcher config <dir> <base> --key-file <arq>  # busca, verifica e instala o launcher.conf assinado
+wyd-launcher update <dir-do-jogo> <pacote> [--dry-run]  # confere Ed25519 do pacote e aplica com rollback
 wyd-launcher launch <dir-do-jogo> <manifesto>  # check → patch → verify → spawn
 wyd-launcher serverlist <registro> <dir>       # serverlist.bin + .txt + sn.bin (atômico, com .bak)
 wyd-launcher branding <dir>                    # Launcher.bmp + Launcher.hat da identidade única
 wyd-launcher gui <dir>                         # LauncherGUI.html (contrato visual da GUI Tauri)
 ```
+
+`branding`, `gui`, `serverlist`, `launch` e `retheme` resolvem a identidade efetiva por
+`configuracao::resolver`: com `--config <launcher.conf> --key-file <arq>` o caminho é estrito (erro,
+não fallback); sem `--config`, leem `<dir>/launcher.conf` e conferem com a chave de `--key-file` ou
+`WYD_LAUNCHER_CONFIG_KEY`. Arquivo ausente, chave ausente, assinatura inválida ou valor fora do
+contrato caem para a identidade embutida **com o motivo visível na janela** — nunca `panic` nem
+tela sem marca. `config` é o comando que baixa, verifica e instala o arquivo.
+
+O `update` é o único comando que não recebe chave: ele confere o pacote com a chave
+**pública Ed25519 embutida** (`distribuicao::CHAVE_PUBLICA_HEX`) e o pacote é assinado por
+`tools/launcher/sign-package.mjs`, com a privada no CI. A config remota continua HMAC com
+`--key-file`/`WYD_LAUNCHER_CONFIG_KEY` — são domínios e chaves diferentes.
 
 `serverlist` e `branding` escrevem só **dados por ambiente** e **skin** — nunca o
 `WYD.exe` —, sempre com backup `.bak` e `tmp` + rename no mesmo diretório. Os nomes de
@@ -86,6 +100,7 @@ SHA-256 em `std` puro + vetores NIST (decisão offline, sem dependência externa
 
 - [x] manifesto parseado com erro por linha; `check` reprova arquivo ausente/trocado/corrompido (19 testes + `check` real em `client/`: 6/6 OK)
 - [x] patch atômico com rollback comprovado por teste (falha no meio restaura tudo; fonte corrompida não toca em nada)
+- [x] pacote assinado com Ed25519 (chave pública embutida, `verify_strict`), assinatura do Node verificada em teste golden e rollback coberto
 - [x] `launch` só inicia com `verify` verde; executável ausente = erro tipado, sem spawn (dry-run + erro verificados; spawn real pendente de ambiente com jogo)
 - [x] nenhum binário do cliente versionado; licença respeitada
 

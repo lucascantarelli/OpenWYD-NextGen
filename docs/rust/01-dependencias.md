@@ -28,7 +28,8 @@
 | Observabilidade | `tracing` 0.1.44 + `tracing-subscriber` 0.3.23; exporter Prometheus próprio | **adotado na FASE-06-1** (ADR-0018) |
 | Qualidade/supply-chain | `cargo-audit`, `cargo-deny`, `cargo-tarpaulin`, `miri` | pendente (FASE-05/15) |
 | Hash de senha | `argon2` 0.5 | **adotado no `wyd-admin`** em 2026-11-08 (AGENTS §3.6): argon2id padrão, só na borda de login (`auth/password.rs`); o hash nunca sai da resposta |
-| Launcher UI | Tauri (ou CLI puro) | pendente (FASE-08) |
+| Launcher UI | Tauri (ou CLI puro) | **`tauri` 2 adotado em `apps/launcher-ui`** (2026-11-12, FASE-08-8 + ADR-0007): janela WebView2, `tauri-build` para recursos; só `core:default` nas capabilities, sem plugins/updater nesta frente |
+| Assinatura de pacote (launcher) | `ed25519-dalek` 2.x | **adotado no `wyd-launcher`** em 2026-11-11 (revisão do ADR-0003): Ed25519 verify-only, chave pública embutida; `default-features = false` + `std` |
 
 ## Notas datadas (FASE-14-1, 2026-11-07 — sem troca sem ADR + PoC)
 
@@ -61,6 +62,18 @@
   grafo como transitiva de `rustls`, então não adiciona superfície nova de supply-chain.
 - `cargo-audit`/`cargo-deny`: **manter**; `deny.toml` + falha comprovada saem na FASE-05-1.
 - Evidência deste turno: `cargo test --workspace` verde, `clippy -D warnings` verde, `git status --short -- crates/ Cargo.toml Cargo.lock` sem diff (pesquisa não tocou no workspace).
+
+### Nota de 2026-11-11 — assinatura do pacote (revisão do ADR-0003)
+
+O HMAC simétrico do `wyd-launcher` foi substituído por **Ed25519** (regra da skill
+`wyd-rust-toolchain`: dependência entra com justificativa, `cargo deny`/`audit` e doc).
+`ed25519-dalek 2.x` (`BSD-3-Clause`, já na allowlist do `deny.toml`) entra só com `std`,
+sem `fast` nem `zeroize`/`batch`: o binário **verifica**, nunca assina, então não carrega
+segredo. A chave pública fica em `distribuicao::CHAVE_PUBLICA_HEX`; a privada só no CI
+(`tools/launcher/sign-package.mjs`). O `Cargo.lock` ganha `curve25519-dalek`, `ed25519`,
+`signature` e `cpufeatures` (já presente via `sha2`). Ganho: espelhar o binário não permite
+re-assinar pacote, e `verify_strict` recusa assinatura malleável. Custo: rotação de chave
+exige launcher novo.
 
 ## Mapeamento legado → Rust (resumo)
 

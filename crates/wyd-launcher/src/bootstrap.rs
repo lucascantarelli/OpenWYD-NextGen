@@ -69,6 +69,34 @@ pub fn plan(workdir: &Path, exe_name: &str, args: &[String]) -> Result<Launch, L
     })
 }
 
+/// Monta o plano com um caminho de executável (absoluto, relativo ou nome).
+///
+/// Usado pelo `--exe` (teste de janela com um jogo falso na pasta real) e pelo
+/// `launch` quando o executável não é o `WYD.exe` padrão. Continua exigindo
+/// arquivo existente: caminho inválido é recusa tipada, nunca spawn cego.
+pub fn plan_path(workdir: &Path, exe: &str, args: &[String]) -> Result<Launch, LaunchError> {
+    if exe.trim().is_empty() {
+        return Err(LaunchError::ExeNotFound(workdir.join(exe)));
+    }
+    let caminho = Path::new(exe);
+    let full = if caminho.is_absolute() || caminho.components().count() > 1 {
+        caminho.to_path_buf()
+    } else {
+        workdir.join(caminho)
+    };
+    if !full.exists() {
+        return Err(LaunchError::ExeNotFound(full));
+    }
+    if !full.is_file() {
+        return Err(LaunchError::NotAFile(full));
+    }
+    Ok(Launch {
+        exe: full,
+        workdir: workdir.to_path_buf(),
+        args: args.to_vec(),
+    })
+}
+
 /// Descreve o comando sem executar (para `--dry-run` e logs).
 #[must_use]
 pub fn describe(launch: &Launch) -> String {
@@ -146,6 +174,18 @@ mod tests {
         assert!(parse_instances("0").is_err());
         assert!(parse_instances("6").is_err());
         assert!(parse_instances("abc").is_err());
+    }
+
+    #[test]
+    fn plan_path_aceita_caminho_absoluto_de_teste() {
+        let d = std::env::temp_dir().join(format!("wyd-launcher-planpath-{}", std::process::id()));
+        fs::create_dir_all(&d).unwrap();
+        let exe = d.join("jogo-falso.exe");
+        fs::write(&exe, b"mz").unwrap();
+        let l = plan_path(Path::new("client"), exe.to_str().unwrap(), &[]).unwrap();
+        assert_eq!(l.exe, exe);
+        assert!(plan_path(&d, "", &[]).is_err());
+        fs::remove_dir_all(&d).ok();
     }
 
     #[test]

@@ -63,6 +63,39 @@ const GLIFO_D: [[u8; 5]; 7] = [
     [1, 1, 1, 1, 0],
 ];
 
+/// Fundo da janela, já otimizado (1024×1024, JPEG qualidade 60) — arte da marca.
+const FUNDO_JPEG: &[u8] = include_bytes!("../assets/fundo.jpg");
+
+/// Base64 padrão (com `=`), usado só para embutir o fundo no HTML da janela.
+fn base64(bytes: &[u8]) -> String {
+    const ALFABETO: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut saida = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for bloco in bytes.chunks(3) {
+        let b0 = u32::from(bloco[0]);
+        let b1 = bloco.get(1).copied().map_or(0, u32::from);
+        let b2 = bloco.get(2).copied().map_or(0, u32::from);
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        saida.push(ALFABETO[(n >> 18) as usize & 63] as char);
+        saida.push(ALFABETO[(n >> 12) as usize & 63] as char);
+        saida.push(if bloco.len() > 1 {
+            ALFABETO[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        saida.push(if bloco.len() > 2 {
+            ALFABETO[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    saida
+}
+
+/// `data:` URI do fundo da janela (mesma arte em CLI, janela Tauri e skin).
+pub fn fundo_data_uri() -> String {
+    format!("data:image/jpeg;base64,{}", base64(FUNDO_JPEG))
+}
+
 /// Relatório de instalação de um asset (mesma forma do `serverlist::InstallReport`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallReport {
@@ -160,6 +193,111 @@ pub fn hat(id: &Identidade) -> Result<String, IdentidadeError> {
     ))
 }
 
+/// Lado do ícone do launcher (ICO 32 bits, mesmo desenho da skin).
+pub const ICONE_LADO: u32 = 64;
+
+/// Gera `icon.ico` (64×64, 32 bits) na paleta da identidade.
+///
+/// Mesmo desenho do `Launcher.bmp` em miniatura: gradiente `cor.surface` → `cor.bg`,
+/// faixa em `cor.accent` e o wordmark `WYD` em `cor.accent`. Determinístico (sem
+/// timestamp), para o ícone do portal/launcher/cliente nunca divergir da marca.
+pub fn ico(id: &Identidade) -> Result<Vec<u8>, IdentidadeError> {
+    let topo = id.cor("cor.surface")?;
+    let fundo = id.cor("cor.bg")?;
+    let destaque = id.cor("cor.accent")?;
+    let lado = ICONE_LADO;
+    let mut rgba = vec![0u8; (lado * lado * 4) as usize];
+    for y in 0..lado {
+        #[allow(clippy::cast_precision_loss)]
+        let t = y as f32 / (lado - 1) as f32;
+        let cor = topo.lerp(fundo, t);
+        for x in 0..lado {
+            let i = ((y * lado + x) * 4) as usize;
+            rgba[i] = cor.r;
+            rgba[i + 1] = cor.g;
+            rgba[i + 2] = cor.b;
+            rgba[i + 3] = 255;
+        }
+    }
+    let faixa_base = lado - 10;
+    for y in faixa_base..faixa_base + 3 {
+        for x in 0..lado {
+            let i = ((y * lado + x) * 4) as usize;
+            rgba[i] = destaque.r;
+            rgba[i + 1] = destaque.g;
+            rgba[i + 2] = destaque.b;
+            rgba[i + 3] = 255;
+        }
+    }
+    let escala = 2;
+    let marca = [GLIFO_W, GLIFO_Y, GLIFO_D];
+    let largura_marca = 3 * 5 * escala + 2 * 4;
+    let altura_marca = 7 * escala;
+    let x0 = (lado - largura_marca) / 2;
+    let y0 = (lado - altura_marca) / 2;
+    for (indice, glifo) in marca.iter().enumerate() {
+        let base_x = x0 + indice as u32 * (5 * escala + 4);
+        for (linha, bits) in glifo.iter().enumerate() {
+            for (coluna, bit) in bits.iter().enumerate() {
+                if *bit == 0 {
+                    continue;
+                }
+                for dy in 0..escala {
+                    for dx in 0..escala {
+                        let x = base_x + coluna as u32 * escala + dx;
+                        let y = y0 + linha as u32 * escala + dy;
+                        let i = ((y * lado + x) * 4) as usize;
+                        rgba[i] = destaque.r;
+                        rgba[i + 1] = destaque.g;
+                        rgba[i + 2] = destaque.b;
+                        rgba[i + 3] = 255;
+                    }
+                }
+            }
+        }
+    }
+
+    // ICO: ICONDIR + ICONDIRENTRY + DIB (XOR 32 bits bottom-up + máscara AND).
+    let xor = lado * lado * 4;
+    let and_stride = lado.div_ceil(32) * 4;
+    let and = and_stride * lado;
+    let imagem = 40 + xor + and;
+    let mut out = Vec::with_capacity(22 + imagem as usize);
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.push(ICONE_LADO as u8);
+    out.push(ICONE_LADO as u8);
+    out.push(0);
+    out.push(0);
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&32u16.to_le_bytes());
+    out.extend_from_slice(&imagem.to_le_bytes());
+    out.extend_from_slice(&22u32.to_le_bytes());
+    out.extend_from_slice(&40u32.to_le_bytes());
+    out.extend_from_slice(&(lado as i32).to_le_bytes());
+    out.extend_from_slice(&((lado * 2) as i32).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&32u16.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&(xor + and).to_le_bytes());
+    out.extend_from_slice(&0i32.to_le_bytes());
+    out.extend_from_slice(&0i32.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    for y in (0..lado).rev() {
+        for x in 0..lado {
+            let i = ((y * lado + x) * 4) as usize;
+            out.push(rgba[i + 2]);
+            out.push(rgba[i + 1]);
+            out.push(rgba[i]);
+            out.push(rgba[i + 3]);
+        }
+    }
+    out.extend(std::iter::repeat_n(0u8, and as usize));
+    Ok(out)
+}
+
 /// Instala os dois assets de forma atômica, com backup por arquivo.
 pub fn install(dir: &Path, arquivos: &[(&str, &[u8])]) -> Result<Vec<InstallReport>, io::Error> {
     let mut relatorios = Vec::new();
@@ -219,6 +357,41 @@ fn pintar(pixels: &mut [u8], stride: usize, x: u32, y: u32, cor: Rgb) {
 mod tests {
     use super::*;
     use crate::identidade::padrao;
+
+    #[test]
+    fn fundo_embutido_e_um_jpeg_em_data_uri() {
+        let uri = fundo_data_uri();
+        assert!(uri.starts_with("data:image/jpeg;base64,"));
+        assert!(uri.len() > 10_000, "fundo pequeno demais: {}", uri.len());
+        assert!(
+            !uri.contains('"') && !uri.contains('#'),
+            "data URI quebraria o CSS"
+        );
+        assert_eq!(uri, fundo_data_uri(), "determinístico");
+    }
+
+    #[test]
+    fn base64_bate_com_vetores_conhecidos() {
+        assert_eq!(base64(b""), "");
+        assert_eq!(base64(b"f"), "Zg==");
+        assert_eq!(base64(b"fo"), "Zm8=");
+        assert_eq!(base64(b"foo"), "Zm9v");
+        assert_eq!(base64(b"foobar"), "Zm9vYmFy");
+    }
+
+    #[test]
+    fn icone_e_um_ico_32_bits_deterministico() {
+        let id = padrao().expect("identidade");
+        let bytes = ico(&id).expect("ico");
+        assert_eq!(&bytes[0..4], &[0, 0, 1, 0], "ICONDIR reservado/tipo");
+        assert_eq!(&bytes[4..6], &[1, 0], "um único ícone");
+        assert_eq!(bytes[6], ICONE_LADO as u8);
+        assert_eq!(bytes[7], ICONE_LADO as u8);
+        assert_eq!(u16::from_le_bytes([bytes[12], bytes[13]]), 32, "bpp");
+        let tamanho = u32::from_le_bytes([bytes[14], bytes[15], bytes[16], bytes[17]]);
+        assert_eq!(bytes.len(), 22 + tamanho as usize);
+        assert_eq!(ico(&id).expect("ico 2"), bytes, "determinístico");
+    }
 
     #[test]
     fn bmp_tem_cabecalho_24_bits_e_dimensao_do_original() {

@@ -836,6 +836,15 @@ export default async function ConfiguracoesPage({
         </div>
       </div>
 
+      <nav className="chips" aria-label="Origem da configuração" style={{ marginBottom: 8 }}>
+        <Link className="chip" href="/configuracoes" aria-current="page">
+          Servidor
+        </Link>
+        <Link className="chip" href="/configuracoes/launcher">
+          Launcher (config assinada)
+        </Link>
+      </nav>
+
       <nav className="chips" aria-label="Assuntos da configuração" style={{ marginBottom: 16 }}>
         {TABS.map((tab) => (
           <Link

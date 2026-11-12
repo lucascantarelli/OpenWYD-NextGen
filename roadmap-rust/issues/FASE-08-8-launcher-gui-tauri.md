@@ -62,6 +62,11 @@ jogar em pasta temporária + recusa de pacote adulterado na GUI.
 
 ## Subtasks
 
+- [x] Frente Tauri mínima (2026-11-12): `apps/launcher-ui` (bin `WYDLauncher`) consome `configuracao::resolver_flags` + `lancamento::iniciar`; janela serve o HTML da identidade efetiva e o Jogar abre o jogo; `--instalar <dir>` copia o executável para a pasta do jogo (instalado em `client/`, com `.bak` do launcher original)
+- [x] Arte da janela (2026-11-12): ICO fornecido pelo dono em `apps/launcher-ui/icons/icon.ico` e fundo embutido como `data:` URI (`branding::fundo_data_uri`), com teste de determinismo
+- [x] E2E WebDriver real (2026-11-12): `tools/launcher/e2e-janela.mjs` (tauri-driver + msedgedriver) abre a janela do exe na pasta do jogo, confere DOM/notícia, clica Jogar (1 processo) e fail-closed sem escrita
+- [x] Portal do launcher (2026-11-12): `/configuracoes/launcher` (publica `launcher.conf` assinado + histórico) e `/monitoramento/launcher` (telemetria por versão + operação)
+- [ ] Barra de progresso de patch + instalador NSIS
 - [ ] Codificar issue
 - [ ] Testar issue
 - [ ] Revisar issue

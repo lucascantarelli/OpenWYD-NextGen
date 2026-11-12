@@ -17,6 +17,16 @@ path = "src/lib.rs"
 # Tela de conexão: o launcher usa o MESMO renderizador da CLI headless, sem texto duplicado.
 wyd-bots = { path = "../wyd-bots" }
 
+# Assinatura do pacote de patch (ADR-0003, revisão 2026-11-11). Ed25519 com chave
+# pública embutida: o binário só verifica, nunca assina, então não carrega segredo.
+# `default-features = false` + `std` evita as tabelas pré-computadas (`fast`), o
+# `zeroize` e o `batch`, que o launcher não usa.
+ed25519-dalek = { version = "2", default-features = false, features = ["std"] }
+
+# Descompressão do `client.zip` (método deflate do ZIP): o cliente real é
+# publicado compactado; o backend puro Rust evita depender de zlib do sistema.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
 # Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
 # não descobre arquivos em subpastas de tests/.
 
@@ -27,3 +37,7 @@ path = "tests/contrato/identidade.rs"
 [[test]]
 name = "golden_serverlist_paridade"
 path = "tests/golden/serverlist_paridade.rs"
+
+[[test]]
+name = "golden_assinatura_ed25519"
+path = "tests/golden/assinatura_ed25519.rs"

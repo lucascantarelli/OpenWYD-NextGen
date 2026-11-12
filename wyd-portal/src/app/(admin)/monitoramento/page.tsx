@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, Gauge, ScrollText, Server } from "lucide-react";
+import { AlertTriangle, BarChart3, Gauge, Rocket, ScrollText, Server } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/Badge";
@@ -41,6 +41,12 @@ const SECTIONS = [
     title: "Logs",
     text: "Volume, erros e avisos por serviço via Loki.",
     icon: ScrollText,
+  },
+  {
+    href: "/monitoramento/launcher",
+    title: "Launcher",
+    text: "Telemetria anônima por versão e operação: eventos, falhas e duração.",
+    icon: Rocket,
   },
 ] as const;
 

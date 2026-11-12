@@ -34,5 +34,8 @@
 # Rust (workspace; sem Go no repo desde 2026-11)
 /target/
 **/*.rs.bk
+
+# Tauri (FASE-08-8): schemas de ACL gerados pelo tauri-build a cada build.
+/apps/launcher-ui/gen/
 # Distribuição de artefatos (launcher/cliente): gerada, nunca versionada.
 /dist/

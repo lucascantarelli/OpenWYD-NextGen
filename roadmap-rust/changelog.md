@@ -1,0 +1,1 @@
+## Changelog com issues já finalizadas

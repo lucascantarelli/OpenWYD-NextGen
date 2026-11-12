@@ -1,0 +1,21 @@
+[package]
+name = "wyd-launcher-ui"
+version = "0.1.0"
+edition = "2021"
+description = "Janela Tauri do launcher WYD: identidade efetiva + botão Jogar (FASE-08-8)"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "WYDLauncher"
+path = "src/main.rs"
+
+[dependencies]
+# Núcleo do launcher: a janela não reimplementa verificação, patch nem serverlist.
+wyd-launcher = { path = "../../crates/wyd-launcher" }
+
+# ADR-0007: Tauri v2 (WebView2 no Windows), sem updater/plugins nesta frente mínima.
+tauri = "2"
+
+[build-dependencies]
+tauri-build = "2"

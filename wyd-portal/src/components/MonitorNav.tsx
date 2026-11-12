@@ -12,6 +12,7 @@ const ROUTES = [
   { href: "/monitoramento/grafana", label: "Painéis" },
   { href: "/monitoramento/prometheus", label: "Métricas e alertas" },
   { href: "/monitoramento/logs", label: "Logs" },
+  { href: "/monitoramento/launcher", label: "Launcher" },
 ] as const;
 
 export function MonitorNav({ current }: { current: string }) {

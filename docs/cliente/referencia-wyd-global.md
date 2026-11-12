@@ -82,7 +82,7 @@ Confirmado no disco:
 
 Rejeitar do modelo deles:
 
-- **SHA1 no `RELEASES`** como única integridade → nós usamos SHA-256 + HMAC (FASE-08-3).
+- **SHA1 no `RELEASES`** como única integridade → nós usamos SHA-256 por arquivo + assinatura **Ed25519** do manifesto (FASE-08-3; HMAC simétrico trocado em 2026-11-11).
 - **Delta/full `.nupkg` sem fail-closed**: nosso patch é atômico (tmp + rename) e recusa pacote sem
   assinatura **antes** de tocar o disco.
 - **Configurador Flash** (`WydConfig.swf`/`Adobe AIR`) e `.NET Framework 4.6.1` como dependência

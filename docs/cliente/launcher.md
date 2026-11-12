@@ -77,22 +77,60 @@ O launcher lê do portal (somente leitura, `crates/wyd-launcher/src/portal_clien
 | `GET /api/launcher/eventos` | grade de eventos (código/nome/estado/horários; vazia com gateway fora) | `world_event_admin/get_world_event_config` via token de processo — só sai dado público de jogo | 60 s |
 | `GET /api/launcher/manifesto` | `manifest.txt` real da distribuição (`build`, `protocol`, SHA-256 + tamanho por arquivo); `404` sem publicação | pasta montada em `LAUNCHER_DIST_DIR`, gerada por `tools/launcher/dist-manifest.mjs` | 60 s |
 | `GET /api/launcher/pacote` | binário do launcher com `x-checksum-sha256` no header; `404` sem pacote | mesmo diretório (`LAUNCHER_PACKAGE`, padrão `wyd-launcher.exe`) | 5 min |
+| `GET /api/launcher/configuracao` | `launcher.conf` **assinado** (revisão, `portal.base`, caminhos e sobreposições de marca/canais); `404` sem publicação | mesmo diretório, assinado por `tools/launcher/sign-config.mjs` | 60 s |
+| `GET /api/launcher/noticias` | vitrine (`slug`, `titulo`, `data`, `tag`, `resumo`, `url`) do JSON de `docs/noticias`; sem corpo markdown e sem sessão | `server/noticias.ts` (mesma fonte do site) | 60 s + `stale-while-revalidate=300` |
+| `POST /api/launcher/telemetria` | evento anônimo e fechado (`versao`, `build_cliente`, `operacao`, `ok`, `duracao_ms`, `arquivos`, `falhas[≤10]`); `400` fora do contrato, `413` acima de 4 KiB, `415` sem JSON, `204` sem corpo | `server/launcher-telemetria.ts` (agregação em processo + log estruturado, sem PII) | `no-store` |
 
 Sem TLS neste módulo (`http://` de loopback/rede local; `https://` entra com o canal
 de distribuição assinado). **Publicação real (2026-11-11):** o portal serve o manifesto e o
 pacote a partir de uma pasta de distribuição montada (`LAUNCHER_DIST_DIR`), gerada por
 `node tools/launcher/dist-manifest.mjs dist/launcher 7662 12000`; sem pasta, as duas rotas
 respondem `404` e a página de downloads mostra “não publicada” — nunca manifesto vazio.
-**Ainda fora do contrato:** `/api/launcher/noticias` (as notícias do portal são markdown
-versionado, não tabela), `/admin/patches` + canal de versão publicável (exige migration +
-`ConfigStore` + rotas, escopo backend próprio) e autoupdate do binário. Conta/login no
+**Consumo no launcher (2026-11-12):** as duas rotas acima são usadas em código real.
+- **Notícias:** `gui` (e `gui --dry-run`) busca a vitrine com timeout curto de 700 ms e
+desenha até 5 itens no painel `Notícias` da janela existente (`LauncherGUI.html`). Rota
+fora, lenta ou com erro não impede a janela de abrir: a seção aparece com o motivo
+(`notícias indisponíveis: …`) e o motivo também vai para o stderr (`notícias: …`).
+- **Telemetria:** após `check`, `config`, `update` (patch) e `launch` — inclusive nas
+falhas — o launcher faz `POST` do contrato fechado, com `duracao_ms`, `arquivos` e até
+10 `falhas[{arquivo,motivo}]`. Sem base de portal (config remota ausente e
+`WYD_LAUNCHER_PORTAL` vazio) o envio é omitido; falha de envio só aparece como
+`telemetria: …` no stderr, nunca muda o exit code nem trava a janela. `--dry-run` não
+envia patch.
+
+**Ainda fora do contrato:** painel de monitoramento da telemetria no portal, `/admin/patches`
++ canal de versão publicável (exige migration + `ConfigStore` + rotas, escopo backend
+próprio) e autoupdate do binário. Conta/login no
 launcher v1 = **opcional** (o jogo autentica no CPSock; o launcher não guarda senha).
 
 ## 7. Plano (issue GUI criada: FASE-08-8, decisão Tauri + nome WYD em 2026-11-07)
 
-1. ADR GUI (Tauri v2 + fronteiras com `wyd-launcher`).
-2. `crates/wyd-launcher-ui` (ou `apps/`): janela, botão Jogar, barra de
-   progresso de patch, painel de notícias via portal, `serverlist.bin`.
+1. ADR GUI (Tauri v2 + fronteiras com `wyd-launcher`) — **aceita** (ADR-0007).
+2. **Frente mínima entregue (2026-11-12):** `apps/launcher-ui` (bin
+   `WYDLauncher`) abre janela Tauri com o HTML da identidade efetiva (mesma
+   `configuracao::resolver_flags` da CLI), notícias do portal com fallback e o
+   botão Jogar chamando `lancamento::iniciar` — fail-closed, sem escrita própria.
+   `WYDLauncher.exe --instalar <pasta-do-jogo>` copia o executável para
+   `<pasta>/WYDLauncher.exe` (atômico, com backup); rodando de dentro da pasta,
+   a identidade e o jogo padrão (`manifest.txt`, `canais.txt`) vêm dali.
+   `--check` imprime a identidade resolvida sem abrir janela e `--dir` aponta
+   outra pasta do jogo. A pasta do jogo real é `client/` (ignorada no git):
+   `WYDLauncher.exe --instalar client` deixa o launcher ao lado do `WYD.exe`
+   (o `WYDLauncher.exe` original fica em `.bak`) e, rodando de lá sem `--dir`,
+   ele resolve a própria pasta.
+   **Arte:** o ícone da janela/instalador é o ICO entregue pelo dono em
+   `apps/launcher-ui/icons/icon.ico`; o fundo (`apps/launcher-ui/assets/`,
+   otimizado para `crates/wyd-launcher/assets/fundo.jpg`, 135 KB) entra embutido
+   no HTML como `data:` URI, com véu escuro por cima para manter contraste —
+   o mesmo desenho no HTML da CLI e na janela Tauri.
+   **Portal:** `/configuracoes/launcher` revisa e publica o `launcher.conf`
+   assinado com histórico append-only (autor, SHA-256, bytes) e
+   `/monitoramento/launcher` mostra a telemetria agregada por versão + operação.
+   **E2E real da janela:** `node tools/launcher/e2e-janela.mjs` (tauri-driver +
+   msedgedriver) sobe portal falso, abre a janela do executável **dentro da
+   pasta do jogo**, confere o HTML injetado e a notícia, clica em Jogar e prova
+   processo único + fail-closed sem reescrever `serverlist.bin`.
+   Ainda falta: barra de progresso de patch e instalador NSIS.
 3. Instalador NSIS por canal (WYD), ícone e metadados WYD.
 4. Teste: máquina limpa instala → abre → atualiza → joga; pacote adulterado
    recusado na GUI como na CLI.
@@ -186,3 +224,97 @@ O que continua faltando não é o formato, é a **carga**: `strings client/wyd.e
 substituir o arquivo no `client/` é preciso provar esse caminho (ou aceitar o teste com o cliente
 aberto). A segunda aba de cidadania/atributos continua dependente da captura de
 `STRUCT_SELCHAR`/`STRUCT_MOB` (FASE-08-6) — checklist de campos na issue.
+
+## 10. Configuração remota assinada (2026-11-11)
+
+Marca, canais e URLs deixam de exigir recompilação: o launcher baixa `launcher.conf` do portal,
+confere a assinatura e sobrepõe as chaves à identidade embutida (`configuracao.rs`). O padrão
+continua sendo o `include_str!` — mas a janela resolve `<dir>/launcher.conf` sozinha
+(`--key-file` ou `WYD_LAUNCHER_CONFIG_KEY`) e cai para a embutida com motivo quando o arquivo
+não é confiável.
+
+Formato (UTF-8, LF, `chave = valor`, `#` comenta):
+
+```text
+# wyd-launcher-config v1
+revisao = 3
+portal.base = http://127.0.0.1:3000
+launcher.manifesto = /api/launcher/manifesto
+launcher.pacote = /api/launcher/pacote
+cor.accent = #ff0000
+servidor.2 = Novo
+assinatura = <64 hex>
+```
+
+| Regra | Por quê |
+|---|---|
+| `assinatura` é **a última linha com conteúdo** e o HMAC-SHA256 cobre os bytes exatos anteriores a ela | texto depois da assinatura não seria coberto por ela; o parser recusa |
+| chave **simétrica própria da config** (`--key-file`, `configuracao::carregar_chave`), comparação em tempo constante | a config pode ser re-assinada pelo operador sem tocar no par Ed25519 do pacote; nenhuma chave dentro do binário |
+| chave desconhecida, `revisao` ausente, `portal.base` fora de `http://host[:porta]` e caminho sem `/` reprovam **com a linha** | config errada não vira "marca estranha" silenciosa |
+| o merge valida o que os consumidores usam (cor, número, nome/slot de canal), não só a sintaxe | config inválida é recusada no `config`, não na hora de pintar a skin |
+| instalação atômica com `.bak` (`branding::install`) | config meio escrita é pior que config velha |
+
+Fluxo (publicar → consumir → renderizar sem recompilar):
+
+```bash
+# 1. publica: o assinador anexa a linha `assinatura` ao corpo
+node tools/launcher/sign-config.mjs tools/launcher/launcher.conf.exemplo \
+  tmp/chave.bin dist/launcher/launcher.conf
+
+# 2. consome: baixa do portal, verifica e instala em client/
+cargo run -p wyd-launcher -- config client/ http://127.0.0.1:3000 --key-file tmp/chave.bin
+
+# 3. usa a marca/canais remotos no skin e no sn.bin
+cargo run -p wyd-launcher -- branding client/ \
+  --config client/launcher.conf --key-file tmp/chave.bin
+```
+
+`--config` é o caminho de **operador** (estrito: assinatura inválida é erro, não fallback) e
+vale para `branding`, `gui`, `serverlist`, `launch` e `retheme`. Sem ele, esses mesmos comandos
+resolvem `<dir>/launcher.conf` com a chave de `--key-file` ou de `WYD_LAUNCHER_CONFIG_KEY`.
+O `launcher.conf` publicado é servido por `GET /api/launcher/configuracao` (404 quando não há
+publicação) e o launcher nunca interpreta os bytes antes de a assinatura conferir.
+
+### 10.1 Resolução da identidade efetiva (a janela que o jogador abre)
+
+A janela não tem parser próprio: `configuracao::resolver` devolve a `Efetiva` (identidade +
+URLs + origem + motivo) e `gui::html` desenha exatamente isso. Nenhuma etapa faz `panic` e
+nenhum caminho fica sem marca — quando a config não é confiável, o rodapé mostra o motivo.
+
+| Situação | O que o jogador vê |
+|---|---|
+| `launcher.conf` válido + chave | cor, nomes/slots de canal e links do portal do arquivo; rodapé sem motivo |
+| arquivo ausente | identidade embutida + `identidade embutida: launcher.conf ausente em <dir>` |
+| sem chave | identidade embutida + motivo pedindo `WYD_LAUNCHER_CONFIG_KEY`/`--key-file` |
+| assinatura inválida (adulterado) | identidade embutida + motivo com a recusa |
+| assinado mas fora do contrato | identidade embutida + motivo do `validar()` |
+
+O CLI loga a mesma origem (`identidade: remota revisão N · portal ...` ou
+`identidade: embutida (<motivo>)`), então o diagnóstico não depende de abrir a janela.
+Testes: `configuracao` cobre remoto/ausente/sem chave/adulterado/fora do contrato/binário e a
+prova de que **trocar o `launcher.conf` muda a janela sem recompilar**; `gui` cobre paleta,
+escape de nome de canal e o motivo visível no fallback.
+
+## 11. Assinatura do pacote de patch (Ed25519, 2026-11-11)
+
+O pacote (`manifesto` + `arquivos/`) é assinado com **Ed25519** pela chave privada do
+operador/CI; o launcher confere com a chave **pública embutida**
+(`distribuicao::CHAVE_PUBLICA_HEX`) e o `update` não aceita `--key-file`. Isso substitui o
+HMAC simétrico da FASE-08-3, em que quem tivesse o binário também tinha a chave que assina.
+
+| Peça | Onde vive |
+|---|---|
+| chave pública (32 bytes em hex) | constante no binário; trocar é publicar launcher novo |
+| chave privada (PKCS#8) | secret do CI; nunca no repositório |
+| `assinatura` no pacote | 128 hex sobre os bytes exatos do `manifesto` |
+| emissor | `node tools/launcher/sign-package.mjs sign <pacote> <chave.pem>` |
+
+`verify_strict` recusa assinatura malleável; assinatura truncada ou de outra chave é
+`DistError::BadSignature` (sem `panic`) e o pacote é recusado **antes** de tocar no
+diretório do jogo. O rollback é o do `patch::apply` + `PostVerify`: falha no meio restaura
+os arquivos já trocados (`falha_no_meio_do_patch_restaura_o_backup`).
+
+Prova de paridade emissor↔verificador: `tests/golden/assinatura_ed25519.rs` verifica um
+pacote assinado pelo Node com a chave embutida; trocar manifesto ou payload (mesmo com
+assinatura presente) é recusado. Rotação: gerar par novo (`keygen`), embutir a pública,
+distribuir o launcher e só então publicar pacotes com a privada nova.
