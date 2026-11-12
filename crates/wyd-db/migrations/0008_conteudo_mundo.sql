@@ -164,7 +164,7 @@ CREATE TABLE region (
     name        TEXT NOT NULL CHECK (name <> ''),
     name_fold   TEXT GENERATED ALWAYS AS (content_fold(name)) STORED,
     -- Sem teto: o insumo tem uma região com 6841, acima do espaço 0..4095 do cliente.
-    -- O teto seria uma invenção nossa; quem valida contra o mapa é o loader (GAME-04).
+    -- O teto seria uma invenção nossa; quem valida contra o mapa é o loader (FASE-03-4).
     x1          INTEGER NOT NULL CHECK (x1 >= 0),
     y1          INTEGER NOT NULL CHECK (y1 >= 0),
     x2          INTEGER NOT NULL CHECK (x2 >= 0),

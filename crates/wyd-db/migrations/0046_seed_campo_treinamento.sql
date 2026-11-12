@@ -1,4 +1,4 @@
--- 0046_seed_campo_treinamento: conteúdo do Campo de Treinamento no mapa (GAME-18).
+-- 0046_seed_campo_treinamento: conteúdo do Campo de Treinamento no mapa (FASE-03-18).
 --
 -- Nenhum blob novo: todas as linhas apontam para `npc_template` já presente no snapshot
 -- (1991 templates do legado). Coordenadas e funções vêm do guia oficial e do droplist

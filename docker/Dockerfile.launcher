@@ -10,6 +10,8 @@ FROM rust:1-bookworm AS builder
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates ./crates
+# A GUI Tauri é membro do workspace; o manifesto precisa existir mesmo ao compilar o CLI.
+COPY apps/launcher-ui ./apps/launcher-ui
 # Cache BuildKit do registry + target acelera rebuilds sem invalidar camadas.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \

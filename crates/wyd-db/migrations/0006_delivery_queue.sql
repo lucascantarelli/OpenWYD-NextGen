@@ -1,7 +1,7 @@
 -- 0006_delivery_queue: grants do wyd-portal/admin para dreno do servidor (única ponte web→jogo).
 -- Convenção: -- migrate:up / -- migrate:down (ver docs/arquitetura/modelo-banco.md §4).
 -- Grant pendente impede apagar conta/personagem (RESTRICT: falha explícita, sem item órfão).
--- `idempotency_key` (WEB-04) é a chave do pedido do portal: UNIQUE garante que
+-- `idempotency_key` (FASE-07-4) é a chave do pedido do portal: UNIQUE garante que
 -- duplo clique/retry devolve a MESMA entrega em vez de enfileirar duas.
 -- `created_by` registra o staff autor; `account_id`/`character_id` são o destino.
 

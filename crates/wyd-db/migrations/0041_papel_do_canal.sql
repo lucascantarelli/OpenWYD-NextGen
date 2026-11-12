@@ -1,4 +1,4 @@
--- 0041 — papel do canal (GAME-10): normal × verde, e o bônus de cidadania no drop.
+-- 0041 — papel do canal (FASE-03-10): normal × verde, e o bônus de cidadania no drop.
 --
 -- Regra do legado (`docs/wyd/canais-e-cidadania.md` §2–§3): cidadania é o vínculo com **um**
 -- canal (`Citizen = ServerIndex + 1`) e o canal verde/novato é propriedade fixa do processo —

@@ -11,6 +11,8 @@ COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 # Árvore completa de crates: o workspace declara todos os membros no Cargo.toml, então
 # copiar só quatro quebra o manifest. `-p wyd-admin --bin wyd-gateway` compila só o alvo.
 COPY crates ./crates
+# A GUI Tauri também é membro do workspace; o manifesto precisa existir na resolução.
+COPY apps/launcher-ui ./apps/launcher-ui
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release -p wyd-admin --bin wyd-gateway && \

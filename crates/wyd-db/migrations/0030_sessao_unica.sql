@@ -10,7 +10,7 @@
 -- `_MSG_DBCNFServerChange` (0x052A) porque cada canal tinha o **próprio** DB; aqui os canais
 -- compartilham o Postgres, então trocar de canal é relogar (não há dado a mover).
 --
--- `character_id` já existe para a seleção de personagem (CLIENT-02): hoje a cerca é por
+-- `character_id` já existe para a seleção de personagem (FASE-08-2): hoje a cerca é por
 -- `account_login` porque o handshake ainda não autentica a conta. A sessão que a autenticação
 -- provar (account_id) substitui a chave sem mudar as garantias.
 
