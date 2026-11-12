@@ -221,6 +221,24 @@ impl PgBackend {
         Ok(CatalogSnapshot { version, items })
     }
 
+    /// `ReqLvl` do catálogo para um item, quando a linha existe.
+    ///
+    /// É a fonte do bônus `50 + ReqLvl` do treinador do Campo e da validação de equipagem.
+    /// Item fora do catálogo devolve `None`; o chamador não inventa requisito.
+    pub async fn item_req_level(&self, item_index: i64) -> Result<Option<i16>, DbError> {
+        let index = i32::try_from(item_index).map_err(|_| DbError::ConstraintViolation {
+            table: "item_catalog",
+            constraint: "item_index",
+        })?;
+        sqlx::query_scalar("SELECT req_level FROM item_catalog WHERE item_index = $1")
+            .bind(index)
+            .fetch_optional(self.pool())
+            .await
+            .map_err(|_| DbError::Transport {
+                op: "catalog.req_level",
+            })
+    }
+
     /// O template do item carrega o efeito (`item_catalog.effect_names`, GAME-16)?
     ///
     /// Porta do `EF_NOSANC` (126) no refino: o bloqueio é dado do catálogo semeado, não

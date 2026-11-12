@@ -2,7 +2,7 @@
 
 > **ID canônico:** `GAME-18`
 > **ID histórico:** `FASE-03-18`
-> **Estado 2026-11-12:** 🟡 · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-12:** 🟡 · código/teste fechados; prova visual ainda bloqueada por captura. Ver `roadmap-rust/index.md`.
 
 **Fase:** 3 · **Depende de:** GAME-17 (entrada no mundo), PROC-15 ✅ (migrations), WEB-05 ✅ (conteúdo) · **Bloqueia:** GAME-23 (bots) · **Esforço:** L
 
@@ -43,7 +43,8 @@ Faixa oficial **1–35** (divergência “abaixo de 35” × “1~35” em §4 D
 
 Consequência prática: `682` (Kit de Cura 20 M, `EF_HP` 200) + affect 44 (200/200) na etapa 1;
 encantamento de `Equip[6]` na etapa 2; `Equip[1..7]` + sanc 3 na etapa 3; sorteio de
-`682/481/652` na etapa 4. Nada de refino +6 (B), “Classe A” (C) ou Sephira (D).
+`682/481/652` na etapa 4. A sequência A não inclui refino +6 (B) nem “Classe A” (C); a
+Sephira +9 (D-8) é um NPC separado, ao lado do Unicorn.
 
 ## Passos
 
@@ -61,7 +62,8 @@ encantamento de `Equip[6]` na etapa 2; `Equip[1..7]` + sanc 3 na etapa 3; sortei
 6. Seed de conteúdo: os NPCs do campo (4 treinadores, Unicorn, Carbuncle), os guardiões, o
    `OrcWarrior` e as `drop_table` dos itens de prova — tudo em `npc_definition`/`drop_table`.
 7. Arma inicial: **NPC Unicorn** (oficial, decidido) escolhendo arma física/mágica pela classe.
-   Não há NPC de Sephira +9 nesta entrega.
+   O NPC **Sephira +9** (D-8) entra pela migration `0049`, ao lado do Unicorn; o item de arma
+   Sephira ainda não tem linha de catálogo/loja.
 8. Feedback ao cliente com `_MSG_MessagePanel`/`SendSay`/`_MSG_UpdateEtc`, nunca com uma janela
    de quest que o 7662 não tem.
 
@@ -77,13 +79,17 @@ encantamento de `Equip[6]` na etapa 2; `Equip[1..7]` + sanc 3 na etapa 3; sortei
 ## Testes / verificação
 
 ```bash
-cargo test -p wyd-server --test campo_treinamento
+cargo test -p wyd-server --test integracao_campo_treinamento
+cargo test -p wyd-server --test integracao_campo_drops
+cargo test -p wyd-server --test sistema_login
 cargo test -p wyd-db --test catalogo
 node tools/content/check-migrations.mjs
 ```
 
 Saída esperada: 0→4 com item correto, recusa sem item, chave consumida e portão aberto, boss
-dropando o emblema, recompensa uma vez por personagem.
+dropando o emblema, recompensa uma vez por personagem. `integracao_campo_drops` usa o
+pipeline real `Engine::attack_at` → `Gameplay::loot_at_death` → `add_item` → `quest_engage`
+para os quatro guardiões/boss, com o HP do alvo reduzido apenas no fixture.
 
 ## Skills Relacionadas do freebuff
 
@@ -132,22 +138,35 @@ dropando o emblema, recompensa uma vez por personagem.
   slot (o drop fica no chão). Provas: `loot_empilha_ate_o_teto_e_ocupa_slot_livre` e
   `loot_sem_slot_nao_e_inventado` (2 dos 11 testes).
 
-**Aberto (não implementado, e por quê):**
+**Fechado em 2026-11-12 (código + teste):**
 
-1. **Fluxo completo dos guardiões e do boss.** Os templates e as dez instâncias já estão no
-   seed `0046`, e o `campo_vivo` prova o `GremlinDecoy` dropando a chave 451 no combate real.
-   Falta repetir o fluxo completo com `GiantCrill` (452), `OrcSniper` (453) e `OrcWarrior`
-   (524/Emblema) — o teste integrado ainda entrega essas provas como item já obtido.
-2. **Portões como objeto visível.** A mecânica está implementada (chave por `EF_KEYID`,
+1. **Fluxo completo dos guardiões e do boss.** `integracao_campo_drops` mata
+   `GremlinDecoy`/451, `GiantCrill`/452, `OrcSniper`/453 e `OrcWarrior`/524 pelo pipeline real
+   de morte/loot (`Engine::attack_at` → `Gameplay::loot_at_death` → `add_item` → `quest_engage`
+   → `apply_quest_reward`). Cada prova entra no inventário, é consumida na etapa certa e a
+   reentrega da mesma etapa é recusada. O HP do alvo é reduzido a 1 **só no fixture** por causa
+   do dano 1 do nível 1; template, nome, posição, EXP e tabela de drop continuam vindo do seed.
+2. **Sephira +9 (D-8).** A migration `0049_seed_campo_sephira` (complementa `0046`, que já foi
+   aplicado e não pode ser reescrito) cria o NPC `Sephira +9` (id 6311, template `Refinacoes`)
+   em `(2133,2040)`, ao lado do Unicorn. `integracao_campo_drops` o encontra pelo clique e prova
+   o refino `+8 → +9` com a taxa do snapshot. A arma Sephira +9 em si continua sem linha de
+   catálogo/loja — o NPC existe, o item não foi inventado.
+3. **`ReqLvl` do equipamento.** O catálogo já tinha `req_level`; agora ele é consumido de fato:
+   `SelectionStore::quest` lê o `ReqLvl` do item em `Equip[6]` (`PgBackend::item_req_level`) em
+   vez de usar o nível do personagem, e `EquipmentCatalog` implementa `ItemRules` sobre
+   `CatalogItemRow` para a validação de equipagem. Testes: bônus `50 + ReqLvl` com arma real e
+   `equip` recusando nível 1 para item `ReqLvl` 319.
+
+**Aberto (bloqueado por captura no cliente 7662 — não marcar como concluído):**
+
+1. **Portões como objeto visível.** A mecânica está implementada (chave por `EF_KEYID`,
    consumo, fechamento por tempo), mas o portão não é uma entidade da cena: o cliente 7662
    não vê a porta nem recebe o `EF_KEYID` no `_MSG_UpdateItem` do legado. Falta o item de
    mundo/porta no snapshot para o fluxo visual.
-3. **Buff do `Cabuncle`.** As três instâncias estão no seed, mas o affect não tem pacote de
+2. **Buff do `Cabuncle`.** As três instâncias estão no seed, mas o affect não tem pacote de
    ícone/duração no fio; falta o caminho de aplicação/reaplicação visível ao cliente.
-4. **Sephira +9 (D-8).** A decisão existe, mas o seed `0046` ainda não tem o NPC de arma
-   Sephira +9; o Unicorn continua sendo a arma inicial pelo `BaseMob` da classe.
-5. **`ReqLvl` do equipamento.** Não está no modelo (`ItemRow`); o bônus usa o nível do
-   personagem como base até o catálogo expor a coluna.
+3. **Prova visual no 7662.** Os guardiões/boss já têm prova de código/teste no pipeline real,
+   mas ainda falta observar entrada, drop, portão e conclusão na tela do cliente.
 
 ## Pesquisa 2026-11-11 (guardas, drops, sequências)
 
@@ -161,7 +180,8 @@ do Carbúnculo, Olho Crescente e Poção de Cura (M) — diferente do guia PT.
 
 Escopo pedido pelo dono em 2026-11-11 (depende de decisão registrada antes do código):
 
-- NPC com **armas Sephira +9** (dano full) para iniciantes — contraria D-6; precisa de decisão.
+- NPC com **armas Sephira +9** (dano full) para iniciantes — D-8 decidiu o NPC; a arma em si
+  ainda não tem linha de `item_catalog`/loja.
 - Buff NPC ao longo da quest nas **três** instâncias, reaplicável.
 - Guardas com recompensas corretas e lista de sequências para escolha do dono.
 - Boss final completo, drops/limites/recompensas configurados.
@@ -172,13 +192,16 @@ Escopo pedido pelo dono em 2026-11-11 (depende de decisão registrada antes do c
 `crates/wyd-db/migrations/0046_seed_campo_treinamento.sql` coloca os dez NPCs do campo no mapa
 com **templates reais** já presentes em `npc_template` (blobs `STRUCT_MOB` de 816 B do snapshot
 legado, com `sha256` gravado) e os quatro drops das provas/emblema em `drop_rate_override`.
-Nenhum blob foi inventado: o seed referencia `npc_template.template_name` por FK.
+A migration `0049_seed_campo_sephira.sql` complementa o seed com o NPC `Sephira +9` (id 6311),
+sem reescrever a `0046` já aplicada. Nenhum blob foi inventado: os seeds referenciam
+`npc_template.template_name` por FK.
 
 | NPC | Template | Coord. | Merchant |
 |---|---|---|---|
 | Primeiro/Segundo/Terceiro Treinador | `FirstTrainer` / `SecondTrainer` / `ThirdTrainer` | 2077,2017 · 2144,1989 · 2082,1966 | 36 / 40 / 41 |
 | Chefe de Treino | `TrainerChief` | 2122,2041 | 100 |
 | Unicorn / Cabuncle | `Unicorn` / `Cabuncle` | 2130,2040 · 2131,2033 | 0 |
+| Sephira +9 (`0049`) | `Refinacoes` | 2133,2040 | 0 |
 | Guardiões | `GremlinDecoy` / `GiantCrill` / `OrcSniper` | 2076,2022 · 2146,1997 · 2078,1971 | 0 |
 | Boss | `OrcWarrior` | 2135,1948 | 0 |
 
@@ -202,8 +225,10 @@ PASS(campo vivo): conta=qacampo01 personagem=QACAMPO01 id=140
 ```
 
 O segundo clique, sem a chave 451, é recusado e o estado permanece `step=1, progress=0`.
-Ainda aberto para "quest 100%": movimento (`_MSG_Move`), affect do buff (`Cabuncle`), armas
-Sephira +9 no `item_catalog` e a entrega das provas pelos guardiões no combate real.
+Atualização de 2026-11-12: a entrega das provas pelos quatro guardiões/boss passou a ser
+provada no pipeline real (`integracao_campo_drops`). Continuam abertos o movimento
+(`_MSG_Move`), o affect do buff (`Cabuncle`) e a arma Sephira +9 no `item_catalog`/loja — o
+NPC `Sephira +9` existe pela `0049`, o item não foi inventado.
 
 ## Teste manual do dono (2026-11-11)
 
@@ -236,31 +261,35 @@ desenhava nenhum. Correção na entrega, não no sintoma:
 - `crates/wyd-bots/tests/cena_campo.rs` passou a andar até o Campo antes de conferir as dez
   instâncias (o Campo fica a ~33 tiles do spawn e agora só chega quando o char se aproxima).
 
-O abate no Campo continua impossível para nível 1 neste estado: o log mostra
+O abate no Campo continua impossível para nível 1 no cliente real: o log mostra
 `damage=1 hp_left=597` por golpe (`GremlinDecoy` com 598 HP), porque o ataque usa o
 `CurrentScore.Damage` do template sem o dano do equipamento — o mesmo motivo pelo qual a
-arma Sephira +9 é necessária no jogo real.
+arma Sephira +9 é necessária no jogo real. No teste de integração, o HP do alvo é reduzido a
+1 **só no fixture**; a morte, a tabela de drop, o inventário e a quest são os caminhos reais.
 **Origem dos blobs:** o cliente 7662 **não** traz tabela de NPC (`docs/cliente/tabelas-bin.md` §61:
 nenhum `.bin` do cliente tem tabela por monstro; `STRUCT_MOB` é dado de servidor). A extração
 possível é a que já foi feita: o dump legado em `0020_seed_mundo.sql` (1991 templates).
 
 ## Revisão de prova (2026-11-12)
 
-**Decisão:** manter 🟡. A issue ainda misturava “não implementado” com “não provado”; a
-separação abaixo é a fotografia real.
+**Decisão:** manter 🟡. O código que não depende do cliente está fechado; o que resta é
+**captura/observação visual**, não implementação de servidor.
 
-- **Provado:** a migration `0046` cria os dez NPCs do Campo com templates reais e os drops em
-  `drop_rate_override`; `cena_campo` exige uma instância por coordenada. O motor de quest cobre
-  as quatro etapas, o teto de nível, a ordem, o consumo da chave e os três portões; os testes
-  `campo_treinamento` (11) provam o fluxo e as recusas. O `campo_vivo` prova o **GremlinDecoy**
-  dropando a chave 451 no combate real, o loot no inventário e a entrega ao Primeiro Treinador.
-- **Ainda falta:** repetir o combate/drop dos outros três guardiões e do `OrcWarrior` no fluxo
-  completo; aplicar o buff do `Cabuncle` (sem pacote de affect/duração); tornar o portão uma
-  entidade visível; e observar a entrada/render no 7662. A arma Sephira +9 (D-8) também não
-  aparece no seed `0046`.
-- **Consequência:** “NPC existe” e “o Gremlin dropa” já estão provados; “todos os guardiões e o
-  boss fecham o fluxo” ainda não. O critério foi dividido para não declarar cobertura que o
-  teste não dá.
+- **Provado por teste:** a migration `0046` cria os dez NPCs do Campo com templates reais e os
+  drops em `drop_rate_override`; `cena_campo` exige uma instância por coordenada. O motor de
+  quest cobre as quatro etapas, o teto de nível, a ordem, o consumo da chave e os três portões;
+  `integracao_campo_treinamento` (12) prova o fluxo e as recusas. O `campo_vivo` prova o
+  **GremlinDecoy** dropando a chave 451 pelo fio; `integracao_campo_drops` (3) prova os quatro
+  guardiões/boss pelo pipeline real de morte/loot e o consumo único de cada prova. A migration
+  `0049` cria o NPC `Sephira +9` em `(2133,2040)` e o refino `+8 → +9` usa a taxa do snapshot.
+  `EquipmentCatalog` aplica o `ReqLvl` real na validação de equipagem e o bônus do treinador usa
+  `50 + ReqLvl` do catálogo.
+- **Bloqueado por captura:** portão como objeto visível (`_MSG_UpdateItem` + `EF_KEYID`), buff
+  do `Cabuncle` (affect/duração no fio) e a prova visual no cliente 7662 (entrada, drops,
+  portões e conclusão na tela). Nada disso deve ser marcado como concluído sem a captura.
+- **Consequência:** “NPC existe”, “os quatro guardiões/boss fecham o fluxo no pipeline real” e
+  “ReqLvl é usado” estão provados. “O cliente 7662 desenha o fluxo completo” continua aberto e
+  identificado como dependência de captura.
 
 ## Subtasks
 
@@ -269,11 +298,13 @@ separação abaixo é a fotografia real.
 - [x] Testar (fluxo + recusas) e documentar o estado real
 - [x] Seed dos NPCs/drops no snapshot (`0046`; 10 NPCs, um por coordenada)
 - [x] `GremlinDecoy` dropa a chave 451 no combate real (`campo_vivo`)
-- [ ] GiantCrill/OrcSniper/OrcWarrior no fluxo completo de combate/drop
-- [ ] Portões como objeto de mundo (`_MSG_UpdateItem` + `EF_KEYID`)
+- [x] GiantCrill/OrcSniper/OrcWarrior no fluxo completo de combate/drop (`integracao_campo_drops`)
+- [ ] Portões como objeto de mundo (`_MSG_UpdateItem` + `EF_KEYID`) — **bloqueado por captura**
 - [x] Chave consumida no uso; portão abre e fecha (testes de `gameplay`)
-- [ ] Buff do `Cabuncle` aplicado e reaplicável
-- [ ] Provar com o cliente 7662 aberto
+- [x] NPC `Sephira +9` no seed (`0049`, id 6311 em 2133,2040) e refino do +9 no teste
+- [x] `ReqLvl` do catálogo usado no bônus `50 + ReqLvl` e na validação de equipagem
+- [ ] Buff do `Cabuncle` aplicado e reaplicável — **bloqueado por captura**
+- [ ] Provar com o cliente 7662 aberto — **bloqueado por captura**
 - [ ] Versionar issue, mergear branch e fechar issue
 
 ## Critérios de aceite
@@ -282,11 +313,13 @@ separação abaixo é a fotografia real.
 - [x] A recompensa de cada etapa é exatamente a da sequência A; nível 36 é recusado.
 - [x] NPCs/guardiões/boss existem no snapshot e na cena (`0046` + `cena_campo`).
 - [x] `GremlinDecoy` dropa a chave 451 no combate real e a entrega no inventário (`campo_vivo`).
-- [ ] GiantCrill/OrcSniper/OrcWarrior dropam no fluxo completo de combate.
+- [x] GiantCrill/OrcSniper/OrcWarrior dropam no fluxo completo de combate (`integracao_campo_drops`; HP do alvo reduzido só no fixture).
 - [x] Chave consumida no uso; portão abre e fecha (testes de `gameplay`).
-- [ ] Chave volta a dropar se perdida no combate dos demais guardiões.
-- [ ] Buff do `Cabuncle` aplicado e reaplicável.
-- [ ] Boss dropa Emblema; recompensa final uma vez por personagem.
+- [x] Chave volta a dropar se perdida no combate dos demais guardiões (tabela do seed, um drop por abate).
+- [ ] Buff do `Cabuncle` aplicado e reaplicável — **bloqueado por captura**.
+- [x] Boss dropa Emblema; recompensa final uma vez por personagem (`integracao_campo_drops`).
+- [x] NPC `Sephira +9` no seed (`0049`) e refino do +9 encontrando a coordenada.
+- [x] `ReqLvl` do catálogo usado no bônus e na validação de equipagem.
 - [x] Nenhum pacote inventado na entrega atual; valores de balanceamento vêm do snapshot.
 
 ## Riscos / rollback

@@ -22,7 +22,7 @@ use wyd_protocol::payload::WirePayload;
 use wyd_protocol::wire::frame::INITCODE;
 use wyd_protocol::wire::header::HEADER_SIZE;
 use wyd_protocol::wire::opcode::Opcode;
-use wyd_protocol::{AccountLogin, AccountSecure, CreateCharacter, Header};
+use wyd_protocol::{AccountLogin, AccountSecure, CreateCharacter, Header, MessagePanel};
 use wyd_server::auth::Authenticator;
 use wyd_server::channels::World;
 use wyd_server::characters::SelectionStore;
@@ -214,10 +214,8 @@ fn ler_opcode(stream: &mut TcpStream) -> Opcode {
     Opcode::from_wire(header.message_type).expect("opcode conhecido")
 }
 
-/// Login de verdade: INITCODE + frame; devolve o opcode da resposta (ou None se fechou).
-fn login(stream: &mut TcpStream, conta: &str, senha: &str) -> Option<Opcode> {
-    stream.write_all(&INITCODE.to_le_bytes()).ok();
-    stream.write_all(&frame_login(conta, senha)).ok();
+/// Lê um frame inteiro, desofusca e devolve o buffer (cabeçalho + corpo).
+fn ler_frame(stream: &mut TcpStream) -> Option<Vec<u8>> {
     let mut head = [0u8; HEADER_SIZE];
     match stream.read_exact(&mut head) {
         Ok(()) => {
@@ -228,12 +226,20 @@ fn login(stream: &mut TcpStream, conta: &str, senha: &str) -> Option<Opcode> {
                 stream.read_exact(&mut frame[HEADER_SIZE..]).expect("corpo");
             }
             let computed = decode_in_place(&mut frame).expect("desofusca");
-            assert_eq!(computed, frame[3]);
-            let header = Header::decode(&frame).expect("header");
-            Opcode::from_wire(header.message_type)
+            assert_eq!(computed, frame[3], "checksum da resposta");
+            Some(frame)
         }
         Err(_) => None,
     }
+}
+
+/// Login de verdade: INITCODE + frame; devolve o opcode da resposta (ou None se fechou).
+fn login(stream: &mut TcpStream, conta: &str, senha: &str) -> Option<Opcode> {
+    stream.write_all(&INITCODE.to_le_bytes()).ok();
+    stream.write_all(&frame_login(conta, senha)).ok();
+    let frame = ler_frame(stream)?;
+    let header = Header::decode(&frame).expect("header");
+    Opcode::from_wire(header.message_type)
 }
 
 fn entrada(conta: &str) -> (u16, Arc<PgBackend>, Arc<tokio::runtime::Runtime>) {
@@ -302,10 +308,33 @@ fn senha_errada_e_recusada_sem_sessao() {
         Some(Opcode::NewAccountFail),
         "senha errada recebe recusa, nunca CNF"
     );
-    // A recusa vem com `NewAccountFail` + painel explicativo antes de fechar; o que
-    // importa para a cerca é que o login correto seguinte não encontre sessão presa.
+    // A recusa vem com `NewAccountFail` + painel explicativo antes de fechar. O segundo
+    // frame é o que o 7662 realmente desenha: o teste falha se ele sumir, mudar de tamanho
+    // ou perder o motivo. Drenar sem afirmar nada deixava o BUG-01 voltar em silêncio.
+    let painel = ler_frame(&mut s).expect("_MSG_MessagePanel depois do NewAccountFail");
+    let header = Header::decode(&painel).expect("header do painel");
+    assert_eq!(
+        header.size as usize,
+        MessagePanel::WIRE_LEN,
+        "painel de recusa tem 140 B"
+    );
+    assert_eq!(
+        Opcode::from_wire(header.message_type),
+        Some(Opcode::MessagePanel),
+        "segundo frame é `_MSG_MessagePanel` (0x0101)"
+    );
+    let painel = MessagePanel::decode(&painel).expect("corpo do painel");
+    assert_eq!(
+        String::from_utf8_lossy(painel.text_bytes()),
+        "Senha ou conta incorreta",
+        "motivo da recusa visível no painel"
+    );
     let mut resto = Vec::new();
-    let _ = s.read_to_end(&mut resto);
+    assert_eq!(
+        s.read_to_end(&mut resto).unwrap_or(0),
+        0,
+        "conexão fecha depois dos dois frames"
+    );
 
     // Se houvesse sessão meio-aberta, este login correto bateria na cerca.
     let mut ok = conectar(porta);

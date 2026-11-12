@@ -5,9 +5,11 @@
 //! `character_session` entre canais). Nenhuma regra vive neste arquivo.
 
 mod crud;
+pub mod equipment;
 pub mod session;
 pub mod snapshot;
 
 pub use crud::*;
+pub use equipment::*;
 pub use session::*;
 pub use snapshot::*;

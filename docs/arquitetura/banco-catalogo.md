@@ -1959,6 +1959,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0046 | `0046_seed_campo_treinamento.sql` | seed | — |
 | 0047 | `0047_seed_limpeza_fixtures_campo.sql` | seed | — |
 | 0048 | `0048_chaos_points.sql` | DDL | `character_chaos` |
+| 0049 | `0049_seed_campo_sephira.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

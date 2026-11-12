@@ -573,19 +573,29 @@ impl SelectionStore {
             .filter(|linha| linha.item_id != 0)
             .map(|linha| linha.item_id)
             .collect();
-        let arma = selected
+        // `ReqLvl` do equipamento vem do catálogo, não do nível do personagem: o bônus do
+        // treinador é `50 + ReqLvl` do item em `Equip[6]`. Item fora do catálogo entra com
+        // `0` (ausência de requisito), nunca com o nível do jogador por engano.
+        let weapon_req_level = match selected
             .items
             .iter()
-            .any(|linha| linha.slot == 6 && linha.item_id != 0);
+            .find(|linha| linha.slot == 6 && linha.item_id != 0)
+        {
+            Some(arma) => Some(i64::from(
+                self.runtime
+                    .block_on(self.backend.item_req_level(arma.item_id))
+                    .map_err(map_db)?
+                    .unwrap_or(0),
+            )),
+            None => None,
+        };
         let step = quest_engage(&QuestEngage {
             merchant,
             stage: state.stage,
             reward_mask: state.reward_mask,
             level: progression.level,
             inventory: &ids,
-            // `ReqLvl` do item ainda não está no modelo: o nível do personagem é a base do
-            // `50 + ReqLvl` até o catálogo expor a coluna (registrado na issue).
-            weapon_req_level: arma.then_some(progression.level),
+            weapon_req_level,
             roll,
         })
         .map_err(|recusa| SelectionError::Quest(recusa.to_string()))?;

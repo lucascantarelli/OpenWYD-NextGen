@@ -154,7 +154,7 @@ local-rebuild: ## rebuild completo do local na 3000 + migrations + prova de saú
 	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login)" = "200" || { echo "FALHOU: /login != 200"; exit 1; }
 	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/entregas)" = "307" || { echo "FALHOU: /entregas != 307"; exit 1; }
 	@curl -fsS http://127.0.0.1:7600/health; echo
-	@curl -fsS http://127.0.0.1:7600/health | grep -q '"schema":48' || { echo "FALHOU: schema != 48"; exit 1; }
+	@curl -fsS http://127.0.0.1:7600/health | grep -q '"schema":49' || { echo "FALHOU: schema != 49"; exit 1; }
 	@if netstat -ano 2>/dev/null | grep LISTENING | grep -Eq ':(3100|3110)[[:space:]]'; then echo "FALHOU: porta de teste ocupada (3100/3110)"; exit 1; fi
 
 prod-env-smoke: ## smoke do overlay de produção com .env montado (não derruba o dev)

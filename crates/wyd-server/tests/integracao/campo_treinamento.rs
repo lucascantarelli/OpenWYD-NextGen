@@ -16,8 +16,8 @@ use wyd_server::gameplay::{
     QUEST_PROOF_FIRST, QUEST_PROOF_LAST, QUEST_PROOF_SECOND,
 };
 
-/// `ReqLvl` do equipamento de nível 1 da classe (base do `50 + ReqLvl`).
-const REQ_LEVEL: i64 = 1;
+/// `ReqLvl` real do item 1006 (`Arco_Æsir`, `item_catalog`): base do `50 + ReqLvl`.
+const REQ_LEVEL: i64 = 319;
 /// Bônus esperado: `SetItemBonus(50 + ReqLvl, 1, 0)`.
 const BONUS: i64 = QUEST_ENCHANT_BASE + REQ_LEVEL;
 

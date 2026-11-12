@@ -54,6 +54,10 @@ name = "integracao_campo_treinamento"
 path = "tests/integracao/campo_treinamento.rs"
 
 [[test]]
+name = "integracao_campo_drops"
+path = "tests/integracao/campo_drops.rs"
+
+[[test]]
 name = "integracao_canal_verde"
 path = "tests/integracao/canal_verde.rs"
 

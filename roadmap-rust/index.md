@@ -23,7 +23,7 @@
 | `BUG-01` | ⬜ | Recusas com motivo no log, testes de fio e entrada com `ClientID`/`UpdateScore`/cena. | Matriz mensagem × exibe/não-exibe e reprodução de cada recusa no 7662. | Cliente/VM (`CLIENT-06`). |
 | `BUG-02` | 🟢 | Código, testes de fio e `clippy`; seleção antes do PIN devolve o frame. | Prova viva com `WYD_LIVE_SKIP_PIN=1` e entrada no cliente 7662. | Cliente/VM (`CLIENT-06`). |
 | `GAME-17` | 🚧 | Faixa de `ClientID`, `UpdateScore`, `CreateType` e rajada real de `CreateMob`. | Render da entrada no cliente 7662, sem “Falha ao conectar”. | Cliente/VM (`CLIENT-06`). |
-| `GAME-18` | 🟡 | 10 NPCs no seed `0046`, 4 etapas, portões/chaves, loot no inventário e `GremlinDecoy`/451 no combate real. | Demais guardiões/boss no fluxo completo, Sephira +9, buff do `Cabuncle`, portão visível e prova visual. | Templates + cliente/VM. |
+| `GAME-18` | 🟡 | 10 NPCs no seed `0046`, Sephira +9 no `0049`, 4 etapas, portões/chaves, loot no inventário, guardiões/boss no pipeline real de morte/loot (`integracao_campo_drops`) e `ReqLvl` do catálogo aplicado. | Buff do `Cabuncle`, portão visível e prova visual no 7662. | Captura no cliente/VM. |
 | `PROC-23` | 🚧 | Notas datadas e decisão manter/descartar por candidato. | Números medidos das PoCs (ex.: SoA × `hecs`). | Nenhuma; é o próximo da fila curta. |
 | `GAME-05` | 🚧 | Física, dano, skills e inventário autoritativos; recusa de pacote forjado. | `req_str/int/dex/con`, layout de rede do inventário e baú (`vault_items`). | `CLIENT-06` para o layout. |
 
