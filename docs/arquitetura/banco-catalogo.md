@@ -11,7 +11,7 @@
 
 ## 1. Resumo
 
-- migrations: **48** · última versão: **48**
+- migrations: **50** · última versão: **50**
 - tabelas: **86** · colunas: **617** · índices: **35** · funções: **1**
 - domínios: **18** · tabelas com dado provisório: **27**
 
@@ -1960,6 +1960,7 @@ não virou tabela está declarado como pendência com ID, nunca sumiu em silênc
 | 0047 | `0047_seed_limpeza_fixtures_campo.sql` | seed | — |
 | 0048 | `0048_chaos_points.sql` | DDL | `character_chaos` |
 | 0049 | `0049_seed_campo_sephira.sql` | seed | — |
+| 0050 | `0050_seed_correcao_catalogo_game12_15.sql` | seed | — |
 
 Regra da série: DDL inteiro antes do primeiro seed, um domínio por arquivo, nenhuma tabela
 partida entre arquivos, nenhuma FK para tabela criada depois e **nenhum `ALTER TABLE` no

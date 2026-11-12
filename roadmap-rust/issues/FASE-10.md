@@ -54,12 +54,12 @@ atual e o proposto diverge de forma explicada (números anexados).
 
 - .agents/skills/wyd-rust-sim - simulações determinísticas e cenários.
 - .agents/skills/wyd-rust-core - aplicação da fórmula na engine (pós-aprovação).
-- .agents/skills/solid-design-patterns - fórmulas como funções puras testáveis.
+- .agents/skills/software-architecture - fórmulas como funções puras testáveis e patterns idiomáticos.
 - .agents/skills/rust-code-quality - sem float onde fixed-point é exigido.
 
 ## Documentação de referencia
 
-- crates/wyd-sim/src/formula/ + roadmap-rust/issues/GAME-19-equacoes.md - fórmulas de referência.
+- crates/wyd-sim/src/formula/ + roadmap-rust/changelog.md (GAME-19) - fórmulas de referência.
 - roadmap-rust/issues/GAME-20-velocidade.md - histórico de bugs.
 - crates/wyd-sim/src/ + crates/wyd-core/src/systems/ - implementação arquivada.
 - pre-release-rust.md (FASE 10) - roteiro da investigação.

@@ -19,7 +19,7 @@
 | 1 | Caixa + pickup + rito tabela | `GAME-11-drop-inventario-e-caixa.md` | cobre (depósito, `GroundLoot`, layouts E2 citados) |
 | 2 | Cena `ESCENE_FIELD` | `GAME-09-cena-autoritativa.md` | cobre |
 | 3 | Logout com teste | `CLIENT-09-logout-explicito.md` | cobre (corpo já descreve o correto) |
-| 4 | Cadeia de dano/goldens | `GAME-19-equacoes.md` | cobre |
+| 4 | Cadeia de dano/goldens | `roadmap-rust/changelog.md` (GAME-19) | cobre |
 | 5 | EXP por flags | `GAME-22-exp-por-flags.md` ✅ aberta (flags default off) | ⬜ |
 | 6 | Pity + `UpdateItem` | `GAME-16-piedade-updateitem.md` ✅ aberta | ⬜ |
 | 7 | Trade atômica | `CLIENT-10-trade-atomica.md` ✅ aberta como ⛔ bloqueada-em-layout | ⛔ |

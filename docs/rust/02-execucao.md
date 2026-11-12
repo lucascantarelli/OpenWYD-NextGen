@@ -22,7 +22,7 @@
 Gate único, executado ao fim de **toda** issue:
 
 ```bash
-make check      # fmt + clippy + build + test + migrations + issues + docs (links/crates)
+make check      # fmt + clippy + build + test + migrations + issues + docs (links/crates) + skills
 ```
 
 Sem `make` no host Windows (Git Bash), os quatro comandos `cargo` equivalentes

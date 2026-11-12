@@ -118,7 +118,7 @@ nada desta ADR toca o Hot Path.
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/WEB-01-gateway.md`, `FASE-03/04/06` (monólito), `QA-03`, `QA-08`.
+- Issues consumidoras: `roadmap-rust/changelog.md` (WEB-01), `FASE-03/04/06` (monólito), `QA-03`, `QA-08`.
 - Docs atualizadas nesta ADR: `docs/rust/05-stack-docker.md`, `docs/rust/06-observabilidade-runbooks.md`, `docs/arquitetura/estrutura-e-padroes.md` §13, `docs/rust/03-progresso.md`.
 - Evidência: `docker compose ps` (gateway + portal `healthy`), `curl :7600/health`, `curl :7600/metrics`,
   chamada real `POST /admin/v1/item_catalog/list_items`, query `up{job="wyd-gateway"}` no Prometheus.

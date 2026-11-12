@@ -4,7 +4,7 @@
 > **ID histórico:** `FASE-10-3`
 > **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
 
-**Fase:** 10 · **Depende de:** GAME-19, GAME-20 · **Bloqueia:** FASE-15 · **Esforço:** M
+**Fase:** 10 · **Depende de:** GAME-19 ✅, GAME-20 · **Bloqueia:** FASE-15 · **Esforço:** M
 
 ## Objetivo
 
@@ -48,17 +48,8 @@ divergências encontradas.
 ## Documentação de referencia
 
 - pre-release-rust.md (FASE 10 §10.3).
-- roadmap-rust/issues/GAME-19-equacoes.md.
+- roadmap-rust/changelog.md (GAME-19).
 - roadmap-rust/issues/GAME-20-velocidade.md.
-
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 

@@ -85,7 +85,6 @@ pub const SERVICOS: &[(&str, &[&str])] = &[
         &[
             "list_reward_items",
             "upsert_reward_item",
-            "set_reward_item_enabled",
             "delete_reward_item",
         ],
     ),

@@ -40,6 +40,17 @@ struct Db {
     config: Arc<GameConfig>,
 }
 
+/// Aplica a série no banco de teste (idempotente, com ledger): o seed `0049` do NPC
+/// Sephira +9 não pode depender de um banco migrado à mão antes do teste.
+fn migrar(dsn: &str, rt: &tokio::runtime::Runtime) {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("wyd-db")
+        .join("migrations");
+    rt.block_on(wyd_db::migrate::run_dir(dsn, &dir, false))
+        .expect("migrations aplicadas no banco de teste");
+}
+
 fn banco(contexto: &str) -> Option<Db> {
     let dsn = common::dsn_ou_skip(contexto)?;
     let runtime = Arc::new(
@@ -49,6 +60,7 @@ fn banco(contexto: &str) -> Option<Db> {
             .build()
             .expect("runtime"),
     );
+    migrar(&dsn, &runtime);
     let backend = Arc::new(
         runtime
             .block_on(PgBackend::connect(&dsn, PoolConfig::local()))

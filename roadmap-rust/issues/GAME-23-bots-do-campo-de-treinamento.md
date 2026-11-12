@@ -4,7 +4,7 @@
 > **ID histórico:** `FASE-15-4`
 > **Estado 2026-11-12:** 🟡 · ver `roadmap-rust/index.md`.
 
-**Fase:** 15 · **Depende de:** QA-11 (bots jogáveis) ⬜, GAME-18 (quest) 🟡 · **Bloqueia:** — · **Esforço:** M
+**Fase:** 15 · **Depende de:** QA-11 (bots jogáveis) 🟡, GAME-18 (quest) 🟡 · **Bloqueia:** — · **Esforço:** M
 
 ## Objetivo
 
@@ -27,11 +27,12 @@ cliente de protocolo real (`INITCODE` → `AccountLogin` → `AccountSecure` →
 `_MSG_MessagePanel` (`parse_etapa`). CLI `wyd-bots --conta --senha --raca --npc 1,2,3,4`.
 Testes: 3 (quatro classes distintas, parse do painel, ordem dos treinadores).
 
-**Aberto:** o roteiro ainda não anda/mata. As provas 451/452/453/524 precisam existir no
-inventário — o abate resolve o loot mas ainda **não entrega** ao jogador, e os NPCs do Campo
-não estão no snapshot (ver `GAME-18`, aberto 1 e 2). Por isso a campanha viva exige
-`--npc` e inventário preparado; a coleta automática dos drops entra quando o loot virar
-entrega e o Campo tiver templates.
+**Aberto (2026-11-12):** o crate já tem `walk_to`/`action_at`, `attack_at`/`kill`,
+`open_gate` e `open_shop`/`buy`; o teste vivo `tests/sistema/cena_campo.rs` lê os 10 NPCs do
+seed `0046` por proximidade. O que falta é rodar **os quatro bots em paralelo** no roteiro
+completo (NPC → guardião → chave → portão → boss → emblema), coletar os drops e comparar os
+relatórios por raça. O loot do Campo já é entregue no inventário (`GAME-18`/`0049`), então a
+preparação manual de inventário deixou de ser pré-requisito do caminho principal.
 
 ## Passos
 
@@ -76,9 +77,10 @@ Saída esperada: 4/4 bots concluem 0→4 e o relatório mostra a recompensa esco
 
 ## Subtasks
 
-- [ ] Codificar cliente-bot jogável
-- [ ] Roteiro da quest por raça
-- [ ] Rodar 4 em paralelo e comparar relatórios
+- [x] Codificar cliente-bot jogável (protocolo real, cena, combate, loja, portão).
+- [x] Ler os 10 NPCs do Campo no seed `0046` pelo teste vivo de proximidade.
+- [ ] Roteiro da quest por raça (quatro raças, drops reais, sem `--npc` preparado).
+- [ ] Rodar 4 em paralelo e comparar relatórios.
 - [ ] Documentar e fechar issue
 
 ## Critérios de aceite

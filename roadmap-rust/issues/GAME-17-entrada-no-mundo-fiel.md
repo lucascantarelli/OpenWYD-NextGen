@@ -64,7 +64,7 @@ cargo test -p wyd-server --lib
 cargo test -p wyd-protocol
 # com o canal no ar e conta real:
 WYD_LIVE_CPSOCK=... WYD_LIVE_ACCOUNT=... WYD_LIVE_PASSWORD=... \
-  cargo test -p wyd-server --test cena_mobs
+  cargo test -p wyd-server --test sistema_cena_mobs
 ```
 
 ## Skills Relacionadas do freebuff
@@ -89,7 +89,6 @@ WYD_LIVE_CPSOCK=... WYD_LIVE_ACCOUNT=... WYD_LIVE_PASSWORD=... \
 - [x] Documentar issue
 - [x] Provar no fio com o canal real (`cena_mobs` vivo: 1281 `CreateMob`, `UpdateScore`, `client_id=1`)
 - [ ] Provar com o cliente 7662 aberto (render da entrada)
-- [ ] Versionar issue, mergear branch e fechar issue
 
 ## Critérios de aceite
 
@@ -114,7 +113,7 @@ WYD_LIVE_CPSOCK=... WYD_LIVE_ACCOUNT=... WYD_LIVE_PASSWORD=... \
   (`tests/conta_de_teste.rs`) → `handshake accepted` → `login password_ok` → `session open` →
   `character ok action=select ... entity=6100 client_id=1` → **1281 `CreateMob` de 232 B** +
   `UpdateScore`; `_MSG_Action` respondeu `Guarda_Carga` (npc 1212, merchant 2).
-  `WYD_LIVE_CPSOCK=127.0.0.1:8281 ... cargo test -p wyd-server --test cena_mobs` → 1 passed.
+  `WYD_LIVE_CPSOCK=127.0.0.1:8281 ... cargo test -p wyd-server --test sistema_cena_mobs` → 1 passed.
   Ajuste no teste: o alvo do diálogo passou a ser NPC (`mob_id >= 1000`), porque o jogador
   agora ocupa `1..999`.
 
@@ -125,6 +124,67 @@ WYD_LIVE_CPSOCK=... WYD_LIVE_ACCOUNT=... WYD_LIVE_PASSWORD=... \
 - **Evidência favorável:** a faixa `ClientID`/`MobID`, `UpdateScore` e `CreateType` estão provados no fio e no canal real (`client_id=1`); a rajada de 1281 `CreateMob` também foi observada.
 - **Residual que impede o fechamento:** a prova visual no cliente 7662, sem “Falha ao conectar”, continua pendente.
 - **Caminho de desbloqueio:** abrir o 7662 na VM (`CLIENT-06`) e repetir a entrada com `qavivo01`; anexar captura/log do cliente. Nenhuma mudança de código é conhecida até essa prova.
+
+## Seções de prova no 7662 (roteiro 2026-11-12)
+
+> Roteiro consolidado de execução: [`docs/cliente/roteiro-prova-visual-7662.md`](../../docs/cliente/roteiro-prova-visual-7662.md).
+>
+> O que já foi medido no fio fica em **A**; o que ainda depende do cliente gráfico fica em **B**
+> e **C**. Não promover B/C a ✅ usando o log do servidor como substituto do print.
+
+### A. Prova de bancada (regressão antes da prova visual)
+
+```bash
+cargo test -p wyd-server --lib
+cargo test -p wyd-server --test sistema_cena_mobs -- --nocapture
+```
+
+Com canal real e conta de teste, o teste `sistema_cena_mobs` deve exigir `UpdateScore`, jogador
+em `1..MAX_USER`, criaturas em `MAX_USER..MAX_MOB` e `CreateType=2` apenas no self.
+
+- [x] Faixa de `ClientID`/`MobID` provada no fio (`client_id=1`, criaturas `>= 1000`)
+- [x] `UpdateScore` do dono depois do `CNFCharacterLogin` e antes da cena
+- [x] `CreateType=2` só no personagem do dono; NPCs com `CreateType=0`
+- [x] Rajada real observada na época (1281 frames de 232 B); após o corte por proximidade, a
+  cena esperada é ~33 mobs, não o mapa inteiro
+- [ ] Rerun do teste vivo antes da captura visual, com o binário atual
+
+### B. Prova visual da entrada
+
+1. Abrir o 7662 na VM e autenticar com `qavivo01` (ou conta de teste equivalente).
+2. Escolher o personagem no slot preparado e confirmar a transição para o mundo.
+3. Observar se aparece “Falha ao conectar”; se aparecer, **parar** e capturar a tela + log.
+4. Confirmar personagem, NPCs próximos, HUD com HP/MP/EXP e posição inicial.
+5. Sair e relogar uma vez para confirmar que a entrada não depende de estado residual.
+
+- [ ] Sem “Falha ao conectar” na primeira entrada
+- [ ] Personagem próprio visível na cena
+- [ ] NPCs e HUD renderizados
+- [ ] `client_id` na faixa de jogador no log do canal
+- [ ] Relogin imediato sem timeout
+- [ ] Print da entrada + tail do log anexados
+
+### C. Se falhar, capturar antes de mexer no código
+
+- [ ] Print exato do erro e momento (antes/depois do `CNFCharacterLogin`)
+- [ ] Tail do cliente (`WYD.log`) e do canal no mesmo intervalo
+- [ ] Opcode/`Size` do último frame recebido e do primeiro frame faltante
+- [ ] Comparar com `docs/cliente/depuracao.md` §3 (fases 4–5)
+- [ ] Só então abrir correção; sem captura, manter `UNVERIFIED`
+
+## Execução da Sessão A (2026-11-12)
+
+**Veredito: prova visual bloqueada por entrada sintética com geometria saudável; critérios de fio permanecem como estão.**
+
+- O cliente desenhou o server select com `800×600` exato após o `Config.bin` mudar do modo 8
+  (`1024×768×32`, cliente `1024×759`) para o modo 7 (`800×600×32`), mas continuou sem aceitar
+  mouse/teclado injetados (`Fechar` também não reagiu). O erro de render target persistiu; modo
+  16 bits e GPU NVIDIA não alteraram o quadro.
+- Nenhum `event=character`/`handshake` no canal e nenhuma conexão TCP em `8281`; não há print
+  novo de `ClientID`, `UpdateScore`, `CreateType` ou HUD.
+- Evidência local em `tmp/prova-visual-7662/` (`19-config-mode7.png`, `25-mode7-fechar.png`,
+  `canal.log`, `resumo.md`); runbook §9.5–§10. A issue continua 🚧 e o critério visual segue
+  aberto; o checklist humano é o próximo passo.
 
 ## Riscos / rollback
 

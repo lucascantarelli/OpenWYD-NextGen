@@ -37,7 +37,8 @@ cargo test -p wyd-admin --test contract
 
 ## Skills relacionadas
 
-- frontend-design, ui-ux-practices.
+- wyd-web-admin-ui — BFF e `adminCall`.
+- wyd-economy — preços e procedência.
 - wyd-rust-db — catálogo como dado validado, não regra.
 - wyd-rust-obs — alertas econômicos.
 

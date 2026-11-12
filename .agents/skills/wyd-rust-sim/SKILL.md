@@ -5,25 +5,21 @@ description: Opera o laboratório matemático do WYD em Rust (crates/wyd-sim): s
 
 # Laboratório matemático Rust (wyd-sim)
 
-Referências: `pre-release-rust.md` FASE 10, `roadmap-rust/issues/FASE-10.md`.
+Norma: `docs/arquitetura/matematica-sim.md` (sistemas, unidades, ordem do golpe/tick,
+arredondamento, hipóteses e provas) e `docs/arquitetura/estrutura-e-padroes.md` §14.
+A ordem dos modificadores e a tabela de fórmulas vivem lá; não as duplique.
 
-## Regras
+## Decisões específicas
 
-1. **Determinismo total.** Seed explícita, sem relógio/aleatoriedade implícita;
-   mesma entrada, mesma saída, sempre.
-2. **Servidor é autoridade.** O simulador valida regras; quem decide dano,
-   velocidade, cooldown e inventário em produção é `wyd-core`, nunca o cliente
-   nem o simulador.
-3. **Ordem dos modificadores é contrato.** Base → atributos → equipamentos →
-   skill → buffs → crítico → defesa/resistências → resultado; arredondamento e
-   limites documentados por fórmula.
-4. **Bug hunt classificado.** Overflow/underflow, divisão por zero, percentuais
-   duplicados e divergência cliente×servidor entram com severidade, impacto,
-   reprodutibilidade e correção proposta.
+- Fórmula pura, com seed e relógio explícitos; mesma entrada → mesma saída. Simulador não
+  é autoridade de produção: `wyd-core` aplica a regra validada.
+- Reproduza primeiro no cenário/golden (`cargo test -p wyd-sim`); só depois compare com o
+  jogo real. Não use observação não capturada para “corrigir” um golden.
+- Classifique cada achado como código confirmado, observado, relato ou hipótese; hipótese
+  não vira constante nem regra de balanceamento.
+- Overflow/underflow, divisão por zero e divergência cliente×servidor entram na issue com
+  severidade, impacto e reprodutibilidade.
 
-## Antes de mudar
+## Prova
 
-Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §14.
-Diferencie fato de hipótese (código confirmado × observado × relato × hipótese).
-Cenários reproduzíveis primeiro (`cargo test -p wyd-sim`); integração com o jogo
-real depois, nunca como substituto.
+`cargo test -p wyd-sim`; `make check` quando a mudança tocar código compartilhado.

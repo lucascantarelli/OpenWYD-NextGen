@@ -4,8 +4,8 @@
 > **ID histórico:** `FASE-03-14`
 > **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
 
-**Fase:** 03 (core/gameplay) · **Depende de:** GAME-11 (drop no inventário + caixa),
-GAME-12 (teto de pilha por item) · **Dossiê:** `docs/wyd/sistemas/fadas.md`
+**Fase:** 03 (core/gameplay) · **Depende de:** GAME-11 (drop no inventário + caixa); GAME-12 ✅
+(teto de pilha por item) · **Dossiê:** `docs/wyd/sistemas/fadas.md`
 
 ## 1. Contexto
 

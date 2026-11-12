@@ -2,7 +2,7 @@
 
 > **Documento histórico (snapshot de 2026-11-07).** Ele registra o estado da transição
 durante o arquivamento do Go (7 crates, 15 skills, Go ainda no PATH) e **não** descreve o
-presente. Estado vigente: **8 crates** (inclui `wyd-server`), 27 skills, Go fora da fonte de
+presente. Estado vigente: **9 crates** + `apps/launcher-ui`, **18 skills**, Go fora da fonte de
 build — ver `docs/rust/03-progresso.md`, `docs/arquitetura/estrutura-e-padroes.md` §1/§16 e
 `docs/rust/04-revisao-roadmap.md` §6.
 
@@ -21,7 +21,7 @@ build — ver `docs/rust/03-progresso.md`, `docs/arquitetura/estrutura-e-padroes
   `cweijan.vscode-postgresql-client2`, `github.vscode-github-actions`, `ms-azuretools.vscode-containers`,
   `ms-ceintl.vscode-language-pack-pt-br`, `ms-playwright.playwright`, `ms-vscode-remote.*`, `pkief.material-icon-theme`, `vitest.explorer`.
 - Roadmap Go: `roadmap/issues/` (30+ arquivos), `roadmap/done/`, `roadmap/test/`, `index.md`, `PLANO-2026-11.md`.
-- Skills: 15 pastas em `.agents/skills/` (ex.: `wyd-server-dev`, `wyd-server-ops`, `wyd-database`, `wyd-client-connect`, `wyd-testing-bots`, `wyd-web-admin-ui`, `wyd-economy`, `wyd-game-admin` + 7 genéricas). Exemplo lido: `wyd-server-dev/SKILL.md` — centrada nas 4 invariantes Go (dono único, offset explícito, ordem do RNG, autoridade de cena). Todas as skills `wyd-*` precisarão de sucessoras Rust.
+- Skills: o snapshot tinha 15 pastas, incluindo stubs Go já removidos/fundidos. Estado vigente: **18 skills** em `.agents/skills/`, com sucessoras Rust por domínio; ver `.agents/skills/README.md` e `docs/manual-técnico/skills.md`.
 - Referências de wire/gameplay a preservar antes de qualquer desativação (pre-release.md §1.2): `Source/`, `docs/migration/` (protocol-spec, data-formats, game-rules, handlers 58/58, flows, game-messages), `tmserver/content/` (taxas obrigatórias, mapas 17 MiB fora do git, BaseMob/BaseSummon), catálogos no Postgres via dbserver.
 
 ## 2. Limpeza do ambiente Windows/Go — o que seria removido (NÃO executado automaticamente)
@@ -98,7 +98,7 @@ Pré-requisito de host: `rustup` + toolchain stable + `clippy` + `rustfmt` (ause
 ## 5. Roadmap Rust e skills (implementado neste passe, sem reescrever `roadmap/` Go)
 
 - `roadmap-rust/index.md` + `roadmap-rust/issues/FASE-01.md`…`FASE-15.md` criados a partir de `pre-release-rust.md` (15 fases + §16); `roadmap/` Go preservado intacto.
-- Skills criadas: `wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`, `wyd-rust-toolchain` (ver `roadmap-rust/issues/FASE-09.md` para o restante do mapeamento: `wyd-testing-bots` → sim Rust, `wyd-server-ops`/`wyd-web-admin-ui` atualizadas depois, `wyd-rust-obs` futura). Nenhuma skill Go apagada.
+- Skills criadas/atualizadas nesta fase: `wyd-rust-core`, `wyd-rust-net`, `wyd-rust-db`, `wyd-rust-toolchain`, `wyd-rust-sim`, `wyd-rust-obs`, `wyd-rust-testing`, `wyd-server-ops` e `wyd-web-admin-ui`. O estado vigente e o roteador estão em `.agents/skills/README.md`.
 
 ## 6. VS Code, CI, Docker (implementado neste passe)
 

@@ -2,7 +2,7 @@
   "recommendations": [
     "rust-lang.rust-analyzer",
     "tamasfe.even-better-toml",
-    "serayuzgur.crates",
+    "fill-labs.dependi",
     "vadimcn.vscode-lldb",
     "github.vscode-github-actions",
     "ms-playwright.playwright"

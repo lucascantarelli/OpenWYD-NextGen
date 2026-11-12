@@ -4,6 +4,8 @@
 # -f docker-compose.prod.yml up -d` (o override de dev NÃO é carregado).
 # Imagens locais:  wyd/<servico>:${TAG:-dev}   Containers: wyd-<servico>
 # Serviços = binários Rust que existem (serviço = container = imagem).
+# Exceção: `mkdocs` é documentação interna (imagem oficial, sem binário Rust)
+# para dev/admin; não faz parte da cadeia de deploy do jogo e não fala com o DB.
 # Mapa completo (crates → deployáveis, observabilidade, pendências por issue)
 # em `docs/rust/05-stack-docker.md`. Só entra no compose o serviço cujo
 # binário existe; o resto está mapeado e bloqueado pela issue dona.
@@ -200,6 +202,33 @@ services:
     depends_on:
       gateway:
         condition: service_healthy
+    networks:
+      - wyd
+
+  mkdocs:
+    # Documentação interna de dev/admin (não é documentação pública do jogador).
+    # A imagem oficial já traz MkDocs + Material; não há Dockerfile próprio.
+    # Monte somente o necessário: `mkdocs.yml` e `docs/` ficam read-only.
+    # O público jogador será publicado pelo portal; aqui não há perfis/auth.
+    image: squidfunk/mkdocs-material:9.8.0
+    restart: unless-stopped
+    working_dir: /docs
+    command: [ "serve", "-a", "0.0.0.0:8000" ]
+    volumes:
+      - ./mkdocs.yml:/docs/mkdocs.yml:ro
+      - ./docs:/docs/docs:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5).read()",
+        ]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
     networks:
       - wyd
 

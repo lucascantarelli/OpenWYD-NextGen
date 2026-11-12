@@ -28,11 +28,10 @@ Os goldens provam o **codec**, não o cliente: bytes sintéticos (conta `GOLDEN`
 
 ## Resultados desta rodada (2026-11-08)
 
-**A captura ao vivo continua NÃO executada** — e isso é medição, não opinião: o roteiro exige
-o cliente `client/` rodando contra um servidor que complete login → seleção → campo. O
-`wyd-net` existe, mas ainda não fecha o fluxo de jogo (FASE-07/08 e o gateway WEB-01 em
-andamento); sem servidor atendendo o handshake completo, o cliente não chega ao campo e o
-trace capturaria só a tentativa de conexão. Nenhum `.pcap` foi gerado nesta rodada.
+**A captura ao vivo continua NÃO executada** — o bloqueio agora é o cliente/VM, não o servidor:
+`wyd-net`, `wyd-core` e `wyd-server` existem e `tests/sistema/cena_mobs.rs` fecha login →
+seleção → mundo com NPCs em canal real (2026-11-10/12). O roteiro ainda exige abrir o
+`client/` na VM Windows e capturar os frames; sem isso, nenhum `.pcap` foi gerado nesta rodada.
 
 O que foi possível provar sem a VM, e agora está congelado por teste:
 
@@ -104,7 +103,8 @@ tamanho exato de `STRUCT_MOB`; qualquer campo que o cliente 7662 não tenha fica
 
 ## O que falta (bloqueio declarado)
 
-Captura ao vivo (§6 de `depuracao.md`): exige servidor executável falando 7662 (crate `wyd-net`/`wyd-core` ainda não existem) + VM Windows com D3D9 + executor humano. Passos concretos quando desbloquear:
+Captura ao vivo (§6 de `depuracao.md`): exige VM Windows com D3D9 + executor humano; o
+servidor Rust já atende login → seleção → campo. Passos concretos quando desbloquear:
 
 1. Fases 0–6: INITCODE, AccountLogin, CNFAccountLogin (`Size` exato), CharacterLogin, burst CreateMob/ESCENE_FIELD.
 2. Comparar cada frame com o golden gerado; divergência no C→S = servidor errado; em S→C = fechar struct.
@@ -143,9 +143,7 @@ cargo test --workspace && cargo clippy --workspace -- -D warnings && cargo fmt -
 - [x] Codificar issue (roteiro + pipeline de goldens)
 - [x] Testar issue (`--gen`/`--check` + gate)
 - [x] Documentar issue
-- [ ] Captura ao vivo (bloqueada: servidor que complete o login + VM; reavaliar após FASE-07)
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
+- [ ] Captura ao vivo (bloqueada: VM + cliente; o servidor Rust já atende login → campo)
 
 ## Critérios de aceite
 

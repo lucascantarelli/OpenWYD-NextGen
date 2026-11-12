@@ -2,7 +2,7 @@
 
 > **ID canônico:** `PROC-24`
 > **ID histórico:** `ROAD-01`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-12:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** Processo · **Esforço:** M · **Depende de:** PROC-01 · **Bloqueia:** todas as FASEs abertas
 
@@ -12,14 +12,14 @@ Mapear todos os caminhos/issues (quests, sistemas, client, launcher, portal, bot
 
 ## Contexto / evidência
 
-- `roadmap-rust/index.md`: 15 fases + fila de entregas rápidas por tamanho/desbloqueio; caminho crítico `00 → 01 → CLIENT-01 → CLIENT-02 → 03 → 04 → 07` e `03 → 10 → 15`.
-- Abertos reais: `PROC-02` (ação do dono), `GAME-18` 🟡, `WEB-01` 🚧, `CLIENT-06` 🚧/⛔, `CLIENT-08` 🚧, `CLIENT-10` ⛔, `GAME-19` 🚧, `GAME-20/3/4` ⬜, `QA-09/2/3/4` ⬜/🟡. `PROC-05` e `QA-07` foram concluídas em 2026-11-12 e estão no changelog.
+- `roadmap-rust/index.md`: 15 fases + **27 issues ativas** na fila `#01..#27`, com esforço, dependência e prova; caminho crítico `00 → 01 → CLIENT-01 → CLIENT-02 → 03 → 04 → 07` e `03 → 10 → 15`.
+- Abertos reais: `GAME-18` 🟡, `CLIENT-06` 🚧/⛔, `CLIENT-08` 🚧, `CLIENT-10` ⛔, `GAME-20`/`GAME-21` ⬜, `QA-09`/`QA-10` ⬜, `QA-11` 🟡; `WEB-01`, `GAME-19`, `PROC-02`, `PROC-05` e `QA-07` estão concluídas em 2026-11-12 e no changelog.
 - `prompt.md` pede: caminho mais célere, execução sem bloqueios, maior entrega real primeira, foco em base (comunicação, login, acesso ao mundo, mensagens/notificações), testes manuais com conta admin + bots de carga.
 
 ## Passos
 
 1. Publicar matriz caminho × desbloqueio × esforço × valor (login → mundo → combate → persistência → portal → launcher → bots → balanceamento → release).
-2. Definir onda 1 (base sólida): `CLIENT-02` ✅ + `GAME-07/GAME-08/GAME-09/GAME-17` ✅ + `WEB-01` 🚧 + `QA-05/QA-06` ✅ + `CLIENT-09` ✅ → login, PIN, seleção, entrada no mundo, cena `ESCENE_FIELD`, logout explícito. Prova: conta admin entra, anda, sai, reloga sem timeout.
+2. Definir onda 1 (base sólida): `CLIENT-02` ✅ + `GAME-07/GAME-08/GAME-09` ✅ + `GAME-17` 🚧 (só prova visual) + `WEB-01` ✅ + `QA-05/QA-06` ✅ + `CLIENT-09` ✅ → login, PIN, seleção, entrada no mundo, cena `ESCENE_FIELD`, logout explícito. Prova: conta admin entra, anda, sai, reloga sem timeout.
 3. Onda 2 (mundo jogável): drops ligados ao inventário ✅ + `SendItem` ✅ + refino no fio ✅ + EXP no fio ✅ → caçar, upar, refinar com goldens.
 4. Onda 3 (operação): portal leitura/escrita auditada (`WEB-05/WEB-06` ✅) + monitoramento custom (WEB-07) + contas (WEB-08) + premium/cash (WEB-09).
 5. Onda 4 (escala): `wyd-bots` jogável (`QA-11/GAME-23` 🟡) + suíte concorrência (`QA-09`) + carga/banco/release (`QA-10`) + laboratório `wyd-sim` (`GAME-21`).
@@ -51,10 +51,10 @@ Saída esperada: `ok: status do índice e do painel batem`.
 
 ## Subtasks
 
-- [ ] Matriz caminho × desbloqueio publicada
+- [x] Matriz caminho × desbloqueio publicada (fila + grafo no índice)
 - [ ] Ondas 1–4 com DoD por onda
-- [ ] `CLIENT-06/CLIENT-10` congeladas com critério de desbloqueio
-- [ ] Índice + painel reconciliados
+- [x] `CLIENT-06/CLIENT-10` congeladas com critério de desbloqueio
+- [x] Índice + painel reconciliados (27 ativas, `check-issue-status` verde)
 
 ## Critérios de aceite
 

@@ -3,6 +3,10 @@
 > **Regra:** carregue **uma** skill principal por tarefa. As transversais são apoio curto; não
 > substituem a skill de domínio. O `SKILL.md` de cada pasta é a fonte de verdade.
 > Inventário e histórico de remoções: `docs/manual-técnico/skills.md`.
+>
+> **Orçamento de contexto:** 1 principal + no máximo 2 transversais. Se a tarefa pede uma
+> terceira skill de domínio, ela está grande demais: divida em subtasks antes de continuar.
+> Não carregue o catálogo inteiro nem repita no roteador o corpo que já está no `SKILL.md`.
 
 ## Código Rust e operação
 
@@ -30,17 +34,15 @@
 
 ## Qualidade, arquitetura e processo
 
-| Tarefa | Skill |
+| Tarefa | Skill / doc |
 |---|---|
 | Revisão de código Rust, ownership, erros tipados | `rust-code-quality` |
 | Tipo, nome e higiene de testes | `rust-test-quality` |
-| Fronteiras, Hot/Cold, DOD/ECS, ADR | `software-architecture` |
-| SOLID e patterns idiomáticos | `solid-design-patterns` |
-| Direção visual e revisão de UI do portal | `frontend-design` |
-| Workflows GitHub Actions | `github-actions-docs` |
-| Guia/relatório em Diátaxis | `documentation-writer` |
+| Fronteiras, Hot/Cold, DOD/ECS, ADR, SOLID e patterns | `software-architecture` |
+| Direção visual e revisão de UI do portal | `wyd-web-admin-ui` + `wyd-portal/README.md` §Identidade e desenho |
+| Guia/relatório e documentação do projeto | `docs/index.md` (convenções) + `docs/rust/02-execucao.md` §5 |
 | Planejar e decompor uma issue multi-etapa | `writing-plans` |
-| Criar ou revisar skill | `skill-creator` |
+| Criar ou revisar skill | `docs/manual-técnico/skills.md` + `tools/dev/check-skills.mjs` |
 
 ## Manutenção
 

@@ -6,7 +6,7 @@
 //!
 //! ```bash
 //! WYD_TEST_DSN="postgres://admin:$SENHA@127.0.0.1:5432/wyd" \
-//!   cargo test -p wyd-db --test stack_caps
+//!   cargo test -p wyd-db --test sistema_stack_caps
 //! ```
 //!
 //! O que este teste cobra é o que a estimativa não provava: **item real sem `kind` empilha**.
@@ -16,6 +16,7 @@
 #[path = "../common/mod.rs"]
 mod common;
 
+use sqlx::Row;
 use wyd_db::{PgBackend, PoolConfig};
 
 #[tokio::test]
@@ -61,7 +62,79 @@ async fn teto_de_producao_vem_do_banco_e_cobre_item_real_sem_kind() {
     assert!(rows.iter().all(|r| !r.source.is_empty()));
     let fontes: std::collections::BTreeSet<&str> = rows.iter().map(|r| r.source.as_str()).collect();
     assert!(fontes.contains("catalogo:aglutinavel"));
-    assert!(fontes.contains("legado:ef_amount"));
-    assert!(fontes.contains("familia:material"));
+    assert!(
+        !fontes.contains("legado:ef_amount") && !fontes.contains("familia:material"),
+        "o backfill tornou o teto explícito no catálogo; a fonte antiga não deve sobrar: {fontes:?}"
+    );
+
+    // GAME-12/GAME-15: nenhum `stackable` nulo, nenhum true com teto 1, nenhum equipamento > 1.
+    let nulos: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM item_catalog WHERE stackable IS NULL")
+            .fetch_one(backend.pool())
+            .await
+            .expect("conta stackable nulo");
+    assert_eq!(nulos, 0, "classificação de aglutinação fechada");
+    let invalidos: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM item_catalog c JOIN item_stack_cap s USING (item_index) \
+         WHERE c.stackable AND s.cap <> 120",
+    )
+    .fetch_one(backend.pool())
+    .await
+    .expect("conta stackable=true com teto 1");
+    assert_eq!(invalidos, 0, "stackable=true sempre tem teto 120");
+    let equipamentos: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM item_catalog c JOIN item_stack_cap s USING (item_index) \
+         WHERE c.kind IN ('weapon','shield','armor','helmet','boots','gloves','cloak','accessory') \
+           AND s.cap > 1",
+    )
+    .fetch_one(backend.pool())
+    .await
+    .expect("conta equipamento empilhável");
+    assert_eq!(equipamentos, 0, "equipamento força teto 1");
+
+    // Os seis divergentes da GAME-15, com nome/categoria/balde conferidos no banco.
+    let divergentes = [
+        (406, "Poção_de_Mana_M.", Some("consumable"), true, "real"),
+        (416, "Antídoto", Some("consumable"), true, "real"),
+        (419, "Resto_de_Oriharucon", Some("material"), true, "real"),
+        (420, "Resto_de_Lactolerium", Some("material"), true, "real"),
+        (3385, "not_used", None, false, "placeholder"),
+        (2433, "N/A", None, false, "placeholder"),
+        (2434, "N/A", None, false, "placeholder"),
+        (2435, "N/A", None, false, "placeholder"),
+        (4045, "NONAME", None, false, "placeholder"),
+    ];
+    for (indice, nome, kind, stackable, bucket) in divergentes {
+        let linha = sqlx::query(
+            "SELECT c.name, c.kind, c.stackable, b.bucket \
+               FROM item_catalog c JOIN item_bucket b USING (item_index) \
+              WHERE c.item_index = $1",
+        )
+        .bind(indice)
+        .fetch_one(backend.pool())
+        .await
+        .unwrap_or_else(|erro| panic!("item {indice} no catálogo: {erro}"));
+        assert_eq!(
+            linha.get::<String, _>("name"),
+            nome,
+            "nome do item {indice}"
+        );
+        assert_eq!(
+            linha.get::<Option<String>, _>("kind").as_deref(),
+            kind,
+            "kind do item {indice}"
+        );
+        assert_eq!(
+            linha.get::<bool, _>("stackable"),
+            stackable,
+            "stackable do item {indice}"
+        );
+        assert_eq!(
+            linha.get::<String, _>("bucket"),
+            bucket,
+            "balde do item {indice}"
+        );
+    }
+
     eprintln!("teto: {} linhas, fontes: {fontes:?}", rows.len());
 }

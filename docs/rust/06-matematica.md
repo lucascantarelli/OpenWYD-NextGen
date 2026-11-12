@@ -83,8 +83,8 @@ Mitigação aplicada:
 
 - os **números** são os mesmos e estão presos por golden nos dois crates;
 - a **fonte** é o manual (`docs/wyd/sistemas/refino.md` §3) e o banco (`refine_gem_effect`);
-- a unificação (enum/contrato em `wyd-protocol`) é dívida registrada para a GAME-19, quando
-  a ordem de combate fechar e o contrato de efeito estabilizar.
+- a unificação (enum/contrato em `wyd-protocol`) é dívida registrada no changelog da GAME-19;
+  a ordem de combate fecha com o trace da `CLIENT-06`, e o contrato de efeito estabiliza depois.
 
 Estado atual da dívida: a **regra** existe só como tabela duplicada; a **transação** existe
 só no core. `ComponentStore::apply_gem` é o caminho único de aplicação — valida sem escrever,

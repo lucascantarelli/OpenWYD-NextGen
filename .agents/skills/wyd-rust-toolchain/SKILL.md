@@ -5,25 +5,20 @@ description: Opera a toolchain e a qualidade do workspace Rust do WYD (rustup st
 
 # Toolchain Rust (workspace)
 
-Referências: `rust-toolchain.toml`, `.github/workflows/rust.yml`,
-`roadmap-rust/issues/FASE-05.md`, `docs/rust/01-dependencias.md`.
+Norma: `rust-toolchain.toml`, `.github/workflows/rust.yml`,
+`docs/rust/01-dependencias.md` e `docs/rust/02-execucao.md` (gates/DoD). O comando do gate
+e a regra 100% Rust estão no `AGENTS.md`; não os repita aqui.
 
-## Regras
+## Decisões específicas
 
-1. **Stable pinado.** `rust-toolchain.toml` (`stable` + `rustfmt`/`clippy`); MSRV
-   só muda via ADR (FASE-13).
-2. **Gates locais antes do push.** `cargo fmt --check`, `cargo clippy --workspace
-   -- -D warnings`, `cargo build --workspace`, `cargo test --workspace`.
-3. **Dependências com lockfile consistente.** Adicionar dep exige justificar
-   (performance/memória/manutenibilidade), atualizar `Cargo.lock` e manter build
-   verificável offline ou com rede declarada; preferir `cargo deny`/`audit`.
-4. **Repo 100% Rust.** Arquivo Go removido em 2026-11 (sem `go build`, sem
-   `deprecate-go`); toolchain verificada só com `cargo` + `rustc` (ver PROC-02).
+- `stable` é pinado no `rust-toolchain.toml`. Mudança de MSRV ou dependência pesada exige
+  ADR + PoC medida (`docs/rust/01-dependencias.md`), não “última versão”.
+- Lockfile consistente: adicionar/atualizar crate justifica custo, roda `cargo audit`/
+  `cargo deny` quando aplicável e mantém build offline ou rede declarada.
+- CI não substitui o gate local; `fmt`, `clippy -D warnings`, build e testes rodam antes.
+- Diagnóstico de toolchain é `cargo --version`, `rustc --version` e `rustup show
+  active-toolchain`; não reintroduza caminho Go/stack antiga.
 
-## Diagnóstico rápido
+## Prova
 
-```bash
-export PATH="/c/Users/Canta/.cargo/bin:$PATH"
-cargo --version; rustc --version; rustup show active-toolchain
-cargo build --workspace && cargo test --workspace
-```
+`make check` após qualquer mudança de toolchain/dependência; registre a saída na issue.

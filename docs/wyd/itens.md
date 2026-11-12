@@ -218,38 +218,41 @@ diz **por quê**:
 
 | Fonte | Teto | Itens | Exemplo |
 |---|---:|---:|---|
-| `catalogo:aglutinavel` | 120 | 368 | `400 Poção_de_Cura`, `412 Poeira_de_Oriharucon` |
-| `legado:ef_amount` | 120 | 53 | `416 Antídoto` (pack 5), `3373 Ração_de_Cavalo(P)` (100) |
-| `familia:material` | 120 | 2 | `419`/`420 Resto_de_Oriharucon`/`Lactolerium` |
-| `catalogo:nao_aglutinavel` | 1 | 1.320 | `831 Garra` |
-| `default:sem-prova` | 1 | 1.359 | equipamento sem `stackable` |
-| `catalogo:ruido` + `placeholder` | 1 | 118 | `1 TransKnight`, `2433 N/A` |
+| `catalogo:aglutinavel` | 120 | 423 | `400 Poção_de_Cura`, `406 Poção_de_Mana_M.`, `416 Antídoto` |
+| `catalogo:nao_aglutinavel` | 1 | 2.797 | `831 Garra`, `2433 N/A`, `3385 not_used` (o balde segue em `item_bucket`) |
 
-Os 94 com `EF_AMOUNT` fecham: **53** por `legado:ef_amount`, **35** já eram `stackable` (entram
-por `catalogo:aglutinavel`) e **6** são placeholder (`not_used`/`N/A`) — 94 no total. Dos 1.532 sem
-`kind`, **55** passaram a teto 120 (53 packs + 2 restos) e 1.477 continuam em 1.
+Depois da migração `0050`, `stackable` não tem nulo: **423 true / 2.797 false / 0 nulo**. Os 94
+com `EF_AMOUNT` fecham em **35** já stackable, **53** reais que passaram a empilhar (52 com
+`EF_AMOUNT` + `416` curado) e **6** placeholders, que continuam em teto 1. Dos 1.532 sem `kind`,
+**55** passaram a teto 120 (53 packs + 2 restos) e **1.477** ficaram explicitamente em teto 1;
+`kind` continua nulo em 1.529 (416/419/420 foram classificados).
 
 Auditoria de qualquer item:
 
 ```sql
 select c.item_index, c.name, c.kind, c.stackable, s.cap, s.contained, s.source
   from item_catalog c join item_stack_cap s using (item_index)
- where c.item_index in (400, 412, 416, 419, 420, 429, 831, 2433);
+ where c.item_index in (400, 406, 412, 416, 419, 420, 429, 831, 2433, 3385, 4045);
 ```
 
 ### 5.3 Configuração errada que a classificação revelou
 
-| Item | Problema |
-|---|---|
-| `400` e `406` | mesmo nome `Poção_de_Cura_M.`; o 406 é de **mana** (preço 400, igual ao 401) |
-| `416 Antídoto` | real e com `EF_AMOUNT 5`, mas `kind`/`stackable` nulos |
-| `419`/`420 Resto_*` | reais e com preço, mas `fields` sem nenhum efeito — o import perdeu os `EF_*` |
-| `3385 not_used` | placeholder com preço 50.000 e `EF_AMOUNT 20` |
-| `2433`–`2435 N/A` | placeholder com `EF_AMOUNT 5` |
-| `4045 NONAME` | placeholder com preço 4.000.000 |
+Corrigido em 2026-11-12 pela migração `0050_seed_correcao_catalogo_game12_15.sql`; o gerador
+`tools/content/gen-seed.mjs` também passou a aplicar a mesma curadoria. `400` já estava correto
+no seed (`Poção_de_Cura`) — o nome duplicado era só do `406`.
 
-Registrado em `roadmap-rust/issues/GAME-15-classificacao-baldes-e-teto.md`; nada foi "corrigido"
-por chute no catálogo.
+| Item | Problema | Decisão |
+|---|---|---|
+| `406` | nome `Poção_de_Cura_M.`, mas efeito `EF_MP 200` e preço 400 (igual ao 401 de cura) | renomeado para `Poção_de_Mana_M.`; `consumable`, teto 120 |
+| `416 Antídoto` | real, `EF_AMOUNT 5`, sem `kind`/`stackable` | `consumable`, teto 120; `contained = 5` |
+| `419`/`420 Resto_*` | reais e com preço; `fields` **não traz nenhum `EF_*`** (não é perda do import) | `material`, teto 120, sem efeito inventado |
+| `3385 not_used` | nome explícito de placeholder, preço 50.000 e `EF_AMOUNT 20` | continua placeholder; teto 1 e `contained = 20` |
+| `2433`–`2435 N/A` | placeholder com `EF_AMOUNT 5` | continuam placeholder; teto 1 e `contained = 5` |
+| `4045 NONAME` | placeholder com preço 4.000.000 | continua placeholder; teto 1 |
+
+A regra é conservadora: `EF_AMOUNT` prova **conteúdo de pack**, não promove um nome de slot
+vazio a item real. O teste `crates/wyd-db/tests/sistema/stack_caps.rs` confere nome, `kind`,
+`stackable`, balde e teto dos nove índices no banco real.
 
 ---
 

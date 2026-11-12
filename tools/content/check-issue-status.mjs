@@ -3,8 +3,8 @@
  * Gate de deriva de status (PROC-13): o status de cada issue tem de bater entre o índice
  * (`roadmap-rust/index.md`, tabela de execução) e o painel (`docs/rust/03-progresso.md`).
  *
- * Exige cobertura total: toda issue ativa do índice precisa de linha no painel, com o mesmo
- * status. Cobertura incompleta é divergência, não aviso.
+ * A tabela do índice pode ter uma coluna de fila (`| 07 | \`ID\` | ...`); o gate ignora essa
+ * coluna e continua exigindo cobertura total e status idêntico ao painel.
  *
  * Uso: node tools/content/check-issue-status.mjs
  * Saída: uma linha por divergência; exit 1 se houver divergência.
@@ -16,7 +16,7 @@ const statusOf = (cell) => STATUS.find((s) => cell.includes(s)) ?? null;
 
 const indice = new Map();
 for (const linha of readFileSync("roadmap-rust/index.md", "utf8").split("\n")) {
-  const m = linha.match(/^\| `([A-Z]+-\d+)` \| \[[^\]]*\]\(issues\/([A-Z]+-\d+)-[^)]*\) \| ([^|]+) \|/);
+  const m = linha.match(/^\| (?:\d+ \| )?`([A-Z]+-\d+)` \| \[[^\]]*\]\(issues\/([A-Z]+-\d+)-[^)]*\) \| ([^|]+) \|/);
   if (m) indice.set(m[1], statusOf(m[3]));
 }
 
@@ -64,7 +64,7 @@ for (const id of idsArquivos) if (!indice.has(id)) problemasEstrutura.push(`${id
 for (const id of indice.keys()) if (!idsArquivos.has(id)) problemasEstrutura.push(`${id}: índice sem arquivo ativo`);
 const linhasIndice = readFileSync("roadmap-rust/index.md", "utf8").split("\n");
 for (const id of indice.keys()) {
-  const linha = linhasIndice.find((l) => l.startsWith(`| \`${id}\` | [`));
+  const linha = linhasIndice.find((l) => l.includes(`\`${id}\` | [`));
   const link = linha?.match(/\(issues\/([^)]+)\)/)?.[1];
   if (link && !existsSync(`roadmap-rust/issues/${link}`)) problemasEstrutura.push(`${id}: link do índice não existe (${link})`);
 }

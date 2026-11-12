@@ -1,9 +1,9 @@
 # Revisão do roadmap-rust — cobertura, conformidade e reparos (2026-11-07)
 
 Revisão completa do planejado com as skills vigentes como base
-(`wyd-rust-*`, `rust-code-quality`, `software-architecture`,
-`solid-design-patterns`, `skill-creator`, `wyd-web-admin-ui`,
-`wyd-client-reverso`, `wyd-rust-toolchain`).
+(`wyd-rust-*`, `rust-code-quality`, `software-architecture` com SOLID/patterns,
+`wyd-web-admin-ui`, `wyd-client-reverso`, `wyd-rust-toolchain`; manutenção de skills em
+`docs/manual-técnico/skills.md`).
 
 ## 1. Inventário: 100% das issues planejadas
 
@@ -23,10 +23,11 @@ Revisão completa do planejado com as skills vigentes como base
 | QA-03 (compose/docker) | `wyd-rust-toolchain` | ✅ após reparo (nota Dockerfile por serviço já registrada na issue) |
 | QA-05 (handshake/flood) | `wyd-rust-net` | ✅ balde+porte, 10 testes |
 | 07-núcleo (admin/billing) | `wyd-rust-db`, `solid` (DIP) | ✅ `BillingPort`, 15 testes |
-| PROC-17 (auditoria skills) | `skill-creator` | ✅ plano executivo, sem conflito |
+| PROC-17 (auditoria skills) | `docs/manual-técnico/skills.md` | ✅ plano executivo, sem conflito |
 | GAME-19/GAME-21 (equações/lab) | `wyd-rust-sim`, `rust-code-quality` | ✅ funções puras, sem float indevido |
 | QA-08 (dashboards) | `wyd-rust-obs` | ✅ contrato QA-04 como única fonte |
-| PROC-03/PROC-04, PROC-06, PROC-19, PROC-23, 15-x | skills próprias | ✅ estrutura conforme; conteúdo diferido p/ execução (dependem de fases 🚧) |
+| PROC-03/PROC-04, PROC-06, PROC-19, 15-x | skills próprias | ✅ estrutura conforme; conteúdo diferido p/ execução (dependem de fases 🚧) |
+| PROC-23 (PoCs de pesquisa) | `wyd-rust-toolchain`, `software-architecture` | ✅ PoCs medidas em 2026-11-12; SoA/parse manual mantidos; `hecs`, `zerocopy`, `io_uring` e `wasmtime` não adotados |
 
 Caminhos citados nas issues existem no arquivo: `combat/`, `docker/monitoring/`,
 `game-rules.md`, `config-ops.md`, `webserver/` (todos OK em
@@ -88,7 +89,8 @@ histórico git do próprio repo:
 Revisão pedida pelo dono: validar **todas** as issues entregues contra o código, ler a
 documentação e as skills, achar inconsistências/gaps/violações e registrar o que falta em
 issues, ordenadas por tamanho. Base normativa usada: `AGENTS.md` §3, `docs/rust/02-execucao.md`,
-`docs/arquitetura/estrutura-e-padroes.md` (ADR-0002), as 27 skills de `.agents/skills/`,
+`docs/arquitetura/estrutura-e-padroes.md` (ADR-0002), as 27 skills vigentes na época
+(18 após as auditorias de 2026-11-12) de `.agents/skills/`,
 `docs/wyd/` e `docs/cliente/`.
 
 ## 6.1 Método e o que foi realmente verificado
@@ -174,7 +176,7 @@ portado (cada canal tinha DB próprio; o nosso compartilha), decisão já regist
 | `wyd-rust-db` (migrations reversíveis, integridade) | ✅ 31 migrations + catálogo + verify-schema |
 | `rust-code-quality` (sem `unwrap` fora de teste) | ✅ nos caminhos de rede; os 351 hits são majoritariamente `#[cfg(test)]`/locks de fake — revisão pontual recomendada no `inventory.rs` (26) |
 | `software-architecture` (árvore/ADR) | ❌→✅ após D-2 (`wyd-server` agora no DAG e no §16) |
-| `solid-design-patterns` (porta por domínio) | ✅ `ContentSource`, `GrantQueue`, `Accounts`/`Characters` |
+| `software-architecture` (porta por domínio, SOLID/patterns) | ✅ `ContentSource`, `GrantQueue`, `Accounts`/`Characters` |
 | `wyd-rust-testing` (teste pula, golden, sem `#[ignore]`) | ❌→✅ após D-1 |
 | `wyd-client-reverso` / `wyd-launcher` | ✅ (hash fixado, patches por ferramenta, GUI só chama o núcleo) |
 

@@ -66,15 +66,6 @@ Saída esperada: tudo `ok`; com flags off, resultado idêntico ao atual
 - docs/wyd/progressao.md §6 (teto retido).
 - `docs/migration/game-rules.md` §1.
 
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
-
 ## Critérios de aceite
 
 - [ ] Flags off = comportamento atual byte a byte (teste de regressão).

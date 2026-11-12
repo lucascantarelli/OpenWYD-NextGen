@@ -6,7 +6,7 @@
 - **Decisores:** dono do projeto + agente (análise na GAME-04)
 - **Governa:** `roadmap-rust/changelog.md`,
   `PROC-16-persistencia-async.md`, `GAME-04-dados-estaticos.md`,
-  `GAME-05-autoridade-servidor.md`, `WEB-01-gateway.md`, `GAME-19-equacoes.md`
+  `GAME-05-autoridade-servidor.md`, `roadmap-rust/changelog.md` (WEB-01, GAME-19)
 
 ## Contexto
 

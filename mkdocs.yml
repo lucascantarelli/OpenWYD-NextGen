@@ -72,6 +72,7 @@ nav:
     - Contrato de persistência: arquitetura/contrato-persistencia.md
     - Contrato dispatch/opcode: arquitetura/contrato-dispatch-opcode.md
     - C4 + pacotes: arquitetura/c4-pacotes.md
+    - Testes: arquitetura/testes.md
     - Matemática (SIM): arquitetura/matematica-sim.md
     - IA e bots: arquitetura/ia-bots.md
     - ADRs:
@@ -102,6 +103,9 @@ nav:
       - 0023 moderação: arquitetura/adr/0023-moderacao-auditoria-economia.md
       - 0024 migrations boot: arquitetura/adr/0024-migrations-no-boot.md
       - 0025 cena payload: arquitetura/adr/0025-pacotes-de-cena-no-payload.md
+      - 0026 árvore do server: arquitetura/adr/0026-arvore-por-dominio-no-wyd-server.md
+      - 0027 árvore dos bots: arquitetura/adr/0027-arvore-por-dominio-no-wyd-bots.md
+      - 0028 ferramentas: arquitetura/adr/0028-ferramentas-em-apps-e-artefatos.md
   - Cliente 7662:
     - Dossiê: cliente/README.md
     - Inventário: cliente/inventario.md
@@ -109,6 +113,7 @@ nav:
     - Engenharia reversa: cliente/engenharia-reversa.md
     - Análise estática: cliente/analise-estatica.md
     - Depuração: cliente/depuracao.md
+    - Roteiro de prova visual: cliente/roteiro-prova-visual-7662.md
     - Pacotes: cliente/pacotes.md
     - Formatos: cliente/formatos.md
     - Tabelas binárias: cliente/tabelas-bin.md
@@ -116,7 +121,13 @@ nav:
     - Launcher: cliente/launcher.md
     - Customização: cliente/customizacao.md
     - Captura selchar: cliente/captura-selchar.md
+    - Mensagens do cliente: cliente/mensagens-cliente-7662.md
     - Referência WYD Global: cliente/referencia-wyd-global.md
+    - Artefatos gerados:
+      - Inventário gerado: cliente/inventario-gerado.md
+      - Binários: cliente/re-binarios.md
+      - Strings: cliente/re-strings.md
+      - Pacotes: cliente/re-pacotes.md
   - Execução Rust:
     - Visão e estrutura: rust/00-visao-estrutura.md
     - Dependências: rust/01-dependencias.md
@@ -129,6 +140,25 @@ nav:
     - IA e bots: rust/07-ia-e-bots.md
     - Checklist funcional: rust/08-checklist-funcionalidades.md
     - Duplicidades (PROC-01): rust/09-duplicidades.md
+    - Evidências:
+      - Índice: rust/evidencias/README.md
+      - AUDIT-IA: rust/evidencias/AUDIT-IA-2026-11-12.md
+      - AUDIT-ISSUES: rust/evidencias/AUDIT-ISSUES-2026-11-12.md
+      - AUDIT-SKILLS: rust/evidencias/AUDIT-SKILLS-2026-11-12.md
+      - PROC-02 ambiente: rust/evidencias/PROC-02-limpeza-ambiente-2026-11-12.md
+      - PROC-03 rust-analyzer: rust/evidencias/PROC-03-rust-analyzer.md
+      - PROC-05 auditoria: rust/evidencias/PROC-05-auditoria-2026-11-12.md
+      - PROC-11 revisão fria: rust/evidencias/PROC-11-revisao-fria-2026-11-12.md
+      - PROC-13 gate de docs: rust/evidencias/PROC-13-gate-docs.md
+      - PROC-23 PoCs: rust/evidencias/PROC-23-pocs-2026-11-12.md
+      - QA-08 prova viva: rust/evidencias/QA-08-prova-viva-2026-11-12.md
+      - WEB-02 painel vivo: rust/evidencias/WEB-02-painel-vivo.md
+      - WEB-04 E2E: rust/evidencias/WEB-04-e2e-2026-11-12.md
+  - Notícias:
+    - Campo de treinamento: noticias/2026-11-10-campo-de-treinamento.md
+    - Ouro inicial: noticias/2026-11-11-gold-inicial.md
+    - Lojas de NPC: noticias/2026-11-11-lojas-de-npc.md
+    - Primeiro gameplay: noticias/2026-11-11-primeiro-gameplay.md
   - Manual técnico:
     - Guia de contribuição: manual-técnico/guia-contribuicao.md
     - Auditoria do roadmap: manual-técnico/auditoria-roadmap.md
@@ -152,6 +182,7 @@ nav:
     - Referência externa: wyd/referencia-externa-2026-11.md
     - Pesquisas 2026-11-10:
       - Campo de treinamento: wyd/pesquisa-campo-de-treinamento-2026-11-10.md
+      - Campo de treinamento (2026-11-11): wyd/pesquisa-campo-de-treinamento-2026-11-11.md
       - Internet: wyd/pesquisa-internet-2026-11-10.md
       - Missão fase 1: wyd/pesquisa-wyd2-missao-fase1-2026-11-10.md
       - Missão fase 2: wyd/pesquisa-wyd2-missao-fase2-2026-11-10.md
@@ -171,4 +202,5 @@ nav:
       - Eventos: wyd/sistemas/eventos.md
       - Fadas: wyd/sistemas/fadas.md
       - Familiares: wyd/sistemas/familiares.md
+      - Ameaças: wyd/sistemas/ameacas.md
       - Battle Royale: wyd/sistemas/battle-royale.md

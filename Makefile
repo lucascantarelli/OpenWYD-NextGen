@@ -2,18 +2,18 @@
 # Mapa skills → targets:
 #   rust-code-quality      → fmt, clippy
 #   wyd-rust-toolchain     → build, test, audit, check
-#   software-architecture  → check (gates antes de qualquer merge)
-#   github-actions-docs    → ci (espelho local do workflow)
+#   software-architecture  → check (gates antes de qualquer merge, SOLID/patterns)
+#   wyd-rust-toolchain     → build, test, audit, check, ci
 # Uso: `make check` antes de considerar qualquer issue pronta.
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
 	@echo "         stack-config stack-up stack-down stack-logs local-rebuild db-migrate db-reset prod-env-smoke"
-	@echo "         gateway-image gateway-smoke monitoring-check"
+	@echo "         gateway-image gateway-smoke monitoring-check docs-serve docs-smoke"
 	@echo "         portal-install portal-dev portal-test portal-build"
 
 fmt: ## formatação (skill: rust-code-quality)
@@ -31,7 +31,7 @@ test: ## testes do workspace (skill: wyd-rust-toolchain)
 test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
 	$(CARGO) test --workspace --all-targets
 
-check: fmt clippy build test migrations-check issue-status-check docs-check tools-test ## gate completo — exigido por toda issue
+check: fmt clippy build test migrations-check issue-status-check docs-check skills-check tools-test ## gate completo — exigido por toda issue
 
 migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
 	node tools/content/check-migrations.mjs
@@ -41,6 +41,17 @@ issue-status-check: ## status de issue igual no índice e no painel (tools/conte
 
 docs-check: ## links de README/AGENTS e contagem de crates (tools/dev/check-docs-consistency.mjs)
 	node tools/dev/check-docs-consistency.mjs
+
+docs-serve: ## MkDocs interno dev/admin em http://127.0.0.1:8000 (sem perfis)
+	docker compose up -d --wait mkdocs
+	@echo "MkDocs: http://127.0.0.1:$${MKDOCS_PORT:-8000} (dev/admin; jogador usa o portal)"
+
+docs-smoke: ## home do MkDocs no compose (healthcheck + HTTP 200)
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$${MKDOCS_PORT:-8000}/)" = "200" || { echo "FALHOU: mkdocs != 200"; exit 1; }
+	@echo "mkdocs ok"
+
+skills-check: ## frontmatter, limite de 500 linhas e referências de skills (tools/dev/check-skills.mjs)
+	node tools/dev/check-skills.mjs
 
 migrations-apply: ## aplica a série num Postgres efêmero: up → down → up (exige Docker)
 	node tools/content/migrate-cycle.mjs
@@ -144,7 +155,7 @@ gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-
 	@curl -fsS http://127.0.0.1:7600/health && echo
 	@curl -fsS http://127.0.0.1:7600/metrics | head -20
 
-stack-up: ## sobe a stack de dev inteira (db + gateway + portal + canais + monitoramento)
+stack-up: ## sobe a stack de dev inteira (db + gateway + portal + canais + monitoramento + mkdocs)
 	docker compose up -d --build
 
 local-rebuild: ## rebuild completo do local na 3000 + migrations + prova de saúde (fechamento de issue)

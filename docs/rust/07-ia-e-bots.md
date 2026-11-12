@@ -20,7 +20,7 @@ seguem sem código.
 | Item | Estado | Evidência |
 |---|---|---|
 | "FASE 9 — IA" = skills/instruções de agentes | **existente** | `pre-release-rust.md` FASE 9 (l. 173–178), §1.3 (l. 80–83); `roadmap-rust/issues/FASE-09.md` (objetivo: mapeamento Go→Rust de skills) |
-| Skill de harness de bots/carga | **existente (doc)** | `docs/manual-técnico/skills.md` l. 25 (`wyd-testing-bots` → `wyd-rust-testing`); `docs/rust/03-progresso.md` l. 166 |
+| Skill de harness de bots/carga | **existente (doc)** | `docs/manual-técnico/skills.md` §1 (`wyd-rust-testing`); `docs/rust/03-progresso.md` §PROC-18 |
 | Simulação massiva de combate (`wyd-sim`) | **existente (estrutura)** | `pre-release-rust.md` FASE 10 §10.3; `estrutura-e-padroes.md` §14; `docs/rust/06-matematica.md` |
 | `pre-release-bots.md` (definições da suíte) | **lacuna** | citado em `start-rust.md` l. 6; ausente na raiz (`ls *.md`: `AGENTS.md`, `README.md`, `pre-release-rust.md`, `start-rust.md`) |
 | IA de NPC (aggro/perseguição/ataque/fuga/retorno) | **executada (2026-11-08)** | `crates/wyd-core/src/npc/{state,behavior,brain,route,budget}.rs` + `src/systems/npc.rs` (ADR-0016); matemática de ameaça copiada de `crates/wyd-sim/src/formula/threat.rs` e presa por golden em `tests/integracao/npc.rs`; tabela `npc_behavior` continua ausente (perfil vem por parâmetro) |

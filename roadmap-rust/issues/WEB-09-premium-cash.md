@@ -42,7 +42,7 @@ Saída esperada: claim idempotente (replay = uma linha, sem duplicar item/gold);
 
 - wyd-economy (legada, só contexto) → sucessora Rust `wyd-rust-db`.
 - wyd-rust-testing — goldens de claim, concorrência.
-- frontend-design — extrato, gráficos sem número inventado.
+- .agents/skills/wyd-web-admin-ui — extrato e gráficos sem número inventado; ver wyd-portal/README.md §Identidade e desenho.
 
 ## Documentação de referência
 

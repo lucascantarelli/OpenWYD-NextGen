@@ -57,11 +57,12 @@
 ## 3. Comandos
 
 ```bash
-make check                 # gate único: fmt + clippy + build + test + migrations + issues + tools
+make check                 # gate único: fmt + clippy + build + test + migrations + issues + docs + skills + tools
 make test-all              # unitários + integração + doc-tests + benches (espelho do CI)
 make bench                 # benchmarks quando a issue exigir números
 make stack-config          # valida compose base+prod sem subir
-make stack-up              # db + gateway + 2 canais + portal + monitoramento
+make stack-up              # db + gateway + 2 canais + portal + monitoramento + mkdocs
+make docs-serve            # MkDocs interno dev/admin em http://127.0.0.1:8000
 make portal-test           # tsc --noEmit + vitest
 make portal-build          # next build
 ```

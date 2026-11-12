@@ -304,9 +304,9 @@ fn cada_metodo_do_portal_tem_rota_no_control_plane() {
     }
     assert_eq!(total, 44, "44 métodos declarados pelo portal");
 
-    // `SERVICOS` ainda mantém o contrato legado para responder 501 auditado a
-    // chamadas antigas; a paridade do portal vigente é provada pelo dispatch em
-    // `rota_do_portal_sem_handler_e_501_auditado_e_nunca_404`, que nunca aceita 404.
+    // `SERVICOS` contém só a superfície vigente do portal; a rota legada
+    // `set_reward_item_enabled` saiu do contrato e responde 404. A paridade é
+    // provada pelo dispatch em `rota_do_portal_sem_handler_e_501_auditado_e_nunca_404`.
 }
 
 #[test]

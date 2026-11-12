@@ -53,8 +53,7 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 
 - .agents/skills/wyd-rust-core - engine, ECS, tick, spatial grid.
 - .agents/skills/rust-code-quality - ownership, sem unsafe, testes.
-- .agents/skills/software-architecture - Hot/Cold, fronteiras, ADR.
-- .agents/skills/solid-design-patterns - sistemas coesos, traits pequenos.
+- .agents/skills/software-architecture - Hot/Cold, fronteiras, ADR, SOLID/patterns e sistemas coesos.
 
 ## Documentação de referencia
 
@@ -62,7 +61,7 @@ Saída esperada: `test result: ok` em todos os targets de `wyd-core`; `make chec
 - docs/rust/01-dependencias.md - candidatos ECS/arena (hecs/bevy_ecs, bumpalo).
 - docs/arquitetura/adr/0001-hot-path-monolitico.md - decisão do monolito.
 - pre-release-rust.md (FASE 3) - escopo da engine.
-- crates/wyd-sim/src/formula/ + roadmap-rust/issues/GAME-19-equacoes.md - fórmulas de referência.
+- crates/wyd-sim/src/formula/ + roadmap-rust/changelog.md (GAME-19) - fórmulas de referência.
 - docs/arquitetura/protocolo.md §5 - alinhamentos de save.
 
 ## Subtasks

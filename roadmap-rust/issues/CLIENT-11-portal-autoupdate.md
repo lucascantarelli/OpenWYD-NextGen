@@ -42,7 +42,6 @@ Saída esperada: `check` real OK; `update` adulterado recusado; patch gerado no 
 ## Skills relacionadas
 
 - wyd-launcher — distribuição, patch atômico, bootstrap.
-- frontend-design — GUI Tauri (notícias + Jogar).
 - wyd-rust-obs — telemetria de patch.
 
 ## Documentação de referência

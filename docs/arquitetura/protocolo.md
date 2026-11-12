@@ -436,7 +436,7 @@ processo não fica preso na linha antiga; outro canal continua recusado.
 
 ## 6. UNVERIFIED (não vira tipo até a captura real, CLIENT-02)
 
-- `MSG_Trade` (troca entre jogadores) — layout não documentado.
+- `MSG_Trade` (troca entre jogadores) — layout candidato de **156 B** (alinhamento natural; `Basedef.h:2435-2445`), contra 154 B do porte Go (`pack(1)`). A captura da CLIENT-10 decide; não vira tipo nem dispatch antes disso.
 - `MSG_SetHpMp` — layout não documentado.
 - `_AUTH_GAME` — layout não documentado.
 

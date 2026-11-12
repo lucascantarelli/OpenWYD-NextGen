@@ -45,7 +45,7 @@ Saída esperada: `Finished` sem erro nos 4 gates; `git status` sem arquivos novo
 ## Skills Relacionadas do freebuff
 
 - .agents/skills/writing-plans - planejar a auditoria e estruturar o inventário.
-- .agents/skills/documentation-writer - redigir diagnóstico e listas.
+- docs/index.md - convenções de escrita para diagnóstico e listas.
 - .agents/skills/wyd-rust-toolchain - executar `make check`.
 
 ## Documentação de referencia

@@ -295,23 +295,11 @@ fn senha_e_pin_corretos_chegam_na_selecao() {
     assert!(personagens.iter().any(|p| p.name == nome), "criou no banco");
 }
 
-#[test]
-fn senha_errada_e_recusada_sem_sessao() {
-    let Some(_dsn) = common::dsn_ou_skip("login do canal") else {
-        return;
-    };
-    let conta = conta_unica();
-    let (porta, _backend, _rt) = entrada(&conta);
-    let mut s = conectar(porta);
-    assert_eq!(
-        login(&mut s, &conta, "senha-errada"),
-        Some(Opcode::NewAccountFail),
-        "senha errada recebe recusa, nunca CNF"
-    );
-    // A recusa vem com `NewAccountFail` + painel explicativo antes de fechar. O segundo
-    // frame é o que o 7662 realmente desenha: o teste falha se ele sumir, mudar de tamanho
-    // ou perder o motivo. Drenar sem afirmar nada deixava o BUG-01 voltar em silêncio.
-    let painel = ler_frame(&mut s).expect("_MSG_MessagePanel depois do NewAccountFail");
+/// Lê o `_MSG_MessagePanel` que acompanha o `NewAccountFail` e confere o texto genérico.
+///
+/// O 7662 ignora o `*Fail` puro; este painel é a fallback visível de senha errada.
+fn assert_painel_de_senha(stream: &mut TcpStream) {
+    let painel = ler_frame(stream).expect("_MSG_MessagePanel depois do NewAccountFail");
     let header = Header::decode(&painel).expect("header do painel");
     assert_eq!(
         header.size as usize,
@@ -329,6 +317,25 @@ fn senha_errada_e_recusada_sem_sessao() {
         "Senha ou conta incorreta",
         "motivo da recusa visível no painel"
     );
+}
+
+#[test]
+fn senha_errada_e_recusada_sem_sessao() {
+    let Some(_dsn) = common::dsn_ou_skip("login do canal") else {
+        return;
+    };
+    let conta = conta_unica();
+    let (porta, _backend, _rt) = entrada(&conta);
+    let mut s = conectar(porta);
+    assert_eq!(
+        login(&mut s, &conta, "senha-errada"),
+        Some(Opcode::NewAccountFail),
+        "senha errada recebe recusa, nunca CNF"
+    );
+    // A recusa vem com `NewAccountFail` + painel explicativo antes de fechar. O segundo
+    // frame é o que o 7662 realmente desenha: o teste falha se ele sumir, mudar de tamanho
+    // ou perder o motivo. Drenar sem afirmar nada deixava o BUG-01 voltar em silêncio.
+    assert_painel_de_senha(&mut s);
     let mut resto = Vec::new();
     assert_eq!(
         s.read_to_end(&mut resto).unwrap_or(0),
@@ -341,6 +348,33 @@ fn senha_errada_e_recusada_sem_sessao() {
     assert_eq!(login(&mut ok, &conta, SENHA), Some(Opcode::CNFAccountLogin));
     ok.write_all(&frame_pin(PIN)).expect("PIN");
     assert_eq!(ler_opcode(&mut ok), Opcode::AccountSecure);
+}
+
+/// Conta inexistente não pode se distinguir de senha errada para o cliente.
+///
+/// As duas caem no mesmo `AuthError::BadPassword` e recebem o mesmo
+/// `NewAccountFail` + `MessagePanel`; a mensagem é a fallback genérica, sem
+/// revelar se o login existe.
+#[test]
+fn conta_inexistente_usa_o_mesmo_painel_de_senha_errada() {
+    let Some(dsn) = common::dsn_ou_skip("login do canal") else {
+        return;
+    };
+    let conta = conta_unica();
+    let (porta, _auth, _backend) = servidor(&dsn);
+    let mut s = conectar(porta);
+    assert_eq!(
+        login(&mut s, &conta, SENHA),
+        Some(Opcode::NewAccountFail),
+        "conta inexistente recebe a mesma recusa"
+    );
+    assert_painel_de_senha(&mut s);
+    let mut resto = Vec::new();
+    assert_eq!(
+        s.read_to_end(&mut resto).unwrap_or(0),
+        0,
+        "conexão fecha depois dos dois frames"
+    );
 }
 
 #[test]

@@ -51,8 +51,7 @@ Saída esperada: `make ci` verde; release compila; imagens buildam.
 
 ## Skills Relacionadas do freebuff
 
-- .agents/skills/wyd-rust-toolchain - gates, lockfile, supply-chain.
-- .agents/skills/github-actions-docs - sintaxe e pinning de actions.
+- .agents/skills/wyd-rust-toolchain - gates, CI, lockfile, supply-chain e pinning de actions.
 - .agents/skills/rust-code-quality - benches sem flakiness.
 
 ## Documentação de referencia

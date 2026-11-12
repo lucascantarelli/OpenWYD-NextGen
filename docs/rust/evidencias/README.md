@@ -8,7 +8,11 @@
 
 | Evidência | Issue | Data | Resultado |
 |---|---|---|---|
+| [`AUDIT-ISSUES-2026-11-12.md`](AUDIT-ISSUES-2026-11-12.md) | fechamento de `GAME-19`/`WEB-01` | 2026-11-12 | 29 issues conferidas; 2 fechadas (`GAME-19`, `WEB-01`) e 27 mantidas com critério real nomeado. |
+| [`PROC-02-limpeza-ambiente-2026-11-12.md`](PROC-02-limpeza-ambiente-2026-11-12.md) | `PROC-02` | 2026-11-12 | Go 1.27.3 desinstalado; `where go` não resolve; caches, ferramentas, `GOPATH`/`GOROOT` e extensão Go removidos. |
+| [`PROC-23-pocs-2026-11-12.md`](PROC-23-pocs-2026-11-12.md) | `PROC-23` | 2026-11-12 | PoCs medidas: SoA vence `hecs`, parse manual mantido, `io_uring`/`wasmtime` não adotados; nenhuma dependência nova. |
 | [`AUDIT-IA-2026-11-12.md`](AUDIT-IA-2026-11-12.md) | `PROC-18` | 2026-11-12 | Auditoria das instruções de IA; skills reduzidas a 23 e referências/gates íntegros. |
+| [`AUDIT-SKILLS-2026-11-12.md`](AUDIT-SKILLS-2026-11-12.md) | `PROC-18` (2ª/3ª passadas) | 2026-11-12 | 23→18 skills; 2 duplicadas fundidas/removidas, 3 genéricas removidas; dedup de 18 skills contra AGENTS/docs; gate `skills-check` valida doc paths. |
 | [`PROC-03-rust-analyzer.md`](PROC-03-rust-analyzer.md) | `PROC-03` | 2026-11-12 | Workspace analisado pelo rust-analyzer, VS Code em Rust e sem extensão Go. |
 | [`PROC-05-auditoria-2026-11-12.md`](PROC-05-auditoria-2026-11-12.md) | `PROC-05` | 2026-11-12 | **36 issues do baseline:** 21 abertas, 8 em andamento, 2 parciais, 1 pronta, 1 bloqueada e 3 concluídas; 33 ativas + 3 fechadas, com próximo passo por linha. |
 | [`PROC-11-revisao-fria-2026-11-12.md`](PROC-11-revisao-fria-2026-11-12.md) | `PROC-11` | 2026-11-12 | Árvore real, DAG e módulos confrontados com o documento normativo; divergências corrigidas. |

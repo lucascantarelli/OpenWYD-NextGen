@@ -7,7 +7,7 @@
 > segunda evidência; onde divergem, o documento diz qual vale e por quê (§9).
 > **Alvo:** `client/WYD.exe` 2.347.008 B, SHA-256 `04c9d2a1…27ddf8` (PE32/i386).
 > **Natureza:** contrato documentado (documento do tipo **Reference** — informação, não tutorial:
-> `.agents/skills/documentation-writer/SKILL.md`). Nenhuma linha de Rust foi escrita nesta passada.
+> `docs/index.md` e `docs/rust/02-execucao.md` §5). Nenhuma linha de Rust foi escrita nesta passada.
 > Toda afirmação tem `arquivo:linha`; o que não foi provado está em **UNVERIFIED** com a pergunta
 > que fecha a lacuna (§11).
 >

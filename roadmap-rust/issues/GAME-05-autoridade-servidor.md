@@ -4,7 +4,7 @@
 > **ID histórico:** `FASE-03-5`
 > **Estado 2026-11-12:** 🚧 · ver `roadmap-rust/index.md`.
 
-**Fase:** 3 · **Depende de:** GAME-02, GAME-03, GAME-04 · **Bloqueia:** FASE-10 · **Esforço:** M
+**Fase:** 3 · **Depende de:** GAME-02 ✅, GAME-03 ✅, GAME-04 ✅ · **Bloqueia:** FASE-10 · **Esforço:** M
 
 ## Objetivo
 
@@ -72,10 +72,7 @@ inalterado após ação forjada).
 
 - [x] Codificar issue
 - [x] Testar issue
-- [ ] Revisar issue
 - [x] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 

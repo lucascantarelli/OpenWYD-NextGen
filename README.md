@@ -17,7 +17,7 @@
 
 <p>
   <img src="https://img.shields.io/badge/status-desenvolvimento%20ativo-f59e0b" alt="Em desenvolvimento">
-  <img src="https://img.shields.io/badge/roadmap-33%20ativas%20%C2%B7%2049%20conclu%C3%ADdas-7c3aed" alt="33 issues ativas e 49 concluídas">
+  <img src="https://img.shields.io/badge/roadmap-32%20ativas%20%C2%B7%2050%20conclu%C3%ADdas-7c3aed" alt="32 issues ativas e 50 concluídas">
   <img src="https://img.shields.io/badge/checklist-34%20%E2%9C%85%20%C2%B7%2018%20%F0%9F%9A%A7%20%C2%B7%2029%20%E2%AC%9C-0ea5e9" alt="Checklist funcional">
 </p>
 
@@ -110,9 +110,9 @@ sequenceDiagram
 
 | Indicador | Estado |
 |---|---|
-| 🗺️ Roadmap | **33 issues ativas** + 15 descritores de fase · **49 concluídas** |
+| 🗺️ Roadmap | **32 issues ativas** + 15 descritores de fase · **50 concluídas** |
 | 🧪 Checklist funcional | **34 ✅ · 18 🚧 · 29 ⬜ · 1 ⛔** em 82 linhas |
-| 🗄️ Banco | **48 migrations · 86 tabelas** no gate atual |
+| 🗄️ Banco | **50 migrations · 86 tabelas** no gate atual |
 | 🧱 Workspace | **9 crates Rust** + `apps/launcher-ui` (Tauri) |
 | 🌐 Stack local | 2 canais + gateway + portal + PostgreSQL + Prometheus/Grafana/Loki |
 | 🖥️ Cliente | 7662 externo; prova visual de `BUG-01`, `BUG-02`, `GAME-17` e `GAME-18` pendente |
@@ -157,8 +157,8 @@ git clone https://github.com/lucascantarelli/wyd.git
 cd wyd
 
 cp .env.example .env          # troque os segredos antes de expor qualquer serviço
-make check                    # fmt + clippy + build + testes + migrations + docs + tools
-make stack-up                 # db + 2 canais + gateway + portal + monitoramento
+make check                    # fmt + clippy + build + testes + migrations + docs + skills + tools
+make stack-up                 # db + 2 canais + gateway + portal + monitoramento + mkdocs
 ```
 
 Depois do `up`:
@@ -169,6 +169,7 @@ Depois do `up`:
 | Gateway — saúde | `http://127.0.0.1:7600/health` |
 | Prometheus | `http://127.0.0.1:9090` |
 | Grafana | `http://127.0.0.1:3001` |
+| MkDocs (dev/admin) | `http://127.0.0.1:8000` |
 | CPSock — canal 1 / 2 | `:8281` (IPs configurados em `WYD_CANAL1_IP` / `WYD_CANAL2_IP`) |
 | PostgreSQL | `127.0.0.1:5432` somente no override de desenvolvimento |
 
@@ -210,7 +211,7 @@ wyd2/
 ├── apps/launcher-ui/      # 🖥️ GUI Tauri do launcher
 ├── wyd-portal/            # 📊 BFF Next.js + telas de staff + E2E
 ├── docs/                  # 📚 arquitetura, operação, cliente, jogo e manuais
-├── roadmap-rust/          # 🗺️ fases, 33 issues ativas, bugs e changelog
+├── roadmap-rust/          # 🗺️ fases, 32 issues ativas, bugs e changelog
 ├── docker/                # 🐳 imagens, monitoramento e configuração da stack
 ├── .agents/skills/        # 🧠 skills operacionais por tipo de tarefa
 ├── AGENTS.md              # 📜 invariantes e fluxo para agentes de IA
@@ -269,9 +270,9 @@ O planejamento vive em [`roadmap-rust/index.md`](roadmap-rust/index.md), com IDs
 
 | 🎯 Próximo | Categoria | Esforço | Por quê |
 |---|---|---|---|
-| `PROC-23` | Processo · documentação · arquitetura | **S** | Medir PoCs pendentes (ECS, `io_uring`, serialização). |
-| `WEB-10` | Portal · gateway | M | Fechar catálogo de itens + economia sobre `WEB-05`/`WEB-06`. |
-| `WEB-11` | Portal · gateway | M | Auditar settings e remover configuração manual. |
+| `QA-11` | Qualidade · carga | M | Rodar 2 bots em loopback e a carga de 200 com P99/rejeições. |
+| `GAME-22` | Jogo · progressão | M | Fechar a árvore de EXP com o default inalterado e provar por flags. |
+| `PROC-01` | Processo · documentação | M | Fechar a dedup da documentação e publicar o MkDocs. |
 
 **Resíduos de prova visual** (não são ganhos rápidos): `BUG-01`, `BUG-02`, `GAME-17` e
 `GAME-18`. Eles dependem do cliente 7662/VM (`CLIENT-06`) e continuam declarados como
@@ -286,11 +287,12 @@ pendência — nenhum foi promovido sem prova.
 ### Gates
 
 ```bash
-make check        # fmt + clippy + build + test + migrations + issues + docs + tools
+make check        # fmt + clippy + build + test + migrations + issues + docs + skills + tools
 make test-all     # unitários + integração + doc-tests + benches
 make bench        # benchmarks e simulações pesadas
 make portal-test  # tsc --noEmit + Vitest
 make portal-build # next build
+make docs-serve   # MkDocs interno dev/admin em 127.0.0.1:8000
 make ci           # espelho local do workflow Rust
 ```
 

@@ -86,8 +86,9 @@ O que **não** está provado: onde o número 120 vive no código. O campo de qua
 onde parar. A confirmação mais recente é **de servidor oficial** (WYD Global, loja cash de
 30/04/2026: "limite máximo de 120 unidades por slot do mesmo item"), o que promove o número de
 "observação de comunidade" para **regra vigente de servidor oficial (B)**. Ainda assim, a
-constante do cliente/servidor continua sem leitura: entra como regra nossa (`STACK_CAP = 120`) e a
-lacuna fica em GAME-12.
+constante do cliente/servidor continua sem leitura: entra como regra nossa (`STACK_CAP = 120`).
+A classificação item a item e o teto por catálogo foram fechados na migração `0050`
+(GAME-12/GAME-15); o que continua UNVERIFIED é só a constante no binário.
 
 ### Regra por família (decisão, com o porquê)
 
@@ -156,8 +157,9 @@ As 310 linhas **sem uso conhecido** ficam em `real` de propósito: rebaixar a ru
 idêntico** a uma entidade não-item no banco.
 
 Consequência para o teto: dos nulos, **55** empilham 120 (53 com `EF_AMOUNT` + 2 restos) e **1.477**
-ficam em 1. Sem essa separação, `416 Antídoto` e `419 Resto_de_Oriharucon` caíam em teto 1 e a
-receita que consome 10 restos não conseguiria formar a pilha.
+ficam explicitamente em 1 (não mais nulos). Sem essa separação, `416 Antídoto` e
+`419 Resto_de_Oriharucon` caíam em teto 1 e a receita que consome 10 restos não conseguiria
+formar a pilha. A migração `0050` fechou `stackable` em **423 true / 2.797 false / 0 nulo**.
 
 Consulta reexecutável e a lista por família/item estão em `docs/wyd/itens.md` §5.1–§5.3.
 
@@ -170,7 +172,7 @@ Consulta reexecutável e a lista por família/item estão em `docs/wyd/itens.md`
 | teto por item, com regra 120/1 e conteúdo de pack separado | `crates/wyd-core/src/systems/inventory.rs::StackCaps` | implementado + testes |
 | depósito pilha → slot livre → sobra | `inventory::deposit_into_bag` | implementado + testes |
 | janela da caixa (30 s dono / 3 min decay) | `crates/wyd-sim/src/formula/drop.rs::GroundLoot` | implementado + testes |
-| teto vindo do banco em produção | `wyd_db::PgBackend::item_stack_caps` + view `item_stack_cap` (migration `0039`) | implementado; teste `crates/wyd-db/tests/sistema/stack_caps.rs` (gated por `WYD_TEST_DSN`) |
+| teto vindo do banco em produção | `wyd_db::PgBackend::item_stack_caps` + view `item_stack_cap` (migration `0039`; correção de dados na `0050`) | implementado; teste `crates/wyd-db/tests/sistema/stack_caps.rs` (gated por `WYD_TEST_DSN`) |
 | pacotes `CreateItem`/`GetItem`/`DecayItem` | `crates/wyd-protocol/src/payload/inventory.rs` | **pendente** |
 | `CNFGetItem` (0x0171) | — | **UNVERIFIED**: `Basedef.h` declara corpo de 16 B e põe `STRUCT_ITEM` em +20 — se contradiz |
 
@@ -186,5 +188,5 @@ Consulta reexecutável e a lista por família/item estão em `docs/wyd/itens.md`
 | onde o cliente lê slots além de 63 | **UNVERIFIED** |
 | layout de `CNFGetItem` | **UNVERIFIED** (fonte se contradiz) |
 | quais dos 1.532 nulos são item real | **resolvido**: 1.414 real · 96 ruído · 22 placeholder (view `item_bucket`) |
-| que configuração do catálogo está errada | registrado em GAME-15 (`400`/`406` mesmo nome, `419` sem `EF_*`, placeholder com preço) |
+| que configuração do catálogo estava errada | **resolvido em 2026-11-12** (GAME-12/GAME-15): `406` renomeado para mana; `416`/`419`/`420` classificados; placeholders com preço mantidos em teto 1. Migração `0050`. |
 | `EF_AMOUNT` como teto em algum item específico | improvável: 94 casos são conteúdo de pack |

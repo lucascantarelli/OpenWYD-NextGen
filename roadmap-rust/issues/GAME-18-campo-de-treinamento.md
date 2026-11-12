@@ -149,8 +149,9 @@ para os quatro guardiões/boss, com o HP do alvo reduzido apenas no fixture.
 2. **Sephira +9 (D-8).** A migration `0049_seed_campo_sephira` (complementa `0046`, que já foi
    aplicado e não pode ser reescrito) cria o NPC `Sephira +9` (id 6311, template `Refinacoes`)
    em `(2133,2040)`, ao lado do Unicorn. `integracao_campo_drops` o encontra pelo clique e prova
-   o refino `+8 → +9` com a taxa do snapshot. A arma Sephira +9 em si continua sem linha de
-   catálogo/loja — o NPC existe, o item não foi inventado.
+   o refino `+8 → +9` com a taxa do snapshot. O teste aplica a série de migrations de forma
+   idempotente antes do pool, então não depende de `wyd_test` já estar no schema 49. A arma
+   Sephira +9 em si continua sem linha de catálogo/loja — o NPC existe, o item não foi inventado.
 3. **`ReqLvl` do equipamento.** O catálogo já tinha `req_level`; agora ele é consumido de fato:
    `SelectionStore::quest` lê o `ReqLvl` do item em `Equip[6]` (`PgBackend::item_req_level`) em
    vez de usar o nível do personagem, e `EquipmentCatalog` implementa `ItemRules` sobre
@@ -291,6 +292,69 @@ possível é a que já foi feita: o dump legado em `0020_seed_mundo.sql` (1991 t
   “ReqLvl é usado” estão provados. “O cliente 7662 desenha o fluxo completo” continua aberto e
   identificado como dependência de captura.
 
+## Seções de prova no 7662 (roteiro 2026-11-12)
+
+> Roteiro consolidado de execução: [`docs/cliente/roteiro-prova-visual-7662.md`](../../docs/cliente/roteiro-prova-visual-7662.md).
+>
+> **A** é a prova automatizada já fechada; **B** é o roteiro visual que ainda depende de
+> captura. Não usar A para marcar B. Cada etapa visual só conta com print + log/estado do
+> servidor; se o cliente não renderizar, registrar o ponto exato e parar.
+
+### A. Prova automatizada (regressão)
+
+```bash
+cargo test -p wyd-server --test integracao_campo_treinamento
+cargo test -p wyd-server --test integracao_campo_drops
+cargo test -p wyd-server --test sistema_campo_vivo
+node tools/content/check-migrations.mjs
+```
+
+- [x] Quatro etapas, teto 35, ordem, recusa sem prova e recompensa única
+- [x] Portões: `EF_KEYID` distinto, consumo da chave, abertura e fechamento por tempo
+- [x] Loot no inventário: empilhamento até 120 e recusa quando não há slot
+- [x] `GremlinDecoy`/451 no fio vivo (`sistema_campo_vivo`)
+- [x] `GiantCrill`/452, `OrcSniper`/453 e `OrcWarrior`/524 no pipeline real de morte/loot
+- [x] NPC `Sephira +9` (`0049`, id 6311 em 2133,2040) e refino `+8 → +9`
+- [x] `ReqLvl` do catálogo no bônus e na validação de equipagem
+- [x] Migration `0049` aplicada; `/health` local em `schema:50` (após a `0050`)
+
+### B. Roteiro visual no cliente (campo)
+
+Executar na ordem. Anotar coordenada e horário em cada print; usar a conta de teste, não a do
+dono. O Campo fica a ~33 tiles do spawn — andar até lá e confirmar a cena por
+proximidade antes de interagir. **Pré-condição de B3–B7:** o personagem precisa ter dano
+suficiente para abater os guardiões; se o nível 1 continuar batendo 1, registrar o bloqueio de
+dano/equipamento e não simular a morte no cliente.
+
+| # | Ação | Resultado que precisa aparecer | Evidência | [ ] |
+|---:|---|---|---|---|
+| B1 | Entrar no Campo e olhar em volta | 11 NPCs do seed visíveis: 4 treinadores, Unicorn, Cabuncle, Sephira +9, 3 guardiões e OrcWarrior | print amplo + log de cena | |
+| B2 | Falar com o Primeiro Treinador | Primeiro clique **aceita** a etapa 1 (`etapa 1/4`), sem “falta a prova 451” | print + `character_quest step=1` | |
+| B3 | Matar `GremlinDecoy` e conferir o inventário | Chave 451 entra no inventário; se a mochila estiver cheia, o drop fica no chão | print do drop/inventário + log `quest`/loot | |
+| B4 | Usar a chave 451 no portão | Portão abre visualmente, a chave é consumida e fecha depois do tempo | print antes/depois + log do portão | |
+| B5 | Repetir etapas 2 e 3 com `GiantCrill`/452 e `OrcSniper`/453 | Segundo/terceiro treinadores aceitam, encantam `Equip[6]`/`Equip[1..7]` + sanc 3; portões 2 e 3 abrem | prints + estado do equipamento | |
+| B6 | Falar com `Cabuncle` | Buff/affect visível e reaplicável; HP/MP ou ícone mudam conforme o snapshot | print antes/depois + log do affect | |
+| B7 | Matar `OrcWarrior` e falar com o Chefe | Emblema 524 entra; recompensa final sorteada (682/481/652) aparece **uma vez** | print do inventário + log da recompensa | |
+| B8 | Sair e relogar | Etapa/conclusão persistem; repetir a entrega é recusado, sem recompensa dupla | print + `character_quest completed` | |
+
+### C. Coleta de evidência e gate
+
+- [ ] Print de cada B1–B8 com coordenada/horário
+- [ ] Log do canal no mesmo intervalo, com `npc`, `merchant`, `quest step`, loot e portão
+- [ ] Estado do banco (`character_quest`, inventário) anexado sem dados pessoais
+- [ ] B1–B8 marcados individualmente; o que falhar vira bloqueio com o ponto exato
+- [ ] Se o portão não aparecer, registrar `_MSG_UpdateItem`/`EF_KEYID` ausente — não simular visual
+- [ ] Se o buff não aparecer, registrar affect/duração ausentes no fio — não inventar pacote
+- [ ] Se o abate nível 1 não for possível, registrar dano/equipamento e usar a arma prevista, sem
+  reduzir HP no cliente
+
+### D. Definition of done visual
+
+- [ ] Entrada, aceite, quatro provas, três portões, buff e boss observados na tela
+- [ ] `Sephira +9` e `ReqLvl` confirmados no cliente, além do teste
+- [ ] Relogin/persistência e recusa de recompensa repetida confirmados
+- [ ] Capturas e logs anexados à issue; GAME-18 só então passa de 🟡
+
 ## Subtasks
 
 - [x] Decidir D-1 (nível 35), D-2 (sequência A) e D-6 (Unicorn)
@@ -305,7 +369,6 @@ possível é a que já foi feita: o dump legado em `0020_seed_mundo.sql` (1991 t
 - [x] `ReqLvl` do catálogo usado no bônus `50 + ReqLvl` e na validação de equipagem
 - [ ] Buff do `Cabuncle` aplicado e reaplicável — **bloqueado por captura**
 - [ ] Provar com o cliente 7662 aberto — **bloqueado por captura**
-- [ ] Versionar issue, mergear branch e fechar issue
 
 ## Critérios de aceite
 

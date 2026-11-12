@@ -39,7 +39,7 @@ cd wyd-portal && npx tsc --noEmit && npx vitest run
 
 - wyd-rust-core — snapshot atômico fora do tick.
 - wyd-rust-obs — métricas de recarga/falha.
-- frontend-design — formulários densos com validação visível.
+- .agents/skills/wyd-web-admin-ui — formulários densos com validação visível; ver wyd-portal/README.md §Identidade e desenho.
 
 ## Documentação de referência
 

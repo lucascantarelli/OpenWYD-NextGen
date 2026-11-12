@@ -546,8 +546,8 @@ mod stack_caps_tests {
             (429, Some(true), Some(10)),
             // arma: não agrupa
             (831, Some(false), None),
-            // Antídoto 416: sem classificação, conteúdo 5
-            (416, None, Some(5)),
+            // Antídoto 416: consumível curado, conteúdo 5
+            (416, Some(true), Some(5)),
             // linha sem dado nenhum
             (9999, None, None),
         ])
@@ -568,7 +568,11 @@ mod stack_caps_tests {
         assert_eq!(caps.contained_of(400), None);
         assert_eq!(caps.max_stack(831), 1, "arma nunca agrupa");
         assert_eq!(caps.max_stack(9999), 1, "sem classificação não agrupa");
-        assert_eq!(caps.max_stack(416), 1, "conteúdo não promove a aglutinável");
+        assert_eq!(
+            caps.max_stack(416),
+            STACK_CAP,
+            "Antídoto classificado empilha; o 5 continua sendo conteúdo de pack"
+        );
     }
 
     #[test]

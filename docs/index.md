@@ -1,6 +1,6 @@
 # WYD2 — Central de documentação
 
-> Fonte única de navegação da pasta `docs/`. Este índice é a porta de entrada do projeto MkDocs (`mkdocs.yml` na raiz). Leia por perfil, não por ordem alfabética.
+> Fonte única de navegação da pasta `docs/`. Este índice é a porta de entrada do projeto MkDocs (`mkdocs.yml` na raiz) para dev/admin. Leia pela seção correspondente à tarefa, não por ordem alfabética; a documentação pública do jogador será publicada no portal.
 
 ## Comece por aqui
 

@@ -3,7 +3,7 @@
 - **Estado:** aceita
 - **Data:** 2026-11-07
 - **Decisores:** dono do projeto + agente (decidido nesta sessão, a pedido do dono)
-- **Governa:** `roadmap-rust/issues/FASE-07.md`, `WEB-01-gateway.md`,
+- **Governa:** `roadmap-rust/issues/FASE-07.md`, `roadmap-rust/changelog.md` (WEB-01),
   `WEB-02`/`WEB-03`/`WEB-04` (telas e E2E consomem este contrato)
 
 ## Contexto
@@ -154,7 +154,7 @@ tick. Nenhum `.proto`, nenhum `protoc`, nenhuma dependência externa na v1.
 ## Rastreabilidade
 
 - Issues consumidoras: `roadmap-rust/issues/FASE-07.md`,
-  `WEB-01-gateway.md` (transporte + contrato), `WEB-02`/`WEB-03` (telas),
+  `roadmap-rust/changelog.md` (WEB-01, transporte + contrato), `WEB-02`/`WEB-03` (telas),
   `WEB-04` (E2E).
 - Docs atualizadas nesta ADR: `docs/arquitetura/estrutura-e-padroes.md` §13
   (árvore do `wyd-admin`), `docs/arquitetura/visao-pastas.md`,

@@ -97,6 +97,25 @@ crítico (1 roll só quando acertou)
 lista. A assimetria "roll de crítico só quando acerta" é o que mantém dois replays alinhados
 (`scenario/combat.rs`).
 
+#### 3.2.1 Exemplo numérico (composição da ordem provisória)
+
+Entrada: base 100, atributo 20, equipamento 10, skill 150%, buff 110%, crítico 200%,
+defesa 100, perfuração 30, resistência 25% e absorção 19.
+
+| Etapa | Conta | Resultado |
+|---|---|---:|
+| `attack_power` | `100 + 20 + 10` | 130 |
+| `skill` | `130 × 15.000 / 10.000` | 195 |
+| `buff` | `195 × 11.000 / 10.000` (piso) | 214 |
+| `critical` | `214 × 20.000 / 10.000` | 428 |
+| `pierce_defense` | defesa `100 − 30 = 70`; `428 − 70` | 358 |
+| `resist` | `358 − (358 × 2.500 / 10.000)` = `358 − 89` | 269 |
+| `absorb` | `269 − 19` | **250** |
+
+O teste `worked_example_matches_documented_chain` reproduz exatamente essa conta. Ele prova a
+**composição** das etapas e o truncamento; não prova que esta é a ordem do legado — isso continua
+nas decisões provisórias D-02..D-04/D-06, a confirmar pelo trace da CLIENT-06.
+
 ### 3.3 Ordem do tick
 
 `TICK_PHASES` em `scenario/combat.rs`:

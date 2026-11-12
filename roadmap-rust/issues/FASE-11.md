@@ -43,7 +43,7 @@ Saída esperada: gates verdes e `LINKS-OK` (nenhum link `docs/*` quebrado no REA
 
 ## Skills Relacionadas do freebuff
 
-- .agents/skills/documentation-writer - estrutura Diátaxis e redação.
+- docs/index.md - estrutura e convenções de redação para dev/admin; docs/rust/02-execucao.md §5.
 - .agents/skills/software-architecture - C4 e fronteiras reais.
 - .agents/skills/wyd-rust-toolchain - `make check`.
 

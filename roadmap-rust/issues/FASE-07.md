@@ -56,7 +56,6 @@ ação admin sem sessão retorna 401 (teste dedicado).
 
 - .agents/skills/wyd-web-admin-ui - BFF, sessão, papéis, auditoria.
 - .agents/skills/wyd-rust-db - leitura/auditoria no banco.
-- .agents/skills/frontend-design - direção visual e revisão de UI/UX do portal.
 
 ## Documentação de referencia
 

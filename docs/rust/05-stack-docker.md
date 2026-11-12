@@ -20,7 +20,8 @@ Regra-mãe: **arquivo Go/C++ removido em 2026-11 — nunca fonte** (nomes, porta
 
 Binários existentes: `wyd-launcher` (fora do compose), `wyd-gateway` (`crates/wyd-admin/src/main.rs`)
 e `wyd-server` (`crates/wyd-server/src/main.rs`), todos pela ADR-0022. Sem binário não há serviço: o
-compose não antecipa o que a issue dona não entregou. **O motor (`wyd-core`) ainda não roda dentro
+compose não antecipa o que a issue dona não entregou. A exceção é `mkdocs`: não é binário de jogo,
+usa a imagem oficial do Material e serve somente a documentação interna de dev/admin. **O motor (`wyd-core`) ainda não roda dentro
 do `wyd-server`** (o tick é a GAME-07): o processo hoje entrega conexão, login, seleção e status,
 não simulação de mundo.
 
@@ -38,12 +39,15 @@ não simulação de mundo.
    `role`, `pvp` e `shop`. O canal 1 publica o `serv00.htm` com a lista de canais; o 2 usa IP próprio porque o cliente fixa a porta 8281. Roda o motor do core na thread `wyd-tick` a `WYD_TICK_HZ` (20–50, default 20) desde a GAME-07 |
 | `gateway` | `docker/Dockerfile.gateway` (multi-stage, distroless non-root) | Gateway HTTP/JSON do portal (`:7600`, ADR-0022): `GET /health` faz `SELECT 1` no Postgres, `GET /metrics` publica `wyd_gateway_requests_total{result}` + `wyd_gateway_uptime_seconds`, `POST /admin/v1/{servico}/{metodo}` serve o contrato já existente. `--healthcheck` é o próprio binário (imagem sem shell). Sobe depois do `db` saudável |
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
+| `mkdocs` | `squidfunk/mkdocs-material:9.8.0` (oficial) | Documentação **interna de dev/admin**: MkDocs + Material servido em `:8000` na rede `wyd`, com `mkdocs.yml` e `docs/` read-only. No dev, `127.0.0.1:${MKDOCS_PORT:-8000}`; em produção não publica porta. Não tem perfis/login nem fala com o DB; a documentação pública do jogador será publicada pelo portal. |
 | `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd` e é o **índice** do monitoramento, com subpáginas `/monitoramento/servidor` (motor: ticks/s, p99, entidades por canal), `/monitoramento/grafana` (dashboards em kiosk), `/monitoramento/prometheus` (alvos/regras de alerta) e `/monitoramento/logs` (Loki). QA-08 ✅ — dashboards/alertas/runbooks em `docker/monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
 | `loki` | `grafana/loki:3.5.5` | **Logs duráveis** (2026-11-09): grava em volume `wyd-loki-data` com retenção de 14 d (`docker/monitoring/loki/loki.yml`). Sem porta no host — só o portal (server-side) e o Grafana consultam `loki:3100`. Resolve o problema do `json-file`: o stdout do Docker morre quando o container é recriado, o Loki não |
 | `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`docker/monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
 Comandos: `make stack-config` (valida base+prod sem subir), `make stack-up`,
-`make stack-down`, `make stack-logs`. Imagens `wyd/<serviço>:${TAG:-dev}`, containers com o
+`make stack-down`, `make stack-logs`, `make docs-serve` (MkDocs interno em
+`127.0.0.1:8000`) e `make docs-smoke` (healthcheck + HTTP 200). Imagens `wyd/<serviço>:${TAG:-dev}`
+para os serviços Rust; o `mkdocs` usa a imagem oficial fixa. Containers com o
 nome do projeto (`wyd-<serviço>-<n>` — sem `container_name` fixo, para permitir stack paralela
 com `-p`), rede/volume `wyd_*`.
 
@@ -56,7 +60,9 @@ com `-p`), rede/volume `wyd_*`.
 
 Cada novo serviço entra com: `docker/Dockerfile.<svc>`, registro no
 `docker-compose.yml` (sem portas; porta só no override de dev; limites no
-prod), linha nesta tabela e `make stack-config` verde nos dois modos.
+prod), linha nesta tabela e `make stack-config` verde nos dois modos. Exceção:
+`mkdocs` é imagem oficial de documentação, sem Dockerfile próprio; em prod fica
+sem porta e não é exposto ao público.
 
 ## 4. Observabilidade (integração, sem código nesta rodada)
 

@@ -3,7 +3,7 @@
 - **Estado:** proposta (árvore já materializada a pedido do dono em 2026-11-08; aceite formal pendente)
 - **Data:** 2026-11-08
 - **Decisores:** dono do projeto + agente (a missão "não escreva tudo na raiz, planeje a matemática antes das pastas" abriu a decisão)
-- **Governa:** `roadmap-rust/issues/GAME-19-equacoes.md`, `GAME-20-velocidade.md`, `GAME-21-laboratorio.md`, `GAME-06-ia-npc.md`
+- **Governa:** `roadmap-rust/changelog.md` (GAME-19), `GAME-20-velocidade.md`, `GAME-21-laboratorio.md`, `GAME-06-ia-npc.md`
 - **Depende de:** ADR-0002 (estrutura de módulos), ADR-0006 (dependências externas diferidas), ADR-0009 (conteúdo no banco), ADR-0010 (IA de NPC)
 
 ## Contexto
@@ -78,14 +78,14 @@ Regras que passam a valer:
 | Alternativa | Por que foi descartada |
 |---|---|
 | Manter `formula/damage.rs` como arquivo único e crescer por `if` | foi exatamente o problema que motivou a ADR; OCP quebrado e golden único frágil |
-| Criar `crates/wyd-rules` para a matemática "de servidor" | duplicaria a regra em vez de compartilhar; `wyd-core` já consome `formula` por cópia presa por golden, e a unificação exige contrato em `wyd-protocol` (dívida da GAME-19) |
+| Criar `crates/wyd-rules` para a matemática "de servidor" | duplicaria a regra em vez de compartilhar; `wyd-core` já consome `formula` por cópia presa por golden, e a unificação exige contrato em `wyd-protocol` (dívida registrada no changelog da GAME-19) |
 | Embutir a curva de EXP e os pesos de atributo como constantes | inventaria progressão e escala; `docs/wyd/progressao.md` §7 proíbe |
 | Usar `f64` para percentual e arredondar no fim | divergência cliente×servidor por representação; proibido pelo princípio 2 de `06-matematica.md` |
 | Trazer `rand`/`fastrand` como dependência | `01-dependencias.md` mantém build offline; 12 linhas de xorshift resolvem e o estado fica auditável |
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/issues/GAME-19-equacoes.md` (🚧),
+- Issues consumidoras: `roadmap-rust/changelog.md` (GAME-19, ✅),
   `GAME-20-velocidade.md`, `GAME-21-laboratorio.md`, `GAME-06-ia-npc.md`.
 - Docs atualizadas nesta ADR: `docs/arquitetura/matematica-sim.md` (novo, documento
   normativo da matemática), `docs/arquitetura/estrutura-e-padroes.md` §14,
@@ -95,7 +95,7 @@ Regras que passam a valer:
 
 ## Revisão
 
-- Revisar quando: a GAME-19 fechar a ordem de combate com trace real (as decisões D-02..D-04
+- Revisar quando: o trace da `CLIENT-06` fechar a ordem de combate (as decisões D-02..D-04
   caem e viram fato), a GAME-20 provar a anomalia de velocidade (o sistema `speed` entra) ou
   o banco passar a fornecer `mob_template_stat` (pesos de atributo deixam de ser hipótese).
 - Sinais de que a decisão envelheceu: arquivo de `formula/` com mais de um sistema, cenário

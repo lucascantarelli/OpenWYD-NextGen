@@ -26,8 +26,8 @@ Regras:
 3. **`⬜` não é dívida escondida**: é o que falta para o jogo ser jogável de ponta a ponta.
 4. "Catálogo/seed" ✅ significa **dado** validado no banco; **não** significa regra implementada.
 
-Última revisão: **2026-11-09** (mega revisão do roadmap: motor no processo, cena autoritativa,
-cidadania e handlers do gateway registrados como issues; contagens medidas no banco).
+Última revisão: **2026-11-12** (CLIENT-10: layout candidato de `MSG_Trade` — 156 B natural ×
+154 B do porte Go; captura do 7662 pendente).
 
 ## 1. Tela de entrada e conta (o caminho do jogador até o mundo)
 
@@ -109,7 +109,7 @@ cliente.
 | 5.7 | Craft | ⬜ | catálogo `craft`; sem receita executável |
 | 5.8 | Armazém / baú | ⬜ | — |
 | 5.9 | Durabilidade, reparo e quebra | ⬜ | — |
-| 5.10 | Comércio jogador↔jogador | ⬜ | `MSG_Trade` UNVERIFIED (invariante 5) |
+| 5.10 | Comércio jogador↔jogador | ⬜ | Layout candidato de 156 B (natural; `Basedef.h:2435-2445`) × 154 B do Go (`pack(1)`); captura do 7662 decide. `require_ported(Trade)` segue fechado (invariante 5) |
 
 ### 5.11 Resolvedores prontos × fluxo ligado ao protocolo (revisão 2026-11-10)
 

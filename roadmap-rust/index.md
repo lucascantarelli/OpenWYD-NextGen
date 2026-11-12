@@ -1,20 +1,27 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-12 · **33 issues ativas** + 15 descritores de fase. 49 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-12 · **27 issues ativas** + 15 descritores de fase. 55 issues concluídas estão em [`changelog.md`](changelog.md).
 >
-> **ID único:** cada issue usa `CATEGORIA-NN` no arquivo, título, índice, dependências, changelog, painel e gate. O ID antigo (`FASE-xx-y` ou onda) aparece **somente** como metadado no arquivo e na tabela de mapeamento no fim deste índice.
-> **Regra de ouro:** puxar primeiro os itens de esforço **S** e sem dependência aberta; tarefas **L** só entram depois de decompostas em subtasks no próprio arquivo.
+> **IDs canônicos preservados.** A numeração de fila `#01..#27` é nova e estável; os IDs
+> `CATEGORIA-NN` continuam os mesmos para não reutilizar IDs já aposentados no changelog
+> (ex.: `GAME-01` já é o tick concluído) nem quebrar as centenas de referências em docs, testes
+> e comentários. O mapeamento histórico→canônico segue no fim deste índice.
+>
+> **Regra de ouro:** puxar primeiro os itens de esforço **S/M** e sem dependência externa;
+> tarefas **L** só entram depois de decompostas em subtasks no próprio arquivo. Item bloqueado
+> por captura, 2FA, patch ou decisão não entra na fila curta.
 
-## Próximos ganhos rápidos (sem dependência externa)
+## Fila curta — ganhos rápidos sem bloqueio externo
 
-> A fila anterior (`QA-07`, `PROC-05`, `PROC-11`) foi concluída e está no changelog. A próxima
-> tarefa curta é `PROC-23`; as demais são M/L e não entram aqui como “ganho rápido”.
-
-| ID | Issue | Categoria | Esforço | Próximo passo |
+| # | ID | Issue | Esforço | Próximo passo |
 |---|---|---|---|---|
-| `PROC-23` | [Notas de pesquisa (ECS, io_uring, serialização) + PoC](issues/PROC-23-pesquisa.md) | Processo, documentação e arquitetura | S | Medir as PoCs pendentes (ex.: SoA × `hecs`) e publicar os números. |
-| `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | Portal e gateway | M | Fechar a tela sobre `WEB-05` e `WEB-06`. |
-| `WEB-11` | [Configurações 100% via portal](issues/WEB-11-configuracoes.md) | Portal e gateway | M | Auditar settings e remover configuração manual. |
+| 01 | `QA-11` | [Bots jogáveis e carga](issues/QA-11-bots-carga.md) | M | Rodar 2 bots em loopback e a carga de 200 com P99/rejeições. |
+| 11 | `GAME-22` | [Árvore de EXP por flags](issues/GAME-22-exp-por-flags.md) | M | Fechar a árvore com o default inalterado e provar por flags. |
+| 25 | `PROC-01` | [Organização da `docs/`, dedup e MkDocs](issues/PROC-01-organizacao-docs-mkdocs.md) | M | Fechar a dedup da documentação e publicar o MkDocs. |
+
+> `CLIENT-06`, `CLIENT-10`, `BUG-01`, `BUG-02`, `GAME-17`, `GAME-18`, `WEB-07`, `WEB-08`,
+> `WEB-09`, `WEB-10`, `WEB-11`, `CLIENT-11` e `GAME-13` têm resíduo bloqueado por captura/VM,
+> 2FA, patch, decisão de contrato ou layout UNVERIFIED; não são “ganho rápido” até o gate cair.
 
 ## Resíduos de prova (não são ganhos rápidos)
 
@@ -24,17 +31,28 @@
 | `BUG-02` | 🟢 | Código, testes de fio e `clippy`; seleção antes do PIN devolve o frame. | Prova viva com `WYD_LIVE_SKIP_PIN=1` e entrada no cliente 7662. | Cliente/VM (`CLIENT-06`). |
 | `GAME-17` | 🚧 | Faixa de `ClientID`, `UpdateScore`, `CreateType` e rajada real de `CreateMob`. | Render da entrada no cliente 7662, sem “Falha ao conectar”. | Cliente/VM (`CLIENT-06`). |
 | `GAME-18` | 🟡 | 10 NPCs no seed `0046`, Sephira +9 no `0049`, 4 etapas, portões/chaves, loot no inventário, guardiões/boss no pipeline real de morte/loot (`integracao_campo_drops`) e `ReqLvl` do catálogo aplicado. | Buff do `Cabuncle`, portão visível e prova visual no 7662. | Captura no cliente/VM. |
-| `PROC-23` | 🚧 | Notas datadas e decisão manter/descartar por candidato. | Números medidos das PoCs (ex.: SoA × `hecs`). | Nenhuma; é o próximo da fila curta. |
+| `GAME-11` | 🚧 | Depósito no inventário no abate e regra pura da caixa (30 s/3 min). | Handler `CreateItem`/`GetItem`/`DecayItem` e faixa de id do chão. | Captura do layout de item no chão (`CLIENT-06`). |
 | `GAME-05` | 🚧 | Física, dano, skills e inventário autoritativos; recusa de pacote forjado. | `req_str/int/dex/con`, layout de rede do inventário e baú (`vault_items`). | `CLIENT-06` para o layout. |
+| `CLIENT-10` | ⛔ | Layout candidato de 156 B + verificador `trade-layout.mjs` + runbook. | Frame real `MSG_Trade` do 7662. | Captura do usuário/VM. |
+
+> Roteiro consolidado para as quatro provas visuais: [`docs/cliente/roteiro-prova-visual-7662.md`](../docs/cliente/roteiro-prova-visual-7662.md).
+>
+> **Tentativa de 2026-11-12:** o cliente 7662 abriu e desenhou o server select, mas descartou
+> mouse e teclado sintéticos (`Fechar` não reagiu); sem login no canal e sem TCP em `8281`.
+> O `Config.bin` foi corrigido do modo 8 (`1024×768×32`, cliente `1024×759`) para o modo 7
+> (`800×600×32`, cliente exato `800×600`), mas o erro de render target e o input inerte
+> permaneceram; modo 16 bits e GPU NVIDIA também não mudaram o quadro. `BUG-01`, `BUG-02` e
+> `GAME-17` ficaram com veredito **B** na matriz, sem marcar aceite visual; `GAME-18` ficou
+> **N/A** nesta sessão. Próximo passo: checklist humano do runbook §10.
 
 ## Fila de desbloqueio (quem trava o quê)
 
 | Ordem | ID | Issue | Por que agora |
 |---|---|---|---|
-| 1 | `BUG-02` | [BUG-02 — PIN opcional](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | Código e testes verdes; restam duas provas no cliente real. |
-| 2 | `GAME-17` | [Entrada fiel ao legado](issues/GAME-17-entrada-no-mundo-fiel.md) | Só falta prova visual; destrava a experiência do cliente e o Campo. |
-| 3 | `CLIENT-06` | [RE dinâmica](issues/CLIENT-06-cliente-reverso-dinamico.md) | Captura de layout destrava trade (CLIENT-10), pacotes S→C e as provas visuais acima. |
-| 4 | `WEB-01` | [Gateway](issues/WEB-01-gateway.md) | Handlers entregues; resta decidir o `501` legado de `set_reward_item_enabled`. |
+| 01 | `QA-11` | [Bots e carga](issues/QA-11-bots-carga.md) | Crate existe; falta prova de carga e relatório. |
+| 02 | `CLIENT-06` | [RE dinâmica](issues/CLIENT-06-cliente-reverso-dinamico.md) | Captura de layout destrava trade (CLIENT-10; candidato 156 B × 154 B), pacotes S→C e provas visuais. |
+| 03 | `BUG-02` | [PIN opcional](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | Código/testes verdes; restam duas provas no cliente real. |
+| 04 | `GAME-17` | [Entrada fiel](issues/GAME-17-entrada-no-mundo-fiel.md) | Só falta prova visual; destrava a experiência do cliente e o Campo. |
 
 ## Grafo de dependências das fases
 
@@ -90,68 +108,65 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 
 ## Issues ativas por categoria
 
+> `#` é a posição na fila nova (01–27), não o ID. A ordem prioriza o que não depende de
+> captura, 2FA, patch ou decisão pendente; os bloqueados aparecem no fim da fila.
+
 ### Bugs de fio (2)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `BUG-01` | [Mensagens do cliente ausentes + personagem não entra no mundo](issues/BUG-01-mensagens-char-mundo.md) | ⬜ | M | PROC-24 |
-| `BUG-02` | [“Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | 🟢 | S | GAME-17 ✅ |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 06 | `BUG-01` | [Mensagens do cliente ausentes + personagem não entra no mundo](issues/BUG-01-mensagens-char-mundo.md) | ⬜ | M | CLIENT-06 |
+| 03 | `BUG-02` | [“Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | 🟢 | S | GAME-17 🚧 (mesma prova visual) |
 
-### Jogo e gameplay (13)
+### Jogo e gameplay (10)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `GAME-05` | [Autoridade total do servidor (física, dano, skills, inventário)](issues/GAME-05-autoridade-servidor.md) | 🚧 | M | GAME-02, GAME-03, GAME-04 |
-| `GAME-11` | [Drop no inventário e caixa no chão com posse](issues/GAME-11-drop-inventario-e-caixa.md) | ⬜ | M | — |
-| `GAME-12` | [Aglutinação item a item e teto de pilha no catálogo](issues/GAME-12-aglutinacao-e-catalogo.md) | ⬜ | M | — |
-| `GAME-13` | [Familiares: slot, Nyerds, Imp, Griupan e Trajes](issues/GAME-13-familiares-slot-e-itens.md) | ⬜ | M | — |
-| `GAME-14` | [Fadas: bônus de drop/EXP, duração e auto-coleta](issues/GAME-14-fadas-bonus-e-auto-coleta.md) | ⬜ | M | GAME-11 (drop no inventário + caixa) |
-| `GAME-15` | [Baldes do catálogo, teto por item e o que a classificação revelou](issues/GAME-15-classificacao-baldes-e-teto.md) | 🟡 | M | GAME-12 (aglutinação e catálogo) |
-| `GAME-17` | [Entrada no mundo fiel ao legado (id de jogador, `UpdateScore`, `CreateType`)](issues/GAME-17-entrada-no-mundo-fiel.md) | 🚧 | M | GAME-08 ✅, GAME-09 ✅ |
-| `GAME-18` | [Campo de Treinamento: quest, portões, buff, boss e recompensas](issues/GAME-18-campo-de-treinamento.md) | 🟡 | L | GAME-17 (entrada no mundo), PROC-15 ✅, WEB-05 ✅ |
-| `GAME-19` | [Equações exatas de combate](issues/GAME-19-equacoes.md) | 🚧 | L | GAME-05 |
-| `GAME-20` | [Anomalia de velocidade (~200%) e hits duplicados](issues/GAME-20-velocidade.md) | ⬜ | M | GAME-19 |
-| `GAME-21` | [Laboratório `wyd-sim` (milhões de iterações)](issues/GAME-21-laboratorio.md) | ⬜ | M | GAME-19, GAME-20 |
-| `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 ✅ (entrada/salva) |
-| `GAME-23` | [Bots autônomos do Campo de Treinamento (um por raça)](issues/GAME-23-bots-do-campo-de-treinamento.md) | 🟡 | M | QA-11 (bots jogáveis) ⬜, GAME-18 (quest) 🟡 |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 08 | `GAME-05` | [Autoridade total do servidor (física, dano, skills, inventário)](issues/GAME-05-autoridade-servidor.md) | 🚧 | M | GAME-02 ✅, GAME-03 ✅, GAME-04 ✅; layout CLIENT-06 |
+| 13 | `GAME-11` | [Drop no inventário e caixa no chão com posse](issues/GAME-11-drop-inventario-e-caixa.md) | 🚧 | M | CLIENT-06 (id do item no chão); depósito já feito |
+| 12 | `GAME-13` | [Familiares: slot, Nyerds, Imp, Griupan e Trajes](issues/GAME-13-familiares-slot-e-itens.md) | ⬜ | M | CLIENT-06 (slot Familiar) |
+| 14 | `GAME-14` | [Fadas: bônus de drop/EXP, duração e auto-coleta](issues/GAME-14-fadas-bonus-e-auto-coleta.md) | ⬜ | M | GAME-11 |
+| 04 | `GAME-17` | [Entrada no mundo fiel ao legado (id de jogador, `UpdateScore`, `CreateType`)](issues/GAME-17-entrada-no-mundo-fiel.md) | 🚧 | M | GAME-08 ✅, GAME-09 ✅; prova visual |
+| 05 | `GAME-18` | [Campo de Treinamento: quest, portões, buff, boss e recompensas](issues/GAME-18-campo-de-treinamento.md) | 🟡 | L | GAME-17; prova visual |
+| 09 | `GAME-20` | [Anomalia de velocidade (~200%) e hits duplicados](issues/GAME-20-velocidade.md) | ⬜ | M | GAME-19 ✅ (ordem provisória; trace em CLIENT-06) |
+| 10 | `GAME-21` | [Laboratório `wyd-sim` (milhões de iterações)](issues/GAME-21-laboratorio.md) | ⬜ | M | GAME-19 ✅, GAME-20 |
+| 11 | `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 ✅ |
+| 07 | `GAME-23` | [Bots autônomos do Campo de Treinamento (um por raça)](issues/GAME-23-bots-do-campo-de-treinamento.md) | 🟡 | M | QA-11 🟡, GAME-18 🟡 |
 
 ### Cliente, protocolo e launcher (4)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `CLIENT-06` | [Engenharia reversa dinâmica e correlação](issues/CLIENT-06-cliente-reverso-dinamico.md) | 🚧 | L | CLIENT-05 (mapa de funções), CLIENT-02 (parsers) |
-| `CLIENT-08` | [GUI do launcher em Tauri v2](issues/CLIENT-08-launcher-gui-tauri.md) | 🚧 | L | CLIENT-03, CLIENT-07 |
-| `CLIENT-10` | [Trade atômica por par (bloqueada em layout)](issues/CLIENT-10-trade-atomica.md) | ⛔ | M | CLIENT-06 🚧 (captura do layout) |
-| `CLIENT-11` | [Launcher completo + integração com o portal + autoupdate](issues/CLIENT-11-portal-autoupdate.md) | 🚧 | L | PROC-24, CLIENT-03 ✅, CLIENT-08 🚧 |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 02 | `CLIENT-06` | [Engenharia reversa dinâmica e correlação](issues/CLIENT-06-cliente-reverso-dinamico.md) | 🚧 | L | CLIENT-05 ✅, CLIENT-02 ✅ |
+| 20 | `CLIENT-08` | [GUI do launcher em Tauri v2](issues/CLIENT-08-launcher-gui-tauri.md) | 🚧 | L | CLIENT-03 ✅, CLIENT-07 ✅ |
+| 27 | `CLIENT-10` | [Trade atômica por par (layout candidato; captura pendente)](issues/CLIENT-10-trade-atomica.md) | ⛔ | M | CLIENT-06 (captura do layout) |
+| 21 | `CLIENT-11` | [Launcher completo + integração com o portal + autoupdate](issues/CLIENT-11-portal-autoupdate.md) | 🚧 | L | CLIENT-03 ✅, CLIENT-08 🚧 |
 
-### Portal e gateway (6)
+### Portal e gateway (5)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `WEB-01` | [Gateway Next.js ↔ `wyd-admin` (transporte + contrato)](issues/WEB-01-gateway.md) | 🚧 | M | PROC-16 |
-| `WEB-07` | [Monitoramento customizado: logs ao vivo, servidor, DB e alertas](issues/WEB-07-monitoramento-custom.md) | ⬜ | L | PROC-24, WEB-01 🚧 |
-| `WEB-08` | [Contas, segurança, auditoria e área pública × administrativa](issues/WEB-08-contas-seguranca-auditoria.md) | 🚧 | L | PROC-24, WEB-03 ✅ |
-| `WEB-09` | [Entregas → Premium Mail + Cash + gestão financeira](issues/WEB-09-premium-cash.md) | 🚧 | L | PROC-24, WEB-04 ✅ |
-| `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | 🚧 | M | PROC-24, WEB-05 ✅ |
-| `WEB-11` | [Configurações 100% via portal (sem arquivo manual)](issues/WEB-11-configuracoes.md) | 🚧 | M | PROC-24 |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 15 | `WEB-07` | [Monitoramento customizado: logs ao vivo, servidor, DB e alertas](issues/WEB-07-monitoramento-custom.md) | 🚧 | L | WEB-01 ✅ |
+| 18 | `WEB-08` | [Contas, segurança, auditoria e área pública × administrativa](issues/WEB-08-contas-seguranca-auditoria.md) | 🚧 | L | WEB-03 ✅; 2FA/e-mail |
+| 19 | `WEB-09` | [Entregas → Premium Mail + Cash + gestão financeira](issues/WEB-09-premium-cash.md) | 🚧 | L | WEB-04 ✅; inbox do jogador |
+| 16 | `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | 🚧 | M | WEB-05 ✅; atributos no gateway |
+| 17 | `WEB-11` | [Configurações 100% via portal (sem arquivo manual)](issues/WEB-11-configuracoes.md) | 🚧 | M | PROC-24; rollback/histórico |
 
 ### Qualidade, carga e segurança (4)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `QA-01` | [Bots população real + LLM + gestão de logs de teste](issues/QA-01-populacao-llm-carga.md) | ⬜ | L | PROC-24, BUG-01 |
-| `QA-09` | [Suite completa + concorrência (tarpaulin/miri)](issues/QA-09-suite-concorrencia.md) | ⬜ | M | QA-02, GAME-21 |
-| `QA-10` | [Carga de rede + integridade do banco + build de produção](issues/QA-10-carga-banco-release.md) | ⬜ | M | QA-09, QA-08 |
-| `QA-11` | [Bots jogáveis e carga (`crates/wyd-bots`)](issues/QA-11-bots-carga.md) | ⬜ | M | GAME-06, CLIENT-02, QA-05 |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 22 | `QA-01` | [Bots população real + LLM + gestão de logs de teste](issues/QA-01-populacao-llm-carga.md) | ⬜ | L | BUG-01 |
+| 23 | `QA-09` | [Suite completa + concorrência (tarpaulin/miri)](issues/QA-09-suite-concorrencia.md) | ⬜ | M | QA-02 ✅, GAME-21 |
+| 24 | `QA-10` | [Carga de rede + integridade do banco + build de produção](issues/QA-10-carga-banco-release.md) | ⬜ | M | QA-09, QA-08 ✅ |
+| 01 | `QA-11` | [Bots jogáveis e carga (`crates/wyd-bots`)](issues/QA-11-bots-carga.md) | 🟡 | M | GAME-06 ✅, CLIENT-02 ✅, QA-05 ✅ |
 
-### Processo, documentação e arquitetura (4)
+### Processo, documentação e arquitetura (2)
 
-| ID | Issue | Status | Esforço | Depende de |
-|---|---|---|---|---|
-| `PROC-01` | [Organização da `docs/`, dedup e MkDocs](issues/PROC-01-organizacao-docs-mkdocs.md) | ⬜ | M | PROC-13 ✅ |
-| `PROC-02` | [Limpeza do ambiente Windows (Go → Rust)](issues/PROC-02-limpeza-ambiente.md) | 🚧 | S | — |
-| `PROC-23` | [Notas de pesquisa (ECS, io_uring, serialização) + PoC](issues/PROC-23-pesquisa.md) | 🚧 | S | — (contínua) |
-| `PROC-24` | [Reorganização do roadmap: caminho crítico, curva de crescimento e entregas reais](issues/PROC-24-curva-crescimento.md) | ⬜ | M | PROC-01 |
+| # | ID | Issue | Status | Esforço | Depende de |
+|---:|---|---|---|---|---|
+| 25 | `PROC-01` | [Organização da `docs/`, dedup e MkDocs](issues/PROC-01-organizacao-docs-mkdocs.md) | 🚧 | M | PROC-13 ✅ |
+| 26 | `PROC-24` | [Reorganização do roadmap: caminho crítico, curva de crescimento e entregas reais](issues/PROC-24-curva-crescimento.md) | 🚧 | M | PROC-01 |
 
 ## Descritores de fase (contexto, não são issues)
 
@@ -185,14 +200,14 @@ O ID antigo não é usado como identificador de trabalho; serve apenas para loca
 | `FASE-03-9` | `GAME-09` | [`changelog.md`](changelog.md) |
 | `FASE-03-10` | `GAME-10` | [`changelog.md`](changelog.md) |
 | `FASE-03-11` | `GAME-11` | [`GAME-11-drop-inventario-e-caixa.md`](issues/GAME-11-drop-inventario-e-caixa.md) |
-| `FASE-03-12` | `GAME-12` | [`GAME-12-aglutinacao-e-catalogo.md`](issues/GAME-12-aglutinacao-e-catalogo.md) |
+| `FASE-03-12` | `GAME-12` | [`changelog.md`](changelog.md) |
 | `FASE-03-13` | `GAME-13` | [`GAME-13-familiares-slot-e-itens.md`](issues/GAME-13-familiares-slot-e-itens.md) |
 | `FASE-03-14` | `GAME-14` | [`GAME-14-fadas-bonus-e-auto-coleta.md`](issues/GAME-14-fadas-bonus-e-auto-coleta.md) |
-| `FASE-03-15` | `GAME-15` | [`GAME-15-classificacao-baldes-e-teto.md`](issues/GAME-15-classificacao-baldes-e-teto.md) |
+| `FASE-03-15` | `GAME-15` | [`changelog.md`](changelog.md) |
 | `FASE-03-16` | `GAME-16` | [`changelog.md`](changelog.md) |
 | `FASE-03-17` | `GAME-17` | [`GAME-17-entrada-no-mundo-fiel.md`](issues/GAME-17-entrada-no-mundo-fiel.md) |
 | `FASE-03-18` | `GAME-18` | [`GAME-18-campo-de-treinamento.md`](issues/GAME-18-campo-de-treinamento.md) |
-| `FASE-10-1` | `GAME-19` | [`GAME-19-equacoes.md`](issues/GAME-19-equacoes.md) |
+| `FASE-10-1` | `GAME-19` | [`changelog.md`](changelog.md) |
 | `FASE-10-2` | `GAME-20` | [`GAME-20-velocidade.md`](issues/GAME-20-velocidade.md) |
 | `FASE-10-3` | `GAME-21` | [`GAME-21-laboratorio.md`](issues/GAME-21-laboratorio.md) |
 | `FASE-10-4` | `GAME-22` | [`GAME-22-exp-por-flags.md`](issues/GAME-22-exp-por-flags.md) |
@@ -208,7 +223,7 @@ O ID antigo não é usado como identificador de trabalho; serve apenas para loca
 | `FASE-08-9` | `CLIENT-09` | [`changelog.md`](changelog.md) |
 | `FASE-08-10` | `CLIENT-10` | [`CLIENT-10-trade-atomica.md`](issues/CLIENT-10-trade-atomica.md) |
 | `LAUNCHER-01` | `CLIENT-11` | [`CLIENT-11-portal-autoupdate.md`](issues/CLIENT-11-portal-autoupdate.md) |
-| `FASE-07-1` | `WEB-01` | [`WEB-01-gateway.md`](issues/WEB-01-gateway.md) |
+| `FASE-07-1` | `WEB-01` | [`changelog.md`](changelog.md) |
 | `FASE-07-2` | `WEB-02` | [`changelog.md`](changelog.md) |
 | `FASE-07-3` | `WEB-03` | [`changelog.md`](changelog.md) |
 | `FASE-07-4` | `WEB-04` | [`changelog.md`](changelog.md) |
@@ -231,7 +246,7 @@ O ID antigo não é usado como identificador de trabalho; serve apenas para loca
 | `FASE-15-2` | `QA-10` | [`QA-10-carga-banco-release.md`](issues/QA-10-carga-banco-release.md) |
 | `FASE-15-3` | `QA-11` | [`QA-11-bots-carga.md`](issues/QA-11-bots-carga.md) |
 | `DOC-01` | `PROC-01` | [`PROC-01-organizacao-docs-mkdocs.md`](issues/PROC-01-organizacao-docs-mkdocs.md) |
-| `FASE-00-1` | `PROC-02` | [`PROC-02-limpeza-ambiente.md`](issues/PROC-02-limpeza-ambiente.md) |
+| `FASE-00-1` | `PROC-02` | [`changelog.md`](changelog.md) · [evidência](../docs/rust/evidencias/PROC-02-limpeza-ambiente-2026-11-12.md) |
 | `FASE-00-2` | `PROC-03` | [`changelog.md`](changelog.md) |
 | `FASE-00-3` | `PROC-04` | [`changelog.md`](changelog.md) |
 | `FASE-01-1` | `PROC-05` | [`changelog.md`](changelog.md) · [evidência](../docs/rust/evidencias/PROC-05-auditoria-2026-11-12.md) |
@@ -252,7 +267,7 @@ O ID antigo não é usado como identificador de trabalho; serve apenas para loca
 | `FASE-11-2` | `PROC-20` | [`changelog.md`](changelog.md) |
 | `FASE-13-1` | `PROC-21` | [`changelog.md`](changelog.md) |
 | `FASE-13-2` | `PROC-22` | [`changelog.md`](changelog.md) |
-| `FASE-14-1` | `PROC-23` | [`PROC-23-pesquisa.md`](issues/PROC-23-pesquisa.md) |
+| `FASE-14-1` | `PROC-23` | [`changelog.md`](changelog.md) |
 | `ROAD-01` | `PROC-24` | [`PROC-24-curva-crescimento.md`](issues/PROC-24-curva-crescimento.md) |
 
 </details>

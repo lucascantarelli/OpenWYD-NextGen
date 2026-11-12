@@ -3,7 +3,7 @@
 - **Estado:** aceita (2026-11-08)
 - **Data:** 2026-11-08
 - **Decisores:** dono do projeto + agente (missão "ligar `apply_gem` ao inventário real")
-- **Governa:** `roadmap-rust/changelog.md`, `GAME-19-equacoes.md`
+- **Governa:** `roadmap-rust/changelog.md` (GAME-19)
 - **Depende de:** ADR-0001 (Hot Path), ADR-0004 (ECS SoA), ADR-0011 (matemática do `wyd-sim`)
 
 ## Contexto
@@ -60,7 +60,7 @@ Regras que decorrem dela:
 
 ## Rastreabilidade
 
-- Issues consumidoras: `roadmap-rust/changelog.md`, `GAME-19-equacoes.md`.
+- Issues consumidoras: `roadmap-rust/changelog.md` (GAME-19).
 - Docs atualizadas: `docs/rust/03-progresso.md`, `docs/rust/06-matematica.md` §4,
   `docs/arquitetura/matematica-sim.md` §2/§4 (D-12, D-13).
 - Evidência: `crates/wyd-core/tests/integracao/gem.rs` (6 testes de API pública),

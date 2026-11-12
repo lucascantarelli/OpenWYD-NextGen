@@ -42,7 +42,7 @@ Saída esperada: typecheck 0, vitest verde, contrato 11/11 + novos testes de 2FA
 
 - wyd-rust-db — modelagem, migrations reversíveis, `delivery_queue`.
 - wyd-rust-obs — auditoria, alertas de segurança.
-- frontend-design, ui-ux-practices — tabelas densas, filtros acessíveis.
+- wyd-web-admin-ui — BFF, sessão e `adminCall`.
 
 ## Documentação de referência
 

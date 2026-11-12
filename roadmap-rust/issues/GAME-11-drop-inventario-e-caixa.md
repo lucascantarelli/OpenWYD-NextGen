@@ -2,7 +2,7 @@
 
 > **ID canônico:** `GAME-11`
 > **ID histórico:** `FASE-03-11`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-12:** 🚧 · depósito no inventário entregue; falta a caixa no chão. Ver `roadmap-rust/index.md`.
 
 ## Objetivo
 
@@ -20,6 +20,13 @@ exclusiva de 30 s, liberação para qualquer jogador e remoção em 3 min.
 - Layout e direção dos pacotes provados no binário: `docs/cliente/pacotes.md` §"Caixa de item no
   chão e pickup" (`CreateItem` 0x026E S→C 30 B, `GetItem` 0x0270 C→S 28 B, `CNFGetItem` 0x0171,
   `DecayItem` 0x016F).
+
+## Estado real (2026-11-12)
+
+- [x] Abate entrega o item no inventário do matador pelo `Gameplay::loot_at_death` → `inventory::deposit` (teto de pilha vindo de `item_stack_cap`); provado no Campo (`integracao_campo_drops`, 3/3).
+- [x] Regra pura da caixa (`GroundLoot`/`LootAccess`, 30 s exclusivo/3 min) com testes em `wyd-sim`.
+- [ ] Handler/tabela `CreateItem`/`GetItem`/`DecayItem` por canal; o `gameplay/service.rs` ainda declara que caixa e pickup não têm handler.
+- [ ] Faixa de ids de item no chão do 7662 (UNVERIFIED) — captura CLIENT-06.
 
 ## Escopo
 
@@ -40,6 +47,7 @@ exclusiva de 30 s, liberação para qualquer jogador e remoção em 3 min.
 
 ## DoD
 
+- [x] Depósito no inventário no abate, com teto de pilha e prova no pipeline real.
 - [ ] Teste de integração com dois personagens: durante 30 s o segundo recebe recusa; aos 30 s o
   segundo consegue; aos 180 s a caixa não existe mais.
 - [ ] Round-trip `CreateItem`/`GetItem` contra os layouts de `docs/cliente/pacotes.md`.
@@ -54,4 +62,14 @@ no chão do 7662 não — **UNVERIFIED**.
 
 - `wyd-rust-core` — estado do chão/inventário no Hot Path.
 - `wyd-rust-db` — persistência da posse e transações.
+- `wyd-rust-net` — `CreateItem`/`GetItem`/`DecayItem` no fio.
 - `rust-code-quality` / `rust-test-quality` — implementação e testes de contrato.
+
+## Gates
+
+```bash
+cargo test -p wyd-core inventory
+cargo test -p wyd-sim drop
+cargo test -p wyd-server --test integracao_campo_drops
+make check
+```

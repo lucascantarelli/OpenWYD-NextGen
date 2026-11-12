@@ -9,7 +9,8 @@ responsabilidade única por skill e critérios de qualidade executáveis.
 
 ## Contexto / evidência
 
-Estado atual (verificado em 2026-11-12): **23 skills** vigentes, roteador em
+Estado atual (verificado em 2026-11-12): **18 skills** vigentes após a terceira auditoria,
+que removeu a skill genérica de CI e fundiu SOLID/patterns em `software-architecture`; roteador em
 `.agents/skills/README.md` e `AGENTS.md` enxuto apontando para docs/skills. As sucessoras
 Rust existem; `wyd-testing-bots` e `wyd-server-dev` foram removidas, `wyd-database` foi
 fundida em `wyd-rust-db`, e `wyd-server-ops` opera a stack real (gateway, canais, portal e
@@ -37,7 +38,7 @@ monitoramento). Evidência: `docs/rust/evidencias/AUDIT-IA-2026-11-12.md`. Pedid
 
 ```bash
 make check
-grep -rln "tmserver/.*\.go\|make run-local" .agents/skills/wyd-rust-* .agents/skills/rust-* .agents/skills/software-* .agents/skills/solid-* || echo SKILLS-LIMPAS
+grep -rln "tmserver/.*\.go\|make run-local" .agents/skills || echo SKILLS-LIMPAS
 ```
 
 Saída esperada: gates verdes e `SKILLS-LIMPAS` (nenhuma skill Rust cita fluxo Go
@@ -45,8 +46,8 @@ como vigente).
 
 ## Skills Relacionadas do freebuff
 
-- .agents/skills/skill-creator - padrão de criação de skills.
-- .agents/skills/documentation-writer - redação das skills.
+- docs/manual-técnico/skills.md - padrão de criação e manutenção de skills.
+- docs/index.md - convenções de redação; docs/rust/02-execucao.md §5 para documentação viva.
 - .agents/skills/wyd-rust-toolchain - `make check`.
 
 ## Documentação de referencia

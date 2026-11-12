@@ -47,7 +47,7 @@ Duas pressões apareceram na entrega:
 5. **Cópia presa por golden da tabela de ameaça.** `npc::state::ThreatTable` (teto 8, empate
    pelo menor `entity`, TTL em ticks) reimplementa a semântica de
    `crates/wyd-sim/src/formula/threat.rs` **porque o DAG proíbe a dependência**. A dívida de
-   unificação continua registrada (`06-matematica.md` §4, GAME-19) e `tests/integracao/npc.rs` fixa a
+   unificação continua registrada (`06-matematica.md` §4, changelog da GAME-19; trace em `CLIENT-06`) e `tests/integracao/npc.rs` fixa a
    decisão por hash FNV-1a: mudança de comportamento quebra o golden.
 6. **Rota ancorada, não inventada.** `npc::route::Route` limita a patrulha ao raio da âncora
    até o trace do cliente confirmar `route_type`/`generator_data` (UNVERIFIED). Nenhum
@@ -70,7 +70,7 @@ Duas pressões apareceram na entrega:
 
 | Alternativa | Por que não |
 |---|---|
-| Fazer `wyd-core` depender de `wyd-sim` para reusar `threat.rs` | fura o DAG (§1, regra 1) e cria caminho de dependência que a ADR-0011 negou; a unificação pertence à GAME-19 |
+| Fazer `wyd-core` depender de `wyd-sim` para reusar `threat.rs` | fura o DAG (§1, regra 1) e cria caminho de dependência que a ADR-0011 negou; a unificação segue dívida registrada (GAME-19), com o trace em `CLIENT-06` |
 | Mover a FSM para `wyd-sim` e chamá-la do core | inverteria a direção: a simulação descreveria o jogo em vez de medir cenários |
 | IA escrevendo posição/HP direto no `ComponentStore` | criaria segundo caminho de escrita sem as validações de `step`/`attack` (ADR-0014) |
 | `HashMap<Entity, NpcState>` | alocação e hashing no quente; o estado é `Vec` contíguo indexado por `Entity.index` |

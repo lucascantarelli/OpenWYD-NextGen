@@ -5,35 +5,26 @@ description: Garante qualidade de código Rust no workspace WYD (ownership/borro
 
 # Qualidade de código Rust
 
-Vale para todas as `crates/wyd-*`. Referências: `rust-toolchain.toml`,
-`.github/workflows/rust.yml`, `roadmap-rust/issues/FASE-02.md`.
+Gate e invariantes gerais: `AGENTS.md` §2.8. Estrutura: `docs/arquitetura/estrutura-e-padroes.md`
+§6/§8; testes: `docs/arquitetura/testes.md` §4/§8; dependências:
+`docs/rust/01-dependencias.md`. Rode o gate, não repita a lista dele.
 
-## Regras inegociáveis
+## O que a revisão precisa pegar
 
-1. **Ownership primeiro.** Prefira empréstimo (`&`/`&mut`) a `clone()`; `clone`
-   só com justificativa (ex.: fronteira de thread com canal). Dados do tick loop
-   nunca alocam no caminho quente — reusar buffers/arena.
-2. **Erros tipados, nunca pânico em produção.** `Result`/`Option` com
-   `thiserror`/`anyhow`; `unwrap`/`expect` só em testes ou invariantes
-   demonstradas (comente o porquê). Input de rede, arquivo ou banco jamais causa `panic!`.
-3. **Sem `unsafe` por conveniência.** `unsafe` só em interop/FFI ou otimização
-   comprovada por benchmark, isolado em módulo pequeno, documentado e revisado.
-4. **Avisos são erros.** `cargo clippy --workspace -- -D warnings` e
-   `cargo fmt --check` limpos antes de qualquer validação.
-5. **Teste onde nasce o comportamento.** Toda regra nova (fórmula, parser,
-   transição de estado) nasce com teste unitário na crate; golden tests para
-   byte-exato de protocolo e regressões matemáticas (`wyd-sim`).
-6. **Estrutura antes de escrever.** Antes de criar arquivo, confira a árvore de
-   `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002) e a issue: arquivo fora
-   do domínio planejado não é aceito, mesmo que "funcione".
+- **Ownership:** prefira `&`/`&mut`; `clone()` só com justificativa (fronteira de thread,
+  canal, API que exige posse). Dados do tick não alocam no caminho quente.
+- **Erro:** `Result`/`Option` tipado; `unwrap`/`expect` só em teste ou invariante
+  demonstrada, com comentário. Entrada de rede/arquivo/banco não causa `panic!`.
+- **`unsafe`:** só FFI/interop ou otimização medida, em módulo pequeno, documentado e
+  revisado. “Funciona” não é justificativa.
+- **Fronteira:** arquivo novo precisa estar na árvore §10–§17 e na issue; helper genérico
+  para evitar passar contexto é violação estrutural.
+- **Dependência:** nova crate exige justificativa/PoC, lockfile e atualização de
+  `docs/rust/01-dependencias.md` quando a decisão for estrutural.
 
-## Checklist de revisão
+## Checklist
 
-- [ ] Compila sem warnings; clippy e fmt limpos.
-- [ ] Sem `unwrap`/`expect` fora de testes; sem `println!` (usar `tracing`).
-- [ ] Fronteiras validadas (tamanhos, índices, ranges) com erro tipado.
-- [ ] Teste cobre o caminho feliz, o limite e o erro.
-- [ ] Sem dependência nova sem justificativa e lockfile consistente
-      (ver `docs/rust/01-dependencias.md`).
-- [ ] Arquivos criados/alterados são exatamente os listados na árvore planejada e
-      na issue; gerados isolados em `generated/`.
+- [ ] `fmt`/`clippy -D warnings`/build/testes verdes no gate.
+- [ ] Sem `unwrap`/`expect` fora de teste; sem `println!` como telemetria.
+- [ ] Limites de entrada (tamanho, índice, range) têm erro tipado e teste negativo.
+- [ ] Nenhum arquivo/dependência fora da árvore e da issue.

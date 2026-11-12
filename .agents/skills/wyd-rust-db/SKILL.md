@@ -5,39 +5,21 @@ description: Desenvolve e opera a persistência do WYD em Rust (crates/wyd-db): 
 
 # Persistência Rust (wyd-db)
 
-Referências: `docs/arquitetura/modelo-banco.md`, `crates/wyd-db/`,
-`docs/rust/05-stack-docker.md`, `pre-release-rust.md` FASE 4.
+Norma: `docs/arquitetura/modelo-banco.md` (schema, tabelas, migrations, seeds),
+`docs/arquitetura/banco-catalogo.md` (catálogo gerado) e `docs/arquitetura/estrutura-e-padroes.md`
+§12; aplicação no boot em ADR-0024. Não replique o ER nem o catálogo aqui.
 
-## Regras
+## Decisões específicas
 
-1. **Modelo canônico em `docs/arquitetura/modelo-banco.md`.** Mantenha FKs, CHECKs e índices;
-   `delivery_queue` é a única ponte web→jogo; `audit_log` não tem FK.
-2. **Migrations versionadas e reversíveis.** `crates/wyd-db/migrations/NNNN_descricao.sql` com
-   `-- migrate:up/down`; nada de DDL manual. Seeds em `crates/wyd-db/seeds/dev.sql` com valores
-   `DEV-ONLY`; nunca hash/segredo real. DSN real nunca versionado.
-3. **Integridade no banco, não só na aplicação.** FKs, CHECKs, `TIMESTAMPTZ`, `BIGINT`,
-   `TEXT+CHECK`; índice só para leitor identificado.
-4. **Async fora do tick.** Pool dimensionado, transações curtas, timeouts; `wyd-core` consome
-   via traits, nunca SQL direto. Segredos fora de log e do repo (ver `.gitleaks.toml`).
-5. **Rastreabilidade.** Migration ↔ modelo de domínio ↔ teste de integração; mudança de schema
-   atualiza `docs/arquitetura/modelo-banco.md` na mesma entrega.
+- Migration `NNNN_descricao.sql` com `up`/`down`; schema, modelo de domínio e teste de
+  integração mudam na mesma entrega. DDL manual não substitui migration.
+- `delivery_queue` é a única ponte web→jogo; `audit_log` não ganha FK. O catálogo é gerado
+  e validado contra a série, não editado à mão.
+- `wyd-core` não fala SQL: use as portas/traits existentes. Pool, transação curta e timeout
+  ficam fora do tick; DSN/segredo não entram em log, seed ou repo.
+- Seed de desenvolvimento é `DEV-ONLY`; produção não versiona segredo nem conta real.
 
-## Comandos
+## Prova
 
-```bash
-docker compose exec db psql -U wyd -c "\dt"   # schema aplicado?
-docker compose exec -T db pg_dump -U wyd > backup-$(date +%F).sql
-cargo test -p wyd-db                          # constraints e repositórios
-make migrations-check                         # ordem, FKs e down, sem Postgres
-```
-
-## Não faça
-
-- `DROP`/`TRUNCATE`/`down -v` sem squash autorizado + backup; dump com dado de jogador no repo.
-- Seed com `pass_hash`/segredo; `UPDATE` em massa em tabela viva durante teste humano.
-- SQL manual para “criar tabela” fora de migration.
-
-## Antes de mudar
-
-Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §12. Confira o modelo e
-rode o fluxo de validação de migrations da FASE-05 antes de marcar a issue como pronta.
+`make migrations-check` e `cargo test -p wyd-db` (sistema com `WYD_TEST_DSN` quando a issue
+exigir banco real); depois `make check`.

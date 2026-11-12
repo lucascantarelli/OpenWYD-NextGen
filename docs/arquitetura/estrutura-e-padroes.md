@@ -221,7 +221,7 @@ crates/wyd-launcher/
 Sem subdirs — crate pequena. Um erro por fronteira (`ManifestError`,
 `PatchError`, `LaunchError`, `DistError`, `LancamentoError` com `From` entre
 ele) em vez de `error.rs` único: exceção deliberada a §2, coberta pela skill
-`solid-design-patterns` ("um erro por fronteira").
+`software-architecture` (patterns de erro por fronteira, "um erro por fronteira").
 
 ### 9.1 `apps/launcher-ui` — janela Tauri (CLIENT-08, ADR-0007)
 

@@ -10,6 +10,17 @@
 # Sem ele, o gateway segue no fallback de ambiente (segredos injetados).
 
 services:
+  mkdocs:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    # Sem `ports:`: documentação interna de dev/admin, nunca pública. Para
+    # acesso de staff em produção, usar túnel/reverse proxy interno — não abrir
+    # a 8000 na internet.
+
   db:
     restart: always
     deploy:

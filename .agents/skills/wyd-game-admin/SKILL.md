@@ -5,21 +5,24 @@ description: Administra o jogo (papéis, bans, grants, auditoria) via portal e c
 
 # Administração do jogo (Rust)
 
-> Sucessão PROC-18: mantido o nome; backend migrado para `wyd-admin` + `delivery_queue`. Fonte: `crates/wyd-admin/`, `docs/arquitetura/modelo-banco.md`.
+Norma: `docs/arquitetura/adr/0023-moderacao-auditoria-economia.md`,
+`docs/arquitetura/modelo-banco.md` e `wyd-portal/README.md` (adminCall/sessão/auditoria).
+A autorização e o envelope estão nesses docs; não os reimplemente na skill.
 
-## Regras
+## Decisões específicas
 
-1. **Autoridade é `account.role`.** `moderator`/`admin` no banco, lido no login; comando negado é silencioso; sessão web expira em 8h (papel novo vale no próximo login).
-2. **Toda ação passa por `adminCall`.** `moderator_id` vem da sessão, nunca do corpo; `AdminResult` → HTTP; `cache-control: no-store`; auditoria de quem/o quê/quando (`crates/wyd-admin/src/audit/`).
-3. **A web nunca escreve estado vivo.** Item/gold/nível vão por `delivery_queue` (`source` + motivo auditado) drenada no login; nunca edite `character`/`item` à mão — o próximo save sobrescreve.
-4. **Grants não são idempotentes por repetição.** Anote antes/depois; `setgold`/item repetido duplica.
-5. **Emergência sem portal.** SQL direto só offline, sem auditoria do BFF; prefira `/contas` (mesma transação: papel + `role_changed_*` + `account_admin_audit`).
+- Papel é `account.role` no banco, lido pela sessão/`wyd-admin`; `moderator_id` vem da
+  sessão, nunca do corpo. Negação é auditada; papel novo vale no próximo login.
+- Toda ação administrativa passa por `adminCall`; item/gold/nível vão por `delivery_queue`
+  e são drenados no login. Não edite `character`/`item` à mão.
+- Grant repetido não é idempotente por natureza: registre antes/depois e use a chave de
+  idempotência quando o contrato oferecer. SQL direto só offline, com backup e sem BFF.
+- Comandos GM de chat: `/gm kick|notice|goto|summon|spawn|item|setlevel|setgold|ban|unban|guildname|guildfame`
+  e comandos de jogador (`/cp`, `/nick`, `/gritar`, teleportes, `/buffs`). Índice de item
+  vem de `item_catalog`, nunca de chute.
+- Confirme o efeito no estado **e** no pacote (`MSG_UpdateScore`/painel), não no chat.
 
-## Comandos GM (via chat do personagem)
+## Prova
 
-`/gm kick|notice|goto|summon|spawn|item|setlevel|setgold|ban|unban|guildname|guildfame` + comandos de jogador (`/cp`, `/nick`, `/gritar`, teleportes, `/buffs`). Índices de item vêm de `item_catalog` (nunca chute).
-
-## Auditoria
-
-- Procure `gm` nos logs do servidor; confirme efeito no estado **e** no pacote (`MSG_UpdateScore` no painel, nunca chat).
-- Lote = teste/harness reproduzível, não digitação repetida.
+Ação pelo portal + auditoria em `audit_log`; para lote, harness reproduzível em vez de
+digitação repetida.

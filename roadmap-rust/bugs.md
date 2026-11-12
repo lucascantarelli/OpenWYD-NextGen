@@ -4,6 +4,20 @@
 > atributos, NPCs de loja/banco, CP e andar/correr) e `BUG-02` (PIN/segunda senha).
 > O detalhe executável e os critérios de aceite ficam nos arquivos das issues.
 
+| Issue | Estado | Evidência atual | O que falta |
+|---|---|---|---|
+| `BUG-01` | ⬜ | Recusas com motivo no log, testes de fio, `ClientID`/`UpdateScore` e cena | Matriz A1–A6 no 7662; cada recusa com print/log |
+| `BUG-02` | 🟢 | PIN opcional, seleção antes do PIN e testes de fio | Prova viva sem PIN (`WYD_LIVE_SKIP_PIN=1`) e entrada no 7662 |
+
+> **Tentativa 2026-11-12:** a Sessão A chegou ao server select, mas o cliente 7662 descartou
+> mouse/teclado sintéticos; nenhum login saiu do cliente e nenhum critério visual foi marcado.
+> O `Config.bin` foi levado do modo 8 (`1024×768×32`, cliente `1024×759`) para o modo 7
+> (`800×600×32`, cliente `800×600` exato); o erro de render target e o input inerte persistiram.
+> Detalhe no runbook §9.5–§10; os dois bugs seguem abertos, com checklist humano pendente.
+
+Arquivos: [`BUG-01`](issues/BUG-01-mensagens-char-mundo.md) e
+[`BUG-02`](issues/BUG-02-entrada-no-mundo-pin-opcional.md).
+
 ## Mensagem de erro no login dentro do cliente
 
 **Issue:** `BUG-01`

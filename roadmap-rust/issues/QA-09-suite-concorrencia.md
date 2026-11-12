@@ -4,7 +4,7 @@
 > **ID histórico:** `FASE-15-1`
 > **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
 
-**Fase:** 15 · **Depende de:** QA-02, GAME-21 · **Bloqueia:** QA-10 · **Esforço:** M
+**Fase:** 15 · **Depende de:** QA-02 ✅, GAME-21 · **Bloqueia:** QA-10 · **Esforço:** M
 
 ## Objetivo
 
@@ -50,15 +50,6 @@ Saída esperada: tudo `ok`/`Finished` sem warnings; cobertura das fórmulas anex
 - pre-release-rust.md (FASE 15, §16).
 - docs/rust/01-dependencias.md - tarpaulin/miri.
 - roadmap-rust/changelog.md - gates.
-
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 

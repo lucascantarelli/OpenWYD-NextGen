@@ -1,7 +1,8 @@
 //! Comércio com NPC (`_MSG_Buy`, `_MSG_Sell`, `_MSG_ShopList`, `_MSG_REQShopList`).
 //!
-//! Troca entre jogadores (`MSG_Trade`) tem layout UNVERIFIED e fica fora até a
-//! captura real (CLIENT-02).
+//! Troca entre jogadores (`MSG_Trade`) tem layout **candidato** de 156 B (natural;
+//! `Basedef.h:2435-2445`) contra 154 B do porte Go (`pack(1)`) e fica fora até a
+//! captura real decidir (CLIENT-10).
 
 use super::{check_len, PayloadError, WireField, WirePayload};
 use crate::wire::opcode::Opcode;

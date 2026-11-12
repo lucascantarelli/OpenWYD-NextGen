@@ -2,6 +2,79 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## GAME-19 — Equações de combate: ordem, exemplo e testes
+
+- **ID:** `GAME-19`
+- **Concluída em:** 2026-11-12
+- **Resumo:** os 9 sistemas de `crates/wyd-sim/src/formula/` e a ordem do golpe/tick em `scenario/combat.rs` já estavam codificados; faltava o exemplo numérico exigido pelo aceite. O documento ganhou a conta completa (`base 100 + 20 + 10`, skill 150%, buff 110%, crítico 200%, defesa 100/perfuração 30, resistência 25%, absorção 19 → **250**) e o teste `worked_example_matches_documented_chain` reproduz o mesmo resultado. As hipóteses D-02..D-04/D-06 continuam explicitamente marcadas; a ordem do legado será confirmada pelo trace da `CLIENT-06`, fora desta issue.
+- **Evidência:** `docs/arquitetura/matematica-sim.md` §3.2.1; `crates/wyd-sim/src/formula/damage.rs`; `cargo test -p wyd-sim damage` → 13 passed; [`AUDIT-ISSUES-2026-11-12.md`](../docs/rust/evidencias/AUDIT-ISSUES-2026-11-12.md).
+
+## WEB-01 — Gateway Next.js ↔ `wyd-admin`: transporte e contrato
+
+- **ID:** `WEB-01`
+- **Concluída em:** 2026-11-12
+- **Resumo:** transporte HTTP/JSON, auth de staff, auditoria persistida, 44 métodos do portal com handler, `admin.pending=0` e binário `wyd-gateway` no compose. O único resíduo era a rota legada `daily_reward_admin/set_reward_item_enabled`, que o portal não declara mais e cuja tabela não tem coluna de liga/desliga; ela saiu de `SERVICOS` e agora responde 404, em vez de 501 permanente. Nenhuma chamada vigente do portal quebrou.
+- **Evidência:** `crates/wyd-admin/src/transport/mod.rs`; `crates/wyd-admin/tests/contrato/operacao.rs`; `crates/wyd-admin/tests/contrato/transporte.rs`; `cargo test -p wyd-admin --test contrato_operacao` → 12 passed e `--test contrato_transporte` → 14 passed; [`AUDIT-ISSUES-2026-11-12.md`](../docs/rust/evidencias/AUDIT-ISSUES-2026-11-12.md).
+
+## Auditoria de fechamento das issues — 2026-11-12
+
+- **29 issues ativas conferidas** contra código/teste/doc; **2 fechadas** (`GAME-19`, `WEB-01`) e **27 mantidas** com o critério que falta nomeado na matriz.
+- **Status corrigidos por evidência:** `PROC-01` ⬜→🚧 (inventário MkDocs/dedup existe; faltam fusões e build atual), `PROC-24` ⬜→🚧 (fila/grafo publicados; falta onda 1 visual e DoD por onda).
+- **Dependências reconciliadas:** `BUG-01` e `BUG-02` apontam para `CLIENT-06`/`GAME-17` 🚧; `GAME-05` para GAME-02/03/04 ✅; `GAME-20/21` para `GAME-19` ✅; `GAME-23` para `QA-11` 🟡; `QA-09` para `QA-02` ✅; `WEB-07` para `WEB-01` ✅.
+- **Fila:** `#01..#27`, com as duas posições fechadas removidas e as demais renumeradas; categorias agora **Jogo 10 / Portal 5**.
+- **Evidência:** [`AUDIT-ISSUES-2026-11-12.md`](../docs/rust/evidencias/AUDIT-ISSUES-2026-11-12.md); `check-issue-status`, `docs-check`, `skills-check` e `make check` verdes na mesma execução.
+
+## Auditoria de skills — segunda passada (2026-11-12)
+
+- **Resumo:** `.agents/skills/` passou de **23 para 21** `SKILL.md`; `github-actions-docs` foi removida (skill genérica, só usada na FASE-05) e `solid-design-patterns` foi fundida em `software-architecture`. As 21 restantes mantêm frontmatter válido e corpo abaixo de 500 linhas; nenhuma skill nova foi criada.
+- **Números:** `SKILL.md` 1.301 → 1.190 linhas e 82.932 → 77.252 bytes; arquivos totais 44 → 40; bytes totais 297.500 → 281.832. `AGENTS.md` ficou em 117 linhas / 6.919 bytes (só o comentário do gate mudou). Também saiu o arquivo órfão `writing-plans/plan-document-reviewer-prompt.md` (1.713 bytes).
+- **Referências:** issues FASE-03, FASE-05, FASE-09, FASE-10, GAME-19 e PROC-01 corrigidas; roteador, `docs/manual-técnico/skills.md`, `docs/rust/00-visao-estrutura.md`, `docs/rust/03-progresso.md`, `docs/rust/04-revisao-roadmap.md` e `docs/arquitetura/estrutura-e-padroes.md` alinhados. Nenhuma issue cita skill inexistente.
+- **Gate:** `tools/dev/check-skills.mjs` e alvo `skills-check`, incluídos no `make check`; valida frontmatter, nome/diretório, descrição, limite de 500 linhas, recursos citados e caminhos de skill em docs/issues.
+- **Dedup de conteúdo:** 18 skills de domínio/processo reescritas para “Norma → decisão específica → prova”; DAG, árvores, patterns/SOLID, ER, taxonomia de testes, ordem de fórmulas, stack/portas e fluxo do launcher deixaram de ser copiados e passaram a linkar os docs normativos. `SKILL.md` 1.190 → 977 linhas e 77.252 → 62.985 bytes.
+- **Genéricas (3ª passada):** três skills genéricas foram removidas do projeto porque não tinham regra do WYD e continuam disponíveis como skills de conta/globais. Substitutos: `wyd-web-admin-ui` + `wyd-portal/README.md`, `docs/index.md` + `docs/rust/02-execucao.md` §5, e `docs/manual-técnico/skills.md` + `tools/dev/check-skills.mjs`. Resultado: 21→18 skills; 977→501 linhas e 62.985→26.505 bytes nos `SKILL.md`; 40→19 arquivos; diretório 267.565→29.246 bytes.
+- **Evidência:** [`docs/rust/evidencias/AUDIT-SKILLS-2026-11-12.md`](../docs/rust/evidencias/AUDIT-SKILLS-2026-11-12.md); `make skills-check` 0 e `make check` 0.
+- **Sem commit/push** nesta auditoria.
+
+## PROC-02 — Limpeza do ambiente Windows (Go → Rust)
+
+- **ID:** `PROC-02`
+- **Concluída em:** 2026-11-12
+- **Resumo:** O host ficou sem toolchain Go: `go1.27.3` foi desinstalado pelo winget, `D:\Programas\Go` removido, `GOMODCACHE`/`GOCACHE`/`GOENV` limpos e as ferramentas de usuário (`gopls`, `dlv`, `golangci-lint`, `goplay`, `impl`, `protoc-gen-go*`) apagadas. `GOPATH` e `GOROOT` ficaram vazios em User/Machine, o `PATH` persistido não tem entrada Go e o VS Code não tem extensão Go. `cargo 1.99.1` e `rustc 1.99.1` respondem.
+- **Evidência:** `where go` → `GO-REMOVIDO`; `go version` → `GO-COMANDO-AUSENTE`; `winget list --id GoLang.Go --exact` vazio; `GO-REMOVIDO` documentado em [`docs/rust/evidencias/PROC-02-limpeza-ambiente-2026-11-12.md`](../docs/rust/evidencias/PROC-02-limpeza-ambiente-2026-11-12.md).
+
+## GAME-12 — Aglutinação item a item e teto de pilha no catálogo
+
+- **ID:** `GAME-12`
+- **Concluída em:** 2026-11-12
+- **Resumo:** O catálogo passou a ter `stackable` decidido para os 3.220 itens: **423 true / 2.797 false / 0 nulo**. A migração `0050_seed_correcao_catalogo_game12_15.sql` corrige os seis itens divergentes e usa a prova da view `item_stack_cap` para os nulos (52 packs com `EF_AMOUNT` + 416/419/420 curados). O gerador `tools/content/gen-seed.mjs` recebeu a mesma curadoria para a próxima regeneração; o `0018` versionado ficou intacto porque o ledger recusa reescrever migration aplicada.
+- **Invariantes provados:** nenhum `stackable=true` com teto 1; nenhum equipamento com teto >1; `EF_AMOUNT` continua conteúdo de pack, não teto. `kind` nulo em 1.529 linhas é resíduo declarado — nenhuma categoria foi inventada.
+- **Evidência:** `crates/wyd-db/tests/sistema/stack_caps.rs` 1/1 com `WYD_TEST_DSN`; `cargo test -p wyd-core stack_caps` 6/6; `contrato_catalogo` 3/3; `check-migrations` 50/86; banco real `item_stack_cap` 423/2.797.
+
+## GAME-15 — Baldes do catálogo, teto por item e os seis divergentes
+
+- **ID:** `GAME-15`
+- **Concluída em:** 2026-11-12
+- **Resumo:** Os três baldes continuam **3.102 real / 96 ruído / 22 placeholder**. Correções: `406` era mana (`EF_MP 200`, preço 400) e virou `Poção_de_Mana_M.`; `416 Antídoto` virou `consumable` (teto 120, conteúdo 5); `419`/`420 Resto_*` viraram `material` (teto 120, sem efeito inventado — a fonte não traz `EF_*`). `3385 not_used`, `2433`–`2435 N/A` e `4045 NONAME` foram mantidos como placeholder e teto 1; preço/`EF_AMOUNT` não promovem nome de slot vazio.
+- **Evidência:** migração `0050`; teste de banco com nome/kind/stackable/balde dos nove índices; docs `itens.md` §5.2–§5.3, `aglutinacao.md` §6/§8 e `drops.md` §8 atualizados.
+
+## PROC-23 — Notas de pesquisa + PoCs medidas
+
+- **ID:** `PROC-23`
+- **Concluída em:** 2026-11-12
+- **Resumo:** As PoCs pendentes foram executadas fora de `crates/` e os números publicados. **ECS:** `ComponentStore` SoA fez 10k entidades em **1.979,50 µs** (spawn + varredura + despawn) contra **4.321,40 µs** do `hecs` 0.11.2 (2,18× mais lento); na varredura mutável, **1,90 µs** contra **16,30 µs** (8,58× mais lento). **Serialização:** HEADER de 12 B em **2,53 ns** manual contra **1,42 ns** com `zerocopy` 0.8.63 (1,79×; ~1,1 ns/pacote, irrelevante no orçamento). **io_uring:** 10k leituras de 4 KiB em cache ficaram em **84,24–214,75 µs/op** contra **2,49–11,69 µs/op** do `read_at` síncrono (17–43× mais lento) no WSL2/Docker; o container padrão ainda bloqueia `io_uring_setup` com `EPERM`. **wasmtime:** módulo trivial com compilação 1,62–14,21 ms, instanciação 0,011–0,131 ms, chamada 27,5–74,7 ns e RSS ~10,4 MB, sem caso de uso.
+- **Decisão:** manter SoA manual (ADR-0004), parse manual (ADR-0005) e `tokio`; não adotar `hecs`, `zerocopy`, `tokio-uring` nem `wasmtime` sem caso e bench que justifiquem. Nenhuma dependência entrou no workspace; `crates/`, `Cargo.toml` e `Cargo.lock` ficaram intactos.
+- **Evidência:** [`docs/rust/evidencias/PROC-23-pocs-2026-11-12.md`](../docs/rust/evidencias/PROC-23-pocs-2026-11-12.md) — método, números, faixas e limitações de plataforma; notas atualizadas em `docs/rust/01-dependencias.md`.
+
+## Auditoria de roadmap — 2026-11-12 (sem novas conclusões)
+
+- **33 issues ativas auditadas** contra código, testes e docs; nenhuma foi removida porque todas mantêm ao menos um critério de aceite ou subtask bloqueada por evidência externa.
+- **4 status corrigidos por evidência:** `GAME-11` ⬜→🚧 (depósito no inventário + `GroundLoot` prontos; falta handler da caixa), `GAME-12` ⬜→🚧 (`StackCaps` de produção lê `item_stack_cap`), `QA-11` ⬜→🟡 (`crates/wyd-bots` joga pelo fio; falta carga/relatório) e `WEB-07` ⬜→🚧 (export de logs/páginas prontos; falta SSE/alertas).
+- **Candidatos mantidos abertos por resíduo real:** `WEB-01` (decisão da rota legada `set_reward_item_enabled`), `WEB-11` (rollback/histórico e inventário setting×constante), `GAME-15` (6 itens de catálogo), `GAME-18`/`GAME-17`/`BUG-01`/`BUG-02` (prova visual no 7662) e `CLIENT-10` (captura do `MSG_Trade`).
+- **Organização:** fila nova `#01..#33` no `index.md`, com IDs canônicos preservados para não reutilizar IDs já fechados nem quebrar referências; quick wins sem bloqueio primeiro (`PROC-23`, `PROC-02`, `GAME-15`, `GAME-12`, `QA-11`, `WEB-07`).
+- **Skills:** 23 skills mantidas (nenhuma duplicata nova); as 23 têm `name`/`description` válidos e ficam abaixo de 500 linhas, conforme o padrão de progressive disclosure. Referências mortas a `ui-ux-practices` removidas das issues `WEB-07/08/10`, contagem do doc histórico corrigida para 23 e o roteador ganhou orçamento explícito (1 principal + até 2 transversais). Na revisão final, uma skill genérica de manutenção (485→360 linhas) e `rust-test-quality` (91→45) foram encurtadas; total de 1.324 linhas / 82.932 bytes, sem remoção ou criação de skill.
+- **Checklists:** removidas 6 linhas de template (`Codificar/Testar/Revisar/Documentar/Versionar/Limpar branch`) de 16 issues ativas; as subtasks específicas foram preservadas e seções vazias removidas.
+- **Evidência:** `node tools/content/check-issue-status.mjs`, `node tools/dev/check-docs-consistency.mjs`, `cargo fmt --all -- --check` e `git diff --check` verdes na mesma execução final.
+
 ### QA-07 — Catálogo de ameaças B1–B17 + §6 do `wyd2.md`
 
 - **ID:** `QA-07`
@@ -49,8 +122,8 @@
 
 - **ID:** `AUDIT-IA` (auditoria avulsa; não é issue do roadmap)
 - **Concluída em:** 2026-11-12
-- **Resumo:** O conjunto de instruções foi reduzido de 26 para 23 skills; `AGENTS.md` caiu de 270 para 117 linhas (~4,5 mil → ~1,7 mil tokens) e o total carregável caiu de 2.262 para 1.611 linhas (~33,4 mil → ~25,0 mil tokens); o roteador passou a ser a única lista de skills e as referências às skills removidas/fundidas foram corrigidas no roadmap e nos docs.
-- **Evidência:** [`docs/rust/evidencias/AUDIT-IA-2026-11-12.md`](../docs/rust/evidencias/AUDIT-IA-2026-11-12.md) — inventário medido (26→23 `SKILL.md`, 1.992→1.494 linhas, 115.806→93.316 bytes; `AGENTS.md` 17.853→6.796 bytes); removidas `ui-ux-practices`, `finishing-a-development-branch` e `wyd-database` (fundida em `wyd-rust-db`); `writing-plans` e `wyd-server-ops` reescritas; `make check` exit 0 com 40/40 issues e 7/7 tools; varredura de links 229/0; zero caminhos de skill removida.
+- **Resumo:** O conjunto de instruções foi reduzido de 26 para 23 skills; `AGENTS.md` caiu de 270 para 117 linhas (~4,5 mil → ~1,7 mil tokens) e o total carregável caiu de 2.262 para 1.441 linhas (~33,4 mil → ~22,5 mil tokens); o roteador passou a ser a única lista de skills e as referências às skills removidas/fundidas foram corrigidas no roadmap e nos docs. Na revisão final, uma skill genérica de manutenção e `rust-test-quality` perderam conteúdo de outro host e duplicação com os docs, sem mudar o inventário de 23.
+- **Evidência:** [`docs/rust/evidencias/AUDIT-IA-2026-11-12.md`](../docs/rust/evidencias/AUDIT-IA-2026-11-12.md) — inventário medido (26→23 `SKILL.md`; `SKILL.md` 1.992→1.494→1.324 linhas e 115.806→93.316→82.932 bytes; `AGENTS.md` 17.853→6.903 bytes); removidas `ui-ux-practices`, `finishing-a-development-branch` e `wyd-database` (fundida em `wyd-rust-db`); `writing-plans` e `wyd-server-ops` reescritas; uma skill genérica de manutenção e `rust-test-quality` encurtadas; `make check` exit 0 com 40/40 issues e 7/7 tools; varredura de links 229/0; zero caminhos de skill removida.
 
 ### PROC-13 — Gate de consistência entre roadmap, progresso, checklist e código
 

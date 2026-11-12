@@ -6,7 +6,7 @@
 
 | # | Duplicidade | Decisão | Evidência |
 |---|---|---|---|
-| 1 | Contagem migrations/tabelas (31/69 × 36/74 × 44/84) | Fonte única: código (`44/84`, gate `check-migrations.mjs` `DOCUMENTED`) | `node tools/content/check-migrations.mjs` ok |
+| 1 | Contagem migrations/tabelas (31/69 × 36/74 × 44/84) | Fonte única: código (**50/86**, gate `check-migrations.mjs` `DOCUMENTED`) | `node tools/content/check-migrations.mjs` ok |
 | 2 | `mkdocs.yml` nav incompleta (26 ADRs + 8 pesquisas + `sistemas.md`/`skills.md` fora) | Todas as páginas em `docs/` agora no `nav`; `docs/index.md` sem links para fora de `docs/` | `mkdocs build --strict` verde (docker) |
 | 3 | Links para fora de `docs/` (`roadmap-rust/`, `wyd-portal/`) quebrando `--strict` | `docs/index.md` usa texto (não link) para fora; `validation.links.*: ignore` documentado para herança legada (`captura-selchar`, checklist) | build strict sem warnings |
 | 4 | Refino em `sistemas/refino.md` × `sistemas/refino-auditoria.md` | Manter os dois com papéis distintos: `refino.md` = regra vigente; `refino-auditoria.md` = trilha de auditoria. Cross-link no topo de cada um (a fazer em PROC-01 full) | — |

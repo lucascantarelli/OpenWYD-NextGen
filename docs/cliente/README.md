@@ -32,6 +32,7 @@ desassemble (`tools/client/`). Este dossiê é a fonte canônica desse conhecime
 | [`customizacao.md`](customizacao.md) | Estratégia de customização, manifesto do launcher e fluxo de patch |
 | [`engenharia-reversa.md`](engenharia-reversa.md) | Plano de desassemble profundo: alvos, ferramentas, marcos, entregáveis, riscos |
 | [`depuracao.md`](depuracao.md) | Roteiro de trace dinâmico: breakpoints, fases login→campo, freeze, fixtures |
+| [`roteiro-prova-visual-7662.md`](roteiro-prova-visual-7662.md) | Runbook consolidado de `BUG-01`, `BUG-02`, `GAME-17` e `GAME-18`: pré-condições, sessões, evidência e matriz de decisão |
 | [`pacotes.md`](pacotes.md) | Catálogo de pacotes com estado GERADO/PENDENTE por opcode |
 | [`inventario-gerado.md`](inventario-gerado.md) · [`re-binarios.md`](re-binarios.md) · [`re-strings.md`](re-strings.md) · [`re-pacotes.md`](re-pacotes.md) | **Gerados** pelo `wyd-tools` (`make tools-inventario`/`make tools-re`): números medidos, heurística declarada e lacunas; não editar à mão |
 | [`../arquitetura/contrato-dispatch-opcode.md`](../arquitetura/contrato-dispatch-opcode.md) | Contrato de dispatch: 63 handlers do C++ × 61 rotas Go × 198 opcodes Rust, o que o cliente 7662 envia/omite e as divergências a decidir |

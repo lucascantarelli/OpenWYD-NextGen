@@ -40,6 +40,7 @@ em `.text`), `r` (registradores), `db/d <end>` (dump), `t`/`p` (passo), `r esp`,
 | 4 | CharacterLogin C→S | `0x40126A` | `Type=0x0213`, `Size=20` |
 | 5 | Entrada no mundo | `0x4252D6` | burst de `0x0364` (CreateMob) e `0x7530` (ESCENE_FIELD) |
 | 6 | Ação de movimento C→S | `0x40126A` | `Type=0x036C`, `Size=52`, coordenadas na rota |
+| 7 | Trade entre jogadores | `0x4252D6` / `0x40126A` | `Type=0x0383`, `Size=156` (natural) ou `154` (packed); item, `TradeMoney`, `MyCheck`, `OpponentID` (CLIENT-10) |
 
 Wireshark (na máquina do jogo): filtro `tcp.port == 8281`; exportar **apenas** os bytes TCP
 do stream jogo (sem credencial — ver §5).
@@ -81,3 +82,20 @@ Critério de fechamento: tail com `Size` anômalo para o `Type` (encoder culpado
 - Instrumentos prontos: proxy e conversão em `tools/client/captura-live.mjs`, diff em
   `tools/client/diff-captura.mjs`. Roteiro completo, com a variação de campo a campo, em
   [`captura-selchar.md`](captura-selchar.md).
+
+## 7. Captura específica: `MSG_Trade` (CLIENT-10)
+
+Objetivo: decidir entre o layout natural do `Basedef.h` (**156 B**) e o packed do
+porte Go (**154 B**). Não promover nenhum dos dois sem o frame do 7662.
+
+1. Dois clientes de teste no mesmo mapa; cliente A com um item conhecido e
+   `1234` de ouro, cliente B sem item. Abrir a janela de troca e oferecer o item.
+2. Em `0x4252D6` (recebido) e `0x40126A` (enviado), filtrar `Type=0x0383` e
+   registrar `Size` + bytes do frame já **desofuscado** (Type claro).
+3. Rodar `node tools/client/trade-layout.mjs <hex>`; o campo `layout` deve ser
+   `natural` (156) ou `packed` (154). A ferramenta recusa qualquer outro
+   tamanho e aponta `InvenPos` repetido, ouro/`MyCheck`/`OpponentID` inválidos.
+4. Anexar o JSON à CLIENT-10 (sem dados de conta; a troca não carrega senha) e
+   usar os offsets confirmados para o codec + golden.
+5. Se o cliente enviar 154, o C++/Go se invertem: registrar a evidência e não
+   reutilizar o layout de 156. Se enviar 156, o codec Go é que está errado.

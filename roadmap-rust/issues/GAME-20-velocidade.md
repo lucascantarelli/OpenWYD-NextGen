@@ -4,7 +4,7 @@
 > **ID histórico:** `FASE-10-2`
 > **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
 
-**Fase:** 10 · **Depende de:** GAME-19 · **Bloqueia:** GAME-21 · **Esforço:** M
+**Fase:** 10 · **Depende de:** GAME-19 ✅ (ordem provisória; trace em CLIENT-06) · **Bloqueia:** GAME-21 · **Esforço:** M
 
 ## Objetivo
 
@@ -49,16 +49,7 @@ Saída esperada: cenário reproduz a anomalia (números anexados: antes × desej
 
 - pre-release-rust.md (FASE 10 §10.2).
 - roadmap-rust/issues/GAME-20-velocidade.md.
-- roadmap-rust/issues/GAME-19-equacoes.md - equações base.
-
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
+- roadmap-rust/changelog.md (GAME-19) - equações base.
 
 ## Critérios de aceite
 

@@ -3,9 +3,9 @@
 //!
 //! Sem banco, o `Router` com `FakeOperacao` prova o contrato: `result:1` com dado,
 //! `grant_item` enfileira com idempotência (mesma chave, replay), teto de paginação
-//! (`result:3`), 401 sem sessão e `result:2` para jogador. Rotas do contrato sem
-//! tabela que as sustente (`set_reward_item_enabled`, `donate_revenue_admin/*`)
-//! seguem `501` auditado. Com `WYD_TEST_DATABASE_URL` (ou `DATABASE_URL`), o
+//! (`result:3`), 401 sem sessão e `result:2` para jogador. A rota legada
+//! `set_reward_item_enabled` saiu do contrato (404); `donate_revenue_admin/*`
+//! tem tabela e responde 200. Com `WYD_TEST_DATABASE_URL` (ou `DATABASE_URL`), o
 //! `PgBackend` prova as mesmas operações contra o Postgres real, incluindo o dreno
 //! (`claim_item` → slot livre de `Carry`; mochila cheia deixa pendente, nunca duplica).
 
@@ -804,9 +804,10 @@ fn operacao_recusa_sem_sessao_jogador_e_teto() {
 }
 
 #[test]
-fn sem_tabela_sem_handler_501() {
+fn rota_legada_removida_404_e_receita_tem_handler() {
     let router = router();
-    // `daily_reward_item` não tem coluna de liga/desliga (série proíbe ALTER no up).
+    // `daily_reward_item` não tem coluna de liga/desliga e o portal não declara
+    // mais a rota; ela saiu do contrato em vez de responder 501 para sempre.
     let (status, _) = dispatch(
         &router,
         &raw(
@@ -816,7 +817,7 @@ fn sem_tabela_sem_handler_501() {
             r#"{"id":1,"enabled":false}"#,
         ),
     );
-    assert_eq!(status, 501);
+    assert_eq!(status, 404);
 
     // Receita de donate tem razão no banco (0042 crédito, 0045 débito): as rotas
     // respondem 200 com os números do store — nenhuma delas pode sobrar em 501.

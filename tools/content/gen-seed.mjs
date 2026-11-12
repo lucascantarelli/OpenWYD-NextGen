@@ -301,6 +301,37 @@ function classifyEventOnly(name) {
 
 const STACKABLE = new Set(["consumable", "material", "ammo", "quest", "cash", "container"]);
 
+/**
+ * Curadoria GAME-12/GAME-15 (2026-11-12). Só entra aqui o que a fonte prova:
+ * - 406 é mana (EF_MP 200, preço 400 = 401), não cura;
+ * - 416/419/420 são reais sem `kind` (consumível / material);
+ * - 3385/2433–2435/4045 são placeholders explícitos, mesmo com preço/EF_AMOUNT.
+ * Todo o resto sem `kind` continua `kind = NULL`; só o teto é decidido.
+ */
+const CURATED_ITEMS = new Map([
+  [406, { name: "Poção_de_Mana_M." }],
+  [416, { kind: "consumable" }],
+  [419, { kind: "material" }],
+  [420, { kind: "material" }],
+  [3385, { stackable: false }],
+  [2433, { stackable: false }],
+  [2434, { stackable: false }],
+  [2435, { stackable: false }],
+  [4045, { stackable: false }],
+]);
+
+const PLACEHOLDER_NAMES = new Set(["noname", "not used", "n a"]);
+
+/** Valor que segue `EF_AMOUNT` no array plano de `fields` (conteúdo de pack). */
+function fieldAmount(fields) {
+  for (let i = 0; i + 1 < fields.length; i += 1) {
+    if (fields[i] === "EF_AMOUNT" && Number.isFinite(Number(fields[i + 1]))) {
+      return Number(fields[i + 1]);
+    }
+  }
+  return null;
+}
+
 const SKILL_MAP = {
   ataque_fatal: { cls: "huntress", lineage: "survival", role: "damage", system: "combate" },
   carga: { cls: "transknight", lineage: "trans", role: "damage", system: "combate" },
@@ -527,8 +558,24 @@ function buildItems() {
     const effects = Array.isArray(row.effects) ? row.effects : [];
     const names = [...new Set([...fieldEffects, ...(Array.isArray(row.effect_names) ? row.effect_names : [])])];
     names.forEach((n) => effectNames.add(n));
-    const name = sanitizeLabel(row.name, `item_catalog#${row.item_index}.name`);
-    const kind = classifyKind(name);
+    const curated = CURATED_ITEMS.get(row.item_index);
+    const name = curated?.name
+      ? sanitizeLabel(curated.name, `item_catalog#${row.item_index}.name`)
+      : sanitizeLabel(row.name, `item_catalog#${row.item_index}.name`);
+    const kind = curated?.kind ?? classifyKind(name);
+    const placeholder = PLACEHOLDER_NAMES.has(foldName(name));
+    const amount = fieldAmount(rawFields);
+    // `EF_AMOUNT` prova que o pack empilha; família de material entra pelo `kind` curado.
+    const stackable =
+      curated?.stackable ??
+      (placeholder ? false : kind !== null ? STACKABLE.has(kind) : (amount ?? 0) > 0);
+    const source = curated
+      ? "curadoria:game12_15"
+      : kind !== null
+        ? "rule:name_v1"
+        : stackable
+          ? "derivado:ef_amount"
+          : "derivado:conservador";
     return {
       ...row,
       name,
@@ -539,9 +586,9 @@ function buildItems() {
       system: classifySystem(name, kind, names),
       eventOnly: classifyEventOnly(name),
       tradeable: !names.includes("EF_NOTRADE"),
-      stackable: kind === null ? null : STACKABLE.has(kind),
-      source: kind === null ? "legacy" : "rule:name_v1",
-      confidence: kind === null ? null : 60,
+      stackable,
+      source,
+      confidence: curated ? 100 : kind !== null ? 60 : 80,
     };
   });
 
@@ -583,7 +630,7 @@ function emitItemSql({ source, items, effectNames }) {
   ].join(", ")})`);
 
   return [
-    "-- 0017_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).",
+    "-- 0018_seed_item_catalog: catálogo de itens do legado (3.220) + vocabulário EF_* (ADR-0009).",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     `-- Fonte: origin/main:${source.path} (sha256 ${source.sha256}).`,
     "-- Sanitização: NFC, LF, sem BOM/invisível/controle (modelo-banco §6.6).",
@@ -636,7 +683,7 @@ function emitSkillSql({ source, skills }) {
   ].join(", ")})`);
 
   return [
-    "-- 0018_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).",
+    "-- 0019_seed_skill_catalog: catálogo de skills do legado (151) (ADR-0009).",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     `-- Fonte: origin/main:${source.path} (sha256 ${source.sha256}).`,
     "",
@@ -774,7 +821,7 @@ function buildWorld() {
 
 function emitWorldSql(world) {
   const out = [
-    "-- 0019_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,",
+    "-- 0020_seed_mundo: mundo legado no banco (ADR-0009) — NPCs, lojas, prêmios por nível,",
     "-- spawns de guarda, mercador, configuração de jogo e regiões.",
     "-- GERADO por tools/content/gen-seed.mjs — NÃO EDITAR À MÃO.",
     "-- Insumos e hashes: tabela content_source (gravada por esta migração).",
@@ -1008,9 +1055,9 @@ function main() {
 
   mkdirSync(MIGRATIONS, { recursive: true });
   const files = [
-    ["0017_seed_item_catalog.sql", emitItemSql(item)],
-    ["0018_seed_skill_catalog.sql", emitSkillSql(skill)],
-    ["0019_seed_mundo.sql", emitWorldSql(world)],
+    ["0018_seed_item_catalog.sql", emitItemSql(item)],
+    ["0019_seed_skill_catalog.sql", emitSkillSql(skill)],
+    ["0020_seed_mundo.sql", emitWorldSql(world)],
   ];
   for (const [name, sql] of files) {
     const path = resolve(MIGRATIONS, name);

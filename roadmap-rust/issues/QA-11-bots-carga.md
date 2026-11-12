@@ -2,7 +2,7 @@
 
 > **ID canônico:** `QA-11`
 > **ID histórico:** `FASE-15-3`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-12:** 🟡 · crate `wyd-bots` joga pelo fio; falta a prova de carga/relatório de 200 bots. Ver `roadmap-rust/index.md`.
 
 **Fase:** 15 · **Depende de:** GAME-06, CLIENT-02, QA-05 · **Bloqueia:** QA-10 · **Esforço:** M
 
@@ -15,12 +15,14 @@ dentro do processo do servidor.
 ## Contexto / evidência
 
 A skill de harness existe (`wyd-rust-testing`, sucessora da `wyd-testing-bots`;
-`docs/rust/03-progresso.md` l. 166), mas **não há código de bot**: as
-crates são `wyd-{protocol,core,net,db,admin,sim,launcher}`. `pre-release-rust.md` FASE 15
-pede "carga de rede: harness contra `wyd-net` medindo pacotes/s, P99 e rejeições"; a
-definição da suíte que o `start-rust.md` citava (`pre-release-bots.md`) não está na árvore.
-Fronteiras: `docs/arquitetura/adr/0010-ia-npc-e-bots.md` (camada B); plano em
-`docs/rust/07-ia-e-bots.md`.
+`docs/rust/03-progresso.md`), e o crate **`crates/wyd-bots` já existe** (2026-11-10):
+`bot/{mod,movimento,combate,comercio,campanha,cena,recusa,config}.rs`, login/PIN/
+`CharacterLogin`, `Action`, `AttackOne`, loja e campanha pelo protocolo real;
+`tests/sistema/cena_campo.rs` é o harness vivo gated por `WYD_LIVE_CPSOCK`. O que falta é a
+**carga de 200 bots**, o relatório P50/P99/rejeições e a prova de política determinística no
+laboratório. `pre-release-rust.md` FASE 15 pede "carga de rede: harness contra `wyd-net`
+medindo pacotes/s, P99 e rejeições". Fronteiras: `docs/arquitetura/adr/0010-ia-npc-e-bots.md`
+(camada B); plano em `docs/rust/07-ia-e-bots.md`.
 
 ## Passos
 
@@ -71,19 +73,19 @@ nenhuma dependência do servidor em `wyd-bots`.
 
 ## Subtasks
 
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
+- [x] Sessão de protocolo real (`INITCODE` → `AccountLogin` → `AccountSecure` → `CharacterLogin`) em `crates/wyd-bots`.
+- [x] Ações jogáveis: `walk_to`/`action_at`, `attack_at`/`kill`, `open_shop`/`buy`, `quest`/`campaign`.
+- [x] Sem dependência de `wyd-core`/`wyd-db` no `Cargo.toml` do bot.
+- [ ] Política determinística por seed com golden em `wyd-sim`.
+- [ ] Carga de 200 bots + relatório P50/P99/rejeições.
+- [ ] Prova viva de dois bots em loopback (login → movimento → saída).
 
 ## Critérios de aceite
 
 - [ ] Bot conecta, autentica, move e sai por protocolo real (sem função interna do servidor).
 - [ ] Política determinística por seed, com golden em `wyd-sim`.
 - [ ] Carga de 200 bots com P99 e rejeições anexados.
-- [ ] `cargo tree -p wyd-bots` sem dependência de `wyd-core`/`wyd-db`.
+- [x] `cargo tree -p wyd-bots` sem dependência de `wyd-core`/`wyd-db`.
 
 ## Riscos / rollback
 

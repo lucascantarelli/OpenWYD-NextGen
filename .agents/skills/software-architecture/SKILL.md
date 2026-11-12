@@ -1,43 +1,30 @@
 ---
 name: software-architecture
-description: Aplica boas práticas de arquitetura e engenharia no WYD (Hot Path vs Cold Path, DOD/ECS, baixo acoplamento, C4, ADRs, rastreabilidade). Use ao desenhar módulos, dividir crates, definir fronteiras entre engine/rede/persistência/portal ou antes de qualquer refatoração estrutural.
+description: Aplica arquitetura e engenharia no WYD (Hot Path vs Cold Path, DOD/ECS, baixo acoplamento, SOLID/patterns idiomáticos, C4, ADRs, rastreabilidade). Use ao desenhar módulos, dividir crates, modelar domínios, refatorar condicionais ou definir fronteiras entre engine/rede/persistência/portal.
 ---
 
 # Arquitetura e engenharia (boas práticas)
 
-Referências: `start-rust.md` §§1–5, `pre-release-rust.md` §§0–1,
-`roadmap-rust/issues/FASE-13.md`, `docs/arquitetura/adr/`.
+Norma: `docs/arquitetura/estrutura-e-padroes.md` §1 (DAG), §5 (patterns), §6 (SOLID),
+§8 (fluxo), §10–§17 (árvores) e `docs/arquitetura/adr/` (decisões). Não copie DAG,
+tabela de patterns nem SOLID para a skill.
 
-## Princípios
+## Decisões específicas
 
-1. **Hot Path vs Cold Path.** Tick, física, combate e visibilidade vivem juntos
-   no mesmo espaço de memória (`wyd-core`); auth, billing, portal e batch vivem
-   fora, async. Nenhum salto de rede no loop do jogo — latência é requisito,
-   não preferência.
-2. **Dados antes de objetos.** DOD/ECS com componentes contíguos; sistemas
-   pequenos sobre dados, sem hierarquias profundas nem estado escondido em
-   singletons globais.
-3. **Fronteiras explícitas.** Cada crate tem um dono e um contrato: `wyd-protocol`
-   (bytes), `wyd-net` (transporte), `wyd-core` (regras), `wyd-db` (persistência),
-   `wyd-admin` (controle), `wyd-sim` (matemática), `wyd-launcher` (distribuição).
-   Dependência só na direção do estável para o volátil; sem ciclos entre crates.
-4. **Mudança estrutural via ADR.** Nova fronteira, novo threading, novo formato
-   ou nova dependência pesada exige ADR em `docs/arquitetura/adr/` (contexto → decisão →
-   consequências) antes do código.
-5. **Rastreabilidade.** Problema → issue (`roadmap-rust/`) → diagnóstico →
-   solução → teste → docs. Sem implementação órfã de issue.
-6. **Estrutura antes de código.** A árvore de módulos e a nomenclatura vivem em
-   `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002). Nenhum arquivo novo nas
-   `crates/` fora dessa árvore; `mod.rs` sem lógica; tabela gerada em
-   `generated/`; teste de integração em `tests/`. Criar arquivo "soltinho" na
-   raiz de `src/` é violação, não atalho.
+- Fronteira nova, threading novo, formato novo ou dependência pesada: **ADR aceita antes**
+  do código. Contexto → decisão → consequências; sem ADR não há “exceção temporária”.
+- Dependência só na direção estável → volátil, sem ciclo. `wyd-core` não conhece SQL,
+  socket ou portal; Cold Path fica fora do tick (AGENTS §2.1).
+- Escolha um pattern já adotado no §5/§6; não introduza DI framework, `dyn` no Hot Path,
+  herança simulada ou service locator. Genérico só com ganho medido.
+- Arquivo novo só na árvore do §10–§17 e listado na issue. `mod.rs` sem lógica; gerado em
+  `generated/`; teste no tipo/local do §7.
+- Se a mudança alterar fronteira, atualize o C4 (`docs/arquitetura/c4-pacotes.md`) e a
+  documentação viva na mesma entrega.
 
-## Checklist de desenho
+## Checklist
 
-- [ ] O tick continua sem I/O bloqueante, sem lock global e sem alocação quente?
-- [ ] A fronteira nova é testável isolada (contrato + mocks/fakes)?
-- [ ] Existe ADR? O diagrama C4 (nível 3–4) foi atualizado?
-- [ ] O que é observável (métrica/log) para operar isso em produção?
-- [ ] Cada arquivo novo está na árvore planejada (domínio, não "tipo de arquivo")?
-- [ ] Nomenclatura segue `estrutura-e-padroes.md` §4 (arquivo por domínio, campo
-      de fio com nome do legado)?
+- [ ] ADR existe e foi aceita antes da mudança estrutural?
+- [ ] DAG continua acíclico e a crate dona da regra não ganhou I/O?
+- [ ] A solução usa pattern/SOLID já documentado, sem abstração nova sem medida?
+- [ ] Árvore, C4 e issue listam os mesmos arquivos?

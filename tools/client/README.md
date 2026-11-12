@@ -32,6 +32,7 @@ offset de outro build não é evidência.
 | `captura.mjs` | gerar (`--gen`) e validar (`--check`) goldens do caminho login→campo | CLI única; fontes só de `payload.rs` + tabela de opcodes |
 | `captura-live.mjs` | converter captura JSON em fixtures / conferir com o servidor | CLI única |
 | `diff-captura.mjs` | diff de duas capturas (opcode, tamanho e offsets que mudaram) | CLI única |
+| `trade-layout.mjs` | decidir o layout de `MSG_Trade` (156 B natural × 154 B packed) e validar campos | CLI `<hex>` / `--self-test` |
 | `map-skills.mjs` | mapear skills do cliente para o catálogo | CLI única |
 | `captura-print.ps1` | screenshot da janela D3D9 (`PrintWindow`/`BitBlt`), exige elevação | operador, Windows |
 | `captura-sessao.ps1` | captura o handshake/login real (listeners 8281/80 + cliques), exige elevação | operador, Windows |

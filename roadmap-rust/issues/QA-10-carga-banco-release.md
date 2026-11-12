@@ -55,15 +55,6 @@ imagem builda e binário faz smoke.
 - `roadmap-rust/changelog.md` — QA-08 concluída (dashboards/painéis).
 - roadmap-rust/issues/QA-09-suite-concorrencia.md - suite base.
 
-## Subtasks
-
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
-
 ## Critérios de aceite
 
 - [ ] P99 sem regressão vs baseline; banco íntegro do zero; imagem + smoke OK.

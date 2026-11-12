@@ -75,12 +75,6 @@ jogar em pasta temporária + recusa de pacote adulterado na GUI.
 - [x] Reparo por hash (2026-11-12): `reparo.rs` + rotas `/api/launcher/cliente/{manifesto,arquivo/<caminho>}`; arquivo adulterado é rebaixado do portal e restaurado ao hash do manifesto (teste Rust com servidor HTTP + prova real em `client/`)
 - [x] Harness na pasta real (2026-11-12): `node tools/launcher/e2e-janela.mjs --cliente client` abre a janela com manifesto/canais reais e jogo falso, prova um processo e nenhuma mensagem de manifesto
 - [ ] Barra de progresso de patch + instalador NSIS
-- [ ] Codificar issue
-- [ ] Testar issue
-- [ ] Revisar issue
-- [ ] Documentar issue
-- [ ] Versionar issue, mergear branch e fechar issue
-- [ ] Limpar branch (se aplicável)
 
 ## Critérios de aceite
 

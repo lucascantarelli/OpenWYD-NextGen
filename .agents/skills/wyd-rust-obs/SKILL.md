@@ -5,22 +5,19 @@ description: Opera observabilidade e segurança do WYD em Rust (tracing, Prometh
 
 # Observabilidade e segurança Rust (wyd-rust-obs)
 
-Referências: `pre-release-rust.md` FASE 6, `roadmap-rust/issues/FASE-06.md`,
-`roadmap-rust/issues/FASE-12.md`.
+Norma: ADR-0018 (`docs/arquitetura/adr/0018-telemetria-tracing.md`),
+`docs/rust/06-observabilidade-runbooks.md` e `docs/rust/05-stack-docker.md` §4.
+Métricas, buckets, painéis e runbooks estão nesses documentos; não repita a lista.
 
-## Regras
+## Decisões específicas
 
-1. **Métricas do motor primeiro.** Latência de tick (P50/P95/P99), pacotes/s,
-   entidades ativas, memória, tamanho de filas — via `tracing` + Prometheus,
-   nunca `println!` como telemetria.
-2. **Segredo nunca em log.** Sem senhas, PINs, DSNs ou tokens em logs, métricas
-   ou traces (ver `.gitleaks.toml`).
-3. **Segurança no handshake.** Rate limiting, backpressure e sanitização estrita
-   do parser; input de rede nunca causa `panic!`.
-4. **Dashboards versionados.** Painéis e alertas (regressão de P99, falha de
-   migration) vivem no repo e sobem pelo pipeline.
+- Instrumente o motor e as filas com `tracing`/Prometheus; `println!` não é telemetria.
+- Segredo (senha, PIN, DSN, token) não entra em log, métrica, trace ou label.
+- Handshake e parser continuam hostis por padrão: rate limit, backpressure e validação
+  estrita antes do parse; entrada de rede não causa `panic!`.
+- Dashboard/alerta novo é versionado em `docker/monitoring/` e provado por
+  `make monitoring-check`; não crie painel manual fora do repo.
 
-## Antes de mudar
+## Prova
 
-Confira `docs/arquitetura/modelo-banco.md` para métricas de banco e a FASE-05
-para onde os gates de CI validam a instrumentação.
+`make monitoring-check` para o stack de observabilidade; `make check` para o código.

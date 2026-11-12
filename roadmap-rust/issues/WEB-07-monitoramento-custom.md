@@ -2,9 +2,9 @@
 
 > **ID canônico:** `WEB-07`
 > **ID histórico:** `PORTAL-01`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-12:** 🚧 · logs/export e páginas de monitoramento existem; faltam SSE, CPU/mem/rede e alertas acionáveis. Ver `roadmap-rust/index.md`.
 
-**Tipo:** Código (portal) · **Esforço:** L · **Depende de:** PROC-24, WEB-01 🚧 · **Bloqueia:** —
+**Tipo:** Código (portal) · **Esforço:** L · **Depende de:** PROC-24, WEB-01 ✅ · **Bloqueia:** —
 
 ## Objetivo
 
@@ -40,7 +40,7 @@ Saída esperada: typecheck 0, vitest verde; páginas com fonte fora degradam par
 
 ## Skills relacionadas
 
-- frontend-design, ui-ux-practices — cards/gráficos densos sem poluição.
+- wyd-web-admin-ui — BFF, `adminCall`, sessão e `no-store`.
 - wyd-rust-obs — métricas, tracing, runbooks.
 - software-architecture — BFF puro, falha isolada por fonte.
 
@@ -50,10 +50,18 @@ Saída esperada: typecheck 0, vitest verde; páginas com fonte fora degradam par
 
 ## Subtasks
 
-- [ ] SSE de logs + filtros + export
+- [x] Export de logs (`/api/logs/export`, staff, NDJSON, janela limitada) e página de logs com filtros.
+- [ ] SSE de logs ao vivo (`/api/logs/stream`) + filtros + export
 - [ ] Players × mobs + CPU/mem/rede + histórico
 - [ ] Saúde do DB via gateway
 - [ ] Alertas com acknowledge auditado
+
+## Gates
+
+```bash
+cd wyd-portal && npx tsc --noEmit && npx vitest run
+node tools/dev/monitoring-smoke.mjs
+```
 
 ## Critérios de aceite
 

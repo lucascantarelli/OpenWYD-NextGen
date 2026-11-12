@@ -70,8 +70,9 @@ sem telas novas): `daily_reward_admin` (lista/upsert/delete), `donate_admin`
 (loja + `credit_donate_balance` idempotente), `world_event_admin` (foto com
 horários + liga/desliga), `account_admin/list_accounts`/`get_account` (sem
 segredo) e `character_admin/grant_item` (fila idempotente com dreno no `Carry`) —
-prontas para as telas de operação do portal. Seguem `501` por falta de tabela:
-`daily_reward_admin/set_reward_item_enabled` e `donate_revenue_admin/*`.
+prontas para as telas de operação do portal. A rota legada
+`daily_reward_admin/set_reward_item_enabled` saiu do contrato (404);
+`donate_revenue_admin/*` responde com a receita real das tabelas de donate.
 
 ## Público × administração
 

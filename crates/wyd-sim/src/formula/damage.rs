@@ -188,4 +188,22 @@ mod tests {
         };
         assert_eq!(damage_chain(&entrada), 200);
     }
+
+    #[test]
+    fn worked_example_matches_documented_chain() {
+        let entrada = DamageInput {
+            base: 100,
+            attribute: 20,
+            gear_attack: 10,
+            skill_bps: Bps::from_percent(150),
+            buff_bps: Bps::from_percent(110),
+            crit_multiplier_bps: Bps::from_percent(200),
+            pierce: 30,
+            defense: 100,
+            resist_bps: Bps::from_percent(25),
+            absorb: 19,
+        };
+        // A conta completa está em docs/arquitetura/matematica-sim.md §3.2.1.
+        assert_eq!(damage_chain(&entrada), 250);
+    }
 }

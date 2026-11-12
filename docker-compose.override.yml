@@ -72,6 +72,12 @@ services:
     ports:
       - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
 
+  mkdocs:
+    # Referência interna de dev/admin: só loopback, nunca porta pública.
+    # O portal é o destino da documentação do jogador; aqui não há perfis.
+    ports:
+      - "127.0.0.1:${MKDOCS_PORT:-8000}:8000"
+
   portal:
     ports:
       - "127.0.0.1:${PORTAL_PORT:-3000}:3000" # UI de administração

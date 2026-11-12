@@ -4,7 +4,7 @@
 > **ID histórico:** `BUG-02`
 > **Estado 2026-11-12:** 🟢 · ver `roadmap-rust/index.md`.
 
-**Tipo:** Bug · **Esforço:** S · **Depende de:** GAME-17 ✅ · **Bloqueia:** onda 1 (jogável),
+**Tipo:** Bug · **Esforço:** S · **Depende de:** GAME-17 🚧 (código provado; mesma prova visual) · **Bloqueia:** onda 1 (jogável),
 GAME-18 (Campo de Treinamento), GAME-23 (bots)
 
 ## Objetivo
@@ -62,7 +62,7 @@ cargo fmt --all --check
 cargo clippy -p wyd-server --all-targets -- -D warnings
 cargo test -p wyd-server --lib
 WYD_LIVE_CPSOCK=127.0.0.1:8281 WYD_LIVE_ACCOUNT=qavivo01 WYD_LIVE_PASSWORD=... \
-  WYD_LIVE_SKIP_PIN=1 cargo test -p wyd-server --test cena_mobs -- --nocapture
+  WYD_LIVE_SKIP_PIN=1 cargo test -p wyd-server --test sistema_cena_mobs -- --nocapture
 ```
 
 Saída esperada: `pin result=deferred`/`skip` no log do canal, `character ok action=select`,
@@ -96,6 +96,69 @@ rajada de `CreateMob` e diálogo de NPC respondendo.
 - **Dependência:** o cliente/VM é a mesma prova que falta em `GAME-17` e `CLIENT-06`; sem ela a
   issue não fecha, mas o código não precisa de nova alteração conhecida.
 
+## Seções de prova no 7662 (roteiro 2026-11-12)
+
+> Roteiro consolidado de execução: [`docs/cliente/roteiro-prova-visual-7662.md`](../../docs/cliente/roteiro-prova-visual-7662.md).
+>
+> Executar na VM com o cliente 7662 e conta de teste. Separar sempre **prova viva de fio**
+> (teste automatizado) de **prova visual** (print + log do cliente); a primeira não substitui a
+> segunda. Preparação: `docs/cliente/depuracao.md` §1–§5.
+
+### A. Prova viva sem PIN (canal real)
+
+Com o canal 1 no ar e uma conta de teste sem PIN cadastrado:
+
+```bash
+WYD_LIVE_CPSOCK=127.0.0.1:8281 \
+WYD_LIVE_ACCOUNT=qavivo01 WYD_LIVE_PASSWORD='...' WYD_LIVE_SKIP_PIN=1 \
+  cargo test -p wyd-server --test sistema_cena_mobs -- --nocapture
+```
+
+Esperado no log: `pin result=skip reason=not_registered` (conta sem PIN) ou
+`pin result=deferred reason=selection_first` (seleção antes do PIN), seguido de
+`character ok action=select`, `UpdateScore`, `CreateMob` e resposta de diálogo de NPC.
+
+- [ ] Conta sem PIN não recebe `AccountSecureFail`
+- [ ] Seleção antes do PIN não encerra a conexão
+- [ ] `pin result=skip`/`deferred` e `character ok action=select` no log
+- [ ] Rajada de cena e diálogo de NPC observados no teste vivo
+- [ ] Tail do log anexado à issue
+
+### B. Prova visual no 7662
+
+1. Entrar com a conta de teste e escolher o personagem.
+2. Confirmar que **não** aparece “Falha ao conectar” e que o personagem entra na cena.
+3. Repetir com uma conta que tenha PIN: informar o PIN correto e entrar; informar um PIN errado
+   e confirmar a recusa visível.
+4. Sair e relogar; confirmar que não foi aberta uma segunda sessão para a mesma conta.
+
+- [ ] Conta sem PIN entra no mundo sem “Falha ao conectar”
+- [ ] Conta com PIN correto entra normalmente
+- [ ] PIN errado continua recusando com mensagem visível
+- [ ] PIN tardio não abre segunda sessão
+- [ ] Print da entrada e log `pin result=...`/`character ok` anexados
+
+### C. Gate de fechamento
+
+- [ ] A prova viva e a visual foram executadas em uma conta real, não só em teste unitário
+- [ ] O critério “cliente 7662 entra no mundo” tem print, não apenas log do servidor
+- [ ] Se a VM/cliente não estiver disponível, a issue permanece 🟢 **sem** marcar o aceite visual
+
+## Execução da Sessão A (2026-11-12)
+
+**Veredito: prova visual bloqueada por entrada sintética com geometria saudável; nenhum critério visual marcado.**
+
+- O cliente parou no server select e não processou mouse nem teclado injetados; `Fechar`
+  também não reagiu. Nenhum login saiu do cliente: sem `event=login`/`pin`/`character` no canal
+  e sem TCP em `8281`.
+- O `Config.bin` original usava `1024×768×32` e deixava o cliente com `1024×759` na tela
+  1366×768; o modo 7 (`800×600×32`) corrigiu a geometria para `800×600` exato. O erro de render
+  target e o descarte de input continuaram; modo 16 bits e GPU NVIDIA não mudaram o resultado.
+- A prova viva sem PIN (`WYD_LIVE_SKIP_PIN=1`) e a entrada no 7662 continuam pendentes; o
+  código e os testes de fio não mudaram nesta tentativa. Use o checklist humano do runbook §10.
+- Evidência local em `tmp/prova-visual-7662/` (`19-config-mode7.png`, `25-mode7-fechar.png`,
+  `canal.log`, `resumo.md`); runbook §9.5–§10. Issue segue 🟢 sem marcar o aceite visual.
+
 ## Riscos / rollback
 
 - Risco: PIN deixa de proteger a entrada → mitigação: a senha argon2id continua obrigatória antes;
@@ -107,4 +170,4 @@ rajada de `CreateMob` e diálogo de NPC respondendo.
 - `wyd-client-connect` — handshake, serverlist e diagnóstico do cliente 7662.
 - `wyd-rust-net` — parsers e sessão de entrada.
 - `rust-code-quality` / `rust-test-quality` — correção e prova de regressão.
-- `documentation-writer` — registro no painel e no changelog.
+- `docs/rust/02-execucao.md` §5 — registro no painel e no changelog.

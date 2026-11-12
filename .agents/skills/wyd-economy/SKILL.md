@@ -5,19 +5,23 @@ description: Balanceia economia e progressão do WYD (preços, drops, refino, co
 
 # Economia e progressão (Rust)
 
-> Sucessão PROC-18: mantido o nome; fonte de dados migrada para Postgres + `wyd-sim`. Fonte: `crates/wyd-db/`, `crates/wyd-sim/`, `docs/arquitetura/modelo-banco.md`.
+Norma: `docs/wyd/economia.md`, `docs/wyd/itens.md`, `docs/wyd/sistemas/refino.md`,
+`docs/arquitetura/matematica-sim.md` e `docs/arquitetura/modelo-banco.md`.
+Taxas, receitas, ordem de fórmula e tabelas de catálogo vivem nesses docs.
 
-## Regras
+## Decisões específicas
 
-1. **Valor vem de dado, não de código.** `item_catalog`/`skill_catalog`/`npc_template` no banco (seeds `DEV-ONLY`); taxas e drops versionados; sem catálogo no banco o mundo sobe sem NPCs.
-2. **Valide com simulação antes de tocar a engine.** Fórmulas puras em `crates/wyd-sim/src/formula/` (ordem base→atrib→equip→skill→buff→crit→defesa); cenários reproduzíveis + goldens (`cargo test -p wyd-sim`).
-3. **Ordem e paridade são contrato.** RNG/tick determinísticos; chamada nova no meio de caminho coberto por golden muda tudo — mude o teste com motivo, nunca remova asserção.
-4. **Cliente precisa conhecer o item.** Item novo no servidor sem entrada em `ItemList.bin`/`itemname.bin` fica invisível; preço ausente = linha ausente, não bug de código.
-5. **UNVERIFIED não calibra.** Curva celestial, coefs por classe×arma e DoT sem tabela canônica não viram verdade de balanceamento.
+- Valor vem de dado versionado (`item_catalog`, `skill_catalog`, `npc_template`, seeds
+  `DEV-ONLY`), não de constante enterrada no código. Sem catálogo no banco o mundo sobe
+  sem NPCs.
+- Valide a mudança em `wyd-sim`/golden antes de tocar a engine; fórmula só muda com
+  table-driven test e motivo.
+- Item novo precisa existir também no cliente (`ItemList.bin`/`itemname.bin`); preço
+  ausente é linha ausente, não bug de código.
+- UNVERIFIED (curva celestial, coefs classe×arma, DoT sem tabela) não calibra economia.
+- Registre antes/depois e a fonte do número na issue; não crie doc legado paralelo.
 
-## Rotina
+## Prova
 
-1. Meça (EXP/min, gold/min, itens/min) com harness/bot dedicado.
-2. Mude dado/flag; fórmula só com teste table-driven.
-3. `cargo test --workspace` + goldens de `loot`/`combat`/`refine`.
-4. Registre antes/depois e motivo na issue (não em doc legado).
+Simulação/goldens de `loot`/`combat`/`refine` com `cargo test -p wyd-sim`; depois
+`cargo test --workspace` e `make check`.

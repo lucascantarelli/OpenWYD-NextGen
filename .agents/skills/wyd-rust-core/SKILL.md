@@ -5,22 +5,21 @@ description: Desenvolve a engine Hot Path do WYD em Rust (crates/wyd-core): tick
 
 # Engine Rust (wyd-core)
 
-Referências: `pre-release-rust.md` FASE 3, `roadmap-rust/issues/FASE-03.md`,
-`docs/rust/00-visao-estrutura.md`.
+Norma: `docs/arquitetura/estrutura-e-padroes.md` §10 (árvore) e ADR-0001;
+`docs/arquitetura/matematica-sim.md` §3.3 (ordem do tick); `docs/arquitetura/protocolo.md` §5
+e ADR-0025 (`ESCENE_FIELD`). Não repita essas tabelas aqui.
 
-## Regras que quebram o servidor se ignoradas
+## Decisões específicas
 
-1. **Hot Path no mesmo espaço de memória.** Nada de gRPC/HTTP no tick loop;
-   Cold Path (auth, billing, portal) fica em `wyd-admin`/`wyd-db`, async e isolado.
-2. **DOD/ECS, nunca OOP espalhada no heap.** Dados contíguos (`Vec<Position>`,
-   `Vec<Stats>`); varreduras em lote, SIMD-friendly.
-3. **Sem `unsafe` fora de interop comprovada.** Erros tipados (`thiserror`/`anyhow`),
-   `Result`/`Option`; `cargo clippy -- -D warnings` limpo.
-4. **Determinismo.** Tick em frequência fixa; ordem de RNG/eventos é contrato;
-   `ESCENE_FIELD` (30000) continua sendo o pacote autoritativo de cena.
+- Alteração de regra entra em `wyd-core`; I/O, persistência e portal ficam no Cold Path.
+  Não mova regra de jogo para `wyd-server`/`wyd-net` só para “facilitar” a chamada.
+- A árvore módulo a módulo é o §10. Arquivo novo fora dela exige ADR; não crie `helpers.rs`
+  genérico nem estado global para evitar passar contexto.
+- Tick fixo, ordem de RNG/eventos e determinismo são contrato. Mudança nesses pontos exige
+  golden/determinism atualizado com motivo, não ajuste silencioso.
+- `ESCENE_FIELD` é o pacote autoritativo de cena; o layout está no protocolo/ADR-0025.
+  Cliente não dita posição, dano ou inventário.
 
-## Antes de mudar
+## Prova
 
-Árvore arquivo-a-arquivo: `docs/arquitetura/estrutura-e-padroes.md` §10.
-Leia o contrato em `crates/wyd-protocol/src/lib.rs` e `docs/arquitetura/protocolo.md` (§§1–5).
-Todo comportamento novo nasce com teste (`cargo test -p wyd-core`).
+`cargo test -p wyd-core` e o teste de determinismo; depois `make check` (gate do `AGENTS.md`).
