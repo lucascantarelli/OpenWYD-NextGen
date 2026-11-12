@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
 
 help:
 	@echo "Targets: fmt clippy build test check audit bench clean ci"
@@ -31,7 +31,7 @@ test: ## testes do workspace (skill: wyd-rust-toolchain)
 test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
 	$(CARGO) test --workspace --all-targets
 
-check: fmt clippy build test migrations-check issue-status-check ## gate completo — exigido por toda issue
+check: fmt clippy build test migrations-check issue-status-check tools-test ## gate completo — exigido por toda issue
 
 migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
 	node tools/content/check-migrations.mjs
@@ -81,6 +81,35 @@ docker-smoke: docker ## tamanho da imagem + `check` do launcher rodando no conta
 
 clean:
 	$(CARGO) clean
+
+clean-target: ## cache de build (target/, recreado pelo próximo cargo)
+	$(CARGO) clean
+
+clean-tmp: ## artefatos conhecidos de tmp/ (logs, drivers, E2E, instalação)
+	node tools/dev/clean-tmp.mjs --yes
+
+tools-test: ## testes do app apps/tools (node:test, sem dependências)
+	node --test apps/tools/test/
+
+tools-inventario: ## regenera docs/cliente/inventario-gerado.md a partir de client/
+	node apps/tools/bin/wyd-tools.mjs inventario client --out docs/cliente/inventario-gerado.md
+
+tools-binarios: ## docs/cliente/re-binarios.md (seções/imports/exports/strings/funções)
+	node apps/tools/bin/wyd-tools.mjs binarios client
+
+tools-strings: ## docs/cliente/re-strings.md (tabela de strings do WYD.exe)
+	node apps/tools/bin/wyd-tools.mjs strings client --bin WYD.exe
+
+tools-pacotes: ## docs/cliente/re-pacotes.md (opcodes × handlers × estruturas × capturas)
+	node apps/tools/bin/wyd-tools.mjs pacotes
+
+tools-re: tools-binarios tools-strings tools-pacotes ## todos os docs de RE do cliente
+
+tools-zip-check: ## confere client.zip contra client/manifest.txt (bytes reais)
+	node apps/tools/bin/wyd-tools.mjs zip-check client.zip --manifest client/manifest.txt
+
+client-zip: ## gera client.zip (entradas relativas, sem artefatos mutáveis)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/client-zip.ps1 -Client client -Out client.zip
 
 ci: check test-all bench-build audit deny ## espelho local do .github/workflows/rust.yml
 
@@ -138,9 +167,9 @@ stack-logs: ## segue os logs da stack
 # MSYS_NO_PATHCONV=1: sem isso o Git Bash no Windows converte /etc/prometheus em caminho
 # de host e o container recebe um workdir inválido. Em Linux a variável é inerte.
 monitoring-rules: ## promtool: config + regras + teste de disparo/resolução (FASE-12-1)
-	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
-	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
-	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
 
 monitoring-up: ## sobe Prometheus + Grafana + node-exporter (parte do `up` desde 2026-11-08)
 	docker compose up -d prometheus grafana node-exporter

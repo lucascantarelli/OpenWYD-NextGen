@@ -35,6 +35,10 @@ name = "contrato_identidade"
 path = "tests/contrato/identidade.rs"
 
 [[test]]
+name = "integracao_cliente_zip"
+path = "tests/integracao/cliente_zip.rs"
+
+[[test]]
 name = "golden_serverlist_paridade"
 path = "tests/golden/serverlist_paridade.rs"
 

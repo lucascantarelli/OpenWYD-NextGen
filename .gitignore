@@ -38,4 +38,10 @@
 # Tauri (FASE-08-8): schemas de ACL gerados pelo tauri-build a cada build.
 /apps/launcher-ui/gen/
 # Distribuição de artefatos (launcher/cliente): gerada, nunca versionada.
+# `client.zip` é o pacote de 186 MB publicado no GitHub Releases/Drive (ADR-0028);
+# o launcher o baixa pela URL configurada, nunca do repositório.
 /dist/
+/client.zip
+/client-*.zip
+# Cache do client.zip dentro da pasta do jogo, se ela estiver no repo.
+/.launcher-cache/

@@ -189,10 +189,8 @@ mod tests {
                     .unwrap_or("/");
                 match rotas.iter().find(|(rota, _)| rota == caminho) {
                     Some((_, corpo)) => {
-                        let cabeca = format!(
-                            "HTTP/1.0 200 OK\r\nContent-Length: {}\r\n\r\n",
-                            corpo.len()
-                        );
+                        let cabeca =
+                            format!("HTTP/1.0 200 OK\r\nContent-Length: {}\r\n\r\n", corpo.len());
                         let _ = fluxo.write_all(cabeca.as_bytes());
                         let _ = fluxo.write_all(corpo);
                     }
@@ -218,10 +216,7 @@ mod tests {
         fs::write(dir.join("jogo.dat"), b"adulterado").unwrap();
         let (base, _srv) = servidor(vec![
             (MANIFESTO_PATH.to_string(), texto.clone().into_bytes()),
-            (
-                format!("{ARQUIVO_PATH}jogo.dat"),
-                bom.clone(),
-            ),
+            (format!("{ARQUIVO_PATH}jogo.dat"), bom.clone()),
         ]);
         let rel = reparar(&dir, &base).unwrap();
         assert_eq!(rel.build, 7662);

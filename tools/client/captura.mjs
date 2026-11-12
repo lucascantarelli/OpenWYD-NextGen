@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { loadKeywordTable, transform } from './keytable.mjs';
 
-const ROOT = 'fixtures/cliente';
+const ROOT = 'crates/wyd-protocol/tests/fixtures/cliente';
 const OUT = 'docs/cliente/gerado/goldens.json';
 
 const SYNTHETIC = 'GOLDEN';
@@ -253,7 +253,7 @@ if (mode === '--gen') {
     for (const error of errors) console.log(`  - ${error}`);
   }
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, `${JSON.stringify({ source: 'fixtures/cliente/*.json', results }, null, 2)}\n`);
+  fs.writeFileSync(OUT, `${JSON.stringify({ source: 'crates/wyd-protocol/tests/fixtures/cliente/*.json', results }, null, 2)}\n`);
   const failed = results.filter((r) => !r.ok).length;
   console.log(`goldens: ${results.length - failed}/${results.length} válidos → ${OUT}`);
   process.exit(failed ? 1 : 0);

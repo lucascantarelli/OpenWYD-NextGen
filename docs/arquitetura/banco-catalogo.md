@@ -11,9 +11,9 @@
 
 ## 1. Resumo
 
-- migrations: **44** · última versão: **44**
-- tabelas: **84** · colunas: **608** · índices: **34** · funções: **1**
-- domínios: **18** · tabelas com dado provisório: **26**
+- migrations: **48** · última versão: **48**
+- tabelas: **86** · colunas: **617** · índices: **35** · funções: **1**
+- domínios: **18** · tabelas com dado provisório: **27**
 
 | Domínio | Tabelas |
 |---|---|
@@ -29,7 +29,7 @@
 | inventário | `character_items`, `vault_items`, `character_short_skill` |
 | moderação | `account_moderation` |
 | mundo | `content_source`, `npc_template`, `npc_definition`, `npc_shop_item`, `level_item`, `guard_spawn`, `guard_spawn_reward`, `mob_merc`, `game_setting`, `game_matrix`, `region`, `world_item_seed`, `guild_zone`, `map_definition`, `teleport_route` |
-| personagem | `characters`, `character_scores`, `character_chaos`, `character_learned_skill`, `character_special` |
+| personagem | `characters`, `character_scores`, `character_learned_skill`, `character_special`, `character_chaos` |
 | ponte web→jogo | `delivery_queue` |
 | progressão | `character_status`, `character_lineage`, `character_skills`, `character_affects` |
 | quests | `quest`, `quest_step`, `quest_reward`, `character_quest` |
@@ -1544,22 +1544,6 @@
 | `score_bonus` | `integer` | não |
 | `skill_bonus` | `integer` | não |
 
-### `character_chaos`
-
-- **Arquivo:** `0048_chaos_points.sql` · **Domínio:** personagem · **Estado:** confirmado
-- **Fonte:** docs/wyd/pesquisa-internet-2026-11-10.md §2.4 (Kersef + WYD Int) + RE do cliente 7662
-- **Nota:** CP (`-75..=75`); o byte do fio é `cp + 75` (`ChaosRate` em `pMob+0x11e`, cor do nome).
-- **PK:** `character_id`
-- **FK:** `character_id` → `characters`
-- **CHECK:** `character_chaos_cp`
-- **UNIQUE de tabela:** —
-- **Índices:** —
-
-| Coluna | Tipo | Nulo |
-|---|---|---|
-| `character_id` | `bigint` | não |
-| `cp` | `smallint` | não |
-
 ### `character_short_skill`
 
 - **Arquivo:** `0033_character_short_skill.sql` · **Domínio:** inventário · **Estado:** confirmado
@@ -1821,27 +1805,6 @@
 | `credits` | `bigint` | não |
 | `created_by` | `bigint` | sim |
 
-### `donate_debit`
-
-- **Arquivo:** `0045_donate_debito.sql` · **Domínio:** economia · **Estado:** confirmado
-- **Fonte:** FASE-07-6 — razão de `debit_donate_balance` (idempotência por chave)
-- **Nota:** Débito de saldo de donate com `idempotency_key` UNIQUE: repetir a chave devolve o razão existente sem debitar duas vezes. A baixa é condicional (`account_wallet.coin >= credits`), então débito concorrente não deixa saldo negativo.
-- **PK:** `id`
-- **FK:** `account_id` → `accounts` · `created_by` → `accounts`
-- **CHECK:** `donate_debit_credits`, `donate_debit_reason`
-- **UNIQUE de tabela:** `idempotency_key`
-- **Índices:** `donate_debit_account_at_idx`
-
-| Coluna | Tipo | Nulo |
-|---|---|---|
-| `id` | `bigint` | não |
-| `created_at` | `timestamp with time zone` | não |
-| `idempotency_key` | `text` | não |
-| `account_id` | `bigint` | não |
-| `credits` | `bigint` | não |
-| `reason` | `text` | não |
-| `created_by` | `bigint` | sim |
-
 ### `refine_pity`
 
 - **Arquivo:** `0043_piedade_refino.sql` · **Domínio:** refino · **Estado:** confirmado
@@ -1858,6 +1821,43 @@
 | `character_id` | `bigint` | não |
 | `slot` | `smallint` | não |
 | `pity` | `smallint` | não |
+
+### `donate_debit`
+
+- **Arquivo:** `0045_donate_debito.sql` · **Domínio:** economia · **Estado:** confirmado
+- **Fonte:** migration 0045 + FASE-07-6 (razão de débito de donate)
+- **Nota:** Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem debitar duas vezes. O saldo continua em `account_wallet.coin`; receita = `donate_credit` − `donate_debit`.
+- **PK:** `id`
+- **FK:** `account_id` → `accounts` · `created_by` → `accounts`
+- **CHECK:** —
+- **UNIQUE de tabela:** —
+- **Índices:** `donate_debit_account_at_idx` (account_id, created_at) ;
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `id` | `bigint` | não |
+| `created_at` | `timestamp with time zone` | não |
+| `idempotency_key` | `text` | não |
+| `account_id` | `bigint` | não |
+| `credits` | `bigint` | não |
+| `reason` | `text` | não |
+| `created_by` | `bigint` | sim |
+
+### `character_chaos`
+
+- **Arquivo:** `0048_chaos_points.sql` · **Domínio:** personagem · **Estado:** provisorio
+- **Fonte:** migration 0048 + docs/wyd/pesquisa-internet-2026-11-10.md §2.4
+- **Nota:** CP real (−75..=75) em tabela 1:1; o byte do cliente é `cp + 75` (`ChaosRate` em `pMob+0x11e`) e o deslocamento é feito na borda, nunca no SQL.
+- **PK:** `character_id`
+- **FK:** `character_id` → `characters`
+- **CHECK:** `character_chaos_cp`
+- **UNIQUE de tabela:** —
+- **Índices:** —
+
+| Coluna | Tipo | Nulo |
+|---|---|---|
+| `character_id` | `bigint` | não |
+| `cp` | `smallint` | não |
 
 ## 3. Decisões provisórias (D-Bxx)
 

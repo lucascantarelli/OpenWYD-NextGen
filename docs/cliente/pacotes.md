@@ -1,7 +1,7 @@
 # Pacotes do caminho login → campo
 
 > Tabela viva do contrato C↔S com o estado de cada pacote. `GERADO` = golden sintético
-> (`fixtures/cliente/*.json`) validado por `captura.mjs`. `PENDENTE` = só fechado com a
+> (`crates/wyd-protocol/tests/fixtures/cliente/*.json`) validado por `captura.mjs`. `PENDENTE` = só fechado com a
 > captura ao vivo (roteiro em `depuracao.md`). Tamanhos e fluxos vêm de
 > `protocol-spec.md` §3.5 + `flows.md`; o crate usa os mesmos valores (`payload.rs`).
 

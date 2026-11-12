@@ -28,7 +28,7 @@ Revisão completa do planejado com as skills vigentes como base
 | 12-1 (dashboards) | `wyd-rust-obs` | ✅ contrato 06-1 como única fonte |
 | 00-2/00-3, 01-2, 11-1, 14-1, 15-x | skills próprias | ✅ estrutura conforme; conteúdo diferido p/ execução (dependem de fases 🚧) |
 
-Caminhos citados nas issues existem no arquivo: `combat/`, `monitoring/`,
+Caminhos citados nas issues existem no arquivo: `combat/`, `docker/monitoring/`,
 `game-rules.md`, `config-ops.md`, `webserver/` (todos OK em
 `arquivo Go removido (2026-11)`). Exceções encontradas e **reparadas** (§3).
 

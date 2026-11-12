@@ -82,7 +82,7 @@ responde de verdade — `/api/health` chama `item_catalog/listItems`, não um `p
   `wyd_sessions_open`, `process_resident_memory_bytes`) — **nenhum nome novo**. A FASE-03-7
   acrescentou só `wyd_tick_budget_microseconds` (§7), porque o orçamento do tick depende de
   `WYD_TICK_HZ` (20–50 Hz) e um limiar fixo mentiria no alerta.
-- Scrape: um job por serviço no `monitoring/prometheus/prometheus.yml`; o job `wyd-server` segue
+- Scrape: um job por serviço no `docker/monitoring/prometheus/prometheus.yml`; o job `wyd-server` segue
   por descoberta de arquivo (`targets/wyd-server.json`), com um alvo por canal e o label `canal`
   que os painéis agrupam.
 

@@ -108,7 +108,7 @@ pub fn parse(text: &str) -> Result<Manifest, ManifestError> {
         }
         // `<hex> <tamanho> <caminho>`: o caminho é o resto da linha (espaços ok).
         let mut resto = line;
-        let mut token = |resto: &mut &str| -> Option<String> {
+        let token = |resto: &mut &str| -> Option<String> {
             let inicio = resto.find(|c: char| !c.is_whitespace())?;
             let depois = &resto[inicio..];
             let fim = depois.find(char::is_whitespace)?;
@@ -272,6 +272,28 @@ mod tests {
     const EXEMPLO: &str = "# wyd-launcher-manifest v1\nbuild 7662\nprotocol 12000\n\
         e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 0 vazio.dat\n\
         ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad 3 abc.dat\n";
+
+    #[test]
+    fn caminho_com_espaco_e_acento_e_o_resto_da_linha() {
+        // Caso real do cliente 7662: `Mesh/MeshTextureList - Cópia.bin`.
+        let dir = tmpdir("espaco");
+        let rel = "Mesh/MeshTextureList - Cópia.bin";
+        fs::create_dir_all(dir.join("Mesh")).unwrap();
+        fs::write(dir.join(rel), b"abc").unwrap();
+        let texto = format!(
+            "build 7662\nprotocol 12000\n{} 3 {rel}\n",
+            sha256::hex_of(b"abc")
+        );
+        let m = parse(&texto).unwrap();
+        assert_eq!(m.files.len(), 1);
+        assert_eq!(m.files[0].path, rel);
+        assert!(verify(&m, &dir).clean());
+        assert!(matches!(
+            parse("build 1\nprotocol 2\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 0 \n"),
+            Err(ManifestError::BadLine { .. })
+        ));
+        fs::remove_dir_all(&dir).ok();
+    }
 
     #[test]
     fn analisa_exemplo() {

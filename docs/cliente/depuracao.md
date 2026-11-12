@@ -67,7 +67,7 @@ Critério de fechamento: tail com `Size` anômalo para o `Type` (encoder culpado
 
 1. Toda captura real contém **conta e senha**: antes de versionar, substituir por
    `GOLDEN`/zeros e marcar `sanitized: true` + método no JSON.
-2. `fixtures/cliente/<fase>-<opcode>-<n>.json` segue o esquema de `captura.mjs`
+2. `crates/wyd-protocol/tests/fixtures/cliente/<fase>-<opcode>-<n>.json` segue o esquema de `captura.mjs`
    (`payloadHex`, `wireHex`, `checksum`, `header`, `fields`).
 3. Validar com `node tools/client/captura.mjs --check`; falha = fixture inválida, não gate quebrado.
 4. Nunca versionar `.pcap`, dumps de memória ou logs do WYD.

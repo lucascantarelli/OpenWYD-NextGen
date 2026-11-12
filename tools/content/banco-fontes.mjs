@@ -146,6 +146,21 @@ export const FONTES = {
       'Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem creditar duas vezes. ' +
       'O saldo mora em `account_wallet` (conta, não personagem); tabela própria (a série proíbe ALTER TABLE no up).',
   },
+  donate_debit: {
+    dominio: 'economia',
+    fonte: 'migration 0045 + FASE-07-6 (razão de débito de donate)',
+    estado: 'confirmado',
+    nota:
+      'Idempotency_key UNIQUE: repetir a chave devolve o mesmo razão sem debitar duas vezes. ' +
+      'O saldo continua em `account_wallet.coin`; receita = `donate_credit` − `donate_debit`.',
+  },
+  character_chaos: {
+    dominio: 'personagem',
+    fonte: 'migration 0048 + docs/wyd/pesquisa-internet-2026-11-10.md §2.4',
+    estado: 'provisorio',
+    nota:
+      'CP real (−75..=75) em tabela 1:1; o byte do cliente é `cp + 75` (`ChaosRate` em `pMob+0x11e`) e o deslocamento é feito na borda, nunca no SQL.',
+  },
   game_system: {
     dominio: 'catálogo',
     fonte: 'ADR-0009 + docs/wyd/sistemas.md',

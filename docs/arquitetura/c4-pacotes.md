@@ -65,7 +65,7 @@ Fora do caminho de jogo: `wyd-launcher` (valida/patcha `client/` via manifesto) 
 | Tabela `pKeyWord[512]` congelada | `crates/wyd-protocol/src/codec/generated/keyword_table.rs` |
 | Transformação + checksum | `crates/wyd-protocol/src/codec/keyword.rs`, `src/codec/checksum.rs` |
 | Payloads portados (auth, character, combat, commerce, inventory, movement, ui) | `crates/wyd-protocol/src/payload/` |
-| Goldens de fio (5 sintéticos, nunca capturados) | `fixtures/cliente/*.json` via `tools/client/captura.mjs --check` |
+| Goldens de fio (5 sintéticos, nunca capturados) | `crates/wyd-protocol/tests/fixtures/cliente/*.json` via `tools/client/captura.mjs --check` |
 
 ### 3.3 Transporte / limites (`wyd-net`)
 
@@ -102,7 +102,7 @@ O catálogo normativo está em `protocolo.md` §4 (opcodes), §5 (payloads porta
 
 | Fluxo | Pacotes (Type) | Produzido / consumido em |
 |---|---|---|
-| Login C2G | `AccountLogin 0x020D` (ClientVersion 12000) | `payload/auth.rs` + goldens `fixtures/cliente/account_login.json` |
+| Login C2G | `AccountLogin 0x020D` (ClientVersion 12000) | `payload/auth.rs` + goldens `crates/wyd-protocol/tests/fixtures/cliente/account_login.json` |
 | Confirmação S2C | opcodes `0x010A`–`0x011D` (`CNFAccountLogin`…`StillPlaying`) | `wire/generated/opcode_table.rs` (`Opcode::CNF*`) |
 | Entrada em campo | cena autoritativa `ESCENE_FIELD` (30000) | `wyd-core` (`lib.rs` reexport) |
 | Comércio/combina | `0x02C3`–`0x02C4` (`CombineItemLindy/Shany`) e família | `payload/commerce.rs`, `payload/combat.rs` |

@@ -15,12 +15,12 @@ make monitoring-check    # smoke: /-/ready, alvos, datasource e dashboard provis
 make monitoring-down
 ```
 
-Arquivos versionados: `docker-compose.monitoring.yml`, `monitoring/prometheus/`
+Arquivos versionados: `docker-compose.monitoring.yml`, `docker/monitoring/prometheus/`
 (`prometheus.yml`, `alerts.yml`, `alerts.test.yml`, `targets/wyd-server.json`), e
-`monitoring/grafana/` (`provisioning/` + `dashboards/wyd-saude.json`). Segredos
+`docker/monitoring/grafana/` (`provisioning/` + `dashboards/wyd-saude.json`). Segredos
 (`GRAFANA_PASSWORD`) vêm do `.env`, nunca destes arquivos.
 
-**Alvos do motor:** `monitoring/prometheus/targets/wyd-server.json` está **vazio** de
+**Alvos do motor:** `docker/monitoring/prometheus/targets/wyd-server.json` está **vazio** de
 propósito — não existe binário de servidor de jogo no workspace (só `wyd-launcher` tem
 `[[bin]]`), logo não há `/metrics` para raspar. Quando o serviço `tmserver` existir, o
 arquivo passa a listar `tmserver:9898` (um alvo por canal) e o Prometheus recarrega em 30 s.
@@ -78,7 +78,7 @@ chama o backend.
 1. `docker compose ps` / `docker compose logs --tail=200 <serviço do motor>`.
 2. `curl -s 127.0.0.1:9898/metrics | head` no host do motor — se não responde, o processo morreu
    ou o `MetricsServer` não foi iniciado.
-3. Verificar se os alvos em `monitoring/prometheus/targets/wyd-server.json` apontam para os
+3. Verificar se os alvos em `docker/monitoring/prometheus/targets/wyd-server.json` apontam para os
    containers certos (um alvo por canal: `server:9898` e `server-canal-2:9898`).
 4. O processo de um canal morre sem derrubar o outro: `docker compose ps server server-canal-2`
    e `docker logs wyd-canal-<n>` — o log de boot nomeia `channel`, `channels published` e a

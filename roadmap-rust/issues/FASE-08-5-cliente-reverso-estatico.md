@@ -34,6 +34,22 @@ Python, Ghidra ou rabin2; `objdump` (mingw64) e Node 26 disponíveis.
 **Redução de escopo registrada:** T2 (structs `STRUCT_MOB`/`ITEM`/`SELCHAR`) **não** fecha com
 método puramente estático sem decompilador. Transferido para a 08-6, que já dependia desta issue.
 
+## Fechamento da ferramenta (2026-11-12)
+
+O pipeline de `tools/client/` virou biblioteca e a porta de entrada passou a ser o app
+`apps/tools` (ADR-0028), que gera a documentação de RE por comando:
+
+| Entrega | Comando / evidência |
+|---|---|
+| PE por binário | `wyd-tools binarios client` — 11 PEs, 39 DLLs/642 imports, 3.089 exports, PDB quando presente (`ClientPatch.dll`) |
+| Strings | `wyd-tools strings client --bin WYD.exe` — 495 relevantes com offset/VA/seção |
+| Funções (inferência) | destinos de `call`/`jmp rel32` + prólogos; WYD.exe: 118 alvos, 2 prólogos — subconjunto, não mapa completo |
+| Pacotes | `wyd-tools pacotes` — 198 opcodes, 34 com referência no servidor, 164 sem, 1 struct, `0x010a` confirmado por `diff-selchar.json` |
+| Docs | `docs/cliente/re-{binarios,strings,pacotes}.md`, idempotentes (`make tools-re`) |
+
+Limite mantido: sem desmontagem completa nem nomes de variável do executável; frames de
+captura cifrados não são decodificados. Structs `STRUCT_MOB`/`ITEM`/`SELCHAR` continuam na 08-6.
+
 ## Arquivos
 
 - Criados: `tools/client/{README.md,pe.mjs,strings.mjs,keytable.mjs,evidence.mjs,formats.mjs,analyse.mjs}`,

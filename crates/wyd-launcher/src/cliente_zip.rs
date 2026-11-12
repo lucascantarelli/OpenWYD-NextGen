@@ -13,6 +13,16 @@
 //! O download usa `curl` do sistema quando a origem é URL. É deliberado: o
 //! launcher não carrega stack TLS própria, e `curl` existe no Windows 10+ e em
 //! Linux/macOS. Falha de `curl` é erro tipado, nunca arquivo vazio aceito.
+//!
+//! ## Fonte, hash e cache
+//!
+//! Precedência da origem: argumento (`instalar <dir> <zip|URL>`) > `--zip` >
+//! `WYD_LAUNCHER_CLIENT_ZIP`. O hash esperado do pacote vem de `--sha256` >
+//! `WYD_LAUNCHER_CLIENT_SHA256`; URL remota **exige** hash (fail-closed).
+//! Antes de qualquer requisição, o cache `<dir>/.launcher-cache/client-<sha>.zip`
+//! é validado pelo hash; se bater, o launcher reusa sem rede. Download vai para
+//! `*.part` no mesmo diretório, é verificado e só então renomeado — nunca deixa
+//! arquivo parcial no lugar do pacote bom.
 
 use std::fmt;
 use std::fs;
@@ -31,6 +41,10 @@ use crate::{portal_client, serverlist};
 pub const ZIP_ENV: &str = "WYD_LAUNCHER_CLIENT_ZIP";
 /// Variável com a URL/caminho do manifesto (padrão: `<dir>/manifest.txt`).
 pub const MANIFESTO_ENV: &str = "WYD_LAUNCHER_CLIENT_MANIFEST";
+/// Variável com o SHA-256 esperado do `client.zip` (obrigatório para URL).
+pub const ZIP_SHA256_ENV: &str = "WYD_LAUNCHER_CLIENT_SHA256";
+/// Subdiretório do jogo que guarda o pacote baixado.
+pub const CACHE_DIR: &str = ".launcher-cache";
 
 /// Erros tipados da instalação do cliente.
 #[derive(Debug)]
@@ -45,6 +59,13 @@ pub enum ClienteZipError {
     Divergente(String),
     /// Não foi possível baixar a origem.
     Download(String),
+    /// URL remota sem hash esperado (não há como validar integridade).
+    HashAusente,
+    /// Bytes baixados/lidos não conferem com o hash publicado.
+    HashDivergente {
+        esperado: String,
+        obtido: String,
+    },
     /// Pós-verificação do diretório falhou (backup restaurado).
     PosVerificacao(String),
     Serverlist(serverlist::ServerlistError),
@@ -59,6 +80,14 @@ impl fmt::Display for ClienteZipError {
             Self::Ausente(p) => write!(f, "arquivo do manifesto ausente no client.zip: {p}"),
             Self::Divergente(p) => write!(f, "entrada do client.zip diverge do manifesto: {p}"),
             Self::Download(e) => write!(f, "download do client.zip falhou: {e}"),
+            Self::HashAusente => write!(
+                f,
+                "client.zip remoto exige hash: defina --sha256 ou {ZIP_SHA256_ENV}"
+            ),
+            Self::HashDivergente { esperado, obtido } => write!(
+                f,
+                "client.zip corrompido: SHA-256 esperado {esperado}, obtido {obtido}"
+            ),
             Self::PosVerificacao(p) => {
                 write!(f, "pós-verificação falhou, backup restaurado: {p}")
             }
@@ -91,6 +120,10 @@ pub struct RelatorioInstalacao {
     pub serverlist_bytes: usize,
     /// Caminho da origem usada (URL ou arquivo).
     pub origem: String,
+    /// SHA-256 real dos bytes instalados (igual ao esperado quando configurado).
+    pub sha256: String,
+    /// `true` quando o pacote veio do cache local (sem nova requisição).
+    pub do_cache: bool,
 }
 
 /// Uma entrada de arquivo do ZIP (só o necessário para ler o payload).
@@ -116,34 +149,54 @@ fn diretorio(zip: &[u8]) -> Result<Vec<(String, EntradaZip)>, ClienteZipError> {
         .find(|&i| zip[i..i + 4] == [0x50, 0x4b, 0x05, 0x06])
         .ok_or_else(|| ClienteZipError::Zip("fim do diretório central ausente".into()))?;
     let total = u16_le(zip, eocd + 10).ok_or_else(|| ClienteZipError::Zip("EOCD curto".into()))?;
-    let mut off = u32_le(zip, eocd + 16).ok_or_else(|| ClienteZipError::Zip("EOCD curto".into()))?
-        as usize;
+    let mut off =
+        u32_le(zip, eocd + 16).ok_or_else(|| ClienteZipError::Zip("EOCD curto".into()))? as usize;
     let mut saida = Vec::with_capacity(total as usize);
     for _ in 0..total {
         if zip.get(off..off + 4) != Some(&[0x50, 0x4b, 0x01, 0x02]) {
             return Err(ClienteZipError::Zip("cabeçalho central inválido".into()));
         }
-        let flags = u16_le(zip, off + 8).ok_or_else(|| ClienteZipError::Zip("central curto".into()))?;
+        let flags =
+            u16_le(zip, off + 8).ok_or_else(|| ClienteZipError::Zip("central curto".into()))?;
         if flags & 0x1 != 0 {
             return Err(ClienteZipError::Zip("entrada criptografada".into()));
         }
-        let metodo = u16_le(zip, off + 10).ok_or_else(|| ClienteZipError::Zip("central curto".into()))?;
-        let comprimido = u32_le(zip, off + 20).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as usize;
-        let tamanho = u32_le(zip, off + 24).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as u64;
-        let nome_len = u16_le(zip, off + 28).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as usize;
-        let extra_len = u16_le(zip, off + 30).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as usize;
-        let comentario_len = u16_le(zip, off + 32).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as usize;
-        let local = u32_le(zip, off + 42).ok_or_else(|| ClienteZipError::Zip("central curto".into()))? as usize;
+        let metodo =
+            u16_le(zip, off + 10).ok_or_else(|| ClienteZipError::Zip("central curto".into()))?;
+        let comprimido = u32_le(zip, off + 20)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as usize;
+        let tamanho = u32_le(zip, off + 24)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as u64;
+        let nome_len = u16_le(zip, off + 28)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as usize;
+        let extra_len = u16_le(zip, off + 30)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as usize;
+        let comentario_len = u16_le(zip, off + 32)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as usize;
+        let local = u32_le(zip, off + 42)
+            .ok_or_else(|| ClienteZipError::Zip("central curto".into()))?
+            as usize;
         let nome = zip
             .get(off + 46..off + 46 + nome_len)
             .ok_or_else(|| ClienteZipError::Zip("nome fora do arquivo".into()))?;
         let nome = String::from_utf8_lossy(nome).into_owned();
         // Cabeçalho local: nome/extra podem ter tamanhos diferentes do central.
         if zip.get(local..local + 4) != Some(&[0x50, 0x4b, 0x03, 0x04]) {
-            return Err(ClienteZipError::Zip(format!("cabeçalho local inválido: {nome}")));
+            return Err(ClienteZipError::Zip(format!(
+                "cabeçalho local inválido: {nome}"
+            )));
         }
-        let nome_local = u16_le(zip, local + 26).ok_or_else(|| ClienteZipError::Zip("local curto".into()))? as usize;
-        let extra_local = u16_le(zip, local + 28).ok_or_else(|| ClienteZipError::Zip("local curto".into()))? as usize;
+        let nome_local = u16_le(zip, local + 26)
+            .ok_or_else(|| ClienteZipError::Zip("local curto".into()))?
+            as usize;
+        let extra_local = u16_le(zip, local + 28)
+            .ok_or_else(|| ClienteZipError::Zip("local curto".into()))?
+            as usize;
         let inicio_dados = local + 30 + nome_local + extra_local;
         if inicio_dados + comprimido > zip.len() {
             return Err(ClienteZipError::Zip(format!("dados truncados: {nome}")));
@@ -165,7 +218,7 @@ fn diretorio(zip: &[u8]) -> Result<Vec<(String, EntradaZip)>, ClienteZipError> {
 }
 
 /// Bytes descomprimidos de uma entrada (stored ou deflate).
-fn conteudo<'a>(zip: &'a [u8], nome: &str, e: &EntradaZip) -> Result<Vec<u8>, ClienteZipError> {
+fn conteudo(zip: &[u8], nome: &str, e: &EntradaZip) -> Result<Vec<u8>, ClienteZipError> {
     let bruto = zip
         .get(e.inicio_dados..e.inicio_dados + e.comprimido)
         .ok_or_else(|| ClienteZipError::Zip(format!("dados truncados: {nome}")))?;
@@ -190,54 +243,137 @@ fn conteudo<'a>(zip: &'a [u8], nome: &str, e: &EntradaZip) -> Result<Vec<u8>, Cl
     Ok(bytes)
 }
 
-/// Lê os bytes da origem: arquivo local ou URL (`curl`).
-pub fn baixar(origem: &str) -> Result<Vec<u8>, ClienteZipError> {
-    if origem.starts_with("http://") || origem.starts_with("https://") {
-        let destino = std::env::temp_dir().join(format!(
-            "wyd-client-{}-{}.zip",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis())
-                .unwrap_or(0)
-        ));
-        let saida = Command::new("curl")
-            .args(["-fsSL", "--max-time", "600", "-o"])
-            .arg(&destino)
-            .arg(origem)
-            .output()
-            .map_err(|e| ClienteZipError::Download(format!("curl indisponível: {e}")))?;
-        if !saida.status.success() {
-            let _ = fs::remove_file(&destino);
-            return Err(ClienteZipError::Download(format!(
-                "curl saiu com {}: {}",
-                saida.status,
-                String::from_utf8_lossy(&saida.stderr).trim()
-            )));
-        }
-        let bytes = fs::read(&destino).map_err(|e| ClienteZipError::Io(e.to_string()))?;
-        let _ = fs::remove_file(&destino);
-        Ok(bytes)
-    } else {
-        fs::read(origem).map_err(|e| ClienteZipError::Io(e.to_string()))
+/// Normaliza e valida um SHA-256 publicado (64 dígitos hex).
+pub fn normalizar_sha(texto: &str) -> Result<String, ClienteZipError> {
+    let sha = texto.trim().to_ascii_lowercase();
+    if sha.len() != 64 || !sha.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(ClienteZipError::Download(format!(
+            "hash SHA-256 inválido (esperado 64 hex): {texto}"
+        )));
     }
+    Ok(sha)
+}
+
+/// Caminho do pacote no cache local, nomeado pelo hash esperado.
+#[must_use]
+pub fn cache_path(dir: &Path, sha: &str) -> PathBuf {
+    dir.join(CACHE_DIR).join(format!("client-{sha}.zip"))
+}
+
+fn conferir_hash(bytes: &[u8], esperado: &str) -> Result<(), ClienteZipError> {
+    let obtido = sha256::hex_of(bytes);
+    if obtido != esperado {
+        return Err(ClienteZipError::HashDivergente {
+            esperado: esperado.to_string(),
+            obtido,
+        });
+    }
+    Ok(())
+}
+
+/// Obtém o `client.zip`: cache validado → arquivo local → URL (gravada de forma atômica).
+///
+/// Devolve `(bytes, veio_do_cache)`. Se `esperado` existe, o cache em
+/// `<dir>/.launcher-cache/client-<sha>.zip` é a primeira tentativa e não há nova
+/// requisição quando o hash confere. URL sem hash é recusada antes da rede.
+pub fn obter_zip(
+    dir: &Path,
+    origem: &str,
+    esperado: Option<&str>,
+) -> Result<(Vec<u8>, bool), ClienteZipError> {
+    let esperado = esperado.map(normalizar_sha).transpose()?;
+    let remoto = origem.starts_with("http://") || origem.starts_with("https://");
+    // Cache só para fonte remota: um caminho local explícito é override e é lido do disco.
+    if remoto {
+        if let Some(sha) = esperado.as_deref() {
+            let cache = cache_path(dir, sha);
+            if let Ok(bytes) = fs::read(&cache) {
+                if sha256::hex_of(&bytes) == sha {
+                    return Ok((bytes, true));
+                }
+            }
+        }
+    }
+
+    if !remoto {
+        let bytes = fs::read(origem).map_err(|e| {
+            ClienteZipError::Download(format!("arquivo local indisponível ({origem}): {e}"))
+        })?;
+        if let Some(sha) = esperado.as_deref() {
+            conferir_hash(&bytes, sha)?;
+        }
+        return Ok((bytes, false));
+    }
+
+    let sha = esperado.as_deref().ok_or(ClienteZipError::HashAusente)?;
+    let cache_dir = dir.join(CACHE_DIR);
+    fs::create_dir_all(&cache_dir).map_err(|e| ClienteZipError::Io(e.to_string()))?;
+    let temp = cache_dir.join(format!(
+        "client-{}-{}.part",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    let saida = Command::new("curl")
+        .args(["-fsSL", "--retry", "2", "--max-time", "600", "-o"])
+        .arg(&temp)
+        .arg(origem)
+        .output()
+        .map_err(|e| ClienteZipError::Download(format!("curl indisponível: {e}")))?;
+    if !saida.status.success() {
+        let _ = fs::remove_file(&temp);
+        return Err(ClienteZipError::Download(format!(
+            "fonte indisponível ({}): {}",
+            saida.status,
+            String::from_utf8_lossy(&saida.stderr).trim()
+        )));
+    }
+    let bytes = match fs::read(&temp) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            let _ = fs::remove_file(&temp);
+            return Err(ClienteZipError::Io(e.to_string()));
+        }
+    };
+    if let Err(e) = conferir_hash(&bytes, sha) {
+        let _ = fs::remove_file(&temp);
+        return Err(e);
+    }
+    let destino = cache_path(dir, sha);
+    if destino.exists() {
+        let _ = fs::remove_file(&destino);
+    }
+    if let Err(e) = fs::rename(&temp, &destino) {
+        let _ = fs::remove_file(&temp);
+        return Err(ClienteZipError::Io(format!(
+            "gravação atômica do cache falhou: {e}"
+        )));
+    }
+    Ok((bytes, false))
 }
 
 /// Carrega o manifesto do arquivo do diretório ou de uma origem remota/local.
 pub fn carregar_manifesto(dir: &Path, origem: Option<&str>) -> Result<Manifest, ClienteZipError> {
     match origem {
-        None | Some("") => Ok(manifest::load(&dir.join(crate::lancamento::MANIFESTO_PADRAO))?),
+        None | Some("") => Ok(manifest::load(
+            &dir.join(crate::lancamento::MANIFESTO_PADRAO),
+        )?),
         Some(origem) if origem.starts_with("http://") => {
             let (base, caminho) = dividir_url(origem)?;
             let api = portal_client::PortalApi::new(&base)
                 .map_err(|e| ClienteZipError::Download(e.to_string()))?;
-            let bytes = api.fetch_bytes(&caminho).map_err(|e| ClienteZipError::Download(e.to_string()))?;
+            let bytes = api
+                .fetch_bytes(&caminho)
+                .map_err(|e| ClienteZipError::Download(e.to_string()))?;
             let texto = String::from_utf8(bytes)
                 .map_err(|_| ClienteZipError::Zip("manifesto não é UTF-8".into()))?;
             manifest::parse(&texto).map_err(ClienteZipError::Manifesto)
         }
         Some(origem) => {
-            let texto = fs::read_to_string(origem).map_err(|e| ClienteZipError::Io(e.to_string()))?;
+            let texto =
+                fs::read_to_string(origem).map_err(|e| ClienteZipError::Io(e.to_string()))?;
             manifest::parse(&texto).map_err(ClienteZipError::Manifesto)
         }
     }
@@ -245,11 +381,14 @@ pub fn carregar_manifesto(dir: &Path, origem: Option<&str>) -> Result<Manifest, 
 
 /// `http://host[:porta]/caminho` → (`http://host[:porta]`, `/caminho`).
 fn dividir_url(url: &str) -> Result<(String, String), ClienteZipError> {
-    let resto = url
-        .strip_prefix("http://")
-        .ok_or_else(|| ClienteZipError::Download("só http:// é suportado no portal local".into()))?;
+    let resto = url.strip_prefix("http://").ok_or_else(|| {
+        ClienteZipError::Download("só http:// é suportado no portal local".into())
+    })?;
     match resto.find('/') {
-        Some(pos) => Ok((format!("http://{}", &resto[..pos]), resto[pos..].to_string())),
+        Some(pos) => Ok((
+            format!("http://{}", &resto[..pos]),
+            resto[pos..].to_string(),
+        )),
         None => Err(ClienteZipError::Download("URL sem caminho".into())),
     }
 }
@@ -262,9 +401,10 @@ pub fn instalar(
     dir: &Path,
     origem_zip: &str,
     origem_manifesto: Option<&str>,
+    sha256_esperado: Option<&str>,
 ) -> Result<RelatorioInstalacao, ClienteZipError> {
     let m = carregar_manifesto(dir, origem_manifesto)?;
-    let zip = baixar(origem_zip)?;
+    let (zip, do_cache) = obter_zip(dir, origem_zip, sha256_esperado)?;
     let entradas = diretorio(&zip)?;
     let mut novos: Vec<NewFile> = Vec::with_capacity(m.files.len());
     for e in &m.files {
@@ -291,8 +431,8 @@ pub fn instalar(
             .map(|d| d.as_secs())
             .unwrap_or(0)
     ));
-    let arquivos = patch::apply(dir, &novos, &backup)
-        .map_err(|e| ClienteZipError::Io(e.to_string()))?;
+    let arquivos =
+        patch::apply(dir, &novos, &backup).map_err(|e| ClienteZipError::Io(e.to_string()))?;
     let rel = manifest::verify(&m, dir);
     if !rel.clean() {
         let primeiro = rel
@@ -313,6 +453,8 @@ pub fn instalar(
         backup,
         serverlist_bytes: instalacao.bytes,
         origem: origem_zip.to_string(),
+        sha256: sha256::hex_of(&zip),
+        do_cache,
     })
 }
 
@@ -422,7 +564,7 @@ mod tests {
         ]);
         let zpath = dir.join("client.zip");
         fs::write(&zpath, &zip).unwrap();
-        let rel = instalar(&dir, zpath.to_str().unwrap(), None).unwrap();
+        let rel = instalar(&dir, zpath.to_str().unwrap(), None, None).unwrap();
         assert_eq!(rel.arquivos, 1);
         assert_eq!(rel.build, 7662);
         assert_eq!(fs::read(dir.join("jogo.dat")).unwrap(), conteudo);
@@ -430,7 +572,10 @@ mod tests {
             fs::read(dir.join(serverlist::FILE_NAME)).unwrap().len(),
             serverlist::BIN_SIZE
         );
-        assert!(!dir.join("ignorado.bin").exists(), "só o manifesto é instalado");
+        assert!(
+            !dir.join("ignorado.bin").exists(),
+            "só o manifesto é instalado"
+        );
     }
 
     #[test]
@@ -439,7 +584,7 @@ mod tests {
         let zip = zip_stored(&[("jogo.dat", b"vX")]);
         let zpath = dir.join("client.zip");
         fs::write(&zpath, zip).unwrap();
-        let erro = instalar(&dir, zpath.to_str().unwrap(), None).unwrap_err();
+        let erro = instalar(&dir, zpath.to_str().unwrap(), None, None).unwrap_err();
         assert!(matches!(erro, ClienteZipError::Divergente(_)), "{erro}");
         assert_eq!(fs::read(dir.join("jogo.dat")).unwrap(), b"antigo");
     }
@@ -450,7 +595,7 @@ mod tests {
         let zip = zip_stored(&[("outro.dat", b"v2")]);
         let zpath = dir.join("client.zip");
         fs::write(&zpath, zip).unwrap();
-        let erro = instalar(&dir, zpath.to_str().unwrap(), None).unwrap_err();
+        let erro = instalar(&dir, zpath.to_str().unwrap(), None, None).unwrap_err();
         assert!(matches!(erro, ClienteZipError::Ausente(_)), "{erro}");
     }
 
@@ -459,7 +604,7 @@ mod tests {
         let (dir, _) = preparar("trunc", b"v2");
         let zpath = dir.join("client.zip");
         fs::write(&zpath, b"PK\x03\x04lixo").unwrap();
-        assert!(instalar(&dir, zpath.to_str().unwrap(), None).is_err());
+        assert!(instalar(&dir, zpath.to_str().unwrap(), None, None).is_err());
     }
 
     /// ZIP de uma entrada só, com o método informado (0 stored, 8 deflate).
@@ -520,7 +665,7 @@ mod tests {
         let (dir, _) = preparar("deflate", dados);
         let zpath = dir.join("client.zip");
         fs::write(&zpath, zip_uma_entrada("jogo.dat", dados, &comprimido, 8)).unwrap();
-        let rel = instalar(&dir, zpath.to_str().unwrap(), None).unwrap();
+        let rel = instalar(&dir, zpath.to_str().unwrap(), None, None).unwrap();
         assert_eq!(rel.arquivos, 1);
         assert_eq!(fs::read(dir.join("jogo.dat")).unwrap(), dados);
     }

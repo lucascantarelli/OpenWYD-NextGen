@@ -1,7 +1,7 @@
 //! Guarda de contrato do monitoramento.
 //!
-//! Toda métrica Prometheus citada em `monitoring/grafana/dashboards/*.json` ou em
-//! `monitoring/prometheus/alerts.yml` precisa existir na exposição real do processo
+//! Toda métrica Prometheus citada em `docker/monitoring/grafana/dashboards/*.json` ou em
+//! `docker/monitoring/prometheus/alerts.yml` precisa existir na exposição real do processo
 //! (servidor + gateway) ou ser de uma fonte externa declarada (`node_*` do
 //! node-exporter). Todo `job="..."` precisa existir no scrape config, e todo alvo do
 //! job `wyd-server` precisa do label `canal` que os painéis agrupam.
@@ -182,7 +182,7 @@ fn metricas_de_paineis_e_alertas_existem_na_exposicao() {
 
     let mut citadas = Vec::new();
     let mut dashboards = 0;
-    let dir = raiz.join("monitoring/grafana/dashboards");
+    let dir = raiz.join("docker/monitoring/grafana/dashboards");
     for entrada in std::fs::read_dir(&dir).expect("diretório de dashboards") {
         let caminho = entrada.expect("entrada").path();
         if caminho.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -238,14 +238,14 @@ fn metricas_de_paineis_e_alertas_existem_na_exposicao() {
         dir.display()
     );
 
-    let alertas = ler(&raiz, "monitoring/prometheus/alerts.yml");
+    let alertas = ler(&raiz, "docker/monitoring/prometheus/alerts.yml");
     for linha in alertas.lines() {
         let Some(expr) = linha.trim().strip_prefix("expr:") else {
             continue;
         };
         for token in tokens_de_metrica(expr) {
             citadas.push((
-                PathBuf::from("monitoring/prometheus/alerts.yml"),
+                PathBuf::from("docker/monitoring/prometheus/alerts.yml"),
                 "regra".to_string(),
                 expr.trim().to_string(),
                 token,
@@ -270,7 +270,7 @@ fn metricas_de_paineis_e_alertas_existem_na_exposicao() {
 #[test]
 fn jobs_e_alvos_dos_exprs_existem_no_scrape_config() {
     let raiz = repo_root();
-    let scrape = ler(&raiz, "monitoring/prometheus/prometheus.yml");
+    let scrape = ler(&raiz, "docker/monitoring/prometheus/prometheus.yml");
     let jobs: HashSet<String> = scrape
         .lines()
         .filter_map(|linha| linha.trim().strip_prefix("- job_name:"))
@@ -282,7 +282,7 @@ fn jobs_e_alvos_dos_exprs_existem_no_scrape_config() {
     );
 
     let mut exprs = Vec::new();
-    let dir = raiz.join("monitoring/grafana/dashboards");
+    let dir = raiz.join("docker/monitoring/grafana/dashboards");
     for entrada in std::fs::read_dir(&dir).expect("dashboards") {
         let caminho = entrada.expect("entrada").path();
         if caminho.extension().and_then(|e| e.to_str()) != Some("json") {
@@ -303,7 +303,7 @@ fn jobs_e_alvos_dos_exprs_existem_no_scrape_config() {
         }
     }
     exprs.extend(
-        ler(&raiz, "monitoring/prometheus/alerts.yml")
+        ler(&raiz, "docker/monitoring/prometheus/alerts.yml")
             .lines()
             .filter_map(|linha| linha.trim().strip_prefix("expr:").map(str::to_string)),
     );
@@ -317,9 +317,11 @@ fn jobs_e_alvos_dos_exprs_existem_no_scrape_config() {
         }
     }
 
-    let alvos: Value =
-        serde_json::from_str(&ler(&raiz, "monitoring/prometheus/targets/wyd-server.json"))
-            .expect("targets JSON");
+    let alvos: Value = serde_json::from_str(&ler(
+        &raiz,
+        "docker/monitoring/prometheus/targets/wyd-server.json",
+    ))
+    .expect("targets JSON");
     let servicos = servicos_do_compose(&raiz);
     let mut canais = Vec::new();
     for alvo in alvos.as_array().expect("lista de alvos") {
@@ -347,7 +349,7 @@ fn jobs_e_alvos_dos_exprs_existem_no_scrape_config() {
 fn queries_do_portal_existem_na_exposicao_e_no_scrape() {
     let raiz = repo_root();
     let exposto = nomes_da_exposicao(&exposicao());
-    let scrape = ler(&raiz, "monitoring/prometheus/prometheus.yml");
+    let scrape = ler(&raiz, "docker/monitoring/prometheus/prometheus.yml");
     let jobs: HashSet<String> = scrape
         .lines()
         .filter_map(|linha| linha.trim().strip_prefix("- job_name:"))

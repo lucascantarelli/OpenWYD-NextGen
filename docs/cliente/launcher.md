@@ -135,6 +135,170 @@ launcher v1 = **opcional** (o jogo autentica no CPSock; o launcher não guarda s
 4. Teste: máquina limpa instala → abre → atualiza → joga; pacote adulterado
    recusado na GUI como na CLI.
 
+### 7.1 Cliente real: manifesto, canais, `client.zip` e reparo (2026-11-12)
+
+`client/` é o cliente 7662 jogável (ignorado no git). O launcher só abre com o
+manifesto verde, e o manifesto é **derivado dos bytes reais** — nenhum hash,
+tamanho ou canal é digitado à mão:
+
+```bash
+# manifesto (7131 arquivos no cliente real; `--check` recusa manifesto que mente)
+node tools/launcher/dist-manifest.mjs client 7662 12000
+node tools/launcher/dist-manifest.mjs client 7662 12000 --check
+
+# canais derivados de client/serverlist.bin + nome de client/sn.bin
+node tools/launcher/canais.mjs client
+node tools/launcher/canais.mjs client --check   # e reproduz o .bin byte a byte
+
+# portão do jogador (mesmo `manifest::verify` do Jogar, sem abrir jogo)
+cd client && ./WYDLauncher.exe --check
+```
+
+O formato do manifesto ganhou caminhos com espaço/não-ASCII (o caminho é o resto
+da linha; ex.: `Mesh/MeshTextureList - Cópia.bin`). Ficam **fora** do manifesto
+os artefatos mutáveis ou de ambiente — `manifest.txt`, `canais.txt`,
+`launcher.conf`, `WYDLauncher.exe`, `serverlist.bin`, `serverlist.txt`, `sn.bin`
+e `*.bak/*.tmp/*.part/*.pdb` — porque o launcher os reescreve ao jogar; incluí-los
+deixaria o `--check` vermelho depois do primeiro Jogar.
+
+**Instalar/atualizar pelo `client.zip`** (origem configurável; o pacote é lido
+pelo leitor de ZIP do launcher, métodos stored/deflate, e cada entrada é
+conferida contra o manifesto antes de qualquer escrita):
+
+```bash
+# override explícito (argumento)
+wyd-launcher instalar client C:/dist/client.zip
+
+# fonte configurada + hash publicado (URL exige hash)
+WYD_LAUNCHER_CLIENT_ZIP=https://.../client.zip \
+WYD_LAUNCHER_CLIENT_SHA256=<64-hex> \
+  wyd-launcher instalar client
+# manifesto: por padrão <dir>/manifest.txt; para host, use o endpoint http://
+# do portal (`/api/launcher/cliente/manifesto`) via WYD_LAUNCHER_CLIENT_MANIFEST
+
+# flags equivalentes
+wyd-launcher instalar client --zip https://.../client.zip --sha256 <64-hex>
+```
+
+**Precedência:** origem = argumento/`--zip` > `WYD_LAUNCHER_CLIENT_ZIP`;
+hash = `--sha256` > `WYD_LAUNCHER_CLIENT_SHA256`; manifesto = argumento/`--manifesto`
+> `WYD_LAUNCHER_CLIENT_MANIFEST` > `<dir>/manifest.txt`. O cache local é consultado
+**antes da rede**: `<dir>/.launcher-cache/client-<sha>.zip`, validado pelo hash;
+se bater, a execução seguinte não faz requisição. O download vai para
+`client-<pid>-<nanos>.part` no mesmo diretório, é verificado e só então renomeado
+para o nome final — hash divergente, download interrompido ou fonte fora do ar
+removem o `.part` e mantêm o cliente anterior intacto.
+
+Depois de aplicar, o `serverlist.bin` é **sempre** regenerado do `canais.txt`.
+URL usa o `curl` do sistema (Windows 10+/Linux/macOS), então GitHub/Drive
+funcionam sem stack TLS embutida; caminho local dispensa rede e hash (quando
+informado, também é conferido). Zip64 e entradas criptografadas são recusados
+com erro tipado.
+
+Prova automatizada: `cargo test -p wyd-launcher --test integracao_cliente_zip`
+(7 testes; servidor HTTP de loopback, contador de requisições, hash errado,
+download truncado, fonte indisponível, cache corrompido e reuso de cache). Há também um smoke
+real de HTTPS contra um asset público do GitHub Releases, ignorado no gate por
+depender de rede:
+
+```bash
+cargo test -p wyd-launcher --test integracao_cliente_zip -- --ignored
+# baixa https://github.com/cli/cli/releases/download/v2.62.0/gh_2.62.0_checksums.txt,
+# confere o SHA-256 fixo e prova o cache na segunda chamada
+```
+
+**Reparo por hash** (portal serve o manifesto e os bytes do cliente):
+
+```bash
+# portal: WYD_CLIENT_DIR aponta para a cópia íntegra que ele publica
+WYD_CLIENT_DIR=/srv/wyd/client npx next start -p 3000
+wyd-launcher reparo client http://127.0.0.1:3000
+```
+
+Rotas públicas `GET /api/launcher/cliente/manifesto` e
+`GET /api/launcher/cliente/arquivo/<caminho>` (caminho relativo seguro, sem
+`..`/drive/barra invertida; ausente = 404). O launcher confere tamanho + SHA-256
+do que baixou e aplica com backup; `--check` volta a passar. O hash divergente
+continua bloqueando o Jogar até o reparo terminar verde.
+
+**Janela na pasta real:** `node tools/launcher/e2e-janela.mjs --cliente client`
+abre o `client/WYDLauncher.exe` com o manifesto/canais reais e um jogo falso
+(`e2e-jogo.exe`, via `WYD_LAUNCHER_DIR`/`WYD_LAUNCHER_EXE`), provando um único
+processo aberto e nenhuma mensagem de manifesto. O `WYD.exe` real nunca é
+executado nem alterado.
+
+### 7.2 Onde hospedar o `client.zip` (186 MB)
+
+O pacote **não entra no git** (`.gitignore`: `client.zip`, `client-*.zip`). A
+recomendação é **GitHub Releases** do próprio repositório: gratuito para
+arquivos grandes, versionado por tag, CDN do GitHub e URL estável para o
+launcher. O `gh` já está autenticado nesta máquina.
+
+```bash
+# 1. gerar e conferir contra o manifesto (nunca publicar sem isso)
+make client-zip
+make tools-zip-check
+sha256sum client.zip          # hash que o launcher vai exigir
+
+# 2. publicar como asset de uma release (tag nova a cada troca de cliente)
+gh release create client-7662-r1 client.zip \
+  --title "Cliente 7662 r1" \
+  --notes "SHA-256: $(sha256sum client.zip | cut -d' ' -f1)"
+# asset: https://github.com/lucascantarelli/wyd/releases/download/client-7662-r1/client.zip
+
+# 3. apontar o launcher (ambiente do jogador ou `launcher.conf` publicado)
+#    WYD_LAUNCHER_CLIENT_ZIP=https://github.com/lucascantarelli/wyd/releases/download/client-7662-r1/client.zip
+#    WYD_LAUNCHER_CLIENT_SHA256=$(sha256sum client.zip | cut -d' ' -f1)
+#    manifesto: client/manifest.txt (padrão) ou http://<portal>/api/launcher/cliente/manifesto
+```
+
+**Publicado em 2026-11-12** (autorização do dono; invariante 8 atualizada):
+
+- release: `client-7662-r1` — https://github.com/lucascantarelli/wyd/releases/tag/client-7662-r1
+- asset: https://github.com/lucascantarelli/wyd/releases/download/client-7662-r1/client.zip
+- tamanho: **194.850.675 B** · SHA-256: `aa9f2feded016ddd9fc57e28040417b05ed5e8581277a98b9ccdaa041c117a72`
+- verificação: asset baixado de novo, hash idêntico e `cmp` byte-a-byte contra o `client.zip` local; o ZIP confere os 7.131 arquivos do manifesto (`make tools-zip-check`).
+
+Configuração do launcher (ambiente do jogador):
+
+```bash
+WYD_LAUNCHER_CLIENT_ZIP=https://github.com/lucascantarelli/wyd/releases/download/client-7662-r1/client.zip
+WYD_LAUNCHER_CLIENT_SHA256=aa9f2feded016ddd9fc57e28040417b05ed5e8581277a98b9ccdaa041c117a72
+```
+
+**Run real com cache vazio** (diretório só com `manifest.txt` + `canais.txt`, 2026-11-12):
+
+```text
+cliente instalado: build 7662 · 7131 arquivo(s) · serverlist 7040 byte(s) · backup tmp/prova-release.zip-bak-7662-…
+SHA-256: aa9f2feded016ddd9fc57e28040417b05ed5e8581277a98b9ccdaa041c117a72
+origem: https://github.com/lucascantarelli/wyd/releases/download/client-7662-r1/client.zip
+```
+
+Hash errado contra a mesma URL (exit 1, sem instalar e sem `.part`):
+
+```text
+instalação recusada: client.zip corrompido: SHA-256 esperado aaaa…aaaa, obtido aa9f2feded016ddd9fc57e28040417b05ed5e8581277a98b9ccdaa041c117a72
+```
+
+**Quando o cliente muda** (novo build, patch ou asset): rode `make client-zip`,
+`make tools-zip-check` e publique uma tag nova; atualize **juntos** o
+`WYD_LAUNCHER_CLIENT_SHA256` e o manifesto (o manifesto é derivado dos mesmos
+bytes). Hash antigo no jogador + ZIP novo = recusa por `HashDivergente`, nunca
+instalação parcial.
+
+Alternativas avaliadas:
+
+| Serviço | Veredito |
+|---|---|
+| **GitHub Releases** | **Recomendado**: grátis, versionado por tag, CDN, URL direta estável, `gh` automatiza o upload |
+| Google Drive | Funciona, mas o link de compartilhamento não é download direto: exige `confirm=t` e cota; o `curl` do launcher segue redirect e funciona, porém sem versionamento por tag nem CDN previsível |
+| S3/R2/Bunny | Bom para produção com muitos jogadores (cache, métricas), mas exige conta/credenciais e custo de saída |
+
+O manifesto publicado precisa ser o **mesmo** com que o ZIP foi conferido; por
+isso o passo 1 gera os dois juntos. Enquanto o manifesto não for assinado, um
+terceiro que controle o host pode trocar manifesto+ZIP: assinar (Ed25519) é a
+pendência registrada para fechar essa lacuna.
+
 ## 8. Entrega do `serverlist.bin` (contrato, 2026-11-08)
 
 O launcher é quem escreve o `serverlist.bin` (papel 4 do §1). O formato está decodificado em

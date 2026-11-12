@@ -16,7 +16,7 @@ histórico de planejamento). Regras vigentes:
 - **Trabalho Rust vive em:** `crates/wyd-{protocol,core,net,db,admin,server,sim,launcher}/`,
   `Cargo.toml` (workspace), `rust-toolchain.toml`, `docs/arquitetura/`, `docs/rust/`,
   `docs/cliente/`, `roadmap-rust/`, `wyd-portal/` (Cold Path), `tools/` (análise/geração),
-  `fixtures/cliente/` (goldens).
+  `crates/wyd-protocol/tests/fixtures/cliente/` (goldens).
 - **Skills Rust vigentes** (use estas para código Rust; não use skills Go legadas como norma):
   `wyd-rust-core` (engine/Hot Path), `wyd-rust-net` (transporte/protocolo),
   `wyd-rust-db` (persistência), `wyd-rust-sim` (laboratório matemático),
@@ -72,7 +72,7 @@ externo — tudo num único repositório.
 | `docs/cliente/` | Dossiê do cliente (inventário, RE, pacotes, depuração) | Markdown + gerados |
 | `docs/rust/` | Execução Rust (visão, dependências, ciclo, progresso, stack-docker) | Markdown |
 | `tools/` | Análise e geração (client/protocol), nunca runtime | Node |
-| `fixtures/cliente/` | Goldens sintéticos de pacote (validados por `captura.mjs`) | JSON |
+| `crates/wyd-protocol/tests/fixtures/cliente/` | Goldens sintéticos de pacote (validados por `captura.mjs`) | JSON |
 | `.agents/skills/` | Skills vigentes `wyd-rust-*` + boas práticas + cliente | Markdown |
 
 O objetivo: **servidor WYD2 em Rust operacional, com login pelo cliente 7662,
@@ -139,7 +139,9 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
    (ver `docs/arquitetura/modelo-banco.md`) que o servidor drena. O portal é BFF: só lê
    e envia intenções auditadas via `wyd-admin`.
 8. **`client/` não é versionado.** ~344 MB de binários proprietários; fica no `.gitignore`.
-   Nunca commite, nunca inclua no contexto de build do Docker, nunca redistribua.
+   Nunca commite nem inclua no contexto de build do Docker. A distribuição autorizada é
+   **somente** pelo asset `client.zip` da release oficial do repositório
+   (`client-7662-r1`), com hash fixado no launcher; não redistribua fora desse canal.
    Backup antes de escrever; patch só por ferramenta (`wyd-launcher`).
 
 ### Regras do portal
@@ -165,7 +167,7 @@ transitórias que parecem bug. Faça o deploy, **espere** o teste humano termina
 | Banco (ER, CHECKs, migrations, delivery_queue, seeds) | `docs/arquitetura/modelo-banco.md` + `crates/wyd-db/` |
 | Visão de pastas (inventário, responsabilidade, anti-sprawl, cliente↔launcher) | `docs/arquitetura/visao-pastas.md` |
 | ADRs (monolito, ECS, binário, async, launcher) | `docs/arquitetura/adr/` (rito FASE-13-1) |
-| Cliente: inventário, superfície, RE, pacotes, depuração, customização | `docs/cliente/` + `tools/client/` + `fixtures/cliente/` |
+| Cliente: inventário, superfície, RE, pacotes, depuração, customização | `docs/cliente/` + `apps/tools/` + `tools/client/` + `crates/wyd-protocol/tests/fixtures/cliente/` |
 | Execução Rust (ciclo, gates, DoD, revisão, doc viva) | `docs/rust/02-execucao.md` |
 | Dependências Rust (catálogo, decisão offline, como adicionar) | `docs/rust/01-dependencias.md` |
 | Stack Docker (crates→deployáveis, o que sobe, proibições) | `docs/rust/05-stack-docker.md` |

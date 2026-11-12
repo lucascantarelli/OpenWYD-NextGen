@@ -66,6 +66,10 @@ jogar em pasta temporária + recusa de pacote adulterado na GUI.
 - [x] Arte da janela (2026-11-12): ICO fornecido pelo dono em `apps/launcher-ui/icons/icon.ico` e fundo embutido como `data:` URI (`branding::fundo_data_uri`), com teste de determinismo
 - [x] E2E WebDriver real (2026-11-12): `tools/launcher/e2e-janela.mjs` (tauri-driver + msedgedriver) abre a janela do exe na pasta do jogo, confere DOM/notícia, clica Jogar (1 processo) e fail-closed sem escrita
 - [x] Portal do launcher (2026-11-12): `/configuracoes/launcher` (publica `launcher.conf` assinado + histórico) e `/monitoramento/launcher` (telemetria por versão + operação)
+- [x] Cliente real jogável (2026-11-12): `client/manifest.txt` derivado de 7.131 arquivos reais e `client/canais.txt` derivado de `serverlist.bin`/`sn.bin` (`dist-manifest.mjs`/`canais.mjs`, ambos com `--check`); manifesto aceita caminho com espaço; `cd client && ./WYDLauncher.exe --check` = 7.131 íntegros, exit 0
+- [x] Instalação/atualização por `client.zip` (2026-11-12): leitor ZIP (stored/deflate) em `cliente_zip.rs`, origem configurável (`WYD_LAUNCHER_CLIENT_ZIP`/`WYD_LAUNCHER_CLIENT_MANIFEST`, local ou URL via `curl`), verificação por manifesto e `serverlist.bin` sempre regenerado
+- [x] Reparo por hash (2026-11-12): `reparo.rs` + rotas `/api/launcher/cliente/{manifesto,arquivo/<caminho>}`; arquivo adulterado é rebaixado do portal e restaurado ao hash do manifesto (teste Rust com servidor HTTP + prova real em `client/`)
+- [x] Harness na pasta real (2026-11-12): `node tools/launcher/e2e-janela.mjs --cliente client` abre a janela com manifesto/canais reais e jogo falso, prova um processo e nenhuma mensagem de manifesto
 - [ ] Barra de progresso de patch + instalador NSIS
 - [ ] Codificar issue
 - [ ] Testar issue

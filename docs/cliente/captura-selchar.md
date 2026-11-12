@@ -13,7 +13,7 @@ conta de teste com senha e **senha numérica** cadastradas.
 | Peça | Papel |
 |---|---|
 | `tools/client/captura-live.mjs --alvo <ip:porta>` | proxy CPSock entre o cliente e o canal real; grava cada frame com direção |
-| `tools/client/captura-live.mjs --from <json> --fixtures fixtures/cliente/real` | converte a captura em fixtures (corpo do PIN mascarado) |
+| `tools/client/captura-live.mjs --from <json> --fixtures crates/wyd-protocol/tests/fixtures/cliente/real` | converte a captura em fixtures (corpo do PIN mascarado) |
 | `tools/client/diff-captura.mjs --a <a.json> --b <b.json>` | diff de bytes entre duas capturas e candidatos a offset |
 | `tools/client/serverlist.mjs` | aponta/restaura o `serverlist.bin` do cliente |
 
@@ -81,7 +81,7 @@ que mudaram** com o valor dos dois lados. A regra de leitura:
 
 ```bash
 node tools/client/captura-live.mjs --from tmp/captura-selchar-b.json \
-  --fixtures fixtures/cliente/real --canal 2
+  --fixtures crates/wyd-protocol/tests/fixtures/cliente/real --canal 2
 node tools/client/captura.mjs --check
 ```
 
@@ -96,7 +96,7 @@ Regras de higiene (`docs/cliente/depuracao.md` §5), reforçadas aqui:
 
 Só depois do diff: abrir a issue de corpo de pacote, criar o tipo em
 `crates/wyd-protocol/src/payload/character.rs` com os offsets provados, teste de ida-e-volta e
-golden em `fixtures/cliente/`. Campo sem diff continua `UNVERIFIED` — invariante 5 do `AGENTS.md`.
+golden em `crates/wyd-protocol/tests/fixtures/cliente/`. Campo sem diff continua `UNVERIFIED` — invariante 5 do `AGENTS.md`.
 
 ## Layout provisório `rust-v1` (o que já é verdade hoje)
 

@@ -29,7 +29,12 @@ offset de outro build não é evidência.
 | `serverlist.mjs` | gerar/inspecionar `serverlist.bin` (grade 10×11×64, ofuscação própria) | CLI `--in/--out` e `--print`; dados em `serverlist-servers.txt` |
 | `extract-tables.mjs` | tabelas de dados (`ItemList.bin`, `SkillData.bin`): XOR, registro e perfil de colunas | CLI única; grava `docs/cliente/gerado/tabelas.json` |
 | `analyse.mjs` | orquestrar e gravar artefatos | CLI única; nada de lógica de análise aqui |
-| `captura.mjs` | gerar (`--gen`) e validar (`--check`) goldens do caminho login→campo | CLI única; fontes só de `payload.rs` + tabela de opcodes | CLI única; nada de lógica de análise aqui |
+| `captura.mjs` | gerar (`--gen`) e validar (`--check`) goldens do caminho login→campo | CLI única; fontes só de `payload.rs` + tabela de opcodes |
+| `captura-live.mjs` | converter captura JSON em fixtures / conferir com o servidor | CLI única |
+| `diff-captura.mjs` | diff de duas capturas (opcode, tamanho e offsets que mudaram) | CLI única |
+| `map-skills.mjs` | mapear skills do cliente para o catálogo | CLI única |
+| `captura-print.ps1` | screenshot da janela D3D9 (`PrintWindow`/`BitBlt`), exige elevação | operador, Windows |
+| `captura-sessao.ps1` | captura o handshake/login real (listeners 8281/80 + cliques), exige elevação | operador, Windows |
 
 ## Padrões
 
@@ -50,7 +55,7 @@ offset de outro build não é evidência.
 | `evidencia.json` | âncoras, patches de checksum, CPSock (tabela/INITCODE/limite), resumo |
 | `formatos.json` | amostras de `.wyt`/`.msa`, `sn.bin`, `serverlist.bin` (a decodificação correta está em `docs/cliente/formatos.md` §4 e em `serverlist.mjs`) |
 | `ancoras.txt` | desassemble das âncoras e dos patches (quando `objdump` existe) |
-| `goldens.json` | resultado da validação de `fixtures/cliente/*.json` |
+| `goldens.json` | resultado da validação de `crates/wyd-protocol/tests/fixtures/cliente/*.json` |
 | `wyt.json` | as 8 telas de `client/NUI`: dimensões, bpp, offset, raster e top cores (`wyt.mjs --json`) |
 
 ## Limitações registradas

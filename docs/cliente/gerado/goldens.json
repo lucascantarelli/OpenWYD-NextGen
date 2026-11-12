@@ -1,5 +1,5 @@
 {
-  "source": "fixtures/cliente/*.json",
+  "source": "crates/wyd-protocol/tests/fixtures/cliente/*.json",
   "results": [
     {
       "id": "account_login",

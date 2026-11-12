@@ -14,7 +14,7 @@ const EXE_PADRAO: &str = "WYD.exe";
 
 fn uso() -> String {
     format!(
-        "uso:\n  {n} check <dir-do-jogo> <manifesto>\n  {n} config <dir-do-jogo> <base-do-portal> --key-file <arq> [--dry-run]\n  {n} launch <dir-do-jogo> <manifesto> <registro-de-canais> [--instances N] [--dry-run] [--config <arq> --key-file <arq>] [-- args...]\n  {n} serverlist <registro-de-canais> <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} branding <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} gui <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} retheme <origem.wyt> <destino.wyt> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} update <dir-do-jogo> <pacote> [--dry-run]\n  {n} instalar <dir-do-jogo> [<client.zip|URL>] [<manifesto|URL>]\n  {n} reparo <dir-do-jogo> <base-do-portal>\n  {n} icone <arquivo.ico>\n  (instalar usa WYD_LAUNCHER_CLIENT_ZIP/WYD_LAUNCHER_CLIENT_MANIFEST quando o argumento falta; reparo baixa manifesto e arquivos do portal)\n  (branding/gui/serverlist/launch/retheme resolvem <dir>/launcher.conf com --key-file ou WYD_LAUNCHER_CONFIG_KEY; sem config confiável, cai para a identidade embutida com motivo; update confere o pacote com a chave pública Ed25519 embutida)",
+        "uso:\n  {n} check <dir-do-jogo> <manifesto>\n  {n} config <dir-do-jogo> <base-do-portal> --key-file <arq> [--dry-run]\n  {n} launch <dir-do-jogo> <manifesto> <registro-de-canais> [--instances N] [--dry-run] [--config <arq> --key-file <arq>] [-- args...]\n  {n} serverlist <registro-de-canais> <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} branding <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} gui <dir-do-jogo> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} retheme <origem.wyt> <destino.wyt> [--dry-run] [--config <arq> --key-file <arq>]\n  {n} update <dir-do-jogo> <pacote> [--dry-run]\n  {n} instalar <dir-do-jogo> [<client.zip|URL>] [<manifesto|URL>] [--sha256 <hex>]\n  {n} reparo <dir-do-jogo> <base-do-portal>\n  {n} icone <arquivo.ico>\n  (instalar usa WYD_LAUNCHER_CLIENT_ZIP/WYD_LAUNCHER_CLIENT_MANIFEST/WYD_LAUNCHER_CLIENT_SHA256 quando o argumento falta; URL exige hash; cache .launcher-cache/client-<sha>.zip; reparo baixa manifesto e arquivos do portal)\n  (branding/gui/serverlist/launch/retheme resolvem <dir>/launcher.conf com --key-file ou WYD_LAUNCHER_CONFIG_KEY; sem config confiável, cai para a identidade embutida com motivo; update confere o pacote com a chave pública Ed25519 embutida)",
         n = wyd_launcher::LAUNCHER_NAME
     )
 }
@@ -801,9 +801,15 @@ fn cmd_config(dir: &str, base: &str, key_file: &str, dry_run: bool) -> ExitCode 
 }
 
 /// Instala/atualiza o cliente a partir do `client.zip` e regenera o `serverlist.bin`.
-fn cmd_instalar(dir: &str, zip: &str, manifesto: Option<&str>, portal: Option<&str>) -> ExitCode {
+fn cmd_instalar(
+    dir: &str,
+    zip: &str,
+    manifesto: Option<&str>,
+    sha256_esperado: Option<&str>,
+    portal: Option<&str>,
+) -> ExitCode {
     let inicio = Instant::now();
-    match cliente_zip::instalar(Path::new(dir), zip, manifesto) {
+    match cliente_zip::instalar(Path::new(dir), zip, manifesto, sha256_esperado) {
         Ok(r) => {
             println!(
                 "cliente instalado: build {} · {} arquivo(s) · serverlist {} byte(s) · backup {}",
@@ -812,7 +818,16 @@ fn cmd_instalar(dir: &str, zip: &str, manifesto: Option<&str>, portal: Option<&s
                 r.serverlist_bytes,
                 r.backup.display()
             );
-            println!("origem: {}", r.origem);
+            println!("SHA-256: {}", r.sha256);
+            println!(
+                "origem: {}{}",
+                r.origem,
+                if r.do_cache {
+                    " (cache local, sem download)"
+                } else {
+                    ""
+                }
+            );
             telemetria(
                 portal,
                 portal_client::Operacao::Patch,
@@ -1003,32 +1018,58 @@ fn main() -> ExitCode {
         }
         "instalar" => match args.get(2) {
             Some(dir) => {
-                let zip = args
-                    .get(3)
-                    .cloned()
-                    .or_else(|| {
-                        std::env::var(cliente_zip::ZIP_ENV)
-                            .ok()
-                            .filter(|v| !v.is_empty())
-                    });
+                // Precedência: argumento posicional/--zip > ambiente. O hash segue a
+                // mesma ordem (`--sha256` > WYD_LAUNCHER_CLIENT_SHA256).
+                let mut zip = args.get(3).filter(|a| !a.starts_with("--")).cloned();
+                let mut manifesto = args.get(4).filter(|a| !a.starts_with("--")).cloned();
+                let mut sha256 = None;
+                let mut i = 3;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--zip" => {
+                            zip = args.get(i + 1).cloned();
+                            i += 1;
+                        }
+                        "--manifesto" => {
+                            manifesto = args.get(i + 1).cloned();
+                            i += 1;
+                        }
+                        "--sha256" => {
+                            sha256 = args.get(i + 1).cloned();
+                            i += 1;
+                        }
+                        _ => {}
+                    }
+                    i += 1;
+                }
+                let zip = zip.or_else(|| {
+                    std::env::var(cliente_zip::ZIP_ENV)
+                        .ok()
+                        .filter(|v| !v.is_empty())
+                });
                 let Some(zip) = zip else {
                     eprintln!(
-                        "falta o client.zip: passe <client.zip|URL> ou defina {}",
+                        "falta o client.zip: passe <client.zip|URL>, use --zip ou defina {}",
                         cliente_zip::ZIP_ENV
                     );
                     return ExitCode::from(2);
                 };
-                let manifesto = args.get(4).cloned().or_else(|| {
+                let manifesto = manifesto.or_else(|| {
                     std::env::var(cliente_zip::MANIFESTO_ENV)
                         .ok()
                         .filter(|v| !v.is_empty())
                 });
-                let efetiva = identidade_efetiva(dir, &args[5..]).ok();
+                let sha256 = sha256.or_else(|| {
+                    std::env::var(cliente_zip::ZIP_SHA256_ENV)
+                        .ok()
+                        .filter(|v| !v.is_empty())
+                });
+                let efetiva = identidade_efetiva(dir, &args[3..]).ok();
                 let portal = efetiva
                     .as_ref()
                     .and_then(|e| e.portal.as_ref())
                     .map(|p| p.base.as_str());
-                cmd_instalar(dir, &zip, manifesto.as_deref(), portal)
+                cmd_instalar(dir, &zip, manifesto.as_deref(), sha256.as_deref(), portal)
             }
             None => {
                 eprintln!("{}", uso());

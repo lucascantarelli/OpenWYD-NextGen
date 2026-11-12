@@ -453,7 +453,7 @@ Rust, E2 `docs/cliente/pacotes.md` §"Caixa de item" (7662 `04c9d2a1…27ddf8`).
    rolls gravados → replay idêntico; `determinism.rs`, `06-matematica.md:46,103`).
 5. Fórmulas: LCG MSVC como oráculo de `rand()` para drop/crítico/refino
    (`03-progresso.md:382`, `game-rules.md`).
-6. Estruturas: `fixtures/cliente/*.json` + `captura.mjs --check` (5/5 C→S hoje;
+6. Estruturas: `crates/wyd-protocol/tests/fixtures/cliente/*.json` + `captura.mjs --check` (5/5 C→S hoje;
    S→C quando 08-6 liberar); `scenario::{resolve_attack, AttackOutcome}`,
    `TICK_PHASES` (E1 `wyd-sim/src/lib.rs:26`).
 7. Entidades: harness headless (sem cliente gráfico); bots com conta dedicada

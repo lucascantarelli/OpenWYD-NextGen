@@ -1,4 +1,4 @@
-//! Goldens byte-exatos contra `fixtures/cliente/*.json`.
+//! Goldens byte-exatos contra `crates/wyd-protocol/tests/fixtures/cliente/*.json`.
 //!
 //! Cada teste congela um pacote de fio: decodifica, valida o pipeline
 //! tamanho → opcode → payload e prova que o corpo recodificado é idêntico
@@ -16,10 +16,10 @@ use wyd_protocol::{
     FrameError, Header, Opcode, PayloadError, ProtocolError, WirePayload, HEADER_SIZE,
 };
 
-/// Lê `fixtures/cliente/{id}.json` a partir do diretório da crate.
+/// Lê `crates/wyd-protocol/tests/fixtures/cliente/{id}.json` a partir do diretório da crate.
 fn load_fixture(id: &str) -> (Vec<u8>, Vec<u8>) {
     let path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures/cliente")
+        .join("tests/fixtures/cliente") // relativo à crate: crates/wyd-protocol/tests/fixtures/cliente
         .join(format!("{id}.json"));
     let json = std::fs::read_to_string(&path).expect("fixture legível");
     (

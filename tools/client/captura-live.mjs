@@ -12,16 +12,16 @@
  *    com direção `c2s`/`s2c`. É o modo que produz tráfego S→C de verdade, com o
  *    servidor Rust respondendo o jogo.
  * 3. **conversão** (`--from captura.json`): transforma a captura em fixtures
- *    versionadas em `fixtures/cliente/real/` (um JSON por frame único) + manifesto
+ *    versionadas em `crates/wyd-protocol/tests/fixtures/cliente/real/` (um JSON por frame único) + manifesto
  *    TSV com direção, opcode, tamanho, canal e origem. O opcode é lido do frame
  *    desofuscado (`keytable.mjs`), nunca adivinhado.
  *
  * Uso:
- *   node tools/client/captura-live.mjs --timeout 90000 --out fixtures/cliente/captura-handshake.json
+ *   node tools/client/captura-live.mjs --timeout 90000 --out crates/wyd-protocol/tests/fixtures/cliente/captura-handshake.json
  *   node tools/client/captura-live.mjs --alvo 192.168.100.4:8281 --host 172.17.0.1 \
  *     --port 8281 --timeout 120000 --out target/captura-canal2.json
  *   node tools/client/captura-live.mjs --from target/captura-canal2.json \
- *     --fixtures fixtures/cliente/real --canal 2
+ *     --fixtures crates/wyd-protocol/tests/fixtures/cliente/real --canal 2
  *
  * Nada aqui inventa byte: o que não chegar não entra no artefato. Conta/senha nunca
  * são preenchidas pelo harness; se o fluxo real trouxer login, o JSON é higienizado
@@ -49,10 +49,10 @@ function arg(nome, padrao) {
 const HOST = arg("host", "127.0.0.1");
 const PORT = Number(arg("port", "8281"));
 const TIMEOUT_MS = Number(arg("timeout", "90000"));
-const OUT = arg("out", "fixtures/cliente/captura-handshake.json");
+const OUT = arg("out", "crates/wyd-protocol/tests/fixtures/cliente/captura-handshake.json");
 const ALVO = arg("alvo", null);
 const FROM = arg("from", null);
-const FIXTURES = arg("fixtures", "fixtures/cliente/real");
+const FIXTURES = arg("fixtures", "crates/wyd-protocol/tests/fixtures/cliente/real");
 const CANAL = arg("canal", "");
 const MAX_MESSAGE = 8192;
 

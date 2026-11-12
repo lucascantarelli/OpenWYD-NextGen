@@ -82,7 +82,7 @@ Cada marco só fecha com o documento correspondente atualizado **na mesma entreg
 | Superfície conhecida | `docs/cliente/superficie-conhecida.md` | ✅ |
 | Mapa de funções (gerado, revisado) | `docs/cliente/mapa-funcoes.md` | ⬜ 08-5 |
 | Structs confirmadas | `docs/cliente/structs.md` | ⬜ 08-5 |
-| Catálogo de pacotes e goldens | `docs/cliente/pacotes.md` + `fixtures/cliente/` | 🚧 08-6 (goldens C→S gerados; captura S→C pendente) |
+| Catálogo de pacotes e goldens | `docs/cliente/pacotes.md` + `crates/wyd-protocol/tests/fixtures/cliente/` + `docs/cliente/re-pacotes.md` (gerado) | 🚧 08-6 (goldens C→S gerados; captura S→C pendente) |
 | Scripts de análise | `tools/client/` (PE, strings, diff, relatório) | ⬜ 08-5 |
 | Camada de patch e manifesto | `docs/cliente/customizacao.md` + `crates/wyd-launcher` | ⬜ 08-7 |
 

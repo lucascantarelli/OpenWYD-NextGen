@@ -212,7 +212,7 @@ services:
       - --storage.tsdb.retention.time=7d
       - --web.enable-lifecycle
     volumes:
-      - ./monitoring/prometheus:/etc/prometheus:ro
+      - ./docker/monitoring/prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
     networks:
       - wyd
@@ -236,8 +236,8 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     networks:
       - wyd
@@ -245,13 +245,13 @@ services:
   loki:
     # Logs duráveis da stack. O Docker guarda stdout por container (`json-file`),
     # então recriar container perde o stream; aqui o histórico fica em volume
-    # nomeado com retenção de 14 d (`monitoring/loki/loki.yml`). Sem porta no
+    # nomeado com retenção de 14 d (`docker/monitoring/loki/loki.yml`). Sem porta no
     # host: só o portal (server-side) e o Grafana consultam.
     image: grafana/loki:3.5.5
     restart: unless-stopped
     command: [ "-config.file=/etc/loki/loki.yml" ]
     volumes:
-      - ./monitoring/loki:/etc/loki:ro
+      - ./docker/monitoring/loki:/etc/loki:ro
       - loki-data:/loki
     networks:
       - wyd
@@ -268,7 +268,7 @@ services:
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
     volumes:
-      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./docker/monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
     depends_on:

@@ -34,14 +34,15 @@
 | `wyd-sim` | laboratório matemático (balanceamento) |
 | `wyd-launcher` | launcher/patcher — **consome o `client/`** (ver §4) |
 
-### Ferramentas (`tools/` — análise e geração, nunca runtime)
+### Ferramentas (`apps/tools/` + `tools/` — análise e geração, nunca runtime)
 
 | Pasta | Conteúdo real | Papel |
 |---|---|---|
-| `tools/client/` | 7 scripts `.mjs` + `README.md` | pipeline de análise estática do cliente + goldens (`analyse`, `evidence`, `captura`, `formats`, `pe`, `strings`, `keytable`) |
+| `apps/tools/` | CLI `wyd-tools` + `lib/` + `test/` (ADR-0028) | porta de entrada de RE: `inventario`, `binarios`, `strings`, `pacotes`, `docs` (Markdown medido) e `zip-check` do `client.zip`; parsers de PE/strings reusados de `tools/client/` |
+| `tools/client/` | 15 scripts `.mjs`/`.ps1` + `README.md` | **biblioteca** de parse/captura, sem CLI própria de documentação: `pe`, `strings`, `formats`, `keytable`, `wyt`, `serverlist`, `captura`, `captura-live`, `analyse`, `evidence` |
 | `tools/protocol/` | `gen-protocol.mjs` | gerador das tabelas de protocolo a partir do C++ arquivado |
-| `tools/content/` | **PREVISTO (ADR-0009)** | `gen-seed.mjs` converte o legado em migração SQL de seed + `README.md` com comando e sha256; nada vai para runtime |
-| `tools/dev/` | só `.gitkeep` | **placeholder**: só vira pasta real com `README.md` + propósito declarado |
+| `tools/content/` | 11 scripts + `README.md` | geração/validação de conteúdo: seeds, catálogo do banco, enciclopédia, status de issue, migrations |
+| `tools/dev/` | `bench-gate.mjs`, `monitoring-smoke.mjs`, `clean-tmp.mjs` | gates de operação: regressão de bench, smoke do monitoramento, limpeza de `tmp/` |
 
 ### Documentação (`docs/`)
 
@@ -57,14 +58,29 @@
 
 | Pasta | Conteúdo real |
 |---|---|
-| `fixtures/cliente/` | 5 goldens sintéticos validados (`captura.mjs`) |
+| `crates/wyd-protocol/tests/fixtures/cliente/` | 5 goldens sintéticos validados (`captura.mjs`) |
 | `client/` | **~344 MB, fora do git**: `WYD.exe` 7662 + DLLs + XTrap + 5.361 `.msa` + 350 `.wyt` + catálogos — dossiê em `docs/cliente/` |
 | `wyd-portal/` | UI Next.js (BFF; nunca escreve estado vivo) |
 | `roadmap-rust/` | `index.md` + `issues/` (fases 00–15, incl. 02-4/02-5 e 08-4…08-7) |
-| `docker/`, `.github/`, `.vscode/` | container, CI, editor |
+| `docker/`, `.github/`, `.vscode/` | container (inclui `docker/monitoring/`: Prometheus, Grafana, Loki, Alloy), CI, editor |
 | `.agents/skills/` | skills vigentes (`wyd-rust-*`, `wyd-client-reverso`, boas práticas) |
 | ~~arquivo Go/C++~~ | **removido em 2026-11** — sem leitura, sem cópia; fonte canônica é `docs/` + `crates/` (mudança exige ADR) |
-| `target/` | build — fora do git |
+| `target/` | cache de build (apagado em 2026-11-12 e recriado por `cargo build`), ignorado — `make clean-target` |
+| `tmp/` | artefatos locais descartáveis (147 MB): **fonte de captura** em `tmp/captura*.json` (frames reais usados por `wyd-tools pacotes`) + rascunhos; `make clean-tmp` remove só o que o projeto gerou e **preserva** as capturas |
+| `client.zip` | **186 MB, fora do git**: pacote do cliente para o launcher; publicado na release `client-7662-r1` (GitHub Releases, ADR-0028) com SHA-256 fixado, verificado por `make tools-zip-check` |
+
+## 1.1 Política de limpeza e artefatos
+
+| Artefato | Regra |
+|---|---|
+| `target/` | cache do Cargo, ignorado no git (`/target/`); **nunca** é fonte. Pode ser apagado a qualquer momento (`make clean-target`) e o próximo `cargo build`/`make check` recria |
+| `tmp/` | descartável e ignorado; `make clean-tmp` remove logs de teste, `tmp/drivers`, `tmp/e2e-janela`, `tmp/instala-teste`, cópias de cliente e **caches `*/target` de probes** (`tmp/hashgen`, `tmp/loginprobe`), **preservando** fontes dos probes, `tmp/captura*`, `tmp/basemob` e PNGs nomeados pelo operador |
+| `dist/` | saída de distribuição (launcher), ignorada; regenerada por `tools/launcher/dist-manifest.mjs` |
+| `client.zip` | artefato de release (186 MB), ignorado; gerado por `make client-zip`, conferido por `make tools-zip-check` e publicado em `client-7662-r1` com hash fixado no launcher |
+| `client/` | dado externo (~344 MB), ignorado; nunca versionar nem redistribuir fora do release do cliente |
+| `docs/cliente/inventario-gerado.md` | derivado do cliente real; regenerar com `make tools-inventario` em vez de editar |
+| `docs/cliente/re-binarios.md`, `re-strings.md`, `re-pacotes.md` | derivados dos binários/capturas; regenerar com `make tools-re` (nunca editar à mão) |
+| `tmp/captura*` | **entrada** de evidência (`wyd-tools pacotes` lê frames e tipos textuais); não é código de ferramenta e não é versionado |
 
 ## 2. Tabela-alvo — pasta → responsabilidade → padrão → SOLID → nomenclatura
 
@@ -81,7 +97,7 @@
 | `tools/client/` | análise do cliente | pipeline de funções puras + CLI fina | SRP (um módulo = uma etapa) | verbo + domínio: `pe.mjs`, `evidence.mjs`, `captura.mjs` | leitura de binário, relatório | código de jogo/servidor |
 | `tools/protocol/` | geração de tabelas | gerador versionado com fonte canônica | — (determinístico, `cargo fmt` após gerar) | `gen-*.mjs` + `README` de reprodução | geradores | estado, credencial |
 | `docs/*` | conhecimento | um assunto por arquivo, nome do domínio | — | `substantivo-do-dominio.md`, minúsculas | narrativa, tabelas, evidência | binário, segredo, código |
-| `fixtures/cliente/` | goldens de pacote | JSON com esquema fixo + validador | — | `<fase>-<opcode>-<n>.json` | bytes sintéticos/higienizados | dado real de conta, `.pcap` |
+| `crates/wyd-protocol/tests/fixtures/cliente/` | goldens de pacote | JSON com esquema fixo + validador | — | `<fase>-<opcode>-<n>.json` | bytes sintéticos/higienizados | dado real de conta, `.pcap` |
 | `wyd-portal/` | BFF e telas | BFF puro sobre `wyd-admin` | DIP (fala com contrato, não com banco) | rotas por tela | UI, chamadas admin auditadas | chamada direta ao backend fora do `adminCall`, segredo no browser |
 | `client/` | artefato fechado | **nenhum padrão de código**: é dado | — | (não versionado) | binários/assets locais | qualquer arquivo versionado novo |
 | `roadmap-rust/issues/` | uma entrega = uma issue | template Fase/Depende/Bloqueia/Esforço + DoD | — | `FASE-NN-slug.md` | plano e aceite | implementação |

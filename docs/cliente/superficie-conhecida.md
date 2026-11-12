@@ -85,6 +85,6 @@ Estrutura inicial documentada em `docs/cliente/formatos.md`:
 ## 7. Trace dinâmico (08-6, em curso)
 
 - Roteiro publicado em `docs/cliente/depuracao.md` (breakpoints, fases, reprodução do freeze).
-- Goldens **gerados** do caminho C→S validados: `fixtures/cliente/*.json` (5/5, `captura.mjs --check`).
+- Goldens **gerados** do caminho C→S validados: `crates/wyd-protocol/tests/fixtures/cliente/*.json` (5/5, `captura.mjs --check`).
 - Pendente da captura ao vivo: offsets de campo do header, structs S→C (`STRUCT_MOB`/`SELCHAR`/CreateMob/ESCENE_FIELD),
   codificação de `serverlist.bin`. Catálogo em `docs/cliente/pacotes.md`.
