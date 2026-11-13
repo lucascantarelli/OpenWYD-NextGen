@@ -426,7 +426,7 @@ Medido em 2026-11-13 com `docker image inspect` no runner local, commit `3824cd3
 | `wyd/portal` | **311 MB** |
 | `wyd/server` | **51,5 MB** |
 | `wyd/gateway` | **51,4 MB** |
-| `wyd/launcher` | ? |
+| `wyd/launcher` | **38,7 MB** |
 
 A diferença de ~6× é o runtime do portal (Node + dependências do Next), não regressão do Rust: server e
 gateway são binários estáticos em distroless (51 MB, quase tudo base). Números antigos que circulavam
