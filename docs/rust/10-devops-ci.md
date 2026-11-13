@@ -59,10 +59,14 @@ custo alto; o 3 (imagens/cobertura) é caro e nem roda em PR; o 4 só depois de 
 tempo de parede vem das matrizes dentro de cada estágio, não de paralelizar estágios que dependem
 uns dos outros.
 
-**Custo honesto do desenho:** encadear estágios aumenta o tempo de parede em relação ao desenho
-anterior (que rodava tudo em paralelo, 2 min 32 s), porque `fmt → clippy → build/test` virou
-sequência real. O que se ganha é um único run com ordem legível, falha cedo no estágio barato e um
-único check (`gate`) para branch protection.
+**Custo honesto do desenho, medido:** o run completo em `develop` levou **10 min 51 s**
+([43437250625](https://github.com/lucascantarelli/wyd/actions/runs/43437250625)), contra os 2 min
+32 s do desenho anterior que rodava tudo em paralelo — a maior parte da diferença é `fmt → clippy →
+build/test` virou sequência real (3 min no build, 1 min no clippy) mais cobertura (4 min) e as
+imagens. O que se ganha é um único run com ordem legível, falha cedo no estágio barato e um único
+check (`gate`) para branch protection. Se o tempo de parede voltar a incomodar, o primeiro ajuste a
+considerar é rodar `clippy` em paralelo com `build + testes` (o lint deixa de ser bloqueio, mas os
+dois compilam o workspace).
 
 ### 1.1 Comprovação de execução por workflow (2026-11-13)
 
@@ -72,7 +76,14 @@ Cada arquivo de `.github/workflows/` com o que foi **observado no GitHub** (não
 |---|---|---|
 | `bench.yml` | verde por `workflow_dispatch` (5 min 10 s) | run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) |
 | `release.yml` | **disparo por tag provado**; execução completa não (cancela de propósito, tag apagada) | run [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735): `workflow=Release event=push branch=v0.1.0` |
-| `ci.yml` | run do merge que introduziu o arquivo (o link entra quando ele fecha) | — |
+| `ci.yml` (PR) | verde com 26 jobs `success` e 3 `skipped` **por desenho** (imagens, cobertura e deploy não rodam em PR) | PR #10, sha `cb4ee00` |
+| `ci.yml` (push em `develop`) | **31/31 jobs verdes**, 10 min 51 s de parede (13:50:56Z → 14:01:47Z): estágios 1–3, `gate`, deploy no runner local com as quatro provas e `notify` | run [43437250625](https://github.com/lucascantarelli/wyd/actions/runs/43437250625) |
+
+O run completo mostra as duas pontas funcionando de verdade: o `deploy` publicou `OK portal
+/entregas → 307`, `OK gateway /health → 200`, `OK schema=50 == SCHEMA_VERSION=50` e `OK portal
+/api/health → 200`, e o `notify` montou o resumo a partir de `needs` (log: `RESULTADOS: fmt=success
+clippy=success … gate=success deploy=success`) — com `SLACK_CI_WEBHOOK` ausente ele emitiu
+`::notice::` e saiu 0, que é o comportamento documentado em §11.
 
 O `release.yml` é o único sem execução **completa**, por desenho: publicar release é decisão do dono
 e não existe tag `vX.Y.Z` permanente. O disparo foi provado com a tag descartável `v0.1.0` (run
