@@ -133,13 +133,29 @@ jobs:
           pattern: binarios-*
           merge-multiple: true
           path: dist
-      - name: Corpo da release (changelog + commits desde a tag anterior)
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: sbom
+      - name: Corpo da release (changelog + imagens + commits desde a tag anterior)
         run: |
           {
             echo "Release ${{ github.ref_name }} — commit ${{ github.sha }}."
             echo
             echo "Cada issue fechada e a sua evidência estão em \`roadmap-rust/changelog.md\`."
             echo "Procedimento de release e rollback: \`docs/rust/02-execucao.md\` §6."
+            echo
+            echo "## Imagens da release"
+            echo
+            echo "As quatro imagens foram construídas nesta tag (sem push para registry — §8.1 do"
+            echo "contrato); o SBOM CycloneDX de cada uma está nos anexos."
+            echo
+            echo "| imagem | tag | build-args |"
+            echo "|---|---|---|"
+            for img in launcher gateway server portal; do
+              echo "| \`wyd/$img\` | \`${TAG}\` | \`WYD_VERSION=${WYD_VERSION} WYD_COMMIT=${WYD_COMMIT}\` |"
+            done
             echo
             anterior="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
             if [ -n "$anterior" ]; then
@@ -159,7 +175,8 @@ jobs:
         run: |
           # Notas vêm do arquivo (determinístico); `--generate-notes` fica de fora para não
           # disputar a mesma seção com o changelog do roadmap.
-          gh release create "${TAG}" dist/* \
+          # Anexos: binários + `SHA256SUMS` (`dist/*`) e o SBOM CycloneDX de cada imagem (`sbom/*`).
+          gh release create "${TAG}" dist/* sbom/* \
             --title "${TAG}" \
             --notes-file notas.md \
             --verify-tag

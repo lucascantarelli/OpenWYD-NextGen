@@ -113,7 +113,7 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 
 | Issue | Cobrado pelo pipeline | Continua pendente na issue |
 |---|---|---|
-| `DEVOPS-03` | **✅ fechada em 2026-11-13:** `check-compose-hardening` (R1–R8): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`, log com teto em todo serviço e portal de prod só em loopback | `cap_drop` por serviço (declarado, exige provar boot de cada imagem) |
+| `DEVOPS-03` | **✅ fechada em 2026-11-13:** `check-compose-hardening` (R1–R8): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`, log com teto em todo serviço e portal de prod só em loopback. **TLS não adotado, por decisão** (§6): stack de dev em host único, sem domínio — o portal não sai da máquina | `cap_drop` por serviço (declarado, exige provar boot de cada imagem) |
 | `DEVOPS-12` | job `infra` roda `check-actions-pin`: todo `uses:` é SHA de 40 hex com `# tag` ao lado, e o SHA é resolvido contra a tag/branch na API do GitHub (`make actions-pin-check` local) | bump de major de cripto/banco (exige ADR) — decisão registrada na issue |
 | `DEVOPS-04` | job `gate` com a mesma lista do `make check` (inclui `migrations`, `issues`, `skills`, `tools-test`, `versao`); `make ci` com `bench-gate`, `monitoring-rules`, `compose-hardening`, `portal-build` | — (paridade fechada; resta manter) |
 | `DEVOPS-05` | `rust-setup`/`node-setup` com cache, `cache-from/to: type=gha` por imagem, `paths-ignore` em PR, `cancel-in-progress` só em PR, `timeout-minutes` em todo job | medir a economia real de minutos (comparar runs com/sem cache) |
@@ -125,9 +125,11 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 
 **O que já rodou no GitHub (2026-11-13):** o pipeline único `ci.yml` (todos os estágios, imagens,
 cobertura, deploy e notificação) e `bench.yml` — com run verde e link em §1.1. O único sem execução completa é `release.yml`, cujo **disparo por tag** está provado (run
-43431337735, cancelado de propósito) e que depende de tag real do dono. `check-compose-hardening` é
-verificação **textual** do compose: TLS na frente do portal, `healthcheck` dos serviços de
-observabilidade e `cap_drop`/`security_opt` por serviço continuam checklist da `DEVOPS-03`, não gate.
+43431337735, cancelado de propósito) e que roda na tag real (§8.1). `check-compose-hardening` é
+verificação **textual** do compose: `TAG` obrigatório, log com teto, `no-new-privileges`, limites,
+socket `:ro` e portal de prod em loopback são gate; `cap_drop` por serviço continua declarado como
+resíduo consciente da `DEVOPS-03`, não gate. **TLS não é adotado** — decisão e motivo em §6 e na
+entrada da `DEVOPS-03` no `changelog.md`.
 
 **Defeito que o próprio pipeline encontrou (2026-11-13):** `wyd-portal/package.json` pedia
 `typescript: ^7.0.2` mas `package-lock.json` fixava `5.9.3` — `npm ci` (primeira etapa do job
@@ -306,8 +308,13 @@ problema novo — decisão registrada, não dívida.
 Perfil de produção = `docker-compose.yml` + `docker-compose.prod.yml` (**sem** o override de dev).
 Regras que precisam valer no arquivo, não na cabeça de quem opera:
 
-- **TLS obrigatório**: nenhum serviço administrativo (portal) fala HTTP puro com o mundo. Proxy
-  reverso no stack ou bind só em loopback + túnel — escolha explícita em `DEVOPS-03`.
+- **Portal administrativo nunca em interface pública**: em prod o portal escuta **só em loopback**
+  (`127.0.0.1:3000`) e o acesso remoto é túnel SSH/proxy do operador. **TLS não foi adotado, por
+decisão registrada (`DEVOPS-03`, 2026-11-13):** o stack roda numa máquina de dev, sem domínio
+  público nem tráfego de terceiros; certificado somaria um serviço novo, renovação e um modo de
+  falha de boot (hoje o boot não depende de cert válido) para proteger um socket que já não sai da
+  máquina. O que o CI cobra é o bind em loopback (`check-compose-hardening`, R8) — a alternativa
+  "HTTP puro em `0.0.0.0`" fica vermelha.
 - **`TAG` obrigatório**: `image: wyd/portal:${TAG:?defina TAG}` em prod, como já se faz com
   `POSTGRES_PASSWORD`.
 - **Observabilidade fora do perfil público**: anônimo do Grafana é comodidade de dev; em prod
