@@ -23,7 +23,7 @@ const ESPERA_MS = Number(process.env.WYD_DEPLOY_ESPERA_MS ?? 3000);
 /** `SCHEMA_VERSION` do código — a fonte, não um número copiado no script. */
 function schemaVersion() {
   const fonte = readFileSync("crates/wyd-db/src/lib.rs", "utf8");
-  const valor = /pub const SCHEMA_VERSION:\s*i(?:32|64)\s*=\s*(\d+)/.exec(fonte)?.[1];
+  const valor = /pub const SCHEMA_VERSION:\s*[iu](?:32|64)\s*=\s*(\d+)/.exec(fonte)?.[1];
   if (!valor) throw new Error("SCHEMA_VERSION não encontrado em crates/wyd-db/src/lib.rs");
   return Number(valor);
 }
