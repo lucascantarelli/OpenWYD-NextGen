@@ -1,0 +1,116 @@
+# Override de DEV — carregado automaticamente com `docker compose up`.
+# Publica portas no host, monta código-fonte (hot reload do portal) e logs.
+# NUNCA copiar este arquivo para produção: use docker-compose.prod.yml.
+
+services:
+  db:
+    # Publicado SÓ em loopback (como no arquivado): este Postgres é de dev e
+    # a senha é a do compose. Ferramentas do host (VS Code/DBeaver) usam ele.
+    ports:
+      - "127.0.0.1:${PGPORT:-5432}:5432"
+
+  gateway:
+    # Só em loopback: o gateway é backend do portal, não serviço público.
+    # Em prod (docker-compose.prod.yml) não há publicação — só a rede `wyd`.
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-7600}:7600" # contrato admin (ADR-0008/0022)
+    volumes:
+      # `.env` vivo (read-only): o seed lê a senha atual em qualquer reinício,
+      # inclusive `docker compose restart`, sem depender do ambiente congelado
+      # na criação do container. Segredo continua fora da imagem.
+      - type: bind
+        source: ./.env
+        target: /run/wyd/env
+        read_only: true
+    environment:
+      # Dev: o seed do staff roda em todo boot do gateway quando há senha
+      # configurada; `WYD_SEED_STAFF=1` só exige que ela exista.
+      # Trocar em qualquer ambiente que não seja a máquina local.
+      WYD_ENV_FILE: /run/wyd/env
+      WYD_SEED_STAFF: ${WYD_SEED_STAFF:-1}
+      PORTAL_ADMIN_USER: ${PORTAL_ADMIN_USER:-admin}
+      PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD:-troque-aqui-dev}
+
+  server-canal-1:
+    # Canal 1 (normal): o cliente disca 8281 fixo no IP da célula do .bin, então a
+    # publicação é por IP, não só por porta. O status `serv00.htm` sai no :80 deste
+    # canal — é a resposta que popula a coluna Canal nos dois canais.
+    # Dois conjuntos de endereço, de propósito: o cliente **já aberto** pode estar com o
+    # `serverlist.bin` antigo (IPs de LAN) enquanto o arquivo em disco já foi regenerado
+    # para loopback. Publicar nos dois evita exigir restart do cliente para ele achar o canal.
+    # `127.0.0.1`/`127.0.0.2` são endereços de loopback do host (`WYD_CANAL*_IP` guarda o da LAN).
+    ports:
+      - "${WYD_CANAL1_IP:-192.168.100.3}:8281:8281"
+      # Sonda UDP de status na mesma 8281: sem ela o cliente não dá o canal como
+      # acessível e o Conectar nem abre o TCP (4 bytes, resposta em eco).
+      - "${WYD_CANAL1_IP:-192.168.100.3}:8281:8281/udp"
+      - "${WYD_CANAL1_IP:-192.168.100.3}:80:8080"
+      - "127.0.0.1:8281:8281"
+      - "127.0.0.1:8281:8281/udp"
+      - "127.0.0.1:80:8080"
+
+  server-canal-2:
+    # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
+    # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
+    ports:
+      - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281"
+      - "${WYD_CANAL2_IP:-192.168.100.4}:8281:8281/udp"
+      - "127.0.0.2:8281:8281"
+      - "127.0.0.2:8281:8281/udp"
+
+  # Observabilidade: as portas só existem em DEV (loopback). Sem este override o
+  # compose de produção não publica Prometheus/Grafana/node-exporter.
+  prometheus:
+    # Reload por HTTP (`POST /-/reload`) é comodidade de dev: o `promtool` valida e este
+    # endpoint aplica sem recriar container. Em prod o endpoint não existe.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  alertmanager:
+    # UI/API do Alertmanager (silenciar, ver histórico de notificação) só em loopback.
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+
+  blackbox-exporter:
+    ports:
+      - "127.0.0.1:${BLACKBOX_PORT:-9115}:9115"
+
+  grafana:
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+
+  node-exporter:
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+
+  mkdocs:
+    # Referência interna de dev/admin: só loopback, nunca porta pública.
+    # O portal é o destino da documentação do jogador; aqui não há perfis.
+    ports:
+      - "127.0.0.1:${MKDOCS_PORT:-8000}:8000"
+
+  portal:
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000" # UI de administração
+    environment:
+      NODE_ENV: development
+      # Pasta de distribuição do launcher (manifest.txt + pacote). Sem ela, a
+      # página de downloads diz que não está publicada — nunca inventa versão.
+      LAUNCHER_DIST_DIR: /dist/launcher
+    volumes:
+      # Auditoria em arquivo fora do container (ver AUDIT_LOG_DIR).
+      - portal-audit:/var/log/wyd-portal
+      # Distribuição do launcher: artefato de ambiente, fora do git (`dist/`).
+      - type: bind
+        source: ./dist/launcher
+        target: /dist/launcher
+        read_only: true
+
+volumes:
+  portal-audit:
+    name: wyd-portal-audit

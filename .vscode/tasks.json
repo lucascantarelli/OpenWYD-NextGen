@@ -1,0 +1,48 @@
+{
+  // Tasks usadas pelo launch.json e pelo Ctrl+Shift+B.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cargo-build",
+      "type": "shell",
+      "command": "cargo build --workspace",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "cargo-check (gate)",
+      "type": "shell",
+      "command": "cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
+      "group": "test",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "portal-dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/portal"
+      },
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "compose-dev-up",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

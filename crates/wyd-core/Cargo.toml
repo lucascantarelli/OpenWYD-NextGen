@@ -1,0 +1,65 @@
+[package]
+name = "wyd-core"
+version.workspace = true
+edition = "2021"
+description = "Engine Hot Path do WYD (tick deterministico, ECS, spatial grid)"
+publish = false
+
+[lib]
+name = "wyd_core"
+path = "src/lib.rs"
+
+[dependencies]
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+# QA-04 / ADR-0018: log estruturado (sem `env-filter`, que arrastaria regex).
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "fmt",
+    "ansi",
+    "std",
+] }
+
+# Bench sem dependência nova (`criterion` exige rede/ADR): mede com `std::time::Instant`.
+[[bench]]
+name = "tick"
+harness = false
+test = false
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "golden_gema_seed"
+path = "tests/golden/gema_seed.rs"
+
+[[test]]
+name = "integracao_autoridade"
+path = "tests/integracao/autoridade.rs"
+
+[[test]]
+name = "integracao_compose"
+path = "tests/integracao/compose.rs"
+
+[[test]]
+name = "integracao_content"
+path = "tests/integracao/content.rs"
+
+[[test]]
+name = "integracao_determinism"
+path = "tests/integracao/determinism.rs"
+
+[[test]]
+name = "integracao_gem"
+path = "tests/integracao/gem.rs"
+
+[[test]]
+name = "integracao_inventario"
+path = "tests/integracao/inventario.rs"
+
+[[test]]
+name = "integracao_npc"
+path = "tests/integracao/npc.rs"
+
+[[test]]
+name = "sistema_telemetry"
+path = "tests/sistema/telemetry.rs"

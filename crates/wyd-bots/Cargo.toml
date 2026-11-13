@@ -1,0 +1,24 @@
+[package]
+name = "wyd-bots"
+version.workspace = true
+edition = "2021"
+description = "Bots autonomos do Campo de Treinamento (GAME-23): quatro racas, protocolo real"
+publish = false
+
+[lib]
+name = "wyd_bots"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wyd-bots"
+path = "src/main.rs"
+
+[dependencies]
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "sistema_cena_campo"
+path = "tests/sistema/cena_campo.rs"

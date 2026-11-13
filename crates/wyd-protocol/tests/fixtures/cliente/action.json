@@ -1,0 +1,70 @@
+{
+  "id": "action",
+  "origin": "generated",
+  "warning": "bytes sintéticos para teste de codec; NÃO são captura de rede",
+  "builtBy": "node tools/client/captura.mjs --gen",
+  "algorithm": "mesmas regras de crates/wyd-protocol/src/obfuscation.rs",
+  "header": {
+    "size": 52,
+    "type": 876,
+    "typeHex": "0x036c",
+    "connId": 1,
+    "tick": 1004,
+    "keyword": 5,
+    "checksum": 189,
+    "checksumHex": "0xbd"
+  },
+  "fields": [
+    {
+      "offset": 12,
+      "name": "pos_x",
+      "kind": "i16",
+      "len": 2,
+      "value": 1702
+    },
+    {
+      "offset": 14,
+      "name": "pos_y",
+      "kind": "i16",
+      "len": 2,
+      "value": 1728
+    },
+    {
+      "offset": 16,
+      "name": "effect",
+      "kind": "i32",
+      "len": 4,
+      "value": 0
+    },
+    {
+      "offset": 20,
+      "name": "speed",
+      "kind": "i32",
+      "len": 4,
+      "value": 0
+    },
+    {
+      "offset": 24,
+      "name": "route",
+      "kind": "bytes",
+      "len": 24,
+      "value": "000000000000000000000000000000000000000000000000"
+    },
+    {
+      "offset": 48,
+      "name": "target_x",
+      "kind": "i16",
+      "len": 2,
+      "value": 1703
+    },
+    {
+      "offset": 50,
+      "name": "target_y",
+      "kind": "i16",
+      "len": 2,
+      "value": 1730
+    }
+  ],
+  "payloadHex": "340005006c030100ec030000a606c0060000000000000000000000000000000000000000000000000000000000000000a706c206",
+  "wireHex": "340005bd66e785fdf8f474fca0f7f8fffcf1e4f906ffecfd00ede800c2f13000d2f130fbf4f194fc72e964fb00f0f0fdc9f61e03"
+}

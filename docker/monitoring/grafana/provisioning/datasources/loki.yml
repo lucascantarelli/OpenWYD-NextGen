@@ -1,0 +1,19 @@
+# Loki provisionado (Grafana 12) — logs dos containers, lado a lado com o
+# Prometheus no mesmo Grafana. Sem clique manual e sem datasource "custom".
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # `trace_id=...` na linha de log vira link para busca no Loki por trace.
+        - name: trace_id
+          matcherRegex: "trace_id=([0-9a-f]{8,32})"
+          url: "/d/wyd-logs?var-trace=$${__value.raw}"

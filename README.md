@@ -1,269 +1,351 @@
+<a id="top"></a>
+
 <div align="center">
 
-# ⚔️ OpenWYD - NextGen
+# ⚔️ WYD2 — Servidor Rust
 
-**Servidor de *With Your Destiny* reescrito em Go — protocolo legado, arquitetura moderna.**
+**O clássico *With Your Destiny* reconstruído com um Hot Path em Rust, PostgreSQL e um portal de operação em Next.js.**
 
-[![CI](https://github.com/Jean1dev/w2pp-OpenWYD/actions/workflows/ci.yml/badge.svg)](https://github.com/Jean1dev/w2pp-OpenWYD/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![gRPC](https://img.shields.io/badge/gRPC-mTLS-244c5a?logo=grpc&logoColor=white)](https://grpc.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![Licença](https://img.shields.io/badge/licen%C3%A7a-GPL--2.0-blue)](LICENSE)
+<p>
+  <a href="https://github.com/lucascantarelli/wyd/actions/workflows/ci.yml"><img src="https://github.com/lucascantarelli/wyd/actions/workflows/ci.yml/badge.svg?branch=develop" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Rust-stable-000?logo=rust&amp;logoColor=white" alt="Rust stable">
+  <img src="https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&amp;logoColor=white" alt="Next.js 16">
+  <img src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&amp;logoColor=white" alt="PostgreSQL 17">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&amp;logoColor=white" alt="Docker Compose">
+  <img src="https://img.shields.io/badge/licen%C3%A7a-GPL--2.0-blue" alt="GPL-2.0">
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/status-desenvolvimento%20ativo-f59e0b" alt="Em desenvolvimento">
+  <img src="https://img.shields.io/badge/roadmap-34%20ativas%20%C2%B7%2058%20conclu%C3%ADdas-7c3aed" alt="34 issues ativas e 58 concluídas">
+  <img src="https://img.shields.io/badge/checklist-34%20%E2%9C%85%20%C2%B7%2018%20%F0%9F%9A%A7%20%C2%B7%2029%20%E2%AC%9C-0ea5e9" alt="Checklist funcional">
+</p>
+
+**Servidor em desenvolvimento ativo.** O cliente Windows 7662 é proprietário e externo ao
+repositório; algumas provas visuais ainda dependem dele.
+
+[🚀 Começar](#comecando) · [🏗️ Arquitetura](#arquitetura) · [📚 Documentação](#documentacao) · [🗺️ Roadmap](#roadmap) · [🤝 Contribuir](#contribuindo)
 
 </div>
 
 ---
 
-## 📖 O que é este projeto
+## ✨ O que é este projeto
 
-O **OpenWYD** é um servidor local do MMORPG **With Your Destiny (WYD2)** escrito em **Go**, que fala
-o protocolo original com o cliente Windows `WYD.exe` (build **7662**, `ClientVersion` **12000**) e
-expõe uma plataforma de administração em **Next.js**.
+O **WYD2** é um servidor de MMORPG com o protocolo CPSock do cliente original e um motor
+próprio em Rust. O objetivo é preservar a experiência do *With Your Destiny* — login, seleção
+de personagem, cena, combate, inventário, economia e progressão — com uma base moderna,
+determinística e observável.
 
-A reescrita é guiada por engenharia reversa documentada: os fontes C++ legados ficam em
-`Source/`, os contratos de wire e de save em `docs/migration/`, e cada serviço Go nasce com teste,
-gate e documentação próprios. O estado do mundo é **propriedade de uma única goroutine** — sem
-locks, sem duplicação de item, como no reactor single-thread original.
+| 🧩 Camada | 🛠️ Tecnologia | 🎯 Papel |
+|---|---|---|
+| **Hot Path** | Rust · `wyd-core` · `wyd-net` · `wyd-protocol` | tick, ECS, combate, cena, CPSock; um processo por canal |
+| **Persistência** | PostgreSQL 17 · `sqlx` · `wyd-db` | personagens, inventário, economia, auditoria, migrations no boot |
+| **Cold Path** | Rust · `wyd-admin` / `wyd-gateway` | HTTP/JSON administrativo, autenticação e integração com o portal |
+| **Portal** | Next.js 16 · React 19 · TypeScript | BFF e telas de staff; nunca fala SQL nem escreve no estado vivo |
+| **Launcher** | Rust · Tauri | manifesto, patch atômico, `serverlist.bin`, instalação e atualização |
+| **Observabilidade** | Prometheus · Grafana · Loki · Alloy | métricas do motor, dashboards, alertas e logs duráveis |
+| **QA** | `cargo test` · `wyd-bots` · Playwright | unidade, integração, fio, carga, bots e E2E do portal |
 
-> 🎯 **Objetivo:** servidor local operacional com login pelo cliente modificado, personagens,
-> batalha, comércio, quests e uma camada de administração web — sem tocar no binário do cliente.
+> 🧭 **Transição concluída:** a stack Go/C++ foi removida em 2026-11. A fonte canônica é
+> `crates/` + `docs/` + `roadmap-rust/`; o histórico antigo serve apenas como referência
+> arqueológica.
 
----
+<a id="arquitetura"></a>
 
 ## 🏗️ Arquitetura
 
 ```mermaid
 flowchart LR
-  C["🖥️ Cliente WYD.exe<br/>CPSock + HTTP :80"]
-  T1["🎮 tmServer canal 1<br/>:8281"]
-  T2["🎮 tmServer canal 2<br/>:8282"]
-  DB["🗄️ dbServer<br/>gRPC :7514"]
-  BIN["💳 binServer<br/>gRPC :3000"]
-  WEB["🌐 webServer<br/>gRPC :7600"]
-  P["📊 Portal Next.js<br/>:3000"]
-  PG[("🐘 PostgreSQL 17")]
+  subgraph CLIENTE["🕹️ Cliente Windows 7662"]
+    C["WYD.exe<br/>assets proprietários"]
+  end
 
-  C -->|protocolo legado| T1
-  C -->|protocolo legado| T2
-  T1 -->|gRPC + mTLS| DB
-  T2 -->|gRPC + mTLS| DB
-  T1 -->|billing| BIN
-  T2 -->|billing| BIN
-  P -->|BFF server-side| WEB
-  WEB --> PG
-  DB --> PG
+  subgraph HOT["🔥 Hot Path — um processo por canal"]
+    S1["wyd-server<br/>canal 1 · CPSock :8281"]
+    S2["wyd-server<br/>canal 2 · CPSock :8281"]
+    NOTE["um processo por canal,<br/>cada um no IP de uma célula<br/>do serverlist.bin"]
+    CORE["wyd-core<br/>tick · ECS · combate · cena"]
+  end
+
+  subgraph COLD["🧊 Cold Path"]
+    P["Portal Next.js<br/>BFF :3000"]
+    G["wyd-gateway<br/>HTTP/JSON :7600"]
+    DB[("PostgreSQL 17")]
+    OBS["Prometheus · Grafana<br/>Loki · Alloy"]
+  end
+
+  C -->|CPSock| S1
+  C -->|CPSock| S2
+  S1 --> CORE
+  S2 --> CORE
+  NOTE -.-> S1
+  NOTE -.-> S2
+  S1 --> DB
+  S2 --> DB
+  P --> G
+  G --> DB
+  P --> OBS
 ```
 
-**Só a borda cliente↔tmServer fala o protocolo legado.** Todo link interno é gRPC (com mTLS
-opcional). O portal é um BFF puro: lê e envia intenções, nunca escreve estado de personagem vivo.
+**Regra de ouro:** o cliente não dita posição, dano, cooldown ou inventário. O servidor é a
+autoridade; o portal é BFF e não escreve no estado vivo. Grants administrativos passam pela
+`delivery_queue`, com idempotência e auditoria.
 
-### Serviços
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Cliente 7662
+  participant S as wyd-server
+  participant D as PostgreSQL
 
-| Serviço | Porta | Papel |
-|---|---|---|
-| 🎮 **tmServer** | `8281` / `:80` | Dono de todo o estado do mundo em memória (goroutine única). Protocolo CPSock, pathfinding, combate, drops, NPCs. |
-| 🗄️ **dbServer** | `7514` | Persistência via gRPC `api/db/v1` sobre PostgreSQL/pgx v5. |
-| 💳 **binServer** | `3000` | Gate de billing via gRPC `api/bin/v1`. |
-| 🌐 **webServer** | `7600` | Web-api gRPC `api/web/v1` para o BFF do portal. |
-| 📊 **portal** | `3000` | UI de administração em Next.js: contas, NPCs, drops, itens, mapa, faturamento. |
-| 🧾 **logpipe** | `7788` | Sidecar read-only que serve logs do Docker ao portal. |
+  C->>S: handshake CPSock
+  S->>D: conta · PIN · sessão única
+  S-->>C: CNFAccountLogin + STRUCT_SELCHAR
+  C->>S: CharacterLogin
+  S-->>C: STRUCT_MOB
+  S-->>C: ESCENE_FIELD (cena autoritativa)
+```
 
-Pacotes compartilhados (`store`, `migrations`, `domain`, `secret`/argon2id) vivem em `internal/`.
+## 📊 Estado atual
 
----
+> Números medidos em **2026-11-13** pelo roadmap e pelo checklist funcional.
 
-## 🧰 Stack
-
-| Camada | Tecnologia |
+| Indicador | Estado |
 |---|---|
-| 🐹 Servidor | Go 1.26, gRPC, pgx v5, argon2id |
-| 🐘 Dados | PostgreSQL 17 (migrations versionadas + seeds de referência) |
-| 🖥️ Portal | Next.js 16 (App Router), React 19, TypeScript, Tailwind, jose, zod |
-| 🧪 Testes | `go test -race`, vitest, testes de integração com Postgres, e2e headless |
-| 📈 Observabilidade | Prometheus + Grafana, logs estruturados (`slog`), `trace_id` ponta a ponta |
-| 📚 Docs | MkDocs Material (`docs/`) + roadmap versionado (`roadmap/`) |
-| 🐳 Deploy | Docker multi-stage, imagens distroless nonroot, compose em camadas |
+| 🗺️ Roadmap | **34 issues ativas** + 15 descritores de fase · **58 concluídas** |
+| 🧪 Checklist funcional | **35 ✅ · 23 🚧 · 34 ⬜ · 2 ⛔** em 94 linhas |
+| 🗄️ Banco | **50 migrations · 86 tabelas** no gate atual |
+| 🧱 Workspace | **9 crates Rust** + `apps/launcher-ui` (Tauri) |
+| 🌐 Stack local | 2 canais + gateway + portal + PostgreSQL + Prometheus/Grafana/Loki |
+| 🖥️ Cliente | 7662 externo; prova visual de `BUG-01`, `BUG-02`, `GAME-17` e `GAME-18` pendente |
 
----
+### ✅ Já funciona com prova
+
+- Login por conta e **PIN numérico** com Argon2id, bloqueio persistido e sessão única entre canais.
+- Seleção/criação de personagem, entrada no mundo e cena autoritativa `ESCENE_FIELD` (30000).
+- Tick determinístico, ECS, spatial grid, IA de NPC e combate interno.
+- Loot até o inventário, refino com SancRate/piedade e `SendItem` no fio.
+- Portal de staff com contas, moderação, auditoria, entregas idempotentes e financeiro.
+- Gateway, migrations no boot, seed de staff, monitoramento e E2E Playwright.
+
+### 🚧 Ainda em aberto
+
+- **Prova visual no cliente 7662** para mensagens de entrada, PIN, cena e Campo de Treinamento.
+- Lojas/diálogo de NPC, caixa de drop no chão, trade jogador↔jogador e skills no fio.
+- Cobertura completa de carga, concorrência, banco e build de produção.
+- Curva de crescimento e reorganização final do roadmap.
+
+> ⛔ O que depende de captura/RE do cliente não é “código faltando”: é uma decisão de layout
+> **UNVERIFIED**. O caminho conservador é tolerar, logar e não inventar contrato.
+
+<a id="comecando"></a>
 
 ## 🚀 Começando
 
 ### Pré-requisitos
 
-- **Docker** + **Docker Compose** (caminho recomendado), ou
-- **Go 1.26** e **Node.js 20+** para rodar no host.
+| Ferramenta | Necessário para |
+|---|---|
+| 🦀 **Rust stable** via [`rustup`](https://rustup.rs/) | workspace, testes, binários |
+| 🐳 **Docker + Docker Compose** | PostgreSQL, canais, gateway, portal e monitoramento |
+| 🟢 **Node.js LTS + npm** | portal Next.js, Vitest e Playwright |
+| 🪟 **Git Bash** no Windows | alvos `make` e comandos POSIX |
+| 🎮 **Cliente WYD 7662** (opcional) | prova visual; não é distribuído no repositório |
 
 ### Subir a stack completa
 
 ```bash
-cp .env.example .env      # primeira vez; o arquivo não é versionado
-make run-local            # Postgres + serviços + 2 canais + portal, conta test/test123
+git clone https://github.com/lucascantarelli/wyd.git
+cd wyd
+
+cp .env.example .env          # troque os segredos antes de expor qualquer serviço
+make check                    # fmt + clippy + build + testes + migrations + docs + skills + tools
+make stack-up                 # db + 2 canais + gateway + portal + monitoramento + mkdocs
 ```
 
-O comando imprime o endereço para apontar o cliente. Depois:
+Depois do `up`:
 
-| Onde | URL |
+| 🌐 Serviço | 🔗 Endereço |
 |---|---|
-| 📊 Portal | <http://localhost:3000> |
-| 🎮 Jogo (canal 1) | `127.0.0.1:8281` |
-| 🌐 Status HTTP | <http://127.0.0.1/> |
+| Portal / BFF | `http://127.0.0.1:3000` |
+| Gateway — saúde | `http://127.0.0.1:7600/health` |
+| Prometheus | `http://127.0.0.1:9090` |
+| Grafana | `http://127.0.0.1:3001` |
+| MkDocs (dev/admin) | `http://127.0.0.1:8000` |
+| CPSock — canal 1 / 2 | `:8281` (IPs configurados em `WYD_CANAL1_IP` / `WYD_CANAL2_IP`) |
+| PostgreSQL | `127.0.0.1:5432` somente no override de desenvolvimento |
 
-### Rodar sem containers
-
-```bash
-make run                  # só o tmServer, persistência no-op
-make portal-install       # npm ci em portal/
-make portal-dev           # portal em http://127.0.0.1:3000 (hot reload)
-```
-
-### Conectar o cliente
-
-1. Gere um `serverlist.bin` apontando para o IP/porta do servidor
-   (`client-tools/serverlist`, alvo `make client-serverlist`).
-2. Faça backup do `serverlist.bin` original e substitua-o na pasta do cliente.
-3. Abra `WYD.exe`, entre com `test` / `test123` e crie um personagem.
-
-O cliente sonda o status na porta HTTP `80` e conecta em `8281/TCP` — libere ambas no firewall
-quando o cliente estiver em outra máquina. Detalhes em
-[`docs/migration/canais.md`](docs/migration/canais.md).
-
----
-
-## 🔧 Configuração
-
-Toda configuração de processo vem de `./.env` (carregado pelo compose) ou de flags. **Nenhuma
-chave é obrigatória** e o argumento de CLI sempre vence a variável de ambiente.
+Para o caminho de fechamento de issue, com build, migrations e provas de saúde:
 
 ```bash
-W2PP_RATES_EDITING=true docker compose up -d openwyd-nextgen1-tmsrv
+make local-rebuild
 ```
 
-> ⚠️ **Números de gameplay não vêm de env.** Rate, drop, preço e curva de EXP vivem no conteúdo
-> (`tmserver/content/`), no banco e nos overlays auditados do portal.
-
-Catálogo completo, portas e hardcodes: [`docs/migration/config-ops.md`](docs/migration/config-ops.md) §0.
-
----
-
-## ✅ Qualidade e gates
-
-O repositório trata qualidade como contrato executável — o CI roda exatamente o `make ci`:
+### Só o servidor Rust
 
 ```bash
-make ci          # gate + skips + comentários + docs + vet + build + test + portal-test
+make fmt          # rustfmt
+make clippy       # -D warnings, incluindo testes e benches
+make build        # compila as 9 crates do workspace
+make test         # workspace
+make test-all     # unitários + integração + doc-tests + benches
+make check        # gate obrigatório de toda issue
+make ci           # espelho local do workflow Rust
 ```
 
-| Gate | O que garante |
-|---|---|
-| `make gate` | Rename residual e artefatos proto em dia |
-| `make check-secrets` | Nenhum segredo versionado (gitleaks) |
-| `make check-skips` | Todo `t.Skip` declara motivo |
-| `make check-comments` | Comentários/docstrings em português nos diretórios migrados |
-| `make guias-check` | JSON de guias do portal idêntico ao `docs/` |
-| `make test` | `go test -race -cover ./...` |
-| `make portal-test` | `tsc --noEmit` + vitest |
+> 💡 No Windows sem `make`, rode os comandos `cargo` equivalentes do `Makefile` e registre a
+> saída na evidência da issue.
 
-**Invariantes do servidor** (dono único do estado, offsets binários explícitos, paridade de RNG,
-argon2id, a web nunca escreve personagem vivo) estão em [`AGENTS.md`](AGENTS.md) §3.
+## 🗂️ Mapa do repositório
 
----
-
-## 🧪 Testes
-
-```bash
-make test          # unitários com race detector
-make test-db       # integração contra um Postgres descartável (W2PP_TEST_DSN)
-make test-e2e      # login headless contra a stack no ar (sem cliente Windows)
-make test-channel  # troca de canal real (/srv 2)
-make bot-test      # laboratório de bots (determinístico, sem rede)
+```text
+wyd2/
+├── crates/
+│   ├── wyd-protocol/      # 🔌 wire CPSock, opcodes, offsets e goldens
+│   ├── wyd-core/          # 🔥 tick, ECS/DOD, combate, cena e IA
+│   ├── wyd-net/           # 🌐 transporte async, sessão, rate-limit e hardening
+│   ├── wyd-db/            # 🗄️ PostgreSQL, migrations, repositórios e delivery_queue
+│   ├── wyd-admin/         # 🧊 Cold Path e binário wyd-gateway
+│   ├── wyd-server/        # ⚙️ composição do monólito; um processo por canal
+│   ├── wyd-sim/           # 🧮 fórmulas, curvas e simulações determinísticas
+│   ├── wyd-launcher/      # 🚀 patch, manifesto, serverlist e bootstrap
+│   └── wyd-bots/          # 🤖 bots de QA/carga e campanha do Campo
+├── apps/launcher-ui/      # 🖥️ GUI Tauri do launcher
+├── wyd-portal/            # 📊 BFF Next.js + telas de staff + E2E
+├── docs/                  # 📚 arquitetura, operação, cliente, jogo e manuais
+├── roadmap-rust/          # 🗺️ fases, 34 issues ativas, bugs e changelog
+├── docker/                # 🐳 imagens, monitoramento e configuração da stack
+├── .agents/skills/        # 🧠 skills operacionais por tipo de tarefa
+├── AGENTS.md              # 📜 invariantes e fluxo para agentes de IA
+├── Cargo.toml             # workspace virtual (resolver 2)
+└── rust-toolchain.toml    # stable + rustfmt + clippy
 ```
 
-Os testes e2e usam `W2PP_E2E_ADDR`, `W2PP_E2E_ACCOUNT`, `W2PP_E2E_PASSWORD` e `W2PP_E2E_VERSION=12000`.
+> 🔒 `client/`, `target/`, `.env`, dumps e `client.zip` não são versionados. O cliente é
+> proprietário e o launcher o obtém de uma release/artefato externo.
 
----
+<a id="documentacao"></a>
 
 ## 📚 Documentação
 
-| Preciso de… | Leia |
+A porta de entrada é [`docs/index.md`](docs/index.md). O site usa MkDocs Material.
+
+| 🎯 Preciso de… | 📖 Leia |
 |---|---|
-| 🧭 Topologia, portas, configs | [`docs/migration/config-ops.md`](docs/migration/config-ops.md) |
-| 🔌 Protocolo CPSock e structs | [`docs/migration/protocol-spec.md`](docs/migration/protocol-spec.md) |
-| 💾 Formatos de save e alinhamento | [`docs/migration/data-formats.md`](docs/migration/data-formats.md) |
-| 🎲 Fórmulas de dano, EXP, drop, refino | [`docs/migration/game-rules.md`](docs/migration/game-rules.md) |
-| 🔁 Fluxos ponta a ponta | [`docs/migration/flows.md`](docs/migration/flows.md) |
-| 💬 Mensagens ao cliente | [`docs/migration/game-messages.md`](docs/migration/game-messages.md) |
-| 📊 Estado real do que funciona | [`docs/migration/SESSION-PRIMER.md`](docs/migration/SESSION-PRIMER.md) |
-| 🗺️ Planejamento e issues | [`roadmap/index.md`](roadmap/index.md) |
-| 🖥️ Portal (BFF, telas, sessão) | [`portal/README.md`](portal/README.md) |
-| 🤖 Convenções para agentes de IA | [`AGENTS.md`](AGENTS.md) |
+| 🧭 Visão geral e estado da transição | [`docs/rust/00-visao-estrutura.md`](docs/rust/00-visao-estrutura.md) |
+| ⚙️ Ciclo de execução, gates e Definition of Done | [`docs/rust/02-execucao.md`](docs/rust/02-execucao.md) |
+| 📈 Progresso vivo e evidência por issue | [`docs/rust/03-progresso.md`](docs/rust/03-progresso.md) |
+| 🧾 Índice de evidências técnicas | [`docs/rust/evidencias/README.md`](docs/rust/evidencias/README.md) |
+| 🐳 Stack, portas e operação Docker | [`docs/rust/05-stack-docker.md`](docs/rust/05-stack-docker.md) |
+| 📡 Observabilidade e runbooks | [`docs/rust/06-observabilidade-runbooks.md`](docs/rust/06-observabilidade-runbooks.md) |
+| ✅ Checklist funcional do jogo | [`docs/rust/08-checklist-funcionalidades.md`](docs/rust/08-checklist-funcionalidades.md) |
+| 🏛️ ADRs e decisões de arquitetura | [`docs/arquitetura/adr/README.md`](docs/arquitetura/adr/README.md) |
+| 🧱 Estrutura de módulos e padrões | [`docs/arquitetura/estrutura-e-padroes.md`](docs/arquitetura/estrutura-e-padroes.md) |
+| 🔌 Protocolo CPSock e payloads | [`docs/arquitetura/protocolo.md`](docs/arquitetura/protocolo.md) |
+| 🗄️ Banco, ER e migrations | [`docs/arquitetura/modelo-banco.md`](docs/arquitetura/modelo-banco.md) |
+| 🧭 C4 e fluxo de pacotes | [`docs/arquitetura/c4-pacotes.md`](docs/arquitetura/c4-pacotes.md) |
+| 🕹️ Cliente 7662: inventário, RE e depuração | [`docs/cliente/README.md`](docs/cliente/README.md) |
+| 📦 Pacotes e formatos do cliente | [`docs/cliente/pacotes.md`](docs/cliente/pacotes.md) |
+| 👤 Manual do jogador e do launcher | [`docs/manual-usuario/README.md`](docs/manual-usuario/README.md) |
+| 🎮 Lore, classes, itens e sistemas | [`docs/wyd/README.md`](docs/wyd/README.md) |
+| 🛠️ Guia de contribuição | [`docs/manual-técnico/guia-contribuicao.md`](docs/manual-técnico/guia-contribuicao.md) |
+| 🤖 Skills e roteamento por tarefa | [`.agents/skills/README.md`](.agents/skills/README.md) |
+| 🧠 Regras para agentes de IA | [`AGENTS.md`](AGENTS.md) |
+| 🗺️ Roadmap executável | [`roadmap-rust/index.md`](roadmap-rust/index.md) |
+| 📝 Changelog de issues concluídas | [`roadmap-rust/changelog.md`](roadmap-rust/changelog.md) |
+| 🐞 Bugs e relatos do cliente | [`roadmap-rust/bugs.md`](roadmap-rust/bugs.md) |
+| 📰 Notícias de gameplay | [`docs/noticias/`](docs/noticias/) |
 
-Site navegável: `docker compose --profile docs up -d openwyd-mkdocs` → <http://127.0.0.1:8000>.
+### Documentos de contexto
 
----
+- [`pre-release-rust.md`](pre-release-rust.md) — critérios de pré-release e riscos.
+- [`start-rust.md`](start-rust.md) — ponto de partida da migração para Rust.
+- [`wyd2.md`](wyd2.md) — visão funcional e regras do jogo.
+- [`prompt.md`](prompt.md) — diretrizes de produto e execução usadas no planejamento.
 
-## 📁 Estrutura do repositório
+<a id="roadmap"></a>
 
+## 🗺️ Roadmap e estado atual
+
+O planejamento vive em [`roadmap-rust/index.md`](roadmap-rust/index.md), com IDs
+`CATEGORIA-NN`, dependências explícitas e foco em **ganhos rápidos sem bloqueio externo**.
+
+| 🎯 Próximo | Categoria | Esforço | Por quê |
+|---|---|---|---|
+| `QA-11` | Qualidade · carga | M | Rodar 2 bots em loopback e a carga de 200 com P99/rejeições. |
+| `GAME-22` | Jogo · progressão | M | Fechar a árvore de EXP com o default inalterado e provar por flags. |
+| `PROC-01` | Processo · documentação | M | Fechar a dedup da documentação e publicar o MkDocs. |
+
+**Resíduos de prova visual** (não são ganhos rápidos): `BUG-01`, `BUG-02`, `GAME-17` e
+`GAME-18`. Eles dependem do cliente 7662/VM (`CLIENT-06`) e continuam declarados como
+pendência — nenhum foi promovido sem prova.
+
+> 📌 Toda issue concluída sai de `roadmap-rust/issues/`, entra em
+> [`roadmap-rust/changelog.md`](roadmap-rust/changelog.md) e deixa a evidência no
+> [índice de evidências](docs/rust/evidencias/README.md).
+
+## 🧪 Qualidade, segurança e invariantes
+
+### Gates
+
+```bash
+make check        # fmt + clippy + build + test + migrations + issues + docs + skills + tools
+make test-all     # unitários + integração + doc-tests + benches
+make bench        # benchmarks e simulações pesadas
+make portal-test  # tsc --noEmit + Vitest
+make portal-build # next build
+make docs-serve   # MkDocs interno dev/admin em 127.0.0.1:8000
+make ci           # espelho local do workflow Rust
 ```
-.
-├── tmserver/          # 🎮 servidor do jogo (CPSock, mundo, handlers, conteúdo)
-├── dbserver/          # 🗄️ persistência gRPC
-├── binserver/         # 💳 billing gRPC
-├── webserver/         # 🌐 web-api gRPC
-├── internal/          # 🧩 store, migrations, domínio, argon2id
-├── portal/            # 📊 UI Next.js (BFF sobre o web-api)
-├── api/               # 📜 contratos .proto versionados
-├── docs/              # 📚 engenharia reversa, integrações e site MkDocs
-├── roadmap/           # 🗺️ planejamento, issues e programa de pré-release
-├── monitoring/        # 📈 Prometheus + dashboards Grafana
-├── scripts/           # 🔧 gates, conteúdo, certificados, operação
-└── client-tools/      # 🧰 geração de serverlist.bin
-```
 
----
+O CI em [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em `main` e `develop` em
+**estágios encadeados**: qualidade (fmt, clippy, conteúdo, infra, portal, advisory) → build/teste
++ sistema com Postgres real → imagens e cobertura → `gate` e deploy local → notificação no Slack
+com resultado e métricas de cada job. `bench.yml` (agendado) e `release.yml` (tag) ficam fora do
+caminho de push.
 
-## 🔐 Segurança
+### Invariantes que não se negociam
 
-- Senhas e PINs sempre em **argon2id**; texto plano é proibido, inclusive em log.
-- Sessão do portal em cookie **httpOnly** assinado (HS256); o papel no cookie é dica de UI — o
-  web-api revalida `account.role` em toda RPC admin.
-- **`moderator_id` vem da sessão**, nunca do corpo da request (coberto por teste dedicado).
-- Links internos podem usar **mTLS** (`docker-compose.mtls.yaml` + `make certs`).
-- Segredos ficam em `.env` (gitignored) ou no gerenciador de secrets do deploy.
+1. **Hot Path sem I/O no tick** — sem HTTP, SQL, gRPC, mutex global ou alocação quente.
+2. **Wire por offset explícito** — HEADER de 12 bytes LE, `INITCODE = 0x1F11F311` e
+   transformação a partir do offset 4.
+3. **Servidor é autoridade** — o cliente não dita posição, dano, cooldown ou inventário.
+4. **UNVERIFIED não vira regra** — sem captura, tolerar/logar e seguir pelo caminho conservador.
+5. **Segredos nunca vazam** — Argon2id para senha/PIN; DSN, tokens e dumps fora de log/git/assets.
+6. **A web não escreve estado vivo** — grants passam pela `delivery_queue`, com auditoria.
+7. **Estrutura antes de código** — árvore normativa em
+   [`docs/arquitetura/estrutura-e-padroes.md`](docs/arquitetura/estrutura-e-padroes.md);
+   mudança de fronteira exige ADR.
 
-Encontrou uma vulnerabilidade? Abra uma issue privada em vez de um PR público.
-
----
-
-## 🗺️ Roadmap
-
-O estado real — o que funciona, o que está em andamento e a ordem das próximas frentes — vive em
-[`roadmap/index.md`](roadmap/index.md) e no [`roadmap/PRE-RELEASE-PROGRAM.md`](roadmap/PRE-RELEASE-PROGRAM.md).
-Issues detalhadas em [`roadmap/issues/`](roadmap/issues/).
-
----
+<a id="contribuindo"></a>
 
 ## 🤝 Contribuindo
 
-1. Leia [`AGENTS.md`](AGENTS.md) (invariantes) e [`development-guidelines/processo.md`](development-guidelines/processo.md)
-   (Definition of Done).
-2. Rode `make ci` antes de abrir o PR — gate vermelho se conserta na mudança, não no CI.
-3. Commits pequenos e descritivos, em português; docs e UI também em português.
-4. Nunca versione segredos, `client/`, `serverlist.bin` com IP privado ou dumps de conta.
+1. Leia [`AGENTS.md`](AGENTS.md) e a issue correspondente em [`roadmap-rust/issues/`](roadmap-rust/issues/).
+2. Escolha **uma** skill principal no [roteador de skills](.agents/skills/README.md).
+3. Trabalhe em `develop`; uma issue por vez, sem refatoração fora do escopo.
+4. Código novo nasce com teste; docs e UI em português.
+5. Rode `make check` antes de abrir PR ou considerar a issue pronta.
+6. Ao concluir, remova o arquivo da issue, registre no changelog e atualize o painel/evidência.
 
----
+**Nunca versione:** `client/`, `target/`, `.env`, dumps de conta, `client.zip` ou
+`serverlist.bin` com IP privado.
 
 ## 📜 Licença
 
 Distribuído sob a **GNU General Public License v2.0** — veja [`LICENSE`](LICENSE).
 
 Os binários e assets do cliente WYD são propriedade dos seus respectivos donos e **não** são
-distribuídos por este repositório (`client/` é ignorado pelo git).
+distribuídos por este repositório. O `client/` é ignorado pelo git; o launcher trabalha com um
+artefato externo autorizado.
 
 ---
 
-## 🙏 Agradecimentos
+<div align="center">
 
-A quem preservou e compartilhou os fontes legados, e a toda a comunidade que mantém o WYD vivo.
-Sem esse material, esta reescrita não existiria.
+**Feito com 🦀 Rust, ☕ café e respeito ao clássico.**
+
+[⬆️ Voltar ao topo](#top) · [🐞 Abrir uma issue](https://github.com/lucascantarelli/wyd/issues) · [🗺️ Roadmap](roadmap-rust/index.md)
+
+</div>

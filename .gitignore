@@ -1,286 +1,16 @@
-## Ignora arquivos temporários do Visual Studio, resultados de build e
-## arquivos gerados por complementos populares do Visual Studio.
-
-# Arquivos específicos do usuário
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Arquivos específicos do usuário (MonoDevelop/Xamarin Studio)
-*.userprefs
-
-# Resultados de build
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-[Xx]64/
-[Xx]86/
-[Bb]uild/
-bld/
-[Bb]in/
-!api/bin/
-!api/bin/**
-[Oo]bj/
-
-# Diretório de cache/opções do Visual Studio 2015
-.vs/
-# Descomente se você tiver tarefas que criam os arquivos estáticos do projeto em wwwroot
-#wwwroot/
-
-# Resultados de teste do MSTest
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-
-# NUNIT
-*.VisualState.xml
-TestResult.xml
-
-# Resultados de build de um projeto ATL
-[Dd]ebugPS/
-[Rr]eleasePS/
-dlldata.c
-
-# DNX
-project.lock.json
-artifacts/
-
-*_i.c
-*_p.c
-*_i.h
-*.ilk
-*.meta
-*.obj
-*.pch
-*.pdb
-Release/DBsrv/run/DBSrv.exe
-Release/DBsrv/run/EDITAPPMOB.exe
-Release/TMsrv/run/TMSrv.exe
-Release/TMsrv/run/boss/TMSrv.exe
-Release/TMsrv/run/DropTool.exe
-Release/TMsrv/run/EDITAPPMOB.exe
-Release/TMsrv/run/EDITAPPSHOP.exe
-Release/TMsrv/run/NPTool.exe
-Source/Code/ClientPatch_v7662/3da_extra9.dll
-*.pgc
-*.pgd
-*.rsp
-*.sbr
-*.tlb
-*.tli
-*.tlh
-*.tmp
-*.tmp_proj
-*.log
-*.vspscc
-*.vssscc
-.builds
-*.pidb
-*.svclog
-*.scc
-
-# Arquivos de teste do Chutzpah
-_Chutzpah*
-
-# Arquivos de cache do Visual C++
-ipch/
-*.aps
-*.ncb
-*.opendb
-*.opensdf
-*.sdf
-*.cachefile
-*.VC.db
-
-# Criador de perfil do Visual Studio
-*.psess
-*.vsp
-*.vspx
-*.sap
-
-# Workspace local do TFS 2012
-$tf/
-# Guidance Automation Toolkit
-*.gpState
-
-# ReSharper é um complemento .NET
-_ReSharper*/
-*.[Rr]e[Ss]harper
-*.DotSettings.user
-
-# JustCode é um complemento .NET
-.JustCode
-
-# TeamCity é um complemento de build
-_TeamCity*
-
-# DotCover é ferramenta de cobertura
-*.dotCover
-
-# NCrunch
-_NCrunch_*
-.*crunch*.local.xml
-nCrunchTemp_*
-
-# MightyMoose
-*.mm.*
-AutoTest.Net/
-
-# Workbench web (sass)
-.sass-cache/
-
-# Pasta de saída do Installshield
-[Ee]xpress/
-
-# Projeto de documentação (complemento de gerador de docs)
-DocProject/buildhelp/
-DocProject/Help/*.HxT
-DocProject/Help/*.HxC
-DocProject/Help/*.hhc
-DocProject/Help/*.hhk
-DocProject/Help/*.hhp
-DocProject/Help/Html2
-DocProject/Help/html
-
-# Diretório Click-Once
-publish/
-
-# Saída de publicação web
-*.[Pp]ublish.xml
-*.azurePubxml
-
-# TODO: descomente a linha abaixo se não quiser versionar suas configurações
-# de deploy web, porque elas podem conter senhas sem criptografia
-#*.pubxml
-*.publishproj
-
-# Pacotes NuGet
-*.nupkg
-# A pasta de pacotes pode ser ignorada por causa do Package Restore
-**/packages/*
-# exceto build/, que é usado como alvo do MSBuild.
-!**/packages/build/
-# Descomente se necessário; em geral é regerado quando preciso
-#!**/packages/repositories.config
-# Os arquivos project.json do NuGet v3 produzem mais arquivos ignoráveis
-*.nuget.props
-*.nuget.targets
-
-# Saída de build do Microsoft Azure
-csx/
-*.build.csdef
-
-# Emulador do Microsoft Azure
-ecf/
-rcf/
-
-# Arquivo de configuração do Application Insights do Microsoft Azure
-ApplicationInsights.config
-
-# Diretório de pacotes de app da Windows Store
-AppPackages/
-BundleArtifacts/
-
-# Arquivos de cache do Visual Studio
-# arquivos terminados em .cache podem ser ignorados
-*.[Cc]ache
-# mas rastreie diretórios terminados em .cache
-!*.[Cc]ache/
-
-# Outros
-ClientBin/
-[Ss]tyle[Cc]op.*
-~$*
-*~
-*.dbmdl
-*.dbproj.schemaview
-*.pfx
-*.publishsettings
-node_modules/
-orleans.codegen.cs
-
-# Projetos RIA/Silverlight
-Generated_Code/
-
-# Arquivos de backup e relatório da conversão de um projeto antigo para uma
-# versão mais nova do Visual Studio. Backups não são necessários, temos git ;-)
-_UpgradeReport_Files/
-Backup*/
-UpgradeLog*.XML
-UpgradeLog*.htm
-
-# Arquivos do SQL Server
-*.mdf
-*.ldf
-
-# Projetos de Business Intelligence
-*.rdl.data
-*.bim.layout
-*.bim_*.settings
-
-# Microsoft Fakes
-FakesAssemblies/
-
-# Arquivo de configuração do complemento GhostDoc
-*.GhostDoc.xml
-
-# Ferramentas Node.js para Visual Studio
-.ntvs_analysis.dat
-
-# Log de build do Visual Studio 6
-*.plg
-
-# Arquivo de opções de workspace do Visual Studio 6
-*.opt
-
-# Saída de build do Visual Studio LightSwitch
-**/*.HTMLClient/GeneratedArtifacts
-**/*.DesktopClient/GeneratedArtifacts
-**/*.DesktopClient/ModelManifest.xml
-**/*.Server/GeneratedArtifacts
-**/*.Server/ModelManifest.xml
-_Pvt_Extensions
-
-# Arquivos gerados pelo LightSwitch
-GeneratedArtifacts/
-ModelManifest.xml
-
-# Gerenciador de dependências Paket
-.paket/paket.exe
-
-# FAKE - F# Make
-.fake/
-
-# Arquivos locais
-
-.Common/
-.DBsrv/
-.TBsrv/
-# Saída de build Go (reescrita w2pp-OpenWYD)
-/bin/
+# Arquivos ignorados
 
 # Material mTLS de dev (gerado por `make certs` / scripts/gen-certs.sh)
 /certs/
-
-# Ícones de item gerados a partir do cliente proprietário. Publique os
-# artefatos; nunca versione os pixels.
-/dist/item-icons/
-
-# Toolchain local (protoc + protoc-gen-go) usada por `make proto`; baixada por máquina.
-.tools/
-
-# Atlas do mundo: artefato gerado por `go run ./tmserver/cmd/worldatlas -content Release -out dist`.
-/dist/world-atlas.json
-/dist/world-map.png
 
 # Cliente do jogo (binários proprietários, ~344 MB): nunca versionar.
 /client/
 
 # Portal Next.js (dependências e saída de build).
-/portal/.next/
-/portal/out/
-/portal/next-env.d.ts
+/wyd-portal/.next/
+/wyd-portal/out/
+/wyd-portal/next-env.d.ts
+/wyd-portal/node_modules/
 
 # Metadados locais do Freebuff (project-id do workspace).
 /.freebuff/
@@ -292,24 +22,26 @@ ModelManifest.xml
 .env.*
 !.env.example
 
-# Staging local do squash de migrations: o histórico pré-squash vive no git.
-/internal/migrations/_archived/
-
-# serverlist.bin gerado com IP privado nunca entra no git.
-serverlist bin/**/*.bin
-
-# serverlist.bin gerado com IP privado — nunca versionar
-dist/serverlist/
-
-# Conteúdo do servidor (LEGACY-02): a config pequena é versionada junto do código.
-# Os dois mapas (17 MiB) ficam fora do git e entram por `make content-sync`, que
-# copia de uma árvore legada e confere o SHA-256 de tmserver/content/content.sha256.
-# O resíduo Win32 arquivado (DLLs, launchers, dumps, estado de servidor de teste)
-# nunca é versionado nem servido.
-tmserver/content/TMsrv/run/HeightMap.dat
-tmserver/content/TMsrv/run/AttributeMap.dat
-tmserver/content/_legacy/
-
 # Saídas de build (mkdocs e logs de teste local)
 /site/
 /tmp/
+
+# Playwright (FASE-07-4): relatórios/traces nunca versionados
+/wyd-portal/test-results/
+/wyd-portal/playwright-report/
+/wyd-portal/blob-report/
+
+# Rust (workspace; sem Go no repo desde 2026-11)
+/target/
+**/*.rs.bk
+
+# Tauri (FASE-08-8): schemas de ACL gerados pelo tauri-build a cada build.
+/apps/launcher-ui/gen/
+# Distribuição de artefatos (launcher/cliente): gerada, nunca versionada.
+# `client.zip` é o pacote de 186 MB publicado no GitHub Releases/Drive (ADR-0028);
+# o launcher o baixa pela URL configurada, nunca do repositório.
+/dist/
+/client.zip
+/client-*.zip
+# Cache do client.zip dentro da pasta do jogo, se ela estiver no repo.
+/.launcher-cache/

@@ -1,0 +1,39 @@
+{
+  "receiver": "slack",
+  "status": "resolved",
+  "alerts": [
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "WydTickP99Alto",
+        "severity": "warning",
+        "canal": "canal-1",
+        "job": "wyd-server",
+        "instance": "server-canal-1:9898"
+      },
+      "annotations": {
+        "summary": "P99 do tick acima de 40% do orçamento (WYD_TICK_HZ)",
+        "runbook": "docs/rust/06-observabilidade-runbooks.md#wydtickp99alto"
+      },
+      "startsAt": "2026-11-12T21:00:00Z",
+      "endsAt": "2026-11-12T21:14:00Z",
+      "generatorURL": "http://prometheus:9090/graph",
+      "fingerprint": "exemplo02"
+    }
+  ],
+  "groupLabels": { "alertname": "WydTickP99Alto", "canal": "canal-1" },
+  "commonLabels": {
+    "alertname": "WydTickP99Alto",
+    "severity": "warning",
+    "canal": "canal-1",
+    "job": "wyd-server"
+  },
+  "commonAnnotations": {
+    "summary": "P99 do tick acima de 40% do orçamento (WYD_TICK_HZ)",
+    "runbook": "docs/rust/06-observabilidade-runbooks.md#wydtickp99alto"
+  },
+  "externalURL": "http://localhost:9093",
+  "version": "4",
+  "groupKey": "{}/{alertname=\"WydTickP99Alto\"}:{alertname=\"WydTickP99Alto\", canal=\"canal-1\"}",
+  "truncatedAlerts": 0
+}

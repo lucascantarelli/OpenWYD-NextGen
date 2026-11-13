@@ -1,0 +1,64 @@
+[package]
+name = "wyd-admin"
+version.workspace = true
+edition = "2021"
+description = "Control plane Cold Path do WYD (contrato admin para o portal)"
+publish = false
+
+[lib]
+name = "wyd_admin"
+path = "src/lib.rs"
+
+# ADR-0022: binário de serviço do Cold Path (gateway HTTP/JSON do portal).
+# O runtime async entra só aqui (pool sqlx); o roteador continua síncrono (ADR-0006).
+[[bin]]
+name = "wyd-gateway"
+path = "src/main.rs"
+
+[dependencies]
+wyd-db = { path = "../wyd-db", version = "0.1.0" }
+# Troca de PIN pelo portal usa o contrato de fio real (`0x0FDE` em duas etapas).
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+# AGENTS §3.6: senha de login só com hash resistente (argon2id). Entra na borda
+# de autenticação (`auth/password.rs`), nunca no Hot Path.
+argon2 = "0.5"
+
+[dev-dependencies]
+# Limpeza da conta descartável do teste de boot do seed (mesmo driver do wyd-db).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-rustls-ring",
+] }
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "contrato_autorizacao"
+path = "tests/contrato/autorizacao.rs"
+
+[[test]]
+name = "contrato_conteudo"
+path = "tests/contrato/conteudo.rs"
+
+[[test]]
+name = "contrato_login"
+path = "tests/contrato/login.rs"
+
+[[test]]
+name = "contrato_operacao"
+path = "tests/contrato/operacao.rs"
+
+[[test]]
+name = "contrato_painel"
+path = "tests/contrato/painel.rs"
+
+[[test]]
+name = "contrato_transporte"
+path = "tests/contrato/transporte.rs"
+
+[[test]]
+name = "sistema_seed"
+path = "tests/sistema/seed.rs"

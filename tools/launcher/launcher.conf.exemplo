@@ -1,0 +1,11 @@
+# wyd-launcher-config v1 — modelo do corpo assinado por `tools/launcher/sign-config.mjs`.
+# Este arquivo NÃO é publicado: o assinador anexa a linha `assinatura` ao gerar
+# `dist/launcher/launcher.conf` (pasta fora do git).
+revisao = 1
+portal.base = http://127.0.0.1:3000
+launcher.manifesto = /api/launcher/manifesto
+launcher.pacote = /api/launcher/pacote
+# Sobreposições da identidade única (opcionais). Passam pelo mesmo parser estrito:
+# cor fora de #rrggbb, nome de canal acima de 8 caracteres e slot fora de 1..=10 reprovam.
+# cor.accent = #c8a24a
+# servidor.1 = WYD

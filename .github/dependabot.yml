@@ -1,0 +1,70 @@
+# Dependabot — atualização proposta, nunca aplicada sozinha (DEVOPS-08).
+#
+# Política (docs/rust/01-dependencias.md): patch/minor agrupados e semanais; **major** de crate,
+# runtime ou base de imagem exige ADR e PR explícito — por isso `ignore` de version-update
+# semver-major nos ecossistemas que o projeto trata como decisão de arquitetura.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps(rust)"
+
+  - package-ecosystem: npm
+    directory: /wyd-portal
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      portal-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps(portal)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "deps(actions)"
+
+  # Bases dos quatro Dockerfiles (`rust:1.x-bookworm`, distroless, node).
+  - package-ecosystem: docker
+    directories:
+      - /docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps(docker)"

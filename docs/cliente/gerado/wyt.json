@@ -1,0 +1,475 @@
+{
+  "formato": "WT10",
+  "amostras": 8,
+  "telas": [
+    {
+      "arquivo": "client/NUI/ServerList.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 287,
+      "altura": 280,
+      "bits": 32,
+      "bpp": 4,
+      "marcador21": 8,
+      "pixelsOffset": 22,
+      "pixelsBytes": 321440,
+      "trailer": "0000000000000000",
+      "tamanho": 321470,
+      "raster": {
+        "pixels": 80360,
+        "coresDistintas": 12273,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#172939",
+            "pixels": 3119,
+            "fracao": 0.0388
+          },
+          {
+            "cor": "#000000",
+            "pixels": 2823,
+            "fracao": 0.0351
+          },
+          {
+            "cor": "#152736",
+            "pixels": 2027,
+            "fracao": 0.0252
+          },
+          {
+            "cor": "#132432",
+            "pixels": 1990,
+            "fracao": 0.0248
+          },
+          {
+            "cor": "#152636",
+            "pixels": 1896,
+            "fracao": 0.0236
+          },
+          {
+            "cor": "#142433",
+            "pixels": 1664,
+            "fracao": 0.0207
+          },
+          {
+            "cor": "#132331",
+            "pixels": 1377,
+            "fracao": 0.0171
+          },
+          {
+            "cor": "#162838",
+            "pixels": 1301,
+            "fracao": 0.0162
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/ccmode.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 64,
+      "altura": 64,
+      "bits": 24,
+      "bpp": 3,
+      "marcador21": 0,
+      "pixelsOffset": 22,
+      "pixelsBytes": 12288,
+      "trailer": "0000000000000000",
+      "tamanho": 12318,
+      "raster": {
+        "pixels": 4096,
+        "coresDistintas": 1,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#000000",
+            "pixels": 4096,
+            "fracao": 1
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/iconoff.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 512,
+      "altura": 256,
+      "bits": 24,
+      "bpp": 3,
+      "marcador21": 0,
+      "pixelsOffset": 22,
+      "pixelsBytes": 393216,
+      "trailer": "0000000000000000",
+      "tamanho": 393246,
+      "raster": {
+        "pixels": 131072,
+        "coresDistintas": 34674,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#262626",
+            "pixels": 41537,
+            "fracao": 0.3169
+          },
+          {
+            "cor": "#181919",
+            "pixels": 7810,
+            "fracao": 0.0596
+          },
+          {
+            "cor": "#505758",
+            "pixels": 7680,
+            "fracao": 0.0586
+          },
+          {
+            "cor": "#000000",
+            "pixels": 1239,
+            "fracao": 0.0095
+          },
+          {
+            "cor": "#ffffff",
+            "pixels": 1060,
+            "fracao": 0.0081
+          },
+          {
+            "cor": "#272727",
+            "pixels": 456,
+            "fracao": 0.0035
+          },
+          {
+            "cor": "#fefefe",
+            "pixels": 452,
+            "fracao": 0.0034
+          },
+          {
+            "cor": "#2b3132",
+            "pixels": 256,
+            "fracao": 0.002
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/iconon.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 512,
+      "altura": 256,
+      "bits": 24,
+      "bpp": 3,
+      "marcador21": 0,
+      "pixelsOffset": 22,
+      "pixelsBytes": 393216,
+      "trailer": "0000000000000000",
+      "tamanho": 393246,
+      "raster": {
+        "pixels": 131072,
+        "coresDistintas": 52848,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#262626",
+            "pixels": 41208,
+            "fracao": 0.3144
+          },
+          {
+            "cor": "#171a1b",
+            "pixels": 7808,
+            "fracao": 0.0596
+          },
+          {
+            "cor": "#346a74",
+            "pixels": 7680,
+            "fracao": 0.0586
+          },
+          {
+            "cor": "#000000",
+            "pixels": 1184,
+            "fracao": 0.009
+          },
+          {
+            "cor": "#ffffff",
+            "pixels": 1060,
+            "fracao": 0.0081
+          },
+          {
+            "cor": "#fffffd",
+            "pixels": 332,
+            "fracao": 0.0025
+          },
+          {
+            "cor": "#144149",
+            "pixels": 256,
+            "fracao": 0.002
+          },
+          {
+            "cor": "#ff00df",
+            "pixels": 243,
+            "fracao": 0.0019
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/main.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 616,
+      "altura": 300,
+      "bits": 32,
+      "bpp": 4,
+      "marcador21": 8,
+      "pixelsOffset": 22,
+      "pixelsBytes": 739200,
+      "trailer": "0000000000000000",
+      "tamanho": 739230,
+      "raster": {
+        "pixels": 184800,
+        "coresDistintas": 42936,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#000000",
+            "pixels": 64106,
+            "fracao": 0.3469
+          },
+          {
+            "cor": "#0a0a0a",
+            "pixels": 11348,
+            "fracao": 0.0614
+          },
+          {
+            "cor": "#0d0c15",
+            "pixels": 1068,
+            "fracao": 0.0058
+          },
+          {
+            "cor": "#111111",
+            "pixels": 1044,
+            "fracao": 0.0056
+          },
+          {
+            "cor": "#191919",
+            "pixels": 790,
+            "fracao": 0.0043
+          },
+          {
+            "cor": "#0c0a12",
+            "pixels": 671,
+            "fracao": 0.0036
+          },
+          {
+            "cor": "#416d88",
+            "pixels": 666,
+            "fracao": 0.0036
+          },
+          {
+            "cor": "#203844",
+            "pixels": 432,
+            "fracao": 0.0023
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/mainchat.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 510,
+      "altura": 58,
+      "bits": 24,
+      "bpp": 3,
+      "marcador21": 0,
+      "pixelsOffset": 22,
+      "pixelsBytes": 88740,
+      "trailer": "0000000000000000",
+      "tamanho": 88770,
+      "raster": {
+        "pixels": 29580,
+        "coresDistintas": 2856,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#000000",
+            "pixels": 4225,
+            "fracao": 0.1428
+          },
+          {
+            "cor": "#262726",
+            "pixels": 608,
+            "fracao": 0.0206
+          },
+          {
+            "cor": "#131516",
+            "pixels": 238,
+            "fracao": 0.008
+          },
+          {
+            "cor": "#121415",
+            "pixels": 176,
+            "fracao": 0.0059
+          },
+          {
+            "cor": "#141617",
+            "pixels": 151,
+            "fracao": 0.0051
+          },
+          {
+            "cor": "#0e1011",
+            "pixels": 150,
+            "fracao": 0.0051
+          },
+          {
+            "cor": "#111314",
+            "pixels": 137,
+            "fracao": 0.0046
+          },
+          {
+            "cor": "#0d0f10",
+            "pixels": 135,
+            "fracao": 0.0046
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/mainparts.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 512,
+      "altura": 256,
+      "bits": 24,
+      "bpp": 3,
+      "marcador21": 0,
+      "pixelsOffset": 22,
+      "pixelsBytes": 393216,
+      "trailer": "0000000000000000",
+      "tamanho": 393246,
+      "raster": {
+        "pixels": 131072,
+        "coresDistintas": 13504,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#000000",
+            "pixels": 45874,
+            "fracao": 0.35
+          },
+          {
+            "cor": "#262626",
+            "pixels": 4085,
+            "fracao": 0.0312
+          },
+          {
+            "cor": "#171a1b",
+            "pixels": 751,
+            "fracao": 0.0057
+          },
+          {
+            "cor": "#131516",
+            "pixels": 734,
+            "fracao": 0.0056
+          },
+          {
+            "cor": "#141617",
+            "pixels": 725,
+            "fracao": 0.0055
+          },
+          {
+            "cor": "#151718",
+            "pixels": 667,
+            "fracao": 0.0051
+          },
+          {
+            "cor": "#346a74",
+            "pixels": 660,
+            "fracao": 0.005
+          },
+          {
+            "cor": "#161819",
+            "pixels": 654,
+            "fracao": 0.005
+          }
+        ]
+      }
+    },
+    {
+      "arquivo": "client/NUI/popup.wyt",
+      "versao": 131072,
+      "reservado8": 0,
+      "reservado12": 0,
+      "largura": 512,
+      "altura": 512,
+      "bits": 32,
+      "bpp": 4,
+      "marcador21": 8,
+      "pixelsOffset": 22,
+      "pixelsBytes": 1048576,
+      "trailer": "0000000000000000",
+      "tamanho": 1048606,
+      "raster": {
+        "pixels": 262144,
+        "coresDistintas": 22554,
+        "alfaOpaco": 1,
+        "alfaZero": 0,
+        "topCores": [
+          {
+            "cor": "#000000",
+            "pixels": 18525,
+            "fracao": 0.0707
+          },
+          {
+            "cor": "#02080d",
+            "pixels": 7708,
+            "fracao": 0.0294
+          },
+          {
+            "cor": "#02070c",
+            "pixels": 5653,
+            "fracao": 0.0216
+          },
+          {
+            "cor": "#03090f",
+            "pixels": 5310,
+            "fracao": 0.0203
+          },
+          {
+            "cor": "#030910",
+            "pixels": 4790,
+            "fracao": 0.0183
+          },
+          {
+            "cor": "#030a12",
+            "pixels": 4656,
+            "fracao": 0.0178
+          },
+          {
+            "cor": "#02080e",
+            "pixels": 4383,
+            "fracao": 0.0167
+          },
+          {
+            "cor": "#030a11",
+            "pixels": 4066,
+            "fracao": 0.0155
+          }
+        ]
+      }
+    }
+  ]
+}

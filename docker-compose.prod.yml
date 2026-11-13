@@ -1,0 +1,148 @@
+# Override de PRODUÇÃO — uso explícito, SEM o override de dev:
+#   TAG=1.0.0 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Contrato (docs/rust/10-devops-ci.md §6, cobrado por
+# `node tools/dev/check-compose-hardening.mjs` no job `compose-surface`):
+#   - TAG obrigatório nas quatro imagens (`${TAG:?}`): produção não sobe `:dev` em silêncio;
+#   - `deploy.resources.limits` em TODO serviço (um vazamento do motor não pode derrubar o host);
+#   - Grafana sem anônimo (observabilidade não é superfície pública);
+#   - nenhuma porta de banco/gateway/monitoramento publicada no host;
+#   - segredos vêm do `.env` do host (nunca commitado), jamais deste arquivo.
+#
+# Ainda PENDENTE na issue (não fingido aqui): terminação TLS na frente do portal — hoje o portal
+# segue em `3000:3000` e o caminho aceito é proxy/túnel externo; e `healthcheck` nos serviços de
+# observabilidade. Ver `DEVOPS-03` em `roadmap-rust/issues/`.
+#
+# Para produção que mantém o `.env` no host e quer o seed relendo a senha em
+# `docker compose restart`, acrescente o overlay opcional:
+#   -f docker-compose.prod-env.yml
+# Sem ele, o gateway segue no fallback de ambiente (segredos injetados).
+
+services:
+  mkdocs:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    # Sem `ports:`: documentação interna de dev/admin, nunca pública. Para
+    # acesso de staff em produção, usar túnel/reverse proxy interno — não abrir
+    # a 8000 na internet.
+
+  db:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    # Sem `ports:` — o banco só fala na rede interna `wyd`.
+
+  gateway:
+    image: wyd/gateway:${TAG:?defina TAG (a imagem de produção não pode ser :dev)}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+  server-canal-1:
+    image: wyd/server:${TAG:?defina TAG (a imagem de produção não pode ser :dev)}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+  server-canal-2:
+    image: wyd/server:${TAG:?defina TAG (a imagem de produção não pode ser :dev)}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+  portal:
+    image: wyd/portal:${TAG:?defina TAG (a imagem de produção não pode ser :dev)}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+
+  prometheus:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+
+  alertmanager:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  alert-sink:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  blackbox-exporter:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  grafana:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    environment:
+      # Anônimo é comodidade de dev (o override de dev é quem liga). Em produção, painel
+      # exige login: o dashboard mostra inventário, sessões e caminho de banco.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+
+  loki:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+
+  alloy:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  node-exporter:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M

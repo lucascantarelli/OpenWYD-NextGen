@@ -1,0 +1,25 @@
+[package]
+name = "wyd-sim"
+version.workspace = true
+edition = "2021"
+description = "Laboratorio matematico do WYD (simulacao de combate/balanceamento)"
+publish = false
+
+[lib]
+name = "wyd_sim"
+path = "src/lib.rs"
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "golden_formulas"
+path = "tests/golden/formulas.rs"
+
+[[test]]
+name = "golden_refino_seed"
+path = "tests/golden/refino_seed.rs"
+
+[[test]]
+name = "integracao_determinism"
+path = "tests/integracao/determinism.rs"

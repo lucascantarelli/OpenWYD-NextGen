@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "2026-11-11-gold-inicial",
+    "title": "Ouro inicial: 5 milhões para quem começa",
+    "date": "2026-11-11",
+    "author": "Equipe WYD2",
+    "tag": "Jogo",
+    "summary": "O personagem novo entra com o ouro do template da classe, copiado do BaseMob original — e o valor agora chega à tela, não só ao banco.",
+    "body": "Todo personagem criado entra no mundo com **5.000.000 de ouro**. O valor não foi\nescolhido a dedo: vem do `Coin` do `BaseMob` de cada classe, o mesmo template que o\nservidor original copiava na criação.\n\n## O que estava errado\n\nO banco gravava o valor certo desde o começo. O que faltava era o pacote que desenha o\nouro na tela: a entrada no mundo mandava a barra de vida e experiência, mas não o\n`_MSG_UpdateEtc`, que carrega a moeda. Resultado: 5 milhões no banco, zero na interface.\n\nA correção envia o par completo na entrada e tem prova viva: o teste lê o pacote e\nconfere o mesmo valor persistido no banco."
+  },
+  {
+    "slug": "2026-11-11-lojas-de-npc",
+    "title": "Lojas de NPC abertas — comprar e receber item",
+    "date": "2026-11-11",
+    "author": "Equipe WYD2",
+    "tag": "Jogo",
+    "summary": "Os 32 mercadores de Armia respondem ao pedido de catálogo e entregam o item no slot certo, com o preço vindo do catálogo do servidor.",
+    "body": "O jogador agora abre a loja de um NPC, vê o catálogo e compra. A compra é decidida no\nservidor: o preço vem do catálogo de itens, o slot é conferido e o item entra na mochila.\n\n## Como foi feito\n\n- O pacote `_MSG_REQShopList` abre a loja e o `_MSG_ShopList` devolve os itens do\n  mercador — 236 bytes de catálogo por resposta.\n- O `_MSG_Buy` passa pela autoridade do servidor: preço divergente é recusado, item\n  fora do catálogo também.\n- A prova viva cria personagem, anda até o mercador, lê o catálogo e compra uma runa,\n  conferindo o item no slot 6 da mochila.\n\nO log do canal registra cada passo (`event=shop result=list`, `bought` e `refused`),\npara a operação conseguir responder a um jogador sem adivinhar."
+  },
+  {
+    "slug": "2026-11-11-primeiro-gameplay",
+    "title": "O primeiro gameplay está no ar",
+    "date": "2026-11-11",
+    "author": "Equipe WYD2",
+    "tag": "Servidor",
+    "summary": "Login, criação de personagem e entrada no mundo funcionando de ponta a ponta no servidor em Rust, com o Campo de Treinamento cheio de NPCs e quatro bots de QA.",
+    "body": "Depois de meses de porte, o servidor em Rust atende o cliente 7662 no caminho completo:\na conta entra, o personagem é criado e o jogador pisa no mundo.\n\n## O que já funciona\n\n- **Login e seleção de personagem** com a sessão do canal, a senha numérica e a\n  reconexão recusando o segundo canal ocupado.\n- **Criação de personagem** copiando o template real da classe: aparência, equipamento\n  inicial, pontos de vida e o ouro de entrada.\n- **Entrada no mundo** com a cena entregue por proximidade: os NPCs ao redor aparecem\n  sem derrubar o cliente com 6 mil pacotes de uma vez.\n- **Campo de Treinamento** com dez NPCs, quest de aceitação e um chefe, além de quatro\n  bots de QA que entram, andam, atacam e conversam com os mercadores.\n\n## Próximos passos\n\nDistribuição dos pontos de atributo pelo cliente, efeito do baú de experiência e a\nsegunda leva de telas do portal. Cada passo entra com teste vivo contra o canal."
+  },
+  {
+    "slug": "2026-11-10-campo-de-treinamento",
+    "title": "O Campo de Treinamento abriu",
+    "date": "2026-11-10",
+    "author": "Equipe WYD2",
+    "tag": "Jogo",
+    "summary": "Dez NPCs, quest de entrada, drops e um chefe no mapa inicial — e a cena agora chega ao cliente por proximidade.",
+    "body": "O mapa inicial ganhou vida: dez NPCs com nome e posição vindos do banco, a quest de\nentrada do Campo de Treinamento e um chefe no fim da trilha.\n\n## Cena por proximidade\n\nO cliente 7662 não desenha 6 mil mobs de uma vez — a leitura da cena inteira no login\ntravava a tela. A entrega passou a ser por proximidade: o canal monta a vista ao redor\ndo personagem (24 tiles, ajustável por configuração) e recalcula a cada varredura, de\nmodo que andar troca o conjunto de NPCs sem reenviar o mapa inteiro.\n\nO resultado é o que o jogador vê: NPCs na tela, sem travar na entrada."
+  }
+]

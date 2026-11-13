@@ -1,0 +1,90 @@
+# Prometheus do WYD (QA-08) — contrato fechado com a telemetria da QA-04.
+#
+# Só consulta métricas que existem: wyd_ticks_total, histograma
+# wyd_tick_duration_microseconds, wyd_entities_active, process_resident_memory_bytes,
+# wyd_memory_samples_total, wyd_packets_total, wyd_packets_rejected_total{reason},
+# wyd_handshakes_total, wyd_connections_pending, wyd_sessions_open.
+# Nenhuma métrica nova nasce aqui (a fonte é `crates/wyd-core/src/metrics/` e
+# `crates/wyd-net/src/metrics.rs`, com `--features metrics`).
+#
+# Duas exceções declaradas (DEVOPS-02): o host (`node-exporter`) e o portal (sonda
+# ativa `blackbox-exporter`, porque o BFF não publica `/metrics`). São métricas de
+# disponibilidade, não de motor — e só geram alerta quando o alvo cai ou o portal
+# responde fora de 2xx.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: wyd
+    # Origem por serviço: o Grafana usa isto nas queries cruzadas.
+    # (Prometheus e Loki são datasources distintos, ligados por `job`/`service`.)
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# Destino das regras (DEVOPS-02). Enquanto este bloco não existir, `firing` é só um
+# estado na UI: nenhuma pessoa é avisada. O receiver é definido no Alertmanager.
+alerting:
+  alertmanagers:
+    - api_version: v2
+      scheme: http
+      timeout: 10s
+      static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # O próprio Prometheus: prova que a stack está viva mesmo sem servidor de jogo.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Host (container) — CPU/RAM/disco do nó onde a stack roda.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Gateway do Cold Path (ADR-0022): métricas do processo do portal, distintas das do
+  # motor. `wyd_gateway_requests_total{result}` e `wyd_gateway_uptime_seconds`.
+  - job_name: wyd-gateway
+    static_configs:
+      - targets: ["gateway:7600"]
+
+  # Loki: saúde do pipeline de logs (o portal mostra o estado do coletor).
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+
+  # O próprio Alertmanager: se ele cair, as regras continuam avaliando e ninguém
+  # recebe nada — então ele é alvo de scrape e tem alerta próprio.
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  # Portal (BFF) por sonda ativa: `/api/health` devolve 200 com a contagem do catálogo
+  # e 502 sem gateway. `http_2xx` exige 200 e não segue redirect — seguir mascararia
+  # 307 de rota protegida como saúde.
+  - job_name: wyd-portal
+    metrics_path: /probe
+    params:
+      module: ["http_2xx"]
+    static_configs:
+      - targets: ["http://portal:3000/api/health"]
+    relabel_configs:
+      - source_labels: ["__address__"]
+        target_label: "__param_target"
+      - source_labels: ["__param_target"]
+        target_label: "instance"
+      - target_label: "__address__"
+        replacement: "blackbox-exporter:9115"
+
+  # Motor de jogo: alvo descoberto por arquivo, NÃO fixo no YAML.
+  #
+  # O endpoint `/metrics` do motor (default 127.0.0.1:9898, `MetricsServer` da QA-04)
+  # só existe quando o binário do servidor existir (FASE-03/04/06 → serviço `tmserver`,
+  # ver docs/rust/05-stack-docker.md §3). Até lá `targets/wyd-server.json` é uma lista
+  # vazia: o Prometheus não fica tentando scrape de uma porta inexistente e nenhum alerta
+  # dispara por ausência estrutural. Ligar = acrescentar o alvo no JSON (hot reload em 30s).
+  - job_name: wyd-server
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/wyd-server.json"]
+        refresh_interval: 30s

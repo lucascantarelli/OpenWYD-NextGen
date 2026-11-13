@@ -1,0 +1,192 @@
+name: Release
+
+# DEVOPS-10 — tag `vX.Y.Z` em `main` é o que publica.
+#
+# Regras do contrato (docs/rust/10-devops-ci.md §8):
+#   1. a versão da tag TEM de ser a do workspace/portal (`check-versao` + comparação);
+#   2. imagem recebe `WYD_VERSION=<tag>` e `WYD_COMMIT=<sha completo>`;
+#   3. tag publicada não é reescrita e imagem não é reconstruída com a mesma tag;
+#   4. notas saem do GitHub (`--generate-notes`) + `roadmap-rust/changelog.md` anexado, que é
+#      onde cada issue fechada tem a sua evidência.
+#
+# Push para registry é decisão do dono e NÃO está aqui: sem registry, a release publica binários,
+# checksums, SBOM e notas — o que já torna a tag rastreável.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.ref_name }}
+  WYD_VERSION: ${{ github.ref_name }}
+  WYD_COMMIT: ${{ github.sha }}
+
+jobs:
+  versao:
+    name: versão da tag × workspace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Fonte única de versão
+        run: node tools/dev/check-versao.mjs
+      - name: Tag confere com a versão declarada
+        run: |
+          declarada="$(node -e 'const t=require("fs").readFileSync("Cargo.toml","utf8");const m=/\[workspace\.package\][\s\S]*?version\s*=\s*"([^"]+)"/.exec(t);if(!m)process.exit(1);process.stdout.write(m[1])')"
+          tag="${TAG#v}"
+          echo "tag=$tag declarada=$declarada"
+          [ "$tag" = "$declarada" ] || { echo "FALHOU: tag não corresponde à versão do workspace"; exit 1; }
+
+  binarios:
+    name: binários + checksums
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    needs: versao
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          cache-all-crates: "true"
+          tauri: "true"
+      - name: Build release
+        run: cargo build --release --workspace
+      - name: Empacotar
+        run: |
+          mkdir -p dist
+          for bin in wyd-gateway wyd-server wyd-launcher; do
+            if [ -f "target/release/$bin" ]; then cp "target/release/$bin" "dist/$bin-${TAG}-linux-x86_64"; fi
+          done
+          (cd dist && sha256sum ./* > SHA256SUMS)
+          ls -la dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: binarios-${{ github.ref_name }}
+          path: dist/**
+          retention-days: 90
+
+  imagens:
+    name: imagem + SBOM (${{ matrix.imagem }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: versao
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - imagem: launcher
+            dockerfile: docker/Dockerfile.launcher
+          - imagem: gateway
+            dockerfile: docker/Dockerfile.gateway
+          - imagem: server
+            dockerfile: docker/Dockerfile.server
+          - imagem: portal
+            dockerfile: docker/Dockerfile.portal
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - name: Build com versão da tag
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          load: true
+          tags: wyd/${{ matrix.imagem }}:${{ github.ref_name }}
+          build-args: |
+            WYD_VERSION=${{ env.WYD_VERSION }}
+            WYD_COMMIT=${{ env.WYD_COMMIT }}
+          cache-from: type=gha,scope=${{ matrix.imagem }}
+      - name: Digest local (para o procedimento de rollback)
+        run: docker image inspect --format 'imagem=${{ matrix.imagem }} id={{.Id}} size={{.Size}}' wyd/${{ matrix.imagem }}:${{ github.ref_name }}
+      - name: SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: wyd/${{ matrix.imagem }}:${{ github.ref_name }}
+          format: cyclonedx
+          output: sbom-${{ matrix.imagem }}-${{ github.ref_name }}.cdx.json
+          exit-code: "0"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: sbom-${{ matrix.imagem }}-${{ github.ref_name }}
+          path: sbom-${{ matrix.imagem }}-${{ github.ref_name }}.cdx.json
+          retention-days: 90
+
+  notas:
+    name: release com notas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: [binarios, imagens]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: binarios-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: sbom
+      - name: Corpo da release (changelog + imagens + commits desde a tag anterior)
+        run: |
+          {
+            echo "Release ${{ github.ref_name }} — commit ${{ github.sha }}."
+            echo
+            echo "Cada issue fechada e a sua evidência estão em \`roadmap-rust/changelog.md\`."
+            echo "Procedimento de release e rollback: \`docs/rust/02-execucao.md\` §6."
+            echo
+            echo "## Imagens da release"
+            echo
+            echo "As quatro imagens foram construídas nesta tag (sem push para registry — §8.1 do"
+            echo "contrato); o SBOM CycloneDX de cada uma está nos anexos."
+            echo
+            echo "| imagem | tag | build-args |"
+            echo "|---|---|---|"
+            for img in launcher gateway server portal; do
+              echo "| \`wyd/$img\` | \`${TAG}\` | \`WYD_VERSION=${WYD_VERSION} WYD_COMMIT=${WYD_COMMIT}\` |"
+            done
+            echo
+            anterior="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+            if [ -n "$anterior" ]; then
+              echo "## Mudanças desde $anterior"
+              echo
+              git log --no-merges --pretty='- %s (%h)' "${anterior}..${TAG}"
+            else
+              echo "## Mudanças"
+              echo
+              echo "Primeira tag do repositório — histórico completo no git."
+            fi
+          } > notas.md
+          cat notas.md
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Notas vêm do arquivo (determinístico); `--generate-notes` fica de fora para não
+          # disputar a mesma seção com o changelog do roadmap.
+          # Anexos: binários + `SHA256SUMS` (`dist/*`) e o SBOM CycloneDX de cada imagem (`sbom/*`).
+          gh release create "${TAG}" dist/* sbom/* \
+            --title "${TAG}" \
+            --notes-file notas.md \
+            --verify-tag
+
+      # Canal próprio (`#wyd-releases`): release é anúncio, não build. Falha de CI não entra aqui e
+      # release não afoga o `#wyd-ci`. Segredo ausente = run verde com aviso, nunca silêncio mudo.
+      - name: Anunciar no canal de releases
+        env:
+          SLACK_RELEASES_WEBHOOK: ${{ secrets.SLACK_RELEASES_WEBHOOK }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/dev/notify-release.mjs

@@ -1,0 +1,35 @@
+{
+  "id": "character_login",
+  "origin": "generated",
+  "warning": "bytes sintéticos para teste de codec; NÃO são captura de rede",
+  "builtBy": "node tools/client/captura.mjs --gen",
+  "algorithm": "mesmas regras de crates/wyd-protocol/src/obfuscation.rs",
+  "header": {
+    "size": 20,
+    "type": 531,
+    "typeHex": "0x0213",
+    "connId": 1,
+    "tick": 1003,
+    "keyword": 128,
+    "checksum": 178,
+    "checksumHex": "0xb2"
+  },
+  "fields": [
+    {
+      "offset": 12,
+      "name": "slot",
+      "kind": "i32",
+      "len": 4,
+      "value": 0
+    },
+    {
+      "offset": 16,
+      "name": "force",
+      "kind": "i32",
+      "len": 4,
+      "value": 0
+    }
+  ],
+  "payloadHex": "1400800013020100eb0300000000000000000000",
+  "wireHex": "140080b20de685fdf7f474fcfaf138f9fcf1e4f9"
+}

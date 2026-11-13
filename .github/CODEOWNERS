@@ -1,0 +1,43 @@
+# CODEOWNERS — áreas do monorepo (mapa em `AGENTS.md` §1).
+#
+# Regra: dono é quem responde por contrato, não por arquivo. Mudança em área com dono pede review
+# desse dono no PR (branch protection não exige aprovação hoje, mas o pedido fica registrado).
+
+# Padrão: repositório inteiro.
+*                                   @lucascantarelli
+
+# Hot Path — engine e simulação (tick, ECS, combate, visibilidade, fórmulas).
+/crates/wyd-core/                   @lucascantarelli
+/crates/wyd-sim/                    @lucascantarelli
+
+# Wire e transporte — offsets CPSock, parsers, goldens, rate-limit e hardening.
+/crates/wyd-protocol/               @lucascantarelli
+/crates/wyd-net/                    @lucascantarelli
+
+# Persistência, migrations e control plane Cold Path.
+/crates/wyd-db/                     @lucascantarelli
+/crates/wyd-admin/                  @lucascantarelli
+/crates/wyd-server/                 @lucascantarelli
+
+# Distribuição e launcher (Tauri) — patch atômico, manifesto e serverlist.
+/crates/wyd-launcher/               @lucascantarelli
+/apps/launcher-ui/                  @lucascantarelli
+
+# Bots de QA/carga (cliente de protocolo sem GUI).
+/crates/wyd-bots/                   @lucascantarelli
+
+# Portal (BFF Next.js sobre `wyd-admin`) e seus testes.
+/wyd-portal/                        @lucascantarelli
+
+# Infraestrutura, compose, monitoramento e CI.
+/docker/                            @lucascantarelli
+/docker-compose*.yml                @lucascantarelli
+/tools/                             @lucascantarelli
+/.github/                           @lucascantarelli
+/Makefile                           @lucascantarelli
+
+# Documentação normativa, roadmap e regras sempre ativas.
+/docs/                              @lucascantarelli
+/roadmap-rust/                      @lucascantarelli
+/AGENTS.md                          @lucascantarelli
+/README.md                          @lucascantarelli

@@ -1,0 +1,48 @@
+[package]
+name = "wyd-db"
+version.workspace = true
+edition = "2021"
+description = "Persistencia async do WYD (Postgres sqlx, migrations)"
+publish = false
+
+[lib]
+name = "wyd_db"
+path = "src/lib.rs"
+
+# PROC-16 / ADR-0021: pool real e runtime async como *implementação* das portas.
+# `default-features = false` evita o conjunto pesado (macros/derive de query e TLS
+# nativo): só runtime, driver Postgres e rustls.
+[dependencies]
+# ADR-0009/DIP: `wyd-db` entrega o conteúdo nos tipos da porta que mora no core.
+wyd-core = { path = "../wyd-core", version = "0.1.0" }
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "postgres",
+    "tls-rustls-ring",
+] }
+# ADR-0024: checksum do bloco `up` do ledger de migrations (já no grafo via rustls).
+sha2 = { version = "0.10", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "contrato_catalogo"
+path = "tests/contrato/catalogo.rs"
+
+[[test]]
+name = "contrato_migrations"
+path = "tests/contrato/migrations.rs"
+
+[[test]]
+name = "sistema_pg"
+path = "tests/sistema/pg.rs"
+
+[[test]]
+name = "sistema_sessoes"
+path = "tests/sistema/sessoes.rs"
+
+[[test]]
+name = "sistema_stack_caps"
+path = "tests/sistema/stack_caps.rs"

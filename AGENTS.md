@@ -1,246 +1,119 @@
-# AGENTS.md — Dolorestec WYD2
+# AGENTS.md — Dolorestec WYD (Rust)
 
-Instruções para agentes de IA que trabalham neste repositório. Leia antes de qualquer tarefa:
-define o que é o projeto, como subir a stack, quais invariantes não podem ser quebradas e onde
-está o conhecimento já produzido.
+> Instruções **sempre ativas** e curtas. O detalhe operacional vive nos docs e nas skills
+> linkados abaixo; não duplique regra aqui. Fonte do planejamento: `roadmap-rust/index.md`.
 
-## 1. O que é este projeto
+## 0. Comece aqui
 
-Servidor local do WYD2 (With Your Destiny) escrito em Go, o portal administrativo em Next.js e o
-cliente Windows usado para conectar — tudo num único repositório.
+- O repositório é o servidor **WYD2 em Rust** (Hot Path), o portal administrativo Next.js
+  (Cold Path) e o launcher; o cliente Windows 7662 é artefato externo.
+- **100% Rust**: a stack Go/C++ foi removida em 2026-11. Não use build/testes, caminhos ou
+  roadmap da stack antiga como fonte vigente.
+- Leia, nesta ordem: esta página → a issue em `roadmap-rust/issues/` → **uma** skill principal
+  pelo roteador `.agents/skills/README.md` → o doc normativo da área.
+- Trabalhe em `develop`; commit/push só quando o usuário pedir. Não reinicie serviços durante
+  um teste humano em andamento: espere o teste terminar.
 
-| Pasta | O que é | Stack |
-|-------|---------|-------|
-| `tmserver/` | Servidor do jogo (CPSock, dono do estado do mundo) | Go 1.26 |
-| `dbserver/` `binserver/` `webserver/` | Persistência, billing e web-api por gRPC | Go 1.26, gRPC |
-| `internal/` | Store, migrations, domínio, argon2id — compartilhados | Go, pgx v5 |
-| `portal/` | UI de administração: BFF puro sobre o web-api, sem tocar estado vivo | Next.js 15, TypeScript |
-| `client/` | Cliente Windows modificado (WYD.exe, proteções, assets) — **ignorado no git** | Binários fechados |
-| `roadmap/` | Planejamento: o que está feito, pendente e em que ordem | Markdown |
-| `tmserver/content/` | Conteúdo do servidor: taxas, mapas, BaseMob/BaseSummon (LEGACY-02) | Dados |
-| `Source/` | Fontes C++ legados, referência de wire/format/gameplay | C++ |
-| `docs/` | Engenharia reversa (`docs/migration/`), integrações e planos | Markdown |
-| `.agents/skills/` | Skills de operação/desenvolvimento (WYD + UI) | Markdown |
+## 1. Mapa mínimo
 
-O objetivo: **servidor local do WYD2 operacional, com login pelo cliente modificado, personagens,
-batalha, comércio e quests funcionando**, mais uma camada de automação por IA para administrar e
-evoluir o servidor.
+| Caminho | Papel |
+|---|---|
+| `crates/wyd-protocol/` | wire CPSock, offsets explícitos, parsers e goldens |
+| `crates/wyd-core/` | engine Hot Path: tick, ECS/DOD, combate, visibilidade |
+| `crates/wyd-net/` | transporte async, sessão, rate-limit, hardening |
+| `crates/wyd-db/` | persistência, migrations, `delivery_queue` |
+| `crates/wyd-admin/` | control plane Cold Path e binário `wyd-gateway` |
+| `crates/wyd-server/` | composição do monólito; um processo por canal |
+| `crates/wyd-sim/` | fórmulas e simulações determinísticas |
+| `crates/wyd-launcher/` + `apps/launcher-ui/` | distribuição/patch e janela Tauri |
+| `crates/wyd-bots/` | bots de QA/carga; cliente de protocolo sem GUI |
+| `wyd-portal/` | BFF Next.js sobre `wyd-admin` (nunca SQL/estado vivo) |
+| `docs/` | norma técnica, cliente, operação e conhecimento do jogo |
+| `roadmap-rust/` | fases, issues ativas, changelog e bugs |
+| `client/` | cliente proprietário, **ignorado no git**; não versionar |
 
-`roadmap/index.md` é a fonte da verdade do planejamento. Para arquitetura Go detalhada, comandos e
-convenções, veja `CLAUDE.md`; este arquivo cobre o repositório inteiro (servidor + portal + cliente
-+ roadmap + skills).
+## 2. Invariantes
 
-## 2. Caminho feliz (bring-up do zero)
+1. **Hot Path sem I/O no tick.** Tick, física, combate e visibilidade no mesmo espaço de
+   memória (`wyd-core` + composição em `wyd-server`); nada de HTTP/SQL/gRPC, mutex global ou
+   alocação quente no loop. Persistência entra por traits/canais async fora do tick.
+2. **Wire por offset explícito.** HEADER de 12 bytes LE, `Size` em [12, 8192],
+   `INITCODE = 0x1F11F311`, transformação a partir do offset 4 com `pKeyWord[512]`.
+   `repr(C)` + offsets provados por teste; nunca confie em `repr(Rust)`.
+3. **Servidor é autoridade.** O cliente não dita posição, dano, cooldown ou inventário.
+   Pacote autoritativo de cena usa `HEADER.ID = ESCENE_FIELD` (30000).
+4. **UNVERIFIED não vira regra.** Comportamento não capturado: tolerar, logar e seguir pelo
+   caminho conservador. Não invente layout de pacote nem crie tipo/gate a partir de hipótese.
+5. **Segredos nunca vazam.** Senhas/PINs com hash resistente (argon2id); DSN, tokens,
+   `SESSION_SECRET` e dumps de conta não entram em log, git ou assets. `client/` não é versionado.
+6. **A web não escreve estado vivo.** Grants passam por `delivery_queue`; o portal é BFF,
+   autentica staff, deriva `moderator_id` da sessão e audita toda ação administrativa.
+7. **Estrutura antes de código.** A árvore normativa está em
+   `docs/arquitetura/estrutura-e-padroes.md` (ADR-0002). Arquivo novo fora dela, mudança de
+   fronteira, threading ou dependência pesada exige ADR em `docs/arquitetura/adr/`.
+8. **Qualidade é gate.** `cargo fmt --check`, `clippy -D warnings`, build e testes limpos;
+   entrada de rede nunca causa `panic!`; todo comportamento novo nasce com teste.
 
-```bash
-# 0. Conteúdo que ainda vive em arquivo: taxas, mapas e BaseMob. Catálogos de item/skill,
-#    templates de NPC e spawns vêm do banco (baseline da issue 58).
-test -f tmserver/content/Common/serv00.htm && test -d tmserver/content/DBsrv/run/BaseMob || echo "CONTEÚDO FALTANDO"
-test -f tmserver/content/TMsrv/run/HeightMap.dat || echo "MAPAS AUSENTES: make content-sync"
-
-# 1. Stack completa (Postgres + dbServer + binServer + webServer + portal + canais)
-#    Compose em camadas: `docker-compose.yaml` (base, sem portas) + `docker-compose.override.yaml`
-#    (dev, carregado automático). Serviço = container = imagem, ex.: openwyd-nextgen1-tmsrv.
-#    A ordem de subida é declarada por healthcheck (DEVOPS-01, docs/migration/config-ops.md §0.0).
-make run-local          # = ./scripts/run-local.sh  (conta test / test123)
-
-# 2. Ver o servidor de jogo e o portal respondendo
-docker compose logs -f openwyd-nextgen1-tmsrv        # "tmserver listening" + "NPCs spawned"
-curl -s http://127.0.0.1/ | head       # status HTTP :80 (serv00.htm) que o cliente sonda
-#    portal: http://localhost:3000     (login com conta de papel moderator/admin)
-
-# 3. Portal em modo desenvolvimento (hot reload), sem container:
-make portal-install     # npm ci
-make portal-dev         # http://127.0.0.1:3000
-
-# 4. Apontar o cliente para cá
-#    "serverlist bin/serverlist editor.exe" -> IP:8281 -> copiar serverlist.bin
-#    para "client/" (fazendo backup do original) e abrir WYD.exe
-```
-
-Detalhes, diagnóstico e alternativas: skills `wyd-server-ops`, `wyd-client-connect` e
-`wyd-web-admin-ui`.
-
-## 3. Invariantes que não podem ser quebradas
-
-1. **Dono único do estado do mundo.** Todo o estado de jogo vive em **uma goroutine**
-   (`world.World.Run`). Handlers em `tmserver/internal/handler/` rodam *dentro* dessa goroutine e
-   podem mutar estado direto. Chamadas bloqueantes (dbServer/billing) vão para fora via
-   `World.Go` e o resultado volta por canal. **Nunca** adicione locks no estado do mundo, nem
-   mutação fora do loop — é o que evita duplicação de item.
-2. **Layout binário é por offset explícito.** Wire usa `pack(1)`; structs de save usam
-   alinhamento natural MSVC x86. Não confie no alinhamento do Go. Tamanhos-chave:
-   `STRUCT_MOB`=816, `STRUCT_ITEM`=8, `STRUCT_SELCHAR`=840, `STRUCT_ACCOUNTFILE`=7952.
-3. **Paridade de RNG.** O `rand()` do MSVC é um LCG reimplementado em `tmserver/internal/rng`.
-   Preserve a **ordem** das chamadas em qualquer código de gameplay (drop, refino, crítico).
-4. **Pacote autoritativo de cena vai com `HEADER.ID = ESCENE_FIELD`** (30000), não com o id da
-   conexão do dono — senão barra de EXP/HP não atualiza no cliente.
-5. **Campo UNVERIFIED não é gate.** Para comportamento de cliente não capturado: tolerar, logar e
-   seguir pelo caminho conservador. Nunca rejeitar uma ação server-authoritative por causa de um
-   sentinela não confirmado.
-6. **Senhas e PINs com argon2id** (`internal/secret`). Texto plano é proibido, inclusive em log.
-7. **A web nunca escreve estado de personagem vivo.** Grants vão por `delivery_queue` que o
-   tmServer drena (ver `docs/migration/web-platform-plan.md`). O portal é BFF: só lê e envia
-   intenções pelo web-api gRPC.
-8. **`tmserver/content/` é conteúdo, não lixo.** A config pequena é versionada com o código; os dois
-   mapas (17 MiB) ficam **fora do git** e entram por `make content-sync`, conferidos pelo SHA-256 de
-   `tmserver/content/content.sha256` (`make content-check`). `tmserver/content/_legacy/` é arquivo
-   morto do servidor Win32: ignorado, fora da imagem e nunca lido. Nunca escreva no conteúdo pela web.
-9. **`client/` não é versionado.** São ~344 MB de binários proprietários; fica no `.gitignore`.
-   Nunca commite, nunca inclua no contexto de build do Docker (já está no `.dockerignore`).
-
-### Regras do portal
-
-- **Toda ação admin passa por `adminCall`** (`portal/src/server/admin.ts`): sessão de staff,
-  `moderator_id` vindo da sessão (nunca do corpo), deadline, mapeamento `AdminResult` → HTTP e
-  auditoria. Page/action não chama o cliente gRPC admin direto.
-- O browser nunca fala gRPC nem vê certificado, DSN ou stack: `toResponse` devolve só `{ error }`
-  com `cache-control: no-store`.
-- `SESSION_SECRET` é obrigatório fora de desenvolvimento (>= 32 caracteres). O default do compose
-  é **apenas para dev**.
-- O portal não escreve em `tmserver/content/` nem em tabelas de personagem vivo; overlays têm auditoria.
-
-## 4. Árvore de conteúdo (`tmserver/content/`)
-
-O conteúdo mora **dentro da árvore do servidor** e é a única fonte no boot: o default de `-content`
-é `tmserver/content` (nos containers, `/content`). Taxas são **obrigatórias** (erro fatal se
-quebrarem); mapas e BaseMob são opcionais (warning).
-
-**Versionamento (LEGACY-02):** a config pequena é versionada junto do código. Os dois mapas (17 MiB)
-ficam **fora do git** e entram por `make content-sync` (`W2PP_CONTENT_SOURCE=<árvore legada>`), que
-confere o SHA-256 de `tmserver/content/content.sha256`. O resíduo do servidor Win32 (DLLs, `.bat`,
-dumps, catálogos `.bin`, estado de servidor de teste) foi arquivado em
-`tmserver/content/_legacy/` — fora do git, nunca lido pelo servidor, nunca copiado para a imagem.
-
-**Catálogos não moram mais aqui** (issue 58, fase 5): `item_catalog`, `skill_catalog`,
-`npc_template`, `world_item_seed` e `npc_definition` vêm do Postgres, pelo gRPC do dbserver, e a
-ausência deles recusa o boot. O `importcontent` continua existindo só para reprocessar uma árvore de
-conteúdo externa (backup).
-
-```
-tmserver/content/Common/            serv00.htm,
-                                    Settings/{CompRate,SancRate,QuestsRate,CastleQuest,
-                                    MobMerc,RefineRate}.txt
-tmserver/content/TMsrv/run/         Regions.txt, Guard.txt, LevelItem.txt, gameconfig.txt,
-                                    Language.txt, ItemEffect.h,
-                                    HeightMap.dat (16 MiB, 4096² — fora do git),
-                                    AttributeMap.dat (1 MiB, 1024² — fora do git)
-tmserver/content/DBsrv/run/BaseMob/ {TK,FM,BM,HT} — template por classe (816 B) com equip inicial
-tmserver/content/TMsrv/run/BaseSummon/ templates de invocação do BM
-tmserver/content/_legacy/           arquivo morto do servidor Win32 (não lido)
-```
-
-Os mapas alimentam `route.Bake` (atributo → altura 127 = bloqueado) e o pathfinding dos mobs.
-Sem eles o servidor sobe, mas os mobs andam "cego" (passo Chebyshev) e o multiplicador de EXP do
-Campo de Treino fica desligado.
-
-## 5. Verificação (escada mínima, do mais barato ao mais caro)
+## 3. Comandos
 
 ```bash
-# 1. compila e testa (host precisa de Go 1.26; senão use o container abaixo)
-go build ./... && go test -race ./tmserver/internal/...
-
-# 2. mesma coisa sem Go no host
-docker run --rm -v "$PWD":/src -w /src golang:1.26-alpine \
-  sh -c "go build ./... && go test ./tmserver/internal/protocol/ ./tmserver/internal/world/"
-
-# 3. login headless (não precisa do cliente Windows) — SEMPRE antes de culpar código de jogo
-docker run --rm --network host -v "$PWD":/src -w /src golang:1.26-alpine \
-  go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
-#   env: W2PP_E2E_ADDR=127.0.0.1:8281 W2PP_E2E_ACCOUNT=test W2PP_E2E_PASSWORD=test123
-#        W2PP_E2E_VERSION=12000   (sem isso o servidor responde 0x102 = version mismatch)
-
-# 4. portal (o que o CI roda para ele)
-make portal-test        # tsc --noEmit + vitest
-make portal-build       # next build (valida rotas e o standalone)
+make check                 # gate único: fmt + clippy + build + test + migrations + issues + docs + skills + tools
+make test-all              # unitários + integração + doc-tests + benches (espelho do CI)
+make bench                 # benchmarks quando a issue exigir números
+make stack-config          # valida compose base+prod sem subir
+make stack-up              # db + gateway + 2 canais + portal + monitoramento + mkdocs
+make docs-serve            # MkDocs interno dev/admin em http://127.0.0.1:8000
+make portal-test           # tsc --noEmit + vitest
+make portal-build          # next build
 ```
 
-**Windows + Git Bash (verificado nesta máquina):** `-w /src` é reescrito pelo MSYS para o diretório
-de instalação do Git e o docker aborta com `working directory 'C:/…/resources/git/src' is invalid`.
-Prefixe `MSYS_NO_PATHCONV=1` e passe o projeto em caminho Windows. No Docker Desktop não existe
-`--network host`: use a rede do compose e o nome do serviço.
+Sem `make` no Windows/Git Bash, rode os comandos `cargo` equivalentes e registre na evidência.
+Diagnóstico de stack, portas e banco: skill `wyd-server-ops` + `docs/rust/05-stack-docker.md`.
 
-```bash
-MSYS_NO_PATHCONV=1 docker run --rm --network openwyd_default -v "D:/dolorestec/wyd2/OpenWYD:/src" -e W2PP_E2E_ADDR=openwyd-nextgen1-tmsrv:8281 -e W2PP_E2E_ACCOUNT=test -e W2PP_E2E_PASSWORD=test123 -e W2PP_E2E_VERSION=12000 golang:1.26-alpine sh -c "cd /src && go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v"
-```
-
-Não reinicie serviços no meio de um teste do usuário: o restart dispara save-on-shutdown e
-reconexão gRPC, gerando falhas transitórias que parecem bug. Faça o deploy, **espere** o teste
-humano terminar, e só então mexa.
-
-## 6. Onde está o conhecimento
+## 4. Onde está a verdade
 
 | Preciso de… | Leia |
-|-------------|------|
-| Topologia, portas, configs, hardcodes | `docs/migration/config-ops.md` |
-| Protocolo CPSock, Types, structs | `docs/migration/protocol-spec.md` |
-| Formatos de save, alinhamento | `docs/migration/data-formats.md` |
-| Fórmulas (dano, exp, drop, refino) | `docs/migration/game-rules.md` |
-| Contrato de um `_MSG_*` | `docs/migration/handlers/` (58/58) |
-| Fluxos ponta-a-ponta | `docs/migration/flows.md` |
-| Mensagens ao cliente (canais, regra, catálogo aviso→Language.txt, lacunas) | `docs/migration/game-messages.md` |
-| Estado real do que funciona | `docs/migration/SESSION-PRIMER.md` |
-| Comandos in-game e de GM | `docs/game.md` |
-| Histórico de bugs in-game | `docs/migration/ingame-bugs.md` |
-| Portal: BFF, telas, overlays, sessão | `portal/README.md` + `.agents/skills/wyd-web-admin-ui` |
-| Banco: auditoria, tipos, índices, squash | `docs/analysis/banco-de-dados.md` + skill `wyd-database` |
-| Plano de execução deste projeto | `roadmap/index.md` + `roadmap/PLANO-2026-11.md` |
-| Análise de conjunto (estado, legado, cliente, banco, processo) | `docs/analysis/` |
+|---|---|
+| Estrutura, nomenclatura, SOLID e fronteiras | `docs/arquitetura/estrutura-e-padroes.md` + `software-architecture` |
+| Protocolo CPSock, opcodes e payloads | `docs/arquitetura/protocolo.md` + `crates/wyd-protocol/` |
+| Banco, ER, migrations e seeds | `docs/arquitetura/modelo-banco.md` + `crates/wyd-db/` |
+| Cliente: inventário, RE, pacotes e depuração | `docs/cliente/` + `client/` (local) |
+| Execução, gates, DoD e revisão | `docs/rust/02-execucao.md` |
+| Stack e operação Docker | `docs/rust/05-stack-docker.md` + `wyd-server-ops` |
+| CI, imagens, compose, deploy local e alertas | `docs/rust/10-devops-ci.md` + `wyd-rust-toolchain` |
+| Dependências e toolchain | `docs/rust/01-dependencias.md` + `wyd-rust-toolchain` |
+| Progresso, evidências e histórico | `docs/rust/03-progresso.md` + `docs/rust/evidencias/README.md` + `roadmap-rust/changelog.md` |
+| Estado e prioridade das issues | `roadmap-rust/index.md` |
+| Lore, classes, itens e sistemas | `docs/wyd/` |
+| Portal (BFF, telas, sessão) | `wyd-portal/README.md` + `wyd-web-admin-ui` |
 
-Antes de mexer em wire/format/gameplay, leia o doc correspondente. Ele cita evidência como
-`Source/Code/.../arquivo.cpp:linha` e marca como **UNVERIFIED** o que não foi confirmado — respeite
-essa marcação em vez de tratá-la como fato.
+O que não está documentado é **hipótese/UNVERIFIED**: não vira tipo, gate ou regra.
 
-## 7. Skills disponíveis (`.agents/skills/`)
+## 5. Fluxo de entrega
 
-| Skill | Use quando |
-|-------|-----------|
-| `wyd-server-ops` | subir/parar/inspecionar a stack local, portas, logs, banco, backup, migrations |
-| `wyd-database` | auditar/migrar/backup do Postgres, escrever migration, squash de migrations, seeds de referência |
-| `wyd-client-connect` | gerar `serverlist.bin`, alinhar versão de protocolo, diagnosticar cliente que não loga |
-| `wyd-game-admin` | GM commands, contas, papéis, bans, dar item/gold/nível, auditoria |
-| `wyd-economy` | preços, drops, refino, combines, curva de EXP, balanceamento e ferramentas de dados |
-| `wyd-server-dev` | escrever/alterar código Go do servidor (handlers, protocolo, persistência) |
-| `wyd-testing-bots` | testes e2e headless, harness de protocolo, bots e carga |
-| `wyd-web-admin-ui` | construir ou alterar o portal (telas, BFF gRPC, sessão/papéis, overlays) |
-| `frontend-design`, `ui-ux-practices` | direção visual e revisão de UI/UX do portal |
-| ~~`openspec-*`~~ | arquivado em `docs/archive/openspec/`; o plano vive no `roadmap/` |
+1. **Análise**: leia a issue, o aceite e os docs/skills citados; confirme o estado real no código.
+2. **Design**: liste arquivos e fronteiras; ADR se a mudança for estrutural.
+3. **Código mínimo**: uma issue por vez, sem refatoração fora do escopo.
+4. **Verificação**: `make check`; testes específicos quando a área exigir; link gate.
+5. **Docs**: atualize a issue, `roadmap-rust/index.md`, `docs/rust/03-progresso.md` e o doc
+   invalidado na mesma entrega. Ao concluir, remova o arquivo da issue e registre no
+   `roadmap-rust/changelog.md` com evidência.
 
-## 8. Convenções de trabalho
+Detalhe do ciclo, branch e Definition of Done: `docs/rust/02-execucao.md` §1–§4.
 
-- **Ao migrar uma funcionalidade, remova o caminho legado na mesma entrega** (arquivo, flag, coluna,
-  tela, tabela). Migração sem remoção deixa duas fontes vivas e o defeito nasce da convivência: foi
-  assim que 20 linhas do seed curado (0006) ficaram sombreadas pelos blocos importados e duplicaram
-  os mercadores de Armia (B18, 04/11). Se a migração ainda não terminou, a remoção fica registrada
-  como issue de fechamento (ex.: 57), não como pendência informal.
-- Siga `development-guidelines/Go-development-guidelines.md` para Go.
-- **Definition of Done única:** `development-guidelines/processo.md` (as seis linhas de evidência, a
-  regra de issue, a regra de comentário e a DoD por tipo de mudança). Em divergência com este arquivo,
-  vale o `processo.md`.
-- Prefira editar o que existe a criar arquivo novo; o roadmap já diz onde cada coisa mora.
-- Docs, UI e mensagens em português; commits pequenos e descritivos em português.
-- Nunca versione segredos, `serverlist.bin` gerado com IP privado, dumps de conta, binários do
-  cliente (`client/`) ou o `project-id` do Freebuff (`.freebuff/`).
-- Ao concluir uma issue do roadmap, atualize o status em `roadmap/index.md` e a linha
-  correspondente em `docs/migration/SESSION-PRIMER.md` quando o comportamento mudar.
+## 6. Skills
 
-## Comandos
+O roteador é `.agents/skills/README.md`: ele mapeia cada tarefa para **uma** skill principal e
+lista as transversais de apoio. Não replique o catálogo aqui. As skills são sob demanda
+(nome/descrição na descoberta; corpo completo só quando carregadas), por isso o custo fixo é
+este `AGENTS.md`, não o conjunto de skills.
 
-```bash
-make build          # go build ./...
-make binaries       # binários em bin/ (tmserver, dbserver, binserver, webserver)
-make test           # go test -race -cover ./...
-make lint           # golangci-lint run
-make vet            # go vet ./...
-make fmt            # gofmt + goimports
-make proto          # regen gRPC de api/*.proto
-make certs          # certs mTLS de dev (gitignored)
+Histórico Go→Rust, fusões e justificativa de remoções: `docs/manual-técnico/skills.md`.
 
-make run            # tmserver sozinho, persistência no-op
-make run-local      # stack completa (db, dbServer, binServer, webServer, portal, tmServer) + conta test/test123
+## 7. Limites
 
-make portal-install # npm ci em portal/
-make portal-dev     # portal em http://127.0.0.1:3000 (hot reload)
-make portal-test    # tsc --noEmit + vitest
-make portal-build   # next build (standalone)
-```
+- Não versione `client/`, `target/`, dumps, `.pcap`, segredos, `serverlist.bin` com IP privado
+  ou `.freebuff/`.
+- Não faça `docker compose down -v`, `DROP`/`TRUNCATE` ou reset de volume sem pedido explícito.
+- Não publique portas do banco fora do loopback em desenvolvimento.
+- Não edite `crates/` para “consertar” documentação, nem promova hipótese a contrato.

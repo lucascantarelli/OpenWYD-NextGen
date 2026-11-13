@@ -1,0 +1,5239 @@
+{
+  "totals": {
+    "all": 4426,
+    "ascii": 4271,
+    "utf16le": 155,
+    "relevant": 495
+  },
+  "relevant": [
+    {
+      "offset": 2241960,
+      "va": 6436264,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineAmunlaStone",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2242008,
+      "va": 6436312,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineCube",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2242068,
+      "va": 6436372,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineGod2Item",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2242092,
+      "va": 6436396,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineGodUnSeal",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241860,
+      "va": 6436164,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineItem",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241984,
+      "va": 6436288,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineRuneStone",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2242028,
+      "va": 6436332,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_CombineStone",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241940,
+      "va": 6436244,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_FreeMaxLevel",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241880,
+      "va": 6436184,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_MergeItem",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241844,
+      "va": 6436148,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_ReturnItem",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241896,
+      "va": 6436200,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_TransUpgrade",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2241916,
+      "va": 6436220,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "_MSG_TransWeaponUpgrade",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2239176,
+      "va": 6433480,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "../../LimitTime.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238896,
+      "va": 6433200,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "../../TMSRV/Run/AttributeMap.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238864,
+      "va": 6433168,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "./Env/AttributeMap.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238656,
+      "va": 6432960,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "./Guilds.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185612,
+      "va": 6379916,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "./itemicon.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238776,
+      "va": 6433080,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "./serverlist.bin",
+      "tags": [
+        "dados",
+        "rede",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2237336,
+      "va": 6431640,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".\\ExtraItem.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2237072,
+      "va": 6431376,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".\\ItemList.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2242136,
+      "va": 6436440,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".\\Mixlist.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2298308,
+      "va": 6492612,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".\\XTrap\\%s",
+      "tags": [
+        "protecao"
+      ]
+    },
+    {
+      "offset": 2298148,
+      "va": 6492452,
+      "section": ".data",
+      "encoding": "utf16le",
+      "text": ".\\XTrap\\%S",
+      "tags": [
+        "protecao"
+      ]
+    },
+    {
+      "offset": 2186516,
+      "va": 6380820,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".exp.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2186544,
+      "va": 6380848,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ".mem.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2185896,
+      "va": 6380200,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "\\exceptions.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2186580,
+      "va": 6380884,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "\\mem-leaks.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2237172,
+      "va": 6431476,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "#define ITEM_CHECKSUM %d",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2237200,
+      "va": 6431504,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "#define ITEM_CHECKSUM2 %d",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2237040,
+      "va": 6431344,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "#define SKILL_CHECKSUM %d",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2183544,
+      "va": 6377848,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "%s.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2185552,
+      "va": 6379856,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "%s.bon",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2190652,
+      "va": 6384956,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "%s%02d%02d.wyt",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2185560,
+      "va": 6379864,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "%s%04d.ani",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2345748,
+      "va": 41450260,
+      "section": ".rsrc",
+      "encoding": "ascii",
+      "text": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2345805,
+      "va": 41450317,
+      "section": ".rsrc",
+      "encoding": "ascii",
+      "text": "<assembly xmlns=\"urn:schemas-microsoft-com:asm.v1\" manifestVersion=\"1.0\">",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2178284,
+      "va": 6372588,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ">> Init Field Scene::End",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2178008,
+      "va": 6372312,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ">> Init Field Scene::Start",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2177980,
+      "va": 6372284,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": ">> New Field Scene",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2077736,
+      "va": 6272040,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "Adobe APP14 marker: version %d, flags 0x%04x 0x%04x, transform %d",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2185680,
+      "va": 6379984,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "AniSound4.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238932,
+      "va": 6433236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Attributemap.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239068,
+      "va": 6433372,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "BlockIP.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2182284,
+      "va": 6376588,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create [%d] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181556,
+      "va": 6375860,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create 3DObject [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2182016,
+      "va": 6376320,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create CheckBox [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181836,
+      "va": 6376140,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create Edit [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2182200,
+      "va": 6376504,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create Grid [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2182116,
+      "va": 6376420,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create ListBox [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181484,
+      "va": 6375788,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create Panel [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181644,
+      "va": 6375948,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create pButton [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181932,
+      "va": 6376236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create Progress [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2181740,
+      "va": 6376044,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't Create Text [%s] in Scene [%d]",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2237096,
+      "va": 6431400,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't generate ItemList.bin file",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2242160,
+      "va": 6436464,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't generate Mixlist.bin file",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2237312,
+      "va": 6431616,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't read ItemList.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2242220,
+      "va": 6436524,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't read Mixlist.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2185460,
+      "va": 6379764,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't read object.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2237256,
+      "va": 6431560,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't read SkillData.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2237804,
+      "va": 6432108,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't write extraitem.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2238268,
+      "va": 6432572,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Can't write inititem.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2208540,
+      "va": 6402844,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "cdata.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185412,
+      "va": 6379716,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "CheckSum Error",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2208628,
+      "va": 6402932,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "CheckSum Error : %d,%d   m_nCheckSum=%d  nCheckSum = %d",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2208920,
+      "va": 6403224,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "CheckSum Error | %d,%d  TMGround::m_nCheckSum=%d nCheckSum=%d",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2046954,
+      "va": 6241258,
+      "section": ".text",
+      "encoding": "ascii",
+      "text": "ClientPatch.dll",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2240136,
+      "va": 6434440,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Config.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185772,
+      "va": 6380076,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Create Scene Fail.",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2185668,
+      "va": 6379972,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "curse.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239840,
+      "va": 6434144,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "D:\\project\\wyd\\run\\Mesh\\meshTextureList.txt",
+      "tags": [
+        "dados",
+        "ui"
+      ]
+    },
+    {
+      "offset": 2154022,
+      "va": 6348326,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "DispatchMessageA",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2189192,
+      "va": 6383496,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Effect\\EffectTextureList.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2183788,
+      "va": 6378092,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\character.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184584,
+      "va": 6378888,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Character.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2189456,
+      "va": 6383760,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Env\\EnvTextureList3.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178196,
+      "va": 6372500,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field%02d%02d.dat",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2183492,
+      "va": 6377796,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Env\\Field%02d%02d.dat",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2184624,
+      "va": 6378928,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field0813.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184504,
+      "va": 6378808,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field1616.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2176348,
+      "va": 6370652,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field1817.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184544,
+      "va": 6378848,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field2723.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184704,
+      "va": 6379008,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "env\\Field2922.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239636,
+      "va": 6433940,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Env\\object\\mask.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2237780,
+      "va": 6432084,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "extraitem.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2175416,
+      "va": 6369720,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "font.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2047055,
+      "va": 6241359,
+      "section": ".text",
+      "encoding": "ascii",
+      "text": "GamePatch.dll",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2239008,
+      "va": 6433312,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "GameRoomIP.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2156156,
+      "va": 6350460,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "GetVersion",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2152522,
+      "va": 6346826,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "GetVersionExA",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2177964,
+      "va": 6372268,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Guilds.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2249384,
+      "va": 6443688,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Header",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2155044,
+      "va": 6349348,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "ImmGetConversionStatus",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2155086,
+      "va": 6349390,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "ImmSetConversionStatus",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2080840,
+      "va": 6275144,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "Incompatible libpng version in application and library",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2084420,
+      "va": 6278724,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "incorrect header check",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2240452,
+      "va": 6434756,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize Interface Failed",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2185800,
+      "va": 6380104,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize Scene Fail.",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2163324,
+      "va": 6357628,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize single socket fail",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2163268,
+      "va": 6357572,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize socket fai",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2163164,
+      "va": 6357468,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize socket fail",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2240504,
+      "va": 6434808,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Initialize Socket Failed",
+      "tags": [
+        "rede"
+      ]
+    },
+    {
+      "offset": 2238244,
+      "va": 6432548,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "InitItem.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2240272,
+      "va": 6434576,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "itemHelp.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185632,
+      "va": 6379936,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Itemname.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2236728,
+      "va": 6431032,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "ItemPrice.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2077352,
+      "va": 6271656,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "JFIF APP0 marker: version %d.%02d, density %dx%d  %d",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2239568,
+      "va": 6433872,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh_MeshList.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239988,
+      "va": 6434292,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh\\%s",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2189700,
+      "va": 6384004,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\%s.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192788,
+      "va": 6387092,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\BlackPolice.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192576,
+      "va": 6386880,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\BlueRudol.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191116,
+      "va": 6385420,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\bm010102.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185484,
+      "va": 6379788,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh\\BoneAni4.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195736,
+      "va": 6390040,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch01",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195712,
+      "va": 6390016,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2239944,
+      "va": 6434248,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010101.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2239924,
+      "va": 6434228,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010101.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193372,
+      "va": 6387676,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193352,
+      "va": 6387656,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101100.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193512,
+      "va": 6387816,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193492,
+      "va": 6387796,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101101.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193812,
+      "va": 6388116,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193792,
+      "va": 6388096,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101102.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193672,
+      "va": 6387976,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193632,
+      "va": 6387936,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101103.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193952,
+      "va": 6388256,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193932,
+      "va": 6388236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101104.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194232,
+      "va": 6388536,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194212,
+      "va": 6388516,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101105.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194092,
+      "va": 6388396,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194072,
+      "va": 6388376,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101106.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194372,
+      "va": 6388676,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194352,
+      "va": 6388656,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101107.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194512,
+      "va": 6388816,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194492,
+      "va": 6388796,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101108.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194652,
+      "va": 6388956,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194632,
+      "va": 6388936,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101109.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194792,
+      "va": 6389096,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194772,
+      "va": 6389076,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101110.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194932,
+      "va": 6389236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194912,
+      "va": 6389216,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101111.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195072,
+      "va": 6389376,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195052,
+      "va": 6389356,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101112.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195212,
+      "va": 6389516,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195192,
+      "va": 6389496,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101113.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195352,
+      "va": 6389656,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195332,
+      "va": 6389636,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101114.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196708,
+      "va": 6391012,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196688,
+      "va": 6390992,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0101115.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191016,
+      "va": 6385320,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010130.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191476,
+      "va": 6385780,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010137.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191512,
+      "va": 6385816,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010138.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192952,
+      "va": 6387256,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010189.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196328,
+      "va": 6390632,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010195.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196308,
+      "va": 6390612,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010195.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193232,
+      "va": 6387536,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010199.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193212,
+      "va": 6387516,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010199.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195972,
+      "va": 6390276,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193392,
+      "va": 6387696,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193532,
+      "va": 6387836,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193832,
+      "va": 6388136,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193692,
+      "va": 6387996,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193652,
+      "va": 6387956,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102103.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193972,
+      "va": 6388276,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194252,
+      "va": 6388556,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194112,
+      "va": 6388416,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194392,
+      "va": 6388696,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194532,
+      "va": 6388836,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194672,
+      "va": 6388976,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194812,
+      "va": 6389116,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194952,
+      "va": 6389256,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195092,
+      "va": 6389396,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195232,
+      "va": 6389536,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195372,
+      "va": 6389676,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196728,
+      "va": 6391032,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0102115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2190756,
+      "va": 6385060,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010214.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190716,
+      "va": 6385020,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010218.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2190736,
+      "va": 6385040,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010219.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191460,
+      "va": 6385764,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010237",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191496,
+      "va": 6385800,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010238",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192972,
+      "va": 6387276,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010289.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196348,
+      "va": 6390652,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010295.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193252,
+      "va": 6387556,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010299.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193412,
+      "va": 6387716,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193552,
+      "va": 6387856,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193852,
+      "va": 6388156,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193712,
+      "va": 6388016,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193992,
+      "va": 6388296,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194272,
+      "va": 6388576,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194132,
+      "va": 6388436,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194412,
+      "va": 6388716,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194552,
+      "va": 6388856,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194692,
+      "va": 6388996,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194832,
+      "va": 6389136,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194972,
+      "va": 6389276,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195112,
+      "va": 6389416,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195252,
+      "va": 6389556,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195392,
+      "va": 6389696,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196748,
+      "va": 6391052,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0103115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192992,
+      "va": 6387296,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010389.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196368,
+      "va": 6390672,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010395.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193272,
+      "va": 6387576,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010399.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193432,
+      "va": 6387736,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193572,
+      "va": 6387876,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193872,
+      "va": 6388176,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193732,
+      "va": 6388036,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194012,
+      "va": 6388316,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194292,
+      "va": 6388596,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194152,
+      "va": 6388456,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194432,
+      "va": 6388736,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194572,
+      "va": 6388876,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194712,
+      "va": 6389016,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194852,
+      "va": 6389156,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194992,
+      "va": 6389296,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195132,
+      "va": 6389436,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195272,
+      "va": 6389576,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195412,
+      "va": 6389716,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196768,
+      "va": 6391072,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0104115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191036,
+      "va": 6385340,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010430.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193012,
+      "va": 6387316,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010489.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196388,
+      "va": 6390692,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010495.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193292,
+      "va": 6387596,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010499.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193452,
+      "va": 6387756,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193592,
+      "va": 6387896,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193892,
+      "va": 6388196,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193752,
+      "va": 6388056,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194032,
+      "va": 6388336,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194312,
+      "va": 6388616,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194172,
+      "va": 6388476,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194452,
+      "va": 6388756,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194592,
+      "va": 6388896,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194732,
+      "va": 6389036,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194872,
+      "va": 6389176,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195012,
+      "va": 6389316,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195152,
+      "va": 6389456,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195292,
+      "va": 6389596,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195432,
+      "va": 6389736,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196788,
+      "va": 6391092,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0105115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191056,
+      "va": 6385360,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010530.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193032,
+      "va": 6387336,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010589.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196408,
+      "va": 6390712,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010595.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193312,
+      "va": 6387616,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010599.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193472,
+      "va": 6387776,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106100.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193612,
+      "va": 6387916,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106101.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193912,
+      "va": 6388216,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106102.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193772,
+      "va": 6388076,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106103.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194052,
+      "va": 6388356,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106104.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194332,
+      "va": 6388636,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106105.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194192,
+      "va": 6388496,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106106.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194472,
+      "va": 6388776,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106107.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194612,
+      "va": 6388916,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106108.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194752,
+      "va": 6389056,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106109.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2194892,
+      "va": 6389196,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106110.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195032,
+      "va": 6389336,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106111.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195172,
+      "va": 6389476,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106112.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195312,
+      "va": 6389616,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106113.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195452,
+      "va": 6389756,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106114.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196808,
+      "va": 6391112,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0106115.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193052,
+      "va": 6387356,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010689.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196428,
+      "va": 6390732,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010695.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2193332,
+      "va": 6387636,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch010699.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195748,
+      "va": 6390052,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch02",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195724,
+      "va": 6390028,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch0201",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196088,
+      "va": 6390392,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020117.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191548,
+      "va": 6385852,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020117.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195492,
+      "va": 6389796,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020161.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195472,
+      "va": 6389776,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020161.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193092,
+      "va": 6387396,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020189.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195828,
+      "va": 6390132,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020190.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192620,
+      "va": 6386924,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020194.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192812,
+      "va": 6387116,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020195.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192456,
+      "va": 6386760,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020196.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196468,
+      "va": 6390772,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020197.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196448,
+      "va": 6390752,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020197.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191532,
+      "va": 6385836,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020217",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196128,
+      "va": 6390432,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020217.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195532,
+      "va": 6389836,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020261.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195512,
+      "va": 6389816,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020261.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193112,
+      "va": 6387416,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020289.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195848,
+      "va": 6390152,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020290.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192640,
+      "va": 6386944,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020294.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192832,
+      "va": 6387136,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020295.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192476,
+      "va": 6386780,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020296.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196508,
+      "va": 6390812,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020297.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196488,
+      "va": 6390792,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020297.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191096,
+      "va": 6385400,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020314.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191076,
+      "va": 6385380,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020315.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2196168,
+      "va": 6390472,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020317.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196148,
+      "va": 6390452,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020317.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195572,
+      "va": 6389876,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020357.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195552,
+      "va": 6389856,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020357.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193132,
+      "va": 6387436,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020389.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195868,
+      "va": 6390172,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020390.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192660,
+      "va": 6386964,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020394.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192852,
+      "va": 6387156,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020395.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192496,
+      "va": 6386800,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020396.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196548,
+      "va": 6390852,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020397.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196528,
+      "va": 6390832,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020397.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2196208,
+      "va": 6390512,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020417.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196188,
+      "va": 6390492,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020417.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195612,
+      "va": 6389916,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020457.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195592,
+      "va": 6389896,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020457.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193152,
+      "va": 6387456,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020489.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195888,
+      "va": 6390192,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020490.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192680,
+      "va": 6386984,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020494.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192872,
+      "va": 6387176,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020495.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192516,
+      "va": 6386820,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020496.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196588,
+      "va": 6390892,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020497.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196568,
+      "va": 6390872,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020497.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2196248,
+      "va": 6390552,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020517.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196228,
+      "va": 6390532,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020517.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195652,
+      "va": 6389956,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020557.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195632,
+      "va": 6389936,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020557.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193172,
+      "va": 6387476,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020589.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195908,
+      "va": 6390212,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020590.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192700,
+      "va": 6387004,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020594.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192892,
+      "va": 6387196,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020595.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192536,
+      "va": 6386840,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020596.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196628,
+      "va": 6390932,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020597.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196608,
+      "va": 6390912,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020597.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2196288,
+      "va": 6390592,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020617.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196268,
+      "va": 6390572,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020617.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195692,
+      "va": 6389996,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020657.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195672,
+      "va": 6389976,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020657.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193192,
+      "va": 6387496,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020689.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2195928,
+      "va": 6390232,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020690.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192720,
+      "va": 6387024,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020694.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192912,
+      "va": 6387216,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020695.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192556,
+      "va": 6386860,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020696.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196668,
+      "va": 6390972,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020697.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196648,
+      "va": 6390952,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ch020697.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2193072,
+      "va": 6387376,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\DeathCos.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192932,
+      "va": 6387236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\DeathCos2.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2240116,
+      "va": 6434420,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh\\ed.dat",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192764,
+      "va": 6387068,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\GreenPolice.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191568,
+      "va": 6385872,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LB010101.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191588,
+      "va": 6385892,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LB010201.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191608,
+      "va": 6385912,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LB010301.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191628,
+      "va": 6385932,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LK010101.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191648,
+      "va": 6385952,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LK010201.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191668,
+      "va": 6385972,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\LK010301.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185192,
+      "va": 6379496,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\MeshList.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2189328,
+      "va": 6383632,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh\\MeshTextureList.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191136,
+      "va": 6385440,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mi010105.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191796,
+      "va": 6386100,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101170.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191816,
+      "va": 6386120,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101171.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191836,
+      "va": 6386140,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101172.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191856,
+      "va": 6386160,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101173.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191876,
+      "va": 6386180,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101174.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191896,
+      "va": 6386200,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101175.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191916,
+      "va": 6386220,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101176.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191936,
+      "va": 6386240,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101177.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191956,
+      "va": 6386260,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101178.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191976,
+      "va": 6386280,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101179.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191996,
+      "va": 6386300,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101180.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192016,
+      "va": 6386320,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101181.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192036,
+      "va": 6386340,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101182.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192056,
+      "va": 6386360,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101183.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192076,
+      "va": 6386380,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101184.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192096,
+      "va": 6386400,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101185.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192116,
+      "va": 6386420,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101186.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192136,
+      "va": 6386440,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101187.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192156,
+      "va": 6386460,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101188.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192176,
+      "va": 6386480,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101189.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192196,
+      "va": 6386500,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101190.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192216,
+      "va": 6386520,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101191.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192236,
+      "va": 6386540,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101192.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192256,
+      "va": 6386560,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101193.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192276,
+      "va": 6386580,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101194.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192296,
+      "va": 6386600,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101195.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192316,
+      "va": 6386620,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101196.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192336,
+      "va": 6386640,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101197.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192356,
+      "va": 6386660,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101198.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192376,
+      "va": 6386680,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101199.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192396,
+      "va": 6386700,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt0101200.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190816,
+      "va": 6385120,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010124.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2190796,
+      "va": 6385100,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010124.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190776,
+      "va": 6385080,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010131.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2190836,
+      "va": 6385140,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010132.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190856,
+      "va": 6385160,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010133.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190876,
+      "va": 6385180,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010134.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190896,
+      "va": 6385200,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010135.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190916,
+      "va": 6385220,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010136.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2190936,
+      "va": 6385240,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\mt010137.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2196828,
+      "va": 6391132,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\newmt.msh",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196844,
+      "va": 6391148,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\newmtB000.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196864,
+      "va": 6391168,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\newmtR000.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2196884,
+      "va": 6391188,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\newmtW000.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192596,
+      "va": 6386900,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\PurpleRudol.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192436,
+      "va": 6386740,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\RedSanta.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2195808,
+      "va": 6390112,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\SpiderCos.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2241200,
+      "va": 6435504,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\stone01.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2240104,
+      "va": 6434408,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mesh\\tn.dat",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191156,
+      "va": 6385460,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr13",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191168,
+      "va": 6385472,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr130101.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191188,
+      "va": 6385492,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr14",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191220,
+      "va": 6385524,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr15",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191252,
+      "va": 6385556,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr16",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191284,
+      "va": 6385588,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr17",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191332,
+      "va": 6385636,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr180101.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191368,
+      "va": 6385672,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr180102.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2191316,
+      "va": 6385620,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr190101",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191352,
+      "va": 6385656,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr190102",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191388,
+      "va": 6385692,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr200101",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2191424,
+      "va": 6385728,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\tr200102",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2185512,
+      "va": 6379816,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\ValidIndex.bin",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2192740,
+      "va": 6387044,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\WhitePolice.wys",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2192416,
+      "va": 6386720,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "mesh\\WhiteSanta.wyt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239892,
+      "va": 6434196,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "MeshTextureList.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2177920,
+      "va": 6372224,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "minimap.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2238752,
+      "va": 6433056,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Missionitems.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2240320,
+      "va": 6434624,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Mixhelp.dat",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2240092,
+      "va": 6434396,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Music.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2169320,
+      "va": 6363624,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\CastleWar.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2168040,
+      "va": 6362344,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\dungeon01.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2168552,
+      "va": 6362856,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\dungeon02.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2167272,
+      "va": 6361576,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\field01.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2167784,
+      "va": 6362088,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\field02.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2169064,
+      "va": 6363368,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\field03.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2169576,
+      "va": 6363880,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\kepra.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2169832,
+      "va": 6364136,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\khepraBoss.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2168296,
+      "va": 6362600,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\kingdom.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2166760,
+      "va": 6361064,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\login.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2167016,
+      "va": 6361320,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\town01.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2167528,
+      "va": 6361832,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\town02.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2168808,
+      "va": 6363112,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "music\\town03.mp3",
+      "tags": [
+        "ui"
+      ]
+    },
+    {
+      "offset": 2178248,
+      "va": 6372552,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "notice.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185400,
+      "va": 6379704,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "object.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185428,
+      "va": 6379732,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Object.bin File Crashed",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2080952,
+      "va": 6275256,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "PNG file corrupted by ASCII conversion",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2175712,
+      "va": 6370016,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "RenderStateLog.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2237500,
+      "va": 6431804,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "S:/Settings/Lotto.txt",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2175756,
+      "va": 6370060,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "SamplerStateLog.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2175604,
+      "va": 6369908,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Shader\\pseffect%d.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2175492,
+      "va": 6369796,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Shader\\skinmesh%d.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2175548,
+      "va": 6369852,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "Shader\\vseffect%d.bin",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2237004,
+      "va": 6431308,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "SkillData.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2240708,
+      "va": 6435012,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "sn.bin",
+      "tags": [
+        "dados",
+        "rede",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2174668,
+      "va": 6368972,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "sound\\soundlist.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2175808,
+      "va": 6370112,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "TextureStageStateLog.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239612,
+      "va": 6433916,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "ui_hellStoredesc.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239588,
+      "va": 6433892,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "ui_UITextureSetList.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2236964,
+      "va": 6431268,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI/strdef.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184256,
+      "va": 6378560,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\chardescbeast.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184232,
+      "va": 6378536,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\chardescfoema.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184280,
+      "va": 6378584,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\chardeschunter.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184208,
+      "va": 6378512,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\chardesctrans.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178336,
+      "va": 6372640,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\command.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184784,
+      "va": 6379088,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\demo.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184800,
+      "va": 6379104,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\demo2.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184820,
+      "va": 6379124,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\demo3.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184840,
+      "va": 6379144,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\demo4.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239732,
+      "va": 6434036,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\EffectString.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239760,
+      "va": 6434064,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\EffectSubString.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2176428,
+      "va": 6370732,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\EndDemo.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2176288,
+      "va": 6370592,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\Ending.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178352,
+      "va": 6372656,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\etc.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178040,
+      "va": 6372344,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\FieldScene2.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239792,
+      "va": 6434096,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\GuildString.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239656,
+      "va": 6433960,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\hellgate\\icon.wyt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178908,
+      "va": 6373212,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\hellStoredesc.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178316,
+      "va": 6372620,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\interface.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178364,
+      "va": 6372668,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\interface1.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178384,
+      "va": 6372688,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\interface2.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178404,
+      "va": 6372708,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\interface3.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2208720,
+      "va": 6403024,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\m%02d%02d.wyt",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2161072,
+      "va": 6355376,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\minimap.wyt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178156,
+      "va": 6372460,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\mix4desc.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178932,
+      "va": 6373236,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\PotalPos.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2180360,
+      "va": 6374664,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestContents.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2180384,
+      "va": 6374688,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestContents2.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2180408,
+      "va": 6374712,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestContents3.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2180432,
+      "va": 6374736,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestContents4.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178520,
+      "va": 6372824,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestMessage.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178424,
+      "va": 6372728,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestSubjects.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178448,
+      "va": 6372752,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestSubjects2.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178472,
+      "va": 6372776,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestSubjects3.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2178496,
+      "va": 6372800,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\QuestSubjects4.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2185652,
+      "va": 6379956,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\RC.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2183884,
+      "va": 6378188,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\selchar.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2183744,
+      "va": 6378048,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\SelCharScene2.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2184420,
+      "va": 6378724,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\SelServerScene2.txt",
+      "tags": [
+        "dados",
+        "ui",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2176460,
+      "va": 6370764,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\TimeTable.bin",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2239816,
+      "va": 6434120,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\UIString.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2188948,
+      "va": 6383252,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\UITextureListN.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2189068,
+      "va": 6383372,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "UI\\UITextureSetList.txt",
+      "tags": [
+        "dados",
+        "arquivo-de-dados"
+      ]
+    },
+    {
+      "offset": 2079552,
+      "va": 6273856,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "Unsupported color conversion request",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2154006,
+      "va": 6348310,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "UpdateWindow",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2164051,
+      "va": 6358355,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "want to check that the latest version of",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2164173,
+      "va": 6358477,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "was compiled with header files that match",
+      "tags": [
+        "protocolo"
+      ]
+    },
+    {
+      "offset": 2080180,
+      "va": 6274484,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "Wrong JPEG library version: library is %d, caller expects %d",
+      "tags": [
+        "versao"
+      ]
+    },
+    {
+      "offset": 2240056,
+      "va": 6434360,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "wyd.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2239700,
+      "va": 6434004,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "WYD.log",
+      "tags": [
+        "dados"
+      ]
+    },
+    {
+      "offset": 2298184,
+      "va": 6492488,
+      "section": ".data",
+      "encoding": "ascii",
+      "text": "XTrapVa.dll",
+      "tags": [
+        "protecao"
+      ]
+    },
+    {
+      "offset": 2080772,
+      "va": 6275076,
+      "section": ".rdata",
+      "encoding": "ascii",
+      "text": "zlib version error",
+      "tags": [
+        "versao"
+      ]
+    }
+  ]
+}

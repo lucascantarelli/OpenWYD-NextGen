@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>WYD</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0d12; color: #e8eaf0; font-family: system-ui, sans-serif; }
+    #status {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 9;
+      padding: 8px 14px; font: 12px/1.4 ui-monospace, monospace;
+      color: #e8eaf0; background: rgba(0, 0, 0, .78);
+      border-top: 1px solid rgba(255, 255, 255, .14); white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">carregando…</div>
+  <script>
+    // `withGlobalTauri` expõe o IPC sem bundler: o mesmo shell serve qualquer índice.
+    const invoke = window.__TAURI__.core.invoke;
+
+    function aviso(texto) {
+      let alvo = document.getElementById("status");
+      if (!alvo) {
+        alvo = document.createElement("div");
+        alvo.id = "status";
+        alvo.style.cssText =
+          "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:8px 14px;" +
+          "font:12px/1.4 ui-monospace,monospace;color:#e8eaf0;background:rgba(0,0,0,.78);" +
+          "border-top:1px solid rgba(255,255,255,.14);white-space:pre-wrap";
+        document.body.appendChild(alvo);
+      }
+      alvo.textContent = texto;
+    }
+
+    // O formulário de entrada do contrato (`gui.rs`) tem o botão Jogar; aqui ele
+    // abre o jogo pelo pipeline compartilhado.
+    async function jogar(evento) {
+      evento.preventDefault();
+      aviso("verificando manifesto e abrindo o jogo…");
+      try {
+        aviso(await invoke("jogar"));
+      } catch (erro) {
+        aviso(String(erro));
+      }
+    }
+    window.addEventListener("submit", jogar, true);
+
+    (async () => {
+      try {
+        const html = await invoke("pagina");
+        document.open();
+        document.write(html);
+        document.close();
+        // `document.write` troca o documento: o listener preso ao `window` pode
+        // não ver o submit do formulário novo, então religa no próprio form.
+        document.querySelector("form")?.addEventListener("submit", jogar);
+        aviso("pronto");
+      } catch (erro) {
+        aviso(`janela não carregada: ${erro}`);
+      }
+    })();
+  </script>
+</body>
+</html>

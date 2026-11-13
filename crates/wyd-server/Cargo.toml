@@ -1,0 +1,154 @@
+[package]
+name = "wyd-server"
+version.workspace = true
+edition = "2021"
+description = "Monolito Hot Path do WYD (tmserver): CPSock, status HTTP e metricas"
+publish = false
+
+# Raiz de composição do monólito (ADR-0022 §1): só ela conhece todas as libs —
+# `wyd-net` continua sem saber o que é Postgres e `wyd-db` continua sem saber o que é socket.
+[lib]
+name = "wyd_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wyd-server"
+path = "src/main.rs"
+
+[dependencies]
+wyd-protocol = { path = "../wyd-protocol", version = "0.1.0" }
+# GAME-07: o processo do canal roda o motor — tick, ECS e grade saem do crate de engine.
+wyd-core = { path = "../wyd-core", version = "0.1.0" }
+# `metrics`: o daemon publica o fragmento de rede no `/metrics` (QA-04).
+wyd-net = { path = "../wyd-net", version = "0.1.0", features = ["metrics"] }
+wyd-db = { path = "../wyd-db", version = "0.1.0" }
+# FASE-10: curva e máquina de EXP puras (`ExpTable`/`grant_exp`), sem I/O no tick.
+wyd-sim = { path = "../wyd-sim", version = "0.1.0" }
+# Reaproveita o transporte HTTP/1.1 já provado (ADR-0008/0022), sem reimplementar contrato.
+wyd-admin = { path = "../wyd-admin", version = "0.1.0" }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[dev-dependencies]
+# Guarda de contrato: lê os dashboards JSON do monitoramento (`tests/monitoramento_contrato.rs`).
+serde_json = "1"
+
+# Prova viva da quest do Campo: o teste conecta pelo mesmo protocolo do cliente
+# (`tests/campo_vivo.rs`), criando o personagem pelo `_MSG_CreateCharacter`.
+wyd-bots = { path = "../wyd-bots", version = "0.1.0" }
+
+# Bench do serviço (não só da lib): tick com mundo vazio e com 1 000 entidades.
+[[bench]]
+name = "tick"
+harness = false
+test = false
+
+# Testes por tipo (docs/arquitetura/testes.md): alvos explícitos porque o Cargo
+# não descobre arquivos em subpastas de tests/.
+
+[[test]]
+name = "contrato_monitoramento"
+path = "tests/contrato/monitoramento.rs"
+
+[[test]]
+name = "integracao_campo_treinamento"
+path = "tests/integracao/campo_treinamento.rs"
+
+[[test]]
+name = "integracao_campo_drops"
+path = "tests/integracao/campo_drops.rs"
+
+[[test]]
+name = "integracao_canal_verde"
+path = "tests/integracao/canal_verde.rs"
+
+[[test]]
+name = "integracao_config_gameplay"
+path = "tests/integracao/config_gameplay.rs"
+
+[[test]]
+name = "integracao_config_recarga"
+path = "tests/integracao/config_recarga.rs"
+
+[[test]]
+name = "integracao_tick_processo"
+path = "tests/integracao/tick_processo.rs"
+
+[[test]]
+name = "sistema_campo_vivo"
+path = "tests/sistema/campo_vivo.rs"
+
+[[test]]
+name = "sistema_cena_armia"
+path = "tests/sistema/cena_armia.rs"
+
+[[test]]
+name = "sistema_cena_mobs"
+path = "tests/sistema/cena_mobs.rs"
+
+[[test]]
+name = "sistema_conta_de_teste"
+path = "tests/sistema/conta_de_teste.rs"
+
+[[test]]
+name = "sistema_entrada_mundo"
+path = "tests/sistema/entrada_mundo.rs"
+
+[[test]]
+name = "sistema_gold_inicial"
+path = "tests/sistema/gold_inicial.rs"
+
+[[test]]
+name = "sistema_handshake"
+path = "tests/sistema/handshake.rs"
+
+[[test]]
+name = "sistema_limite_ip"
+path = "tests/sistema/limite_ip.rs"
+
+[[test]]
+name = "sistema_login"
+path = "tests/sistema/login.rs"
+
+[[test]]
+name = "sistema_loja_viva"
+path = "tests/sistema/loja_viva.rs"
+
+[[test]]
+name = "sistema_lotacao"
+path = "tests/sistema/lotacao.rs"
+
+[[test]]
+name = "sistema_personagens_crud"
+path = "tests/sistema/personagens_crud.rs"
+
+[[test]]
+name = "sistema_pin_persistencia"
+path = "tests/sistema/pin_persistencia.rs"
+
+[[test]]
+name = "sistema_pin_troca"
+path = "tests/sistema/pin_troca.rs"
+
+[[test]]
+name = "sistema_portal_pin"
+path = "tests/sistema/portal_pin.rs"
+
+[[test]]
+name = "sistema_refino_piedade"
+path = "tests/sistema/refino_piedade.rs"
+
+[[test]]
+name = "sistema_selchar"
+path = "tests/sistema/selchar.rs"
+
+[[test]]
+name = "sistema_selecao"
+path = "tests/sistema/selecao.rs"
+
+[[test]]
+name = "sistema_sessao_unica"
+path = "tests/sistema/sessao_unica.rs"
+
+[[test]]
+name = "sistema_status_udp"
+path = "tests/sistema/status_udp.rs"

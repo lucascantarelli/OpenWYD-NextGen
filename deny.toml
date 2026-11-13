@@ -1,0 +1,55 @@
+# Políticas de supply-chain do WYD (QA-02, skill wyd-rust-toolchain).
+# Verificado no CI (`cargo deny check`) e localmente (`make deny`).
+# O workspace não tem dependência externa hoje; a política existe para que a primeira
+# dependência aprovada por ADR (tokio, sqlx, …) entre já sob contrato, não depois.
+
+[graph]
+# Vazio = todos os alvos do lockfile.
+targets = []
+
+[advisories]
+version = 2
+# Advisory yanked continua visível (warn), não bloqueia build de versão publicada.
+yanked = "warn"
+ignore = [
+  # `proc-macro-error` (transitivo do Tauri/gtk) está descontinuado; não há versão corrigida e
+  # nenhum advisory de vulnerabilidade, só de manutenção. Entra em `ignore` com prazo: sair desta
+  # lista quando o Tauri trocar de `proc-macro-error2` (acompanhado na DEVOPS-12).
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error unmaintained (transitivo do Tauri); sem fix upstream, sem CVE" },
+]
+
+[licenses]
+version = 2
+# Lista fechada: licença fora dela exige ADR antes de entrar.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "MPL-2.0",
+  "CC0-1.0",
+  "Unlicense",
+  # `webpki-roots` distribui os certificados raiz sob CDLA-Permissive-2.0 (dados, não código):
+  # permissiva, sem copyleft e compatível com GPL-2.0 do projeto. Antes daqui, o `cargo deny` a
+  # reprovava e o job `audit` ficava vermelho (run 43431211305).
+  "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.93
+# Crates do workspace são `publish = false`: código do jogo não é publicado, então não
+# carrega expressão SPDX (a política vale para o que entra de fora).
+private = { ignore = true }
+
+[bans]
+# Duas versões da mesma crate: aviso (a decisão é da revisão, não do gate).
+multiple-versions = "warn"
+# `*` como versão esconde quebra de contrato.
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

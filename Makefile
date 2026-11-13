@@ -1,226 +1,244 @@
-.PHONY: build binaries test lint fmt vet run run-local vuln tidy proto certs certs-clean exp-data content-check content-sync item-icons item-icons-publish gate check-build check-secrets portal-install portal-dev portal-test portal-build portal-image guias guias-check gate check-skips check-comments ci client-serverlist seedgen up down ps logs db-psql db-down-check test-db test-e2e test-channel bot-test bot-validate botlab
+# WYD (Rust) — automações executadas pelo agente e pelo CI.
+# Mapa skills → targets:
+#   rust-code-quality      → fmt, clippy
+#   wyd-rust-toolchain     → build, test, audit, check
+#   software-architecture  → check (gates antes de qualquer merge, SOLID/patterns)
+#   wyd-rust-toolchain     → build, test, audit, check, ci
+# Uso: `make check` antes de considerar qualquer issue pronta.
 
-build:
-	go build ./...
+CARGO ?= cargo
 
-# Compila cada binário de serviço em bin/.
-binaries:
-	go build -o bin/tmserver ./tmserver/cmd/tmserver
-	go build -o bin/dbserver ./dbserver/cmd/dbserver
-	go build -o bin/binserver ./binserver/cmd/binserver
-	go build -o bin/webserver ./webserver/cmd/webserver
-	go build -o bin/exptool ./tmserver/cmd/exptool
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check actions-pin-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
 
-# Regrava o campo Exp dos templates de monstro com a curva balanceada.
-# Os templates vivem em npc_template (Postgres, issue 58); este alvo reprocessa
-# uma árvore legada antes de reimportar. Use -dry-run primeiro.
-exp-data:
-	go run ./tmserver/cmd/exptool -npc tmserver/content/TMsrv/run/npc -quiet
+# TAG usada só para VALIDAR o overlay de produção (o overlay exige TAG; o gate não exige
+# que o dono exporte uma). A prova de que sem TAG falha está no fim de `stack-config`.
+TAG_VALIDACAO ?= ci
 
-# Conteúdo do servidor (LEGACY-02). `check` confere o manifesto (config
-# versionada + mapas por bootstrap); `sync` copia de uma árvore legada o que não
-# é versionado e revalida. W2PP_CONTENT_SOURCE aponta para a árvore legada do Win32.
-# Regenera os seeds de referência a partir do banco (issue 58). Idempotente: rodar
-# duas vezes seguidas não muda um byte — é o que prova que o seed reflete o banco.
-# Usa o DSN do migrator (DB-01) quando definido; seedgen precisa de DML no catálogo.
-seedgen:
-	@test -n "$${W2PP_DB_MIGRATE_DSN:-$${W2PP_DB_DSN}}" || { echo "defina W2PP_DB_MIGRATE_DSN ou W2PP_DB_DSN"; exit 1; }
-	go run ./tmserver/cmd/seedgen -dsn "$${W2PP_DB_MIGRATE_DSN:-$${W2PP_DB_DSN}}"
+help: ## lista os targets a partir dos comentários `##` deste arquivo
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z][a-z0-9-]*:.*## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-content-check:
-	bash scripts/sync-content.sh --check
+fmt: ## formatação (skill: rust-code-quality) — mesmo `--all` do CI
+	$(CARGO) fmt --all --check
 
-content-sync:
-	W2PP_CONTENT_SOURCE="$(W2PP_CONTENT_SOURCE)" bash scripts/sync-content.sh --sync
+clippy: ## lints como erro, incluindo testes e benches (skill: rust-code-quality)
+	$(CARGO) clippy --workspace --all-targets -- -D warnings
 
-# Extrai os ícones proprietários do cliente para artefatos ignorados pelo git.
-# Uso: make item-icons CLIENT_DIR=/caminho/para/WYD-7662
-item-icons:
-	test -n "$(CLIENT_DIR)" || (echo "CLIENT_DIR is required" >&2; exit 1)
-	go run ./webserver/cmd/itemiconpack -client "$(CLIENT_DIR)" -content tmserver/content -out "$${OUTPUT_DIR:-dist/item-icons}"
+build: ## compila o workspace (skill: wyd-rust-toolchain)
+	$(CARGO) build --workspace
 
-# Publica pelo Jean1dev/storage-manager-server. O comando é retomável e grava
-# cada URL devolvida em dist/item-icons/item-icons-upload-<version>.json (ao lado
-# do pack, fora de docs/: auditoria de execução não é conteúdo de site).
-item-icons-publish:
-	sh ./scripts/upload-item-icons-storage-manager.sh
+test: ## testes do workspace (skill: wyd-rust-toolchain)
+	$(CARGO) test --workspace
 
-# Gate do BUILD-01: resíduo do rename (qualquer arquivo versionado) e artefatos proto
-# em dia. Sem `protoc` no host o script cai no container golang:1.26-alpine, então o
-# comando é o mesmo na máquina do dev e no CI.
-gate:
-	bash scripts/check-build.sh
-	bash scripts/check-secrets.sh
+test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
+	$(CARGO) test --workspace --all-targets
 
-# Nome explícito do mesmo gate (BUILD-01): `make check-build`.
-check-build: gate
+check: fmt clippy build test migrations-check issue-status-check docs-check skills-check versao-check tools-test portal-test actions-pin-check ## gate completo — exigido por toda issue
 
-# Gate de segredos isolado (OBS-04); `gate` já o executa.
-check-secrets:
-	bash scripts/check-secrets.sh
+versao-check: ## fonte única de versão (Cargo workspace × portal) — DEVOPS-10
+	node tools/dev/check-versao.mjs
 
-# Higiene de teste: skip sem motivo declarado e comentário fora do padrão nos
-# diretórios já migrados. São baratos e rodam antes do build no CI.
-check-skips:
-	bash scripts/check-skips.sh
+compose-hardening: ## contrato de superfície do compose de produção (DEVOPS-03)
+	node tools/dev/check-compose-hardening.mjs
 
-check-comments:
-	bash scripts/check-comments.sh
+sistema-test: ## testes de sistema do servidor/admin contra o banco do compose (zero SKIP)
+	WYD_TEST_REQUIRED=1 WYD_TEST_DSN="$${WYD_TEST_DSN:-postgres://postgres:postgres@127.0.0.1:5432/wyd}" \
+		$(CARGO) test -p wyd-server -p wyd-admin --all-targets -j 1 -- --nocapture
 
-# Conteúdo de /guias: gerado a partir de docs/ e versionado, porque a imagem do
-# portal copia só portal/ e não vê docs/. Rodar depois de editar docs/guias,
-# docs/sistemas ou docs/lore.
-guias:
-	cd portal && npm run guias
+deploy-local: ## rebuild + up + provas de contrato do deploy (DEVOPS-09; respeita teste humano)
+	@test ! -f tmp/teste-humano.flag || { echo "PULADO: tmp/teste-humano.flag presente (teste humano em andamento)"; exit 0; }
+	docker compose build
+	docker compose up -d --wait --wait-timeout 240
+	node tools/dev/deploy-provas.mjs
 
-# Reprova se o JSON versionado divergir de docs/ (é o mesmo passo do CI).
-guias-check:
-	cd portal && npm run guias && git diff --exit-code -- src/content/guias.json
+coverage: ## cobertura Rust (cargo-llvm-cov) + portal (vitest --coverage) — métrica, não gate
+	mkdir -p coverage
+	$(CARGO) llvm-cov --workspace --all-targets --lcov --output-path coverage/rust-lcov.info
+	cd wyd-portal && npm run test:cobertura
 
-# O que o CI roda, na mesma ordem: os gates baratos falham rápido, depois o build,
-# o teste e o portal. `ci.yml` chama exatamente estes passos (via _go.yml e
-# _portal.yml), então rodar `make ci` local é a mesma coisa que rodar o CI.
-ci: gate check-skips check-comments guias-check vet build test portal-test
+migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
+	node tools/content/check-migrations.mjs
 
-test:
-	go test -race -cover ./...
+issue-status-check: ## status de issue igual no índice e no painel (tools/content/check-issue-status.mjs)
+	node tools/content/check-issue-status.mjs
 
-vet:
-	go vet ./...
+docs-check: ## links de README/AGENTS e contagem de crates (tools/dev/check-docs-consistency.mjs)
+	node tools/dev/check-docs-consistency.mjs
 
-# Requer golangci-lint (ver README / rodar no container golang:1.26).
-lint:
-	golangci-lint run
+docs-serve: ## MkDocs interno dev/admin em http://127.0.0.1:8000 (sem perfis)
+	docker compose up -d --wait mkdocs
+	@echo "MkDocs: http://127.0.0.1:$${MKDOCS_PORT:-8000} (dev/admin; jogador usa o portal)"
 
-fmt:
-	gofmt -w .
-	goimports -w . 2>/dev/null || true
+docs-smoke: ## home do MkDocs no compose (healthcheck + HTTP 200)
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$${MKDOCS_PORT:-8000}/)" = "200" || { echo "FALHOU: mkdocs != 200"; exit 1; }
+	@echo "mkdocs ok"
 
-# Requer govulncheck (go install golang.org/x/vuln/cmd/govulncheck@latest).
-vuln:
-	govulncheck ./...
+skills-check: ## frontmatter, limite de 500 linhas e referências de skills (tools/dev/check-skills.mjs)
+	node tools/dev/check-skills.mjs
 
-tidy:
-	go mod tidy
+migrations-apply: ## aplica a série num Postgres efêmero: up → down → up (exige Docker)
+	node tools/content/migrate-cycle.mjs
 
-# Stack local: o compose sobe db, dbserver, tmserver, tmserver2, binserver, webserver,
-# portal e logpipe. `up` não reconstrói; use `make binaries`/`make portal-image` ou
-# `docker compose build <serviço>` quando o código mudou.
-up:
-	docker compose up -d
+banco-catalogo: ## regenera docs/arquitetura/banco-catalogo.md a partir das migrations
+	node tools/content/gen-catalogo-banco.mjs
 
-down:
+banco-verify: ## banco vazio → migrations → compara com o catálogo via information_schema (exige Docker)
+	node tools/content/verify-schema.mjs
+
+audit: ## supply-chain (skill: wyd-rust-toolchain; exige cargo-audit instalado)
+	$(CARGO) audit
+
+deny: ## licenças, duplicidade, fontes e wildcards (exige cargo-deny instalado)
+	$(CARGO) deny check
+
+bench: ## benchmarks / simulações pesadas (skill: wyd-rust-sim)
+	$(CARGO) bench --workspace
+
+bench-build: ## compila os benches sem rodar (gate de compilação do CI)
+	$(CARGO) bench --workspace --no-run
+
+bench-gate: ## mede e falha em regressão de baseline por cenário (tools/dev/bench-gate.mjs)
+	node tools/dev/bench-gate.mjs
+
+telemetry-smoke: ## telemetria em execução: log estruturado + GET /metrics real (QA-04)
+	$(CARGO) test -p wyd-core --test sistema_telemetry -- --nocapture
+	$(CARGO) test -p wyd-net --features metrics --test integracao_metrics -- --nocapture
+
+release: ## release otimizado (LTO thin, codegen-units=1, strip — ADR-0017)
+	$(CARGO) build --release --workspace
+
+docker: ## imagem mínima do launcher (distroless, non-root — QA-03)
+	docker build -f docker/Dockerfile.launcher -t wyd/launcher:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+docker-smoke: docker ## tamanho da imagem + `check` do launcher rodando no container
+	docker image inspect --format 'wyd/launcher size={{.Size}} bytes' wyd/launcher:$${TAG:-dev}
+	docker run --rm -v "$$(pwd)/target/smoke:/jogo:ro" wyd/launcher:$${TAG:-dev} check /jogo /jogo/manifest.toml
+
+clean:
+	$(CARGO) clean
+
+clean-target: ## cache de build (target/, recreado pelo próximo cargo)
+	$(CARGO) clean
+
+clean-tmp: ## artefatos conhecidos de tmp/ (logs, drivers, E2E, instalação)
+	node tools/dev/clean-tmp.mjs --yes
+
+actions-pin-check: ## confere se cada action está pinada por SHA e se o comentário da tag confere (tools/dev/check-actions-pin.mjs)
+	node tools/dev/check-actions-pin.mjs
+
+tools-test: ## testes do app apps/tools (node:test, sem dependências)
+	# Glob, não diretório: o Node 22 (CI) não aceita diretório em `--test`.
+	node --test apps/tools/test/*.test.mjs
+
+tools-inventario: ## regenera docs/cliente/inventario-gerado.md a partir de client/
+	node apps/tools/bin/wyd-tools.mjs inventario client --out docs/cliente/inventario-gerado.md
+
+tools-binarios: ## docs/cliente/re-binarios.md (seções/imports/exports/strings/funções)
+	node apps/tools/bin/wyd-tools.mjs binarios client
+
+tools-strings: ## docs/cliente/re-strings.md (tabela de strings do WYD.exe)
+	node apps/tools/bin/wyd-tools.mjs strings client --bin WYD.exe
+
+tools-pacotes: ## docs/cliente/re-pacotes.md (opcodes × handlers × estruturas × capturas)
+	node apps/tools/bin/wyd-tools.mjs pacotes
+
+tools-re: tools-binarios tools-strings tools-pacotes ## todos os docs de RE do cliente
+
+tools-zip-check: ## confere client.zip contra client/manifest.txt (bytes reais)
+	node apps/tools/bin/wyd-tools.mjs zip-check client.zip --manifest client/manifest.txt
+
+client-zip: ## gera client.zip (entradas relativas, sem artefatos mutáveis)
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/client-zip.ps1 -Client client -Out client.zip
+
+ci: check test-all bench-build bench-gate audit deny monitoring-rules stack-config compose-hardening portal-build ## espelho local do CI (rust.yml + supply-chain.yml + images.yml)
+
+stack-config: ## valida o compose (base+dev, prod e prod com .env vivo) e prova que prod exige TAG
+	docker compose config --quiet
+	TAG=$(TAG_VALIDACAO) docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+	TAG=$(TAG_VALIDACAO) docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
+	@TAG= docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet > /dev/null 2>&1 \
+		&& { echo "FALHOU: prod aceitou TAG vazia (viola DEVOPS-03)"; exit 1; } \
+		|| echo "ok: prod recusa TAG vazia"
+
+db-migrate: ## aplica as migrations no banco da stack (mesmo runner do boot)
+	docker compose run --rm gateway --migrate
+
+db-reset: ## recria o schema do banco da stack do zero (DROP SCHEMA + série)
+	docker compose run --rm gateway --migrate --reset
+
+gateway-image: ## imagem do gateway HTTP/JSON do portal (ADR-0022, WEB-01)
+	docker build -f docker/Dockerfile.gateway -t wyd/gateway:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+server-image: ## imagem do monolito de jogo (um container POR canal, ADR-0022)
+	docker build -f docker/Dockerfile.server -t wyd/server:$${TAG:-dev} \
+		--build-arg WYD_VERSION=$${WYD_VERSION:-0.1.0} \
+		--build-arg WYD_COMMIT=$$(git rev-parse --short HEAD 2>/dev/null || echo unknown) .
+
+server-smoke: ## handshake + serv00.htm dos DOIS canais (exige stack-up)
+	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/serv00.htm; echo
+	@curl -fsS http://$${WYD_CANAL1_IP:-127.0.0.1}/health; echo
+	@cargo test -p wyd-server --test sistema_handshake -- --nocapture
+
+gateway-smoke: ## /health e /metrics do gateway rodando no compose (exige stack-up)
+	@curl -fsS http://127.0.0.1:7600/health && echo
+	@curl -fsS http://127.0.0.1:7600/metrics | head -20
+
+stack-up: ## sobe a stack de dev inteira (db + gateway + portal + canais + monitoramento + mkdocs)
+	docker compose up -d --build
+
+local-rebuild: ## rebuild completo do local na 3000 + migrations + prova de saúde (fechamento de issue)
+	docker compose build
+	docker compose up -d --wait --wait-timeout 180
+	docker compose ps
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login)" = "200" || { echo "FALHOU: /login != 200"; exit 1; }
+	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/entregas)" = "307" || { echo "FALHOU: /entregas != 307"; exit 1; }
+	@curl -fsS http://127.0.0.1:7600/health; echo
+	@esperado=$$(sed -nE 's/.*pub const SCHEMA_VERSION: *[iu](32|64) *= *([0-9]+).*/\2/p' crates/wyd-db/src/lib.rs); \
+		curl -fsS http://127.0.0.1:7600/health | grep -q "\"schema\":$$esperado" \
+			|| { echo "FALHOU: schema != $$esperado (SCHEMA_VERSION)"; exit 1; }
+	@if netstat -ano 2>/dev/null | grep LISTENING | grep -Eq ':(3100|3110)[[:space:]]'; then echo "FALHOU: porta de teste ocupada (3100/3110)"; exit 1; fi
+
+prod-env-smoke: ## smoke do overlay de produção com .env montado (não derruba o dev)
+	@docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
+	@docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml run --rm --no-deps gateway --seed-staff
+
+stack-down: ## derruba a stack de dev (mantém o volume pgdata)
 	docker compose down
 
-ps:
-	docker compose ps
+stack-logs: ## segue os logs da stack
+	docker compose logs -f
 
-# Logs de todos os serviços (Ctrl+C sai sem derrubar nada).
-logs:
-	docker compose logs -f --tail=100
+# MSYS_NO_PATHCONV=1: sem isso o Git Bash no Windows converte /etc/prometheus em caminho
+# de host e o container recebe um workdir inválido. Em Linux a variável é inerte.
+monitoring-rules: ## promtool (config/regras/testes) + amtool (rota do Alertmanager) — QA-08/DEVOPS-02
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
+	MSYS_NO_PATHCONV=1 docker run --rm -v "$$(pwd)/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
+	node tools/dev/check-alertas.mjs
 
-# psql no banco de dev (superusuário do compose).
-db-psql:
-	docker exec -it openwyd-postgres psql -U postgres -d postgres
+monitoring-alertas: ## prova ponta a ponta: disparo E resolução do alerta chegam ao destino (exige stack-up)
+	node tools/dev/alerts-prova.mjs
 
-# Verificador do `down` do baseline (DB-02): derruba o schema do banco vivo — só
-# rode contra banco descartável. O caminho de CI é `make test-db` (TestBaselineDown).
-db-down-check:
-	bash scripts/db-down-check.sh
+monitoring-up: ## sobe Prometheus + Grafana + node-exporter (parte do `up` desde 2026-11-08)
+	docker compose up -d prometheus grafana node-exporter
 
-# Testes de integração num Postgres real. O CI usa o job `database`
-# (.github/workflows/db.yml) com o mesmo comando e um banco efêmero.
-#   W2PP_TEST_DSN=postgres://postgres:dev@127.0.0.1:5432/citest make test-db
-test-db:
-	@test -n "$${W2PP_TEST_DSN:-}" || { echo "defina W2PP_TEST_DSN (banco descartável)"; exit 1; }
-	go test -tags=integration ./internal/store/ -count=1
+monitoring-down: ## para só a observabilidade (mantém os volumes)
+	docker compose stop prometheus grafana node-exporter
 
-# Login headless contra a stack no ar (não precisa do cliente Windows).
-test-e2e:
-	W2PP_E2E_ADDR=$${W2PP_E2E_ADDR:-127.0.0.1:8281} \
-	W2PP_E2E_ACCOUNT=$${W2PP_E2E_ACCOUNT:-test} \
-	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
-	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
-	go test -tags=e2e -run TestE2ESmokeLogin ./tmserver/internal/world/ -v
+monitoring-check: monitoring-rules ## smoke da stack de monitoramento (ready, targets, datasource, dashboard)
+	node tools/dev/monitoring-smoke.mjs
 
-# Troca de canal real: login+seleção no canal 1, /srv 2, token e login no canal 2.
-# Default = loopback, que o override de dev publica (127.0.0.1:8281 e :8282). Para
-# exercitar o caminho do cliente real, use W2PP_E2E_ADDR2=192.168.100.4:8281.
-test-channel:
-	W2PP_E2E_ADDR=$${W2PP_E2E_ADDR:-127.0.0.1:8281} \
-	W2PP_E2E_ADDR2=$${W2PP_E2E_ADDR2:-127.0.0.1:8282} \
-	W2PP_E2E_ACCOUNT=$${W2PP_E2E_ACCOUNT:-test} \
-	W2PP_E2E_PASSWORD=$${W2PP_E2E_PASSWORD:-test123} \
-	W2PP_E2E_SLOT=$${W2PP_E2E_SLOT:-0} \
-	W2PP_E2E_VERSION=$${W2PP_E2E_VERSION:-12000} \
-	go test -tags=e2e -run 'TestE2EChannelChange|TestE2EServerChangeSameChannel|TestE2EClientReloginPacket' ./tmserver/internal/world/ -v
+portal-install: ## npm ci no portal (skill: wyd-web-admin-ui)
+	cd wyd-portal && npm ci
 
-run:
-	go run ./tmserver/cmd/tmserver
+portal-dev: ## portal em http://127.0.0.1:3000 (hot reload)
+	cd wyd-portal && npm run dev
 
-# Sobe a stack completa localmente, semeia a conta de teste e imprime o endereço
-# para apontar um cliente real. Sobrescreve a conta com W2PP_LOCAL_ACCOUNT/_PASSWORD.
-run-local:
-	./scripts/run-local.sh
+portal-test: ## tsc --noEmit + vitest do portal (scripts do package.json, nunca `npx`)
+	cd wyd-portal && npm run typecheck && npm run test
 
-# Portal de administração (Next.js). A imagem Docker é construída pelo compose
-# (contexto da raiz, portal/Dockerfile); estes alvos são para rodar no host.
-portal-install:
-	cd portal && npm ci
-
-portal-dev:
-	cd portal && npm run dev
-
-# Laboratório de bots: testa o núcleo determinístico (sem rede) e valida os
-# cenários versionados. O alvo não abre conexão: é seguro em CI.
-bot-test:
-	go test -race ./tmserver/internal/bot/...
-
-bot-validate:
-	go run ./tmserver/cmd/botlab validate -scenario tmserver/internal/bot/scenarios/smoke.json
-	go run ./tmserver/cmd/botlab validate -scenario tmserver/internal/bot/scenarios/populacao.json
-
-# Executa um cenário contra a stack local (loopback). Não use em carga alta
-# enquanto alguém estiver testando à mão: o laço do mundo é único.
-botlab:
-	go run ./tmserver/cmd/botlab run -scenario tmserver/internal/bot/scenarios/smoke.json
-
-portal-test:
-	cd portal && npm run typecheck && npm test
-
-portal-build:
-	cd portal && npm run build
-
-# Rebuilda SÓ a imagem do portal e recria o container — o jogo (tmserver) não
-# reinicia. É o alvo para publicar mudanças do portal no ambiente local; para
-# subir/atualizar a stack inteira (e semear a conta de teste) use run-local.
-portal-image:
-	docker compose build openwyd-portal openwyd-logpipe
-	docker compose up -d openwyd-portal openwyd-logpipe
-
-# Gera o código gRPC a partir de api/ (requer protoc + protoc-gen-go /
-# protoc-gen-go-grpc no PATH; instale com
-# `go install google.golang.org/protobuf/cmd/protoc-gen-go@latest` e
-# `.../grpc/cmd/protoc-gen-go-grpc@latest`).
-proto:
-	protoc --go_out=. --go_opt=module=openwyd-nextgen \
-	       --go-grpc_out=. --go-grpc_opt=module=openwyd-nextgen \
-	       api/db/v1/db.proto api/db/v1/content.proto api/bin/v1/bin.proto api/web/v1/web.proto
-
-# Gera os certificados mTLS de dev em ./certs (ignorado pelo git). Aplique com o
-# overlay: make certs && docker compose -f docker-compose.yaml -f docker-compose.mtls.yaml up --build
-certs:
-	./scripts/gen-certs.sh
-
-certs-clean:
-	rm -rf certs
-
-# Gera o serverlist.bin a partir da entrada canônica (client-tools/serverlist/servers.txt,
-# que é o -in padrão da ferramenta) e instala em client/. O client/ não é versionado,
-# então este alvo é local: o .bin nunca entra no git. Ver docs/migration/canais.md §8.
-# Neste Windows não existe `make`: use `mingw32-make client-serverlist`.
-CLIENT_SERVERLIST ?= client/serverlist.bin
-
-client-serverlist:
-	go run ./client-tools/serverlist -in client-tools/serverlist/servers.txt -out $(CLIENT_SERVERLIST)
-	go run ./client-tools/serverlist -print $(CLIENT_SERVERLIST)
+portal-build: ## next build (valida rotas e o standalone)
+	cd wyd-portal && npm run build

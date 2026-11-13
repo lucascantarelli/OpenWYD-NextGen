@@ -1,0 +1,53 @@
+name: Rust (toolchain + cache)
+description: >-
+  Instala a toolchain do repositório (`rust-toolchain.toml`, com rustfmt/clippy) e restaura o
+  cache de build. Chave do cache inclui `Cargo.lock` + `rust-toolchain.toml`, então lockfile novo
+  nunca reaproveita artefato velho.
+
+inputs:
+  cache-key-extra:
+    description: Sufixo na chave do cache — use para separar jobs com profiles diferentes.
+    required: false
+    default: ""
+  cache-all-crates:
+    description: Cacheia também crates usadas só por release/benches.
+    required: false
+    default: "false"
+  shared-key:
+    description: >-
+      Chave comum entre jobs/branches para o cache de `target/`. Jobs do mesmo grupo compartilham
+      o restore (clippy/test) sem reaproveitar artefato de outro perfil.
+    required: false
+    default: wyd
+  tauri:
+    description: >-
+      Instala as bibliotecas nativas do Tauri (GTK/WebKit) no Linux. Necessário em todo job que
+      compila o workspace inteiro: `apps/launcher-ui` puxa `webkit2gtk` e, sem isso, o
+      `glib-sys` falha no build script — foi o que derrubou `gate` e `benches` no primeiro run.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Toolchain (rust-toolchain.toml)
+      uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Bibliotecas nativas do Tauri (Linux)
+      if: inputs.tauri == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends \
+          libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev \
+          libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+
+    - name: Cache de build (cargo)
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      with:
+        shared-key: ${{ inputs.shared-key }}
+        key: ${{ inputs.cache-key-extra }}
+        cache-all-crates: ${{ inputs.cache-all-crates }}
+        workspaces: ". -> target"

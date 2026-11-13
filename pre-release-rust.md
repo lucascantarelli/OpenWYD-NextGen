@@ -24,7 +24,7 @@ A reescrita do núcleo do jogo (**Core Engine**) deve ser executada exclusivamen
 
 ### 0.3. Mapeamento Geral de Migração: De-Para do Código
 
-| Subsistema / Domínio | Arquitetura Legada (C++ / Binários) | Arquitetura Destino (`OpenWYD-NextGen` em Rust) | Benefício de Engenharia / Resolução de Problema |
+| Subsistema / Domínio | Arquitetura Legada (C++ / Binários) | Arquitetura Destino (`WYD` em Rust) | Benefício de Engenharia / Resolução de Problema |
 | :--- | :--- | :--- | :--- |
 | **Game Loop & Core** | `TMSrv` (Main.cpp, Map.cpp, Actor.cpp) com ponteiros brutos e Mutexes globais. | **Rust Engine Core** (`wyd-core`): Thread-per-Core + ECS (`bevy_ecs` ou `hecs`) + Spatial Grid. | Fim de *cache misses* e trava de threads; determinismo de ticks (20-50 FPS nativos sem pausas de GC). |
 | **Camada de Rede** | `select`/`poll` legados com pacotes brutos desprotegidos. | **Rust Async Net Layer** (`wyd-net`): `tokio` / `io_uring` + Parsers binários com `nom` / `rkyv`. | Prevenção absoluta contra *buffer overflows*, estouro de memória e variação de latência. |

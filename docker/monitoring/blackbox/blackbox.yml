@@ -1,0 +1,19 @@
+# blackbox_exporter (DEVOPS-02) — sonda ativa do portal.
+#
+# Por que ele existe: o portal (BFF Next.js) publica `/api/health`, que devolve 200 com
+# a contagem real do catálogo e 502 quando o gateway está fora — mas NÃO publica
+# `/metrics` em formato Prometheus. Sem sonda ativa, "portal fora do ar" é invisível:
+# o gateway pode estar saudável e o portal morto.
+#
+# O módulo `http_2xx` é o mínimo: sucesso = status 2xx. Não siga redirect (o portal
+# redireciona `/` e `/entregas` para `/login`; seguir mascararia 307 como saúde).
+
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: ip4

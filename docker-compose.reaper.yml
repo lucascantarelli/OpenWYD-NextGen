@@ -1,0 +1,4 @@
+services:
+  server-canal-1:
+    environment:
+      WYD_SERVER_SESSION_STALE_SECS: "20"

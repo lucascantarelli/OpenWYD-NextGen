@@ -1,0 +1,269 @@
+{
+  "uid": "wyd-saude",
+  "title": "WYD — saúde do motor (Rust)",
+  "tags": ["wyd", "rust", "fase-06-1", "fase-12-1"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "editable": false,
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Tick P50 / P95 / P99 (µs)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "µs" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "p50",
+          "legendFormat": "p50",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(wyd_tick_duration_microseconds_bucket[5m])))"
+        },
+        {
+          "refId": "p95",
+          "legendFormat": "p95",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(wyd_tick_duration_microseconds_bucket[5m])))"
+        },
+        {
+          "refId": "p99",
+          "legendFormat": "p99",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(wyd_tick_duration_microseconds_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Ticks por segundo",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "refId": "a", "legendFormat": "ticks/s", "expr": "sum(rate(wyd_ticks_total[1m]))" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Entidades ativas",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "a", "legendFormat": "entidades", "expr": "wyd_entities_active" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Pacotes por segundo (aceitos × recusados)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+      "targets": [
+        { "refId": "a", "legendFormat": "total", "expr": "sum(rate(wyd_packets_total[1m]))" },
+        { "refId": "b", "legendFormat": "recusados", "expr": "sum(rate(wyd_packets_rejected_total[1m]))" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Recusas por motivo",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "pps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "{{reason}}",
+          "expr": "sum by (reason) (rate(wyd_packets_rejected_total[5m]))"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Sessões abertas × pendentes",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "a", "legendFormat": "sessões", "expr": "wyd_sessions_open" },
+        { "refId": "b", "legendFormat": "pendentes", "expr": "wyd_connections_pending" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "RSS do motor (bytes) — 0 fora do Linux",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "{{instance}}",
+          "expr": "process_resident_memory_bytes{job=\"wyd-server\"}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Gateway: requisições por segundo (por resultado)",
+      "description": "wyd_gateway_requests_total{result} — ok, business, transport, unauthorized (ADR-0022)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "{{result}}",
+          "expr": "sum by (result) (rate(wyd_gateway_requests_total[5m]))"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Gateway: no ar (scrape) e uptime",
+      "description": "up{job=wyd-gateway} e wyd_gateway_uptime_seconds",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "a", "legendFormat": "up", "expr": "up{job=\"wyd-gateway\"}" },
+        {
+          "refId": "b",
+          "legendFormat": "uptime (s)",
+          "expr": "wyd_gateway_uptime_seconds"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "gauge",
+      "title": "Orçamento do tick usado (P99, WYD_TICK_HZ)",
+      "description": "100 × p99 ÷ wyd_tick_budget_microseconds (50 ms a 20 Hz, 20 ms a 50 Hz). Acima de 100% o processo perde o passo.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 200,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 40 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "100 * histogram_quantile(0.99, sum by (le, canal) (rate(wyd_tick_duration_microseconds_bucket[5m]))) / on(canal) wyd_tick_budget_microseconds"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Entidades por canal",
+      "description": "wyd_entities_active{canal} — jogadores + NPCs do processo.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "sum by (canal) (wyd_entities_active)"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Ticks por segundo por canal",
+      "description": "20 Hz a 50 Hz; zero com processo no ar dispara WydMotorSemTick.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}}",
+          "expr": "sum by (canal) (rate(wyd_ticks_total[1m]))"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "RSS do motor por canal × teto 512 MB e tendência (MB/h)",
+      "description": "process_resident_memory_bytes{job=wyd-server} por canal — baseline medido ~37 MB. Linha tracejada em 512 MB = WydRssAlto; a tendência (eixo direito, MB/h) cruza 64 MB/h = WydRssCrescendo.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "thresholdsStyle": { "mode": "dashed" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 536870912 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "b" },
+            "properties": [
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "custom.axisLabel", "value": "MB/h" },
+              { "id": "unit", "value": "short" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 64 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}} RSS",
+          "expr": "process_resident_memory_bytes{job=\"wyd-server\"}"
+        },
+        {
+          "refId": "b",
+          "legendFormat": "canal {{canal}} tendência",
+          "expr": "deriv(process_resident_memory_bytes{job=\"wyd-server\"}[1h]) * 3600 / 1048576"
+        }
+      ]
+    }
+  ]
+}

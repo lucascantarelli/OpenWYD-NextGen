@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+# wyd-server — monólito de jogo (ADR-0022 §7), um container POR CANAL:
+#   imagem  wyd/server:${TAG}      (a mesma para todos os canais)
+#   canal   WYD_SERVER_CHANNEL=1|2 (configuração, nunca build)
+#   nomes   wyd-canal-1, wyd-canal-2 (compose)
+# Portas: 8281 CPSock, 8080 status (publicado como 80 no host), 9898 /metrics.
+# Distroless nonroot: o healthcheck é o próprio binário (--healthcheck → /health → banco).
+# Bases (DEVOPS-01): builder por minor (rust-toolchain 1.99.1), runtime por digest.
+
+FROM rust:1.99-bookworm AS builder
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY crates ./crates
+# A GUI Tauri é membro do workspace; o manifesto precisa existir mesmo ao compilar só o servidor.
+COPY apps/launcher-ui ./apps/launcher-ui
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/target \
+    cargo build --release -p wyd-server --bin wyd-server && \
+    install -Dm0755 target/release/wyd-server /out/wyd-server
+
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f AS runtime
+ARG WYD_VERSION=0.1.0
+ARG WYD_COMMIT=unknown
+LABEL org.opencontainers.image.title="wyd-server" \
+      org.opencontainers.image.description="Monolito de jogo WYD: CPSock, status e metricas (um canal por container)" \
+      org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
+      org.opencontainers.image.version="${WYD_VERSION}" \
+      org.opencontainers.image.revision="${WYD_COMMIT}" \
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f"
+COPY --from=builder /out/wyd-server /usr/local/bin/wyd-server
+# Série de migrations no próprio artefato (ADR-0024): o canal também aplica o
+# schema no boot (idempotente e serializado por advisory lock).
+COPY --from=builder /src/crates/wyd-db/migrations /migrations
+ENV MIGRATIONS_DIR=/migrations
+USER nonroot:nonroot
+HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
+    CMD ["/usr/local/bin/wyd-server", "--healthcheck"]
+EXPOSE 8281 8080 9898
+ENTRYPOINT ["/usr/local/bin/wyd-server"]
