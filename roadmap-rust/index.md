@@ -1,18 +1,19 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-13 · **29 issues ativas** + 15 descritores de fase. 66 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **28 issues ativas** + 15 descritores de fase. 67 issues concluídas estão em [`changelog.md`](changelog.md).
 >
-> **Auditoria de DevOps/CI:** as dez issues da análise de pipeline, imagens, compose, testes e
-> monitoramento estão **fechadas** (`DEVOPS-01`…`DEVOPS-11`, com exceção das duas abaixo); o
+> **Auditoria de DevOps/CI:** das doze issues da análise de pipeline, imagens, compose, testes e
+> monitoramento, **onze estão fechadas** (`DEVOPS-01`…`DEVOPS-09`, `DEVOPS-11`…`DEVOPS-13`); o
 > contrato continua em [`docs/rust/10-devops-ci.md`](../docs/rust/10-devops-ci.md). Em 2026-11-13
 > fecharam `DEVOPS-03` (compose de produção com log com teto, `no-new-privileges` e portal em
 > loopback; **TLS não adotado por decisão**), `DEVOPS-04` (reprovação por divergência injetada,
 > provada em run real), `DEVOPS-05` (toolchain pinado em 1.100.0 e runner de 38,7 → 20,0 min),
 > `DEVOPS-07` (anti-skip provado no CI), `DEVOPS-08` (baseline de cobertura e gate × métrica),
 > `DEVOPS-09` (deploy por pull em 83 s), `DEVOPS-11` (pipeline em estágios, notificação nos dois
-> sentidos) e `DEVOPS-13` (governança; **decisão: não migrar para a organização `dolorestec`**).
-> Seguem abertas **`DEVOPS-10`** (primeira tag/release real é decisão do dono) e **`DEVOPS-12`**
-> (pin de actions por SHA e os majors de crate que exigem ADR).
+> sentidos), `DEVOPS-13` (governança; **decisão: não migrar para a organização `dolorestec`**) e
+> `DEVOPS-12` (**39 usos de action pinados por SHA**, conferidos contra a tag na API pelo
+> `check-actions-pin`, com prova negativa). Segue aberta apenas **`DEVOPS-10`**: falta publicar a
+> primeira tag/release real, que é decisão do dono — procedimento e rollback já estão no §8.
 >
 > **IDs canônicos preservados.** A numeração de fila `#01..#27` é nova e estável; os IDs
 > `CATEGORIA-NN` continuam os mesmos para não reutilizar IDs já aposentados no changelog
@@ -190,7 +191,6 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | # | ID | Issue | Status | Esforço | Depende de |
 |---:|---|---|---|---|---|
 | 37 | `DEVOPS-10` | [Versionamento de release e notas rastreáveis](issues/DEVOPS-10-versionamento-release.md) | 🚧 | S | DEVOPS-06 |
-| 39 | `DEVOPS-12` | [Dependências fora de range e pin de actions por SHA](issues/DEVOPS-12-dependencias-fora-de-range-e-pin.md) | 🚧 | M | DEVOPS-05 |
 
 ## Descritores de fase (contexto, não são issues)
 
