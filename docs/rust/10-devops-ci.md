@@ -64,9 +64,22 @@ uns dos outros.
 32 s do desenho anterior que rodava tudo em paralelo — a maior parte da diferença é `fmt → clippy →
 build/test` virou sequência real (3 min no build, 1 min no clippy) mais cobertura (4 min) e as
 imagens. O que se ganha é um único run com ordem legível, falha cedo no estágio barato e um único
-check (`gate`) para branch protection. Se o tempo de parede voltar a incomodar, o primeiro ajuste a
-considerar é rodar `clippy` em paralelo com `build + testes` (o lint deixa de ser bloqueio, mas os
-dois compilam o workspace).
+check (`gate`) para branch protection.
+
+**Clippy em paralelo, medido (2026-11-13):** `testes` e `sistema` deixaram de depender de `clippy` —
+os dois só esperam o `fmt`. Em PR, o run caiu de **4 min 48 s**
+([43441148618](https://github.com/lucascantarelli/wyd/actions/runs/43441148618): `fmt` 19 s →
+`clippy` 116 s → `testes` 128 s) para **4 min 12 s**
+([43445341607](https://github.com/lucascantarelli/wyd/actions/runs/43445341607): `fmt` 15 s →
+`clippy` 137 s e `testes` 221 s **ao mesmo tempo**). O ganho é menor do que a soma sugere: o
+`build + testes` inflou 93 s porque divide o runner com o `clippy`, então o que se ganha é só o
+que o lint deixou de serializar menos a contenção — **−36 s (−12,5%)**, não os ~2 min que a
+sequência antiga sugeria.
+
+**Próximo passo, se o tempo ainda incomodar:** juntar `clippy` + `build` + `testes` no *mesmo* job,
+para compartilhar `target/`. Hoje o workspace é compilado três vezes (lint, build, testes) em
+diretórios separados; um job único pagaria uma compilação e reaproveitaria nas duas etapas
+seguintes — é a economia que a paralelização **não** entrega.
 
 ### 1.1 Comprovação de execução por workflow (2026-11-13)
 
