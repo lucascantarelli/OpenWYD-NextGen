@@ -322,16 +322,23 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           load: true
-          # Tag imutável por commit: é o que o deploy puxa no runner local.
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            wyd/${{ matrix.imagem }}:ci
-            ghcr.io/${{ github.repository_owner }}/wyd-${{ matrix.imagem }}:sha-${{ github.sha }}
+          tags: wyd/${{ matrix.imagem }}:ci
           build-args: |
             WYD_VERSION=${{ env.WYD_VERSION }}
             WYD_COMMIT=${{ env.WYD_COMMIT }}
           cache-from: type=gha,scope=${{ matrix.imagem }}
           cache-to: type=gha,mode=max,scope=${{ matrix.imagem }}
+      # `load` e `push` não coexistem no build-push-action; as provas (labels, smoke, Trivy, SBOM)
+      # rodam na imagem carregada e só depois ela é publicada com a tag imutável do commit.
+      - name: Publicar no GHCR (tag do commit)
+        if: github.event_name != 'pull_request'
+        run: |
+          origem="wyd/${{ matrix.imagem }}:ci"
+          destino="ghcr.io/${{ github.repository_owner }}/wyd-${{ matrix.imagem }}:sha-${GITHUB_SHA}"
+          docker tag "$origem" "$destino"
+          docker push "$destino"
+          echo "publicado: $destino"
+
       - name: Labels de proveniência conferem com o run
         run: |
           labels="$(docker image inspect --format '{{json .Config.Labels}}' wyd/${{ matrix.imagem }}:ci)"
