@@ -31,7 +31,8 @@ on:
       - "docker-compose*.yml"
       - "tools/**"
       - "wyd-portal/**"
-      - ".github/workflows/rust.yml"
+      # Qualquer workflow, não só este: editar o deploy sem passar pelo actionlint é buraco.
+      - ".github/workflows/**"
       - ".github/actions/**"
   pull_request:
     branches: [main, develop]

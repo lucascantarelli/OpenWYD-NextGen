@@ -44,6 +44,19 @@ colocar segredo no GitHub.
 - Faltou corrigir no caminho: `.env` inexistente no checkout (`--env-file` não bastava porque o
   override de dev monta `./.env`), `SCHEMA_VERSION` lido como `i32` (é `u32`) e o job falhando na
   interpolação obrigatória — os três viraram correção no repositório, não contorno no runner.
+- **Sobreviver a reinício:** o pacote do runner no Windows não tem `svc.cmd`, e serviço em sessão 0
+  não vê o `docker` do usuário nem o engine per-user do Docker Desktop. Ficou por tarefa agendada
+  `WYD GitHub Runner` (`run.cmd`, a cada 2 min, `IgnoreNew`, sobe no logon junto com o Docker):
+  matei o listener de propósito e ele voltou sozinho (~170 s, sessão anterior assumida pelo novo).
+- **Defeito que a mudança expôs:** sob a tarefa, `C:\Windows\System32` veio antes do Git e
+  `shell: bash` resolveu para o **bash do WSL** — run
+  [43414518376](https://github.com/lucascantarelli/wyd/actions/runs/43414518376) morreu na sentinela
+  com `anexar o disco ... ERROR_PATH_NOT_FOUND`. Corrigido no workflow (passo que prependa
+  `C:\Program Files\Git\bin` no `GITHUB_PATH` e falha alto se o Git Bash não existir), provado no run
+  [43415392115](https://github.com/lucascantarelli/wyd/actions/runs/43415392115): todos os passos
+  verdes, `bash resolvido para C:\Program Files\Git\bin` e `deploy local provado: quatro provas
+  verdes`. O `rust.yml` passou a disparar em `\.github/workflows/**` para qualquer edição de workflow
+  passar pelo actionlint.
 - Falta: notificar o resultado no destino do Alertmanager (critério 5).
 
 ## Progresso (2026-11-13)

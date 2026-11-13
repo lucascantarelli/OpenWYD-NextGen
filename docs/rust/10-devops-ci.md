@@ -357,7 +357,10 @@ Desenho recomendado (`DEVOPS-09`):
    ação `run.cmd`), com `MultipleInstances=IgnoreNew`, repetição de 5 min e `RestartCount=3`: se o
    listener morre, volta em até 5 min, e após reiniciar a máquina ele volta junto com o Docker
    Desktop no logon. Remoção: `Unregister-ScheduledTask -TaskName 'WYD GitHub Runner'` e depois
-   *Settings* → *Runners* → remover.
+   *Settings* → *Runners* → remover. Efeito colateral conhecido: iniciado pela tarefa, o PATH pode
+   pôr `C:\Windows\System32` antes do Git e o `shell: bash` cai no **bash do WSL**
+   (`anexar o disco ... ERROR_PATH_NOT_FOUND`); o workflow já prependa `C:\Program Files\Git\bin`
+   no `GITHUB_PATH` antes do primeiro passo bash, então não dependa da ordem do PATH da máquina.
 3. **Job `deploy`** no workflow `deploy-local.yml`, disparado por **`workflow_run`** do workflow
    **Rust** concluído com sucesso em `develop` (mais `workflow_dispatch`), com
    `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout
