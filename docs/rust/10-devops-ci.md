@@ -391,6 +391,64 @@ Alertmanager.
 - **Imutabilidade**: imagem publicada não é reconstruída com a mesma tag; rollback usa
   tag/digest anterior (`DEVOPS-10` + procedimento em `02-execucao.md` §6).
 
+### 8.1 Procedimento de release
+
+```bash
+# 1) main já contém o develop validado (PR + gate verde)
+git tag -a v0.1.0 -m "Release 0.1.0"
+git push origin v0.1.0          # dispara release.yml
+# 2) conferir no run: verge de versão, binários + SHA256SUMS, SBOM e notas
+git tag -l 'v0.1.0'            # tag não é reescrita depois de publicada
+```
+
+`release.yml` reprova se a tag não for exatamente a versão do workspace, publica binários com
+`SHA256SUMS`, constrói as quatro imagens com `WYD_VERSION=<tag>` e SBOM, e monta as notas a partir do
+`changelog.md` + `git log` desde a tag anterior. **A primeira release real ainda não foi publicada**
+(é decisão do dono, `DEVOPS-10`): o disparo por tag já foi provado com uma tag descartável
+(run 43431337735, cancelado de propósito).
+
+### 8.2 Rollback
+
+1. **Código:** deployar a tag anterior (`TAG=vX.Y.(Z-1)`) — o deploy local já aceita `TAG` e usa
+   `up --wait --no-build`, então voltar é um `TAG=<anterior>` e nada mais.
+2. **Imagem imutável:** cada commit tem `ghcr.io/<owner>/wyd-<x>:sha-<sha>`; o rollback por digest é
+   `docker pull ghcr.io/…@sha256:<digest>` quando a tag por commit não existir mais.
+3. **Banco:** migration não tem rollback automático — o caminho é restaurar o dump anterior
+   (`make db-dump`/`docker compose exec db pg_restore`) e só então voltar a imagem.
+4. **Nunca** republicar a mesma tag: rollback é tag antiga ou digest, nunca sobrescrita.
+
+### 8.3 Tamanho de imagem — uma medição só
+
+Medido em 2026-11-13 com `docker image inspect` no runner local, commit `3824cd3`:
+
+| imagem | tamanho |
+|---|---|
+| `wyd/portal` | **311 MB** |
+| `wyd/server` | **51,5 MB** |
+| `wyd/gateway` | **51,4 MB** |
+| `wyd/launcher` | ? |
+
+A diferença de ~6× é o runtime do portal (Node + dependências do Next), não regressão do Rust: server e
+gateway são binários estáticos em distroless (51 MB, quase tudo base). Números antigos que circulavam
+(`223.232` e `296.448` bytes) eram do binário do motor, não da imagem — ficam marcados como obsoletos.
+
+### 8.4 Gate × métrica (o que quebra o build e o que só informa)
+
+- **Gate (run vermelho):** `cargo audit`, `cargo deny check`, Trivy `CRITICAL` nas quatro imagens,
+  `check-compose-hardening`, link/versão/migrations, todos os testes e o smoke do deploy.
+- **Métrica (não quebra):** cobertura, tamanho de imagem, tempos por job do `notify`.
+
+**Baseline de cobertura** (run 43491504444, 2026-11-13) — serve para detectar **queda**, não para
+perseguir porcentagem:
+
+| escopo | linhas | funções | statements | branches |
+|---|---|---|---|---|
+| Rust (`cargo llvm-cov`, workspace + all-targets) | **58,33%** (14.337/34.406) | 58,71% | 62,41% | — |
+| portal (`vitest --coverage`, v8) | **53,38%** | 44,73% | 52,33% | 44,24% |
+
+Queda acima de 2 p.p. em relação a esta tabela deve ser explicada no PR; virar gate fica para QA-09
+(é lá que o critério de cobertura por área é definido).
+
 ## 9. Deploy local automático (runner auto-hospedado) — resposta direta
 
 **Sim, é possível e é o caminho certo para este projeto**, com uma condição: o runner **não**
