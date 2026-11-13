@@ -157,68 +157,31 @@ jobs:
       - run: cargo deny check
 
   # ─── Estágio 2 ────────────────────────────────────────────────────────────────────────────────
-  build:
-    name: rust / build do workspace
-    # Paralelo ao clippy (os dois só esperam o fmt): o lint deixa de ser bloqueio do build.
-    needs: [fmt]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/rust-setup
-        with:
-          tauri: "true"
-      - run: cargo build --workspace
-
-  # Matriz por crate: um crate lento (ou uma falha) não segura nem esconde os outros. nextest roda
-  # cada binário de teste em paralelo, com timeout por teste e saída por teste; doc-tests ficam no
-  # mesmo job porque `cargo nextest` não os executa (e eram cobertos pelo `cargo test` antigo).
+  # Um job só, com build, nextest e doc-tests no mesmo `target/`: a matriz de 10 crates que existiu
+  # por um dia custava ~10 min 30 s de runner contra 2 min 31 s, porque cada job recompilava todas
+  # as dependências (o cache do rust-cache é por chave, não compartilhado entre crates). O
+  # paralelismo do nextest já usa os núcleos do runner, então a matriz comprava segundos de parede
+  # com ~4× os minutos. `--workspace` também cobre `wyd-launcher-ui` (binário Tauri, sem lib), onde
+  # `cargo test -p X --doc` falha com "no library targets found".
   testes:
-    name: testes / ${{ matrix.crate }}
+    name: rust / build + testes
     needs: [fmt]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        crate:
-          - wyd-protocol
-          - wyd-core
-          - wyd-net
-          - wyd-db
-          - wyd-admin
-          - wyd-server
-          - wyd-sim
-          - wyd-launcher
-          - wyd-bots
-          - wyd-launcher-ui
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-setup
         with:
           tauri: "true"
-          cache-key-extra: nextest-${{ matrix.crate }}
+          cache-key-extra: build-testes
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
-      - name: nextest (${{ matrix.crate }})
-        run: cargo nextest run -p ${{ matrix.crate }} --no-fail-fast --no-tests=pass --status-level fail --final-status-level slow
-
-  # Doc-tests ficam num job só, com `--workspace`: `nextest` não os executa e `-p <crate> --doc`
-  # quebra em pacote sem alvo de biblioteca (é o caso de `wyd-launcher-ui`, só binário). Com
-  # `--workspace` o cargo pula quem não tem lib em vez de falhar.
-  testes-doc:
-    name: rust / doc-tests
-    needs: [fmt]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/rust-setup
-        with:
-          tauri: "true"
-          cache-key-extra: doc-tests
-      - run: cargo test --workspace --doc
+      - run: cargo build --workspace
+      - name: nextest (workspace)
+        run: cargo nextest run --workspace --no-fail-fast --no-tests=pass --status-level fail --final-status-level slow
+      - name: doc-tests (workspace)
+        run: cargo test --workspace --doc
 
   sistema:
     name: rust / sistema — ${{ matrix.pacote }} (Postgres real)
@@ -276,7 +239,7 @@ jobs:
   # ─── Estágio 3 — só em push (PR não paga build de imagem nem cobertura) ───────────────────────
   imagens:
     name: imagens / ${{ matrix.imagem }}
-    needs: [build, testes, sistema, portal-build]
+    needs: [testes, sistema, portal-build]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -338,6 +301,25 @@ jobs:
           docker tag "$origem" "$destino"
           docker push "$destino"
           echo "publicado: $destino"
+
+      # Pacote público = pull anônimo (sem credencial de ninguém, sem cota de banda do registry).
+      # A visibilidade pode voltar para privada por engano na UI, então o próprio run garante isso.
+      - name: Pacote público (pull anônimo responde)
+        if: github.event_name != 'pull_request'
+        env:
+          PACOTE: ${{ github.repository_owner }}/wyd-${{ matrix.imagem }}
+          TAG: sha-${{ github.sha }}
+        run: |
+          token=$(curl -fsS "https://ghcr.io/token?service=ghcr.io&scope=repository:$PACOTE:pull" \
+            | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json' \
+            "https://ghcr.io/v2/$PACOTE/manifests/$TAG")
+          echo "manifest anônimo de $PACOTE:$TAG → HTTP $codigo"
+          if [ "$codigo" != "200" ]; then
+            echo "::error::ghcr.io/$PACOTE não está público (HTTP $codigo) — ajuste a visibilidade do pacote"
+            exit 1
+          fi
 
       - name: Labels de proveniência conferem com o run
         run: |
@@ -425,7 +407,7 @@ jobs:
     name: gate (agrega os grupos)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura]
     # `always()` é obrigatório: sem ele o gate fica `skipped` quando um job falha e o check
     # obrigatório de branch protection nunca fica vermelho.
     if: always()
@@ -447,9 +429,7 @@ jobs:
           infra=${{ needs.infra.result }}
           portal=${{ needs.portal.result }}
           auditoria=${{ needs.auditoria.result }}
-          build=${{ needs.build.result }}
           testes=${{ needs.testes.result }}
-          testes-doc=${{ needs.testes-doc.result }}
           sistema=${{ needs.sistema.result }}
           portal-build=${{ needs.portal-build.result }}
           imagens=${{ needs.imagens.result }}
@@ -621,7 +601,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Precisa de TODOS os jobs para publicar as métricas de cada um, inclusive em falha.
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura, gate, deploy]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
     if: always()
     steps:
       # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
