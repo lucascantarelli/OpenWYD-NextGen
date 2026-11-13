@@ -17,7 +17,7 @@
 | Persistência, schema, migrations, seeds, backup, `delivery_queue` | `wyd-rust-db` |
 | Fórmulas, balanceamento, cenários determinísticos | `wyd-rust-sim` |
 | Tracing, métricas, hardening, limites | `wyd-rust-obs` |
-| Cargo, toolchain, fmt/clippy, CI, dependências | `wyd-rust-toolchain` |
+| Cargo, toolchain, fmt/clippy, CI, imagens, compose e deploy local | `wyd-rust-toolchain` |
 | Harness, goldens, carga, bots sem cliente gráfico | `wyd-rust-testing` |
 | Distribuição, patch, manifesto, launcher | `wyd-launcher` |
 | RE do cliente fechado, inventário, offsets | `wyd-client-reverso` |

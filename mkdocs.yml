@@ -135,6 +135,7 @@ nav:
     - Progresso: rust/03-progresso.md
     - Revisão do roadmap: rust/04-revisao-roadmap.md
     - Stack Docker: rust/05-stack-docker.md
+    - DevOps e CI: rust/10-devops-ci.md
     - Matemática: rust/06-matematica.md
     - Observabilidade/runbooks: rust/06-observabilidade-runbooks.md
     - IA e bots: rust/07-ia-e-bots.md

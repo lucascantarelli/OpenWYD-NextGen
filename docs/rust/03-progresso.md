@@ -2,7 +2,7 @@
 
 > Documento vivo. Atualizado a **cada issue** executada (regra em
 > `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-12 (cobertura canônica das
-> 27 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
+> 35 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
 > `wyd-server`/`wyd-bots`; a entrada anterior era a mega revisão do roadmap:
 > 9 issues novas com fila por tamanho, status reconciliado nos três lugares que carregam status,
 > `wyd-server` incorporado à árvore normativa, gate de `cargo test --workspace` consertado e
@@ -111,8 +111,8 @@
 > `esperar_ate` (o `release` roda no `Drop` do `SessionLease`, ao encerrar a conexão), sem
 > afrouxar a asserção.
 
-> **Cobertura canônica:** as **27 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
-> exige cobertura 27/27 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
+> **Cobertura canônica:** as **35 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
+> exige cobertura 35/35 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
 > cada arquivo de issue.
 
 ## Legenda
@@ -132,7 +132,9 @@ make local-rebuild                   # atalho equivalente + provas de contrato
 O comando é o próprio compose, sem script paralelo: build das imagens, `up -d --wait`
 (`--wait` só retorna 0 com todos os serviços `running`/`healthy`; o gateway e os canais aplicam
 o schema no próprio boot, ADR-0024) e as provas de contrato — `/login` 200, `/entregas` 307 para
-`/login`, gateway `/health` com `schema:36`, 3100/3110 livres. Issue concluída sem essa
+`/login`, gateway `/health` com `schema` igual a `SCHEMA_VERSION` (hoje **50** — o
+`make local-rebuild` ainda compara 49 e reprova sem defeito real, corrigir em `DEVOPS-04`),
+3100/3110 livres. Issue concluída sem essa
 saída verde é issue não concluída.
 
 ## Fase 0 — preparação do ambiente
@@ -1718,3 +1720,24 @@ lista saem no `_MSG_MessagePanel`; a entrega pula quem silenciou o falante.
 - `target/` (23,7 GB) foi **apagado** nesta rodada; é cache Cargo ignorado (`/target/`) e o `make check` seguinte o recriou do zero. Nenhum artefato versionado dependia dele.
 - Ferramenta de RE ganhou **variáveis globais candidatas**: referências absolutas (`A1/A3`, `8B/89/FF modrm=00 r/m=101`) a `.data/.rdata/.bss`, com VA/seção/nº de referências e nomes explicitamente não recuperados. WYD.exe: 655 endereços distintos. Novo teste em `apps/tools/test/re.test.mjs` (7/7).
 - `client.zip`: smoke real de HTTPS contra asset público do GitHub Releases (`gh_2.62.0_checksums.txt`, hash fixo) roda com `--ignored`; gate normal usa HTTP de loopback + fallback local.
+
+## DevOps e CI (2026-11-12)
+
+Auditoria completa do pipeline (`.github/workflows/rust.yml`), `Makefile`, imagens Docker,
+compose e monitoramento. Mapa dos jobs, tabela de paridade gate local × CI, achados por
+severidade (P0/P1/P2) e ordem recomendada em [`10-devops-ci.md`](10-devops-ci.md). Nenhuma
+verificação desta rodada executou `docker build`/`compose up`/`bench`: os números citados são os
+de QA-02/QA-03 e o que foi lido no código.
+
+| Issue | Status | Evidência / observação |
+|---|---|---|
+| DEVOPS-01 segredos no contexto de build | ✅ | **Fechada em 2026-11-12:** `.dockerignore` reescrito (segredos/artefatos/docs fora, com a exceção de build `docs/arquitetura/identidade.tokens`), bases fixadas (`rust:1.99-bookworm` + distroless por digest `sha256:9dac0a79…`) e labels de versão/commit no portal. Corrigiu de passagem o `docker build` do launcher, quebrado por `include_str!` sem `COPY`. Quatro imagens exit 0; contexto de 638 arquivos sem `.env`; export do launcher com 1.792 entradas e zero segredo. `make stack-config` 0. Resíduo: `channel = "stable"` baixa 1.100 dentro da base 1.99 (`DEVOPS-05`). |
+| DEVOPS-02 Alertmanager e notificação | ✅ | **Fechada em 2026-11-12:** `alertmanager` v0.28.1 + `alerting:` no Prometheus + **destino real** `slack`/`email` (`ALERTMANAGER_DESTINO`), com render no boot (`render-config.sh`) e segredos só do ambiente em `/tmp/wyd-secrets`; `alert-sink` ficou como bootstrap e caminho de prova (`prova=local`). Regras 9 → **17**. `promtool test rules` SUCCESS (disparo e resolução), `amtool check-config` SUCCESS (3 receivers), rota crítica → `slack` / `prova=local` → `local-sink`, `make monitoring-check` verde e `make monitoring-alertas` provou a entrega pela **integração Slack** (payload `channel`/`attachments`). **Entrega real no Slack comprovada:** `alertmanager_notifications_total{integration="slack"}` +1 com `failed_total=0` e sem `level=error`, depois de `SLACK_API_URL` entrar no `.env` (container sai do bootstrap). **Sessão 2026-11-12 (stack + gate + notificação):** 14 containers `healthy` e `make monitoring-check` exit 0 (7 alvos `up`, 17 → **18** regras com o alerta de crescimento de RSS, dashboard/Grafana, rota → `slack`); `make monitoring-alertas` com disparo **e** resolução entregues (`failed_total=0`); rotação da webhook validada por hash (`a952b5f7…` → `32af669f…`) sem o token antigo em `.env`/git; `make check` exit 0 (811 testes, 318 links, 18 skills). Alerta real do boot (portal/gateway/canais fora do ar) disparou e resolveu sozinho; `WydSemAmostraDeMemoria` era verdadeiro positivo e foi corrigido (amostragem de RSS a 1 Hz no boot, fora do tick — ver changelog). Resíduo: confirmação visual no canal é humana; sem credencial a stack volta ao bootstrap. |
+| DEVOPS-03 superfície de produção do compose | ⬜ | Portal publicado em `3000:3000` sem TLS, `TAG:-dev` em prod, Grafana anônimo herdado, socket do Docker no `alloy`, log sem teto em 8 serviços, healthcheck ausente em 5. |
+| DEVOPS-04 paridade gate local × CI | ⬜ | `make check` roda 9 verificações, o CI 1; `portal-test` em nenhum dos dois; `make local-rebuild` fixa `schema:49` contra `SCHEMA_VERSION = 50`; `.PHONY` e `help` incompletos. |
+| DEVOPS-05 cache e custo do CI | ⬜ | Cinco jobs compilam sem cache, nenhum `timeout-minutes`, bench compilado duas vezes, `stable` flutuante no `rust-toolchain.toml`. |
+| DEVOPS-06 imagens no CI | ⬜ | Só o launcher é construído; gateway/server nunca, portal só com `docker build --check`; sem `WYD_VERSION`/`WYD_COMMIT`, sem Trivy/SBOM. |
+| DEVOPS-07 banco e portal no CI | ⬜ | `tests/sistema/*` imprimem `SKIP` e retornam sucesso sem `WYD_TEST_DSN`; `tsc`/`vitest`/`next build` do portal não rodam no CI. |
+| DEVOPS-08 supply-chain e cobertura | ⬜ | `cargo audit`/`deny` só por commit (sem agenda), sem Dependabot, cobertura não medida (`coverage-v8` instalado e sem script). |
+| DEVOPS-09 runner e deploy local | ⬜ | Deploy local é manual; desenho do runner `self-hosted,wyd-local` com trava anti-PR e sentinela de teste humano em `10-devops-ci.md` §9. |
+| DEVOPS-10 versionamento de release | ⬜ | Sem `[workspace.package] version`, sem tag/release, sem notas; build-arg default `0.1.0` é o único sinal de versão. |

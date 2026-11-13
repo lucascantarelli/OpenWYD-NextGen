@@ -207,6 +207,63 @@
           "expr": "sum by (canal) (rate(wyd_ticks_total[1m]))"
         }
       ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "RSS do motor por canal × teto 512 MB e tendência (MB/h)",
+      "description": "process_resident_memory_bytes{job=wyd-server} por canal — baseline medido ~37 MB. Linha tracejada em 512 MB = WydRssAlto; a tendência (eixo direito, MB/h) cruza 64 MB/h = WydRssCrescendo.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "thresholdsStyle": { "mode": "dashed" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 536870912 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byFrameRefID", "options": "b" },
+            "properties": [
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "custom.axisLabel", "value": "MB/h" },
+              { "id": "unit", "value": "short" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 64 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "a",
+          "legendFormat": "canal {{canal}} RSS",
+          "expr": "process_resident_memory_bytes{job=\"wyd-server\"}"
+        },
+        {
+          "refId": "b",
+          "legendFormat": "canal {{canal}} tendência",
+          "expr": "deriv(process_resident_memory_bytes{job=\"wyd-server\"}[1h]) * 3600 / 1048576"
+        }
+      ]
     }
   ]
 }

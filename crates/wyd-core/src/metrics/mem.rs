@@ -1,5 +1,8 @@
 //! Amostragem de memória residente — fora do caminho quente, por plataforma.
 //!
+//! A amostra entra por uma thread de 1 Hz no boot do `wyd-server` ([`super::Metrics::sample_memory`]),
+//! nunca pelo laço do tick: o hot path não faz I/O (invariante 1 do `AGENTS.md`).
+//!
 //! Em Linux (produção, container distroless) lê `/proc/self/statm` (páginas residentes ×
 //! tamanho de página). Em outras plataformas devolve `None`: não existe leitura portátil em
 //! `std` sem `unsafe`/FFI, e o projeto só aceita `unsafe` em interop comprovada. O exporter
@@ -25,16 +28,6 @@ pub fn sample_rss_bytes() -> Option<u64> {
     }
 }
 
-/// Quantos ticks entre duas amostras de memória (amostrar a 1 Hz, não a 20 Hz).
-#[must_use]
-pub const fn sample_every_ticks(hz: u32) -> u64 {
-    if hz == 0 {
-        1
-    } else {
-        hz as u64
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,11 +38,5 @@ mod tests {
             Some(bytes) => assert!(bytes > 0, "RSS positivo quando disponível"),
             None => assert_ne!(std::env::consts::OS, "linux", "Linux deve amostrar"),
         }
-    }
-
-    #[test]
-    fn periodicidade_amostra_uma_vez_por_segundo() {
-        assert_eq!(sample_every_ticks(20), 20);
-        assert_eq!(sample_every_ticks(0), 1);
     }
 }

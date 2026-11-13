@@ -80,6 +80,7 @@ Diagnóstico de stack, portas e banco: skill `wyd-server-ops` + `docs/rust/05-st
 | Cliente: inventário, RE, pacotes e depuração | `docs/cliente/` + `client/` (local) |
 | Execução, gates, DoD e revisão | `docs/rust/02-execucao.md` |
 | Stack e operação Docker | `docs/rust/05-stack-docker.md` + `wyd-server-ops` |
+| CI, imagens, compose, deploy local e alertas | `docs/rust/10-devops-ci.md` + `wyd-rust-toolchain` |
 | Dependências e toolchain | `docs/rust/01-dependencias.md` + `wyd-rust-toolchain` |
 | Progresso, evidências e histórico | `docs/rust/03-progresso.md` + `docs/rust/evidencias/README.md` + `roadmap-rust/changelog.md` |
 | Estado e prioridade das issues | `roadmap-rust/index.md` |

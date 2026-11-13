@@ -1,9 +1,54 @@
-# Contexto mínimo para os builds das imagens (FASE-05-2): nada de artefato local.
-target
-client
+# Contexto mínimo dos builds de imagem (DEVOPS-01).
+#
+# Contexto mínimo é contrato, não sobra: o que nenhum Dockerfile consome não chega
+# ao daemon. Isso vale primeiro para SEGREDO — `.env` real nunca entra no contexto,
+# nem no cache de contexto do BuildKit. Ao acrescentar um `COPY` de caminho novo,
+# confira se ele não está listado aqui.
+
+# --- Segredos: nunca no contexto ---
+.env
+.env.*
+wyd-portal/.env*
+*.pcap
+*.pem
+*.key
+
+# --- VCS, agente e editor ---
 .git
+.git*
 .github
+.agents
+.freebuff
+.vscode
+
+# --- Artefatos de build e distribuição ---
+target
+site
+dist
+tmp
+.tmp-*
+**/*.log
+client.zip
+*.zip
+
+# --- Documentação e roadmap (não entram em imagem) ---
+# Exceção obrigatória: `docs/arquitetura/identidade.tokens` é ENTRADA DE BUILD —
+# `include_str!` em `crates/wyd-launcher/src/identidade.rs`. Ignorar `docs` inteiro
+# quebra `docker build -f docker/Dockerfile.launcher` com "couldn't read".
+# Se outro `include_str!` passar a ler de `docs/`, acrescente-o aqui na mesma hora.
+docs/*
+!docs/arquitetura/
+docs/arquitetura/*
+!docs/arquitetura/identidade.tokens
+roadmap-rust
+mkdocs.yml
+README.md
+AGENTS.md
+
+# --- Cliente proprietário e ferramentas de dev (fora do git) ---
+client
+apps/tools
+
+# --- Node do portal (instalado no estágio de build) ---
 wyd-portal/node_modules
 wyd-portal/.next
-**/*.log
-.tmp-*

@@ -1,0 +1,24 @@
+{{/* Templates de notificação do WYD (DEVOPS-02).
+    Objetivo: quem recebe o aviso no Slack entende em 3 segundos O QUE caiu
+    (severidade), ONDE (canal/alvo), DESDE QUANDO e O QUE FAZER (runbook).
+
+    O runbook é a anotação `runbook` da regra (`docker/monitoring/prometheus/alerts.yml`),
+    que aponta para o arquivo/âncora em `docs/rust/06-observabilidade-runbooks.md`.
+    Anotação que já for URL vira link; caminho é mostrado como código.
+
+    Render de prova (sem esperar alerta real):
+      amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' \
+        --template.text='{{ template "wyd.texto" . }}' \
+        --template.data=/etc/alertmanager/slack-exemplo.json
+*/}}
+
+{{ define "wyd.severidade" }}{{ if eq .CommonLabels.severity "critical" }}:rotating_light: CRÍTICO{{ else if eq .CommonLabels.severity "warning" }}:warning: AVISO{{ else if eq .CommonLabels.severity "info" }}:information_source: INFO{{ else }}:grey_question: sem severidade{{ end }}{{ end }}
+
+{{ define "wyd.titulo" }}[{{ .Status | toUpper }}] {{ template "wyd.severidade" . }} · WYD {{ .CommonLabels.alertname }}{{ if .CommonLabels.canal }} · canal {{ .CommonLabels.canal }}{{ end }}{{ end }}
+
+{{ define "wyd.texto" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}:rotating_light: *crítico*{{ else if eq .Labels.severity "warning" }}:warning: *aviso*{{ else if eq .Labels.severity "info" }}:information_source: *info*{{ else }}:grey_question: *sem severidade*{{ end }} · {{ .Annotations.summary }}{{ if .Labels.canal }}
+canal: `{{ .Labels.canal }}`{{ end }}{{ if .Labels.instance }} · alvo: `{{ .Labels.instance }}`{{ end }}{{ if .Labels.job }} · job: `{{ .Labels.job }}`{{ end }}{{ if .Annotations.runbook }}
+runbook: {{ if match "^https?://" .Annotations.runbook }}<{{ .Annotations.runbook }}|abrir>{{ else }}`{{ .Annotations.runbook }}`{{ end }}{{ end }}
+{{ if .EndsAt.IsZero }}desde {{ .StartsAt.Format "02/01 15:04 MST" }}{{ else }}encerrado {{ .EndsAt.Format "02/01 15:04 MST" }}{{ end }}
+
+{{ end }}{{ end }}

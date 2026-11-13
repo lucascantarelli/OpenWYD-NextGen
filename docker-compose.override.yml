@@ -61,8 +61,24 @@ services:
   # Observabilidade: as portas só existem em DEV (loopback). Sem este override o
   # compose de produção não publica Prometheus/Grafana/node-exporter.
   prometheus:
+    # Reload por HTTP (`POST /-/reload`) é comodidade de dev: o `promtool` valida e este
+    # endpoint aplica sem recriar container. Em prod o endpoint não existe.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
     ports:
       - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  alertmanager:
+    # UI/API do Alertmanager (silenciar, ver histórico de notificação) só em loopback.
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+
+  blackbox-exporter:
+    ports:
+      - "127.0.0.1:${BLACKBOX_PORT:-9115}:9115"
 
   grafana:
     ports:

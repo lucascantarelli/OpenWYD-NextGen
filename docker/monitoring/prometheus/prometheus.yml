@@ -6,6 +6,11 @@
 # wyd_handshakes_total, wyd_connections_pending, wyd_sessions_open.
 # Nenhuma métrica nova nasce aqui (a fonte é `crates/wyd-core/src/metrics/` e
 # `crates/wyd-net/src/metrics.rs`, com `--features metrics`).
+#
+# Duas exceções declaradas (DEVOPS-02): o host (`node-exporter`) e o portal (sonda
+# ativa `blackbox-exporter`, porque o BFF não publica `/metrics`). São métricas de
+# disponibilidade, não de motor — e só geram alerta quando o alvo cai ou o portal
+# responde fora de 2xx.
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
@@ -16,6 +21,16 @@ global:
 
 rule_files:
   - /etc/prometheus/alerts.yml
+
+# Destino das regras (DEVOPS-02). Enquanto este bloco não existir, `firing` é só um
+# estado na UI: nenhuma pessoa é avisada. O receiver é definido no Alertmanager.
+alerting:
+  alertmanagers:
+    - api_version: v2
+      scheme: http
+      timeout: 10s
+      static_configs:
+        - targets: ["alertmanager:9093"]
 
 scrape_configs:
   # O próprio Prometheus: prova que a stack está viva mesmo sem servidor de jogo.
@@ -38,6 +53,29 @@ scrape_configs:
   - job_name: loki
     static_configs:
       - targets: ["loki:3100"]
+
+  # O próprio Alertmanager: se ele cair, as regras continuam avaliando e ninguém
+  # recebe nada — então ele é alvo de scrape e tem alerta próprio.
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  # Portal (BFF) por sonda ativa: `/api/health` devolve 200 com a contagem do catálogo
+  # e 502 sem gateway. `http_2xx` exige 200 e não segue redirect — seguir mascararia
+  # 307 de rota protegida como saúde.
+  - job_name: wyd-portal
+    metrics_path: /probe
+    params:
+      module: ["http_2xx"]
+    static_configs:
+      - targets: ["http://portal:3000/api/health"]
+    relabel_configs:
+      - source_labels: ["__address__"]
+        target_label: "__param_target"
+      - source_labels: ["__param_target"]
+        target_label: "instance"
+      - target_label: "__address__"
+        replacement: "blackbox-exporter:9115"
 
   # Motor de jogo: alvo descoberto por arquivo, NÃO fixo no YAML.
   #

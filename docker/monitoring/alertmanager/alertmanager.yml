@@ -1,0 +1,93 @@
+# Alertmanager do WYD (DEVOPS-02) — o elo que transforma "regra em firing" em
+# "alguém avisado".
+#
+# Cadeia: motor/gateway/host/portal → Prometheus (scrape) → regras (alerts.yml)
+#         → Alertmanager (aqui) → receiver.
+#
+# DESTINO REAL, com segredo fora do arquivo:
+#   - `slack`  → `api_url_file` (webhook do Slack/Incoming Webhook lido de arquivo);
+#   - `email`  → SMTP + `auth_password_file`.
+# O container renderiza este arquivo no boot (`docker-compose.yml` → `command`):
+#   `__DESTINO__`        recebedor da rota padrão: `slack` (default) ou `email`;
+#   `__SLACK_CHANNEL__`  canal de destino;
+#   `__SMTP_*__`         servidor/remetente/destinatário quando o destino é e-mail.
+# Os segredos (`SLACK_API_URL`, `SMTP_PASSWORD`) vêm do `.env` do host e são escritos
+# em `/tmp/wyd-secrets/` — nunca neste arquivo, na imagem ou no git.
+#
+# `local-sink` NÃO é destino de operação: é o receptor local usado só pelo caminho de
+# prova (`make monitoring-alertas` injeta o alerta com `prova=local`). Sem
+# `SLACK_API_URL`, a integração Slack faz bootstrap para ele (as notificações ficam
+# registradas e o build não quebra); ao definir a URL real, a entrega passa a ser no
+# Slack sem tocar em rota, inibição ou runbook.
+
+# Mensagens legíveis para humano: severidade, canal/alvo, desde quando e qual runbook.
+templates:
+  - /etc/alertmanager/templates/*.tmpl
+
+global:
+  resolve_timeout: 5m
+
+route:
+  # Rota padrão = destino real. Trocar para `email` é `ALERTMANAGER_DESTINO=email`
+  # no `.env` (ou `export`), sem editar este arquivo.
+  receiver: __DESTINO__
+  group_by: [alertname, canal]
+  group_wait: 10s
+  group_interval: 1m
+  # Repetir a cada 4 h evita que um alerta crítico passe em silêncio se o primeiro
+  # aviso foi perdido, sem transformar um problema conhecido em spam.
+  repeat_interval: 4h
+  routes:
+    # Caminho de prova: `make monitoring-alertas` marca o alerta com `prova=local` e
+    # ele vai para o receptor local, sem sujar o canal da equipe.
+    - matchers: ['prova="local"']
+      receiver: local-sink
+      group_wait: 1s
+      repeat_interval: 5m
+    # Watchdog/heartbeat: existe para provar que o canal está vivo. 12 h é suficiente.
+    - matchers: ['alertname="WydWatchdog"']
+      receiver: __DESTINO__
+      repeat_interval: 12h
+      group_wait: 5s
+
+inhibit_rules:
+  # Servidor fora do ar domina os avisos que dependem dele no MESMO canal: sem processo,
+  # tick/handshake/recusa são consequência, não causa.
+  - source_matchers: ['alertname="WydServidorForaDoAr"']
+    target_matchers: ['severity=~"warning|critical"']
+    equal: [canal]
+  # Disco cheio domina CPU/RAM do mesmo host: o primeiro mata o banco, os outros só avisam.
+  - source_matchers: ['alertname="WydDiscoQuaseCheio"']
+    target_matchers: ['alertname=~"WydCpuAltaHost|WydMemoriaAltaHost"']
+    equal: [instance]
+  # Gateway fora do ar explica o portal fora do ar (o BFF depende dele).
+  - source_matchers: ['alertname="WydGatewayForaDoAr"']
+    target_matchers: ['alertname="WydPortalForaDoAr"']
+    equal: []
+
+receivers:
+  - name: slack
+    slack_configs:
+      - api_url_file: /tmp/wyd-secrets/slack_api_url
+        channel: '__SLACK_CHANNEL__'
+        send_resolved: true
+        title: '{{ template "wyd.titulo" . }}'
+        text: '{{ template "wyd.texto" . }}'
+
+  - name: email
+    email_configs:
+      - to: '__SMTP_TO__'
+        from: '__SMTP_FROM__'
+        smarthost: '__SMTP_SMARTHOST__'
+        auth_username: '__SMTP_USER__'
+        auth_password_file: /tmp/wyd-secrets/smtp_password
+        require_tls: true
+        send_resolved: true
+        headers:
+          subject: '[{{ .Status | toUpper }}] WYD {{ .CommonLabels.alertname }} ({{ len .Alerts }} alerta(s))'
+
+  - name: local-sink
+    webhook_configs:
+      - url: http://alert-sink:9099/alerts
+        send_resolved: true
+        max_alerts: 20

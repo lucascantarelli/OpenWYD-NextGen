@@ -159,6 +159,22 @@ impl Metrics {
         self.heap_samples.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Amostra o RSS agora e publica a gauge quando a plataforma permite.
+    ///
+    /// Chamada por uma thread de 1 Hz no boot do `wyd-server`: o laço do tick **não** faz I/O
+    /// (invariante 1 do `AGENTS.md`). Devolve `true` quando a amostra é real; em plataforma sem
+    /// leitura de `/proc` devolve `false` e a exposição continua com a ausência declarada
+    /// (`process_resident_memory_bytes 0`, `wyd_memory_samples_total 0`), nunca número inventado.
+    pub fn sample_memory(&self) -> bool {
+        match crate::metrics::mem::sample_rss_bytes() {
+            Some(bytes) => {
+                self.set_heap_bytes(bytes);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Ticks medidos.
     #[must_use]
     pub fn ticks(&self) -> u64 {
@@ -301,6 +317,24 @@ mod tests {
         assert_eq!(m.tick_budget_us(), DEFAULT_TICK_BUDGET_US);
         m.set_tick_budget_us(20_000);
         assert!(m.render("").contains("wyd_tick_budget_microseconds 20000"));
+    }
+
+    #[test]
+    fn amostra_de_memoria_publica_rss_ou_declara_ausencia() {
+        let m = Metrics::new();
+        let amostrou = m.sample_memory();
+        if cfg!(target_os = "linux") {
+            assert!(amostrou, "Linux lê /proc/self/statm");
+            assert!(m.heap_bytes() > 0, "RSS positivo quando disponível");
+            assert_eq!(m.heap_samples(), 1, "a amostra entra no contador");
+        } else {
+            assert!(!amostrou, "fora de Linux a amostra é ausência declarada");
+            assert_eq!(m.heap_bytes(), 0);
+            assert_eq!(m.heap_samples(), 0, "ausência não incrementa o contador");
+        }
+        let corpo = m.render("");
+        assert!(corpo.contains("process_resident_memory_bytes "));
+        assert!(corpo.contains(&format!("wyd_memory_samples_total {}", m.heap_samples())));
     }
 
     #[test]

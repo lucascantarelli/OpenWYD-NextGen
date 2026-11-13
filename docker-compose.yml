@@ -4,8 +4,11 @@
 # -f docker-compose.prod.yml up -d` (o override de dev NÃO é carregado).
 # Imagens locais:  wyd/<servico>:${TAG:-dev}   Containers: wyd-<servico>
 # Serviços = binários Rust que existem (serviço = container = imagem).
-# Exceção: `mkdocs` é documentação interna (imagem oficial, sem binário Rust)
-# para dev/admin; não faz parte da cadeia de deploy do jogo e não fala com o DB.
+# Exceções (infraestrutura, não binário de jogo): `mkdocs` é documentação interna
+# (imagem oficial) para dev/admin e não fala com o DB; `prometheus`, `alertmanager`,
+# `alert-sink`, `blackbox-exporter`, `grafana`, `loki`, `alloy` e `node-exporter` são a
+# cadeia de observabilidade/notificação — o `alert-sink` é o receptor local do
+# Alertmanager e o único deles com código do projeto (`tools/dev/alert-sink.mjs`).
 # Mapa completo (crates → deployáveis, observabilidade, pendências por issue)
 # em `docs/rust/05-stack-docker.md`. Só entra no compose o serviço cujo
 # binário existe; o resto está mapeado e bloqueado pela issue dona.
@@ -235,14 +238,118 @@ services:
   prometheus:
     image: prom/prometheus:v3.5.0
     restart: unless-stopped
+    # `--web.enable-lifecycle` (reload por HTTP sem auth) vive SÓ no override de dev:
+    # em produção não há porta publicada, mas o endpoint não precisa existir.
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=7d
-      - --web.enable-lifecycle
     volumes:
       - ./docker/monitoring/prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
+    depends_on:
+      - alertmanager
+    networks:
+      - wyd
+
+  alertmanager:
+    # Elo que faltava (DEVOPS-02): sem ele, regra em `firing` não avisa ninguém.
+    # Rota, agrupamento, repetição e silêncio vivem em
+    # `docker/monitoring/alertmanager/alertmanager.yml`; o receiver é o
+    # `alert-sink` (destino local verificável) e deve ser trocado pelo destino real
+    # (e-mail/Slack/webhook) quando existir.
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    # Render mínimo no boot (nenhum segredo em arquivo versionado): escolhe o destino
+    # real (`ALERTMANAGER_DESTINO`, default `slack`) e materializa os segredos vindos do
+    # ambiente em /tmp/wyd-secrets. Sem `SLACK_API_URL`, a integração Slack faz
+    # bootstrap para o `alert-sink` — o build não quebra e a notificação fica registrada;
+    # definida a URL real, a entrega passa a ser no Slack sem tocar em rota/inibição.
+    entrypoint: [ "/bin/sh", "/etc/alertmanager/render-config.sh" ]
+    environment:
+      # Destino real da notificação: `slack` (default) ou `email`.
+      ALERTMANAGER_DESTINO: ${ALERTMANAGER_DESTINO:-slack}
+      # Segredos: vêm do .env do host. Nunca neste arquivo nem na imagem.
+      SLACK_API_URL: ${SLACK_API_URL:-}
+      SLACK_CHANNEL: ${SLACK_CHANNEL:-#wyd-alertas}
+      SMTP_TO: ${SMTP_TO:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SMARTHOST: ${SMTP_SMARTHOST:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    volumes:
+      - ./docker/monitoring/alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    depends_on:
+      - alert-sink
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://127.0.0.1:9093/-/ready || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    networks:
+      - wyd
+
+  alert-sink:
+    # Receptor LOCAL de prova (DEVOPS-02) — NÃO é o destino de operação: a rota padrão
+    # vai para `slack`/`email`. Ele recebe (a) o caminho de prova `prova=local` de
+    # `make monitoring-alertas` e (b) o bootstrap da integração Slack enquanto não houver
+    # `SLACK_API_URL` — cada notificação vira uma linha JSON em
+    # `/var/log/wyd-alerts/alertas.jsonl` (volume `alerts-out`). Sem porta no host.
+    image: node:22-alpine
+    restart: unless-stopped
+    command: [ "node", "/app/alert-sink.mjs" ]
+    environment:
+      ALERT_SINK_PORT: "9099"
+      ALERT_SINK_DIR: /var/log/wyd-alerts
+    volumes:
+      - ./tools/dev/alert-sink.mjs:/app/alert-sink.mjs:ro
+      - alerts-out:/var/log/wyd-alerts
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:9099/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    networks:
+      - wyd
+
+  blackbox-exporter:
+    # Sonda ativa do portal (DEVOPS-02): o BFF não publica `/metrics`, então a
+    # disponibilidade vem de `http_2xx` em `/api/health`. Só consultado pelo Prometheus.
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    command: [ "--config.file=/etc/blackbox/blackbox.yml" ]
+    volumes:
+      - ./docker/monitoring/blackbox:/etc/blackbox:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q --spider http://127.0.0.1:9115/metrics || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
     networks:
       - wyd
 
@@ -324,6 +431,10 @@ volumes:
     name: wyd-pgdata
   prometheus-data:
     name: wyd-prometheus-data
+  alertmanager-data:
+    name: wyd-alertmanager-data
+  alerts-out:
+    name: wyd-alerts-out
   grafana-data:
     name: wyd-grafana-data
   loki-data:

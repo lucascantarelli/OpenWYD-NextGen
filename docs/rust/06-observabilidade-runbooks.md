@@ -9,16 +9,23 @@ mapa de serviços é `docs/rust/05-stack-docker.md`.
 
 ```bash
 make stack-config        # valida o compose (base+dev e prod) sem subir nada
-make monitoring-rules    # promtool: config + regras + teste de disparo/resolução
-make monitoring-up       # Prometheus :9090, Grafana :3001, node-exporter :9100 (só loopback)
-make monitoring-check    # smoke: /-/ready, alvos, datasource e dashboard provisionados
+make monitoring-rules    # promtool (config/regras/disparo-resolução) + amtool (rota do Alertmanager)
+make monitoring-up       # Prometheus :9090, Alertmanager :9093, Grafana :3001, node/blackbox :9100/:9115
+make monitoring-check    # smoke: ready, alvos, regras, datasource, dashboard, Alertmanager e watchdog
+make monitoring-alertas  # prova ponta a ponta: alerta injetado chega ao receptor
 make monitoring-down
 ```
 
-Arquivos versionados: `docker-compose.monitoring.yml`, `docker/monitoring/prometheus/`
-(`prometheus.yml`, `alerts.yml`, `alerts.test.yml`, `targets/wyd-server.json`), e
-`docker/monitoring/grafana/` (`provisioning/` + `dashboards/wyd-saude.json`). Segredos
-(`GRAFANA_PASSWORD`) vêm do `.env`, nunca destes arquivos.
+Arquivos versionados (tudo dentro do `docker-compose.yml`; não existe mais
+`docker-compose.monitoring.yml`): `docker/monitoring/prometheus/` (`prometheus.yml`,
+`alerts.yml`, `alerts.test.yml`, `targets/wyd-server.json`),
+`docker/monitoring/alertmanager/alertmanager.yml` (rota/receiver),
+`docker/monitoring/blackbox/blackbox.yml` (sonda do portal),
+`docker/monitoring/loki/` + `docker/monitoring/alloy/` (logs) e `docker/monitoring/grafana/`
+(`provisioning/` + `dashboards/`). O receptor local de prova/bootstrap é
+`tools/dev/alert-sink.mjs`, serviço `alert-sink` (o destino de operação é Slack/e-mail — §4).
+Segredos (`GRAFANA_PASSWORD`, `SLACK_API_URL`, `SMTP_PASSWORD`) vêm do `.env`, nunca destes
+arquivos.
 
 **Alvos do motor:** `docker/monitoring/prometheus/targets/wyd-server.json` lista **um alvo por
 canal** (`server-canal-1:9898` e `server-canal-2:9898`), com labels `canal` e `service`; o
@@ -123,13 +130,46 @@ Pacotes entrando e nenhum handshake concluído por 10 min.
 
 ### WydRssAlto
 
-RSS acima de 1,5 GB por 15 min.
+`process_resident_memory_bytes{job="wyd-server"} > 5e8` (512 MB) por 15 min, por canal.
 
-1. Confirmar que o processo é o motor (`process_resident_memory_bytes{job="wyd-server"}`).
-2. Comparar com `wyd_entities_active`: memória crescendo sem entidades = vazamento (fila,
-   cache, histórico de chat).
-3. Reinício é paliativo e derruba sessões: registrar no log de operação e abrir issue com a
-   curva do gráfico.
+**De onde vem o teto:** a amostragem de RSS entrou de verdade em 2026-11-12 (thread de 1 Hz no
+boot, ver `WydSemAmostraDeMemoria`); os dois canais operam em **~37 MB** (36,9 MB no canal 1 e
+36,0 MB no canal 2, medidos no Prometheus). O limiar é ~14× esse baseline: não alerta em carga
+normal e avisa muito antes do limite do container. Antes dessa correção o RSS era sempre `0`,
+então esta regra existia mas **não podia disparar** — se hoje o valor voltar a `0`, o alerta a
+seguir é o `WydSemAmostraDeMemoria`, não este.
+
+1. Confirmar o valor atual e a tendência por canal:
+   `process_resident_memory_bytes{job="wyd-server"}` e `deriv(...[30m])` — crescimento
+   monotônico é vazamento; degrau único costuma ser carga (jogadores/NPCs a mais).
+2. Comparar com `wyd_entities_active`: memória crescendo **sem** entidades = vazamento (fila,
+   cache, histórico de chat, save pendente).
+3. Conferir as filas antes de culpar o motor: `save_queue` (dreno a cada 5 s) e a
+   `delivery_queue` de grants — dreno parado aparece como memória subindo com banco lento.
+4. Reinício é paliativo e derruba sessões: registrar no log de operação e abrir issue com a
+   curva do gráfico (`make monitoring-check` verde não substitui a curva).
+5. Validar a regra sem esperar 15 min: `promtool test rules` cobre disparo em 600 MB e
+   resolução ao voltar para 40 MB (`make monitoring-rules`).
+
+### WydRssCrescendo
+
+`deriv(process_resident_memory_bytes{job="wyd-server"}[1h]) * 3600 > 67108864` por 30 min, por
+canal — RSS subindo mais de **64 MB/h** (1 MiB/min).
+
+Este é o alerta de **vazamento**, não de nível: o `WydRssAlto` só fala quando o processo passa de
+512 MB. Hoje o RSS é plano em ~37 MB; a 64 MB/h o teto levaria ~7 h, então sobra tempo para agir.
+
+1. Olhar o formato da curva (`process_resident_memory_bytes{job="wyd-server"}` em 6 h): rampa
+   monotônica = vazamento; degrau que estabiliza = carga (mapa, NPCs, jogadores) — o `for: 30m`
+   já descarta as rampas curtas de boot.
+2. Cruzar com `wyd_entities_active` e `rate(wyd_ticks_total[5m])`: memória subindo com entidades
+   e tick estáveis é vazamento no motor (fila, cache, histórico de chat).
+3. Antes de culpar o motor, checar o que roda **fora** do tick: dreno do save (5 s) e
+   `delivery_queue` de grants — dreno travado por banco lento aparece como RSS subindo.
+4. Confirmado o vazamento, abrir issue com a curva e o commit; reinício é paliativo e derruba
+   sessões.
+5. Validar a regra sem esperar uma hora: `promtool test rules` cobre +90 MB/h disparando em
+   55 min e resolvendo após estabilizar (`make monitoring-rules`).
 
 ### WydSemAmostraDeMemoria
 
@@ -165,7 +205,178 @@ processo; o limiar acompanha `WYD_TICK_HZ`, não um valor fixo).
 4. Confirmar que a métrica não foi renomeada: `wyd_ticks_total` é contrato da QA-04 e só
    existe quando o motor roda (ADR-0022 §7).
 
-## 4. Lacunas declaradas
+### WydPortalForaDoAr
+
+`probe_success{job="wyd-portal"} == 0` por 3 min — o portal não respondeu **200** em
+`/api/health`. BFF fora = staff sem painel, mesmo com o jogo rodando.
+
+1. `docker compose ps portal` e `docker compose logs --tail=100 portal`.
+2. `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:3000/api/health` — **502** significa
+   portal vivo e gateway fora (o alerta certo é `WydGatewayForaDoAr`); **000** significa
+   processo morto ou porta errada.
+3. `docker compose exec blackbox-exporter wget -qO- 'http://127.0.0.1:9115/probe?module=http_2xx&target=http%3A%2F%2Fportal%3A3000%2Fapi%2Fhealth'`:
+   `probe_success 0` com `probe_http_status_code 0` = rede/DNS interno, não HTTP.
+4. Se o portal respondeu 307/302, a sonda está apontando para rota protegida: `/api/health`
+   precisa ser público (200 sem cookie). Não “conserte” afrouxando a sonda.
+
+### WydDiscoQuaseCheio
+
+Menos de 10% livre em algum filesystem do host por 10 min — o volume do Postgres é o primeiro
+a sofrer.
+
+1. `docker system df` e `docker compose exec db df -h /var/lib/postgresql/data`.
+2. Maiores consumidores típicos: `wyd-prometheus-data` (7 d), log `json-file` de container
+   sem teto, `target/`, imagens antigas (`docker image prune` **só** com autorização).
+3. Nada de `down -v`: libere espaço por retenção (`--storage.tsdb.retention.time`) e por
+   exportação de log (Loki já retém 14 d), não apagando volume.
+4. Depois de liberar, o alerta resolve sozinho na próxima avaliação (sem `for` de resolução).
+
+### WydCpuAltaHost
+
+Mais de 90% de CPU no host por 15 min. O tick e o Postgres disputam o mesmo núcleo.
+
+1. `docker stats --no-stream` — qual container consome? Motor, banco ou build em paralelo?
+2. Se for o motor, cruze com `WydTickP99Alto`/`WydTickAcimaDoOrcamento` para saber se o
+   problema é carga de jogo ou contenção do host.
+3. `docker compose up -d --build` rodando junto do jogo é causa comum: build não é operação de
+   runtime. Agende.
+
+### WydMemoriaAltaHost
+
+Mais de 95% de memória em uso por 15 min; o OOM killer pode matar o motor ou o Postgres.
+
+1. `docker stats --no-stream` e `free -h` no host.
+2. Procurar vazamento: `process_resident_memory_bytes{job="wyd-server"}` subindo sem
+   `wyd_entities_active` acompanhar é vazamento, não carga.
+3. Mitigação imediata: reiniciar **o** container culpado (nunca a stack inteira) e registrar o
+   horário; abrir issue com a série do painel.
+
+### WydHostSemMetricas
+
+`up{job="node"} == 0` por 5 min — sem `node-exporter` o host fica invisível e os alertas de
+CPU/RAM/disco param de ter dado.
+
+1. `docker compose ps node-exporter` e `docker compose logs --tail=50 node-exporter`.
+2. `curl -s 127.0.0.1:9100/metrics | head -3` (o override publica em loopback).
+3. No Docker Desktop o exporter vê a VM Linux, não o Windows: número de disco/CPU é do VM.
+   Se a coleta falhar por `--path.rootfs`, recrie só o serviço.
+
+### WydAlertmanagerForaDoAr
+
+`up{job="alertmanager"} == 0` por 5 min — as regras continuam avaliando e **ninguém** é avisado.
+É o alerta que mais importa: sem ele, todo o resto é silencioso.
+
+1. `docker compose ps alertmanager` + `docker compose logs --tail=100 alertmanager`.
+2. `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:9093/-/ready`; se o container está de pé e
+   a rota é 200, o problema é só o scrape (rede `wyd`).
+3. `amtool check-config` via `make monitoring-rules` antes de recriar: config inválida impede o boot.
+4. Depois de voltar, confirme com `make monitoring-check` (o `WydWatchdog` tem que reaparecer).
+
+### WydWatchdog
+
+Não é incidente: é o heartbeat **sempre em firing** que prova que a cadeia
+`Prometheus → Alertmanager → receptor` está inteira. Receber o aviso periódico é o esperado.
+
+1. Ausência do aviso (e do alerta no Alertmanager) = cadeia quebrada; investigue
+   `WydAlertmanagerForaDoAr`, o receiver no log do Alertmanager e a rota `alerting:` do Prometheus.
+2. Durante manutenção, **silencie** no Alertmanager (UI `:9093` ou `amtool silence add`), com
+   prazo e comentário — nunca apague a regra.
+
+## 4. Notificação: onde o alerta chega (DEVOPS-02)
+
+```text
+motor/gateway/host/portal → Prometheus (scrape) → regras (alerts.yml)
+                          → Alertmanager (:9093) → slack | email
+```
+
+**Destino real:** a rota padrão entrega em `slack` (default) ou `email`, escolhido por
+`ALERTMANAGER_DESTINO`. O segredo **nunca** está no arquivo versionado: o container renderiza a
+config no boot (`docker/monitoring/alertmanager/render-config.sh` — fonte única, também usada
+por `make monitoring-rules --check`) e escreve `/tmp/wyd-secrets/slack_api_url` (ou
+`smtp_password`) a partir do ambiente.
+
+| Variável (`.env`) | Papel |
+|---|---|
+| `ALERTMANAGER_DESTINO` | `slack` (default) ou `email` |
+| `SLACK_API_URL` | Incoming Webhook do Slack — **segredo** |
+| `SLACK_CHANNEL` | Canal (default `#wyd-alertas`) |
+| `SMTP_TO` / `SMTP_FROM` / `SMTP_SMARTHOST` / `SMTP_USER` / `SMTP_PASSWORD` | Destino por e-mail |
+
+```bash
+# Slack
+printf '%s\n' 'SLACK_API_URL=https://hooks.slack.com/services/...' >> .env
+docker compose up -d alertmanager   # recria com o webhook
+
+# E-mail
+#   ALERTMANAGER_DESTINO=email, SMTP_SMARTHOST=smtp.exemplo:587, SMTP_FROM/SMTP_TO/SMTP_USER
+#   + SMTP_PASSWORD
+```
+
+**Mensagem no Slack (templates):** `docker/monitoring/alertmanager/templates/wyd.tmpl`
+define `wyd.titulo` e `wyd.texto`. O título traz status, severidade com ícone, alerta e canal;
+o corpo traz, por alerta, gravidade, `canal`/alvo/job, **desde quando** e o **runbook** da regra
+(link quando a anotação já é URL). O render é provado sem esperar alerta real:
+
+```bash
+docker compose exec -T alertmanager amtool template render \
+  --template.glob='/etc/alertmanager/templates/*.tmpl' \
+  --template.text='{{ template "wyd.texto" . }}' \
+  --template.data=/etc/alertmanager/slack-exemplo.json
+```
+
+**Trocar/rotacionar a webhook:** revogue a antiga no app do Slack, escreva a nova em
+`SLACK_API_URL` no `.env` (forka o arquivo, nunca em git/log), recrie só o alertmanager
+(`docker compose up -d --force-recreate alertmanager`) e rode `make monitoring-alertas`. A prova
+de que o valor carregado é o novo sai sem imprimir segredo: compare o hash de
+`/tmp/wyd-secrets/slack_api_url` no container com o do valor no `.env`.
+
+`make monitoring-rules` roda esse render nos dois estados — **disparo** (`[FIRING]`) e
+**resolução** (`[RESOLVED]`) — então template quebrado falha no gate, não na madrugada.
+
+**Resolução:** o receiver tem `send_resolved: true`, então quando o alerta sai de `firing` o
+Slack recebe de novo com `[RESOLVED]` e, no corpo, `encerrado <hora>`. Sem essa mensagem o canal
+fica com um alarme que “nunca acabou”. `make monitoring-alertas` prova **os dois** envios:
+injeta, confirma a notificação de disparo, resolve pela API e confirma a de resolução (dois
+incrementos em `alertmanager_notifications_total`, `failed_total` zerado).
+
+**Bootstrap (sem `SLACK_API_URL`):** a integração Slack posta no receptor local `alert-sink`
+(`/var/log/wyd-alerts/alertas.jsonl`, volume `alerts-out`). Isso mantém a stack funcionando e
+prova o **formato** que o Slack recebe (`channel`/`username`/`attachments`); ao definir a URL
+real, o mesmo POST passa a ir para o Slack — sem editar rota, inibição ou runbook.
+O `alert-sink` **não** é destino de operação: ele recebe o bootstrap e o caminho de prova
+(`prova=local`).
+
+```bash
+make monitoring-alertas   # rota real + entrega (bootstrap ou externo) com saída explicando qual foi
+docker compose exec -T alertmanager amtool config routes test \
+  --config.file=/tmp/wyd-secrets/alertmanager.yml alertname=WydTickP99Alto severity=critical
+docker compose exec -T alert-sink tail -3 /var/log/wyd-alerts/alertas.jsonl
+```
+
+**Prova de entrega no destino externo:** o Alertmanager não loga sucesso em `info`, então a
+ev idência objetiva são os contadores por integração (com `SLACK_API_URL` definido,
+`make monitoring-alertas` os lê automaticamente):
+
+```bash
+docker compose exec -T alertmanager wget -qO- http://127.0.0.1:9093/metrics | \
+  grep -E '^alertmanager_notifications_(total|failed_total)\{integration="slack"'
+```
+
+`notifications_total` subindo e `failed_total` parado = destino aceitou a notificação (HTTP 2xx).
+Cada alerta gera **duas** entregas quando o ciclo fecha: disparo e resolução.
+Falha de webhook inválido, canal inexistente ou SMTP recusado aparece em `failed_total` e no log
+com `level=error`.
+
+**Se o e-mail não sair:** o Alertmanager valida `to`/`from`/`smarthost` no boot (defaults
+`alertas@localhost`/`127.0.0.1:587` existem só para a configuração ser válida). Destino `email`
+sem SMTP real falha no envio, com o motivo no log — o alerta continua em `firing` e é reenviado
+no `group_interval`.
+
+Regras de convivência: `WydServidorForaDoAr` inibe os alertas do mesmo canal, `WydDiscoQuaseCheio`
+inibe CPU/RAM do host e `WydGatewayForaDoAr` inibe `WydPortalForaDoAr` — o sintoma não é
+notificado quando a causa já foi.
+
+## 5. Lacunas declaradas
 
 - **Série do motor:** com os canais atuais, `up{job="wyd-server"}` está 1/1 e os painéis de
   tick/entidades têm série. Se ficarem vazios, verifique se o container do motor roda imagem

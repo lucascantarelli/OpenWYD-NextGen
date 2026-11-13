@@ -111,6 +111,136 @@ tests:
               summary: "P99 do tick passou do orçamento do processo (WYD_TICK_HZ)"
               runbook: "docs/rust/06-observabilidade-runbooks.md#wydtickacimadooçamento"
 
+  # --- DEVOPS-02: cobertura de host, portal e vigia ---------------------------
+
+  - interval: 1m
+    name: "portal fora do ar dispara e resolve (sonda blackbox)"
+    input_series:
+      # 0 até t=5, 1 de t=6 em diante: dispara com `for: 3m` e resolve na recuperação.
+      - series: 'probe_success{job="wyd-portal",instance="http://portal:3000/api/health"}'
+        values: '0x5 1x9'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: WydPortalForaDoAr
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: wyd-portal
+              instance: http://portal:3000/api/health
+            exp_annotations:
+              summary: "portal não responde 200 em /api/health (staff sem acesso ao painel)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydportalforadoar"
+      # Resolução: a condição é falsa desde t=6, então o alerta sai do estado `firing`.
+      - eval_time: 12m
+        alertname: WydPortalForaDoAr
+        exp_alerts: []
+
+  - interval: 1m
+    name: "disco abaixo de 10% dispara"
+    input_series:
+      - series: 'node_filesystem_avail_bytes{fstype="ext4",instance="node-exporter:9100",job="node",mountpoint="/host"}'
+        values: '5x15'
+      - series: 'node_filesystem_size_bytes{fstype="ext4",instance="node-exporter:9100",job="node",mountpoint="/host"}'
+        values: '100x15'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WydDiscoQuaseCheio
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              fstype: ext4
+              instance: node-exporter:9100
+              job: node
+              mountpoint: /host
+            exp_annotations:
+              summary: "menos de 10% de disco livre (volume do Postgres em risco)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wyddiscoquasecheio"
+
+  - interval: 1m
+    name: "CPU do host acima de 90% dispara"
+    input_series:
+      # +3 s de idle por minuto = 5% de idle → 95% de uso.
+      - series: 'node_cpu_seconds_total{cpu="0",instance="node-exporter:9100",job="node",mode="idle"}'
+        values: '0+3x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WydCpuAltaHost
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: node-exporter:9100
+            exp_annotations:
+              summary: "mais de 90% de CPU no host por 15 min (tick e banco disputam núcleo)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydcpualtahost"
+
+  - interval: 1m
+    name: "memória do host acima de 95% dispara"
+    input_series:
+      - series: 'node_memory_MemAvailable_bytes{instance="node-exporter:9100",job="node"}'
+        values: '200000000x20'
+      - series: 'node_memory_MemTotal_bytes{instance="node-exporter:9100",job="node"}'
+        values: '10000000000x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WydMemoriaAltaHost
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: node-exporter:9100
+              job: node
+            exp_annotations:
+              summary: "mais de 95% de memória em uso no host (OOM killer pode atingir o motor)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydmemoriaaltahost"
+
+  - interval: 1m
+    name: "host invisível (node-exporter fora) dispara"
+    input_series:
+      - series: 'up{job="node",instance="node-exporter:9100"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WydHostSemMetricas
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node
+              instance: node-exporter:9100
+            exp_annotations:
+              summary: "scrape do node-exporter falhando (host invisível)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydhostsemmetricas"
+
+  - interval: 1m
+    name: "Alertmanager fora do ar dispara"
+    input_series:
+      - series: 'up{job="alertmanager",instance="alertmanager:9093"}'
+        values: '0x12'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WydAlertmanagerForaDoAr
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: alertmanager
+              instance: alertmanager:9093
+            exp_annotations:
+              summary: "Alertmanager fora do ar: alertas em firing não chegam a ninguém"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydalertmanagerforadoar"
+
+  - interval: 1m
+    name: "watchdog está sempre em firing"
+    input_series:
+      - series: 'up{job="alertmanager",instance="alertmanager:9093"}'
+        values: '1x5'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: WydWatchdog
+        exp_alerts:
+          - exp_labels:
+              severity: info
+            exp_annotations:
+              summary: "heartbeat do pipeline de alerta (sempre em firing por desenho)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydwatchdog"
+
   - interval: 1m
     name: "motor no ar sem tick dispara"
     input_series:
@@ -127,3 +257,47 @@ tests:
             exp_annotations:
               summary: "servidor no ar sem processar ticks"
               runbook: "docs/rust/06-observabilidade-runbooks.md#wydmotorsemtick"
+
+  - interval: 1m
+    name: "RSS do motor acima de 512 MB dispara e resolve ao voltar ao normal"
+    input_series:
+      # Baseline medido em 2026-11-12: ~37 MB por canal. Aqui 600 MB por 20 min
+      # (satisfaz `for: 15m`) e depois o processo volta ao normal: o alerta resolve.
+      - series: 'process_resident_memory_bytes{canal="1",job="wyd-server"}'
+        values: '600000000x20 40000000x10'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WydRssAlto
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              canal: "1"
+              job: wyd-server
+            exp_annotations:
+              summary: "RSS do motor acima de 512 MB (~14x o baseline medido de 37 MB)"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydrssalto"
+      - eval_time: 28m
+        alertname: WydRssAlto
+        exp_alerts: []
+
+  - interval: 1m
+    name: "RSS crescendo 90 MB/h dispara e resolve ao estabilizar"
+    input_series:
+      # +1,5 MiB/min = 90 MB/h (acima do limiar de 64 MB/h), depois o valor estabiliza:
+      # o `deriv` da janela de 1 h cai a zero e o alerta resolve.
+      - series: 'process_resident_memory_bytes{canal="1",job="wyd-server"}'
+        values: '40000000+1572864x60 134371840x80'
+    alert_rule_test:
+      - eval_time: 55m
+        alertname: WydRssCrescendo
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              canal: "1"
+              job: wyd-server
+            exp_annotations:
+              summary: "RSS do motor crescendo mais de 64 MB/h (1 MiB/min) — cheiro de vazamento"
+              runbook: "docs/rust/06-observabilidade-runbooks.md#wydrsscrescendo"
+      - eval_time: 125m
+        alertname: WydRssCrescendo
+        exp_alerts: []

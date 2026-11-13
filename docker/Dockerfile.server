@@ -5,8 +5,9 @@
 #   nomes   wyd-canal-1, wyd-canal-2 (compose)
 # Portas: 8281 CPSock, 8080 status (publicado como 80 no host), 9898 /metrics.
 # Distroless nonroot: o healthcheck é o próprio binário (--healthcheck → /health → banco).
+# Bases (DEVOPS-01): builder por minor (rust-toolchain 1.99.1), runtime por digest.
 
-FROM rust:1-bookworm AS builder
+FROM rust:1.99-bookworm AS builder
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates ./crates
@@ -17,7 +18,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release -p wyd-server --bin wyd-server && \
     install -Dm0755 target/release/wyd-server /out/wyd-server
 
-FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f AS runtime
 ARG WYD_VERSION=0.1.0
 ARG WYD_COMMIT=unknown
 LABEL org.opencontainers.image.title="wyd-server" \
@@ -25,7 +26,7 @@ LABEL org.opencontainers.image.title="wyd-server" \
       org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
       org.opencontainers.image.version="${WYD_VERSION}" \
       org.opencontainers.image.revision="${WYD_COMMIT}" \
-      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f"
 COPY --from=builder /out/wyd-server /usr/local/bin/wyd-server
 # Série de migrations no próprio artefato (ADR-0024): o canal também aplica o
 # schema no boot (idempotente e serializado por advisory lock).

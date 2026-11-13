@@ -41,6 +41,9 @@ não simulação de mundo.
 | `portal` | `docker/Dockerfile.portal` (multi-stage, non-root, standalone) | BFF Next.js. Não fala SQL (invariante 7): depende do `gateway` saudável. `/api/health` chama `item_catalog/list_items` e devolve 200 com a contagem real do catálogo; 502 só quando o gateway está fora |
 | `mkdocs` | `squidfunk/mkdocs-material:9.8.0` (oficial) | Documentação **interna de dev/admin**: MkDocs + Material servido em `:8000` na rede `wyd`, com `mkdocs.yml` e `docs/` read-only. No dev, `127.0.0.1:${MKDOCS_PORT:-8000}`; em produção não publica porta. Não tem perfis/login nem fala com o DB; a documentação pública do jogador será publicada pelo portal. |
 | `prometheus`, `grafana`, `node-exporter` | imagens oficiais com tag fixa (mesmo `docker-compose.yml`) | **sobem no `up` normal** desde 2026-11-08 (monitoramento é parte da stack): Prometheus `:9090`, Grafana `:3001`, node-exporter `:9100`, tudo em loopback. A aba `/monitoramento` do portal lê o Prometheus pela rede `wyd` e é o **índice** do monitoramento, com subpáginas `/monitoramento/servidor` (motor: ticks/s, p99, entidades por canal), `/monitoramento/grafana` (dashboards em kiosk), `/monitoramento/prometheus` (alvos/regras de alerta) e `/monitoramento/logs` (Loki). QA-08 ✅ — dashboards/alertas/runbooks em `docker/monitoring/` e `docs/rust/06-observabilidade-runbooks.md` |
+| `alertmanager` | `prom/alertmanager:v0.28.1` | **Notificação** (2026-11-12, DEVOPS-02): recebe as regras em `firing` e entrega no **destino real** — `slack` (default) ou `email`, por `ALERTMANAGER_DESTINO`. Rota/agrupamento/repetição/inibição em `docker/monitoring/alertmanager/alertmanager.yml`; o container **renderiza** a config no boot (`docker/monitoring/alertmanager/render-config.sh`) e escreve os segredos do ambiente em `/tmp/wyd-secrets` — nada de webhook/senha no arquivo ou na imagem. Mensagem legível por `templates/wyd.tmpl` (severidade, canal, alvo, desde, runbook). UI/API só em loopback (`:9093`) |
+| `alert-sink` | `node:22-alpine` + `tools/dev/alert-sink.mjs` | **Receptor local de prova e de bootstrap** (DEVOPS-02): grava cada notificação em `/var/log/wyd-alerts/alertas.jsonl` (volume `alerts-out`), sem porta no host. Recebe o caminho `prova=local` de `make monitoring-alertas` e, enquanto não houver `SLACK_API_URL`, o bootstrap da integração Slack — não é destino de operação |
+| `blackbox-exporter` | `prom/blackbox-exporter:v0.27.0` | **Sonda ativa do portal** (DEVOPS-02): `http_2xx` em `portal:3000/api/health`, porque o BFF não publica `/metrics`. Alimenta `probe_success` → `WydPortalForaDoAr` |
 | `loki` | `grafana/loki:3.5.5` | **Logs duráveis** (2026-11-09): grava em volume `wyd-loki-data` com retenção de 14 d (`docker/monitoring/loki/loki.yml`). Sem porta no host — só o portal (server-side) e o Grafana consultam `loki:3100`. Resolve o problema do `json-file`: o stdout do Docker morre quando o container é recriado, o Loki não |
 | `alloy` | `grafana/alloy:v1.9.2` | **Coletor oficial da Grafana**: descobre os containers pelo socket do Docker (**read-only**, só este serviço) e empurra para o Loki (`docker/monitoring/alloy/config.alloy`), rotulando `service`/`container`. Substitui o sidecar caseiro de logs |
 
@@ -89,7 +92,16 @@ Cadeia normativa (skill `wyd-rust-obs`, QA-04 → QA-08):
    Alvos do motor ficam vazios por arquivo até existir binário de servidor — nenhum
    alerta por ausência estrutural. Runbooks: `docs/rust/06-observabilidade-runbooks.md`.
    `make monitoring-up` (atalho — o `up` normal já sobe tudo),
-   `make monitoring-rules` (promtool: config + regras + teste de disparo).
+   `make monitoring-rules` (promtool: config/regras/disparo-resolução + amtool: config do Alertmanager
+   renderizada)
+   e `make monitoring-alertas` (prova de rota e de entrega no destino real, **disparo e
+   resolução**).
+   **Notificação (DEVOPS-02):** `Prometheus → Alertmanager (:9093) → slack | email`; o `alerting:` do
+   `prometheus.yml` aponta para `alertmanager:9093` e a rota padrão entrega no destino real
+   (`ALERTMANAGER_DESTINO`). O `alert-sink` só recebe o bootstrap (sem `SLACK_API_URL`) e o
+   caminho de prova (`prova=local`).
+   Host (`node-exporter`), portal (sonda `blackbox`) e o próprio Alertmanager têm regra própria;
+   o `WydWatchdog` (sempre em firing) é a prova de que a cadeia está inteira.
 4. **Logs duráveis** (2026-11-09): `containers → Alloy (socket read-only) → Loki
    (volume `wyd-loki-data`, 14 d) → BFF do portal`. O sidecar caseiro `logpipe`, o
    modo `docker compose logs -f` e a própria tela `/logs` (com o SSE `/api/logs/<container>`
@@ -117,7 +129,7 @@ deixa container parado.
 ```bash
 docker compose up -d --build --wait   # caminho único: build + up + saúde (não exige make)
 make stack-up        # up completo (gateway e canais migram no próprio boot)
-make local-rebuild   # atalho + provas de contrato (/login 200, /entregas 307, /health 31)
+make local-rebuild   # atalho + provas de contrato (/login 200, /entregas 307, /health com schema)
 make db-migrate      # = docker compose run --rm gateway --migrate
 make db-reset        # = docker compose run --rm gateway --migrate --reset
 ```
@@ -161,8 +173,10 @@ gateway --seed-staff`). Ele usa o `.env` montado e o banco da stack, e só sai c
 confirmar o hash (`verified=true`). Não sobe portal/canais, não publica porta e não para o stack.
 
 O job de CI `seed-boot`
-sobe um Postgres efêmero, aplica só `0001_contas` e roda `cargo test -p wyd-admin --test sistema_seed`
-em toda pull request. Não existe mais serviço one-shot `staff-seed` no compose: um job que termina deixa
+sobe um Postgres efêmero, aplica a **série completa** com o próprio runner (`wyd-gateway --migrate`)
+e roda `cargo test -p wyd-admin --test sistema_seed` em toda pull request. Nenhum outro teste de
+sistema roda no CI hoje: `tests/sistema/*` do `wyd-server` **pula** sem `WYD_TEST_DSN`
+(`DEVOPS-07`; contrato em `docs/rust/10-devops-ci.md` §2). Não existe mais serviço one-shot `staff-seed` no compose: um job que termina deixa
 um container parado em `docker compose ps` (estado normal de job, mas vira ruído e some do `up`
 se alguém filtrar por "Up"). Seed no boot do processo que já tem `DATABASE_URL` e argon2id é
 idempotente, não precisa de imagem extra e não roda no `initdb` do Postgres — o `entrypoint`

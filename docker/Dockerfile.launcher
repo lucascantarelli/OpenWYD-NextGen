@@ -5,20 +5,26 @@
 # Build:  docker build -f docker/Dockerfile.launcher -t wyd/launcher:dev .
 # Uso:    docker run --rm wyd/launcher:dev check /jogo /jogo/manifest.toml
 # Proveniência: versão/commit entram por build-arg e ficam nas labels OCI.
+# Bases (DEVOPS-01): builder por minor (rust-toolchain 1.99.1), runtime por digest.
 
-FROM rust:1-bookworm AS builder
+FROM rust:1.99-bookworm AS builder
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates ./crates
 # A GUI Tauri é membro do workspace; o manifesto precisa existir mesmo ao compilar o CLI.
 COPY apps/launcher-ui ./apps/launcher-ui
+# Entrada de build, não documentação: `include_str!` em
+# crates/wyd-launcher/src/identidade.rs resolve `../../../docs/...` a partir de
+# /src/crates/wyd-launcher/src. Sem este COPY o build falha com "couldn't read".
+# O `.dockerignore` libera exatamente este arquivo de `docs/`.
+COPY docs/arquitetura/identidade.tokens ./docs/arquitetura/identidade.tokens
 # Cache BuildKit do registry + target acelera rebuilds sem invalidar camadas.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release -p wyd-launcher && \
     install -Dm0755 target/release/wyd-launcher /out/wyd-launcher
 
-FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f AS runtime
 ARG WYD_VERSION=0.1.0
 ARG WYD_COMMIT=unknown
 LABEL org.opencontainers.image.title="wyd-launcher" \
@@ -26,7 +32,7 @@ LABEL org.opencontainers.image.title="wyd-launcher" \
       org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
       org.opencontainers.image.version="${WYD_VERSION}" \
       org.opencontainers.image.revision="${WYD_COMMIT}" \
-      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot"
+      org.opencontainers.image.base.name="gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f"
 COPY --from=builder /out/wyd-launcher /usr/local/bin/wyd-launcher
 USER nonroot:nonroot
 WORKDIR /jogo

@@ -32,6 +32,28 @@ const WARMUP_TICKS: u32 = 50;
 const MEASURED_TICKS: u32 = 400;
 /// Teto do critério de aceite: IA ≤ 10% do orçamento do tick.
 const MAX_SHARE_PCT: f64 = 10.0;
+
+/// Lê um inteiro positivo do ambiente, caindo no default do critério quando ausente ou inválido.
+///
+/// Serve para medir com mais amostras (`WYD_BENCH_TICKS`, `WYD_BENCH_ECS_ROUNDS`) sem mudar o
+/// veredito default do gate: sem a variável, o bench roda exatamente o número do critério.
+fn env_u32(chave: &str, default: u32) -> u32 {
+    std::env::var(chave)
+        .ok()
+        .and_then(|valor| valor.trim().parse::<u32>().ok())
+        .filter(|valor| *valor > 0)
+        .unwrap_or(default)
+}
+
+/// Ticks medidos da IA (`WYD_BENCH_TICKS`).
+fn amostras_ia() -> u32 {
+    env_u32("WYD_BENCH_TICKS", MEASURED_TICKS)
+}
+
+/// Rodadas medidas do ECS (`WYD_BENCH_ECS_ROUNDS`).
+fn amostras_ecs() -> u32 {
+    env_u32("WYD_BENCH_ECS_ROUNDS", ECS_ROUNDS)
+}
 /// Offset/base do FNV-1a 64.
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 /// Primo do FNV-1a 64.
@@ -232,9 +254,10 @@ fn cenario_ecs(orcamento_us: f64) {
             stats: stats(),
         })
         .collect();
+    let rodadas = amostras_ecs();
     let mut store = ComponentStore::default();
-    let mut amostras = Vec::with_capacity(ECS_ROUNDS as usize);
-    for _ in 0..ECS_ROUNDS {
+    let mut amostras = Vec::with_capacity(rodadas as usize);
+    for _ in 0..rodadas {
         let inicio = Instant::now();
         let ids = store.spawn_batch(&specs).expect("lote do cenário é válido");
         let mut soma = 0i64;
@@ -292,10 +315,11 @@ fn main() {
         "cenário: {NPCS} NPCs vivos + {PLAYERS} jogadores | {TICK_HZ} Hz ({intervalo} ms/tick, orçamento {orcamento_us:.0} µs) | decisões/tick esperadas: {}",
         NPCS / DECISION_EVERY_TICKS
     );
-    println!("aquecimento: {WARMUP_TICKS} ticks | medidos: {MEASURED_TICKS} ticks");
+    let ticks = amostras_ia();
+    println!("aquecimento: {WARMUP_TICKS} ticks | medidos: {ticks} ticks");
 
     let mut com_alvos = Mundo::novo(PLAYERS);
-    let medicao = medir(&mut com_alvos, WARMUP_TICKS + MEASURED_TICKS);
+    let medicao = medir(&mut com_alvos, WARMUP_TICKS + ticks);
     resumo(
         "ia_500_npcs_com_alvos",
         &format!("{NPCS} NPCs + {PLAYERS} jogadores (percepção com alvos)"),
@@ -305,7 +329,7 @@ fn main() {
 
     // Isola o custo de percepção: mesmo mundo sem jogador nenhum.
     let mut sem_alvos = Mundo::novo(0);
-    let medicao_vazia = medir(&mut sem_alvos, WARMUP_TICKS + MEASURED_TICKS);
+    let medicao_vazia = medir(&mut sem_alvos, WARMUP_TICKS + ticks);
     resumo(
         "ia_500_npcs_sem_alvos",
         &format!("{NPCS} NPCs sem jogador (piso de custo)"),

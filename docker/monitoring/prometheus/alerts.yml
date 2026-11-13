@@ -1,4 +1,10 @@
-# Regras de alerta do WYD (QA-08) — só métricas do contrato da QA-04.
+# Regras de alerta do WYD (QA-08, ampliadas pela DEVOPS-02).
+#
+# Duas famílias, por desenho:
+#   - motor/gateway: métricas do contrato da QA-04 (`crates/wyd-*/src/metrics*`);
+#   - host/portal/vigia (DEVOPS-02): `node-exporter`, sonda `blackbox` do portal,
+#     disponibilidade do próprio Alertmanager e o `WydWatchdog` de liveness.
+# Nenhuma regra inventa métrica: o nome tem que existir num exporter.
 #
 # Cada alerta tem runbook em `docs/rust/06-observabilidade-runbooks.md`. Os testes de
 # regra (disparo e resolução, sem esperar tempo real) ficam em `alerts.test.yml` e rodam
@@ -87,14 +93,34 @@ groups:
           summary: "pacotes entrando, nenhum handshake concluído"
           runbook: "docs/rust/06-observabilidade-runbooks.md#wydhandshakefalhando"
 
+      # Teto ancorado em medição, não em palpite: os canais operam em ~37 MB de RSS
+      # (36,9 MB canal 1 e 36,0 MB canal 2, medido em 2026-11-12 com `WydSemAmostraDeMemoria`
+      # já corrigido). 512 MB é ~14× esse baseline: cabe carga e crescimento normal, e ainda
+      # avisa muito antes de o processo chegar perto do limite do container. Só é avaliável
+      # com a amostragem de RSS viva — se o valor estiver em 0, quem acusa é
+      # `WydSemAmostraDeMemoria`.
       - alert: WydRssAlto
-        expr: process_resident_memory_bytes{job="wyd-server"} > 1.5e9
+        expr: process_resident_memory_bytes{job="wyd-server"} > 5e8
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "RSS do motor acima de 1,5 GB"
+          summary: "RSS do motor acima de 512 MB (~14x o baseline medido de 37 MB)"
           runbook: "docs/rust/06-observabilidade-runbooks.md#wydrssalto"
+
+      # Crescimento, não nível: pega vazamento enquanto o processo ainda está longe do teto
+      # absoluto do `WydRssAlto`. O RSS é linear em ~37 MB hoje; subindo 64 MB/h o teto de
+      # 512 MB chega em ~7 h — e um vazamento de verdade dobra esse ritmo. 64 MB/h = 1 MiB/min
+      # (`deriv` devolve bytes por segundo, daí o ×3600). `for: 30m` evita alarme de rampa
+      # legítima (spawn de NPCs, carga de mapa) que estabiliza em minutos.
+      - alert: WydRssCrescendo
+        expr: deriv(process_resident_memory_bytes{job="wyd-server"}[1h]) * 3600 > 67108864
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RSS do motor crescendo mais de 64 MB/h (1 MiB/min) — cheiro de vazamento"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydrsscrescendo"
 
       - alert: WydSemAmostraDeMemoria
         expr: increase(wyd_memory_samples_total[10m]) == 0 and up{job="wyd-server"} == 1
@@ -104,3 +130,80 @@ groups:
         annotations:
           summary: "motor no ar sem amostrar RSS (fora de Linux: amostragem indisponível)"
           runbook: "docs/rust/06-observabilidade-runbooks.md#wydsemamostradememoria"
+
+  # Disponibilidade do portal (DEVOPS-02). O portal não publica `/metrics`; a prova é a
+  # sonda `http_2xx` em `/api/health` (job `wyd-portal`, via blackbox-exporter).
+  - name: wyd-portal
+    rules:
+      - alert: WydPortalForaDoAr
+        expr: probe_success{job="wyd-portal"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "portal não responde 200 em /api/health (staff sem acesso ao painel)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydportalforadoar"
+
+  # Host (DEVOPS-02). O disco é o único destes que mata o banco; CPU/RAM avisam antes.
+  - name: wyd-host
+    rules:
+      - alert: WydDiscoQuaseCheio
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|iso9660"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|iso9660"}) * 100 < 10
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "menos de 10% de disco livre (volume do Postgres em risco)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wyddiscoquasecheio"
+
+      - alert: WydCpuAltaHost
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mais de 90% de CPU no host por 15 min (tick e banco disputam núcleo)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydcpualtahost"
+
+      - alert: WydMemoriaAltaHost
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mais de 95% de memória em uso no host (OOM killer pode atingir o motor)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydmemoriaaltahost"
+
+      - alert: WydHostSemMetricas
+        expr: up{job="node"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "scrape do node-exporter falhando (host invisível)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydhostsemmetricas"
+
+  # Vigia do vigia (DEVOPS-02): se o Alertmanager cair, as regras continuam
+  # avaliando e ninguém é avisado — este alerta é o único que percebe isso, e por isso
+  # depende de o Prometheus ter o alvo `alertmanager`.
+  - name: wyd-vigia
+    rules:
+      - alert: WydAlertmanagerForaDoAr
+        expr: up{job="alertmanager"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager fora do ar: alertas em firing não chegam a ninguém"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydalertmanagerforadoar"
+
+      # Heartbeat sempre em firing, por desenho. Não é ruído: é a prova de que a
+      # cadeia Prometheus → Alertmanager → receiver está inteira. Silencie-o no
+      # Alertmanager (UI) durante manutenção, nunca apagando a regra.
+      - alert: WydWatchdog
+        expr: vector(1)
+        labels:
+          severity: info
+        annotations:
+          summary: "heartbeat do pipeline de alerta (sempre em firing por desenho)"
+          runbook: "docs/rust/06-observabilidade-runbooks.md#wydwatchdog"

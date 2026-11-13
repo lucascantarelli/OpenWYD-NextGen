@@ -81,6 +81,12 @@ Comandos: `make release`, `make docker`, `make docker-smoke` (exige Docker; o sm
 `target/smoke` com manifesto gerado localmente, fora do git). Build do portal valida sintaxe
 por `docker build --check`; o build completo é do artefato do portal.
 
+**Reme­dido em 2026-11-12 (DEVOPS-01, bases fixadas):** as quatro imagens constroem com exit 0 —
+`wyd/launcher` **38.653.196 B** (era 37.847.971 B; +2,1%, coerente com o compilador 1.100 que o
+`channel = "stable"` baixa dentro da base 1.99), `wyd/gateway` 51.403.706 B, `wyd/server`
+51.450.041 B e `wyd/portal` 320.204.079 B, todas non-root e com labels `version`/`revision`.
+Contrato e limites em `docs/rust/10-devops-ci.md` §5.
+
 ## 7. Telemetria (QA-04, ADR-0018)
 
 **Log estruturado:** `tracing` + `tracing-subscriber` (`fmt`, sem `env-filter`) em `wyd-core`.
@@ -90,8 +96,9 @@ O binário chama `wyd_core::telemetry::init_from_env()` uma vez no boot.
 **Métricas:** registro em atomics (`wyd_core::metrics::Metrics`) com histograma de tick de
 buckets fixos (0,5 ms–1 s) e exporter `MetricsServer` servindo `GET /metrics` em texto Prometheus
 0.0.4 em thread própria (`std::net::TcpListener`). O laço do servidor faz, por tick:
-`metrics.record_tick(micros, entidades)`; a amostra de memória (`mem::sample_rss_bytes()`, só Linux)
-entra a cada ~20 ticks, fora do quente. Rede: `wyd_net::metrics::NET` publica um fragmento que
+`metrics.record_tick(micros, entidades)`; a amostra de memória (`Metrics::sample_memory` →
+`mem::sample_rss_bytes()`, só Linux) entra por uma **thread de 1 Hz no boot**, fora do laço do
+tick (o hot path não faz I/O) — e fora de Linux publica a ausência declarada (0). Rede: `wyd_net::metrics::NET` publica um fragmento que
 entra por `Metrics::render(&net.render_prometheus())`; **exige `--features metrics`** no build.
 
 | Métrica | Tipo |

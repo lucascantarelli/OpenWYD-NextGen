@@ -285,6 +285,30 @@ fn run() -> Result<(), String> {
         std::thread::spawn(move || crate::metrics::serve(metrics_listener, metrics));
     }
 
+    // Amostragem de RSS (QA-04): thread própria a 1 Hz, fora do laço do tick — o hot path não
+    // faz I/O (invariante 1). Sem isso `process_resident_memory_bytes` e
+    // `wyd_memory_samples_total` ficam parados com o motor no ar e a regra
+    // `WydSemAmostraDeMemoria` dispara: o alerta estava certo, a amostragem é que faltava.
+    // Em plataforma sem `/proc` a amostra é `None` e a exposição mantém a ausência declarada.
+    {
+        let metrics = Arc::clone(&engine_metrics);
+        std::thread::spawn(move || {
+            log("info", "metrics", "result=started sampler=rss interval_s=1");
+            let mut avisou = false;
+            loop {
+                if !metrics.sample_memory() && !avisou {
+                    avisou = true;
+                    log(
+                        "warn",
+                        "metrics",
+                        "sample=rss result=unavailable platform=non-linux",
+                    );
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        });
+    }
+
     if status_enabled {
         // Sonda UDP na mesma porta do CPSock: TCP e UDP não colidem, e o cliente disca
         // sempre 8281 no host da célula do `serverlist.bin`.
