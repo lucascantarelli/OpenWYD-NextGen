@@ -345,12 +345,19 @@ Desenho recomendado (`DEVOPS-09`):
 
 1. **Runner de repositório**, escopo repo (não organização), labels `self-hosted,wyd-local`,
    conta Windows dedicada e sem privilégio de administrador.
-2. **Runner registrado em 2026-11-13** (pelo dono): repositório → *Settings* → *Actions* →
-   *Runners* → *New self-hosted runner* (Windows), com os labels `self-hosted,wyd-local` — é o
-   que o `runs-on: [self-hosted, wyd-local]` do workflow pede. Sessão interativa: `run.cmd`;
-   como serviço: `svc.cmd install` + `svc.cmd start`. Remoção: `svc.cmd uninstall` e depois
-   *Settings* → *Runners* → remover. `.github/actionlint.yaml` declara o label, senão o lint o
-   trata como erro de digitação.
+2. **Runner registrado em 2026-11-13**: repositório → *Settings* → *Actions* → *Runners* →
+   *New self-hosted runner* (Windows), instalado em `%USERPROFILE%\actions-runner-wyd2` com os
+   labels `self-hosted,wyd-local` — o que o `runs-on: [self-hosted, wyd-local]` pede.
+   `.github/actionlint.yaml` declara o label, senão o lint o trata como erro de digitação.
+   **Sobreviver a reinício:** o pacote do runner **não** traz `svc.cmd` (isso é Linux/macOS); no
+   Windows existe `RunnerService.exe` + `config.cmd --runasservice`, mas serviço roda em sessão 0
+   como `LocalSystem` — sem acesso ao `docker` (que está só no PATH do usuário) nem ao engine
+   per‑user do Docker Desktop, e o job `deploy` quebraria. Por isso o runner sobe por **tarefa
+   agendada no logon do dono** (`schtasks`/`Register-ScheduledTask`, nome `WYD GitHub Runner`,
+   ação `run.cmd`), com `MultipleInstances=IgnoreNew`, repetição de 5 min e `RestartCount=3`: se o
+   listener morre, volta em até 5 min, e após reiniciar a máquina ele volta junto com o Docker
+   Desktop no logon. Remoção: `Unregister-ScheduledTask -TaskName 'WYD GitHub Runner'` e depois
+   *Settings* → *Runners* → remover.
 3. **Job `deploy`** no workflow `deploy-local.yml`, disparado por **`workflow_run`** do workflow
    **Rust** concluído com sucesso em `develop` (mais `workflow_dispatch`), com
    `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout
