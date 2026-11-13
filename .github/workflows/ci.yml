@@ -509,6 +509,10 @@ jobs:
     needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
     if: always()
     steps:
+      # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
+      # do checkout — o bash inline antigo não precisava e escondia essa dependência.
+      - uses: actions/checkout@v7
+
       - name: Montar e enviar o resumo
         env:
           # Opcional: sem o segredo o passo avisa e sai 0 (o gate continua sendo a fonte de verdade).
