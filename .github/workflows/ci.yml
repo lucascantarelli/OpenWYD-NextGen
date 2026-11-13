@@ -209,7 +209,13 @@ jobs:
           cache-key-extra: sistema-${{ matrix.pacote }}
       - name: Aplicar a série de migrations
         run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
+      # PROVA NEGATIVA: banco no ar e migrations aplicadas; o passo de teste não recebe DSN.
+      # Com WYD_TEST_REQUIRED=1 o teste tem de FALHAR em vez de imprimir SKIP.
       - name: Testes de sistema (${{ matrix.pacote }})
+        env:
+          WYD_TEST_DSN: ""
+          WYD_TEST_DATABASE_URL: ""
+          DATABASE_URL: ""
         run: cargo test -p ${{ matrix.pacote }} --all-targets -j 1 -- --nocapture --test-threads=1
 
   portal-build:
