@@ -353,10 +353,12 @@ Desenho recomendado (`DEVOPS-09`):
    Windows existe `RunnerService.exe` + `config.cmd --runasservice`, mas serviço roda em sessão 0
    como `LocalSystem` — sem acesso ao `docker` (que está só no PATH do usuário) nem ao engine
    per‑user do Docker Desktop, e o job `deploy` quebraria. Por isso o runner sobe por **tarefa
-   agendada no logon do dono** (`schtasks`/`Register-ScheduledTask`, nome `WYD GitHub Runner`,
-   ação `run.cmd`), com `MultipleInstances=IgnoreNew`, repetição de 5 min e `RestartCount=3`: se o
-   listener morre, volta em até 5 min, e após reiniciar a máquina ele volta junto com o Docker
-   Desktop no logon. Remoção: `Unregister-ScheduledTask -TaskName 'WYD GitHub Runner'` e depois
+   agendada** (`Register-ScheduledTask`, nome `WYD GitHub Runner`, a cada 2 min,
+   `MultipleInstances=IgnoreNew`, `ExecutionTimeLimit=PT0S`) que roda
+   `%USERPROFILE%\actions-runner-wyd2\keepalive.ps1`: se já houver `Runner.Listener`, sai na hora;
+   se não, sobe `run.cmd` e segura a árvore até ele sair. Sem Docker Desktop não há deploy, então
+   o gatilho é o logon do dono junto com ele — não `LocalSystem` no boot. Medido: listener morto
+   volta em ≤2 min (~95 s no teste). Remoção: `Unregister-ScheduledTask -TaskName 'WYD GitHub Runner'` e depois
    *Settings* → *Runners* → remover. Efeito colateral conhecido: iniciado pela tarefa, o PATH pode
    pôr `C:\Windows\System32` antes do Git e o `shell: bash` cai no **bash do WSL**
    (`anexar o disco ... ERROR_PATH_NOT_FOUND`); o workflow já prependa `C:\Program Files\Git\bin`

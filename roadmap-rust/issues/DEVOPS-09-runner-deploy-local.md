@@ -46,8 +46,10 @@ colocar segredo no GitHub.
   interpolação obrigatória — os três viraram correção no repositório, não contorno no runner.
 - **Sobreviver a reinício:** o pacote do runner no Windows não tem `svc.cmd`, e serviço em sessão 0
   não vê o `docker` do usuário nem o engine per-user do Docker Desktop. Ficou por tarefa agendada
-  `WYD GitHub Runner` (`run.cmd`, a cada 2 min, `IgnoreNew`, sobe no logon junto com o Docker):
-  matei o listener de propósito e ele voltou sozinho (~170 s, sessão anterior assumida pelo novo).
+  `WYD GitHub Runner` a cada 2 min com `IgnoreNew`, rodando `keepalive.ps1` (sai se já há
+  `Runner.Listener`; senão sobe `run.cmd` e segura a árvore). Matei o listener de propósito e ele
+  voltou sozinho em **~95 s**; no teste anterior, com o runner como ação direta da tarefa, voltou
+  em ~170 s assumindo a sessão antiga.
 - **Defeito que a mudança expôs:** sob a tarefa, `C:\Windows\System32` veio antes do Git e
   `shell: bash` resolveu para o **bash do WSL** — run
   [43414518376](https://github.com/lucascantarelli/wyd/actions/runs/43414518376) morreu na sentinela
