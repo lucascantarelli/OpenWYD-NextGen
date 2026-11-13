@@ -8,16 +8,17 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
 
-help:
-	@echo "Targets: fmt clippy build test check audit bench clean ci"
-	@echo "         stack-config stack-up stack-down stack-logs local-rebuild db-migrate db-reset prod-env-smoke"
-	@echo "         gateway-image gateway-smoke monitoring-check docs-serve docs-smoke"
-	@echo "         portal-install portal-dev portal-test portal-build"
+# TAG usada só para VALIDAR o overlay de produção (o overlay exige TAG; o gate não exige
+# que o dono exporte uma). A prova de que sem TAG falha está no fim de `stack-config`.
+TAG_VALIDACAO ?= ci
 
-fmt: ## formatação (skill: rust-code-quality)
-	$(CARGO) fmt --check
+help: ## lista os targets a partir dos comentários `##` deste arquivo
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z][a-z0-9-]*:.*## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+fmt: ## formatação (skill: rust-code-quality) — mesmo `--all` do CI
+	$(CARGO) fmt --all --check
 
 clippy: ## lints como erro, incluindo testes e benches (skill: rust-code-quality)
 	$(CARGO) clippy --workspace --all-targets -- -D warnings
@@ -31,7 +32,28 @@ test: ## testes do workspace (skill: wyd-rust-toolchain)
 test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
 	$(CARGO) test --workspace --all-targets
 
-check: fmt clippy build test migrations-check issue-status-check docs-check skills-check tools-test ## gate completo — exigido por toda issue
+check: fmt clippy build test migrations-check issue-status-check docs-check skills-check versao-check tools-test portal-test ## gate completo — exigido por toda issue
+
+versao-check: ## fonte única de versão (Cargo workspace × portal) — DEVOPS-10
+	node tools/dev/check-versao.mjs
+
+compose-hardening: ## contrato de superfície do compose de produção (DEVOPS-03)
+	node tools/dev/check-compose-hardening.mjs
+
+sistema-test: ## testes de sistema do servidor/admin contra o banco do compose (zero SKIP)
+	WYD_TEST_REQUIRED=1 WYD_TEST_DSN="$${WYD_TEST_DSN:-postgres://postgres:postgres@127.0.0.1:5432/wyd}" \
+		$(CARGO) test -p wyd-server -p wyd-admin --all-targets -j 1 -- --nocapture
+
+deploy-local: ## rebuild + up + provas de contrato do deploy (DEVOPS-09; respeita teste humano)
+	@test ! -f tmp/teste-humano.flag || { echo "PULADO: tmp/teste-humano.flag presente (teste humano em andamento)"; exit 0; }
+	docker compose build
+	docker compose up -d --wait --wait-timeout 240
+	node tools/dev/deploy-provas.mjs
+
+coverage: ## cobertura Rust (cargo-llvm-cov) + portal (vitest --coverage) — métrica, não gate
+	mkdir -p coverage
+	$(CARGO) llvm-cov --workspace --all-targets --lcov --output-path coverage/rust-lcov.info
+	cd wyd-portal && npm run test:cobertura
 
 migrations-check: ## ordem/FK/down das migrations, sem Postgres (tools/content/check-migrations.mjs)
 	node tools/content/check-migrations.mjs
@@ -125,10 +147,15 @@ tools-zip-check: ## confere client.zip contra client/manifest.txt (bytes reais)
 client-zip: ## gera client.zip (entradas relativas, sem artefatos mutáveis)
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/client-zip.ps1 -Client client -Out client.zip
 
-ci: check test-all bench-build audit deny ## espelho local do .github/workflows/rust.yml
+ci: check test-all bench-build bench-gate audit deny monitoring-rules stack-config compose-hardening portal-build ## espelho local do CI (rust.yml + supply-chain.yml + images.yml)
 
-stack-config: ## valida o compose (base+dev, prod e prod com .env vivo) sem subir nada
-	docker compose config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet && docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
+stack-config: ## valida o compose (base+dev, prod e prod com .env vivo) e prova que prod exige TAG
+	docker compose config --quiet
+	TAG=$(TAG_VALIDACAO) docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+	TAG=$(TAG_VALIDACAO) docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
+	@TAG= docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet > /dev/null 2>&1 \
+		&& { echo "FALHOU: prod aceitou TAG vazia (viola DEVOPS-03)"; exit 1; } \
+		|| echo "ok: prod recusa TAG vazia"
 
 db-migrate: ## aplica as migrations no banco da stack (mesmo runner do boot)
 	docker compose run --rm gateway --migrate
@@ -165,7 +192,9 @@ local-rebuild: ## rebuild completo do local na 3000 + migrations + prova de saú
 	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/login)" = "200" || { echo "FALHOU: /login != 200"; exit 1; }
 	@test "$$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/entregas)" = "307" || { echo "FALHOU: /entregas != 307"; exit 1; }
 	@curl -fsS http://127.0.0.1:7600/health; echo
-	@curl -fsS http://127.0.0.1:7600/health | grep -q '"schema":49' || { echo "FALHOU: schema != 49"; exit 1; }
+	@esperado=$$(sed -nE 's/.*pub const SCHEMA_VERSION: *i(32|64) *= *([0-9]+).*/\2/p' crates/wyd-db/src/lib.rs); \
+		curl -fsS http://127.0.0.1:7600/health | grep -q "\"schema\":$$esperado" \
+			|| { echo "FALHOU: schema != $$esperado (SCHEMA_VERSION)"; exit 1; }
 	@if netstat -ano 2>/dev/null | grep LISTENING | grep -Eq ':(3100|3110)[[:space:]]'; then echo "FALHOU: porta de teste ocupada (3100/3110)"; exit 1; fi
 
 prod-env-smoke: ## smoke do overlay de produção com .env montado (não derruba o dev)

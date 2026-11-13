@@ -1,10 +1,23 @@
 name: Rust
 
+# Gate do repositório. Cada job abaixo é o ponto de CI de uma issue DEVOPS:
+#   gate            → DEVOPS-04 (paridade com `make check`, item por item)
+#   sistema/portal  → DEVOPS-07 (banco real sem skip silencioso + suíte do portal)
+#   monitoring      → DEVOPS-04 (regra de alerta quebrada não passa)
+#   bench           → DEVOPS-05 (uma compilação de bench, não duas)
+#   compose-surface → DEVOPS-03 (superfície de produção do compose)
+#   actionlint      → higiene dos próprios workflows
+# Imagens, supply-chain e release ficam em workflows próprios (images.yml,
+# supply-chain.yml, release.yml) para não pagar build de imagem em todo push de código.
+#
+# Regra de ouro: nada aqui pode ser `continue-on-error`. Se o gate não pode falhar, ele não é gate.
+
 on:
   push:
     branches: [main, develop]
     paths:
       - "crates/**"
+      - "apps/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "rust-toolchain.toml"
@@ -15,38 +28,99 @@ on:
       - "docs/**"
       - "roadmap-rust/**"
       - "docker/**"
-      - "tools/dev/**"
+      - "docker-compose*.yml"
+      - "tools/**"
+      - "wyd-portal/**"
       - ".github/workflows/rust.yml"
+      - ".github/actions/**"
   pull_request:
     branches: [main, develop]
+    # PR de documentação/roadmap não paga o pipeline inteiro (DEVOPS-05); o job `gate`
+    # continua rodando para eles via `push`.
+    paths-ignore:
+      - "docs/**"
+      - "roadmap-rust/**"
+      - "*.md"
+      - ".agents/**"
 
 permissions:
   contents: read
 
 concurrency:
+  # Em PR, run novo cancela o anterior. Em `main`/`develop` NÃO cancela: todo commit que
+  # vira base de release precisa de gate completo (antes o cancel abria buraco em `main`).
   group: rust-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
 
 jobs:
-  rust:
-    name: fmt/clippy/build/test
+  gate:
+    name: gate (fmt/clippy/build/test + conteúdo)
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - name: Consistência de README/AGENTS e crates (PROC-13)
-        run: node tools/dev/check-docs-consistency.mjs
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo build --workspace
-      # Unitários, integração, doc-tests e alvos de bench compilados.
-      - run: cargo test --workspace --all-targets
+      - uses: ./.github/actions/rust-setup
 
-  seed-boot:
-    name: seed do staff no boot
+      - name: Formatação
+        run: cargo fmt --all --check
+
+      - name: Clippy (warnings são erro, inclusive testes e benches)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Build do workspace
+        run: cargo build --workspace
+
+      # `--all-targets` inclui integração, doc-tests e os alvos de bench (compile-only).
+      - name: Testes do workspace
+        run: cargo test --workspace
+
+      # Os quatro scripts abaixo eram só locais; com DEVOPS-04 eles passam a derrubar o CI.
+      - name: Migrations (ordem, FK, down)
+        run: node tools/content/check-migrations.mjs
+
+      - name: Status de issue (índice × painel × arquivo)
+        run: node tools/content/check-issue-status.mjs
+
+      - name: Links e contagem de crates
+        run: node tools/dev/check-docs-consistency.mjs
+
+      - name: Skills (frontmatter, tamanho, caminhos)
+        run: node tools/dev/check-skills.mjs
+
+      - name: Versão única (Cargo workspace × portal)
+        run: node tools/dev/check-versao.mjs
+
+      - name: Testes das ferramentas de dev
+        run: node --test apps/tools/test/
+
+  portal:
+    name: portal (tsc + vitest + next build)
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: wyd-portal
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/node-setup
+
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Testes (vitest)
+        run: npx vitest run --reporter=dot
+
+      - name: Build (next build, rotas e standalone)
+        run: npm run build
+
+  sistema:
+    name: sistema (Postgres real, zero SKIP)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:17-alpine
@@ -61,61 +135,95 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+    env:
+      # Mesmo runner do boot (ADR-0024). `WYD_TEST_REQUIRED=1` transforma o antigo
+      # "SKIP: ... não executado" em falha: sem banco, o job fica vermelho (DEVOPS-07).
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
+      WYD_TEST_DSN: postgres://postgres:postgres@127.0.0.1:5432/wyd
+      WYD_TEST_REQUIRED: "1"
+      MIGRATIONS_DIR: crates/wyd-db/migrations
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      # Mesmo runner do boot (ADR-0024): `--migrate` aplica a série e sai. O CI não
-      # mantém parsing próprio de `-- migrate:up/down`.
-      - name: Aplicar a série de migrations
-        env:
-          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
-          MIGRATIONS_DIR: crates/wyd-db/migrations
-        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
-      - name: Teste de boot com WYD_SEED_STAFF=0
-        env:
-          WYD_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
-        run: cargo test -p wyd-admin --test sistema_seed -- --nocapture
+      - uses: ./.github/actions/rust-setup
 
-  actionlint:
-    name: actionlint
+      - name: Aplicar a série de migrations
+        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
+
+      # `-j 1`: os testes de sistema compartilham o mesmo banco por job.
+      - name: Testes do servidor (login, selchar, mundo, cena)
+        run: cargo test -p wyd-server --all-targets -j 1 -- --nocapture
+
+      - name: Testes do admin (seed, grants)
+        run: cargo test -p wyd-admin --all-targets -j 1 -- --nocapture
+
+  monitoring:
+    name: monitoramento (promtool + amtool)
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - name: Validar workflows do GitHub Actions
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+
+      - name: promtool check config
+        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
+
+      - name: promtool check rules
+        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
+
+      - name: promtool test rules (disparo e resolução)
+        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
+
+      - name: Render da config do Alertmanager + template do Slack
+        run: node tools/dev/check-alertas.mjs
+
+  compose-surface:
+    name: compose (dev, prod e superfície)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # Overlays de prod exigem TAG; valor fixo no CI para o `config` ser determinístico.
+      TAG: ci
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Contrato de superfície de produção (DEVOPS-03)
+        run: node tools/dev/check-compose-hardening.mjs
+
+      - name: Compose base + dev
+        run: docker compose config --quiet
+
+      - name: Compose de produção
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+
+      - name: Compose de produção com .env montado
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
 
   bench:
-    name: benches compilam e medem
+    name: benches (compila uma vez e mede)
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo bench --workspace --no-run
-      # Mede os cenários (IA de NPC ≤ 10% do tick, ADR-0016; ECS ≤ 50%, GAME-02)
-      # e falha em regressão contra o baseline declarado por cenário.
-      - run: node tools/dev/bench-gate.mjs
-      - run: cargo bench -p wyd-net --bench limits
-
-  release:
-    name: release + imagem mínima
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build --release --workspace
-      # Distroless non-root, builder multi-stage (ADR-0017).
-      - run: docker build -f docker/Dockerfile.launcher -t wyd/launcher:ci .
-      - run: docker image inspect --format 'wyd/launcher size={{.Size}} bytes' wyd/launcher:ci
-      - run: docker build --check -f docker/Dockerfile.portal .
-
-  supply-chain:
-    name: audit/deny
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: taiki-e/install-action@v2
+      - uses: ./.github/actions/rust-setup
         with:
-          tool: cargo-audit,cargo-deny
-      - run: cargo audit
-      - run: cargo deny check
+          cache-key-extra: bench
+          cache-all-crates: "true"
+
+      # Uma compilação: o `--no-run` cobre o gate de compilação e o `bench-gate` roda o
+      # binário já compilado. Antes eram duas (`--no-run` + o do gate) — C4 da auditoria.
+      - name: Compilar benches
+        run: cargo bench --workspace --no-run
+
+      - name: Régua de regressão por cenário (baseline p50, tolerância 2,5–3×)
+        run: node tools/dev/bench-gate.mjs
+
+      - name: Limites do transporte (wyd-net)
+        run: cargo bench -p wyd-net --bench limits
+
+  actionlint:
+    name: actionlint (os próprios workflows)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validar workflows e actions
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color

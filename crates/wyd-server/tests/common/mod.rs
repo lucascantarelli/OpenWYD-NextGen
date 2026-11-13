@@ -17,14 +17,38 @@ pub fn dsn() -> Option<String> {
 }
 
 /// Devolve o DSN ou imprime o `SKIP:` explícito e devolve `None`.
+///
+/// Com `WYD_TEST_REQUIRED=1` (ligado no job `sistema` do CI, DEVOPS-07) a ausência de DSN vira
+/// **falha**: teste que precisa de banco não pode passar por omissão — era assim que o CI ficava
+/// verde com zero cobertura dos caminhos mais frágeis (login, entrada no mundo, cena).
+///
+/// # Panics
+///
+/// Se `WYD_TEST_REQUIRED` estiver ligado e nenhum DSN for encontrado.
 pub fn dsn_ou_skip(contexto: &str) -> Option<String> {
-    let dsn = dsn();
-    if dsn.is_none() {
-        eprintln!(
-            "SKIP: WYD_TEST_DSN/WYD_TEST_DATABASE_URL/DATABASE_URL ausente — {contexto} não executado"
+    if let Some(dsn) = dsn() {
+        return Some(dsn);
+    }
+    if obrigatorio_sem_skip() {
+        panic!(
+            "WYD_TEST_REQUIRED=1 sem DSN — {contexto} não pode ser pulado; defina \
+             WYD_TEST_DSN/WYD_TEST_DATABASE_URL/DATABASE_URL"
         );
     }
-    dsn
+    eprintln!(
+        "SKIP: WYD_TEST_DSN/WYD_TEST_DATABASE_URL/DATABASE_URL ausente — {contexto} não executado"
+    );
+    None
+}
+
+/// `WYD_TEST_REQUIRED` ligado? (qualquer valor diferente de vazio/`0`).
+fn obrigatorio_sem_skip() -> bool {
+    std::env::var("WYD_TEST_REQUIRED")
+        .map(|valor| {
+            let valor = valor.trim();
+            !valor.is_empty() && valor != "0"
+        })
+        .unwrap_or(false)
 }
 
 /// Espera `cond` virar verdadeira até o prazo, amostrando a cada 25 ms.

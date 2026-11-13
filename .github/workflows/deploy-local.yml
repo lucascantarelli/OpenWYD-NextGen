@@ -1,0 +1,79 @@
+name: Deploy local
+
+# DEVOPS-09 — CD local: CI verde em `develop` reconstrói e sobe a stack na máquina do dono.
+#
+# Travas (docs/rust/10-devops-ci.md §9):
+#   - NENHUM trigger de `pull_request`: o runner tem Docker, `.env` e `client/` no host, então
+#     executar código de PR ali é execução arbitrária na máquina;
+#   - `permissions: contents: read`: o runner não escreve no repositório;
+#   - segredos só no `.env` do host, nunca em `secrets` do GitHub;
+#   - sentinela `tmp/teste-humano.flag`: em teste manual, o deploy aborta com aviso em vez de
+#     reiniciar a stack (AGENTS.md §0);
+#   - nunca `down -v`, nunca `DROP`, nunca toca em `client/`.
+
+on:
+  workflow_run:
+    workflows: ["Rust"]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Um deploy por vez; não cancela o que já está rodando (derrubar no meio deixa stack pela metade).
+  group: deploy-local
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: rebuild + up + provas
+    # Runner de repositório com labels `self-hosted,wyd-local` na máquina de desenvolvimento.
+    runs-on: [self-hosted, wyd-local]
+    environment: local
+    timeout-minutes: 45
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop')
+    steps:
+      - name: Checkout do commit validado
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Sentinela de teste humano
+        id: sentinela
+        shell: bash
+        run: |
+          if [ -f tmp/teste-humano.flag ]; then
+            echo "pulado=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::tmp/teste-humano.flag presente — deploy NÃO executado (teste humano em andamento). Remova o arquivo para liberar."
+          else
+            echo "pulado=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebuild das imagens
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: docker compose build 2>&1 | tee deploy-build.log
+
+      - name: Subir a stack (sem down -v, sem reset de volume)
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
+
+      - name: Provas de contrato do deploy
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: node tools/dev/deploy-provas.mjs 2>&1 | tee deploy-provas.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deploy-local-${{ github.run_id }}
+          path: |
+            deploy-build.log
+            deploy-provas.log
+          retention-days: 14
+          if-no-files-found: warn

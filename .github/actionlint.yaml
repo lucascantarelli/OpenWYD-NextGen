@@ -1,0 +1,5 @@
+# Labels de runner auto-hospedado usados pelos workflows (DEVOPS-09).
+# Sem esta declaração, o actionlint trata `wyd-local` como erro de digitação.
+self-hosted-runner:
+  labels:
+    - wyd-local

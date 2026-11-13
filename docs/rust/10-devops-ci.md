@@ -29,7 +29,41 @@ medição futura, está marcado **hipótese**.
 
 ## 1. Mapa do pipeline (`rust.yml`)
 
-Seis jobs, todos em `ubuntu-24.04`, `permissions: contents: read`, `concurrency` por `ref`:
+**Template desde 2026-11-12** — cinco workflows, um por responsabilidade, com um job para cada
+issue DEVOPS. `ubuntu-24.04`, `permissions: contents: read` (release: `contents: write`),
+`timeout-minutes` em **todos** os jobs e cache de cargo/npm em todos os que compilam.
+
+| Workflow | Job | Issue | O que prova |
+|---|---|---|---|
+| `rust.yml` (nome `Rust`) | `gate` | DEVOPS-04 | `fmt --all --check`, `clippy -D warnings`, `build`, `test`, `migrations-check`, `issue-status-check`, `docs-check`, `skills-check`, `versao-check`, `tools-test` — paridade com `make check` |
+| | `portal` | DEVOPS-07 | `tsc --noEmit`, `vitest run`, `next build` |
+| | `sistema` | DEVOPS-07 | Postgres 17 efêmero → `--migrate` → `cargo test -p wyd-server/-p wyd-admin --all-targets -j 1` com `WYD_TEST_REQUIRED=1` (skip silencioso vira falha) |
+| | `monitoring` | DEVOPS-04 | `promtool check config/rules/test` + render do Alertmanager e do template do Slack |
+| | `compose-surface` | DEVOPS-03 | `check-compose-hardening` (R1–R6) + `docker compose config` nos três modos |
+| | `bench` | DEVOPS-05 | `bench --no-run` (compilação) + `bench-gate` (baseline) + `limits` do `wyd-net` — **uma** compilação |
+| | `actionlint` | higiene | os próprios workflows/actions |
+| `images.yml` | `build` (matriz 4) | DEVOPS-06 | build das quatro imagens com `WYD_VERSION`/`WYD_COMMIT` do run, smoke do artefato, labels conferidas, Trivy `CRITICAL` bloqueante e SBOM CycloneDX como artefato |
+| `supply-chain.yml` | `audit` / `images` / `cobertura` | DEVOPS-08 | `cargo audit` + `deny` (gate), scan das quatro imagens (gate, semanal), cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** |
+| `release.yml` | `versao` / `binarios` / `imagens` / `notas` | DEVOPS-10 | tag `vX.Y.Z` confere com `[workspace.package]`; binários + `SHA256SUMS`; imagens com a tag e SBOM; release com notas do GitHub + changelog anexado |
+| `deploy-local.yml` | `deploy` | DEVOPS-09 | `workflow_run` do `Rust` verde em `develop` → rebuild + `up --wait` + `deploy-provas.mjs` no runner `self-hosted,wyd-local`, com sentinela de teste humano |
+
+### 1.1 Estado do template (2026-11-12)
+
+O que o pipeline **cobra hoje** (regressão fica vermelha) e o que continua pendente na issue.
+Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é dela, não deste mapa.
+
+| Issue | Cobrado pelo pipeline | Continua pendente na issue |
+|---|---|---|
+| `DEVOPS-03` | `check-compose-hardening` (R1–R6): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`; `stack-config` prova que prod recusa `TAG` vazia | TLS na frente do portal, `healthcheck` nos serviços de observabilidade, `cap_drop`/`security_opt` por serviço |
+| `DEVOPS-04` | job `gate` com a mesma lista do `make check` (inclui `migrations`, `issues`, `skills`, `tools-test`, `versao`); `make ci` com `bench-gate`, `monitoring-rules`, `compose-hardening`, `portal-build` | — (paridade fechada; resta manter) |
+| `DEVOPS-05` | `rust-setup`/`node-setup` com cache, `cache-from/to: type=gha` por imagem, `paths-ignore` em PR, `cancel-in-progress` só em PR, `timeout-minutes` em todo job | medir a economia real de minutos (comparar runs com/sem cache) |
+| `DEVOPS-06` | `images.yml`: matriz das quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, smoke do artefato, labels de proveniência conferidas, Trivy `CRITICAL` bloqueante, SBOM por imagem | publicação em registry (decisão do dono) e promoção de digest |
+| `DEVOPS-07` | jobs `portal` (`tsc`+`vitest`+`next build`) e `sistema` (Postgres 17 efêmero, `--migrate`, `-j 1`, `WYD_TEST_REQUIRED=1` — skip silencioso vira falha) | — (fecha B2/B3; resta manter) |
+| `DEVOPS-08` | `supply-chain.yml`: `audit`+`deny` e scan das quatro imagens como **gate**; cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** com artefato | baseline de cobertura comparada entre runs (queda como aviso) |
+| `DEVOPS-09` | `deploy-local.yml`: `workflow_run` do `Rust` verde em `develop`, runner `self-hosted,wyd-local`, sem trigger de PR, `contents: read`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | instalar/registrar o runner na máquina de dev e provar um deploy verde lá |
+| `DEVOPS-10` | `[workspace.package] version` + `version.workspace = true` nos dez membros e espelho no portal, `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas | push de imagem por tag (registry) e política de rollback por digest |
+
+**Jobs de antes (mapa histórico):** seis jobs, todos em `ubuntu-24.04`, `permissions: contents: read`, `concurrency` por `ref`:
 
 | Job | O que realmente prova | Custo | Lacuna |
 |---|---|---|---|
@@ -56,22 +90,28 @@ derruba a garantia de "todo commit de `main` verificado".
 
 `make check` roda **nove** verificações; o CI roda **uma** delas (`docs-check`):
 
-| Verificação | `make check` | CI | Consequência |
+| Verificação | `make check` | CI | Situação |
 |---|---|---|---|
-| `cargo fmt/clippy/build/test` | ✅ | ✅ | ok |
-| `migrations-check` (ordem/FK/down) | ✅ | ❌ | migration inválida entra verde |
-| `issue-status-check` (índice × painel × arquivo) | ✅ | ❌ | roadmap deriva sem gate |
-| `skills-check` (frontmatter, 500 linhas, caminhos) | ✅ | ❌ | skill quebrada não é detectada |
-| `tools-test` (`node --test apps/tools`) | ✅ | ❌ | ferramenta de dev regride |
-| `docs-check` (links/crates) | ✅ | ✅ | ok |
-| `portal-test` (`tsc --noEmit` + `vitest`) | ❌ | ❌ | portal sem gate nenhum |
-| `bench-gate` | ❌ | ✅ | só no CI |
-| `monitoring-rules` (promtool) | ❌ | ❌ | regra de alerta quebrada passa |
+| `cargo fmt/clippy/build/test` | ✅ | ✅ | paridade |
+| `migrations-check` (ordem/FK/down) | ✅ | ✅ | paridade (era só local) |
+| `issue-status-check` | ✅ | ✅ | paridade |
+| `skills-check` | ✅ | ✅ | paridade |
+| `tools-test` | ✅ | ✅ | paridade |
+| `docs-check` | ✅ | ✅ | paridade |
+| `versao-check` (Cargo workspace × portal) | ✅ | ✅ | novo gate (DEVOPS-10) |
+| `portal-test` (`tsc --noEmit` + `vitest`) | ✅ | ✅ (job `portal`) | paridade (era zero) |
+| `portal-build` (`next build`) | ✅ (`make ci`) | ✅ (job `portal`) | fecha B2 |
+| `bench-gate` | ✅ (`make ci`) | ✅ | paridade |
+| `monitoring-rules` (promtool) | ✅ (`make ci`) | ✅ | paridade |
+| `compose-hardening` | ✅ (`make ci`) | ✅ | contrato DEVOPS-03 |
+| `sistema-test` (banco real) | ✅ (`make sistema-test`) | ✅ (job `sistema`) | fecha B3 |
+| build+scan das imagens | ❌ (local só build) | ✅ (`images.yml`) | fecha B5/B6 |
 
-O resultado é **verde falso nos dois sentidos**: CI verde com `make check` vermelho (docs,
-issues, migrations) e `make check` verde com CI vermelho (bench-gate). O `Makefile` chama
-`ci` de "espelho local do `.github/workflows/rust.yml`"; ele não é (não inclui `bench-gate`,
-`monitoring-rules`, `portal-test` nem build de imagem). Rastreio: `DEVOPS-04`.
+`make check` roda as onze verificações determinísticas (sem Docker); `make ci` acrescenta
+`test-all`, `bench-build`, `bench-gate`, `audit`, `deny`, `monitoring-rules`, `stack-config`,
+`compose-hardening` e `portal-build`. O que continua **só no CI** é o que exige runner ou
+registry: build de imagem com cache GHA, scan Trivy, SBOM, release e deploy no runner local.
+Rastreio: `DEVOPS-04`.
 
 **`make local-rebuild` está quebrado hoje.** A rotina oficial de fechamento de issue
 (`docs/rust/02-execucao.md` §5, `03-progresso.md` "Rotina de fechamento") exige

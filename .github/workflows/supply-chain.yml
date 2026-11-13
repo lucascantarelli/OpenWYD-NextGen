@@ -1,0 +1,122 @@
+name: Supply chain
+
+# DEVOPS-08 — verificação CONTÍNUA, não só por commit.
+#
+# Antes: `cargo audit`/`deny` só rodavam em push/PR — advisory publicado depois do último commit
+# nunca era visto, e cobertura não era medida em lugar nenhum.
+#
+# Divisão explícita (docs/rust/10-devops-ci.md §8):
+#   GATE   → advisory, licença, fonte, scan de imagem (falha o job)
+#   MÉTRICA → cobertura e tamanho de imagem (publicada, comparada com baseline; queda vira aviso)
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # segunda, 06:00 UTC
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "deny.toml"
+      - ".github/workflows/supply-chain.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  WYD_VERSION: ${{ format('0.0.0-{0}', github.sha) }}
+  WYD_COMMIT: ${{ github.sha }}
+
+jobs:
+  audit:
+    name: advisory + licenças (gate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/rust-setup
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - name: cargo audit (advisory)
+        run: cargo audit
+      - name: cargo deny (licença, fonte, duplicidade, wildcard)
+        run: cargo deny check
+
+  images:
+    name: scan (gate) — ${{ matrix.imagem }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - imagem: launcher
+            dockerfile: docker/Dockerfile.launcher
+          - imagem: gateway
+            dockerfile: docker/Dockerfile.gateway
+          - imagem: server
+            dockerfile: docker/Dockerfile.server
+          - imagem: portal
+            dockerfile: docker/Dockerfile.portal
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          load: true
+          tags: wyd/${{ matrix.imagem }}:sc
+          build-args: |
+            WYD_VERSION=${{ env.WYD_VERSION }}
+            WYD_COMMIT=${{ env.WYD_COMMIT }}
+          cache-from: type=gha,scope=${{ matrix.imagem }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.imagem }}
+      - name: Scan CRITICAL (bloqueante)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: wyd/${{ matrix.imagem }}:sc
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+
+  cobertura:
+    name: cobertura publicada (métrica)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/rust-setup
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Cobertura Rust (lcov + resumo)
+        run: |
+          mkdir -p coverage
+          cargo llvm-cov --workspace --all-targets --lcov --output-path coverage/rust-lcov.info
+          cargo llvm-cov --workspace --all-targets --summary-only | tee coverage/rust-resumo.txt
+
+      - uses: ./.github/actions/node-setup
+
+      - name: Cobertura do portal
+        working-directory: wyd-portal
+        run: npm run test:cobertura
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: |
+            coverage/rust-lcov.info
+            coverage/rust-resumo.txt
+            wyd-portal/coverage/**
+          retention-days: 30
+          if-no-files-found: warn

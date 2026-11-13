@@ -1,0 +1,6 @@
+# Exceções de scan (Trivy) — cada linha precisa de motivo e prazo (DEVOPS-06).
+#
+# Formato: CVE-<id>   # motivo — revisar até AAAA-MM-DD
+#
+# Sem exceção aberta hoje. Não adicione entrada sem data: exceção sem prazo vira dívida
+# invisível, e o próprio scan deixa de significar algo.
