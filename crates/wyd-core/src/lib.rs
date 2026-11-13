@@ -62,3 +62,5 @@ mod tests {
         assert_eq!(tick_interval_ms(), 50);
     }
 }
+
+// medicao temporaria de rebuild incremental
