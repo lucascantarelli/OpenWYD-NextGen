@@ -1,0 +1,40 @@
+name: CI conteúdo
+
+# Grupo barato e 100% paralelo: cada script de conteúdo é um job próprio. Antes, os cinco scripts
+# rodavam em sequência dentro do job `gate`, somando ~1 min de fila para trabalho de 5 s cada.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: conteúdo — ${{ matrix.nome }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: migrations (ordem, FK, down)
+            comando: node tools/content/check-migrations.mjs
+          - nome: status de issue (índice × painel × arquivo)
+            comando: node tools/content/check-issue-status.mjs
+          - nome: links e contagem de crates
+            comando: node tools/dev/check-docs-consistency.mjs
+          - nome: skills (frontmatter, tamanho, caminhos)
+            comando: node tools/dev/check-skills.mjs
+          - nome: versão única (workspace × portal)
+            comando: node tools/dev/check-versao.mjs
+          - nome: testes das ferramentas de dev
+            # Glob: `node --test` com diretório só é aceito a partir do Node 26.
+            comando: node --test apps/tools/test/*.test.mjs
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: ${{ matrix.nome }}
+        run: ${{ matrix.comando }}

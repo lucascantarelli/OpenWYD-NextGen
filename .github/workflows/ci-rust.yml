@@ -1,0 +1,129 @@
+name: CI Rust
+
+# Grupo Rust do pipeline, em jobs independentes que rodam em paralelo:
+#   fmt        → segundos, sem cache nem bibliotecas nativas
+#   clippy     → workspace inteiro com `-D warnings`
+#   build-test → build + testes unitários/integração/doc
+#   sistema    → matriz por crate contra Postgres real (server, admin), cada um com seu banco
+#   bench      → só em push para main/develop (inputs.bench), com cache próprio
+#
+# Nada aqui é `continue-on-error`: se não pode falhar, não é gate.
+
+on:
+  workflow_call:
+    inputs:
+      bench:
+        description: Roda o job de benches (push em main/develop); PR não paga.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+
+jobs:
+  fmt:
+    name: fmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Formatação
+        run: cargo fmt --all --check
+
+  clippy:
+    name: clippy (-D warnings)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+          # Cache separado por perfil: clippy e test não disputam o mesmo `target/` no restore.
+          cache-key-extra: clippy
+      - name: Clippy (warnings são erro, inclusive testes e benches)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  build-test:
+    name: build + testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+      - name: Build do workspace
+        run: cargo build --workspace
+      - name: Testes (unit, integração e doc)
+        run: cargo test --workspace
+
+  sistema:
+    name: sistema — ${{ matrix.pacote }} (Postgres real)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        pacote: [wyd-server, wyd-admin]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wyd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wyd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # `WYD_TEST_REQUIRED=1` transforma o antigo "SKIP: ... não executado" em falha: sem banco o
+      # job fica vermelho (DEVOPS-07).
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
+      WYD_TEST_DSN: postgres://postgres:postgres@127.0.0.1:5432/wyd
+      WYD_TEST_REQUIRED: "1"
+      MIGRATIONS_DIR: crates/wyd-db/migrations
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          cache-key-extra: sistema-${{ matrix.pacote }}
+      - name: Aplicar a série de migrations
+        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
+      # `-j 1` limita a compilação; `--test-threads=1` é o que serializa os testes. Sem isso eles
+      # disputam o mesmo banco e o mesmo teto de sessão por canal.
+      - name: Testes de sistema (${{ matrix.pacote }})
+        run: cargo test -p ${{ matrix.pacote }} --all-targets -j 1 -- --nocapture --test-threads=1
+
+  bench:
+    name: benches (compila uma vez e mede)
+    if: inputs.bench
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          cache-key-extra: bench
+          cache-all-crates: "true"
+          tauri: "true"
+      # Uma compilação: o `--no-run` cobre o gate de compilação e o `bench-gate` roda o binário
+      # já compilado.
+      - name: Compilar benches
+        run: cargo bench --workspace --no-run
+      - name: Régua de regressão por cenário (baseline p50, tolerância 2,5–3×)
+        run: node tools/dev/bench-gate.mjs
+      - name: Limites do transporte (wyd-net)
+        run: cargo bench -p wyd-net --bench limits

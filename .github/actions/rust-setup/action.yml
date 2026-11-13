@@ -13,6 +13,12 @@ inputs:
     description: Cacheia também crates usadas só por release/benches.
     required: false
     default: "false"
+  shared-key:
+    description: >-
+      Chave comum entre jobs/branches para o cache de `target/`. Jobs do mesmo grupo compartilham
+      o restore (clippy/test) sem reaproveitar artefato de outro perfil.
+    required: false
+    default: wyd
   tauri:
     description: >-
       Instala as bibliotecas nativas do Tauri (GTK/WebKit) no Linux. Necessário em todo job que
@@ -41,6 +47,7 @@ runs:
     - name: Cache de build (cargo)
       uses: Swatinem/rust-cache@v2
       with:
+        shared-key: ${{ inputs.shared-key }}
         key: ${{ inputs.cache-key-extra }}
         cache-all-crates: ${{ inputs.cache-all-crates }}
         workspaces: ". -> target"

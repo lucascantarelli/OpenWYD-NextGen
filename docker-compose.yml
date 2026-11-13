@@ -236,7 +236,7 @@ services:
       - wyd
 
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.16.0
     restart: unless-stopped
     # `--web.enable-lifecycle` (reload por HTTP sem auth) vive SÓ no override de dev:
     # em produção não há porta publicada, mas o endpoint não precisa existir.
@@ -302,7 +302,7 @@ services:
     # `make monitoring-alertas` e (b) o bootstrap da integração Slack enquanto não houver
     # `SLACK_API_URL` — cada notificação vira uma linha JSON em
     # `/var/log/wyd-alerts/alertas.jsonl` (volume `alerts-out`). Sem porta no host.
-    image: node:22-alpine
+    image: node:24-alpine
     restart: unless-stopped
     command: [ "node", "/app/alert-sink.mjs" ]
     environment:

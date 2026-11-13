@@ -2,7 +2,7 @@
 
 > Documento vivo. Atualizado a **cada issue** executada (regra em
 > `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-12 (cobertura canônica das
-> 34 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
+> 35 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
 > `wyd-server`/`wyd-bots`; a entrada anterior era a mega revisão do roadmap:
 > 9 issues novas com fila por tamanho, status reconciliado nos três lugares que carregam status,
 > `wyd-server` incorporado à árvore normativa, gate de `cargo test --workspace` consertado e
@@ -111,8 +111,8 @@
 > `esperar_ate` (o `release` roda no `Drop` do `SessionLease`, ao encerrar a conexão), sem
 > afrouxar a asserção.
 
-> **Cobertura canônica:** as **34 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
-> exige cobertura 34/34 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
+> **Cobertura canônica:** as **35 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
+> exige cobertura 35/35 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
 > cada arquivo de issue.
 
 ## Legenda
@@ -1740,4 +1740,5 @@ de QA-02/QA-03 e o que foi lido no código.
 | DEVOPS-07 banco e portal no CI | 🚧 | Jobs `portal` (`npm run typecheck`/`test`/`next build`) e `sistema` (Postgres 17 efêmero, `-j 1`, `WYD_TEST_REQUIRED=1`). Anti-skip provado localmente (SKIP × FAILED) e lock do portal sincronizado em TypeScript 7.0.2 — `npm ci` antes abortava. Falta o primeiro run do `sistema`. |
 | DEVOPS-08 supply-chain e cobertura | 🚧 | `supply-chain.yml` semanal com `audit`+`deny` e scan das quatro imagens como gate; cobertura Rust (llvm-cov) e portal (vitest) como métrica com artefato; Dependabot em cargo/npm/actions/docker. Falta baseline comparável e o primeiro run da agenda. |
 | DEVOPS-09 runner e deploy local | 🚧 | Runner `self-hosted,wyd-local` **registrado no GitHub em 2026-11-13**; `deploy-local.yml` dispara no `workflow_run` verde em `develop`, sem trigger de PR, com `contents: read`, sentinela de teste humano e `deploy-provas.mjs` (4 provas). Falta o primeiro deploy real e a notificação no Alertmanager. |
+| DEVOPS-11 pipeline em estágios | 🚧 | `ci-content/rust/portal/infra` em paralelo com matriz (6/5/3/9 jobs), `gate` agregador com `needs`+`always()`, `bench` fora de PR, cache com `shared-key` e job `notify` para o Slack. Falta o segredo `SLACK_CI_WEBHOOK` e medir tempo antes × depois. |
 | DEVOPS-10 versionamento de release | 🚧 | Versão única 0.1.0 (workspace + 10 membros + portal) com `check-versao` no gate; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM e notas do git. Falta criar a primeira tag e escrever rollback por tag+digest. |

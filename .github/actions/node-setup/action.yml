@@ -1,7 +1,7 @@
 name: Node (portal)
 description: >-
-  Node 22 com cache do npm e `npm ci` no portal. O portal é BFF (`wyd-portal/`), então todo job
-  que roda `tsc`/`vitest`/`next build` passa por aqui — uma definição de versão, um cache.
+  Node 24 (LTS) com cache do npm e `npm ci` no portal. O portal é BFF (`wyd-portal/`), então todo
+  job que roda `tsc`/`vitest`/`next build` passa por aqui — uma definição de versão, um cache.
 
 inputs:
   install:
@@ -12,10 +12,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Node 22 + cache do npm
-      uses: actions/setup-node@v4
+    - name: Node 24 (LTS) + cache do npm
+      uses: actions/setup-node@v7
       with:
-        node-version: "22"
+        node-version: "24"
         cache: npm
         cache-dependency-path: wyd-portal/package-lock.json
 

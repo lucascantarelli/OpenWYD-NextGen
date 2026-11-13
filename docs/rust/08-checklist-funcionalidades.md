@@ -5,8 +5,8 @@ implementação. Ele complementa o `roadmap-rust/index.md` (fora do site; organi
 *o trabalho* em 15 fases e issues) — aqui o recorte é **o que o jogo precisa ter** e quanto disso já
 existe de verdade.
 
-> Estado em 2026-11-12 (revisão): **34 ✅ · 18 🚧 · 29 ⬜ · 1 ⛔** — contagem tirada das
-> linhas das tabelas (`grep` por estado; 82 linhas numeradas).
+> Estado em 2026-11-13 (revisão): **35 ✅ · 23 🚧 · 34 ⬜ · 2 ⛔** — contagem tirada das
+> linhas das tabelas (`grep` por estado; 94 linhas numeradas).
 
 ## Como usar
 

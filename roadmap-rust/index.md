@@ -1,6 +1,6 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-13 · **34 issues ativas** + 15 descritores de fase. 58 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **35 issues ativas** + 15 descritores de fase. 58 issues concluídas estão em [`changelog.md`](changelog.md).
 >
 > **Auditoria de DevOps/CI (2026-11-12):** dez issues novas (`DEVOPS-01`…`DEVOPS-10`) abertas pela
 > análise de pipeline, imagens, compose, testes e monitoramento; contrato em
@@ -195,6 +195,7 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 35 | `DEVOPS-08` | [Supply-chain contínua e cobertura medida](issues/DEVOPS-08-supply-chain-e-cobertura.md) | 🚧 | M | DEVOPS-07 |
 | 36 | `DEVOPS-09` | [Runner auto-hospedado e deploy local após CI verde](issues/DEVOPS-09-runner-deploy-local.md) | 🚧 | M | DEVOPS-02, DEVOPS-04 |
 | 37 | `DEVOPS-10` | [Versionamento de release e notas rastreáveis](issues/DEVOPS-10-versionamento-release.md) | 🚧 | S | DEVOPS-06 |
+| 38 | `DEVOPS-11` | [Pipeline em estágios: grupos, matrizes e notificação](issues/DEVOPS-11-pipeline-em-estagios.md) | 🚧 | M | DEVOPS-04, DEVOPS-05 |
 
 ## Descritores de fase (contexto, não são issues)
 

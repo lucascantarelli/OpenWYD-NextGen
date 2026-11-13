@@ -17,7 +17,7 @@
 
 <p>
   <img src="https://img.shields.io/badge/status-desenvolvimento%20ativo-f59e0b" alt="Em desenvolvimento">
-  <img src="https://img.shields.io/badge/roadmap-32%20ativas%20%C2%B7%2050%20conclu%C3%ADdas-7c3aed" alt="32 issues ativas e 50 concluídas">
+  <img src="https://img.shields.io/badge/roadmap-34%20ativas%20%C2%B7%2058%20conclu%C3%ADdas-7c3aed" alt="34 issues ativas e 58 concluídas">
   <img src="https://img.shields.io/badge/checklist-34%20%E2%9C%85%20%C2%B7%2018%20%F0%9F%9A%A7%20%C2%B7%2029%20%E2%AC%9C-0ea5e9" alt="Checklist funcional">
 </p>
 
@@ -64,6 +64,7 @@ flowchart LR
   subgraph HOT["🔥 Hot Path — um processo por canal"]
     S1["wyd-server<br/>canal 1 · CPSock :8281"]
     S2["wyd-server<br/>canal 2 · CPSock :8281"]
+    NOTE["um processo por canal,<br/>cada um no IP de uma célula<br/>do serverlist.bin"]
     CORE["wyd-core<br/>tick · ECS · combate · cena"]
   end
 
@@ -78,6 +79,8 @@ flowchart LR
   C -->|CPSock| S2
   S1 --> CORE
   S2 --> CORE
+  NOTE -.-> S1
+  NOTE -.-> S2
   S1 --> DB
   S2 --> DB
   P --> G
@@ -106,12 +109,12 @@ sequenceDiagram
 
 ## 📊 Estado atual
 
-> Números medidos em **2026-11-12** pelo roadmap e pelo checklist funcional.
+> Números medidos em **2026-11-13** pelo roadmap e pelo checklist funcional.
 
 | Indicador | Estado |
 |---|---|
-| 🗺️ Roadmap | **32 issues ativas** + 15 descritores de fase · **50 concluídas** |
-| 🧪 Checklist funcional | **34 ✅ · 18 🚧 · 29 ⬜ · 1 ⛔** em 82 linhas |
+| 🗺️ Roadmap | **34 issues ativas** + 15 descritores de fase · **58 concluídas** |
+| 🧪 Checklist funcional | **35 ✅ · 23 🚧 · 34 ⬜ · 2 ⛔** em 94 linhas |
 | 🗄️ Banco | **50 migrations · 86 tabelas** no gate atual |
 | 🧱 Workspace | **9 crates Rust** + `apps/launcher-ui` (Tauri) |
 | 🌐 Stack local | 2 canais + gateway + portal + PostgreSQL + Prometheus/Grafana/Loki |
@@ -211,7 +214,7 @@ wyd2/
 ├── apps/launcher-ui/      # 🖥️ GUI Tauri do launcher
 ├── wyd-portal/            # 📊 BFF Next.js + telas de staff + E2E
 ├── docs/                  # 📚 arquitetura, operação, cliente, jogo e manuais
-├── roadmap-rust/          # 🗺️ fases, 32 issues ativas, bugs e changelog
+├── roadmap-rust/          # 🗺️ fases, 34 issues ativas, bugs e changelog
 ├── docker/                # 🐳 imagens, monitoramento e configuração da stack
 ├── .agents/skills/        # 🧠 skills operacionais por tipo de tarefa
 ├── AGENTS.md              # 📜 invariantes e fluxo para agentes de IA

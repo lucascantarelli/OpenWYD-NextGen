@@ -1,16 +1,19 @@
 name: Rust
 
-# Gate do repositório. Cada job abaixo é o ponto de CI de uma issue DEVOPS:
-#   gate            → DEVOPS-04 (paridade com `make check`, item por item)
-#   sistema/portal  → DEVOPS-07 (banco real sem skip silencioso + suíte do portal)
-#   monitoring      → DEVOPS-04 (regra de alerta quebrada não passa)
-#   bench           → DEVOPS-05 (uma compilação de bench, não duas)
-#   compose-surface → DEVOPS-03 (superfície de produção do compose)
-#   actionlint      → higiene dos próprios workflows
-# Imagens, supply-chain e release ficam em workflows próprios (images.yml,
-# supply-chain.yml, release.yml) para não pagar build de imagem em todo push de código.
+# Orquestrador do gate. Cada grupo é um workflow reutilizável (`.github/workflows/ci-*.yml`) e
+# roda em paralelo; dentro de cada grupo há matrizes, então o total de jobs simultâneos é o que
+# dita o tempo de parede, não a soma dos passos.
+#
+#   conteudo → 6 checagens de conteúdo (migrations, issues, docs, skills, versão, ferramentas)
+#   rust     → fmt, clippy, build+test, sistema (matriz server/admin) e bench (só push)
+#   portal   → matriz typecheck / vitest / next build
+#   infra    → matriz compose (3 modos), promtool (3) e Alertmanager + actionlint
+#
+# Imagens, supply-chain e release ficam em workflows próprios (images.yml, supply-chain.yml,
+# release.yml) para não pagar build de imagem em todo push de código.
 #
 # Regra de ouro: nada aqui pode ser `continue-on-error`. Se o gate não pode falhar, ele não é gate.
+# O job `gate` agrega os grupos: é este o check obrigatório de branch protection.
 
 on:
   push:
@@ -36,8 +39,8 @@ on:
       - ".github/actions/**"
   pull_request:
     branches: [main, develop]
-    # PR de documentação/roadmap não paga o pipeline inteiro (DEVOPS-05); o job `gate`
-    # continua rodando para eles via `push`.
+    # PR de documentação/roadmap não paga o pipeline inteiro (DEVOPS-05); o job `gate` continua
+    # rodando para eles via `push`.
     paths-ignore:
       - "docs/**"
       - "roadmap-rust/**"
@@ -48,194 +51,73 @@ permissions:
   contents: read
 
 concurrency:
-  # Em PR, run novo cancela o anterior. Em `main`/`develop` NÃO cancela: todo commit que
-  # vira base de release precisa de gate completo (antes o cancel abria buraco em `main`).
+  # Em PR, run novo cancela o anterior. Em `main`/`develop` NÃO cancela: todo commit que vira base
+  # de release precisa de gate completo (antes o cancel abria buraco em `main`).
   group: rust-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: "1"
-
 jobs:
-  gate:
-    name: gate (fmt/clippy/build/test + conteúdo)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/rust-setup
-        with:
-          # O workspace inclui `apps/launcher-ui` (Tauri): sem GTK/WebKit o `glib-sys` falha.
-          tauri: "true"
+  conteudo:
+    name: conteúdo
+    uses: ./.github/workflows/ci-content.yml
 
-      - name: Formatação
-        run: cargo fmt --all --check
-
-      - name: Clippy (warnings são erro, inclusive testes e benches)
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Build do workspace
-        run: cargo build --workspace
-
-      # `--all-targets` inclui integração, doc-tests e os alvos de bench (compile-only).
-      - name: Testes do workspace
-        run: cargo test --workspace
-
-      # Os quatro scripts abaixo eram só locais; com DEVOPS-04 eles passam a derrubar o CI.
-      - name: Migrations (ordem, FK, down)
-        run: node tools/content/check-migrations.mjs
-
-      - name: Status de issue (índice × painel × arquivo)
-        run: node tools/content/check-issue-status.mjs
-
-      - name: Links e contagem de crates
-        run: node tools/dev/check-docs-consistency.mjs
-
-      - name: Skills (frontmatter, tamanho, caminhos)
-        run: node tools/dev/check-skills.mjs
-
-      - name: Versão única (Cargo workspace × portal)
-        run: node tools/dev/check-versao.mjs
-
-      - name: Testes das ferramentas de dev
-        # Glob: o Node 22 do runner não aceita diretório em `--test` (Node 26 aceita).
-        run: node --test apps/tools/test/*.test.mjs
+  rust:
+    name: rust
+    uses: ./.github/workflows/ci-rust.yml
+    with:
+      # Bench é caro e não precisa rodar em PR: a régua é de regressão, não de corretude.
+      bench: ${{ github.event_name != 'pull_request' }}
 
   portal:
-    name: portal (tsc + vitest + next build)
+    name: portal
+    uses: ./.github/workflows/ci-portal.yml
+
+  infra:
+    name: infra
+    uses: ./.github/workflows/ci-infra.yml
+
+  gate:
+    name: gate (agrega os grupos)
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    defaults:
-      run:
-        working-directory: wyd-portal
+    timeout-minutes: 5
+    needs: [conteudo, rust, portal, infra]
+    # `always()` é obrigatório: sem ele o gate fica `skipped` quando um grupo falha e o check
+    # obrigatório nunca fica vermelho.
+    if: always()
     steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/node-setup
+      - name: Exigir todos os grupos verdes
+        run: |
+          falhou=0
+          for par in "conteudo:${{ needs.conteudo.result }}" \
+                     "rust:${{ needs.rust.result }}" \
+                     "portal:${{ needs.portal.result }}" \
+                     "infra:${{ needs.infra.result }}"; do
+            nome="${par%%:*}"; resultado="${par##*:}"
+            echo "$nome = $resultado"
+            [ "$resultado" = "success" ] || falhou=1
+          done
+          if [ "$falhou" != "0" ]; then
+            echo "::error::pelo menos um grupo falhou — veja o job correspondente acima"
+            exit 1
+          fi
+          echo "todos os grupos verdes"
 
-      - name: Typecheck (tsc --noEmit)
-        run: npm run typecheck
-
-      - name: Testes (vitest)
-        run: npm run test -- --reporter=dot
-
-      - name: Build (next build, rotas e standalone)
-        run: npm run build
-
-  sistema:
-    name: sistema (Postgres real, zero SKIP)
+  notify:
+    name: aviso no Slack (falha)
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    services:
-      postgres:
-        image: postgres:17-alpine
+    timeout-minutes: 5
+    needs: [gate]
+    if: failure()
+    steps:
+      # O segredo é opcional: sem `SLACK_CI_WEBHOOK` o passo não roda e o gate continua sendo a
+      # fonte de verdade. Criar o webhook: docs/rust/10-devops-ci.md §11.
+      - name: Avisar falha no canal de CI
+        if: env.SLACK_CI_WEBHOOK != ''
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: wyd
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d wyd"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      # Mesmo runner do boot (ADR-0024). `WYD_TEST_REQUIRED=1` transforma o antigo
-      # "SKIP: ... não executado" em falha: sem banco, o job fica vermelho (DEVOPS-07).
-      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/wyd
-      WYD_TEST_DSN: postgres://postgres:postgres@127.0.0.1:5432/wyd
-      WYD_TEST_REQUIRED: "1"
-      MIGRATIONS_DIR: crates/wyd-db/migrations
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/rust-setup
-
-      - name: Aplicar a série de migrations
-        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
-
-      # `-j 1`: os testes de sistema compartilham o mesmo banco por job.
-      - name: Testes do servidor (login, selchar, mundo, cena)
-        # `-j 1` limita a compilação; `--test-threads=1` é o que serializa os testes. Sem isso eles
-        # disputam o mesmo banco e o mesmo teto de sessão por canal (o teto=1 via "sessão viva").
-        run: cargo test -p wyd-server --all-targets -j 1 -- --nocapture --test-threads=1
-
-      - name: Testes do admin (seed, grants)
-        run: cargo test -p wyd-admin --all-targets -j 1 -- --nocapture --test-threads=1
-
-  monitoring:
-    name: monitoramento (promtool + amtool)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: promtool check config
-        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
-
-      - name: promtool check rules
-        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check rules alerts.yml
-
-      - name: promtool test rules (disparo e resolução)
-        run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 test rules alerts.test.yml
-
-      - name: Render da config do Alertmanager + template do Slack
-        run: node tools/dev/check-alertas.mjs
-
-  compose-surface:
-    name: compose (dev, prod e superfície)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      # O compose exige estas variáveis (`${VAR:?}`) e o `config` não lê `.env` no CI:
-      # valores fixos, sem segredo, só para validar a sintaxe e a interpolação.
-      TAG: ci
-      POSTGRES_PASSWORD: ci-nao-e-segredo
-      WEB_API_TOKEN: ci-nao-e-segredo
-      SESSION_SECRET: ci-nao-e-segredo
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Contrato de superfície de produção (DEVOPS-03)
-        run: node tools/dev/check-compose-hardening.mjs
-
-      - name: Compose base + dev
-        run: docker compose config --quiet
-
-      - name: Compose de produção
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
-
-      - name: Compose de produção com .env montado
-        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
-
-  bench:
-    name: benches (compila uma vez e mede)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/rust-setup
+          SLACK_CI_WEBHOOK: ${{ secrets.SLACK_CI_WEBHOOK }}
+        uses: slackapi/slack-github-action@v4.0.0
         with:
-          cache-key-extra: bench
-          cache-all-crates: "true"
-          tauri: "true"
-
-      # Uma compilação: o `--no-run` cobre o gate de compilação e o `bench-gate` roda o
-      # binário já compilado. Antes eram duas (`--no-run` + o do gate) — C4 da auditoria.
-      - name: Compilar benches
-        run: cargo bench --workspace --no-run
-
-      - name: Régua de regressão por cenário (baseline p50, tolerância 2,5–3×)
-        run: node tools/dev/bench-gate.mjs
-
-      - name: Limites do transporte (wyd-net)
-        run: cargo bench -p wyd-net --bench limits
-
-  actionlint:
-    name: actionlint (os próprios workflows)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-      - name: Validar workflows e actions
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+          webhook: ${{ env.SLACK_CI_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: ":x: *CI falhou* em `${{ github.ref_name }}` (<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|run ${{ github.run_id }}>) — `${{ github.event.head_commit.message || github.event.pull_request.title }}`"

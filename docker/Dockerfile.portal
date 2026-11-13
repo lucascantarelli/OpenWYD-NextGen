@@ -2,12 +2,12 @@
 # Portal de administração (Next.js, BFF sobre o backend HTTP/JSON do wyd-admin,
 # ADR-0008). O contexto é a raiz do repo (compose: context: . / dockerfile:
 # docker/Dockerfile.portal); a imagem só precisa de wyd-portal/.
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY wyd-portal/package.json wyd-portal/package-lock.json ./
 RUN npm ci
 
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,7 +17,7 @@ COPY wyd-portal/ ./
 RUN npm run build
 
 # Runtime: apenas o standalone + estáticos.
-FROM node:22-alpine AS run
+FROM node:24-alpine AS run
 # Proveniência (DEVOPS-01): mesma dupla versão/commit das imagens Rust, para a
 # imagem do portal deixar de ser anônima no CI e no release.
 ARG WYD_VERSION=0.1.0
@@ -27,7 +27,7 @@ LABEL org.opencontainers.image.title="wyd-portal" \
       org.opencontainers.image.source="https://github.com/lucascantarelli/wyd" \
       org.opencontainers.image.version="${WYD_VERSION}" \
       org.opencontainers.image.revision="${WYD_COMMIT}" \
-      org.opencontainers.image.base.name="node:22-alpine"
+      org.opencontainers.image.base.name="node:24-alpine"
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
