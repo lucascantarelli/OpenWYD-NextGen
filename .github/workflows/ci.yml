@@ -5,8 +5,9 @@ name: CI
 # não pertencem ao caminho de feedback de push/PR.
 #
 # Estágio 1 — barato e independente (paralelo):
-#   fmt · clippy · conteudo (matriz 6) · infra (matriz 9) · portal (typecheck+vitest) · auditoria
-# Estágio 2 — depois do 1: testes (build+test), sistema (matriz 2, Postgres real), portal-build
+#   fmt · conteudo (matriz 6) · infra (matriz 9) · portal (typecheck+vitest) · auditoria
+# Estágio 2 — depois do 1: testes (build+clippy+nextest+doc), sistema (matriz 2, Postgres real),
+#                             portal-build
 # Estágio 3 — depois do 2, só em push: imagens (matriz 4) e cobertura
 # Estágio 4 — gate agrega tudo (é o check obrigatório) e o deploy roda no runner local em develop
 # Fim — notify (Slack) SEMPRE, com resultado e métricas por job, inclusive em falha
@@ -51,20 +52,6 @@ jobs:
         with:
           components: rustfmt
       - run: cargo fmt --all --check
-
-  clippy:
-    name: rust / clippy (-D warnings)
-    needs: fmt
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/rust-setup
-        with:
-          tauri: "true"
-          cache-key-extra: clippy
-      - name: Clippy (warnings são erro, inclusive testes e benches)
-        run: cargo clippy --workspace --all-targets -- -D warnings
 
   conteudo:
     name: conteudo / ${{ matrix.nome }}
@@ -157,7 +144,7 @@ jobs:
       - run: cargo deny check
 
   # ─── Estágio 2 ────────────────────────────────────────────────────────────────────────────────
-  # Um job só, com build, nextest e doc-tests no mesmo `target/`: a matriz de 10 crates que existiu
+  # Um job só, com clippy, build, nextest e doc-tests no mesmo `target/`: a matriz de 10 crates que existiu
   # por um dia custava ~10 min 30 s de runner contra 2 min 31 s, porque cada job recompilava todas
   # as dependências (o cache do rust-cache é por chave, não compartilhado entre crates). O
   # paralelismo do nextest já usa os núcleos do runner, então a matriz comprava segundos de parede
@@ -177,6 +164,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
+      - name: Clippy (warnings são erro, inclusive testes e benches)
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo build --workspace
       - name: nextest (workspace)
         run: cargo nextest run --workspace --no-fail-fast --no-tests=pass --status-level fail --final-status-level slow
@@ -407,7 +396,7 @@ jobs:
     name: gate (agrega os grupos)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura]
+    needs: [fmt, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura]
     # `always()` é obrigatório: sem ele o gate fica `skipped` quando um job falha e o check
     # obrigatório de branch protection nunca fica vermelho.
     if: always()
@@ -424,7 +413,6 @@ jobs:
             esac
           done <<'RESULTADOS'
           fmt=${{ needs.fmt.result }}
-          clippy=${{ needs.clippy.result }}
           conteudo=${{ needs.conteudo.result }}
           infra=${{ needs.infra.result }}
           portal=${{ needs.portal.result }}
@@ -601,7 +589,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Precisa de TODOS os jobs para publicar as métricas de cada um, inclusive em falha.
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
+    needs: [fmt, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
     if: always()
     steps:
       # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
