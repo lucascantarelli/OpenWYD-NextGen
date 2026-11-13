@@ -356,19 +356,26 @@ Desenho recomendado (`DEVOPS-09`):
    `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout
    do `head_sha` validado — assim o deploy só roda sobre commit que já passou no gate, e nenhum
    trigger de `pull_request` chega ao runner.
-4. **Passos**: `docker compose build` → `docker compose up -d --wait --wait-timeout 240` →
+4. **Segredos do host**: o checkout do runner não tem `.env` (gitignored por desenho), então o
+   caminho do arquivo real vem da **variável de repositório** `WYD_ENV_FILE`
+   (*Settings* → *Secrets and variables* → *Actions* → *Variables*, ex.:
+   `D:/dolorestec/wyd2/.env` — caminho, não segredo) e o compose roda com
+   `--env-file "$WYD_ENV_FILE"`. Sem a variável ou com arquivo ausente, o job falha com mensagem
+   explícita antes de construir qualquer imagem.
+5. **Passos**: `docker compose --env-file "$WYD_ENV_FILE" build` →
+   `docker compose --env-file "$WYD_ENV_FILE" up -d --wait --wait-timeout 240` →
    `node tools/dev/deploy-provas.mjs`, que cobra **quatro** provas (`/login` 200, `/entregas` 307,
    `gateway/health` 200 com `schema` igual ao `SCHEMA_VERSION` derivado do código e portal
    `/api/health` 200) → logs de build e de prova como artefato. Falhou prova, o job falha e o
    deploy não é dado como feito (nenhum `continue-on-error`).
-5. **Trava de segurança**: nenhum workflow `pull_request` nesse runner (ou, se houver,
+6. **Trava de segurança**: nenhum workflow `pull_request` nesse runner (ou, se houver,
    `environment` com aprovação manual). Segredos continuam no `.env` do host, **nunca** em
    `secrets` do GitHub, e o runner não recebe permissão de escrita no repositório.
-6. **Trava operacional**: o job não roda `down -v`, não faz `DROP`, não toca em `client/` e não
+7. **Trava operacional**: o job não roda `down -v`, não faz `DROP`, não toca em `client/` e não
    reinicia a stack durante teste humano (`AGENTS.md` §0/§7). A sentinela `tmp/teste-humano.flag`
    é checada antes do build: com o arquivo presente o job emite `::warning::` e **não** sobe nada
    (mesma trava em `make deploy-local`); `workflow_dispatch` manual continua sendo o freio.
-7. **Alternativa sem runner** (menos privilégio, menos exatidão): `git pull` + `docker compose
+8. **Alternativa sem runner** (menos privilégio, menos exatidão): `git pull` + `docker compose
    build` por tarefa agendada na máquina, com o mesmo bloco de provas. Não sabe se o CI passou;
    por isso é fallback, não desenho.
 

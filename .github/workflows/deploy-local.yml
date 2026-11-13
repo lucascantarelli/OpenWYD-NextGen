@@ -53,15 +53,33 @@ jobs:
             echo "pulado=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: .env do host (segredos nunca saem da máquina)
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        env:
+          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
+        run: |
+          # O checkout do runner não tem `.env` (gitignored por desenho): o compose lê o arquivo
+          # real do host, apontado pela variável de repositório WYD_ENV_FILE.
+          if [ -z "$WYD_ENV_FILE" ] || [ ! -f "$WYD_ENV_FILE" ]; then
+            echo "::error::defina a variável de repositório WYD_ENV_FILE com o caminho do .env do host (recebido: '$WYD_ENV_FILE')"
+            exit 1
+          fi
+          echo "ok: .env do host em $WYD_ENV_FILE"
+
       - name: Rebuild das imagens
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
-        run: docker compose build 2>&1 | tee deploy-build.log
+        env:
+          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
+        run: docker compose --env-file "$WYD_ENV_FILE" build 2>&1 | tee deploy-build.log
 
       - name: Subir a stack (sem down -v, sem reset de volume)
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
-        run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
+        env:
+          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
+        run: docker compose --env-file "$WYD_ENV_FILE" up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
 
       - name: Provas de contrato do deploy
         if: steps.sentinela.outputs.pulado == 'false'
