@@ -45,10 +45,15 @@ jobs:
       - name: Sentinela de teste humano
         id: sentinela
         shell: bash
+        env:
+          ARQUIVO_ENV: ${{ vars.WYD_ENV_FILE }}
         run: |
-          if [ -f tmp/teste-humano.flag ]; then
+          # O flag vive no projeto do host (é lá que o teste humano acontece), não no checkout do
+          # runner: o diretório do `.env` é a referência de onde procurar.
+          if [ -n "$ARQUIVO_ENV" ]; then projeto="$(dirname "$ARQUIVO_ENV")"; else projeto=""; fi
+          if [ -n "$projeto" ] && [ -f "$projeto/tmp/teste-humano.flag" ]; then
             echo "pulado=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::tmp/teste-humano.flag presente — deploy NÃO executado (teste humano em andamento). Remova o arquivo para liberar."
+            echo "::warning::tmp/teste-humano.flag presente em $projeto — deploy NÃO executado (teste humano em andamento). Remova o arquivo para liberar."
           else
             echo "pulado=false" >> "$GITHUB_OUTPUT"
           fi
