@@ -282,6 +282,30 @@ Não é incidente: é o heartbeat **sempre em firing** que prova que a cadeia
 2. Durante manutenção, **silencie** no Alertmanager (UI `:9093` ou `amtool silence add`), com
    prazo e comentário — nunca apague a regra.
 
+### WydDeployLocalFalhou
+
+`severity=critical` — o job `deploy local` do `ci.yml` falhou **depois** do gate verde em `develop`:
+`docker compose build`, `up -d --wait` ou uma das quatro provas de contrato. Não é métrica de jogo;
+é o deploy que parou no meio, com o container podendo estar em estado misto.
+
+1. Abra o `run_url` da anotação e o artefato `deploy-local-<run_id>`: `deploy-build.log` diz em qual
+   passo parou, `deploy-provas.log` diz qual das quatro provas recusou.
+2. `up --wait` estourando 240 s = container não ficou saudável: `docker compose ps` e
+   `docker compose logs --tail=100 <serviço>` antes de qualquer rebuild.
+3. Corrija em `develop`. O alerta **resolve sozinho** no próximo deploy bem-sucedido (mesmo
+   conjunto de labels, `endsAt` no passado) — não silencie só para limpar a tela.
+
+### WydDeployLocalOk
+
+`severity=info`, com `endsAt` em 2 min: aparece e resolve sozinho. Não pede ação — é a prova de que
+a cadeia `job deploy → POST /api/v2/alerts → Alertmanager → #wyd-alertas` está inteira, e marca o
+horário do último deploy bem-sucedido.
+
+1. Se um deploy verde **não** gera esta mensagem, a cadeia quebrou: comece por
+   `WydAlertmanagerForaDoAr` e pelo log do passo "Relatar resultado ao Alertmanager" no run.
+2. Rodando local, `AM_PROVA=local node tools/dev/reportar-deploy.mjs` manda para o `local-sink`
+   (rota `prova="local"`), sem sujar o canal do time.
+
 ## 4. Notificação: onde o alerta chega (DEVOPS-02)
 
 ```text
