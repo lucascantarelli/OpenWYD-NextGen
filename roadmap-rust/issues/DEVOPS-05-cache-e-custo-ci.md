@@ -149,3 +149,10 @@ registrada no artefato; `bench-gate` sem flake em 5 execuções seguidas.
 > job de teste 2 min 31 s → 1 min 45 s, com soma de runner ~4× maior e janela do estágio igual
 > (§14.2 do doc). `cargo-chef` foi medido e **descartado**: os Dockerfiles já usam cache mounts
 > (2,9 s sem mudança de fonte, ~1 min 50 s após mudar um crate) e o deploy não constrói mais.
+
+> **Minutos de runner, medido (2026-11-13):** run de `develop` caiu de **38,7 min** (matriz de 10
+> crates, run 43470873106) para **22,1 min** (testes em job único com `nextest`, run 43479742558) e
+> depois para **20,0 min** (clippy no mesmo job, run 43486778728). Causa raiz da matriz: cada job
+> tinha `cache-key-extra` próprio, então **cada um recompilava o grafo inteiro** — o `rust-cache`
+> compartilha em sequência (mesma chave) e **não** entre jobs paralelos. Regra que fica: paralelizar
+> só o que é barato e independente (conteúdo, infra, portal, sistema).

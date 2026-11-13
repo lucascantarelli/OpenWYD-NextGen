@@ -36,12 +36,12 @@ medição futura, está marcado **hipótese**.
 
 | Estágio | Jobs | Issue | O que prova |
 |---|---|---|---|
-| 1 (paralelo) | `rust / fmt`, `rust / clippy (-D warnings)` | DEVOPS-04 | formatação e lints do workspace, com `-D warnings` |
+| 1 (paralelo) | `rust / fmt` | DEVOPS-04 | formatação do workspace |
 | | `conteudo / …` (matriz 6) | DEVOPS-04 | migrations, status de issue, links/crates, skills, versão única, testes das ferramentas |
 | | `infra / …` (matriz 9) | DEVOPS-03/04 | hardening do compose + `config` nos três modos, três `promtool`, render do Alertmanager/Slack, `actionlint` |
 | | `portal / typecheck + testes` | DEVOPS-07 | `tsc --noEmit` e `vitest` |
 | | `seguranca / advisory + licencas` | DEVOPS-08 | `cargo audit` e `cargo deny` (advisory, licença, fonte, wildcard) |
-| 2 (depois do 1) | `rust / build + testes` | DEVOPS-04 | build do workspace + testes unit/integração/doc |
+| 2 (depois do 1) | `rust / build + testes` | DEVOPS-04 | `clippy -D warnings` + build do workspace + testes unit/integração/doc (`nextest`) |
 | | `rust / sistema — wyd-server|wyd-admin` (matriz 2) | DEVOPS-07 | Postgres 17 efêmero → `--migrate` → testes de sistema com `WYD_TEST_REQUIRED=1` |
 | | `portal / next build` | DEVOPS-07 | build de produção do portal |
 | 3 (só push/agenda) | `imagens / …` (matriz 4) | DEVOPS-06 | build com `WYD_VERSION`/`WYD_COMMIT`, labels conferidas, smoke, Trivy `CRITICAL` bloqueante, SBOM por imagem |
@@ -687,8 +687,10 @@ o pull anônimo depois do push e falha com `::error::` se o pacote não estiver 
 
 ### 14.2 Testes: `nextest` em job único (a matriz por crate foi medida e revertida)
 
-O job `rust / build + testes` roda, no mesmo `target/`: `cargo build --workspace`,
-`cargo nextest run --workspace --no-fail-fast --no-tests=pass` e `cargo test --workspace --doc`.
+O job `rust / build + testes` roda, no mesmo `target/`: `cargo clippy --workspace --all-targets -- -D
+warnings`, `cargo build --workspace`, `cargo nextest run --workspace --no-fail-fast --no-tests=pass` e
+`cargo test --workspace --doc`. O clippy deixou de ser job próprio: ele já não paga checkout +
+restore de cache (~35 s) e deixa de competir por CPU com o nextest.
 
 **O caminho até aqui, com número em cada passo:**
 
@@ -697,6 +699,7 @@ O job `rust / build + testes` roda, no mesmo `target/`: `cargo build --workspace
 | `build + testes` com `cargo test` (até 2026-11-13) | 2 min 31 s | 2 min 31 s |
 | matriz de 10 crates + `build` + `doc-tests` separados | ~2 min 34 s de janela | **~15 min** (10 crates × recompilação de dependências + build 2 min 34 s + doc 1 min 59 s) |
 | **`nextest` + build + doc no mesmo job** | 3 min 00 s (chave nova) / **2 min 49 s** (chave quente) | **2 min 49 s** |
+| **+ clippy no mesmo job** (atual) | **4 min 03 s** | **4 min 03 s** (contra 2 min 49 s + 2 min 30 s do clippy separado) |
 
 Por que a matriz caiu: cada job da matriz tinha `cache-key-extra` próprio, então **cada um
 recompilava todas as dependências** do workspace — o `rust-cache` não transfere `target/` entre jobs
@@ -704,6 +707,13 @@ paralelos (§14.3). O nextest, sozinho, já paraleliza por binário de teste den
 runner; dividir em 10 máquinas comprava poucos segundos de parede por ~4× os minutos. Efeito no run
 de `develop`: **38,7 min → 22,1 min de runner** (−43%) — o restante é imagens, cobertura, sistema e
 deploy.
+
+Efeito medido de juntar o clippy (runs 43479742558 → 43486778728): **31 → 30 jobs**, **22,1 → 20,0
+min de runner** (−2,1 min, −9,5%), com o job de testes indo de 2 min 49 s para **4 min 03 s** e a
+parede subindo de 9 min 08 s para **10 min 12 s**. A troca é explícita: ~2 min de runner a menos por
+~1 min mais de parede, porque o job de teste passou a ditar o começo do estágio 3 (imagens/cobertura).
+Se a parede voltar a ser o critério, o clippy deve sair para um job paralelo do estágio 1 — é
+exatamente o desenho anterior.
 
 Duas armadilhas pagas no caminho: `nextest` **não** roda doc-tests (daí o passo separado) e
 `cargo test -p <crate> --doc` falha em pacote sem lib (`wyd-launcher-ui` é binário Tauri: `no
@@ -726,10 +736,9 @@ artefato.
 
 ### 14.4 O que ainda dá celeridade, em ordem de retorno
 
-1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 251 s e é hoje o **maior
+1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 249 s e é hoje o **maior
    job do run**; na agenda (ou em paralelo com os testes, sem esperar `gate`) corta isso do push.
-   Depois dela, `rust / clippy` (150 s) rodando dentro do job de testes economizaria mais um
-   checkout + restore de cache (~40 s a 1 min), ao custo de perder o log separado do lint.
+   É o único item restante com retorno grande: ~3 min de parede e ~4 min de runner por push.
 2. ~~Registry + pull no deploy~~ — feito (§14.1): −20 min no pior caso.
 3. **`cargo-chef`: descartado com medição** — os `Dockerfile.*` **já** usam
    `--mount=type=cache,target=/usr/local/cargo/registry` e `target=/src/target`. Medido com

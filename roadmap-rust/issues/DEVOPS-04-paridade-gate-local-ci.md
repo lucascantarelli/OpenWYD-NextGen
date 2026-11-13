@@ -119,3 +119,10 @@ Saída esperada: `make check` exit 0 com as dez verificações; `local-rebuild` 
 - Risco: gates novos reprovarem PRs antigos por dívida existente → mitigação: rodar os quatro
   scripts localmente antes de ligar no CI e corrigir o que aparecer no mesmo commit.
 - Rollback: reverter o workflow; nenhum efeito em runtime.
+
+> **Clippy dentro do job de testes (2026-11-13, medido):** o lint deixou de ser job próprio e roda
+> no mesmo job do build/`nextest`/doc-tests, que já tem checkout e cache restaurados. A paridade com
+> `make check` não mudou: `cargo clippy --workspace --all-targets -- -D warnings` continua gate.
+> Run 43486778728: **30 jobs, 20,0 min de runner** (antes 31 jobs, 22,1 min) e parede de 10 min 12 s
+> (antes 9 min 08 s) — ~2 min de runner a menos por ~1 min de parede, porque o job de teste passou a
+> ditar o começo do estágio 3.
