@@ -58,10 +58,26 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 | `DEVOPS-04` | job `gate` com a mesma lista do `make check` (inclui `migrations`, `issues`, `skills`, `tools-test`, `versao`); `make ci` com `bench-gate`, `monitoring-rules`, `compose-hardening`, `portal-build` | — (paridade fechada; resta manter) |
 | `DEVOPS-05` | `rust-setup`/`node-setup` com cache, `cache-from/to: type=gha` por imagem, `paths-ignore` em PR, `cancel-in-progress` só em PR, `timeout-minutes` em todo job | medir a economia real de minutos (comparar runs com/sem cache) |
 | `DEVOPS-06` | `images.yml`: matriz das quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, smoke do artefato, labels de proveniência conferidas, Trivy `CRITICAL` bloqueante, SBOM por imagem | publicação em registry (decisão do dono) e promoção de digest |
-| `DEVOPS-07` | jobs `portal` (`tsc`+`vitest`+`next build`) e `sistema` (Postgres 17 efêmero, `--migrate`, `-j 1`, `WYD_TEST_REQUIRED=1` — skip silencioso vira falha) | — (fecha B2/B3; resta manter) |
+| `DEVOPS-07` | jobs `portal` (`npm run typecheck`, `npm run test`, `next build`) e `sistema` (Postgres 17 efêmero, `--migrate`, `-j 1`, `WYD_TEST_REQUIRED=1`); anti-skip provado — `SKIP` verde sem DSN e `FAILED` com a variável; lock sincronizado em **TypeScript 7.0.2** e nenhum alvo usa `npx tsc` | — (fecha B2/B3; resta manter) |
 | `DEVOPS-08` | `supply-chain.yml`: `audit`+`deny` e scan das quatro imagens como **gate**; cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** com artefato | baseline de cobertura comparada entre runs (queda como aviso) |
 | `DEVOPS-09` | `deploy-local.yml`: `workflow_run` do `Rust` verde em `develop`, runner `self-hosted,wyd-local`, sem trigger de PR, `contents: read`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | instalar/registrar o runner na máquina de dev e provar um deploy verde lá |
-| `DEVOPS-10` | `[workspace.package] version` + `version.workspace = true` nos dez membros e espelho no portal, `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas | push de imagem por tag (registry) e política de rollback por digest |
+| `DEVOPS-10` | **versão única 0.1.0** (`[workspace.package]` + `version.workspace = true` nos dez membros e espelho no portal), `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas do git | push de imagem por tag (registry) e política de rollback por digest |
+
+**Limites desta verificação (não confundir com "CI rodando"):** nada executou no GitHub — a
+validação local do template é o `actionlint 1.7.7` (exit 0 nos cinco workflows e nas duas actions),
+que é **análise estática**, não execução; o job `sistema` com Postgres efêmero, o build+Trivy+SBOM de
+`images.yml`, o `cargo-llvm-cov` de `supply-chain.yml` e o `release.yml` nunca rodaram; o runner
+`self-hosted,wyd-local` **não está registrado**, então `deploy-local.yml` fica em fila até que
+exista; e `check-compose-hardening` é verificação **textual** do compose (TLS na frente do portal,
+`healthcheck` dos serviços de observabilidade e `cap_drop`/`security_opt` por serviço continuam
+checklist da `DEVOPS-03`, não gate).
+
+**Defeito que o próprio pipeline encontrou (2026-11-13):** `wyd-portal/package.json` pedia
+`typescript: ^7.0.2` mas `package-lock.json` fixava `5.9.3` — `npm ci` (primeira etapa do job
+`portal`) abortava com `EUSAGE` antes de rodar qualquer verificação. Lock sincronizado
+(`npm install --package-lock-only`, agora 7.0.2) e `tsc --noEmit` verde. Os alvos passaram a chamar
+`npm run typecheck`/`npm run test` em vez de `npx tsc`: sem o binário local, `npx` baixa um pacote
+chamado `tsc` (não o compilador) e o erro vira ruído sem relação com o código.
 
 **Jobs de antes (mapa histórico):** seis jobs, todos em `ubuntu-24.04`, `permissions: contents: read`, `concurrency` por `ref`:
 

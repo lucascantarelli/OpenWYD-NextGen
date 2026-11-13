@@ -132,20 +132,33 @@ jobs:
           pattern: binarios-*
           merge-multiple: true
           path: dist
-      - name: Corpo da release (changelog do roadmap anexado)
+      - name: Corpo da release (changelog + commits desde a tag anterior)
         run: |
           {
             echo "Release ${{ github.ref_name }} — commit ${{ github.sha }}."
             echo
-            echo "Cada issue fechada e a sua evidência estão em \`roadmap-rust/changelog.md\` (anexo)."
+            echo "Cada issue fechada e a sua evidência estão em \`roadmap-rust/changelog.md\`."
             echo "Procedimento de release e rollback: \`docs/rust/02-execucao.md\` §6."
+            echo
+            anterior="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+            if [ -n "$anterior" ]; then
+              echo "## Mudanças desde $anterior"
+              echo
+              git log --no-merges --pretty='- %s (%h)' "${anterior}..${TAG}"
+            else
+              echo "## Mudanças"
+              echo
+              echo "Primeira tag do repositório — histórico completo no git."
+            fi
           } > notas.md
+          cat notas.md
       - name: Publicar release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Notas vêm do arquivo (determinístico); `--generate-notes` fica de fora para não
+          # disputar a mesma seção com o changelog do roadmap.
           gh release create "${TAG}" dist/* \
             --title "${TAG}" \
             --notes-file notas.md \
-            --generate-notes \
             --verify-tag

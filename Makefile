@@ -233,8 +233,8 @@ portal-install: ## npm ci no portal (skill: wyd-web-admin-ui)
 portal-dev: ## portal em http://127.0.0.1:3000 (hot reload)
 	cd wyd-portal && npm run dev
 
-portal-test: ## tsc --noEmit + vitest do portal
-	cd wyd-portal && npx tsc --noEmit && npx vitest run
+portal-test: ## tsc --noEmit + vitest do portal (scripts do package.json, nunca `npx`)
+	cd wyd-portal && npm run typecheck && npm run test
 
 portal-build: ## next build (valida rotas e o standalone)
 	cd wyd-portal && npm run build

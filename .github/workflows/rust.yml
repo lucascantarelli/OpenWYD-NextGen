@@ -109,10 +109,10 @@ jobs:
       - uses: ./.github/actions/node-setup
 
       - name: Typecheck (tsc --noEmit)
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Testes (vitest)
-        run: npx vitest run --reporter=dot
+        run: npm run test -- --reporter=dot
 
       - name: Build (next build, rotas e standalone)
         run: npm run build
