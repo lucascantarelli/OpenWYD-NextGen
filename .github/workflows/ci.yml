@@ -181,6 +181,22 @@ jobs:
       fail-fast: false
       matrix:
         pacote: [wyd-server, wyd-admin]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          # Senha derivada do run: credencial efêmera e sem literal no repositório (o scanner de
+          # segredo do PR acusava `postgres` como "generic password").
+          POSTGRES_PASSWORD: ${{ github.run_id }}
+          POSTGRES_DB: wyd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wyd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       WYD_TEST_REQUIRED: "1"
       MIGRATIONS_DIR: crates/wyd-db/migrations

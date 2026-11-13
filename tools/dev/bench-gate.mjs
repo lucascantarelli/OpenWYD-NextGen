@@ -55,6 +55,14 @@ function cargo() {
 }
 
 function medir() {
+  // Aquecer antes de medir (DEVOPS-05): a primeira execução depois de compilar paga cache de
+  // página e escalonamento frios. Medido: 5 rodadas seguidas deram 4 verdes e a primeira 1,9%
+  // acima do teto (305,6 µs × 300) sem nenhuma mudança de código. Uma rodada descartada remove
+  // o viés sem afrouxar limite nenhum.
+  spawnSync(cargo(), ["bench", "-p", "wyd-core", "--bench", "tick"], {
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
   const run = spawnSync(cargo(), ["bench", "-p", "wyd-core", "--bench", "tick"], {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
