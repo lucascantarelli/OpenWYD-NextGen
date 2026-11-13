@@ -51,7 +51,10 @@ if [ "$MODO" = "--check" ]; then
   exec amtool check-config "$OUT/alertmanager.yml"
 fi
 
+# `--web.external-url` é o que faz os links do Slack (Alertmanager/silenciar) apontarem para um
+# endereço útil em vez do hostname interno do container (5fa8289e0b74:9093).
 exec /bin/alertmanager \
   --config.file="$OUT/alertmanager.yml" \
   --storage.path=/alertmanager \
-  --data.retention=120h
+  --data.retention=120h \
+  --web.external-url="${ALERTMANAGER_EXTERNAL_URL:-http://127.0.0.1:9093}"

@@ -25,6 +25,8 @@ on:
 
 permissions:
   contents: read
+  # `notify` lê `/actions/runs/<id>/jobs` para publicar o tempo real de cada job.
+  actions: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -455,8 +457,27 @@ jobs:
         shell: bash
         run: node tools/dev/deploy-provas.mjs 2>&1 | tee deploy-provas.log
 
-      # O deploy termina aqui, não no artefato: sucesso e falha viram alerta no caminho que o
-      # time já vigia (Alertmanager → #wyd-alertas). Roda mesmo com passo anterior vermelho.
+      # Config e templates do Alertmanager são lidos no boot: sem recriar, uma mudança em
+      # `docker/monitoring/alertmanager/` fica no arquivo e não no processo. É barato (segundos) e o
+      # estado (silences, histórico) vive no volume.
+      - name: Recarregar Alertmanager (config e templates são lidos no boot)
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: |
+          docker compose restart alertmanager
+          for _ in $(seq 1 20); do
+            if curl -sf -o /dev/null "http://127.0.0.1:${ALERTMANAGER_PORT:-9093}/-/ready"; then
+              echo "alertmanager pronto"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::alertmanager não ficou pronto em 40 s após o restart"
+          exit 1
+
+      # O deploy termina aqui, não no artefato: a FALHA vira alerta crítico no canal de operação
+      # (o sucesso já é a mensagem do notify no canal de CI — sem notícia duplicada). Roda mesmo
+      # com passo anterior vermelho.
       - name: Relatar resultado ao Alertmanager
         if: always() && steps.sentinela.outputs.pulado == 'false'
         shell: bash
@@ -490,63 +511,17 @@ jobs:
     steps:
       - name: Montar e enviar o resumo
         env:
-          # Opcional: sem o segredo o passo não roda (o gate continua sendo a fonte de verdade).
+          # Opcional: sem o segredo o passo avisa e sai 0 (o gate continua sendo a fonte de verdade).
           SLACK_CI_WEBHOOK: ${{ secrets.SLACK_CI_WEBHOOK }}
-          EVENTO: ${{ github.event_name }}
-          REF: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
+          # Lê /actions/runs/<id>/jobs para publicar tempo real por job (permissão actions: read).
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORIO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          RESULTADOS: >-
-            fmt=${{ needs.fmt.result }}
-            clippy=${{ needs.clippy.result }}
-            conteudo=${{ needs.conteudo.result }}
-            infra=${{ needs.infra.result }}
-            portal=${{ needs.portal.result }}
-            auditoria=${{ needs.auditoria.result }}
-            testes=${{ needs.testes.result }}
-            sistema=${{ needs.sistema.result }}
-            portal-build=${{ needs.portal-build.result }}
-            imagens=${{ needs.imagens.result }}
-            cobertura=${{ needs.cobertura.result }}
-            gate=${{ needs.gate.result }}
-            deploy=${{ needs.deploy.result }}
-        run: |
-          if [ -z "$SLACK_CI_WEBHOOK" ]; then
-            {
-              echo "### ⚠️ Nada foi enviado ao Slack"
-              echo
-              echo "O segredo **SLACK_CI_WEBHOOK** não existe neste repositório, então o job sai com"
-              echo "sucesso sem notificar. Para ativar: crie um *Incoming Webhook* no canal #wyd-ci"
-              echo "(Slack → Apps → Incoming Webhooks), salve o valor sem passar pelo chat e registre"
-              echo "com **gh secret set SLACK_CI_WEBHOOK**. Contexto: docs/rust/10-devops-ci.md §11."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning::SLACK_CI_WEBHOOK ausente — nenhuma mensagem foi enviada ao #wyd-ci (docs/rust/10-devops-ci.md §11)"
-            exit 0
-          fi
-
-          # Métricas: resultado por job + contagem, sem chamada extra à API.
-          total=0; ok=0; falhou=0; pulou=0; detalhe=""; nl=$'\n'
-          for par in $RESULTADOS; do
-            nome="${par%%=*}"; estado="${par##*=}"
-            total=$((total + 1))
-            case "$estado" in
-              success) ok=$((ok + 1)); icone="✅" ;;
-              skipped) pulou=$((pulou + 1)); icone="⏭️" ;;
-              cancelled) pulou=$((pulou + 1)); icone="🚫" ;;
-              *) falhou=$((falhou + 1)); icone="❌" ;;
-            esac
-            # Newline real (não `\n` literal): `printf %s` não expande escapes.
-            detalhe="$detalhe$nl${icone} ${nome}: ${estado}"
-          done
-          if [ "$falhou" = "0" ]; then titulo="✅ CI passou"; else titulo="❌ CI falhou"; fi
-
-          corpo=$(printf '*%s — %s* (%s, %s)\n%d jobs · %d ok · %d falha · %d pulado%s\n<%s|ver run>' \
-            "$titulo" "$REF" "$EVENTO" "${SHA:0:7}" "$total" "$ok" "$falhou" "$pulou" "$detalhe" "$RUN_URL")
-          payload=$(printf '%s' "$corpo" | jq -Rs '{text: .}')
-          # --fail-with-body: webhook revogado/canal errado (4xx/5xx) falha o job em vez de sumir em silêncio.
-          resposta=$(curl -sS --fail-with-body -X POST -H 'Content-Type: application/json' \
-            -d "$payload" "$SLACK_CI_WEBHOOK") || {
-            echo "::error::Slack recusou a mensagem — confira se o webhook ainda é válido e aponta para #wyd-ci"
-            exit 1
-          }
-          echo "resumo enviado: $ok ok, $falhou falha, $pulou pulado (resposta: ${resposta:-ok})"
+          EVENTO: ${{ github.event_name }}
+          # Em PR, github.ref_name é "12/merge"; head_ref dá a branch de verdade.
+          REF: ${{ github.head_ref || github.ref_name }}
+          SHA: ${{ github.sha }}
+          ATOR: ${{ github.actor }}
+          WORKFLOW: ${{ github.workflow }}
+        run: node tools/dev/notify-ci.mjs
