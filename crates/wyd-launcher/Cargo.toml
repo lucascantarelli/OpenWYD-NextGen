@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 # Tela de conexão: o launcher usa o MESMO renderizador da CLI headless, sem texto duplicado.
-wyd-bots = { path = "../wyd-bots" }
+wyd-bots = { path = "../wyd-bots", version = "0.1.0" }
 
 # Assinatura do pacote de patch (ADR-0003, revisão 2026-11-11). Ed25519 com chave
 # pública embutida: o binário só verifica, nunca assina, então não carrega segredo.

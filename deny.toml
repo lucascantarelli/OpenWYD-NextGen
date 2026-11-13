@@ -11,7 +11,12 @@ targets = []
 version = 2
 # Advisory yanked continua visível (warn), não bloqueia build de versão publicada.
 yanked = "warn"
-ignore = []
+ignore = [
+  # `proc-macro-error` (transitivo do Tauri/gtk) está descontinuado; não há versão corrigida e
+  # nenhum advisory de vulnerabilidade, só de manutenção. Entra em `ignore` com prazo: sair desta
+  # lista quando o Tauri trocar de `proc-macro-error2` (acompanhado na DEVOPS-12).
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error unmaintained (transitivo do Tauri); sem fix upstream, sem CVE" },
+]
 
 [licenses]
 version = 2
@@ -28,6 +33,10 @@ allow = [
   "MPL-2.0",
   "CC0-1.0",
   "Unlicense",
+  # `webpki-roots` distribui os certificados raiz sob CDLA-Permissive-2.0 (dados, não código):
+  # permissiva, sem copyleft e compatível com GPL-2.0 do projeto. Antes daqui, o `cargo deny` a
+  # reprovava e o job `audit` ficava vermelho (run 43431211305).
+  "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.93
 # Crates do workspace são `publish = false`: código do jogo não é publicado, então não

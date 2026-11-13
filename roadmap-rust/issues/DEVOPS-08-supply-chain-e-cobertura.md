@@ -28,10 +28,18 @@ com baseline registrada — sem transformar cobertura em meta decorativa.
 
 ## Run real (2026-11-13)
 
-- **Não exercitado ainda.** O Dependabot, por outro lado, abriu PRs em cargo, npm e GitHub Actions
-  (`actions/checkout 5→7`, `trivy-action`, crates como `glib`), o que confirma os quatro ecossistemas
-  configurados — mas nenhum run de `supply-chain.yml` aconteceu; cobertura e baseline continuam sem
-  medição real.
+- **Exercitado por `workflow_dispatch`** e o primeiro run reprovou em dois jobs — eram defeitos reais:
+  - `advisory + licenças`: `webpki-roots` distribui os certificados raiz sob **CDLA-Permissive-2.0**
+    (fora da allowlist) e três `path`-deps sem `version` contavam como **wildcard**
+    (`wyd-sim` no server, `wyd-bots` no launcher, `wyd-launcher` na UI).
+  - `cobertura`: `cargo llvm-cov --workspace` compila `apps/launcher-ui` e o job **nunca instalou
+    GTK/WebKit** → `glib-sys`/`gobject-sys` morriam no build script (mesmo defeito já corrigido em
+    `gate`/`bench`, faltava aqui).
+- Correções: licença explícita na allowlist, `version = "0.1.0"` nos três path-deps (sem afrouxar
+  a política) e `tauri: true` no job de cobertura. `proc-macro-error` (RUSTSEC-2024-0370) entra em
+  `ignore` com motivo e prazo — é **manutenção**, não vulnerabilidade, e o Tauri ainda o puxa.
+- Depois disso: run [43432022839](https://github.com/lucascantarelli/wyd/actions/runs/43432022839)
+  **verde nos 6 jobs** (advisory/licenças, quatro scans Trivy e cobertura Rust+portal).
 
 ## Progresso (2026-11-13)
 

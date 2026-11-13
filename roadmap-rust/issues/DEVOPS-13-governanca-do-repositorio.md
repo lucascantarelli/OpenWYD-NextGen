@@ -35,8 +35,13 @@ canal de segurança (`SECURITY.md`) e notificação de CI no Slack.
 - Proteção de `develop` e `main` exigindo o check `gate (agrega os grupos)`, sem push direto, sem
   force-push e sem deleção.
 - `bench.yml` exercitado por `workflow_dispatch`: run
-  [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) verde (5 min 10 s),
-  então nenhum workflow do repositório segue sem execução comprovada.
+  [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) verde (5 min 10 s).
+- `supply-chain.yml` exercitado e **consertado** (ver DEVOPS-08): run
+  [43432022839](https://github.com/lucascantarelli/wyd/actions/runs/43432022839) verde nos 6 jobs.
+- `release.yml`: disparo por tag provado com tag descartável (`v0.1.0`), run
+  [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735) cancelado e tag
+  removida — repositório sem tag/release residual. Execução completa depende de release real do dono.
+  A tabela por workflow fica em `10-devops-ci.md` §1.1 e na DEVOPS-11.
 - `main` e `develop` passam a exigir `gate (agrega os grupos)`; como `enforce_admins=true`, nem o
   dono empurra direto — o caminho é PR com squash.
 

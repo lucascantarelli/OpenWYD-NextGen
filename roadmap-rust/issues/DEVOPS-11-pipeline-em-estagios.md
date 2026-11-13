@@ -38,6 +38,20 @@ nenhuma verificação e com um único check agregador para branch protection.
 - Job `notify` (falha do gate → Slack) pronto, condicionado ao segredo `SLACK_CI_WEBHOOK`
   (docs `10-devops-ci.md` §11).
 
+## Comprovação por workflow (2026-11-13)
+
+Estado observado no GitHub, não lido do YAML — a mesma tabela está em `10-devops-ci.md` §1.1.
+
+| Arquivo | Estado | Prova |
+|---|---|---|
+| `rust.yml` | verde, 25 jobs, só `notify` skipped | [43429981097](https://github.com/lucascantarelli/wyd/actions/runs/43429981097) |
+| `ci-content.yml` / `ci-rust.yml` / `ci-portal.yml` / `ci-infra.yml` | chamados pelo orquestrador, todos os jobs verdes | jobs `conteúdo|rust|portal|infra / …` no run acima |
+| `images.yml` | verde nas quatro imagens | [43422723816](https://github.com/lucascantarelli/wyd/actions/runs/43422723816) |
+| `bench.yml` | verde por `workflow_dispatch` (5m10) | [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) |
+| `deploy-local.yml` | verde no `wyd2-desktop` | [43430395464](https://github.com/lucascantarelli/wyd/actions/runs/43430395464) |
+| `supply-chain.yml` | verde nos 6 jobs | [43432022839](https://github.com/lucascantarelli/wyd/actions/runs/43432022839) |
+| `release.yml` | disparo por tag provado; execução completa depende de tag do dono | [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735) (cancelado de propósito, tag apagada) |
+
 ## Critérios de aceite
 
 - [x] Grupos reutilizáveis (`ci-content`, `ci-rust`, `ci-portal`, `ci-infra`) chamados pelo orquestrador.

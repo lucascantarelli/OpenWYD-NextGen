@@ -47,7 +47,33 @@ issue DEVOPS. `ubuntu-24.04`, `permissions: contents: read` (release: `contents:
 | `release.yml` | `versao` / `binarios` / `imagens` / `notas` | DEVOPS-10 | tag `vX.Y.Z` confere com `[workspace.package]`; binários + `SHA256SUMS`; imagens com a tag e SBOM; release com notas do GitHub + changelog anexado |
 | `deploy-local.yml` | `deploy` | DEVOPS-09 | `workflow_run` do `Rust` verde em `develop` → rebuild + `up --wait` + `deploy-provas.mjs` no runner `self-hosted,wyd-local`, com sentinela de teste humano |
 
-### 1.1 Estado do template (2026-11-13)
+### 1.1 Comprovação de execução por workflow (2026-11-13)
+
+Cada arquivo de `.github/workflows/` com o que foi **observado no GitHub** (não leitura de YAML).
+Onde não há run completo, está o motivo e o comando exato.
+
+| Arquivo | Estado comprovado | Prova |
+|---|---|---|
+| `rust.yml` (orquestrador) | verde, 25 jobs, só `notify` skipped | run [43429981097](https://github.com/lucascantarelli/wyd/actions/runs/43429981097) (commit `fc5d04b`) |
+| `ci-content.yml` | chamado pelo orquestrador: 6 jobs verdes | jobs `conteúdo — …` no run acima |
+| `ci-rust.yml` | chamado pelo orquestrador: fmt, clippy, build+test e 2 jobs de sistema verdes | jobs `rust / …` no run acima |
+| `ci-portal.yml` | chamado pelo orquestrador: typecheck, vitest e build verdes | jobs `portal / …` no run acima |
+| `ci-infra.yml` | chamado pelo orquestrador: 9 jobs verdes (compose, promtool, alertas, actionlint) | jobs `infra / …` no run acima |
+| `images.yml` | verde nas quatro imagens (build, labels, smoke, Trivy, SBOM) | run [43422723816](https://github.com/lucascantarelli/wyd/actions/runs/43422723816) |
+| `bench.yml` | verde por `workflow_dispatch` | run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) |
+| `deploy-local.yml` | verde no runner `wyd2-desktop` (quatro provas) | run [43430395464](https://github.com/lucascantarelli/wyd/actions/runs/43430395464) |
+| `supply-chain.yml` | verde nos 6 jobs (advisory, 4 scans, cobertura) por `workflow_dispatch` | run [43432022839](https://github.com/lucascantarelli/wyd/actions/runs/43432022839) |
+| `release.yml` | **disparo por tag provado**; execução completa não (cancela e não foi refeita) | run [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735): `workflow=Release event=push branch=v0.1.0`, cancelado de propósito e tag apagada |
+
+O `release.yml` é o único sem execução **completa**, por desenho: publicar release é decisão do dono e
+não existe tag `vX.Y.Z` permanente. O disparo foi provado com a tag descartável `v0.1.0` (run criado,
+cancelado, tag e release inexistentes depois). Para uma release real, o dono roda:
+
+```bash
+git checkout main && git pull && git tag -a v0.1.0 -m "Release 0.1.0" && git push origin v0.1.0
+```
+
+### 1.2 Estado do template (2026-11-13)
 
 O que o pipeline **cobra hoje** (regressão fica vermelha) e o que continua pendente na issue.
 Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é dela, não deste mapa.
@@ -63,13 +89,12 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 | `DEVOPS-09` | `deploy-local.yml`: `workflow_run` do `Rust` verde em `develop`, runner `self-hosted,wyd-local`, sem trigger de PR, `contents: read`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | — (runner `wyd2-desktop` instalado e deploy verde provado em 2026-11-13; falta notificar o resultado no Alertmanager) |
 | `DEVOPS-10` | **versão única 0.1.0** (`[workspace.package]` + `version.workspace = true` nos dez membros e espelho no portal), `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas do git | push de imagem por tag (registry) e política de rollback por digest |
 
-**O que já rodou no GitHub (2026-11-13):** `Rust` verde (todos os grupos), `images.yml` verde nas
-quatro imagens, `deploy-local.yml` verde no runner `wyd2-desktop` e a sentinela provada em run
-próprio. **O que ainda não rodou:** `supply-chain.yml` (só dispara em agenda, `workflow_dispatch`
-ou mudança em `Cargo.*`/`deny.toml`) e `release.yml` (nenhuma tag criada) — nesses dois, cobertura,
-baseline e notas de release continuam **não verificados**. `check-compose-hardening` é verificação
-**textual** do compose: TLS na frente do portal, `healthcheck` dos serviços de observabilidade e
-`cap_drop`/`security_opt` por serviço continuam checklist da `DEVOPS-03`, não gate.
+**O que já rodou no GitHub (2026-11-13):** `Rust` (com os quatro grupos), `images.yml`,
+`bench.yml`, `deploy-local.yml` (com a sentinela) e `supply-chain.yml` — todos com run verde e link
+em §1.1. O único sem execução completa é `release.yml`, cujo **disparo por tag** está provado (run
+43431337735, cancelado de propósito) e que depende de tag real do dono. `check-compose-hardening` é
+verificação **textual** do compose: TLS na frente do portal, `healthcheck` dos serviços de
+observabilidade e `cap_drop`/`security_opt` por serviço continuam checklist da `DEVOPS-03`, não gate.
 
 **Defeito que o próprio pipeline encontrou (2026-11-13):** `wyd-portal/package.json` pedia
 `typescript: ^7.0.2` mas `package-lock.json` fixava `5.9.3` — `npm ci` (primeira etapa do job
