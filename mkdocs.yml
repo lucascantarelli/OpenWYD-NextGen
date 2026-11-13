@@ -114,6 +114,7 @@ nav:
     - Análise estática: cliente/analise-estatica.md
     - Depuração: cliente/depuracao.md
     - Roteiro de prova visual: cliente/roteiro-prova-visual-7662.md
+    - Harness de captura/replay: cliente/harness-e2e.md
     - Pacotes: cliente/pacotes.md
     - Formatos: cliente/formatos.md
     - Tabelas binárias: cliente/tabelas-bin.md
