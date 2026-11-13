@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-09`
 > **ID histórico:** `DEVOPS-09`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-02, DEVOPS-04 · **Bloqueia:** —
 
@@ -22,6 +22,25 @@ colocar segredo no GitHub.
 - `AGENTS.md` §0/§7 proíbem reiniciar serviço durante teste humano e proíbem `down -v`/reset de
   volume: o job precisa respeitar as duas regras.
 - Desenho completo (passos, travas e alternativa sem runner) em `docs/rust/10-devops-ci.md` §9.
+
+## Progresso (2026-11-13)
+
+- **Runner de repositório registrado no GitHub pelo dono em 2026-11-13** com os labels
+  `self-hosted,wyd-local` — o job deixou de ficar em fila esperando executor.
+- `.github/workflows/deploy-local.yml`: disparo por `workflow_run` do workflow **Rust** concluído com
+  sucesso em `develop` (mais `workflow_dispatch`), `runs-on: [self-hosted, wyd-local]`,
+  `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout do
+  `head_sha` validado. Sentinela `tmp/teste-humano.flag`: com o arquivo presente o job emite aviso e
+  **não** reinicia a stack (mesma trava em `make deploy-local`).
+- Provas de contrato no runner: `tools/dev/deploy-provas.mjs` — `/login` 200, `/entregas` 307,
+  gateway `/health` com `schema` igual ao `SCHEMA_VERSION` (derivado do código, não fixo) e portal
+  `/api/health` 200; qualquer divergência derruba o job (sem `continue-on-error`). Logs de build e
+  de provas viram artefato do run.
+- `actionlint 1.7.7` exit 0 nos cinco workflows (`.github/actionlint.yaml` declara o label
+  `wyd-local`, antes tratado como erro de digitação).
+- Ainda falta: o primeiro deploy real disparado por um push verde em `develop` (nunca rodou), a
+  notificação do resultado no destino do Alertmanager e o passo de instalação/remoção do runner
+  escrito no `10-devops-ci.md` §9 (hoje só o desenho).
 
 ## Passos
 
@@ -81,7 +100,7 @@ com `tmp/teste-humano.flag` presente o job aborta com mensagem clara.
 
 - [ ] Push verde em `develop` reconstrói e sobe a stack local sem intervenção humana.
 - [ ] Job falha (e não "quase passa") quando qualquer prova de contrato falha.
-- [ ] Nenhum trigger de `pull_request`; conta sem privilégio; segredos fora do GitHub.
+- [x] Nenhum trigger de `pull_request`; conta sem privilégio; segredos fora do GitHub.
 - [ ] Instalação/remoção do runner e a trava de teste humano documentadas.
 - [ ] Resultado do deploy notificado no destino do Alertmanager.
 

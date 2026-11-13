@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-10`
 > **ID histórico:** `DEVOPS-10`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** S · **Depende de:** DEVOPS-06 · **Bloqueia:** QA-10
 
@@ -23,6 +23,18 @@ versão é o build-arg default `0.1.0`.
 - Comentário do `[profile.release]` cita `323.072 → 223.232 bytes`; o §6 do mesmo doc registra
   `296.448` — duas fontes para o mesmo número.
 - Análise completa em `docs/rust/10-devops-ci.md` §8 (achados C17, C18).
+
+## Progresso (2026-11-13)
+
+- Fonte única: `[workspace.package] version = "0.1.0"` no `Cargo.toml` raiz, `version.workspace =
+  true` nos dez membros e espelho no portal; `tools/dev/check-versao.mjs` roda no `make check` e no
+  job `gate` — evidência: `versão única ok: 0.1.0 (workspace, 10 membros e portal)`.
+- `.github/workflows/release.yml` (tag `v*.*.*`): `versao` falha se a tag não for a versão do
+  workspace, `binarios` publica binários + `SHA256SUMS`, `imagens` constrói as quatro com
+  `WYD_VERSION=<tag>` e SBOM, e `notas` monta a release com changelog + `git log` desde a tag anterior.
+- Ainda falta: criar a primeira tag e ver a release sair (nunca rodou), o procedimento de rollback
+  por tag+digest escrito e a divergência de tamanho de imagem resolvida com medição registrada
+  (portal ~320 MB contra ~51 MB do gateway/server).
 
 ## Passos
 
@@ -73,7 +85,7 @@ de imagem iguais à tag; `check-versao` no `make check` e no CI.
 
 ## Critérios de aceite
 
-- [ ] Fonte única de versão, verificada por script no gate local e no CI.
+- [x] Fonte única de versão, verificada por script no gate local e no CI.
 - [ ] Tag `vX.Y.Z` produz release com notas rastreáveis a issues e imagens rotuladas.
 - [ ] Procedimento de release e rollback escrito com tag + digest.
 - [ ] Divergência de tamanho de imagem resolvida com uma medição registrada.

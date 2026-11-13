@@ -54,7 +54,9 @@ for (const f of ativos) {
   const h1 = texto.match(/^#\s+([A-Z]+-\d+)\s+—/m);
   if (!h1 || h1[1] !== m[1]) problemasEstrutura.push(`${f}: título não usa ${m[1]}`);
   if (!texto.includes("**ID histórico:**")) problemasEstrutura.push(`${f}: falta o metadado ID histórico`);
-  const stArquivo = statusOf(texto.match(/^> \*\*Estado 2026-11-12:\*\*\s*([^\n]+)/m)?.[1] ?? "");
+  const stArquivo = statusOf(
+    texto.match(/^> \*\*Estado \d{4}-\d{2}-\d{2}:\*\*\s*([^\n]+)/m)?.[1] ?? "",
+  );
   if (!stArquivo) problemasEstrutura.push(`${f}: falta status no cabeçalho`);
   else if (indice.has(m[1]) && indice.get(m[1]) !== stArquivo) {
     problemasEstrutura.push(`${m[1]}: arquivo ${stArquivo} × índice ${indice.get(m[1])}`);

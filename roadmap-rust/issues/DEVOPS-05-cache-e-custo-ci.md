@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-05`
 > **ID histórico:** `DEVOPS-05`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** S/M · **Depende de:** DEVOPS-04 · **Bloqueia:** DEVOPS-06
 
@@ -31,6 +31,18 @@ Reduzir o custo e o tempo do CI sem perder cobertura: cache de dependências ent
 - Limiares do `bench-gate` calibrados no host do dono (Windows, 2,2×–5,3× de folga), com p99
   variando ~4× na mesma máquina: risco de flake em runner compartilhado.
 - Análise completa em `docs/rust/10-devops-ci.md` §1 (achados B4, C4, C5, C8).
+
+## Progresso (2026-11-13)
+
+- Cache centralizado: `.github/actions/rust-setup` (toolchain + `Swatinem/rust-cache` com chave de
+  `Cargo.lock`/`rust-toolchain.toml`) e `.github/actions/node-setup` (Node 22 + `npm ci` com cache);
+  `images.yml` usa `cache-from/to: type=gha` por imagem.
+- `timeout-minutes` em **todos** os 16 jobs dos cinco workflows; bench compila uma vez
+  (`bench --no-run` + `bench-gate` sobre o binário já construído); `paths-ignore` em `pull_request`
+  (docs/roadmap/`*.md`/`.agents`) e `cancel-in-progress` só em PR — `main`/`develop` não cancelam,
+  para nenhum commit de base ficar sem gate.
+- Ainda falta: medir o ganho real (comparar runs com e sem cache e publicar os minutos),
+  `bench-gate` estável em 5 execuções, e pinar `rust-toolchain.toml` — hoje ainda `channel = "stable"`.
 
 ## Passos
 
@@ -80,7 +92,7 @@ registrada no artefato; `bench-gate` sem flake em 5 execuções seguidas.
 ## Critérios de aceite
 
 - [ ] Cache ativo nos jobs que compilam, com ganho medido e publicado.
-- [ ] `timeout-minutes` em todos os jobs.
+- [x] `timeout-minutes` em todos os jobs.
 - [ ] Bench compilado uma vez; `bench-gate` estável em 5 execuções.
 - [ ] Toolchain pinado por versão e skill corrigida.
 

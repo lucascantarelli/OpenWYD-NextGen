@@ -345,26 +345,39 @@ Desenho recomendado (`DEVOPS-09`):
 
 1. **Runner de repositório**, escopo repo (não organização), labels `self-hosted,wyd-local`,
    conta Windows dedicada e sem privilégio de administrador.
-2. **Job `deploy-local`** com `needs: [rust, seed-boot, portal, actionlint]`,
-   `if: github.event_name == 'push' && github.ref == 'refs/heads/develop'`,
-   `runs-on: [self-hosted, wyd-local]`, `environment: local`.
-3. **Passos**: `docker compose build` → `docker compose up -d --wait --wait-timeout 180` →
-   provas (`/login` 200, `/entregas` 307, `gateway/health` 200 com `schema` igual a
-   `SCHEMA_VERSION`) → log do deploy como artefato. Falhou prova, o job falha e o deploy não é
-   dado como feito.
-4. **Trava de segurança**: nenhum workflow `pull_request` nesse runner (ou, se houver,
+2. **Runner registrado em 2026-11-13** (pelo dono): repositório → *Settings* → *Actions* →
+   *Runners* → *New self-hosted runner* (Windows), com os labels `self-hosted,wyd-local` — é o
+   que o `runs-on: [self-hosted, wyd-local]` do workflow pede. Sessão interativa: `run.cmd`;
+   como serviço: `svc.cmd install` + `svc.cmd start`. Remoção: `svc.cmd uninstall` e depois
+   *Settings* → *Runners* → remover. `.github/actionlint.yaml` declara o label, senão o lint o
+   trata como erro de digitação.
+3. **Job `deploy`** no workflow `deploy-local.yml`, disparado por **`workflow_run`** do workflow
+   **Rust** concluído com sucesso em `develop` (mais `workflow_dispatch`), com
+   `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout
+   do `head_sha` validado — assim o deploy só roda sobre commit que já passou no gate, e nenhum
+   trigger de `pull_request` chega ao runner.
+4. **Passos**: `docker compose build` → `docker compose up -d --wait --wait-timeout 240` →
+   `node tools/dev/deploy-provas.mjs`, que cobra **quatro** provas (`/login` 200, `/entregas` 307,
+   `gateway/health` 200 com `schema` igual ao `SCHEMA_VERSION` derivado do código e portal
+   `/api/health` 200) → logs de build e de prova como artefato. Falhou prova, o job falha e o
+   deploy não é dado como feito (nenhum `continue-on-error`).
+5. **Trava de segurança**: nenhum workflow `pull_request` nesse runner (ou, se houver,
    `environment` com aprovação manual). Segredos continuam no `.env` do host, **nunca** em
    `secrets` do GitHub, e o runner não recebe permissão de escrita no repositório.
-5. **Trava operacional**: o job não roda `down -v`, não faz `DROP`, não toca em `client/` e não
-   reinicia a stack durante teste humano (`AGENTS.md` §0/§7). Se o teste do dono estiver em
-   andamento, o deploy espera — `workflow_dispatch` manual é o freio.
-6. **Alternativa sem runner** (menos privilégio, menos exatidão): `git pull` + `docker compose
+6. **Trava operacional**: o job não roda `down -v`, não faz `DROP`, não toca em `client/` e não
+   reinicia a stack durante teste humano (`AGENTS.md` §0/§7). A sentinela `tmp/teste-humano.flag`
+   é checada antes do build: com o arquivo presente o job emite `::warning::` e **não** sobe nada
+   (mesma trava em `make deploy-local`); `workflow_dispatch` manual continua sendo o freio.
+7. **Alternativa sem runner** (menos privilégio, menos exatidão): `git pull` + `docker compose
    build` por tarefa agendada na máquina, com o mesmo bloco de provas. Não sabe se o CI passou;
    por isso é fallback, não desenho.
 
 ## 10. Backlog derivado
 
 Ordem de execução recomendada (severidade × esforço):
+
+Status em 2026-11-13: `DEVOPS-03`…`DEVOPS-10` estão **🚧** — o template de CI com os jobs de cada
+uma existe e passa nos gates locais; o que falta é o run real no GitHub (§1.1).
 
 | Ordem | Issue | Sev | Esforço | Por quê agora |
 |---:|---|---|---|---|

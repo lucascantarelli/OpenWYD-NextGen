@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-06`
 > **ID histórico:** `DEVOPS-06`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-01, DEVOPS-05 · **Bloqueia:** DEVOPS-10
 
@@ -26,6 +26,16 @@ nenhuma imagem de release saia sem procedência.
   constrói essa imagem é o único que poderia ter avisado antes.
 - Nenhuma imagem é publicada em registry: não há tag imutável por digest para rollback.
 - Análise completa em `docs/rust/10-devops-ci.md` §5 (achados B2, B5, B6).
+
+## Progresso (2026-11-13)
+
+- `.github/workflows/images.yml`: matriz das **quatro** imagens (launcher, gateway, server, portal)
+  em todo push/PR relevante, com `WYD_VERSION` (tag `v*` ou `0.0.0-<sha>`) e `WYD_COMMIT` (sha
+  completo) do run, conferência das labels de proveniência contra esses valores, smoke do artefato,
+  Trivy bloqueante em `CRITICAL` com `.trivyignore` versionado (hoje vazio, com regra de prazo) e
+  SBOM CycloneDX por imagem como artefato.
+- Ainda falta: o primeiro run (nada executou no GitHub), publicar **tamanho** por imagem (o smoke
+  imprime, mas não há artefato/série) e a decisão de registry/promoção por digest.
 
 ## Passos
 

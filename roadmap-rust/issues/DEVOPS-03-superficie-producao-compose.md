@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-03`
 > **ID histórico:** `DEVOPS-03`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** QA-03 ✅, WEB-01 ✅ · **Bloqueia:** release
 
@@ -29,6 +29,20 @@ serviços.
 - `docker-compose.reaper.yml` sem cabeçalho e sem menção na documentação.
 - `.env` inteiro montado no gateway, que só consome `PORTAL_ADMIN_*`.
 - Análise completa em `docs/rust/10-devops-ci.md` §6 (achados A3, A4, A5, C6–C15).
+
+## Progresso (2026-11-13)
+
+- `docker-compose.prod.yml` reescrito como overlay seguro por construção: `${TAG:?defina TAG}` nas
+  quatro imagens (portal, gateway e os dois canais), `deploy.resources.limits` nos 14 serviços,
+  `GF_AUTH_ANONYMOUS_ENABLED: "false"` no Grafana e nenhuma porta de banco/gateway/monitoramento
+  publicada no host.
+- Gate novo: job `compose-surface` do `.github/workflows/rust.yml` roda
+  `node tools/dev/check-compose-hardening.mjs` (R1–R6) e `docker compose config` nos três modos.
+  Evidência local 2026-11-13: `make compose-hardening` exit 0 e `make stack-config` exit 0 com
+  `ok: prod recusa TAG vazia` (o overlay falha sem `TAG`, como o aceite pede).
+- Ainda **não** coberto (o gate é textual e não finge cobrir): TLS na frente do portal, `healthcheck`
+  nos serviços de observabilidade, `cap_drop`/`security_opt` por serviço e log com teto nos oito
+  serviços que ainda não têm.
 
 ## Passos
 
@@ -87,9 +101,9 @@ sobe tudo `healthy`; portal acessível apenas pelo caminho TLS/loopback definido
 ## Critérios de aceite
 
 - [ ] Portal de produção nunca acessível por HTTP puro; decisão de TLS registrada.
-- [ ] `TAG` obrigatório em prod, provado por `stack-config` falhando sem ele.
+- [x] `TAG` obrigatório em prod, provado por `stack-config` falhando sem ele.
 - [ ] Nenhum serviço sem log com teto/healthcheck onde `--wait` depende dele.
-- [ ] Anônimo do Grafana e senha default fora do perfil de produção.
+- [x] Anônimo do Grafana e senha default fora do perfil de produção.
 - [ ] Exposição via socket do Docker documentada com escopo e alternativa avaliada.
 
 ## Riscos / rollback

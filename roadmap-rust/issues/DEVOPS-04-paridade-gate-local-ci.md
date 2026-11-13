@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-04`
 > **ID histórico:** `DEVOPS-04`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** S · **Depende de:** PROC-13 ✅, QA-02 ✅ · **Bloqueia:** DEVOPS-05
 
@@ -36,6 +36,20 @@ consertar a rotina de fechamento (`make local-rebuild`) que hoje falha por núme
   68 % → 37 % → 27 % (teto 50 %); os gates determinísticos passam (`bench-build` exit 0,
   `bench-gate` exit 0 com 3 cenários dentro do limite). Conclusão para o passo 3: manter `bench`
   fora do `check`, gatear por `bench-gate` e não por p99 medido em máquina com Docker rodando.
+
+## Progresso (2026-11-13)
+
+- Paridade implementada: o job `gate` do `.github/workflows/rust.yml` roda a mesma lista do
+  `make check` (`fmt --all --check`, `clippy -D warnings`, build, test, migrations, issues, docs,
+  skills, `versao-check`, `tools-test`) **e** o `portal` cobre `portal-test`/`portal-build`.
+  `make ci` passou a espelhar de verdade: `test-all bench-build bench-gate audit deny
+  monitoring-rules stack-config compose-hardening portal-build`.
+- `Makefile`: `.PHONY` completo, `help` derivado dos comentários `##`, `make local-rebuild` deriva
+  `SCHEMA_VERSION` de `crates/wyd-db/src/lib.rs` (fim do `"schema":49` fixo contra 50).
+  Evidência: `make help` lista os 30+ alvos, `make check` exit 0.
+- Ainda falta o que só um run real prova: injetar uma divergência de status/link/skill e ver o CI
+  reprovar, depois reconciliar para verde; e reexecutar `make local-rebuild` após a mudança do
+  schema.
 
 ## Passos
 
@@ -88,7 +102,7 @@ Saída esperada: `make check` exit 0 com as dez verificações; `local-rebuild` 
 - [ ] CI executa as mesmas verificações de `make check` (+ `portal-test`).
 - [ ] Uma divergência de status/link/skill reprova o CI, provado com injeção temporária.
 - [ ] `make local-rebuild` sem número fixo de schema; `null`/`netstat` falha de forma ruidosa.
-- [ ] `.PHONY` completo e `make help` derivado dos comentários.
+- [x] `.PHONY` completo e `make help` derivado dos comentários.
 
 ## Riscos / rollback
 

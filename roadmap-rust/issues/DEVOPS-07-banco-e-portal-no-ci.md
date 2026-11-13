@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-07`
 > **ID histórico:** `DEVOPS-07`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-04 · **Bloqueia:** DEVOPS-08
 
@@ -28,6 +28,20 @@ que torne **impossível** um teste obrigatório pular sem que o run fique vermel
   34 páginas estáticas em 35,6 s). Ligar o job `portal` no CI não herda dívida: é só não haver
   job hoje. O lado do banco segue não medido nesta sessão (nenhum teste com `WYD_TEST_DSN` foi
   executado), então a regra anti-skip continua sendo o item a provar.
+
+## Progresso (2026-11-13)
+
+- Jobs no `rust.yml`: `portal` (`npm run typecheck`, `npm run test`, `next build`) e `sistema`
+  (Postgres 17 efêmero → `--migrate` → `cargo test -p wyd-server -p wyd-admin --all-targets -j 1`
+  com `WYD_TEST_REQUIRED=1`).
+- Anti-skip implementado em `crates/wyd-server/tests/common/mod.rs`: sem DSN, `SKIP` continua valendo
+  em execução local opcional; com `WYD_TEST_REQUIRED=1` o teste **falha**. Provado em 2026-11-13 com
+  `sistema_entrada_mundo`: `SKIP` (verde) × `FAILED — WYD_TEST_REQUIRED=1 sem DSN … não pode ser pulado`.
+- Defeito real encontrado de passagem: `package.json` pedia `typescript ^7.0.2` com lock em 5.9.3 —
+  `npm ci` abortava com `EUSAGE` antes de qualquer verificação. Lock sincronizado; `tsc --noEmit` e
+  `next build` verdes em 7.0.2; nenhum alvo usa mais `npx tsc` (que baixava um pacote homônimo).
+- Ainda falta: o primeiro run do job `sistema` com Postgres efêmero (nada executou no GitHub) e um
+  resumo com a contagem de testes por suíte no log do job.
 
 ## Passos
 

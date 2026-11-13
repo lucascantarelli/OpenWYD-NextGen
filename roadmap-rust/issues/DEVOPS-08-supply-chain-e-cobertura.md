@@ -2,7 +2,7 @@
 
 > **ID canônico:** `DEVOPS-08`
 > **ID histórico:** `DEVOPS-08`
-> **Estado 2026-11-12:** ⬜ · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-07 · **Bloqueia:** QA-09
 
@@ -23,6 +23,17 @@ com baseline registrada — sem transformar cobertura em meta decorativa.
   `private.ignore`) — a política existe, a cadência não.
 - QA-09 (tarpaulin/miri) depende desta base para ter onde publicar número.
 - Análise completa em `docs/rust/10-devops-ci.md` §3 (achados B7, B8).
+
+## Progresso (2026-11-13)
+
+- `.github/workflows/supply-chain.yml`: `audit` (`cargo audit` + `cargo deny check`) como **gate**,
+  `images` (scan das quatro imagens, `CRITICAL` bloqueante) e `cobertura` (`cargo llvm-cov` +
+  `npm run test:cobertura`) publicada como **métrica** com artefato — tudo em agenda (`0 6 * * 1`),
+  `workflow_dispatch` e push em `Cargo.lock`/`deny.toml`.
+- `.github/dependabot.yml`: cargo, npm (portal), GitHub Actions e docker, com agrupamento por
+  ecossistema, limite semanal e `ignore` de majors.
+- Ainda falta: baseline de cobertura comparável entre runs (queda vira aviso) e o primeiro run da
+  agenda, que nunca aconteceu (nada foi executado no GitHub ainda).
 
 ## Passos
 
@@ -73,8 +84,8 @@ Dependabot abrindo PR agrupado na primeira semana.
 
 ## Critérios de aceite
 
-- [ ] Verificação de advisory roda por tempo (agenda) além de por commit.
-- [ ] Dependabot ativo em cargo, npm, actions e docker, com agrupamento e política de major.
+- [x] Verificação de advisory roda por tempo (agenda) além de por commit.
+- [x] Dependabot ativo em cargo, npm, actions e docker, com agrupamento e política de major.
 - [ ] Cobertura de Rust e portal publicada com baseline comparável.
 - [ ] Gate × métrica separados e escritos no doc de DevOps.
 
