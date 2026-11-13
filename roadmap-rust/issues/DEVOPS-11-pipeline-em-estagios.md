@@ -54,7 +54,7 @@ nenhuma verificação e com um único check agregador para branch protection.
 | Gate monolítico (7 jobs, 10 passos em série no `gate`) | **3 min 17 s** (run 43417374963) | `build+test` |
 | Grupos em paralelo, caches frios (`shared-key` novo) | 5 min 39 s (run 43422724003) | `bench` 5 min |
 | Grupos em paralelo, cache quente | 4 min 29 s (run 43425395680) | `bench` 4,3 min / `build+test` 2,6 min / `clippy` 2,3 min / `sistema` 2,2 min |
-| Grupos em paralelo **sem** `bench` (estado atual) | a medir no próximo run | `build+test` ~2,6 min |
+| Grupos em paralelo **sem** `bench` (estado atual) | **2 min 32 s** (run 43426393075, 25 jobs em 4 grupos) | `build+test` ~2,6 min |
 
 Leitura honesta: fatiar sem medir **piorou** o tempo de parede, porque `bench` compila o workspace
 inteiro no perfil de bench e passou a ditar todos os pushes. O ganho real vem de tirá-lo do caminho

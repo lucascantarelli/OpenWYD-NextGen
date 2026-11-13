@@ -437,5 +437,6 @@ de flake do `bench-gate` em runner compartilhado só viram número com `DEVOPS-0
 lados. O que já é fato medido em 2026-11-13: com o gate monolítico, o run verde levava **3 min 17 s**;
 com os grupos em paralelo, o primeiro run (caches frios, `shared-key` novo) levou **5 min 39 s** e o
 segundo **4 min 29 s**, e o caminho crítico era o `bench` (**4,3 min** com cache quente, contra 2,6 min
-do `build+test`). Por isso o `bench` saiu para `bench.yml` com gatilho por caminho: o gate volta a ter
-como teto `build+test` (~2,6 min), que é o custo real de compilar e testar o workspace.
+do `build+test`). Por isso o `bench` saiu para `bench.yml` com gatilho por caminho: o gate passou a fechar em
+**2 min 32 s** (run 43426393075, 25 jobs nos quatro grupos), com `build+test` (~2,6 min de job) como
+caminho crítico — abaixo dos 3 min 17 s do monolito.
