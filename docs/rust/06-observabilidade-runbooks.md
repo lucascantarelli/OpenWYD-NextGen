@@ -298,7 +298,8 @@ Não é incidente: é o heartbeat **sempre em firing** que prova que a cadeia
 ### WydDeployLocalOk
 
 `severity=info`, com `endsAt` em 2 min: aparece e resolve sozinho. Não pede ação — é a prova de que
-a cadeia `job deploy → POST /api/v2/alerts → Alertmanager → #wyd-alertas` está inteira, e marca o
+a cadeia `job deploy → POST /api/v2/alerts → Alertmanager → canal de operação` está inteira
+(`SLACK_CHANNEL`, hoje `#wyd-notificações`; o default do código é `#wyd-alertas`), e marca o
 horário do último deploy bem-sucedido.
 
 1. Se um deploy verde **não** gera esta mensagem, a cadeia quebrou: comece por
