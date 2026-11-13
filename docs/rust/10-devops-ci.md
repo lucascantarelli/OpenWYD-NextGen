@@ -476,6 +476,33 @@ meio de deploy ruidoso:
 |---|---|---|---|
 | Alertmanager | métrica de jogo/stack (`WydServidorForaDoAr`, `WydTickP99Alto`) | `#wyd-alertas` | `docker-compose.monitoring.yml` + `docker/monitoring/alertmanager/`, webhook no `.env` do host |
 | CI | resultado do run em `main`/`develop` (sucesso, falha ou cancelado) com métricas por job | `#wyd-ci` | job `notify` do `ci.yml`, segredo `SLACK_CI_WEBHOOK` |
+| Deploy local (CI) | job `deploy` terminou — sucesso **ou** falha, depois do gate em `develop` | `#wyd-alertas` | passo "Relatar resultado ao Alertmanager" (`tools/dev/reportar-deploy.mjs`) → `POST :9093/api/v2/alerts` |
+
+**Canal de operação: o default do código não é o que está no host.** `render-config.sh` usa
+`${SLACK_CHANNEL:-#wyd-alertas}`, mas o `.env` desta máquina define `SLACK_CHANNEL=#wyd-notificações`
+— o config renderizado do container (13/11) mostra `channel: '#wyd-notificações'`. A tabela acima
+cita o default; para conferir o real: `docker compose exec alertmanager grep -A3 slack_configs
+/tmp/wyd-secrets/alertmanager.yml`.
+**O deploy não termina mais em artefato.** Até 2026-11-13 o job só publicava `deploy-provas.log`, e
+quem não abrisse o run não sabia do resultado. Agora o mesmo job entra na cadeia que o time já olha,
+com dois alertas de nome **estável** (o fingerprint do Alertmanager é o conjunto de labels, então
+`run_id` fica na anotação, nunca no label — senão cada run criaria um alerta novo e a falha antiga
+nunca resolveria):
+
+- `WydDeployLocalFalhou` (`critical`, sem `endsAt`): build, `up --wait` ou provas falharam; fica
+  ativo até um deploy passar;
+- `WydDeployLocalOk` (`info`, `endsAt` em 2 min): aparece e auto-resolve, provando o caminho
+  `job → Alertmanager → Slack` sem deixar alerta pendente;
+- no sucesso, o próprio `WydDeployLocalFalhou` é reenviado com `endsAt` no passado — é assim que a
+  falha anterior resolve (`send_resolved: true`).
+
+O relato **não** derruba o deploy quando o Alertmanager está fora: o passo emite `::warning::` e
+segue (deploy é contrato; relato é observabilidade). Se o deploy falhou **e** o aviso não saiu, aí o
+passo sai 1, porque aí há duas falhas. Verificado no stack local antes do merge:
+`AM_PROVA=local node tools/dev/reportar-deploy.mjs` → `OK Alertmanager aceitou 2 alerta(s)`, alerta
+visível em `GET /api/v2/alerts` e entrega no `local-sink` (rota `prova="local"`, sem ruído no canal
+do time). Runbooks: `docs/rust/06-observabilidade-runbooks.md` §3 (`WydDeployLocalFalhou`,
+`WydDeployLocalOk`).
 
 Criar o webhook do canal de CI: Slack → *Apps* → *Incoming Webhooks* → *Add to Slack* → canal
 `#wyd-ci` → copiar a URL → repositório → *Settings* → *Secrets and variables* → *Actions* →

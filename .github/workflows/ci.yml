@@ -438,19 +438,36 @@ jobs:
           echo "ok: .env do host copiado para o workspace"
 
       - name: Rebuild das imagens
+        id: build
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
         run: docker compose build 2>&1 | tee deploy-build.log
 
       - name: Subir a stack (sem down -v, sem reset de volume)
+        id: up
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
         run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
 
       - name: Provas de contrato do deploy
+        id: provas
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
         run: node tools/dev/deploy-provas.mjs 2>&1 | tee deploy-provas.log
+
+      # O deploy termina aqui, não no artefato: sucesso e falha viram alerta no caminho que o
+      # time já vigia (Alertmanager → #wyd-alertas). Roda mesmo com passo anterior vermelho.
+      - name: Relatar resultado ao Alertmanager
+        if: always() && steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        env:
+          RESULTADO_BUILD: ${{ steps.build.outcome }}
+          RESULTADO_UP: ${{ steps.up.outcome }}
+          RESULTADO_PROVAS: ${{ steps.provas.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          ALERTMANAGER_URL: http://127.0.0.1:${{ vars.ALERTMANAGER_PORT || 9093 }}
+        run: node tools/dev/reportar-deploy.mjs
 
       - uses: actions/upload-artifact@v7
         if: always()
