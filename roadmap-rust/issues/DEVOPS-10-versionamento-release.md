@@ -102,11 +102,23 @@ de imagem iguais à tag; `check-versao` no `make check` e no CI.
 
 - [x] Fonte única de versão, verificada por script no gate local e no CI.
 - [ ] Tag `vX.Y.Z` produz release com notas rastreáveis a issues e imagens rotuladas.
-- [ ] Procedimento de release e rollback escrito com tag + digest.
-- [ ] Divergência de tamanho de imagem resolvida com uma medição registrada.
+- [x] Procedimento de release e rollback escrito com tag + digest.
+- [x] Divergência de tamanho de imagem resolvida com uma medição registrada.
 
 ## Riscos / rollback
 
 - Risco: versão herdada quebrar crate que publica (nenhuma publica: `publish = false`) →
   baixo; validar com `cargo build --workspace`.
 - Rollback: reverter para versão por crate; a tag já publicada permanece como histórico.
+
+## Fechamento parcial (2026-11-13)
+
+- **Procedimento escrito** em `docs/rust/10-devops-ci.md` §8.1 (tag → run → conferência de
+  artefatos) e **§8.2** (rollback por tag anterior, por digest `sha256:` e a ressalva de que
+  migration não tem rollback automático — restaurar dump antes de voltar a imagem).
+- **Tamanho de imagem medido uma vez** (§8.3): portal **311 MB**, server **51,5 MB**, gateway
+  **51,4 MB** no commit `3824cd3`. A diferença de ~6× é o runtime Node/Next do portal, não
+  regressão do Rust; os números antigos (223.232 / 296.448 bytes) eram do binário do motor e ficam
+  obsoletos.
+- **Resta**: publicar a primeira tag real (`v0.1.0`) em `main` — é ação do dono, porque cria
+  release pública e imagens `v*`; o disparo por tag já foi provado com tag descartável.
