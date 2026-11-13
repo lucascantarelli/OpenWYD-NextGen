@@ -47,3 +47,22 @@ SHA** em vez de major tag móvel.
 - Risco: subir major de crate do Hot Path muda semântica de performance/alocação. Mitigação: um
   crate por PR, com `bench.yml` disparado pelo caminho quando tocar `wyd-core`/`wyd-sim`/`wyd-net`.
 - Rollback: cada bump é um PR isolado; reverter é reverter o PR.
+
+## Levantamento medido (2026-11-13)
+
+`cargo update --verbose` listou o que está atrás da última versão:
+
+| crate | atual | disponível | decisão |
+|---|---|---|---|
+| `argon2` | 0.5.3 | 0.6.0 | ADR — troca de KDF é decisão de segurança, não bump |
+| `ed25519-dalek` | 2.2.0 | 3.0.0 | ADR — API de assinatura muda |
+| `sha2` | 0.10.9 | 0.11.1 | ADR — mesma família de cripto |
+| `sqlx` | 0.8.6 | 0.9.0 | ADR — camada de banco, migrações e macros |
+| `generic-array` | 0.14.7 | 0.14.9 | patch aceitável, entra no grupo do Dependabot |
+| `toml` / `toml_edit` / `toml_datetime` | 0.8.2 / 0.20.2 / 0.6.3 | 0.8.23 / 0.20.7 / 0.6.11 | patch/minor, aceitável |
+| `bumpalo`, `cc`, `mio` | patch | patch | Dependabot semanal já cobre |
+
+Leitura: **quatro** majors (cripto e banco) exigem ADR e ficam humanos de propósito; o resto é
+patch/minor e o Dependabot agrupado resolve. O `ignore: semver-major` fica **como está** — é o que
+mantém major como decisão de arquitetura. Falta só o pin de actions por SHA com script de
+conferência.
