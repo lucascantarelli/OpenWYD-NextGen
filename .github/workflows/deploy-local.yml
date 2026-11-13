@@ -42,6 +42,18 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      # O PATH depende de como o runner foi iniciado: se `C:\Windows\System32` vier antes do Git, o
+      # `shell: bash` cai no bash do WSL e o passo morre em "anexar o disco ... ERROR_PATH_NOT_FOUND"
+      # (visto no run 43414518376, com o runner subindo por tarefa agendada). Prependar o Git Bash
+      # resolve a ambiguidade para todos os passos seguintes.
+      - name: Git Bash no PATH (o runner pode resolver para o bash do WSL)
+        shell: powershell
+        run: |
+          $git = 'C:\Program Files\Git\bin'
+          if (-not (Test-Path (Join-Path $git 'bash.exe'))) { throw "Git Bash nao encontrado em $git" }
+          $git | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          Write-Output "bash resolvido para $git"
+
       - name: Sentinela de teste humano
         id: sentinela
         shell: bash
