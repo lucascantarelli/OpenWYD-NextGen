@@ -640,7 +640,7 @@ do `build+test`). Por isso o `bench` saiu para `bench.yml` com gatilho por camin
 caminho crítico — abaixo dos 3 min 17 s do monolito.
 ## 14. Celeridade: o que já está, o que falta e o que foi medido
 
-### 14.1 O deploy não puxa imagem pronta — ele constrói (21 min medidos)
+### 14.1 O deploy puxa imagem pronta do GHCR (21 min → 1 min 38 s)
 
 O compose tem `build:` para `gateway`, `server` e `portal` (com `image: wyd/<serviço>:${TAG:-dev}`),
 e o job `imagens` constrói as quatro com `load: true` e tag `:ci` **no runner hospedado** — `load`
@@ -678,30 +678,36 @@ Medição antes/depois, ambos push em `develop` com mudança em `crates/`:
 O log do deploy mostra o caminho real: `ok: ghcr.io/lucascantarelli/wyd-server:sha-b7ca98c →
 wyd/server:b7ca98c` e `deploy local provado: quatro provas verdes`.
 
-### 14.2 Testes: matriz por crate com `nextest`
+**Custo do registry: zero.** Os quatro pacotes (`wyd-server`, `wyd-gateway`, `wyd-portal`,
+`wyd-launcher`) estão **públicos** em `ghcr.io/<owner>/…`, e pull anônimo respondeu **HTTP 200** no
+manifesto `sha-208aeb0`. Bandwidth de pacote público não consome cota de Actions nem cobra
+armazenamento; o deploy continua autenticando com `GITHUB_TOKEN` (funciona igual, só não depende
+disso). Como visibilidade pode voltar para privada por engano na UI, o job `imagens` agora **prova**
+o pull anônimo depois do push e falha com `::error::` se o pacote não estiver público.
 
-Aplicado em 2026-11-13: o antigo `rust / build + testes` (2 min 31 s, `cargo build` + `cargo test`
-no mesmo `target/`) virou **`build`** (`cargo build --workspace`, 2 min 34 s) + **`testes / <crate>`**
-com 10 jobs em matriz usando `cargo nextest run -p <crate> --no-fail-fast --no-tests=pass` +
-**`doc-tests`** (`cargo test --workspace --doc`, 1 min 59 s).
+### 14.2 Testes: `nextest` em job único (a matriz por crate foi medida e revertida)
 
-Números do run de PR que fechou o gate:
+O job `rust / build + testes` roda, no mesmo `target/`: `cargo build --workspace`,
+`cargo nextest run --workspace --no-fail-fast --no-tests=pass` e `cargo test --workspace --doc`.
 
-| | antes | depois |
+**O caminho até aqui, com número em cada passo:**
+
+| desenho | tempo | minutos de runner no run |
 |---|---|---|
-| maior job de teste | 2 min 31 s (`build + testes`) | 1 min 45 s (`testes / wyd-core`) |
-| janela do estágio de teste | 2 min 31 s | ~2 min 34 s (build/doc em paralelo) |
-| soma de tempo de runner | 2 min 31 s | ~10 min 30 s nos 10 crates |
+| `build + testes` com `cargo test` (até 2026-11-13) | 2 min 31 s | 2 min 31 s |
+| matriz de 10 crates + `build` + `doc-tests` separados | ~2 min 34 s de janela | **~15 min** (10 crates × recompilação de dependências + build 2 min 34 s + doc 1 min 59 s) |
+| **`nextest` + build + doc no mesmo job** | 3 min 00 s (chave nova) / **2 min 49 s** (chave quente) | **2 min 49 s** |
 
-Leitura honesta: **o teste em si ficou ~30% mais rápido** e uma falha de crate não espera os outros,
-mas a janela do estágio não encurtou — porque `cargo build` continua existindo e roda junto. O ganho
-é granularidade e feedback (saber **qual** crate quebrou, com log separado), ao custo de ~4× minutos
-de runner. Se minutos passarem a doer mais que segundos, o caminho de volta é um job único com
-`nextest` (sem matriz), que mantém o paralelismo por binário de teste.
+Por que a matriz caiu: cada job da matriz tinha `cache-key-extra` próprio, então **cada um
+recompilava todas as dependências** do workspace — o `rust-cache` não transfere `target/` entre jobs
+paralelos (§14.3). O nextest, sozinho, já paraleliza por binário de teste dentro dos núcleos do
+runner; dividir em 10 máquinas comprava poucos segundos de parede por ~4× os minutos. Efeito no run
+de `develop`: **38,7 min → 22,1 min de runner** (−43%) — o restante é imagens, cobertura, sistema e
+deploy.
 
-Duas armadilhas pagas no processo: `nextest` **não** roda doc-tests (daí o job separado) e
+Duas armadilhas pagas no caminho: `nextest` **não** roda doc-tests (daí o passo separado) e
 `cargo test -p <crate> --doc` falha em pacote sem lib (`wyd-launcher-ui` é binário Tauri: `no
-library targets found`) — por isso os doc-tests usam `--workspace`, que pula quem não tem lib.
+library targets found`) — por isso tudo usa `--workspace`, que pula quem não tem lib.
 
 ### 14.3 Cache: existe, mas não é compartilhado entre jobs paralelos
 
@@ -720,8 +726,10 @@ artefato.
 
 ### 14.4 O que ainda dá celeridade, em ordem de retorno
 
-1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 225 s e é o maior job depois
-   do deploy; na agenda (ou em paralelo com os testes, sem esperar `gate`) corta isso do push.
+1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 251 s e é hoje o **maior
+   job do run**; na agenda (ou em paralelo com os testes, sem esperar `gate`) corta isso do push.
+   Depois dela, `rust / clippy` (150 s) rodando dentro do job de testes economizaria mais um
+   checkout + restore de cache (~40 s a 1 min), ao custo de perder o log separado do lint.
 2. ~~Registry + pull no deploy~~ — feito (§14.1): −20 min no pior caso.
 3. **`cargo-chef`: descartado com medição** — os `Dockerfile.*` **já** usam
    `--mount=type=cache,target=/usr/local/cargo/registry` e `target=/src/target`. Medido com
@@ -736,8 +744,10 @@ dependentes (core → db → admin → server). O chef só pagaria num builder *
 
 - **Imagens no GHCR + deploy por pull** (§14.1): deploy de 21 min 20 s → **1 min 38 s**; run de
   `develop` de 28 min 46 s → **7 min 51 s**.
-- **Testes em matriz com `nextest`** (§14.2): 10 jobs por crate, maior job 2 min 31 s → 1 min 45 s,
-  doc-tests em job próprio.
+- **Testes com `nextest` em job único** (§14.2): matriz de 10 crates testada e revertida; run de
+  `develop` de **38,7 min → 22,1 min** de runner com o mesmo trabalho.
+- **Registry público e provado** (§14.1): pacotes públicos no GHCR, pull anônimo `HTTP 200`
+  verificado no próprio job, custo zero de banda/armazenamento.
 
 - **Anotação de deploy no Grafana** (`tools/dev/anotar-deploy-grafana.mjs`, passo do job `deploy`):
   lê `GRAFANA_USER`/`GRAFANA_PASSWORD` do `.env` do host, grava `deploy · <commit> · <resultado>`
