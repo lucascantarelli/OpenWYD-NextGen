@@ -1,10 +1,15 @@
 {{/* Templates de notificação do WYD (DEVOPS-02).
-    Objetivo: quem recebe o aviso no Slack entende em 3 segundos O QUE caiu
-    (severidade), ONDE (canal/alvo), DESDE QUANDO e O QUE FAZER (runbook).
 
-    O runbook é a anotação `runbook` da regra (`docker/monitoring/prometheus/alerts.yml`),
-    que aponta para o arquivo/âncora em `docs/rust/06-observabilidade-runbooks.md`.
-    Anotação que já for URL vira link; caminho é mostrado como código.
+    Objetivo: quem recebe o aviso no Slack entende em 3 segundos O QUE caiu (severidade),
+    ONDE (canal/alvo), DESDE QUANDO, O QUE FAZER (runbook) e COMO CALAR (silence).
+
+    Regras de desenho:
+      - título = linha de assunto no app do Slack; por isso severidade vem antes do resto;
+      - um bloco por alerta do grupo, com `run_url` do CI quando existir;
+      - rodapé único por grupo com link do Alertmanager e atalho de silêncio;
+      - `fingerprint` nunca aparece: é ruído para humano;
+      - o link de silêncio usa `.ExternalURL`, que depende de `--web.external-url`
+        (definido em `render-config.sh`), não do hostname do container.
 
     Render de prova (sem esperar alerta real):
       amtool template render --template.glob='/etc/alertmanager/templates/*.tmpl' \
@@ -14,11 +19,15 @@
 
 {{ define "wyd.severidade" }}{{ if eq .CommonLabels.severity "critical" }}:rotating_light: CRÍTICO{{ else if eq .CommonLabels.severity "warning" }}:warning: AVISO{{ else if eq .CommonLabels.severity "info" }}:information_source: INFO{{ else }}:grey_question: sem severidade{{ end }}{{ end }}
 
+{{ define "wyd.icone" }}{{ if eq . "critical" }}:rotating_light:{{ else if eq . "warning" }}:warning:{{ else if eq . "info" }}:information_source:{{ else }}:grey_question:{{ end }}{{ end }}
+
 {{ define "wyd.titulo" }}[{{ .Status | toUpper }}] {{ template "wyd.severidade" . }} · WYD {{ .CommonLabels.alertname }}{{ if .CommonLabels.canal }} · canal {{ .CommonLabels.canal }}{{ end }}{{ end }}
 
-{{ define "wyd.texto" }}{{ range .Alerts }}{{ if eq .Labels.severity "critical" }}:rotating_light: *crítico*{{ else if eq .Labels.severity "warning" }}:warning: *aviso*{{ else if eq .Labels.severity "info" }}:information_source: *info*{{ else }}:grey_question: *sem severidade*{{ end }} · {{ .Annotations.summary }}{{ if .Labels.canal }}
-canal: `{{ .Labels.canal }}`{{ end }}{{ if .Labels.instance }} · alvo: `{{ .Labels.instance }}`{{ end }}{{ if .Labels.job }} · job: `{{ .Labels.job }}`{{ end }}{{ if .Annotations.runbook }}
+{{ define "wyd.texto" }}{{ range .Alerts }}{{ template "wyd.icone" .Labels.severity }} *{{ .Labels.severity }}* · {{ .Annotations.summary }}{{ if .Labels.canal }}
+canal: `{{ .Labels.canal }}`{{ end }}{{ if .Labels.instance }} · alvo: `{{ .Labels.instance }}`{{ end }}{{ if .Labels.job }} · job: `{{ .Labels.job }}`{{ end }}{{ if .Labels.environment }}
+ambiente: `{{ .Labels.environment }}`{{ end }}{{ if .Annotations.run_url }}
+run: <{{ .Annotations.run_url }}|abrir o run do CI>{{ end }}{{ if .Annotations.runbook }}
 runbook: {{ if match "^https?://" .Annotations.runbook }}<{{ .Annotations.runbook }}|abrir>{{ else }}`{{ .Annotations.runbook }}`{{ end }}{{ end }}
 {{ if .EndsAt.IsZero }}desde {{ .StartsAt.Format "02/01 15:04 MST" }}{{ else }}encerrado {{ .EndsAt.Format "02/01 15:04 MST" }}{{ end }}
 
-{{ end }}{{ end }}
+{{ end }}{{ if gt (len .Alerts) 1 }}_grupo com {{ len .Alerts }} alertas_ · {{ end }}<{{ .ExternalURL }}/#/alerts|Alertmanager>{{ if .CommonLabels.alertname }} · <{{ .ExternalURL }}/#/silences/new?filter=%7Balertname%3D%22{{ .CommonLabels.alertname }}%22%7D|silenciar>{{ end }}{{ end }}

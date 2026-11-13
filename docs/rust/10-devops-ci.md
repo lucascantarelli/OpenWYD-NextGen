@@ -467,69 +467,125 @@ uma existe e passa nos gates locais; o que falta é o run real no GitHub (§1.1)
 | 9 | `DEVOPS-09` runner local + deploy pós-CI | P1 | M | resposta ao pedido de CD local |
 | 10 | `DEVOPS-10` versionamento e release | P2 | S | fecha C17/C18 |
 
-## 11. Notificações: Alertmanager (operação) × CI (build)
+## 11. Notificações: quem fala o quê (e onde)
 
-São dois caminhos distintos; confundir os dois faz alerta de servidor fora do ar se perder no
-meio de deploy ruidoso:
+Regra da área: **um evento = uma mensagem**, no canal do público que age sobre ele. Duplicar o mesmo
+fato em dois canais ensina todo mundo a ignorar os dois.
 
-| Origem | Quando fala | Destino | Como configurar |
+| Evento | Canal | Quem envia | Conteúdo |
 |---|---|---|---|
-| Alertmanager | métrica de jogo/stack (`WydServidorForaDoAr`, `WydTickP99Alto`) | `#wyd-alertas` | `docker-compose.monitoring.yml` + `docker/monitoring/alertmanager/`, webhook no `.env` do host |
-| CI | resultado do run em `main`/`develop` (sucesso, falha ou cancelado) com métricas por job | `#wyd-ci` | job `notify` do `ci.yml`, segredo `SLACK_CI_WEBHOOK` |
-| Deploy local (CI) | job `deploy` terminou — sucesso **ou** falha, depois do gate em `develop` | `#wyd-alertas` | passo "Relatar resultado ao Alertmanager" (`tools/dev/reportar-deploy.mjs`) → `POST :9093/api/v2/alerts` |
+| run de `push`/`schedule` (verde **ou** vermelho) | `#wyd-ci` | job `notify` → `tools/dev/notify-ci.mjs` | status, branch, commit, autor, **parede**, jobs ok/falha/pulado, **5 mais lentos com tempo**, falhas com link dos logs, linha do deploy |
+| run de PR **com falha ou cancelado** | `#wyd-ci` | idem | mesma mensagem (PR verde não notifica: é ruído no canal) |
+| deploy local falhou em `develop` | canal de operação | job `deploy` → `POST /api/v2/alerts` (`tools/dev/reportar-deploy.mjs`) | alerta `WydDeployLocalFalhou` `critical`, com `run_url` do CI |
+| deploy local voltou a passar | canal de operação | idem, com `endsAt` no passado | mensagem `RESOLVED` do mesmo alerta |
+| métrica de jogo/stack | canal de operação | Prometheus → Alertmanager | template `wyd.tmpl` (severidade, alvo, desde quando, runbook, silenciar) |
 
-**Canal de operação: o default do código não é o que está no host.** `render-config.sh` usa
-`${SLACK_CHANNEL:-#wyd-alertas}`, mas o `.env` desta máquina define `SLACK_CHANNEL=#wyd-notificações`
-— o config renderizado do container (13/11) mostra `channel: '#wyd-notificações'`. A tabela acima
-cita o default; para conferir o real: `docker compose exec alertmanager grep -A3 slack_configs
-/tmp/wyd-secrets/alertmanager.yml`.
-**O deploy não termina mais em artefato.** Até 2026-11-13 o job só publicava `deploy-provas.log`, e
-quem não abrisse o run não sabia do resultado. Agora o mesmo job entra na cadeia que o time já olha,
-com dois alertas de nome **estável** (o fingerprint do Alertmanager é o conjunto de labels, então
-`run_id` fica na anotação, nunca no label — senão cada run criaria um alerta novo e a falha antiga
-nunca resolveria):
+**Canal de operação:** `render-config.sh` usa `${SLACK_CHANNEL:-#wyd-alertas}`, mas o `.env` desta
+máquina define `SLACK_CHANNEL=#wyd-notificações` — o config renderizado do container mostra
+`channel: '#wyd-notificações'`. A tabela cita "canal de operação" de propósito; para ver o real:
+`docker compose exec alertmanager grep -A3 slack_configs /tmp/wyd-secrets/alertmanager.yml`.
 
-- `WydDeployLocalFalhou` (`critical`, sem `endsAt`): build, `up --wait` ou provas falharam; fica
-  ativo até um deploy passar;
-- `WydDeployLocalOk` (`info`, `endsAt` em 2 min): aparece e auto-resolve, provando o caminho
-  `job → Alertmanager → Slack` sem deixar alerta pendente;
-- no sucesso, o próprio `WydDeployLocalFalhou` é reenviado com `endsAt` no passado — é assim que a
-  falha anterior resolve (`send_resolved: true`).
+### 11.1 Onde havia redundância (e o corte)
 
-O relato **não** derruba o deploy quando o Alertmanager está fora: o passo emite `::warning::` e
-segue (deploy é contrato; relato é observabilidade). Se o deploy falhou **e** o aviso não saiu, aí o
-passo sai 1, porque aí há duas falhas. Verificado no stack local antes do merge:
-`AM_PROVA=local node tools/dev/reportar-deploy.mjs` → `OK Alertmanager aceitou 2 alerta(s)`, alerta
-visível em `GET /api/v2/alerts` e entrega no `local-sink` (rota `prova="local"`, sem ruído no canal
-do time). Runbooks: `docs/rust/06-observabilidade-runbooks.md` §3 (`WydDeployLocalFalhou`,
-`WydDeployLocalOk`).
+Até 2026-11-13 o mesmo deploy falava **duas vezes em dois canais**: o job `deploy` publicava
+`WydDeployLocalOk` (info, auto-resolve em 2 min) no canal de operação **e** o `notify` publicava a
+linha `deploy: success` no `#wyd-ci`. Resultado: duas mensagens para o mesmo fato e um `RESOLVED`
+dois minutos depois, sem incidente nenhum para resolver.
 
-Criar o webhook do canal de CI: Slack → *Apps* → *Incoming Webhooks* → *Add to Slack* → canal
-`#wyd-ci` → copiar a URL → repositório → *Settings* → *Secrets and variables* → *Actions* →
-*New repository secret* → nome **`SLACK_CI_WEBHOOK`**. Pelo terminal, sem o valor passar por chat:
+Corte aplicado: **sucesso do deploy só no canal de CI**, onde está o tempo e o contexto do run
+(`🚀 deploy local: ✅ (1 min 29 s)`). O canal de operação recebe só o que exige ação — falha crítica —
+e o `RESOLVED` correspondente quando um deploy seguinte passa. Nada de alerta informativo para
+evento que já tem dono.
+
+Limite conhecido: uma falha de deploy aparece nos dois canais (crítica na operação, vermelha no CI).
+É intencional — público diferente, ação diferente (alguém precisa olhar a stack × alguém olha o
+commit) — e o texto é diferente, não duplicado.
+
+### 11.2 Template do CI (`tools/dev/notify-ci.mjs`)
+
+O resumo antigo saía de `needs.*.result`, que só diz `success`/`skipped`: sem tempo, e tempo é o que
+muda a decisão. Agora o job lê `GET /repos/<repo>/actions/runs/<id>/jobs` (permissão `actions: read`)
+e publica:
+
+```text
+✅ CI passou — develop  `15b1b89`
+push · lucascantarelli
+
+⏱ 8 min 55 s de parede · 30 jobs · 30 ok · 0 falha · 0 pulado
+soma 20 min 29 s em 30 jobs → 2.3× de paralelismo
+🐢 mais lentos: cobertura (métrica) 3 min 45 s · build + testes 3 min 16 s · …
+
+🚀 deploy local: ✅ (1 min 29 s)
+
+ver run · código
+```
+
+- **parede** = primeiro job iniciado → último concluído (não `updated_at` do run, que ainda está
+  aberto por causa do próprio `notify`);
+- **fator de paralelismo** = soma dos jobs ÷ parede: mostra o que a matriz realmente comprou;
+- falha aparece com **link direto para os logs do job**, não só o nome;
+- a aba *Summary* do run recebe a mesma informação em tabela, **sempre** — inclusive quando o Slack
+  não é chamado (PR verde) ou o segredo está ausente.
+
+### 11.3 Template do Alertmanager (`docker/monitoring/alertmanager/templates/wyd.tmpl`)
+
+- severidade **antes** de tudo no título, porque é a linha que aparece na notificação do app;
+- um bloco por alerta do grupo (canal, alvo, job, ambiente), `run_url` do CI quando existir;
+- rodapé único do grupo com link do Alertmanager e atalho **silenciar** (usa `--web.external-url`,
+  definido em `render-config.sh`; sem isso o link aponta para o hostname interno do container);
+- `fingerprint` nunca é impresso.
+
+Conferir sem esperar alerta real e sem tocar na stack em execução:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "$PWD/docker/monitoring/alertmanager:/etc/alertmanager:ro" \
+  --entrypoint amtool prom/alertmanager:v0.28.1 template render \
+  --template.glob='/etc/alertmanager/templates/*.tmpl' \
+  --template.text='{{ template "wyd.texto" . }}' \
+  --template.data=/etc/alertmanager/slack-exemplo.json
+```
+
+Config e templates são lidos **no boot**: mudança nesses arquivos exige `docker compose restart
+alertmanager` — o job de deploy já faz isso depois das provas (o estado vive no volume, então
+`silences` e histórico sobrevivem).
+
+### 11.4 Como ligar o canal de CI
+
+Slack → *Apps* → *Incoming Webhooks* → *Add to Slack* → canal `#wyd-ci` → copiar a URL →
+repositório → *Settings* → *Secrets and variables* → *Actions* → *New repository secret* → nome
+**`SLACK_CI_WEBHOOK`**. Pelo terminal, sem o valor passar por chat:
 
 ```bash
 gh secret set SLACK_CI_WEBHOOK   # cola a URL no prompt local
 gh secret list                   # confirma só o nome, nunca o valor
-gh workflow run ci.yml --ref develop   # run novo para ver a mensagem chegar
+gh workflow run ci.yml --ref develop
 ```
 
-Sem o segredo o job `notify` **roda e termina verde**, mas emite `::warning::` e um resumo na aba
-*Summary* do run dizendo que nada foi enviado. Antes era só um `::notice::` no meio do log — fácil
-de perder, e foi assim que o `#wyd-ci` ficou sem mensagem nenhuma sem ninguém notar. Se o webhook
-existir e o Slack recusar (URL revogada, canal removido, 4xx/5xx), o `curl --fail-with-body`
-**derruba o job**: com o webhook configurado, notificar é contrato, não enfeite.
+Sem o segredo o `notify` **roda e termina verde**, mas emite `::warning::` e escreve na aba
+*Summary* que nada foi enviado. Com o webhook configurado, o Slack recusando a mensagem (4xx/5xx)
+**derruba o job**: notificar é contrato, não enfeite.
 
-Extensões de baixo custo, na ordem em que valem: avisar **tag publicada** (`release.yml`) no canal
-de release; comentar no PR o link do run que falhou; e manter build e operação em canais
-separados — é o que evita alerta de produção afogado em mensagem de deploy.
+### 11.5 Proposta de organização de canais
 
-**Estado em 2026-11-13:** `SLACK_CI_WEBHOOK` **não existe** no repositório (`gh secret list`
-vazio), então nenhum run enviou mensagem — o job `notify` roda em **todos** os runs (sucesso, falha
-ou cancelado), lê os resultados via `needs`, e no run
-[43437250625](https://github.com/lucascantarelli/wyd/actions/runs/43437250625) terminou verde
-apenas com o aviso de segredo ausente. Criado o segredo, o mesmo job passa a publicar título,
-contagem por estado e um ícone por job.
+| Canal | Papel | Estado |
+|---|---|---|
+| `#wyd-ci` | resultado de build/teste/deploy por run | **existe** |
+| `#wyd-notificações` | alertas de operação (jogo, stack, deploy falho) | **existe** |
+| `#wyd-alertas` | alertas `critical` com escalação (pager), separado do informativo | proposta |
+| `#wyd-releases` | tag publicada, `SHA256SUMS`, digest das imagens (`release.yml`) | proposta |
+| `#wyd-security` | `cargo audit`/`deny` e Dependabot: o que hoje só falha o run | proposta |
+
+O que **não** vale fazer: criar canal por serviço (Prometheus, Loki, Grafana) — isso fragmenta o
+plantão; o roteamento por severidade e por público é o que escala.
+
+**Integrações que valem, em ordem de retorno:** (1) rota `critical` para PagerDuty/Opsgenie no
+Alertmanager — o Slack é onde se lê, não onde se acorda alguém; (2) receiver `email` como
+fallback (já configurado, `ALERTMANAGER_DESTINO=email`); (3) anotação automática no Grafana a cada
+deploy (um `POST /api/annotations` no job `deploy`) para correlacionar mudança e métrica;
+(4) comentário no PR com o link do run que falhou; (5) canal de release alimentado pelo
+`release.yml`. Ficam de fora, por custo/benefício: dashboard de CI, bot interativo de rerun e
+integração com chat de terceiros — o GitHub já notifica PR e review.
 
 ## 12. Governança do repositório
 

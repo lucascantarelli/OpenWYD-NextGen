@@ -6,15 +6,16 @@
  * resultado. Agora o mesmo resultado entra na cadeia que o time já vigia:
  *   job `deploy` → `POST /api/v2/alerts` → Alertmanager → receiver da rota padrão (`#wyd-alertas`).
  *
- * Dois alertas, com nomes **estáveis** (o fingerprint do Alertmanager é o conjunto de labels; um
- * `run_id` no label criaria um alerta novo por run e a falha antiga nunca resolveria):
+ * **Só falha gera alerta novo** (`WydDeployLocalFalhou`, severity=critical, sem `endsAt`): fica
+ * ativo até um deploy passar. O sucesso **não** vira alerta — ele já é a mensagem do `notify` no
+ * canal de CI, com o tempo do deploy; alerta de sucesso aqui seria a mesma notícia duas vezes,
+ * em dois canais, e ainda deixaria um "resolved" 2 min depois sem incidente nenhum.
  *
- *   WydDeployLocalFalhou  severity=critical, sem `endsAt` — fica ativo até um deploy passar;
- *   WydDeployLocalOk      severity=info, `endsAt` em 2 min — aparece e auto-resolve, provando o
- *                         caminho inteiro sem deixar alerta pendente.
- *
- * No sucesso mandamos também `WydDeployLocalFalhou` com `endsAt` no passado: é assim que uma
- * falha anterior é resolvida (o Slack tem `send_resolved: true`).
+ * O nome é **estável** (o fingerprint do Alertmanager é o conjunto de labels; um `run_id` no label
+ * criaria um alerta novo por run e a falha antiga nunca resolveria). No sucesso mandamos
+ * `WydDeployLocalFalhou` com `endsAt` no passado: é assim que a falha anterior é resolvida
+ * (o Slack tem `send_resolved: true`), e essa mensagem de resolução é a única coisa que um deploy
+ * verde publica no canal de operação.
  *
  * Entrada (env, preenchido pelo job): RESULTADO_BUILD, RESULTADO_UP, RESULTADO_PROVAS, RUN_URL,
  * COMMIT. Opcionais: ALERTMANAGER_URL (default `http://127.0.0.1:9093`) e AM_PROVA=local, que
@@ -55,23 +56,17 @@ const RUNBOOK = "docs/rust/06-observabilidade-runbooks.md";
 const alertas = [];
 
 if (falhos.length === 0) {
-  // Resolve falha anterior (mesmo conjunto de labels) e publica o sucesso.
+  // Único alerta do caminho verde: a resolução de uma falha anterior (mesmos labels).
+  // Sem alerta anterior, o Alertmanager não notifica nada — e é o comportamento desejado.
   alertas.push({
     labels: rotulo("WydDeployLocalFalhou", "critical"),
-    annotations: { summary: "resolvido por um deploy posterior bem-sucedido", runbook: `${RUNBOOK}#wyddeploylocalfalhou` },
-    startsAt: new Date(Date.now() - 1000).toISOString(),
-    endsAt: new Date(Date.now() - 500).toISOString(),
-  });
-  alertas.push({
-    labels: rotulo("WydDeployLocalOk", "info"),
     annotations: {
-      summary: `deploy local concluído${detalhe ? ` (${detalhe})` : ""}`,
-      runbook: `${RUNBOOK}#wyddeploylocalok`,
+      summary: `resolvido por um deploy posterior bem-sucedido${detalhe ? ` (${detalhe})` : ""}`,
+      runbook: `${RUNBOOK}#wyddeploylocalfalhou`,
       ...(RUN_URL ? { run_url: RUN_URL } : {}),
     },
-    startsAt: new Date().toISOString(),
-    // Auto-resolve em 2 min: sinaliza sucesso sem virar alerta pendente na tela de quem opera.
-    endsAt: new Date(Date.now() + 120_000).toISOString(),
+    startsAt: new Date(Date.now() - 1000).toISOString(),
+    endsAt: new Date(Date.now() - 500).toISOString(),
   });
 } else {
   alertas.push({
