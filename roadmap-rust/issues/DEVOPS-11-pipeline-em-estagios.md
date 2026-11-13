@@ -96,9 +96,19 @@ duplica compilação: se o objetivo for minutos e não isolamento de falha, eles
 > fora do caminho crítico, `cargo nextest` + matriz de teste.
 
 > **Aplicado (2026-11-13, medido):** imagens publicadas em `ghcr.io/<owner>/wyd-<x>:sha-<sha>`
-> e deploy por `pull` + `--no-build` — deploy de **21 min 20 s** (build frio) para **1 min 38 s**, e
-> run de `develop` de **28 min 46 s** para **7 min 51 s** (runs 43456241374 e 43470873106). Testes
-> saíram do job único para matriz de 10 crates com `cargo nextest` + job próprio de doc-tests: maior
-> job de teste 2 min 31 s → 1 min 45 s, com soma de runner ~4× maior e janela do estágio igual
-> (§14.2 do doc). `cargo-chef` foi medido e **descartado**: os Dockerfiles já usam cache mounts
-> (2,9 s sem mudança de fonte, ~1 min 50 s após mudar um crate) e o deploy não constrói mais.
+> (pacotes **públicos**, com prova de pull anônimo no job) e deploy por `pull` + `--no-build` — deploy
+> de **21 min 20 s** (build frio) para **1 min 38 s** e depois **83 s**; run de `develop` de
+> **28 min 46 s** para **7 min 51 s** (runs 43456241374 e 43470873106).
+>
+> A **matriz de 10 crates com `nextest` foi testada e revertida**: cada job tinha `cache-key-extra`
+> próprio e recompilava o grafo inteiro, custando ~15 min de runner contra 2 min 49 s no job único.
+> Estado final medido (run 43486778728): 30 jobs, **20,0 min de runner** por push em `develop`
+> (contra 38,7 min), com `clippy` + `build` + `nextest` + `doc-tests` no **mesmo** job — o lint
+> saiu do estágio 1 e a parede subiu de 9 min 08 s para 10 min 12 s em troca de ~2 min de runner.
+> `cargo-chef` foi medido e **descartado**: os Dockerfiles já usam cache mounts (2,9 s sem mudança de
+> fonte, ~1 min 50 s após mudar um crate) e o deploy não constrói mais.
+>
+> **Regra derivada:** paralelizar só o que é barato e independente (conteúdo, infra, portal,
+> sistema). Compilação Rust fica num job só; dividir por crate multiplica minutos e não encurta a
+> janela. Próximo retorno grande é tirar `seguranca / cobertura` (249 s, o maior job) do caminho
+> crítico.

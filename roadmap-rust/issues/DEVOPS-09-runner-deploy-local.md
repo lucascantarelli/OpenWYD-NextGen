@@ -168,3 +168,9 @@ com `tmp/teste-humano.flag` presente o job aborta com mensagem clara.
 > job de teste 2 min 31 s → 1 min 45 s, com soma de runner ~4× maior e janela do estágio igual
 > (§14.2 do doc). `cargo-chef` foi medido e **descartado**: os Dockerfiles já usam cache mounts
 > (2,9 s sem mudança de fonte, ~1 min 50 s após mudar um crate) e o deploy não constrói mais.
+
+> **Deploy por pull, medido (2026-11-13):** o job `imagens` publica `ghcr.io/<owner>/wyd-<x>:sha-<sha>`
+> e o deploy faz login → pull → `docker tag` → `TAG=<sha> up --wait --no-build`. Deploy: **21 min 20 s**
+> (build frio, run 43456241374) → **1 min 38 s** (run 43470873106) → **83 s** (run 43486778728). Os
+> pacotes estão **públicos** no GHCR e o job prova pull anônimo (`HTTP 200`) depois de cada push, então
+> o custo de registry é zero. Fallback: tag inexistente → build local com `::warning::`.
