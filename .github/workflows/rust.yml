@@ -44,13 +44,10 @@ on:
       - ".github/actions/**"
   pull_request:
     branches: [main, develop]
-    # PR de documentação/roadmap não paga o pipeline inteiro (DEVOPS-05); o job `gate` continua
-    # rodando para eles via `push`.
-    paths-ignore:
-      - "docs/**"
-      - "roadmap-rust/**"
-      - "*.md"
-      - ".agents/**"
+    # Sem `paths-ignore` aqui de propósito: `gate` é check obrigatório de branch protection, e um
+    # PR que não dispara o workflow nunca satisfaz o check — o merge de documentação ficaria
+    # travado para sempre. Com o gate em ~2,5 min, o custo de rodar em PR de doc é aceitável;
+    # o que não roda em PR é o bench (workflow próprio) e o supply-chain (agenda).
 
 permissions:
   contents: read

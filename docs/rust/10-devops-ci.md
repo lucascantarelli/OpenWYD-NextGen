@@ -41,7 +41,7 @@ issue DEVOPS. `ubuntu-24.04`, `permissions: contents: read` (release: `contents:
 | | `infra` → `ci-infra.yml` | DEVOPS-03/04 | matriz: hardening do compose + `config` nos três modos, `promtool check config/rules/test`, render do Alertmanager/Slack e `actionlint` |
 | | `gate` | DEVOPS-04 | agrega os grupos com `needs` + `always()` e falha se qualquer um não for `success` — é este o check obrigatório de branch protection |
 | | `notify` | operação | falha do gate → aviso no Slack (segredo `SLACK_CI_WEBHOOK`, §11); sem o segredo o passo não roda |
-| `bench.yml` | `bench` | DEVOPS-05 | `cargo bench --no-run` (uma compilação) + `bench-gate` (baseline) + `limits` do `wyd-net`; roda por caminho (engine/sim/net/protocolo, lockfile) e semanalmente — fora do caminho crítico do gate |
+| `bench.yml` | `bench` | DEVOPS-05 | `cargo bench --no-run` (uma compilação) + `bench-gate` (baseline) + `limits` do `wyd-net`; roda por caminho (engine/sim/net/protocolo, lockfile) e semanalmente — fora do caminho crítico do gate. **Provado em 2026-11-13** pelo run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) (`workflow_dispatch`, 5 min 10 s, job verde) |
 | `images.yml` | `build` (matriz 4) | DEVOPS-06 | build das quatro imagens com `WYD_VERSION`/`WYD_COMMIT` do run, smoke do artefato, labels conferidas, Trivy `CRITICAL` bloqueante e SBOM CycloneDX como artefato |
 | `supply-chain.yml` | `audit` / `images` / `cobertura` | DEVOPS-08 | `cargo audit` + `deny` (gate), scan das quatro imagens (gate, semanal), cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** |
 | `release.yml` | `versao` / `binarios` / `imagens` / `notas` | DEVOPS-10 | tag `vX.Y.Z` confere com `[workspace.package]`; binários + `SHA256SUMS`; imagens com a tag e SBOM; release com notas do GitHub + changelog anexado |
@@ -430,7 +430,47 @@ Extensões de baixo custo, na ordem em que valem: avisar **tag publicada** (`rel
 de release; comentar no PR o link do run que falhou; e manter build e operação em canais
 separados — é o que evita alerta de produção afogado em mensagem de deploy.
 
-## 12. Limites
+**Estado em 2026-11-13:** `SLACK_CI_WEBHOOK` ainda **não** existe no repositório, então o job
+`notify` aparece como `skipped` em todo run verde — é o comportamento desenhado, não falha.
+Quando o dono criar o webhook, o job passa a rodar só em falha do `gate`.
+
+## 12. Governança do repositório
+
+Aplicado em 2026-11-13 (pelo dono do repo, via API). Reprodução e rollback na tabela.
+
+| Item | Estado real | Comando |
+|---|---|---|
+| `description` | preenchida | `gh api -X PATCH repos/lucascantarelli/wyd -f description="..."` |
+| `topics` | 8 tópicos | `gh api -X PUT repos/lucascantarelli/wyd/topics -f "names[]=rust" ...` |
+| wiki | **desligada** (a doc é MkDocs) | `gh api -X PATCH repos/lucascantarelli/wyd -F has_wiki=false` |
+| merge | **squash-only** + deleta branch | `gh api -X PATCH repos/lucascantarelli/wyd -F allow_merge_commit=false -F allow_rebase_merge=false -F allow_squash_merge=true -F delete_branch_on_merge=true` |
+| donos por área | `.github/CODEOWNERS` | commit (engine, sim, net, protocolo, db/admin/server, launcher, bots, portal, docker/CI, docs/roadmap) |
+| canal de segurança | `SECURITY.md` + advisory privado | commit + `gh api -X PUT repos/lucascantarelli/wyd/private-vulnerability-reporting` |
+| proteção `develop` e `main` | exige o check **`gate (agrega os grupos)`**, sem push direto | JSON abaixo |
+
+```bash
+gh api -X PUT repos/lucascantarelli/wyd/branches/develop/protection \
+  -H "Accept: application/vnd.github+json" \
+  -f required_status_checks[strict]=false \
+  -f 'required_status_checks[contexts][]=gate (agrega os grupos)' \
+  -F enforce_admins=true \
+  -f 'required_pull_request_reviews[required_approving_review_count]=0' \
+  -F required_pull_request_reviews[dismiss_stale_reviews]=true \
+  -F allow_force_pushes=false -F allow_deletions=false \
+  -F required_conversation_resolution=true
+```
+
+O que isso trava, na prática:
+
+- **Push direto em `develop`/`main` deixa de existir**, inclusive para o dono (`enforce_admins=true`):
+  toda mudança vira PR com o `gate` verde. Por isso o `paths-ignore` de `pull_request` foi removido —
+  PR de documentação precisa rodar o workflow, senão o check obrigatório nunca é satisfeito.
+- Tag `vX.Y.Z` em `main` **continua** disparando `release.yml`: o gatilho é por tag e não passa por
+  branch protection.
+- Rollback de emergência (dono):
+  `gh api -X DELETE repos/lucascantarelli/wyd/branches/develop/protection` e repita em `main`.
+
+## 13. Limites
 
 Nada aqui substitui medição: tempo de pipeline com/sem cache, tamanho das quatro imagens e taxa
 de flake do `bench-gate` em runner compartilhado só viram número com `DEVOPS-05` medindo os dois

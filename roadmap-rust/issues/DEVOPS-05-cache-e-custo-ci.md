@@ -54,6 +54,11 @@ Reduzir o custo e o tempo do CI sem perder cobertura: cache de dependências ent
 - Conclusão registrada: cache não é o gargalo; o gargalo é compilar o workspace no perfil de bench
   em todo push. `bench` saiu para `bench.yml` (gatilho por caminho + agenda) e o teto do gate caiu
   para `build+test` (~2,6 min).
+- `bench.yml` **exercitado** por `workflow_dispatch`: run
+  [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) verde em 5 min 10 s
+  (compilar benches + `bench-gate` + `limits` do `wyd-net`). Observação de qualidade: o
+  `bench-gate` é silencioso quando passa — publicar o resumo por cenário no log é o próximo passo
+  para a régua ter evidência legível no run.
 
 ## Progresso (2026-11-13)
 
