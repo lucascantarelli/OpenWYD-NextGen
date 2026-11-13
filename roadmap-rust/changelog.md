@@ -2,6 +2,13 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## DEVOPS-10 — Versionamento de release e notas rastreáveis
+
+- **ID:** `DEVOPS-10`
+- **Concluída em:** 2026-11-13
+- **Resumo:** versão única (workspace 0.1.0 herdado pelos dez membros e espelhado no portal) cobrada pelo `check-versao` no `gate`, e a **primeira release real publicada**. Tag anotada `v0.1.0` no commit `4a53d02` de `main` (depois da promoção `develop`→`main`, que juntou a linhagem antiga da stack Go com `merge -s ours` para não ressuscitar `webserver/`/`dbserver/`). A release entrega três binários `linux-x86_64` (`wyd-gateway`, `wyd-launcher`, `wyd-server`) + `SHA256SUMS`, o SBOM CycloneDX das quatro imagens e notas que listam `wyd/launcher`, `wyd/gateway`, `wyd/server` e `wyd/portal` na tag com `WYD_VERSION`/`WYD_COMMIT`.
+- **Evidência:** run [43515686556](https://github.com/lucascantarelli/wyd/actions/runs/43515686556) **success** com `versão da tag × workspace`, `binários + checksums`, as quatro `imagem + SBOM` e `release com notas`; release [v0.1.0](https://github.com/lucascantarelli/wyd/releases/tag/v0.1.0) publicada (não-draft) com 8 anexos, e o CI do commit tagueado (`4a53d02`, run [43513837479](https://github.com/lucascantarelli/wyd/actions/runs/43513837479)) **success**. Anúncio confirmado no `#wyd-releases` pelo job `notify-release` (`release anunciada em #wyd-releases`). Rollback por tag anterior e por digest: `docs/rust/10-devops-ci.md` §8.2.
+
 ## DEVOPS-12 — Dependências fora de range e pin de actions por SHA
 
 - **ID:** `DEVOPS-12`

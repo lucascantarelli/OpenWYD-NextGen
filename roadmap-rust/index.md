@@ -1,9 +1,9 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-13 · **28 issues ativas** + 15 descritores de fase. 67 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **27 issues ativas** + 15 descritores de fase. 68 issues concluídas estão em [`changelog.md`](changelog.md).
 >
 > **Auditoria de DevOps/CI:** das doze issues da análise de pipeline, imagens, compose, testes e
-> monitoramento, **onze estão fechadas** (`DEVOPS-01`…`DEVOPS-09`, `DEVOPS-11`…`DEVOPS-13`); o
+> monitoramento, **todas as doze estão fechadas** (`DEVOPS-01`…`DEVOPS-13`); o
 > contrato continua em [`docs/rust/10-devops-ci.md`](../docs/rust/10-devops-ci.md). Em 2026-11-13
 > fecharam `DEVOPS-03` (compose de produção com log com teto, `no-new-privileges` e portal em
 > loopback; **TLS não adotado por decisão**), `DEVOPS-04` (reprovação por divergência injetada,
@@ -12,8 +12,9 @@
 > `DEVOPS-09` (deploy por pull em 83 s), `DEVOPS-11` (pipeline em estágios, notificação nos dois
 > sentidos), `DEVOPS-13` (governança; **decisão: não migrar para a organização `dolorestec`**) e
 > `DEVOPS-12` (**39 usos de action pinados por SHA**, conferidos contra a tag na API pelo
-> `check-actions-pin`, com prova negativa). Segue aberta apenas **`DEVOPS-10`**: falta publicar a
-> primeira tag/release real, que é decisão do dono — procedimento e rollback já estão no §8.
+> `check-actions-pin`, com prova negativa) e `DEVOPS-10` (**`v0.1.0` tagueada em `main` e release
+> publicada** com binários, `SHA256SUMS`, SBOM por imagem e anúncio no `#wyd-releases`). Não sobrou
+> nenhuma issue DEVOPS aberta; o procedimento e o rollback ficam no §8 do contrato.
 >
 > **IDs canônicos preservados.** A numeração de fila `#01..#27` é nova e estável; os IDs
 > `CATEGORIA-NN` continuam os mesmos para não reutilizar IDs já aposentados no changelog
@@ -187,10 +188,9 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 > `docker-compose*.yml` e `docker/monitoring/**` em 2026-11-12. Contrato e achados por severidade
 > (P0/P1/P2) em [`docs/rust/10-devops-ci.md`](../docs/rust/10-devops-ci.md) §3; ordem recomendada
 > em §10. Nada aqui depende de captura do cliente ou de VM.
-
-| # | ID | Issue | Status | Esforço | Depende de |
-|---:|---|---|---|---|---|
-| 37 | `DEVOPS-10` | [Versionamento de release e notas rastreáveis](issues/DEVOPS-10-versionamento-release.md) | 🚧 | S | DEVOPS-06 |
+>
+> **Bloco encerrado em 2026-11-13:** as doze issues (`DEVOPS-01`…`DEVOPS-13`) estão concluídas e
+> registradas em [`changelog.md`](changelog.md); não há issue DevOps/CI ativa.
 
 ## Descritores de fase (contexto, não são issues)
 
