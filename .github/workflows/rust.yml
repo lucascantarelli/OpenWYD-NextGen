@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-setup
         with:
           # O workspace inclui `apps/launcher-ui` (Tauri): sem GTK/WebKit o `glib-sys` falha.
@@ -108,7 +108,7 @@ jobs:
       run:
         working-directory: wyd-portal
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/node-setup
 
       - name: Typecheck (tsc --noEmit)
@@ -146,7 +146,7 @@ jobs:
       WYD_TEST_REQUIRED: "1"
       MIGRATIONS_DIR: crates/wyd-db/migrations
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-setup
 
       - name: Aplicar a série de migrations
@@ -164,7 +164,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: promtool check config
         run: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.5.0 check config prometheus.yml
@@ -190,7 +190,7 @@ jobs:
       WEB_API_TOKEN: ci-nao-e-segredo
       SESSION_SECRET: ci-nao-e-segredo
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Contrato de superfície de produção (DEVOPS-03)
         run: node tools/dev/check-compose-hardening.mjs
@@ -209,7 +209,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/rust-setup
         with:
           cache-key-extra: bench
@@ -232,6 +232,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Validar workflows e actions
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
