@@ -150,3 +150,13 @@ com `tmp/teste-humano.flag` presente o job aborta com mensagem clara.
   como freio.
 - Rollback: remover o runner do repositório (Settings → Actions → Runners) e desligar o workflow;
   a stack continua operável pelos comandos manuais.
+
+> **Celeridade e notificações (2026-11-13, medido):** deploy local reconstruía as imagens a
+> cada push alterando `crates/` (21 min 20 s no run 43456241374) porque `imagens` usa `load: true`
+> e não publica em registry; a matriz de build já existe, falta `push` + `pull`. Cache do
+> `Swatinem/rust-cache` é por branch e salvo no fim do job: compartilha em sequência, **não** entre
+> jobs paralelos. `build + testes` fica no mesmo job de propósito (§14.2 do doc de CI).
+> Entregas desta rodada: anotação de deploy no Grafana, anúncio em `#wyd-releases` (segredo
+> `SLACK_RELEASES_WEBHOOK`), notificação de CI com tempo por job/parede/paralelismo e corte da
+> redundância do alerta de deploy bem-sucedido no canal de operação. Aberto: registry, cobertura
+> fora do caminho crítico, `cargo nextest` + matriz de teste.

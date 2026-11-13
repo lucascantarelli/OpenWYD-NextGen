@@ -490,6 +490,19 @@ jobs:
           ALERTMANAGER_URL: http://127.0.0.1:${{ vars.ALERTMANAGER_PORT || 9093 }}
         run: node tools/dev/reportar-deploy.mjs
 
+      # Mesma ideia, outro público: no Grafana a anotação marca a linha do tempo das métricas com o
+      # commit do deploy, para não confundir pico de jogo com mudança de código.
+      - name: Anotar deploy no Grafana
+        if: always() && steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        env:
+          ARQUIVO_ENV: .env
+          RESULTADO: ${{ job.status }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GRAFANA_URL: http://127.0.0.1:${{ vars.GRAFANA_PORT || 3001 }}
+        run: node tools/dev/anotar-deploy-grafana.mjs
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
