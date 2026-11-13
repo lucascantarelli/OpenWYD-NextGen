@@ -441,8 +441,8 @@ Aplicado em 2026-11-13 (pelo dono do repo, via API). Reprodução e rollback na 
 | Item | Estado real | Comando |
 |---|---|---|
 | `description` | preenchida | `gh api -X PATCH repos/lucascantarelli/wyd -f description="..."` |
-| `topics` | 8 tópicos | `gh api -X PUT repos/lucascantarelli/wyd/topics -f "names[]=rust" ...` |
-| wiki | **desligada** (a doc é MkDocs) | `gh api -X PATCH repos/lucascantarelli/wyd -F has_wiki=false` |
+| `topics` | 10 tópicos (rust, game-server, mmorpg, wyd2, postgresql, nextjs, tauri, docker, github-actions, prometheus) | `gh api -X PUT repos/lucascantarelli/wyd/topics --input -` com `{"names":[...]}` |
+| wiki e projects | **desligados** (a doc é MkDocs; o roadmap é markdown) | `gh api -X PATCH repos/lucascantarelli/wyd -F has_wiki=false -F has_projects=false` |
 | merge | **squash-only** + deleta branch | `gh api -X PATCH repos/lucascantarelli/wyd -F allow_merge_commit=false -F allow_rebase_merge=false -F allow_squash_merge=true -F delete_branch_on_merge=true` |
 | donos por área | `.github/CODEOWNERS` | commit (engine, sim, net, protocolo, db/admin/server, launcher, bots, portal, docker/CI, docs/roadmap) |
 | canal de segurança | `SECURITY.md` + advisory privado | commit + `gh api -X PUT repos/lucascantarelli/wyd/private-vulnerability-reporting` |
@@ -469,6 +469,11 @@ O que isso trava, na prática:
   branch protection.
 - Rollback de emergência (dono):
   `gh api -X DELETE repos/lucascantarelli/wyd/branches/develop/protection` e repita em `main`.
+
+**Fluxo provado em 2026-11-13:** `git push origin develop` com a proteção ligada é rejeitado
+(`protected branch hook declined`), e a mesma mudança entra por PR com o `gate` verde e **squash**
+("delete branch on merge" ligado limpa a branch sozinho). Ou seja: não é só configuração — o caminho
+obrigatório funciona.
 
 ## 13. Limites
 
