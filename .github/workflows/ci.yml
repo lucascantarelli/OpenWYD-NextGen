@@ -157,7 +157,8 @@ jobs:
   # ─── Estágio 2 ────────────────────────────────────────────────────────────────────────────────
   testes:
     name: rust / build + testes
-    needs: [clippy]
+    # Paralelo ao clippy (os dois só esperam o fmt): o lint deixa de ser bloqueio do build.
+    needs: [fmt]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -170,7 +171,7 @@ jobs:
 
   sistema:
     name: rust / sistema — ${{ matrix.pacote }} (Postgres real)
-    needs: [clippy]
+    needs: [fmt]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
