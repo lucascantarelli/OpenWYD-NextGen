@@ -817,9 +817,9 @@ impl Selchar {
             let score = SELCHAR_SCORE_OFFSET + slot * SCORE_LEN;
             sel.score[slot] = Score::decode(&buf[score..score + SCORE_LEN]);
             let equip = SELCHAR_EQUIP_OFFSET + slot * MAX_EQUIP * ITEM_LEN;
-            for indice in 0..MAX_EQUIP {
+            for (indice, item) in sel.equip[slot].iter_mut().enumerate() {
                 let base = equip + indice * ITEM_LEN;
-                sel.equip[slot][indice] = Item::decode(&buf[base..base + ITEM_LEN]);
+                *item = Item::decode(&buf[base..base + ITEM_LEN]);
             }
             sel.guild[slot] = u16::from_le_bytes([
                 buf[SELCHAR_GUILD_OFFSET + slot * 2],
