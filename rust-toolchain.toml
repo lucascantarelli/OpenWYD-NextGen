@@ -1,4 +1,6 @@
+# Toolchain pinada por versão (DEVOPS-05): `stable` flutuante faz o build de imagem depender da data
+# e da rede, e já causou divergência entre o clippy local e o do runner. Atualizar é PR explícito.
 [toolchain]
-channel = "stable"
+channel = "1.100.0"
 profile = "minimal"
 components = ["rustfmt", "clippy"]

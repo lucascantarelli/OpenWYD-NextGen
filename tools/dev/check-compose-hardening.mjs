@@ -13,11 +13,14 @@
  *       do motor derruba o host inteiro (inclusive o banco);
  *   R4  `--web.enable-lifecycle` fica FORA do arquivo base — reload por HTTP sem auth em prod;
  *   R5  prod não publica portas de banco/gateway/monitoramento no host;
- *   R6  o socket do Docker é montado só `:ro` (o `alloy` lê; leitura de `inspect` expõe `env`).
+ *   R6  o socket do Docker é montado só `:ro` (o `alloy` lê; leitura de `inspect` expõe `env`);
+ *   R7  todo serviço herda log com teto (`logging:`) e a âncora define `max-size` — um laço de
+ *       erro não pode encher o disco do host;
+ *   R8  o portal de produção só escuta em loopback (`127.0.0.1:3000`) — não há TLS no stack por
+ *       decisão registrada (host único de dev), então expor `0.0.0.0:3000` seria HTTP puro na rede.
  *
- * O QUE AINDA NÃO ESTÁ COBERTO (checklist da issue, não deste script): TLS na frente do portal,
- * `healthcheck` em prometheus/grafana/loki/alloy/node-exporter e `security_opt`/`cap_drop`
- * por serviço. Entram aqui quando implementados — o job não finge cobri-los.
+ * O QUE AINDA NÃO ESTÁ COBERTO: `cap_drop` por serviço (exige provar boot de cada imagem) e
+ * `healthcheck` dos exporters sem shell na imagem. Documentado, não fingido.
  *
  * Uso: `node tools/dev/check-compose-hardening.mjs` (ou `make compose-hardening`).
  */
@@ -54,6 +57,15 @@ function bloco(texto, servico) {
 
 function servicos(texto) {
   return [...texto.matchAll(/^  ([a-z0-9][a-z0-9_-]*):\s*$/gm)].map((m) => m[1]);
+}
+
+/** Serviços do arquivo base, dentro do bloco `services:` (volumes e âncoras ficam de fora). */
+function servicosDoBase(texto) {
+  const linhas = texto.split(/\r?\n/);
+  const inicio = linhas.findIndex((linha) => linha === "services:");
+  if (inicio === -1) return [];
+  const corte = linhas.findIndex((linha, i) => i > inicio && /^(volumes|networks):/.test(linha));
+  return servicos(linhas.slice(inicio, corte === -1 ? linhas.length : corte).join("\n"));
 }
 
 // R1 — TAG obrigatória em produção.
@@ -98,8 +110,28 @@ for (const linha of codigo(base).split(/\r?\n/)) {
   }
 }
 
+// R7 — log com teto em todo serviço (via âncora) e âncora com `max-size` definido.
+if (!/x-log-teto:\s*&log-teto/.test(base) || !/max-size:/.test(base)) {
+  erros.push(`${BASE}: âncora x-log-teto sem max-size (R7)`);
+}
+for (const servico of servicosDoBase(base)) {
+  const trecho = bloco(base, servico) ?? "";
+  if (!/^\s+logging:/m.test(trecho)) {
+    erros.push(`${BASE}/${servico}: sem logging com teto (R7)`);
+  }
+}
+
+// R8 — portal de produção só em loopback (sem TLS no stack, por decisão).
+const portalProd = bloco(prod, "portal") ?? "";
+const portaPortal = portalProd.match(/-\s*["']?([^"'\s]+:3000)["']?/);
+if (!portaPortal) {
+  erros.push(`${PROD}/portal: sem mapeamento de porta 3000 — se não publica, documente (R8)`);
+} else if (!portaPortal[1].startsWith("127.0.0.1:")) {
+  erros.push(`${PROD}/portal: publica ${portaPortal[1]} fora do loopback sem TLS (R8)`);
+}
+
 if (erros.length === 0) {
-  console.log("superfície do compose ok (R1–R6) — pendente na issue: TLS, healthchecks, caps");
+  console.log("superfície do compose ok (R1–R8) — TLS não adotado por decisão, documentado no §6");
 } else {
   for (const erro of erros) console.error(`compose-hardening: ${erro}`);
   console.error("compose-hardening: o overlay de produção não está seguro por construção (DEVOPS-03)");

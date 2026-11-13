@@ -1,6 +1,6 @@
 ---
 name: wyd-rust-toolchain
-description: Opera a toolchain e a qualidade do workspace Rust do WYD (rustup stable, cargo fmt/clippy/test/bench, audit/deny, lockfile). Use ao instalar/atualizar Rust, adicionar dependências, configurar CI/Docker ou diagnosticar build falhando.
+description: Opera a toolchain e a qualidade do workspace Rust do WYD (rustup pinado em 1.100.0, cargo fmt/clippy/test/bench, audit/deny, lockfile). Use ao instalar/atualizar Rust, adicionar dependências, configurar CI/Docker ou diagnosticar build falhando.
 ---
 
 # Toolchain Rust (workspace)

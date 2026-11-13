@@ -113,7 +113,7 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 
 | Issue | Cobrado pelo pipeline | Continua pendente na issue |
 |---|---|---|
-| `DEVOPS-03` | `check-compose-hardening` (R1–R6): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`; `stack-config` prova que prod recusa `TAG` vazia | TLS na frente do portal, `healthcheck` nos serviços de observabilidade, `cap_drop`/`security_opt` por serviço |
+| `DEVOPS-03` | `check-compose-hardening` (R1–R8): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`, log com teto em todo serviço, portal de prod só em loopback; `stack-config` prova que prod recusa `TAG` vazia | `cap_drop` por serviço (exige provar boot de cada imagem) — declarado, não fingido |
 | `DEVOPS-04` | job `gate` com a mesma lista do `make check` (inclui `migrations`, `issues`, `skills`, `tools-test`, `versao`); `make ci` com `bench-gate`, `monitoring-rules`, `compose-hardening`, `portal-build` | — (paridade fechada; resta manter) |
 | `DEVOPS-05` | `rust-setup`/`node-setup` com cache, `cache-from/to: type=gha` por imagem, `paths-ignore` em PR, `cancel-in-progress` só em PR, `timeout-minutes` em todo job | medir a economia real de minutos (comparar runs com/sem cache) |
 | `DEVOPS-06` | **✅ fechada em 2026-11-13** (run [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698)): o estágio 3 do `ci.yml` constrói as quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, confere labels, publica tamanho, faz smoke, roda Trivy `CRITICAL` bloqueante e sobe SBOM por imagem | publicação em registry (decisão do dono) e promoção de digest |
@@ -305,8 +305,13 @@ problema novo — decisão registrada, não dívida.
 Perfil de produção = `docker-compose.yml` + `docker-compose.prod.yml` (**sem** o override de dev).
 Regras que precisam valer no arquivo, não na cabeça de quem opera:
 
-- **TLS obrigatório**: nenhum serviço administrativo (portal) fala HTTP puro com o mundo. Proxy
-  reverso no stack ou bind só em loopback + túnel — escolha explícita em `DEVOPS-03`.
+- **TLS: não adotado, por decisão** (2026-11-13, `DEVOPS-03`). O stack roda em **uma máquina de
+dev**, sem domínio nem tráfego de terceiros; certificado aqui só somaria serviço novo, renovação e
+modo de falha de boot. O que foi feito no lugar: o portal de produção escuta **só em loopback**
+(`127.0.0.1:3000`) e acesso remoto é túnel SSH ou proxy do operador. Se um dia houver host exposto,
+esta decisão precisa ser revista antes — está escrita para não ser esquecimento.
+- **Log com teto e privilégio mínimo**: todo serviço herda `x-log-teto` (`json-file`, `max-size:
+  10m`, `max-file: 3`) e `x-seguranca` (`no-new-privileges:true`) por âncora, cobrados por R7/R8.
 - **`TAG` obrigatório**: `image: wyd/portal:${TAG:?defina TAG}` em prod, como já se faz com
   `POSTGRES_PASSWORD`.
 - **Observabilidade fora do perfil público**: anônimo do Grafana é comodidade de dev; em prod

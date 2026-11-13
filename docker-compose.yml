@@ -18,8 +18,21 @@
 # Rede/volume fixos `wyd_*` (mesmo padrão do arquivado `openwyd_*`).
 name: ${COMPOSE_PROJECT_NAME:-wyd}
 
+# Teto de log e privilégio mínimo (DEVOPS-03): âncoras aplicadas serviço a serviço.
+# `json-file` com max-size/max-file evita que um laço de erro encha o disco do host;
+# `no-new-privileges` impede escalada por setuid dentro do container.
+x-log-teto: &log-teto
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+x-seguranca: &seguranca
+  - no-new-privileges:true
+
 services:
   db:
+    logging: *log-teto
+    security_opt: *seguranca
     # Serviço de dados: imagem oficial, sem Dockerfile próprio (padrão da
     # indústria). Schema via `crates/wyd-db/migrations/` (FASE-04); sem
     # one-shot de roles no stack novo — o Postgres sobe com o superusuário
@@ -47,6 +60,8 @@ services:
       - wyd
 
   gateway:
+    logging: *log-teto
+    security_opt: *seguranca
     # Gateway HTTP/JSON do Cold Path (ADR-0022, WEB-01) — o upstream real do
     # portal em `:7600`. `GET /health` consulta o Postgres (SELECT 1) e só então
     # devolve 200; `GET /metrics` publica wyd_gateway_requests_total/uptime.
@@ -87,6 +102,7 @@ services:
       - wyd
 
   server-canal-1:
+    security_opt: *seguranca
     # Monólito de jogo — UM container POR CANAL (ADR-0022 §7). Mesma imagem, mesmo
     # Postgres, canais diferentes: `WYD_SERVER_CHANNEL` + o IP publicado no override.
     # `wyd-canal-1` é o canal normal; `wyd-canal-2` (verde) entra no override de dev
@@ -135,6 +151,7 @@ services:
       - wyd
 
   server-canal-2:
+    security_opt: *seguranca
     # Canal 2 (verde/novato): MESMA imagem e MESMO banco, outro IP — o cliente só
     # diferencia canal por host, nunca por porta (`docs/cliente/formatos.md` §4).
     image: wyd/server:${TAG:-dev}
@@ -172,6 +189,8 @@ services:
       - wyd
 
   portal:
+    logging: *log-teto
+    security_opt: *seguranca
     # Serviço web: Dockerfile próprio (multi-stage, non-root, standalone).
     # O portal NUNCA fala SQL (invariante 7 do AGENTS.md): BFF puro sobre o
     # gateway Rust (`gateway:7600`, ADR-0022). /api/health chama
@@ -209,6 +228,8 @@ services:
       - wyd
 
   mkdocs:
+    logging: *log-teto
+    security_opt: *seguranca
     # Documentação interna de dev/admin (não é documentação pública do jogador).
     # A imagem oficial já traz MkDocs + Material; não há Dockerfile próprio.
     # Monte somente o necessário: `mkdocs.yml` e `docs/` ficam read-only.
@@ -236,6 +257,8 @@ services:
       - wyd
 
   prometheus:
+    logging: *log-teto
+    security_opt: *seguranca
     image: prom/prometheus:v3.16.0
     restart: unless-stopped
     # `--web.enable-lifecycle` (reload por HTTP sem auth) vive SÓ no override de dev:
@@ -253,6 +276,7 @@ services:
       - wyd
 
   alertmanager:
+    security_opt: *seguranca
     # Elo que faltava (DEVOPS-02): sem ele, regra em `firing` não avisa ninguém.
     # Rota, agrupamento, repetição e silêncio vivem em
     # `docker/monitoring/alertmanager/alertmanager.yml`; o receiver é o
@@ -297,6 +321,7 @@ services:
       - wyd
 
   alert-sink:
+    security_opt: *seguranca
     # Receptor LOCAL de prova (DEVOPS-02) — NÃO é o destino de operação: a rota padrão
     # vai para `slack`/`email`. Ele recebe (a) o caminho de prova `prova=local` de
     # `make monitoring-alertas` e (b) o bootstrap da integração Slack enquanto não houver
@@ -332,6 +357,7 @@ services:
       - wyd
 
   blackbox-exporter:
+    security_opt: *seguranca
     # Sonda ativa do portal (DEVOPS-02): o BFF não publica `/metrics`, então a
     # disponibilidade vem de `http_2xx` em `/api/health`. Só consultado pelo Prometheus.
     image: prom/blackbox-exporter:v0.27.0
@@ -354,6 +380,8 @@ services:
       - wyd
 
   grafana:
+    logging: *log-teto
+    security_opt: *seguranca
     image: grafana/grafana:12.2.0
     restart: unless-stopped
     depends_on:
@@ -379,6 +407,8 @@ services:
       - wyd
 
   loki:
+    logging: *log-teto
+    security_opt: *seguranca
     # Logs duráveis da stack. O Docker guarda stdout por container (`json-file`),
     # então recriar container perde o stream; aqui o histórico fica em volume
     # nomeado com retenção de 14 d (`docker/monitoring/loki/loki.yml`). Sem porta no
@@ -393,6 +423,8 @@ services:
       - wyd
 
   alloy:
+    logging: *log-teto
+    security_opt: *seguranca
     # Coletor oficial da Grafana: lê o stdout de TODOS os containers pelo socket
     # (read-only) e empurra para o Loki. Não há serviço de log caseiro: o portal
     # consulta o Loki, nunca o Docker.
@@ -413,6 +445,8 @@ services:
       - wyd
 
   node-exporter:
+    logging: *log-teto
+    security_opt: *seguranca
     image: prom/node-exporter:v1.9.1
     restart: unless-stopped
     command:

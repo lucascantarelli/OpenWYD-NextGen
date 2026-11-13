@@ -75,7 +75,10 @@ services:
           cpus: "2"
           memory: 1G
     ports:
-      - "3000:3000"
+      # Loopback por decisão explícita (DEVOPS-03): não há terminação TLS no stack — certificado
+      # num host único de dev não paga o custo. Portal acessível só da própria máquina; acesso de
+      # fora é túnel (SSH) ou proxy do operador, nunca `0.0.0.0:3000`.
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_ENV: production
 

@@ -1744,3 +1744,5 @@ de QA-02/QA-03 e o que foi lido no código.
 | DEVOPS-13 governança do repositório | 🚧 | `CODEOWNERS` e `SECURITY.md` criados; `develop`/`main` protegidas exigindo `gate`; settings (description, topics, wiki off, squash-only, delete branch) aplicados por API; `bench.yml` comprovado por dispatch. Falta o segredo `SLACK_CI_WEBHOOK` (dono) e a decisão sobre migrar para a org `dolorestec`. |
 | DEVOPS-11 pipeline em estágios | 🚧 | `ci-content/rust/portal/infra` em paralelo com matriz (6/5/3/9 jobs), `gate` agregador com `needs`+`always()`, `bench` fora de PR, cache com `shared-key` e job `notify` para o Slack. Falta o segredo `SLACK_CI_WEBHOOK` e medir tempo antes × depois. |
 | DEVOPS-10 versionamento de release | 🚧 | Versão única 0.1.0 (workspace + 10 membros + portal) com `check-versao` no gate; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM e notas do git. Falta criar a primeira tag e escrever rollback por tag+digest. |
+
+[link propositalmente quebrado](../nao-existe-prova-negativa.md)

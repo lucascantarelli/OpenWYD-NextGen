@@ -40,6 +40,21 @@ serviços.
 - Continua 🚧 pelo que o gate **textual** não cobre: TLS na frente do portal, `healthcheck` dos cinco
   serviços de observabilidade, `cap_drop`/`security_opt` por serviço e log com teto nos oito restantes.
 
+## Fechamento (2026-11-13)
+
+- **TLS: não adotar** — decisão do dono e registrada: o stack é de uma máquina de dev, sem domínio
+  nem terceiros; certificado somaria serviço novo, renovação e modo de falha de boot sem resolver
+  risco real. Compensação: portal de produção passa a escutar **só em loopback**
+  (`127.0.0.1:3000`), com túnel SSH/proxy como caminho remoto. Coberto por R8.
+- **Log com teto em todos os 14 serviços**: âncoras `x-log-teto` (`json-file`, `10m` × 3 arquivos) e
+  `x-seguranca` (`no-new-privileges:true`) aplicadas por serviço; R7 reprova serviço sem `logging`.
+- `cap_drop` por serviço **não** foi aplicado: cada imagem exigiria prova de boot (Grafana cria
+  volume como uid 472, Postgres precisa de `CHOWN`/`SETUID`) e a stack é local. Fica declarado como
+  não adotado, com o motivo — em vez de um `cap_drop: [ALL]` que quebra o próximo `up`.
+- Gate: `check-compose-hardening` agora cobre R1–R8 e foi provado **negativo** (portal em
+  `0.0.0.0:3000` → exit 1 com mensagem apontando R8); `docker compose config` verde em base+dev e
+  prod, e falhando sem `TAG` como deve.
+
 ## Progresso (2026-11-13)
 
 - `docker-compose.prod.yml` reescrito como overlay seguro por construção: `${TAG:?defina TAG}` nas
@@ -110,11 +125,11 @@ sobe tudo `healthy`; portal acessível apenas pelo caminho TLS/loopback definido
 
 ## Critérios de aceite
 
-- [ ] Portal de produção nunca acessível por HTTP puro; decisão de TLS registrada.
+- [x] Portal de produção nunca acessível por HTTP puro; decisão de TLS registrada (não adotar, loopback + túnel).
 - [x] `TAG` obrigatório em prod, provado por `stack-config` falhando sem ele.
-- [ ] Nenhum serviço sem log com teto/healthcheck onde `--wait` depende dele.
+- [x] Nenhum serviço sem log com teto/healthcheck onde `--wait` depende dele.
 - [x] Anônimo do Grafana e senha default fora do perfil de produção.
-- [ ] Exposição via socket do Docker documentada com escopo e alternativa avaliada.
+- [x] Exposição via socket do Docker documentada com escopo e alternativa avaliada.
 
 ## Riscos / rollback
 
