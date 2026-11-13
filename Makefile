@@ -125,7 +125,8 @@ clean-tmp: ## artefatos conhecidos de tmp/ (logs, drivers, E2E, instalação)
 	node tools/dev/clean-tmp.mjs --yes
 
 tools-test: ## testes do app apps/tools (node:test, sem dependências)
-	node --test apps/tools/test/
+	# Glob, não diretório: o Node 22 (CI) não aceita diretório em `--test`.
+	node --test apps/tools/test/*.test.mjs
 
 tools-inventario: ## regenera docs/cliente/inventario-gerado.md a partir de client/
 	node apps/tools/bin/wyd-tools.mjs inventario client --out docs/cliente/inventario-gerado.md

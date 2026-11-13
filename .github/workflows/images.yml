@@ -57,11 +57,14 @@ jobs:
           - imagem: gateway
             dockerfile: docker/Dockerfile.gateway
             smoke: "--help"
-            smoke_exit: "0"
+            # Sem banco o gateway recusa subir e sai 2; o fatal prova que o binário executou.
+            smoke_exit: "2"
+            smoke_contem: "event=fatal"
           - imagem: server
             dockerfile: docker/Dockerfile.server
             smoke: "--help"
-            smoke_exit: "0"
+            smoke_exit: "2"
+            smoke_contem: "event=fatal"
           - imagem: portal
             dockerfile: docker/Dockerfile.portal
             # Sem backend no job: o smoke prova entrypoint/bundle, não /api/health.
@@ -100,11 +103,19 @@ jobs:
         if: matrix.smoke != ''
         run: |
           set +e
-          docker run --rm wyd/${{ matrix.imagem }}:ci ${{ matrix.smoke }}
+          saida=$(docker run --rm wyd/${{ matrix.imagem }}:ci ${{ matrix.smoke }} 2>&1)
           codigo=$?
           set -e
+          echo "$saida"
           echo "smoke exit=$codigo (aceitos: ${{ matrix.smoke_exit }})"
-          case " ${{ matrix.smoke_exit }} " in *" $codigo "*) exit 0 ;; *) echo "FALHOU: exit inesperado"; exit 1 ;; esac
+          case " ${{ matrix.smoke_exit }} " in *" $codigo "*) ;; *) echo "FALHOU: exit inesperado"; exit 1 ;; esac
+          # Exit aceito sozinho não prova nada: a saída precisa mostrar o motivo esperado.
+          if [ -n "${{ matrix.smoke_contem }}" ]; then
+            case "$saida" in
+              *"${{ matrix.smoke_contem }}"*) echo "ok: saída contém '${{ matrix.smoke_contem }}'" ;;
+              *) echo "FALHOU: saída não contém '${{ matrix.smoke_contem }}'"; exit 1 ;;
+            esac
+          fi
 
       # Scan bloqueante em CRITICAL. Exceção só em `.trivyignore`, com data e motivo.
       - name: Scan de vulnerabilidade (Trivy)

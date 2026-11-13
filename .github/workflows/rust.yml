@@ -98,7 +98,8 @@ jobs:
         run: node tools/dev/check-versao.mjs
 
       - name: Testes das ferramentas de dev
-        run: node --test apps/tools/test/
+        # Glob: o Node 22 do runner não aceita diretório em `--test` (Node 26 aceita).
+        run: node --test apps/tools/test/*.test.mjs
 
   portal:
     name: portal (tsc + vitest + next build)
@@ -154,10 +155,12 @@ jobs:
 
       # `-j 1`: os testes de sistema compartilham o mesmo banco por job.
       - name: Testes do servidor (login, selchar, mundo, cena)
-        run: cargo test -p wyd-server --all-targets -j 1 -- --nocapture
+        # `-j 1` limita a compilação; `--test-threads=1` é o que serializa os testes. Sem isso eles
+        # disputam o mesmo banco e o mesmo teto de sessão por canal (o teto=1 via "sessão viva").
+        run: cargo test -p wyd-server --all-targets -j 1 -- --nocapture --test-threads=1
 
       - name: Testes do admin (seed, grants)
-        run: cargo test -p wyd-admin --all-targets -j 1 -- --nocapture
+        run: cargo test -p wyd-admin --all-targets -j 1 -- --nocapture --test-threads=1
 
   monitoring:
     name: monitoramento (promtool + amtool)
