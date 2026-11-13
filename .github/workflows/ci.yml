@@ -494,12 +494,20 @@ jobs:
             deploy=${{ needs.deploy.result }}
         run: |
           if [ -z "$SLACK_CI_WEBHOOK" ]; then
-            echo "::notice::SLACK_CI_WEBHOOK ausente — notificação pulada (docs/rust/10-devops-ci.md §11)"
+            {
+              echo "### ⚠️ Nada foi enviado ao Slack"
+              echo
+              echo "O segredo **SLACK_CI_WEBHOOK** não existe neste repositório, então o job sai com"
+              echo "sucesso sem notificar. Para ativar: crie um *Incoming Webhook* no canal #wyd-ci"
+              echo "(Slack → Apps → Incoming Webhooks), salve o valor sem passar pelo chat e registre"
+              echo "com **gh secret set SLACK_CI_WEBHOOK**. Contexto: docs/rust/10-devops-ci.md §11."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::SLACK_CI_WEBHOOK ausente — nenhuma mensagem foi enviada ao #wyd-ci (docs/rust/10-devops-ci.md §11)"
             exit 0
           fi
 
           # Métricas: resultado por job + contagem, sem chamada extra à API.
-          total=0; ok=0; falhou=0; pulou=0; detalhe=""
+          total=0; ok=0; falhou=0; pulou=0; detalhe=""; nl=$'\n'
           for par in $RESULTADOS; do
             nome="${par%%=*}"; estado="${par##*=}"
             total=$((total + 1))
@@ -509,12 +517,18 @@ jobs:
               cancelled) pulou=$((pulou + 1)); icone="🚫" ;;
               *) falhou=$((falhou + 1)); icone="❌" ;;
             esac
-            detalhe="$detalhe\n${icone} ${nome}: ${estado}"
+            # Newline real (não `\n` literal): `printf %s` não expande escapes.
+            detalhe="$detalhe$nl${icone} ${nome}: ${estado}"
           done
           if [ "$falhou" = "0" ]; then titulo="✅ CI passou"; else titulo="❌ CI falhou"; fi
 
           corpo=$(printf '*%s — %s* (%s, %s)\n%d jobs · %d ok · %d falha · %d pulado%s\n<%s|ver run>' \
             "$titulo" "$REF" "$EVENTO" "${SHA:0:7}" "$total" "$ok" "$falhou" "$pulou" "$detalhe" "$RUN_URL")
           payload=$(printf '%s' "$corpo" | jq -Rs '{text: .}')
-          curl -sS -X POST -H 'Content-Type: application/json' -d "$payload" "$SLACK_CI_WEBHOOK"
-          echo "resumo enviado: $ok ok, $falhou falha, $pulou pulado"
+          # --fail-with-body: webhook revogado/canal errado (4xx/5xx) falha o job em vez de sumir em silêncio.
+          resposta=$(curl -sS --fail-with-body -X POST -H 'Content-Type: application/json' \
+            -d "$payload" "$SLACK_CI_WEBHOOK") || {
+            echo "::error::Slack recusou a mensagem — confira se o webhook ainda é válido e aponta para #wyd-ci"
+            exit 1
+          }
+          echo "resumo enviado: $ok ok, $falhou falha, $pulou pulado (resposta: ${resposta:-ok})"
