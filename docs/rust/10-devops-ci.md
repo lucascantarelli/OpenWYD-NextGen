@@ -687,6 +687,41 @@ O que isso trava, na prática:
 ("delete branch on merge" ligado limpa a branch sozinho). Ou seja: não é só configuração — o caminho
 obrigatório funciona.
 
+### 12.1 Triagem de alertas de segurança e qualidade (2026-11-13)
+
+O repositório abria com **42 alertas de code scanning** (35 `rust/hard-coded-cryptographic-value`
+críticos e 7 `rust/cleartext-logging` altos), **1 alerta de Dependabot** e **secret scanning
+desligado**. Cada grupo foi lido no código antes de qualquer dispensa — nada foi silenciado sem
+justificativa escrita no próprio alerta.
+
+| Grupo | Onde caía | Veredito | Ação |
+|---|---|---|---|
+| 35 × valor criptográfico fixo | `crates/wyd-admin/src/auth/password.rs` (12), `crates/wyd-admin/src/main.rs` (2), `service/pin.rs` (1), `crates/wyd-bots/src/lib.rs` (1) e `crates/*/tests/**` (19) | **fixture de teste**: todos os hits estão em módulo `#[cfg(test)]` ou em `crates/*/tests/`; o caminho real usa argon2id com salt aleatório e segredo vem de env/arquivo | dispensados como *used in tests* |
+| 5 × log em texto claro (código) | `cpsock/mod.rs`, `character/session.rs`, `boot/mod.rs`, `admin/main.rs` | **falso positivo**: a CodeQL marca o helper `log(level, event, fields)` como sink; auditoria de todos os call sites não achou senha, PIN, token, hash ou DSN — só evento, opcode, contagem, id de conta e motivo de recusa | dispensados como *false positive* |
+| 2 × log em texto claro (teste) | `crates/wyd-admin/tests/contrato/**` | dublê de transporte que imprime o que a rota respondeu, em teste | dispensados como *used in tests* |
+| 1 × Dependabot `glib` | `Cargo.lock` (0.18.5, via `gtk 0.18` do `tauri 2.12`) | **não tem patch alcançável**: o fix é 0.20 e `cargo update -p glib --precise 0.20.9` falha porque `gtk = "^0.18"` está fixado pelo Tauri; a advisory é *soundness* de `VariantStrIter`, crate que não chamamos, compilado só no alvo Linux do launcher e fora de produção | dispensado como *tolerable risk*, com o caminho de saída escrito (subir o Tauri quando ele adotar gtk 0.20) |
+
+Estado depois da triagem (medido na API, não no painel): **0 alertas abertos** de code scanning, **0**
+de Dependabot, **0** de secret scanning e **0** advisories. `secret_scanning` e
+`secret_scanning_push_protection` foram **ligados** (`non_provider_patterns` e `validity_checks`
+exigem GitHub Secret Protection pago e ficam desligados de propósito).
+
+```bash
+# leitura
+gh api 'repos/lucascantarelli/wyd/code-scanning/alerts?state=open&per_page=100'
+gh api 'repos/lucascantarelli/wyd/dependabot/alerts?state=open&per_page=100'
+# ligar varredura de segredo (o resto do bloco é o estado desejado)
+gh api -X PATCH repos/lucascantarelli/wyd --input - <<'JSON'
+{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}
+JSON
+```
+
+**Regra de triagem** (vale para o próximo alerta, antes de dispensar): aponta para fixture de teste →
+*used in tests*; aponta para helper de log/serialização sem segredo no call site → *false positive*
+com a auditoria descrita; tem patch alcançável → dependabot abre PR e o `gate` decide; **não tem
+patch alcançável** → *tolerable risk* com o motivo técnico e o gatilho de saída, nunca dispensa muda.
+Achado que seja segredo de verdade segue `SECURITY.md` (advisory privado), não dispatch de alerta.
+
 ## 13. Limites
 
 Nada aqui substitui medição: tempo de pipeline com/sem cache, tamanho das quatro imagens e taxa
