@@ -16,6 +16,8 @@ name: Rust
 # O job `gate` agrega os grupos: é este o check obrigatório de branch protection.
 
 on:
+  # Disparo manual: útil para medir o pipeline e reproduzir um run sem commit novo.
+  workflow_dispatch:
   push:
     branches: [main, develop]
     paths:
