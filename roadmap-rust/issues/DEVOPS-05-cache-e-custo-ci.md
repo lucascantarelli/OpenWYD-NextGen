@@ -129,3 +129,5 @@ registrada no artefato; `bench-gate` sem flake em 5 execuções seguidas.
 - Risco: cache envenenado mascarar build quebrado → mitigação: chave inclui `Cargo.lock` e
   `rust-toolchain.toml`; job `release` pode rodar sem cache (`save-if`/`cache-all-crates`).
 - Rollback: remover os passos de cache — volta ao estado atual.
+
+> **Consolidação (2026-11-13):** os oito workflows de CI viraram um só — `.github/workflows/ci.yml`, com estágios encadeados por `needs` (qualidade → build/teste → imagens/cobertura → gate/deploy) e notificação sempre ao fim. `bench.yml` e `release.yml` seguem separados. Nomes de arquivo citados acima são **históricos** desta seção.

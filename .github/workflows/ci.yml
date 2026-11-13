@@ -1,0 +1,520 @@
+name: CI
+
+# Pipeline único do repositório: um run por commit, com estágios encadeados por `needs`.
+# Bench fica fora (`bench.yml`, agendado/por caminho) e release em `release.yml` (por tag) — os dois
+# não pertencem ao caminho de feedback de push/PR.
+#
+# Estágio 1 — barato e independente (paralelo):
+#   fmt · clippy · conteudo (matriz 6) · infra (matriz 9) · portal (typecheck+vitest) · auditoria
+# Estágio 2 — depois do 1: testes (build+test), sistema (matriz 2, Postgres real), portal-build
+# Estágio 3 — depois do 2, só em push: imagens (matriz 4) e cobertura
+# Estágio 4 — gate agrega tudo (é o check obrigatório) e o deploy roda no runner local em develop
+# Fim — notify (Slack) SEMPRE, com resultado e métricas por job, inclusive em falha
+#
+# Regra de ouro: nada é `continue-on-error`. Se não pode falhar, não é gate.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Sentinela semanal: advisory/cobertura envelhecem sem commit nenhum (DEVOPS-08).
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  # Proveniência honesta: `vX.Y.Z` quando é tag, senão `0.0.0-<sha>`. O commit é sempre o do run.
+  WYD_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('0.0.0-{0}', github.sha) }}
+  WYD_COMMIT: ${{ github.sha }}
+
+jobs:
+  # ─── Estágio 1 ────────────────────────────────────────────────────────────────────────────────
+  fmt:
+    name: rust / fmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: rust / clippy (-D warnings)
+    needs: fmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+          cache-key-extra: clippy
+      - name: Clippy (warnings são erro, inclusive testes e benches)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  conteudo:
+    name: conteudo / ${{ matrix.nome }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: migrations (ordem, FK, down)
+            comando: node tools/content/check-migrations.mjs
+          - nome: status de issue (índice × painel × arquivo)
+            comando: node tools/content/check-issue-status.mjs
+          - nome: links e contagem de crates
+            comando: node tools/dev/check-docs-consistency.mjs
+          - nome: skills (frontmatter, tamanho, caminhos)
+            comando: node tools/dev/check-skills.mjs
+          - nome: versão única (workspace × portal)
+            comando: node tools/dev/check-versao.mjs
+          - nome: testes das ferramentas de dev
+            comando: node --test apps/tools/test/*.test.mjs
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: ${{ matrix.nome }}
+        run: ${{ matrix.comando }}
+
+  infra:
+    name: infra / ${{ matrix.nome }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: contrato de superfície do compose (DEVOPS-03)
+            comando: node tools/dev/check-compose-hardening.mjs
+          - nome: compose base + dev
+            comando: docker compose config --quiet
+          - nome: compose de produção
+            comando: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+          - nome: compose de produção com .env montado
+            comando: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-env.yml config --quiet
+          - nome: promtool check config
+            comando: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0 check config prometheus.yml
+          - nome: promtool check rules
+            comando: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0 check rules alerts.yml
+          - nome: promtool test rules (disparo e resolução)
+            comando: docker run --rm -v "$PWD/docker/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus --entrypoint promtool prom/prometheus:v3.16.0 test rules alerts.test.yml
+          - nome: config do Alertmanager + template do Slack
+            comando: node tools/dev/check-alertas.mjs
+          - nome: actionlint (os próprios workflows)
+            comando: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+    env:
+      TAG: ci
+      POSTGRES_PASSWORD: ci-nao-e-segredo
+      WEB_API_TOKEN: ci-nao-e-segredo
+      SESSION_SECRET: ci-nao-e-segredo
+    steps:
+      - uses: actions/checkout@v7
+      - name: ${{ matrix.nome }}
+        run: ${{ matrix.comando }}
+
+  portal:
+    name: portal / typecheck + testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wyd-portal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-setup
+      - run: npm run typecheck
+      - run: npm run test -- --reporter=dot
+
+  auditoria:
+    name: seguranca / advisory + licencas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - run: cargo audit
+      - run: cargo deny check
+
+  # ─── Estágio 2 ────────────────────────────────────────────────────────────────────────────────
+  testes:
+    name: rust / build + testes
+    needs: [clippy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+      - run: cargo build --workspace
+      - run: cargo test --workspace
+
+  sistema:
+    name: rust / sistema — ${{ matrix.pacote }} (Postgres real)
+    needs: [clippy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        pacote: [wyd-server, wyd-admin]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          # Senha derivada do run: credencial efêmera e sem literal no repositório (o scanner de
+          # segredo do PR acusava `postgres` como "generic password").
+          POSTGRES_PASSWORD: ${{ github.run_id }}
+          POSTGRES_DB: wyd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wyd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:${{ github.run_id }}@127.0.0.1:5432/wyd
+      WYD_TEST_DSN: postgres://postgres:${{ github.run_id }}@127.0.0.1:5432/wyd
+      WYD_TEST_REQUIRED: "1"
+      MIGRATIONS_DIR: crates/wyd-db/migrations
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          cache-key-extra: sistema-${{ matrix.pacote }}
+      - name: Aplicar a série de migrations
+        run: cargo run -p wyd-admin --bin wyd-gateway -- --migrate
+      - name: Testes de sistema (${{ matrix.pacote }})
+        run: cargo test -p ${{ matrix.pacote }} --all-targets -j 1 -- --nocapture --test-threads=1
+
+  portal-build:
+    name: portal / next build
+    needs: [portal]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: wyd-portal
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-setup
+      - run: npm run build
+
+  # ─── Estágio 3 — só em push (PR não paga build de imagem nem cobertura) ───────────────────────
+  imagens:
+    name: imagens / ${{ matrix.imagem }}
+    needs: [testes, sistema, portal-build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - imagem: launcher
+            dockerfile: docker/Dockerfile.launcher
+            smoke: "--help"
+            smoke_exit: "0 2"
+          - imagem: gateway
+            dockerfile: docker/Dockerfile.gateway
+            smoke: "--help"
+            smoke_exit: "2"
+            smoke_contem: "event=fatal"
+          - imagem: server
+            dockerfile: docker/Dockerfile.server
+            smoke: "--help"
+            smoke_exit: "2"
+            smoke_contem: "event=fatal"
+          - imagem: portal
+            dockerfile: docker/Dockerfile.portal
+            smoke: ""
+            smoke_exit: "0"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build (cache gha entre execuções)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          load: true
+          tags: wyd/${{ matrix.imagem }}:ci
+          build-args: |
+            WYD_VERSION=${{ env.WYD_VERSION }}
+            WYD_COMMIT=${{ env.WYD_COMMIT }}
+          cache-from: type=gha,scope=${{ matrix.imagem }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.imagem }}
+      - name: Labels de proveniência conferem com o run
+        run: |
+          labels="$(docker image inspect --format '{{json .Config.Labels}}' wyd/${{ matrix.imagem }}:ci)"
+          echo "$labels"
+          echo "$labels" | grep -q "${WYD_COMMIT}" || { echo "FALHOU: label sem WYD_COMMIT do run"; exit 1; }
+          echo "$labels" | grep -q "${WYD_VERSION}" || { echo "FALHOU: label sem WYD_VERSION do run"; exit 1; }
+      - name: Tamanho da imagem
+        run: docker image inspect --format 'imagem=${{ matrix.imagem }} size={{.Size}} bytes' wyd/${{ matrix.imagem }}:ci
+      - name: Smoke do artefato
+        if: matrix.smoke != ''
+        run: |
+          set +e
+          saida=$(docker run --rm wyd/${{ matrix.imagem }}:ci ${{ matrix.smoke }} 2>&1)
+          codigo=$?
+          set -e
+          echo "$saida"
+          echo "smoke exit=$codigo (aceitos: ${{ matrix.smoke_exit }})"
+          case " ${{ matrix.smoke_exit }} " in *" $codigo "*) ;; *) echo "FALHOU: exit inesperado"; exit 1 ;; esac
+          if [ -n "${{ matrix.smoke_contem }}" ]; then
+            case "$saida" in
+              *"${{ matrix.smoke_contem }}"*) echo "ok: saída contém '${{ matrix.smoke_contem }}'" ;;
+              *) echo "FALHOU: saída não contém '${{ matrix.smoke_contem }}'"; exit 1 ;;
+            esac
+          fi
+      - name: Scan de vulnerabilidade (Trivy, bloqueante em CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: wyd/${{ matrix.imagem }}:ci
+          format: table
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+      - name: SBOM (CycloneDX) como artefato
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: wyd/${{ matrix.imagem }}:ci
+          format: cyclonedx
+          output: sbom-${{ matrix.imagem }}.cdx.json
+          exit-code: "0"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ matrix.imagem }}
+          path: sbom-${{ matrix.imagem }}.cdx.json
+          retention-days: 30
+
+  cobertura:
+    name: seguranca / cobertura (métrica)
+    needs: [testes]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      # `tauri: true`: `cargo llvm-cov --workspace` compila `apps/launcher-ui`; sem GTK/WebKit o
+      # `glib-sys` morre no build script (DEFEITO do run 43431211305, já corrigido).
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - name: Cobertura Rust (lcov + resumo)
+        run: |
+          mkdir -p coverage
+          cargo llvm-cov --workspace --all-targets --lcov --output-path coverage/rust-lcov.info
+          cargo llvm-cov --workspace --all-targets --summary-only | tee coverage/rust-resumo.txt
+      - uses: ./.github/actions/node-setup
+      - name: Cobertura do portal
+        working-directory: wyd-portal
+        run: npm run test:cobertura
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cobertura
+          path: |
+            coverage/rust-lcov.info
+            coverage/rust-resumo.txt
+            wyd-portal/coverage/**
+          retention-days: 30
+          if-no-files-found: warn
+
+  # ─── Estágio 4 — agregação e deploy ───────────────────────────────────────────────────────────
+  gate:
+    name: gate (agrega os grupos)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura]
+    # `always()` é obrigatório: sem ele o gate fica `skipped` quando um job falha e o check
+    # obrigatório de branch protection nunca fica vermelho.
+    if: always()
+    steps:
+      - name: Exigir todos os estágios verdes
+        run: |
+          falhou=0
+          while IFS='=' read -r nome resultado; do
+            echo "$nome = $resultado"
+            case "$resultado" in
+              success) ;;
+              skipped) echo "  (skipped: esperado em PR para imagens/cobertura)" ;;
+              *) falhou=1 ;;
+            esac
+          done <<'RESULTADOS'
+          fmt=${{ needs.fmt.result }}
+          clippy=${{ needs.clippy.result }}
+          conteudo=${{ needs.conteudo.result }}
+          infra=${{ needs.infra.result }}
+          portal=${{ needs.portal.result }}
+          auditoria=${{ needs.auditoria.result }}
+          testes=${{ needs.testes.result }}
+          sistema=${{ needs.sistema.result }}
+          portal-build=${{ needs.portal-build.result }}
+          imagens=${{ needs.imagens.result }}
+          cobertura=${{ needs.cobertura.result }}
+          RESULTADOS
+          if [ "$falhou" != "0" ]; then
+            echo "::error::pelo menos um estágio falhou — veja o job correspondente acima"
+            exit 1
+          fi
+          echo "todos os estágios verdes"
+
+  deploy:
+    name: deploy local (runner wyd-local)
+    needs: [gate]
+    # Só depois do gate verde em develop; PR nunca chega ao runner que tem Docker/.env/client.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, wyd-local]
+    environment: local
+    timeout-minutes: 45
+    steps:
+      - name: Checkout do commit validado
+        uses: actions/checkout@v7
+
+      # O PATH depende de como o runner foi iniciado: se `C:\Windows\System32` vier antes do Git, o
+      # `shell: bash` cai no bash do WSL e o passo morre em "anexar o disco ... ERROR_PATH_NOT_FOUND".
+      - name: Git Bash no PATH (o runner pode resolver para o bash do WSL)
+        shell: powershell
+        run: |
+          $git = 'C:\Program Files\Git\bin'
+          if (-not (Test-Path (Join-Path $git 'bash.exe'))) { throw "Git Bash nao encontrado em $git" }
+          $git | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          Write-Output "bash resolvido para $git"
+
+      - name: Sentinela de teste humano
+        id: sentinela
+        shell: bash
+        env:
+          ARQUIVO_ENV: ${{ vars.WYD_ENV_FILE }}
+        run: |
+          if [ -n "$ARQUIVO_ENV" ]; then projeto="$(dirname "$ARQUIVO_ENV")"; else projeto=""; fi
+          if [ -n "$projeto" ] && [ -f "$projeto/tmp/teste-humano.flag" ]; then
+            echo "pulado=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::tmp/teste-humano.flag presente em $projeto — deploy NÃO executado (teste humano em andamento). Remova o arquivo para liberar."
+          else
+            echo "pulado=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: .env do host (segredos nunca saem da máquina)
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        env:
+          # Nome deliberadamente diferente de `WYD_ENV_FILE`: o compose interpola essa variável
+          # dentro do container e um caminho do Windows ali vira "definido mas ilegível".
+          ARQUIVO_ENV: ${{ vars.WYD_ENV_FILE }}
+        run: |
+          if [ -z "$ARQUIVO_ENV" ] || [ ! -f "$ARQUIVO_ENV" ]; then
+            echo "::error::defina a variável de repositório WYD_ENV_FILE com o caminho do .env do host (recebido: '$ARQUIVO_ENV')"
+            exit 1
+          fi
+          cp "$ARQUIVO_ENV" .env
+          echo "ok: .env do host copiado para o workspace"
+
+      - name: Rebuild das imagens
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: docker compose build 2>&1 | tee deploy-build.log
+
+      - name: Subir a stack (sem down -v, sem reset de volume)
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
+
+      - name: Provas de contrato do deploy
+        if: steps.sentinela.outputs.pulado == 'false'
+        shell: bash
+        run: node tools/dev/deploy-provas.mjs 2>&1 | tee deploy-provas.log
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: deploy-local-${{ github.run_id }}
+          path: |
+            deploy-build.log
+            deploy-provas.log
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ─── Fim — notificação SEMPRE (falha, sucesso ou cancelado) ───────────────────────────────────
+  notify:
+    name: "notify (Slack: resultado + métricas)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Precisa de TODOS os jobs para publicar as métricas de cada um, inclusive em falha.
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
+    if: always()
+    steps:
+      - name: Montar e enviar o resumo
+        env:
+          # Opcional: sem o segredo o passo não roda (o gate continua sendo a fonte de verdade).
+          SLACK_CI_WEBHOOK: ${{ secrets.SLACK_CI_WEBHOOK }}
+          EVENTO: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESULTADOS: >-
+            fmt=${{ needs.fmt.result }}
+            clippy=${{ needs.clippy.result }}
+            conteudo=${{ needs.conteudo.result }}
+            infra=${{ needs.infra.result }}
+            portal=${{ needs.portal.result }}
+            auditoria=${{ needs.auditoria.result }}
+            testes=${{ needs.testes.result }}
+            sistema=${{ needs.sistema.result }}
+            portal-build=${{ needs.portal-build.result }}
+            imagens=${{ needs.imagens.result }}
+            cobertura=${{ needs.cobertura.result }}
+            gate=${{ needs.gate.result }}
+            deploy=${{ needs.deploy.result }}
+        run: |
+          if [ -z "$SLACK_CI_WEBHOOK" ]; then
+            echo "::notice::SLACK_CI_WEBHOOK ausente — notificação pulada (docs/rust/10-devops-ci.md §11)"
+            exit 0
+          fi
+
+          # Métricas: resultado por job + contagem, sem chamada extra à API.
+          total=0; ok=0; falhou=0; pulou=0; detalhe=""
+          for par in $RESULTADOS; do
+            nome="${par%%=*}"; estado="${par##*=}"
+            total=$((total + 1))
+            case "$estado" in
+              success) ok=$((ok + 1)); icone="✅" ;;
+              skipped) pulou=$((pulou + 1)); icone="⏭️" ;;
+              cancelled) pulou=$((pulou + 1)); icone="🚫" ;;
+              *) falhou=$((falhou + 1)); icone="❌" ;;
+            esac
+            detalhe="$detalhe\n${icone} ${nome}: ${estado}"
+          done
+          if [ "$falhou" = "0" ]; then titulo="✅ CI passou"; else titulo="❌ CI falhou"; fi
+
+          corpo=$(printf '*%s — %s* (%s, %s)\n%d jobs · %d ok · %d falha · %d pulado%s\n<%s|ver run>' \
+            "$titulo" "$REF" "$EVENTO" "${SHA:0:7}" "$total" "$ok" "$falhou" "$pulou" "$detalhe" "$RUN_URL")
+          payload=$(printf '%s' "$corpo" | jq -Rs '{text: .}')
+          curl -sS -X POST -H 'Content-Type: application/json' -d "$payload" "$SLACK_CI_WEBHOOK"
+          echo "resumo enviado: $ok ok, $falhou falha, $pulou pulado"

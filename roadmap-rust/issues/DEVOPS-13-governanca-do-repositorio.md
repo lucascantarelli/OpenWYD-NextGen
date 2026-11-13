@@ -61,3 +61,5 @@ canal de segurança (`SECURITY.md`) e notificação de CI no Slack.
   `docs/rust/10-devops-ci.md` §13).
 - Risco: exigir o `gate` com nome errado trava o merge. O contexto usado é exatamente o job do
   orquestrador: `gate (agrega os grupos)`.
+
+> **Consolidação (2026-11-13):** os oito workflows de CI viraram um só — `.github/workflows/ci.yml`, com estágios encadeados por `needs` (qualidade → build/teste → imagens/cobertura → gate/deploy) e notificação sempre ao fim. `bench.yml` e `release.yml` seguem separados. Nomes de arquivo citados acima são **históricos** desta seção.
