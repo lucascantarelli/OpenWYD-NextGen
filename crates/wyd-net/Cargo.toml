@@ -1,6 +1,6 @@
 [package]
 name = "wyd-net"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Transporte async do WYD (tokio/io_uring, zero-copy)"
 publish = false

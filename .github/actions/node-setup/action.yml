@@ -1,0 +1,25 @@
+name: Node (portal)
+description: >-
+  Node 22 com cache do npm e `npm ci` no portal. O portal é BFF (`wyd-portal/`), então todo job
+  que roda `tsc`/`vitest`/`next build` passa por aqui — uma definição de versão, um cache.
+
+inputs:
+  install:
+    description: Roda `npm ci` (desligue quando o job só precisa do Node).
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Node 22 + cache do npm
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: wyd-portal/package-lock.json
+
+    - name: Dependências do portal (npm ci)
+      if: inputs.install == 'true'
+      shell: bash
+      run: npm ci --prefix wyd-portal

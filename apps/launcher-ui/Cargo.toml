@@ -1,6 +1,6 @@
 [package]
 name = "wyd-launcher-ui"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Janela Tauri do launcher WYD: identidade efetiva + botão Jogar (CLIENT-08)"
 publish = false

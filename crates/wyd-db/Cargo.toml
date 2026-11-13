@@ -1,6 +1,6 @@
 [package]
 name = "wyd-db"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Persistencia async do WYD (Postgres sqlx, migrations)"
 publish = false

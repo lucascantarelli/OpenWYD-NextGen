@@ -1,6 +1,6 @@
 [package]
 name = "wyd-launcher"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Launcher/patcher moderno do WYD (hash, patch, bootstrap)"
 publish = false

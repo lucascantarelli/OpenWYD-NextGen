@@ -1,6 +1,6 @@
 [package]
 name = "wyd-admin"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Control plane Cold Path do WYD (contrato admin para o portal)"
 publish = false

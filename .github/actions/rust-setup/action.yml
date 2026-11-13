@@ -1,0 +1,30 @@
+name: Rust (toolchain + cache)
+description: >-
+  Instala a toolchain do repositório (`rust-toolchain.toml`, com rustfmt/clippy) e restaura o
+  cache de build. Chave do cache inclui `Cargo.lock` + `rust-toolchain.toml`, então lockfile novo
+  nunca reaproveita artefato velho.
+
+inputs:
+  cache-key-extra:
+    description: Sufixo na chave do cache — use para separar jobs com profiles diferentes.
+    required: false
+    default: ""
+  cache-all-crates:
+    description: Cacheia também crates usadas só por release/benches.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Toolchain (rust-toolchain.toml)
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Cache de build (cargo)
+      uses: Swatinem/rust-cache@v2
+      with:
+        key: ${{ inputs.cache-key-extra }}
+        cache-all-crates: ${{ inputs.cache-all-crates }}
+        workspaces: ". -> target"

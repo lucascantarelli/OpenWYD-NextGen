@@ -1,6 +1,6 @@
 [package]
 name = "wyd-server"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 description = "Monolito Hot Path do WYD (tmserver): CPSock, status HTTP e metricas"
 publish = false
