@@ -466,17 +466,30 @@ meio de deploy ruidoso:
 
 Criar o webhook do canal de CI: Slack → *Apps* → *Incoming Webhooks* → *Add to Slack* → canal
 `#wyd-ci` → copiar a URL → repositório → *Settings* → *Secrets and variables* → *Actions* →
-*New repository secret* → nome **`SLACK_CI_WEBHOOK`**. Sem o segredo o passo não roda
-(condição `env.SLACK_CI_WEBHOOK != ''`), então o gate continua sendo a fonte de verdade e nada
-fica vermelho por falta de webhook.
+*New repository secret* → nome **`SLACK_CI_WEBHOOK`**. Pelo terminal, sem o valor passar por chat:
+
+```bash
+gh secret set SLACK_CI_WEBHOOK   # cola a URL no prompt local
+gh secret list                   # confirma só o nome, nunca o valor
+gh workflow run ci.yml --ref develop   # run novo para ver a mensagem chegar
+```
+
+Sem o segredo o job `notify` **roda e termina verde**, mas emite `::warning::` e um resumo na aba
+*Summary* do run dizendo que nada foi enviado. Antes era só um `::notice::` no meio do log — fácil
+de perder, e foi assim que o `#wyd-ci` ficou sem mensagem nenhuma sem ninguém notar. Se o webhook
+existir e o Slack recusar (URL revogada, canal removido, 4xx/5xx), o `curl --fail-with-body`
+**derruba o job**: com o webhook configurado, notificar é contrato, não enfeite.
 
 Extensões de baixo custo, na ordem em que valem: avisar **tag publicada** (`release.yml`) no canal
 de release; comentar no PR o link do run que falhou; e manter build e operação em canais
 separados — é o que evita alerta de produção afogado em mensagem de deploy.
 
-**Estado em 2026-11-13:** `SLACK_CI_WEBHOOK` ainda **não** existe no repositório, então o job
-`notify` aparece como `skipped` em todo run verde — é o comportamento desenhado, não falha.
-Quando o dono criar o webhook, o job passa a rodar só em falha do `gate`.
+**Estado em 2026-11-13:** `SLACK_CI_WEBHOOK` **não existe** no repositório (`gh secret list`
+vazio), então nenhum run enviou mensagem — o job `notify` roda em **todos** os runs (sucesso, falha
+ou cancelado), lê os resultados via `needs`, e no run
+[43437250625](https://github.com/lucascantarelli/wyd/actions/runs/43437250625) terminou verde
+apenas com o aviso de segredo ausente. Criado o segredo, o mesmo job passa a publicar título,
+contagem por estado e um ícone por job.
 
 ## 12. Governança do repositório
 
