@@ -23,7 +23,7 @@ wyd-core = { path = "../wyd-core", version = "0.1.0" }
 wyd-net = { path = "../wyd-net", version = "0.1.0", features = ["metrics"] }
 wyd-db = { path = "../wyd-db", version = "0.1.0" }
 # FASE-10: curva e máquina de EXP puras (`ExpTable`/`grant_exp`), sem I/O no tick.
-wyd-sim = { path = "../wyd-sim" }
+wyd-sim = { path = "../wyd-sim", version = "0.1.0" }
 # Reaproveita o transporte HTTP/1.1 já provado (ADR-0008/0022), sem reimplementar contrato.
 wyd-admin = { path = "../wyd-admin", version = "0.1.0" }
 tokio = { version = "1", features = ["rt-multi-thread"] }

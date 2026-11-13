@@ -94,7 +94,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # `tauri: true`: `cargo llvm-cov --workspace` compila o workspace inteiro, incluindo
+      # `apps/launcher-ui`; sem GTK/WebKit o `glib-sys` morre no build script (foi a falha do run
+      # 43431211305 — mesmo defeito que já tinha sido corrigido em `gate`/`bench`).
       - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
