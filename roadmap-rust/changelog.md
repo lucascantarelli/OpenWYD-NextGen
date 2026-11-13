@@ -2,6 +2,54 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## DEVOPS-03 — Superfície de produção do compose: TLS, tag, privilégio e limites
+
+- **ID:** `DEVOPS-03`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Compose de produção seguro por construção e cobrado por texto no CI. `TAG` obrigatório nas quatro imagens (`${TAG:?}`), `deploy.resources.limits` nos 14 serviços, anônimo do Grafana desligado em prod, lifecycle só no override de dev, socket do Docker apenas `:ro`, log com teto (`x-log-teto`, 10m × 3) e `no-new-privileges` (`x-seguranca`) herdados por todos os serviços, e portal de produção escutando **só em loopback** (`127.0.0.1:3000`). **TLS não foi adotado por decisão registrada**: o stack roda numa máquina de dev, sem domínio nem tráfego de terceiros — certificado somaria serviço novo, renovação e modo de falha de boot; o acesso remoto é túnel SSH/proxy do operador. `cap_drop` por serviço também não foi adotado (cada imagem exigiria prova de boot) e está declarado como resíduo consciente.
+
+## DEVOPS-04 — Paridade gate local × CI: fim do verde falso
+
+- **ID:** `DEVOPS-04`
+- **Concluída em:** 2026-11-13
+- **Resumo:** O CI executa a mesma lista do `make check` e o job `gate` é o único check obrigatório de branch protection. A prova que faltava — reprovar por divergência injetada — foi feita em 2026-11-13 numa branch descartável (`tmp/prova-negativa`): um link interno quebrado derrubou `conteudo / links e contagem de crates` no run 43495415976 e o `gate` ficou vermelho. Nada foi mesclado; a branch e o PR de prova foram apagados.
+
+## DEVOPS-05 — Cache, timeouts e custo do pipeline
+
+- **ID:** `DEVOPS-05`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Cache de cargo/npm em action composta e `cache-from/to: type=gha` por imagem, `timeout-minutes` em todos os jobs, `bench` compilado uma vez e fora do caminho de PR. Ganho medido: run de `develop` de **38,7 min → 20,0 min de runner** (runs 43470873106 → 43486778728) depois de trocar a matriz de 10 crates por um job único com `nextest`. `rust-toolchain.toml` passou a pinar **1.100.0** (era `stable` flutuante, que já causou divergência entre clippy local e runner). `bench-gate` rodou 5× seguidas: 4 verdes e a primeira 1,9% acima do teto por cache frio (305,6 µs × 300); a correção foi um **warmup descartado** antes da medição, não afrouxar o limite.
+
+## DEVOPS-07 — Testes de banco e portal no CI (fim do skip silencioso)
+
+- **ID:** `DEVOPS-07`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Job `sistema` roda com Postgres 17 efêmero, `--migrate`, `-j 1` e `WYD_TEST_REQUIRED=1` — 121 alvos reportando `ok` no run real; job `portal` cobre `tsc --noEmit`, `vitest` e `next build`. A regra anti-skip foi provada **no CI**: numa branch descartável, com o Postgres de pé e o DSN removido, o job de sistema reprovou em vez de pular. Correção de passagem: o lock do portal em TypeScript 7.0.2, que fazia `npm ci` abortar com `EUSAGE`.
+
+## DEVOPS-08 — Supply-chain contínua e cobertura medida
+
+- **ID:** `DEVOPS-08`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Verificação contínua por agenda (`0 6 * * 1`), `workflow_dispatch` e mudança em `Cargo.lock`/`deny.toml`: `cargo audit` + `cargo deny check` como gate, Trivy `CRITICAL` bloqueante nas quatro imagens e cobertura Rust (`llvm-cov`) + portal (`vitest --coverage`) como **métrica** com artefato. Dependabot ativo em cargo, npm, actions e docker, agrupado e semanal. Baseline registrada no §8 de `10-devops-ci.md` com o run 43491504444: Rust **58,33% de linhas** (14.337/34.406) e portal **53,38% de linhas**; gate × métrica separados por escrito.
+
+## DEVOPS-09 — Runner auto-hospedado e deploy local após CI verde
+
+- **ID:** `DEVOPS-09`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Runner `self-hosted,wyd-local` registrado e sobrevivendo a reinício por tarefa agendada (`wscript.exe //B` + `keepalive-hidden.vbs`, fim da janela de CMD), deploy só em push de `develop` depois do `gate`, sem trigger de PR, com sentinela de teste humano e quatro provas de contrato. Puxa imagem pronta do GHCR (`sha-<commit>`) em vez de reconstruir: **21 min 20 s → 83 s**, com parede do run caindo de 28 min 46 s para ~8 min. Resultado do deploy vai ao Alertmanager (só falha, sem duplicar sucesso) e fica anotado no Grafana.
+
+## DEVOPS-11 — Pipeline em estágios: grupos, matrizes e notificação
+
+- **ID:** `DEVOPS-11`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Pipeline único (`ci.yml`) com estágios por `needs`, um `gate` agregador como único check obrigatório e `notify` sempre ao fim. Matrizes ficaram só onde são baratas: conteúdo, infra, portal e sistema; compilação Rust ficou num job só depois de a matriz de 10 crates ser **medida e revertida** (~15 min de runner contra 2 min 49 s). Notificação de CI provada nos dois sentidos: verde em `develop` e **falha** na branch de prova negativa (run 43495415976), com `SLACK_CI_WEBHOOK` configurado.
+
+## DEVOPS-13 — Governança do repositório: settings, proteção de branch, Slack e organização
+
+- **ID:** `DEVOPS-13`
+- **Concluída em:** 2026-11-13
+- **Resumo:** `CODEOWNERS` e `SECURITY.md` no repositório; `develop` e `main` protegidas exigindo o check `gate (agrega os grupos)`, sem push direto, force-push ou deleção; settings aplicados por API (description, topics, wiki off, squash-only, delete branch on merge) e `paths-ignore` removido do `pull_request` para não deixar PR de doc sem gate. `SLACK_CI_WEBHOOK` e `SLACK_RELEASES_WEBHOOK` configurados pelo dono. **Decisão: não migrar para a organização `dolorestec`** — o repositório público já tem Actions ilimitado em runner padrão e a org só acrescentaria camada de governança sem times nem segredos compartilhados; revisitável quando houver mais de um mantenedor.
+
 ## DEVOPS-06 — As quatro imagens no CI: build, proveniência e scan
 
 - **ID:** `DEVOPS-06`
