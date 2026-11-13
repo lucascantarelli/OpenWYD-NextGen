@@ -36,11 +36,12 @@ issue DEVOPS. `ubuntu-24.04`, `permissions: contents: read` (release: `contents:
 | Workflow | Job | Issue | O que prova |
 |---|---|---|---|
 | `rust.yml` (nome `Rust`, **orquestrador**) | `conteudo` → `ci-content.yml` | DEVOPS-04 | matriz de 6 jobs em paralelo: `migrations-check`, `issue-status-check`, `docs-check`, `skills-check`, `versao-check`, `tools-test` |
-| | `rust` → `ci-rust.yml` | DEVOPS-04/05/07 | `fmt`, `clippy -D warnings` e `build`+`test` em jobs separados (paralelo); `sistema` em matriz (`wyd-server`, `wyd-admin`) com Postgres 17 efêmero, `--migrate` e `WYD_TEST_REQUIRED=1`; `bench` só em push (PR não paga) |
+| | `rust` → `ci-rust.yml` | DEVOPS-04/05/07 | `fmt`, `clippy -D warnings` e `build`+`test` em jobs separados (paralelo); `sistema` em matriz (`wyd-server`, `wyd-admin`) com Postgres 17 efêmero, `--migrate` e `WYD_TEST_REQUIRED=1` |
 | | `portal` → `ci-portal.yml` | DEVOPS-07 | matriz `tsc --noEmit` / `vitest` / `next build` |
 | | `infra` → `ci-infra.yml` | DEVOPS-03/04 | matriz: hardening do compose + `config` nos três modos, `promtool check config/rules/test`, render do Alertmanager/Slack e `actionlint` |
 | | `gate` | DEVOPS-04 | agrega os grupos com `needs` + `always()` e falha se qualquer um não for `success` — é este o check obrigatório de branch protection |
 | | `notify` | operação | falha do gate → aviso no Slack (segredo `SLACK_CI_WEBHOOK`, §11); sem o segredo o passo não roda |
+| `bench.yml` | `bench` | DEVOPS-05 | `cargo bench --no-run` (uma compilação) + `bench-gate` (baseline) + `limits` do `wyd-net`; roda por caminho (engine/sim/net/protocolo, lockfile) e semanalmente — fora do caminho crítico do gate |
 | `images.yml` | `build` (matriz 4) | DEVOPS-06 | build das quatro imagens com `WYD_VERSION`/`WYD_COMMIT` do run, smoke do artefato, labels conferidas, Trivy `CRITICAL` bloqueante e SBOM CycloneDX como artefato |
 | `supply-chain.yml` | `audit` / `images` / `cobertura` | DEVOPS-08 | `cargo audit` + `deny` (gate), scan das quatro imagens (gate, semanal), cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** |
 | `release.yml` | `versao` / `binarios` / `imagens` / `notas` | DEVOPS-10 | tag `vX.Y.Z` confere com `[workspace.package]`; binários + `SHA256SUMS`; imagens com a tag e SBOM; release com notas do GitHub + changelog anexado |
@@ -433,5 +434,8 @@ separados — é o que evita alerta de produção afogado em mensagem de deploy.
 
 Nada aqui substitui medição: tempo de pipeline com/sem cache, tamanho das quatro imagens e taxa
 de flake do `bench-gate` em runner compartilhado só viram número com `DEVOPS-05` medindo os dois
-lados. O que já é fato: os grupos rodam em paralelo (`conteudo`, `rust`, `portal`, `infra`), o
-`bench` não roda em PR e o gate agrega com `needs` + `always()`.
+lados. O que já é fato medido em 2026-11-13: com o gate monolítico, o run verde levava **3 min 17 s**;
+com os grupos em paralelo, o primeiro run (caches frios, `shared-key` novo) levou **5 min 39 s** e o
+segundo **4 min 29 s**, e o caminho crítico era o `bench` (**4,3 min** com cache quente, contra 2,6 min
+do `build+test`). Por isso o `bench` saiu para `bench.yml` com gatilho por caminho: o gate volta a ter
+como teto `build+test` (~2,6 min), que é o custo real de compilar e testar o workspace.

@@ -46,6 +46,15 @@ Reduzir o custo e o tempo do CI sem perder cobertura: cache de dependências ent
 - Falta: medir o ganho (minutos com/sem cache) e `bench-gate` estável em 5 execuções; e pinar
   `rust-toolchain.toml`, que segue `channel = "stable"`.
 
+## Medição de cache (2026-11-13)
+
+- Gate monolítico com cache quente: **3 min 17 s** (run 43417374963).
+- Grupos em paralelo com `shared-key` novo (cache frio): 5 min 39 s; segundo run com cache quente:
+  **4 min 29 s** — mas o caminho crítico era `bench` (4,3 min), não cache.
+- Conclusão registrada: cache não é o gargalo; o gargalo é compilar o workspace no perfil de bench
+  em todo push. `bench` saiu para `bench.yml` (gatilho por caminho + agenda) e o teto do gate caiu
+  para `build+test` (~2,6 min).
+
 ## Progresso (2026-11-13)
 
 - Cache centralizado: `.github/actions/rust-setup` (toolchain + `Swatinem/rust-cache` com chave de

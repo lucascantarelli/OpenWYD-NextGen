@@ -45,7 +45,22 @@ nenhuma verificação e com um único check agregador para branch protection.
 - [x] `gate` agregador com `needs` + `always()` — único check obrigatório de branch protection.
 - [x] `bench` fora do PR; cache com `shared-key`.
 - [ ] Notificação de falha chegando no canal (depende do segredo `SLACK_CI_WEBHOOK`).
-- [ ] Tempo de parede medido antes × depois, registrado na issue.
+- [x] Tempo de parede medido antes × depois, registrado na issue.
+
+## Medição (2026-11-13)
+
+| Configuração | Tempo de parede | Caminho crítico |
+|---|---|---|
+| Gate monolítico (7 jobs, 10 passos em série no `gate`) | **3 min 17 s** (run 43417374963) | `build+test` |
+| Grupos em paralelo, caches frios (`shared-key` novo) | 5 min 39 s (run 43422724003) | `bench` 5 min |
+| Grupos em paralelo, cache quente | 4 min 29 s (run 43425395680) | `bench` 4,3 min / `build+test` 2,6 min / `clippy` 2,3 min / `sistema` 2,2 min |
+| Grupos em paralelo **sem** `bench` (estado atual) | a medir no próximo run | `build+test` ~2,6 min |
+
+Leitura honesta: fatiar sem medir **piorou** o tempo de parede, porque `bench` compila o workspace
+inteiro no perfil de bench e passou a ditar todos os pushes. O ganho real vem de tirá-lo do caminho
+crítico (`bench.yml`, gatilho por caminho + agenda) e de manter em matriz só o que é barato e
+independente (conteúdo, portal, infra). Fica registrado que paralelizar `clippy` e `build+test`
+duplica compilação: se o objetivo for minutos e não isolamento de falha, eles devem voltar a um job.
 
 ## Riscos / rollback
 

@@ -5,9 +5,12 @@ name: Rust
 # dita o tempo de parede, não a soma dos passos.
 #
 #   conteudo → 6 checagens de conteúdo (migrations, issues, docs, skills, versão, ferramentas)
-#   rust     → fmt, clippy, build+test, sistema (matriz server/admin) e bench (só push)
+#   rust     → fmt, clippy, build+test e sistema (matriz server/admin)
 #   portal   → matriz typecheck / vitest / next build
 #   infra    → matriz compose (3 modos), promtool (3) e Alertmanager + actionlint
+#
+# O benchmark NÃO está aqui: é o job mais caro (~4,3 min medidos) e vive em `bench.yml`, com
+# gatilho por caminho e agenda. O `supply-chain.yml` cobre advisory/licença e cobertura.
 #
 # Imagens, supply-chain e release ficam em workflows próprios (images.yml, supply-chain.yml,
 # release.yml) para não pagar build de imagem em todo push de código.
@@ -66,9 +69,6 @@ jobs:
   rust:
     name: rust
     uses: ./.github/workflows/ci-rust.yml
-    with:
-      # Bench é caro e não precisa rodar em PR: a régua é de regressão, não de corretude.
-      bench: ${{ github.event_name != 'pull_request' }}
 
   portal:
     name: portal
