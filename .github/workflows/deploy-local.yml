@@ -57,29 +57,29 @@ jobs:
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
         env:
-          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
+          # Nome deliberadamente diferente de `WYD_ENV_FILE`: o compose interpola essa variável
+          # dentro do container (o override de dev aponta para /run/wyd/env) e um caminho do
+          # Windows ali vira "definido mas ilegível" no boot do gateway.
+          ARQUIVO_ENV: ${{ vars.WYD_ENV_FILE }}
         run: |
-          # O checkout do runner não tem `.env` (gitignored por desenho): o compose lê o arquivo
-          # real do host, apontado pela variável de repositório WYD_ENV_FILE.
-          if [ -z "$WYD_ENV_FILE" ] || [ ! -f "$WYD_ENV_FILE" ]; then
-            echo "::error::defina a variável de repositório WYD_ENV_FILE com o caminho do .env do host (recebido: '$WYD_ENV_FILE')"
+          if [ -z "$ARQUIVO_ENV" ] || [ ! -f "$ARQUIVO_ENV" ]; then
+            echo "::error::defina a variável de repositório WYD_ENV_FILE com o caminho do .env do host (recebido: '$ARQUIVO_ENV')"
             exit 1
           fi
-          echo "ok: .env do host em $WYD_ENV_FILE"
+          # O override de dev monta `./.env` em /run/wyd/env; o checkout do runner não tem o
+          # arquivo (gitignored), então ele é copiado do host antes de qualquer build.
+          cp "$ARQUIVO_ENV" .env
+          echo "ok: .env do host copiado para o workspace"
 
       - name: Rebuild das imagens
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
-        env:
-          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
-        run: docker compose --env-file "$WYD_ENV_FILE" build 2>&1 | tee deploy-build.log
+        run: docker compose build 2>&1 | tee deploy-build.log
 
       - name: Subir a stack (sem down -v, sem reset de volume)
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
-        env:
-          WYD_ENV_FILE: ${{ vars.WYD_ENV_FILE }}
-        run: docker compose --env-file "$WYD_ENV_FILE" up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
+        run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
 
       - name: Provas de contrato do deploy
         if: steps.sentinela.outputs.pulado == 'false'
