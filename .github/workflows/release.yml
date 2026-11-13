@@ -163,3 +163,13 @@ jobs:
             --title "${TAG}" \
             --notes-file notas.md \
             --verify-tag
+
+      # Canal próprio (`#wyd-releases`): release é anúncio, não build. Falha de CI não entra aqui e
+      # release não afoga o `#wyd-ci`. Segredo ausente = run verde com aviso, nunca silêncio mudo.
+      - name: Anunciar no canal de releases
+        env:
+          SLACK_RELEASES_WEBHOOK: ${{ secrets.SLACK_RELEASES_WEBHOOK }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tools/dev/notify-release.mjs

@@ -638,3 +638,79 @@ segundo **4 min 29 s**, e o caminho crítico era o `bench` (**4,3 min** com cach
 do `build+test`). Por isso o `bench` saiu para `bench.yml` com gatilho por caminho: o gate passou a fechar em
 **2 min 32 s** (run 43426393075, 25 jobs nos quatro grupos), com `build+test` (~2,6 min de job) como
 caminho crítico — abaixo dos 3 min 17 s do monolito.
+## 14. Celeridade: o que já está, o que falta e o que foi medido
+
+### 14.1 O deploy não puxa imagem pronta — ele constrói (21 min medidos)
+
+O compose tem `build:` para `gateway`, `server` e `portal` (com `image: wyd/<serviço>:${TAG:-dev}`),
+e o job `imagens` constrói as quatro com `load: true` e tag `:ci` **no runner hospedado** — `load`
+carrega na máquina do job, não publica em lugar nenhum. Então o `deploy` no runner local não tem de
+onde puxar: roda `docker compose build` outra vez.
+
+Por que o build local é caro: `COPY crates ./crates` invalida a camada e o `RUN cargo build` refaz o
+workspace inteiro a cada commit que toca `crates/`. `WYD_VERSION`/`WYD_COMMIT` **não** são a causa —
+são `ARG` da etapa runtime, usados só em labels (linhas 22–28 do `Dockerfile.server`).
+
+Medição: run [43456241374](https://github.com/lucascantarelli/wyd/actions/runs/43456241374) →
+`deploy` 21 min 20 s, parede do run 28 min 46 s. Em run com camadas quentes, o mesmo deploy fecha em
+~1 min 30 s.
+
+**Proposta (não aplicada — depende de decisão do dono):** a matriz já existe; falta o `push` para um
+registry com tag imutável e o deploy puxar essa tag.
+
+```text
+job imagens (push em develop):  docker/build-push-action → ghcr.io/<owner>/wyd-<imagem>:sha-<sha>
+job deploy:                     docker login ghcr.io → TAG=sha-<sha> docker compose pull
+                                → docker compose up -d --wait --no-build
+```
+
+Isso exige `permissions: packages: write` (já disponível no `GITHUB_TOKEN` do repositório) e login
+do runner no registry. É a mudança que corta ~20 min do relógio por push em `develop`.
+
+### 14.2 Build e testes no mesmo job: decisão consciente, com número
+
+Hoje `rust / build + testes` roda `cargo build --workspace` e `cargo test --workspace` no **mesmo**
+`target/`: 2 min 31 s com cache quente. O build é pré-requisito do teste de integração — separar em
+dois jobs não elimina o trabalho, ele obriga a **transferir `target/`** entre jobs (centenas de MB)
+ou a recompilar do zero no segundo job, e nenhum dos dois é mais rápido.
+
+O split passa a valer quando existir **matriz de teste** (2+ jobs por área consumindo o mesmo
+artefato de build, ex.: `cargo nextest` por crate). Sem isso, é custo sem ganho — por isso não foi
+feito.
+
+### 14.3 Cache: existe, mas não é compartilhado entre jobs paralelos
+
+`rust-setup` usa `Swatinem/rust-cache@v2` com `shared-key: wyd` fixo e `key` por job. Duas
+consequências:
+
+- **jobs em sequência** reaproveitam o cache quando a chave coincide;
+- **jobs em paralelo não** — cada um restaura a versão anterior ao run e tenta salvar a sua; cache é
+  escopo por branch e é salvo no **fim** do job. Dentro do mesmo run, paralelismo não compartilha
+  `target/`.
+
+Medição disso no próprio pipeline: com `clippy` e `testes` em paralelo, `clippy` foi de 116 s para
+137 s e `testes` de 128 s para 221 s (contensão de CPU no runner); a parede caiu 36 s mesmo assim.
+`cache-key-extra` diferente por job é intencional: perfil de lint e de teste não devem trocar
+artefato.
+
+### 14.4 O que ainda dá celeridade, em ordem de retorno
+
+1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 225 s e é o maior job depois
+   do deploy; na agenda (ou em paralelo com os testes, sem esperar `gate`) corta isso do push.
+2. **Registry + pull no deploy** (§14.1): até ~20 min por push em `develop` que muda `crates/`.
+3. **`cargo-chef` ou cache mounts** (`--mount=type=cache,target=/usr/local/cargo,target=/src/target`)
+   no Dockerfile: corta o rebuild de dependências mesmo sem registry.
+4. **`cargo nextest` + matriz de teste por crate**: é o que torna o split de §14.2 vantajoso.
+
+### 14.5 Implementado nesta rodada
+
+- **Anotação de deploy no Grafana** (`tools/dev/anotar-deploy-grafana.mjs`, passo do job `deploy`):
+  lê `GRAFANA_USER`/`GRAFANA_PASSWORD` do `.env` do host, grava `deploy · <commit> · <resultado>`
+  com tags `deploy`, `ci` e o resultado. Testado local: `OK anotação criada (id=1)`. Grafana fora do
+  ar não derruba o deploy — vira `::warning::`.
+- **Canal de releases** (`#wyd-releases`): `release.yml` anuncia tag, quantidade de binários +
+  `SHA256SUMS` e SBOM por componente, com segredo `SLACK_RELEASES_WEBHOOK`. Sem o segredo, run verde
+  com aviso — release não é build, não entra no `#wyd-ci`.
+- **Janela do `cmd` do runner**: a tarefa agendada chamava `powershell.exe -WindowStyle Hidden`, e o
+  Windows aloca o console **antes** de o PowerShell escondê-lo. Agora chama `wscript.exe //B
+  keepalive-hidden.vbs`, que é subsistema GUI e não abre console nenhum.

@@ -84,3 +84,13 @@ duplica compilação: se o objetivo for minutos e não isolamento de falha, eles
   sem tocar nos grupos (que ficam inertes, pois só rodam por `workflow_call`).
 
 > **Consolidação (2026-11-13):** os oito workflows de CI viraram um só — `.github/workflows/ci.yml`, com estágios encadeados por `needs` (qualidade → build/teste → imagens/cobertura → gate/deploy) e notificação sempre ao fim. `bench.yml` e `release.yml` seguem separados. Nomes de arquivo citados acima são **históricos** desta seção.
+
+> **Celeridade e notificações (2026-11-13, medido):** deploy local reconstruía as imagens a
+> cada push alterando `crates/` (21 min 20 s no run 43456241374) porque `imagens` usa `load: true`
+> e não publica em registry; a matriz de build já existe, falta `push` + `pull`. Cache do
+> `Swatinem/rust-cache` é por branch e salvo no fim do job: compartilha em sequência, **não** entre
+> jobs paralelos. `build + testes` fica no mesmo job de propósito (§14.2 do doc de CI).
+> Entregas desta rodada: anotação de deploy no Grafana, anúncio em `#wyd-releases` (segredo
+> `SLACK_RELEASES_WEBHOOK`), notificação de CI com tempo por job/parede/paralelismo e corte da
+> redundância do alerta de deploy bem-sucedido no canal de operação. Aberto: registry, cobertura
+> fora do caminho crítico, `cargo nextest` + matriz de teste.
