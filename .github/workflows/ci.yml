@@ -157,8 +157,8 @@ jobs:
       - run: cargo deny check
 
   # ─── Estágio 2 ────────────────────────────────────────────────────────────────────────────────
-  testes:
-    name: rust / build + testes
+  build:
+    name: rust / build do workspace
     # Paralelo ao clippy (os dois só esperam o fmt): o lint deixa de ser bloqueio do build.
     needs: [fmt]
     runs-on: ubuntu-24.04
@@ -169,7 +169,56 @@ jobs:
         with:
           tauri: "true"
       - run: cargo build --workspace
-      - run: cargo test --workspace
+
+  # Matriz por crate: um crate lento (ou uma falha) não segura nem esconde os outros. nextest roda
+  # cada binário de teste em paralelo, com timeout por teste e saída por teste; doc-tests ficam no
+  # mesmo job porque `cargo nextest` não os executa (e eram cobertos pelo `cargo test` antigo).
+  testes:
+    name: testes / ${{ matrix.crate }}
+    needs: [fmt]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          - wyd-protocol
+          - wyd-core
+          - wyd-net
+          - wyd-db
+          - wyd-admin
+          - wyd-server
+          - wyd-sim
+          - wyd-launcher
+          - wyd-bots
+          - wyd-launcher-ui
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+          cache-key-extra: nextest-${{ matrix.crate }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - name: nextest (${{ matrix.crate }})
+        run: cargo nextest run -p ${{ matrix.crate }} --no-fail-fast --no-tests=pass --status-level fail --final-status-level slow
+
+  # Doc-tests ficam num job só, com `--workspace`: `nextest` não os executa e `-p <crate> --doc`
+  # quebra em pacote sem alvo de biblioteca (é o caso de `wyd-launcher-ui`, só binário). Com
+  # `--workspace` o cargo pula quem não tem lib em vez de falhar.
+  testes-doc:
+    name: rust / doc-tests
+    needs: [fmt]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+          cache-key-extra: doc-tests
+      - run: cargo test --workspace --doc
 
   sistema:
     name: rust / sistema — ${{ matrix.pacote }} (Postgres real)
@@ -227,10 +276,14 @@ jobs:
   # ─── Estágio 3 — só em push (PR não paga build de imagem nem cobertura) ───────────────────────
   imagens:
     name: imagens / ${{ matrix.imagem }}
-    needs: [testes, sistema, portal-build]
+    needs: [build, testes, sistema, portal-build]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Publicar no GHCR é o que permite o deploy baixar em vez de construir (§14.1 do doc).
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -256,13 +309,24 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
+      - name: Login no GHCR (PR não publica)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build (cache gha entre execuções)
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           load: true
-          tags: wyd/${{ matrix.imagem }}:ci
+          # Tag imutável por commit: é o que o deploy puxa no runner local.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            wyd/${{ matrix.imagem }}:ci
+            ghcr.io/${{ github.repository_owner }}/wyd-${{ matrix.imagem }}:sha-${{ github.sha }}
           build-args: |
             WYD_VERSION=${{ env.WYD_VERSION }}
             WYD_COMMIT=${{ env.WYD_COMMIT }}
@@ -354,7 +418,7 @@ jobs:
     name: gate (agrega os grupos)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura]
     # `always()` é obrigatório: sem ele o gate fica `skipped` quando um job falha e o check
     # obrigatório de branch protection nunca fica vermelho.
     if: always()
@@ -376,7 +440,9 @@ jobs:
           infra=${{ needs.infra.result }}
           portal=${{ needs.portal.result }}
           auditoria=${{ needs.auditoria.result }}
+          build=${{ needs.build.result }}
           testes=${{ needs.testes.result }}
+          testes-doc=${{ needs.testes-doc.result }}
           sistema=${{ needs.sistema.result }}
           portal-build=${{ needs.portal-build.result }}
           imagens=${{ needs.imagens.result }}
@@ -439,17 +505,46 @@ jobs:
           cp "$ARQUIVO_ENV" .env
           echo "ok: .env do host copiado para o workspace"
 
-      - name: Rebuild das imagens
+      # Imagens vêm prontas do CI: a matriz `imagens` publica `ghcr.io/<owner>/wyd-<x>:sha-<sha>`.
+      # Aqui só se baixa e re-etraga para o nome que o compose usa (`wyd/<x>:${TAG}`). Sem tag
+      # publicada (run sem push), cai no build local em vez de falhar o deploy.
+      - name: Imagens do GHCR em vez de rebuild
         id: build
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+          faltando=0
+          for img in gateway server portal; do
+            origem="ghcr.io/${{ github.repository_owner }}/wyd-$img:sha-${GITHUB_SHA}"
+            if docker pull "$origem"; then
+              docker tag "$origem" "wyd/$img:${GITHUB_SHA}"
+              echo "ok: $origem -> wyd/$img:${GITHUB_SHA}"
+            else
+              echo "::warning::$origem indisponível — este deploy vai construir localmente"
+              faltando=1
+            fi
+          done
+          echo "fallback_build=$faltando" >> "$GITHUB_OUTPUT"
+
+      - name: Build local (só quando o GHCR não tem a tag)
+        if: steps.sentinela.outputs.pulado == 'false' && steps.build.outputs.fallback_build == '1'
+        shell: bash
+        env:
+          TAG: ${{ github.sha }}
         run: docker compose build 2>&1 | tee deploy-build.log
 
       - name: Subir a stack (sem down -v, sem reset de volume)
         id: up
         if: steps.sentinela.outputs.pulado == 'false'
         shell: bash
-        run: docker compose up -d --wait --wait-timeout 240 2>&1 | tee -a deploy-build.log
+        env:
+          # Compose referencia `wyd/<serviço>:${TAG}`; a tag do commit é a mesma publicada acima.
+          TAG: ${{ github.sha }}
+        run: docker compose up -d --wait --wait-timeout 240 --no-build 2>&1 | tee -a deploy-build.log
 
       - name: Provas de contrato do deploy
         id: provas
@@ -519,7 +614,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Precisa de TODOS os jobs para publicar as métricas de cada um, inclusive em falha.
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura, gate, deploy]
     if: always()
     steps:
       # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
