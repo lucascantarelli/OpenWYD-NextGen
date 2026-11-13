@@ -47,8 +47,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt
       - run: cargo fmt --all --check
@@ -74,8 +74,8 @@ jobs:
           - nome: testes das ferramentas de dev
             comando: node --test apps/tools/test/*.test.mjs
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
       - name: ${{ matrix.nome }}
@@ -107,13 +107,18 @@ jobs:
             comando: node tools/dev/check-alertas.mjs
           - nome: actionlint (os próprios workflows)
             comando: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+          # Pin por SHA (DEVOPS-12): confere o formato **e** resolve tag/branch → commit na API;
+          # comentário que mente sobre o SHA derruba o job.
+          - nome: actions pinadas por SHA
+            comando: node tools/dev/check-actions-pin.mjs
     env:
       TAG: ci
+      GITHUB_TOKEN: ${{ github.token }}
       POSTGRES_PASSWORD: ci-nao-e-segredo
       WEB_API_TOKEN: ci-nao-e-segredo
       SESSION_SECRET: ci-nao-e-segredo
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: ${{ matrix.nome }}
         run: ${{ matrix.comando }}
 
@@ -125,7 +130,7 @@ jobs:
       run:
         working-directory: wyd-portal
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: ./.github/actions/node-setup
       - run: npm run typecheck
       - run: npm run test -- --reporter=dot
@@ -135,9 +140,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: ./.github/actions/rust-setup
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
         with:
           tool: cargo-audit,cargo-deny
       - run: cargo audit
@@ -156,12 +161,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: ./.github/actions/rust-setup
         with:
           tauri: "true"
           cache-key-extra: build-testes
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
         with:
           tool: nextest
       - name: Clippy (warnings são erro, inclusive testes e benches)
@@ -203,7 +208,7 @@ jobs:
       WYD_TEST_REQUIRED: "1"
       MIGRATIONS_DIR: crates/wyd-db/migrations
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: ./.github/actions/rust-setup
         with:
           cache-key-extra: sistema-${{ matrix.pacote }}
@@ -221,7 +226,7 @@ jobs:
       run:
         working-directory: wyd-portal
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: ./.github/actions/node-setup
       - run: npm run build
 
@@ -259,17 +264,17 @@ jobs:
             smoke: ""
             smoke_exit: "0"
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
       - name: Login no GHCR (PR não publica)
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build (cache gha entre execuções)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -335,7 +340,7 @@ jobs:
             esac
           fi
       - name: Scan de vulnerabilidade (Trivy, bloqueante em CRITICAL)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: wyd/${{ matrix.imagem }}:ci
           format: table
@@ -344,13 +349,13 @@ jobs:
           ignore-unfixed: true
           trivyignores: .trivyignore
       - name: SBOM (CycloneDX) como artefato
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: wyd/${{ matrix.imagem }}:ci
           format: cyclonedx
           output: sbom-${{ matrix.imagem }}.cdx.json
           exit-code: "0"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sbom-${{ matrix.imagem }}
           path: sbom-${{ matrix.imagem }}.cdx.json
@@ -363,13 +368,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       # `tauri: true`: `cargo llvm-cov --workspace` compila `apps/launcher-ui`; sem GTK/WebKit o
       # `glib-sys` morre no build script (DEFEITO do run 43431211305, já corrigido).
       - uses: ./.github/actions/rust-setup
         with:
           tauri: "true"
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2
         with:
           tool: cargo-llvm-cov
       - name: Cobertura Rust (lcov + resumo)
@@ -381,7 +386,7 @@ jobs:
       - name: Cobertura do portal
         working-directory: wyd-portal
         run: npm run test:cobertura
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: cobertura
           path: |
@@ -439,7 +444,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout do commit validado
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # O PATH depende de como o runner foi iniciado: se `C:\Windows\System32` vier antes do Git, o
       # `shell: bash` cai no bash do WSL e o passo morre em "anexar o disco ... ERROR_PATH_NOT_FOUND".
@@ -573,7 +578,7 @@ jobs:
           GRAFANA_URL: http://127.0.0.1:${{ vars.GRAFANA_PORT || 3001 }}
         run: node tools/dev/anotar-deploy-grafana.mjs
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: deploy-local-${{ github.run_id }}
@@ -594,7 +599,7 @@ jobs:
     steps:
       # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
       # do checkout — o bash inline antigo não precisava e escondia essa dependência.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Montar e enviar o resumo
         env:

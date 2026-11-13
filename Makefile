@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check actions-pin-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
 
 # TAG usada só para VALIDAR o overlay de produção (o overlay exige TAG; o gate não exige
 # que o dono exporte uma). A prova de que sem TAG falha está no fim de `stack-config`.
@@ -32,7 +32,7 @@ test: ## testes do workspace (skill: wyd-rust-toolchain)
 test-all: ## unitários + integração + doc-tests + alvos de bench (espelho do CI)
 	$(CARGO) test --workspace --all-targets
 
-check: fmt clippy build test migrations-check issue-status-check docs-check skills-check versao-check tools-test portal-test ## gate completo — exigido por toda issue
+check: fmt clippy build test migrations-check issue-status-check docs-check skills-check versao-check tools-test portal-test actions-pin-check ## gate completo — exigido por toda issue
 
 versao-check: ## fonte única de versão (Cargo workspace × portal) — DEVOPS-10
 	node tools/dev/check-versao.mjs
@@ -123,6 +123,9 @@ clean-target: ## cache de build (target/, recreado pelo próximo cargo)
 
 clean-tmp: ## artefatos conhecidos de tmp/ (logs, drivers, E2E, instalação)
 	node tools/dev/clean-tmp.mjs --yes
+
+actions-pin-check: ## confere se cada action está pinada por SHA e se o comentário da tag confere (tools/dev/check-actions-pin.mjs)
+	node tools/dev/check-actions-pin.mjs
 
 tools-test: ## testes do app apps/tools (node:test, sem dependências)
 	# Glob, não diretório: o Node 22 (CI) não aceita diretório em `--test`.
