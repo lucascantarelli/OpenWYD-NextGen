@@ -1,6 +1,6 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-13 · **27 issues ativas** + 15 descritores de fase. 68 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **31 issues ativas** + 15 descritores de fase. 68 issues concluídas estão em [`changelog.md`](changelog.md).
 >
 > **Auditoria de DevOps/CI:** das doze issues da análise de pipeline, imagens, compose, testes e
 > monitoramento, **todas as doze estão fechadas** (`DEVOPS-01`…`DEVOPS-13`); o
@@ -147,7 +147,7 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 11 | `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 ✅ |
 | 07 | `GAME-23` | [Bots autônomos do Campo de Treinamento (um por raça)](issues/GAME-23-bots-do-campo-de-treinamento.md) | 🟡 | M | QA-11 🟡, GAME-18 🟡 |
 
-### Cliente, protocolo e launcher (4)
+### Cliente, protocolo e launcher (5)
 
 | # | ID | Issue | Status | Esforço | Depende de |
 |---:|---|---|---|---|---|
@@ -155,6 +155,7 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 20 | `CLIENT-08` | [GUI do launcher em Tauri v2](issues/CLIENT-08-launcher-gui-tauri.md) | 🚧 | L | CLIENT-03 ✅, CLIENT-07 ✅ |
 | 27 | `CLIENT-10` | [Trade atômica por par (layout candidato; captura pendente)](issues/CLIENT-10-trade-atomica.md) | ⛔ | M | CLIENT-06 (captura do layout) |
 | 21 | `CLIENT-11` | [Launcher completo + integração com o portal + autoupdate](issues/CLIENT-11-portal-autoupdate.md) | 🚧 | L | CLIENT-03 ✅, CLIENT-08 🚧 |
+| 30 | `CLIENT-12` | [Comparação visual: modo de vídeo, render target e gerações](issues/CLIENT-12-comparacao-visual-geracoes.md) | ⬜ | S | cliente 7662 + GPU local |
 
 ### Portal e gateway (5)
 
@@ -166,7 +167,7 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 16 | `WEB-10` | [Catálogo de itens + economia do servidor](issues/WEB-10-catalogo-economia.md) | 🚧 | M | WEB-05 ✅; atributos no gateway |
 | 17 | `WEB-11` | [Configurações 100% via portal (sem arquivo manual)](issues/WEB-11-configuracoes.md) | 🚧 | M | PROC-24; rollback/histórico |
 
-### Qualidade, carga e segurança (4)
+### Qualidade, carga e segurança (7)
 
 | # | ID | Issue | Status | Esforço | Depende de |
 |---:|---|---|---|---|---|
@@ -174,6 +175,9 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 23 | `QA-09` | [Suite completa + concorrência (tarpaulin/miri)](issues/QA-09-suite-concorrencia.md) | ⬜ | M | QA-02 ✅, GAME-21 |
 | 24 | `QA-10` | [Carga de rede + integridade do banco + build de produção](issues/QA-10-carga-banco-release.md) | ⬜ | M | QA-09, QA-08 ✅ |
 | 01 | `QA-11` | [Bots jogáveis e carga (`crates/wyd-bots`)](issues/QA-11-bots-carga.md) | 🟡 | M | GAME-06 ✅, CLIENT-02 ✅, QA-05 ✅ |
+| 28 | `QA-12` | [Validação manual da entrada no mundo e das mensagens (7662)](issues/QA-12-validacao-manual-entrada-mundo.md) | ⬜ | M | stack no ar, conta de teste |
+| 29 | `QA-13` | [Dois clientes: sessão, combate, loot, refino e logout](issues/QA-13-validacao-manual-dois-clientes.md) | ⬜ | M | QA-12 |
+| 31 | `QA-14` | [Suíte live do servidor: 3 falhas conhecidas](issues/QA-14-suite-live-falhas.md) | 🟡 | S | stack no ar + banco descartável |
 
 ### Processo, documentação e arquitetura (2)
 

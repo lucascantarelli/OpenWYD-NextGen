@@ -187,6 +187,7 @@ nav:
     - Roadmap: audit/17-priorities-and-roadmap.md
     - Desconhecidos: audit/18-unknown-features.md
     - Gerações visuais do cliente: audit/19-client-visual-generations.md
+    - Validação executada (2026-11-13): audit/20-validacao-2026-11-13.md
     - Sistemas:
       - Autenticação: audit/systems/authentication.md
       - Personagens: audit/systems/characters.md
