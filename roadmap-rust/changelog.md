@@ -108,6 +108,7 @@
 
 - **ID:** `GAME-19`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — no canal vivo o personagem nível 1 causa 1 de dano em `GremlinDecoy` (600 HP); fórmula provada, dano real não. Ver `issues/GAME-19-combate-dano-real.md`.
 - **Resumo:** os 9 sistemas de `crates/wyd-sim/src/formula/` e a ordem do golpe/tick em `scenario/combat.rs` já estavam codificados; faltava o exemplo numérico exigido pelo aceite. O documento ganhou a conta completa (`base 100 + 20 + 10`, skill 150%, buff 110%, crítico 200%, defesa 100/perfuração 30, resistência 25%, absorção 19 → **250**) e o teste `worked_example_matches_documented_chain` reproduz o mesmo resultado. As hipóteses D-02..D-04/D-06 continuam explicitamente marcadas; a ordem do legado será confirmada pelo trace da `CLIENT-06`, fora desta issue.
 - **Evidência:** `docs/arquitetura/matematica-sim.md` §3.2.1; `crates/wyd-sim/src/formula/damage.rs`; `cargo test -p wyd-sim damage` → 13 passed; [`AUDIT-ISSUES-2026-11-12.md`](../docs/rust/evidencias/AUDIT-ISSUES-2026-11-12.md).
 
@@ -357,6 +358,7 @@
 
 - **ID:** `GAME-08`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — relato do dono no 7662: personagem sem atributos, CP errado e nome vermelho. Ver `issues/GAME-08-entrada-no-mundo-spawn.md`.
 - **Resumo:** Transformar `_MSG_CharacterLogin` em **entidade viva no mundo**: ler o personagem do Postgres, criar a entidade no `ComponentStore` na posição salva e devolver ao banco posição/HP/MP/EXP no logout, queda de conexão e save periódico.
 - **Evidência:** ```bash WYD_TEST_DATABASE_URL=... cargo test -p wyd-server --test entrada_mundo WYD_TEST_DATABASE_URL=... cargo test -p wyd-db --test pg cargo test --workspace          # sem DSN: os testes de banco pulam com aviso ```
 
@@ -364,6 +366,7 @@
 
 - **ID:** `GAME-09`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — relato “npc não clica”; falta prova de clique/render no 7662. Ver `issues/GAME-09-cena-autoritativa.md`.
 - **Resumo:** Emitir o pacote autoritativo de cena com `HEADER.ID = ESCENE_FIELD` (30000): entidades visíveis, posição, HP/EXP e remoção — o que faz o cliente desenhar o mundo e atualizar as barras.
 - **Evidência:** ```bash cargo test -p wyd-protocol --test scene cargo test -p wyd-core --test visibility cargo test -p wyd-server --test cena cargo test -p wyd-protocol -p wyd-net     # bytes no fio ```
 
@@ -371,6 +374,7 @@
 
 - **ID:** `GAME-10`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — falta a mensagem “você é/não é cidadão do canal” e o indicador no cliente. Ver `issues/GAME-10-cidadania-canal.md`.
 - **Resumo:** Fazer `citizen` deixar de ser só um número no `STRUCT_SELCHAR` e virar **regra aplicada**: bônus de caça/drop do canal de cidadania, recusa de serviço de NPC de outra cidade e papel verde (sem PvP, loja permitida) como propriedade do processo.
 - **Evidência:** ```bash cargo test -p wyd-core --test cidadania cargo test -p wyd-sim cargo test -p wyd-server --test canal_verde cargo test -p wyd-db --test catalogo   # se houver migration nova ```
 

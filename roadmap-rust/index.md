@@ -1,6 +1,6 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-13 · **31 issues ativas** + 15 descritores de fase. 68 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **35 issues ativas** + 15 descritores de fase. 64 issues concluídas estão em [`changelog.md`](changelog.md).
 >
 > **Auditoria de DevOps/CI:** das doze issues da análise de pipeline, imagens, compose, testes e
 > monitoramento, **todas as doze estão fechadas** (`DEVOPS-01`…`DEVOPS-13`); o
@@ -42,7 +42,7 @@
 | Issue | Status | O que já está provado | O que falta | Dependência |
 |---|---|---|---|---|
 | `BUG-01` | ⬜ | Recusas com motivo no log, testes de fio e entrada com `ClientID`/`UpdateScore`/cena. | Matriz mensagem × exibe/não-exibe e reprodução de cada recusa no 7662. | Cliente/VM (`CLIENT-06`). |
-| `BUG-02` | 🟢 | Código, testes de fio e `clippy`; seleção antes do PIN devolve o frame. | Prova viva com `WYD_LIVE_SKIP_PIN=1` e entrada no cliente 7662. | Cliente/VM (`CLIENT-06`). |
+| `BUG-02` | ⬜ | Código, testes de fio e `clippy`; seleção antes do PIN devolve o frame. | Prova viva com `WYD_LIVE_SKIP_PIN=1` e entrada no cliente 7662. | Cliente/VM (`CLIENT-06`). |
 | `GAME-17` | 🚧 | Faixa de `ClientID`, `UpdateScore`, `CreateType` e rajada real de `CreateMob`. | Render da entrada no cliente 7662, sem “Falha ao conectar”. | Cliente/VM (`CLIENT-06`). |
 | `GAME-18` | 🟡 | 10 NPCs no seed `0046`, Sephira +9 no `0049`, 4 etapas, portões/chaves, loot no inventário, guardiões/boss no pipeline real de morte/loot (`integracao_campo_drops`) e `ReqLvl` do catálogo aplicado. | Buff do `Cabuncle`, portão visível e prova visual no 7662. | Captura no cliente/VM. |
 | `GAME-11` | 🚧 | Depósito no inventário no abate e regra pura da caixa (30 s/3 min). | Handler `CreateItem`/`GetItem`/`DecayItem` e faixa de id do chão. | Captura do layout de item no chão (`CLIENT-06`). |
@@ -130,9 +130,9 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | # | ID | Issue | Status | Esforço | Depende de |
 |---:|---|---|---|---|---|
 | 06 | `BUG-01` | [Mensagens do cliente ausentes + personagem não entra no mundo](issues/BUG-01-mensagens-char-mundo.md) | ⬜ | M | CLIENT-06 |
-| 03 | `BUG-02` | [“Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | 🟢 | S | GAME-17 🚧 (mesma prova visual) |
+| 03 | `BUG-02` | [“Falha ao conectar” ao entrar no mundo: PIN opcional e seleção antes do PIN](issues/BUG-02-entrada-no-mundo-pin-opcional.md) | ⬜ | S | GAME-17 🚧 (mesma prova visual) |
 
-### Jogo e gameplay (10)
+### Jogo e gameplay (14)
 
 | # | ID | Issue | Status | Esforço | Depende de |
 |---:|---|---|---|---|---|
@@ -140,12 +140,16 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 13 | `GAME-11` | [Drop no inventário e caixa no chão com posse](issues/GAME-11-drop-inventario-e-caixa.md) | 🚧 | M | CLIENT-06 (id do item no chão); depósito já feito |
 | 12 | `GAME-13` | [Familiares: slot, Nyerds, Imp, Griupan e Trajes](issues/GAME-13-familiares-slot-e-itens.md) | ⬜ | M | CLIENT-06 (slot Familiar) |
 | 14 | `GAME-14` | [Fadas: bônus de drop/EXP, duração e auto-coleta](issues/GAME-14-fadas-bonus-e-auto-coleta.md) | ⬜ | M | GAME-11 |
-| 04 | `GAME-17` | [Entrada no mundo fiel ao legado (id de jogador, `UpdateScore`, `CreateType`)](issues/GAME-17-entrada-no-mundo-fiel.md) | 🚧 | M | GAME-08 ✅, GAME-09 ✅; prova visual |
+| 04 | `GAME-17` | [Entrada no mundo fiel ao legado (id de jogador, `UpdateScore`, `CreateType`)](issues/GAME-17-entrada-no-mundo-fiel.md) | 🚧 | M | GAME-08 ⬜, GAME-09 ⬜; prova visual |
 | 05 | `GAME-18` | [Campo de Treinamento: quest, portões, buff, boss e recompensas](issues/GAME-18-campo-de-treinamento.md) | 🟡 | L | GAME-17; prova visual |
-| 09 | `GAME-20` | [Anomalia de velocidade (~200%) e hits duplicados](issues/GAME-20-velocidade.md) | ⬜ | M | GAME-19 ✅ (ordem provisória; trace em CLIENT-06) |
-| 10 | `GAME-21` | [Laboratório `wyd-sim` (milhões de iterações)](issues/GAME-21-laboratorio.md) | ⬜ | M | GAME-19 ✅, GAME-20 |
-| 11 | `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 ✅ |
+| 09 | `GAME-20` | [Anomalia de velocidade (~200%) e hits duplicados](issues/GAME-20-velocidade.md) | ⬜ | M | GAME-19 (reaberta; ordem provisória) |
+| 10 | `GAME-21` | [Laboratório `wyd-sim` (milhões de iterações)](issues/GAME-21-laboratorio.md) | ⬜ | M | GAME-19, GAME-20 |
+| 11 | `GAME-22` | [Árvore de EXP por flags (default inalterado)](issues/GAME-22-exp-por-flags.md) | ⬜ | M | GAME-08 |
 | 07 | `GAME-23` | [Bots autônomos do Campo de Treinamento (um por raça)](issues/GAME-23-bots-do-campo-de-treinamento.md) | 🟡 | M | QA-11 🟡, GAME-18 🟡 |
+| 32 | `GAME-08` | [Entrada no mundo: personagem sem atributos, CP errado e nome vermelho](issues/GAME-08-entrada-no-mundo-spawn.md) | ⬜ | M | CLIENT-06 |
+| 33 | `GAME-09` | [Cena autoritativa: NPC não clica](issues/GAME-09-cena-autoritativa.md) | ⬜ | M | CLIENT-06 |
+| 34 | `GAME-10` | [Cidadania: mensagem e indicador no login](issues/GAME-10-cidadania-canal.md) | ⬜ | S | GAME-17 |
+| 35 | `GAME-19` | [Combate: 1 de dano e monstro de treino não morre](issues/GAME-19-combate-dano-real.md) | ⬜ | M | GAME-08 |
 
 ### Cliente, protocolo e launcher (5)
 

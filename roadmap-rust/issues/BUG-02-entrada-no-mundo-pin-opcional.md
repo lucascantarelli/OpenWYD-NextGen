@@ -2,7 +2,7 @@
 
 > **ID canônico:** `BUG-02`
 > **ID histórico:** `BUG-02`
-> **Estado 2026-11-12:** 🟢 · ver `roadmap-rust/index.md`.
+> **Estado 2026-11-13:** ⬜ · **reaberta** · ver `roadmap-rust/index.md`.
 
 **Tipo:** Bug · **Esforço:** S · **Depende de:** GAME-17 🚧 (código provado; mesma prova visual) · **Bloqueia:** onda 1 (jogável),
 GAME-18 (Campo de Treinamento), GAME-23 (bots)
@@ -171,3 +171,16 @@ Esperado no log: `pin result=skip reason=not_registered` (conta sem PIN) ou
 - `wyd-rust-net` — parsers e sessão de entrada.
 - `rust-code-quality` / `rust-test-quality` — correção e prova de regressão.
 - `docs/rust/02-execucao.md` §5 — registro no painel e no changelog.
+
+## Reabertura 2026-11-13 (relato do dono no 7662)
+
+- Login entra **sem validar a senha**.
+- Segunda senha (PIN) **bugada e sem validação**.
+- Nenhuma mensagem de erro aparece ao jogador.
+
+O estado 🟢 anterior vinha de testes de fio (`seleção antes do PIN`), não de prova no cliente;
+a matriz de recusas visíveis continua em `BUG-01` (`0x0117` não é tratado pelo 7662) e a prova
+viva segue bloqueada por `CLIENT-06`.
+
+Critérios para voltar a ✅: senha errada recusa de fato, PIN errado recusa com mensagem visível,
+PIN novo grava e autentica no relogin, tudo com print + log do canal.
