@@ -203,8 +203,22 @@ jobs:
           tool: nextest
       - name: nextest (${{ matrix.crate }})
         run: cargo nextest run -p ${{ matrix.crate }} --no-fail-fast --no-tests=pass --status-level fail --final-status-level slow
-      - name: doc-tests (${{ matrix.crate }})
-        run: cargo test -p ${{ matrix.crate }} --doc
+
+  # Doc-tests ficam num job só, com `--workspace`: `nextest` não os executa e `-p <crate> --doc`
+  # quebra em pacote sem alvo de biblioteca (é o caso de `wyd-launcher-ui`, só binário). Com
+  # `--workspace` o cargo pula quem não tem lib em vez de falhar.
+  testes-doc:
+    name: rust / doc-tests
+    needs: [fmt]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/rust-setup
+        with:
+          tauri: "true"
+          cache-key-extra: doc-tests
+      - run: cargo test --workspace --doc
 
   sistema:
     name: rust / sistema — ${{ matrix.pacote }} (Postgres real)
@@ -404,7 +418,7 @@ jobs:
     name: gate (agrega os grupos)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, sistema, portal-build, imagens, cobertura]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura]
     # `always()` é obrigatório: sem ele o gate fica `skipped` quando um job falha e o check
     # obrigatório de branch protection nunca fica vermelho.
     if: always()
@@ -428,6 +442,7 @@ jobs:
           auditoria=${{ needs.auditoria.result }}
           build=${{ needs.build.result }}
           testes=${{ needs.testes.result }}
+          testes-doc=${{ needs.testes-doc.result }}
           sistema=${{ needs.sistema.result }}
           portal-build=${{ needs.portal-build.result }}
           imagens=${{ needs.imagens.result }}
@@ -599,7 +614,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Precisa de TODOS os jobs para publicar as métricas de cada um, inclusive em falha.
-    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, sistema, portal-build, imagens, cobertura, gate, deploy]
+    needs: [fmt, clippy, conteudo, infra, portal, auditoria, build, testes, testes-doc, sistema, portal-build, imagens, cobertura, gate, deploy]
     if: always()
     steps:
       # O resumo é um script do repositório (`tools/dev/notify-ci.mjs`), então este job precisa
