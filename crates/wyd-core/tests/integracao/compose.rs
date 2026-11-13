@@ -174,8 +174,8 @@ fn aylin_cobra_custo_e_insumos_e_produz_mais_dez() {
     inv.bag[0] = item(1900, 1, 9);
     inv.bag[1] = item(1900, 1, 9);
     inv.bag[2] = item(1774, 1, 0);
-    for slot in 3..7 {
-        inv.bag[slot] = item(2441, 1, 0);
+    for slot in inv.bag[3..7].iter_mut() {
+        *slot = item(2441, 1, 0);
     }
     let (mut store, e) = spawn(inv);
     assert!(store.set_coin(e, 60_000_000));
@@ -203,8 +203,8 @@ fn aylin_sem_moedas_recusa_sem_mutar() {
     inv.bag[0] = item(1900, 1, 9);
     inv.bag[1] = item(1900, 1, 9);
     inv.bag[2] = item(1774, 1, 0);
-    for slot in 3..7 {
-        inv.bag[slot] = item(2441, 1, 0);
+    for slot in inv.bag[3..7].iter_mut() {
+        *slot = item(2441, 1, 0);
     }
     let (mut store, e) = spawn(inv);
     assert!(store.set_coin(e, 49_999_999));
@@ -228,12 +228,12 @@ fn cadeia_de_mais_nove_ate_mais_quinze_pelos_handlers() {
     inv.bag[0] = item(1900, 1, 9);
     inv.bag[1] = item(1900, 1, 9);
     inv.bag[2] = item(1774, 1, 0);
-    for slot in 3..7 {
-        inv.bag[slot] = item(2441, 1, 0);
+    for slot in inv.bag[3..7].iter_mut() {
+        *slot = item(2441, 1, 0);
     }
     // Oito pilhas de 10 Lac: duas por passo do +12+.
-    for slot in 8..16 {
-        inv.bag[slot] = powder_stack(413);
+    for slot in inv.bag[8..16].iter_mut() {
+        *slot = powder_stack(413);
     }
     // Uma pilha de pó separada para o passo +10 → +11 (não pode comer as do +12+).
     inv.bag[32] = powder_stack(413);
@@ -303,8 +303,8 @@ fn sorteio_de_115_nao_serve_para_o_odin_e_vice_versa() {
     inv.bag[0] = item(1900, 1, 9);
     inv.bag[1] = item(1900, 1, 9);
     inv.bag[2] = item(1774, 1, 0);
-    for slot in 3..7 {
-        inv.bag[slot] = item(2441, 1, 0);
+    for slot in inv.bag[3..7].iter_mut() {
+        *slot = item(2441, 1, 0);
     }
     let (mut store, e) = spawn(inv);
     assert!(store.set_coin(e, 50_000_000));
@@ -316,8 +316,8 @@ fn sorteio_de_115_nao_serve_para_o_odin_e_vice_versa() {
 
     // Odin Pista com raw 114: 15 ≤ 40, passa — prova que o caminho usa o sorteio de 199.
     let mut inv = Inventory::default();
-    for slot in 0..7 {
-        inv.bag[slot] = powder_stack(413);
+    for slot in inv.bag[0..7].iter_mut() {
+        *slot = powder_stack(413);
     }
     let (mut store, e) = spawn(inv);
     let ok =
@@ -337,8 +337,8 @@ fn item_769_para_no_mais_nove_em_todos_os_caminhos() {
     inv.bag[0] = item(769, 1, 9);
     inv.bag[1] = item(769, 1, 9);
     inv.bag[2] = item(1774, 1, 0);
-    for slot in 3..7 {
-        inv.bag[slot] = item(2441, 1, 0);
+    for slot in inv.bag[3..7].iter_mut() {
+        *slot = item(2441, 1, 0);
     }
     let (mut store, e) = spawn(inv);
     assert!(store.set_coin(e, 50_000_000));
@@ -396,8 +396,8 @@ fn anct_aplica_gates_e_teto_de_sacrificios() {
     let mut inv = Inventory::default();
     inv.bag[0] = item(1900, 1, 9);
     inv.bag[1] = item(2441, 1, 0);
-    for slot in 2..9 {
-        inv.bag[slot] = item(2001, 1, 7);
+    for slot in inv.bag[2..9].iter_mut() {
+        *slot = item(2001, 1, 7);
     }
     let (mut store, e) = spawn(inv);
     assert_eq!(

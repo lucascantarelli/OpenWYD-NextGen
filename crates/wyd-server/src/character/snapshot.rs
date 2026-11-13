@@ -1352,14 +1352,16 @@ mod tests {
         let esperado = Mob::from_character(&personagem);
         // `Equip`/`Carry` vêm das linhas: o resultado bate com o template da criação.
         assert_eq!(persistido.equip, esperado.equip, "Equip@140");
-        for slot in 0..MAX_CARRY {
+        for (slot, (obtido, alvo)) in persistido
+            .carry
+            .iter()
+            .zip(esperado.carry.iter())
+            .enumerate()
+        {
             if slot == KILL_MARK_SLOT {
                 continue;
             }
-            assert_eq!(
-                persistido.carry[slot], esperado.carry[slot],
-                "Carry[{slot}]@268"
-            );
+            assert_eq!(obtido, alvo, "Carry[{slot}]@268");
         }
         // Kill mark do login: item 547 com os três efeitos do legado.
         assert_eq!(persistido.carry[KILL_MARK_SLOT].index, KILL_MARK_ITEM);
@@ -1376,8 +1378,8 @@ mod tests {
         // Sem linha não há equipamento derivado do template: só o rosto da classe.
         let vazio = Mob::from_persisted(&personagem, &[]);
         assert_eq!(vazio.equip[0].index, 1, "rosto TransKnight");
-        for slot in 1..MAX_EQUIP {
-            assert!(vazio.equip[slot].is_empty(), "Equip[{slot}] sem linha");
+        for (slot, item) in vazio.equip.iter().enumerate().skip(1) {
+            assert!(item.is_empty(), "Equip[{slot}] sem linha");
         }
         assert_eq!(vazio.carry, [Item::default(); MAX_CARRY]);
     }
