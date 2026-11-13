@@ -31,8 +31,13 @@ versão é o build-arg default `0.1.0`.
 - Run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714): o passo "Versão
   única (Cargo workspace × portal)" do job `gate` passou com `versão única ok: 0.1.0 (workspace, 10
   membros e portal)` — a fonte única agora é cobrada no CI, não só localmente.
-- `release.yml` nunca rodou: sem tag criada, nada de binários/`SHA256SUMS`/SBOM de release provado.
-  Rollback por tag+digest escrito e a divergência de tamanho de imagem medida continuam pendentes.
+- **Disparo por tag provado** em 2026-11-13 com a tag descartável `v0.1.0`: run
+  [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735) criado e atribuído ao
+  workflow `Release` (`event=push`, `branch=v0.1.0`), cancelado de propósito antes de publicar; tag
+  apagada e nenhum release/draft ficou no repositório.
+- Execução **completa** segue não provada (binários, `SHA256SUMS`, SBOM e notas): publicar release é
+  decisão do dono. Comando: `git tag -a v0.1.0 -m "Release 0.1.0" && git push origin v0.1.0` em
+  `main`. Rollback por tag+digest e a divergência de tamanho de imagem continuam pendentes.
 
 ## Progresso (2026-11-13)
 
