@@ -141,3 +141,11 @@ registrada no artefato; `bench-gate` sem flake em 5 execuções seguidas.
 > `SLACK_RELEASES_WEBHOOK`), notificação de CI com tempo por job/parede/paralelismo e corte da
 > redundância do alerta de deploy bem-sucedido no canal de operação. Aberto: registry, cobertura
 > fora do caminho crítico, `cargo nextest` + matriz de teste.
+
+> **Aplicado (2026-11-13, medido):** imagens publicadas em `ghcr.io/<owner>/wyd-<x>:sha-<sha>`
+> e deploy por `pull` + `--no-build` — deploy de **21 min 20 s** (build frio) para **1 min 38 s**, e
+> run de `develop` de **28 min 46 s** para **7 min 51 s** (runs 43456241374 e 43470873106). Testes
+> saíram do job único para matriz de 10 crates com `cargo nextest` + job próprio de doc-tests: maior
+> job de teste 2 min 31 s → 1 min 45 s, com soma de runner ~4× maior e janela do estágio igual
+> (§14.2 do doc). `cargo-chef` foi medido e **descartado**: os Dockerfiles já usam cache mounts
+> (2,9 s sem mudança de fonte, ~1 min 50 s após mudar um crate) e o deploy não constrói mais.

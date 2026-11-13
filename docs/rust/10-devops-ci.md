@@ -655,28 +655,53 @@ Medição: run [43456241374](https://github.com/lucascantarelli/wyd/actions/runs
 `deploy` 21 min 20 s, parede do run 28 min 46 s. Em run com camadas quentes, o mesmo deploy fecha em
 ~1 min 30 s.
 
-**Proposta (não aplicada — depende de decisão do dono):** a matriz já existe; falta o `push` para um
-registry com tag imutável e o deploy puxar essa tag.
+**Aplicado em 2026-11-13** (`ci.yml`):
 
 ```text
-job imagens (push em develop):  docker/build-push-action → ghcr.io/<owner>/wyd-<imagem>:sha-<sha>
-job deploy:                     docker login ghcr.io → TAG=sha-<sha> docker compose pull
-                                → docker compose up -d --wait --no-build
+imagens (push em develop):  build com load:true → provas → docker push ghcr.io/<owner>/wyd-<x>:sha-<sha>
+deploy:                     docker login ghcr.io → pull das 3 imagens → docker tag wyd/<x>:<sha>
+                            → TAG=<sha> docker compose up -d --wait --no-build
 ```
 
-Isso exige `permissions: packages: write` (já disponível no `GITHUB_TOKEN` do repositório) e login
-do runner no registry. É a mudança que corta ~20 min do relógio por push em `develop`.
+Detalhe que custou um run vermelho: `docker/build-push-action` **recusa** `load: true` com
+`push: true`, então a publicação virou um passo depois das provas (labels/smoke/Trivy/SBOM continuam
+na imagem carregada). Se a tag não existir no GHCR (run sem push), o deploy cai em build local e
+avisa com `::warning::` em vez de falhar.
 
-### 14.2 Build e testes no mesmo job: decisão consciente, com número
+Medição antes/depois, ambos push em `develop` com mudança em `crates/`:
 
-Hoje `rust / build + testes` roda `cargo build --workspace` e `cargo test --workspace` no **mesmo**
-`target/`: 2 min 31 s com cache quente. O build é pré-requisito do teste de integração — separar em
-dois jobs não elimina o trabalho, ele obriga a **transferir `target/`** entre jobs (centenas de MB)
-ou a recompilar do zero no segundo job, e nenhum dos dois é mais rápido.
+| | antes (43456241374) | depois (43470873106) |
+|---|---|---|
+| `deploy local` | **21 min 20 s** (build frio) | **1 min 38 s** (pull + up) |
+| parede do run | 28 min 46 s | **7 min 51 s** |
 
-O split passa a valer quando existir **matriz de teste** (2+ jobs por área consumindo o mesmo
-artefato de build, ex.: `cargo nextest` por crate). Sem isso, é custo sem ganho — por isso não foi
-feito.
+O log do deploy mostra o caminho real: `ok: ghcr.io/lucascantarelli/wyd-server:sha-b7ca98c →
+wyd/server:b7ca98c` e `deploy local provado: quatro provas verdes`.
+
+### 14.2 Testes: matriz por crate com `nextest`
+
+Aplicado em 2026-11-13: o antigo `rust / build + testes` (2 min 31 s, `cargo build` + `cargo test`
+no mesmo `target/`) virou **`build`** (`cargo build --workspace`, 2 min 34 s) + **`testes / <crate>`**
+com 10 jobs em matriz usando `cargo nextest run -p <crate> --no-fail-fast --no-tests=pass` +
+**`doc-tests`** (`cargo test --workspace --doc`, 1 min 59 s).
+
+Números do run de PR que fechou o gate:
+
+| | antes | depois |
+|---|---|---|
+| maior job de teste | 2 min 31 s (`build + testes`) | 1 min 45 s (`testes / wyd-core`) |
+| janela do estágio de teste | 2 min 31 s | ~2 min 34 s (build/doc em paralelo) |
+| soma de tempo de runner | 2 min 31 s | ~10 min 30 s nos 10 crates |
+
+Leitura honesta: **o teste em si ficou ~30% mais rápido** e uma falha de crate não espera os outros,
+mas a janela do estágio não encurtou — porque `cargo build` continua existindo e roda junto. O ganho
+é granularidade e feedback (saber **qual** crate quebrou, com log separado), ao custo de ~4× minutos
+de runner. Se minutos passarem a doer mais que segundos, o caminho de volta é um job único com
+`nextest` (sem matriz), que mantém o paralelismo por binário de teste.
+
+Duas armadilhas pagas no processo: `nextest` **não** roda doc-tests (daí o job separado) e
+`cargo test -p <crate> --doc` falha em pacote sem lib (`wyd-launcher-ui` é binário Tauri: `no
+library targets found`) — por isso os doc-tests usam `--workspace`, que pula quem não tem lib.
 
 ### 14.3 Cache: existe, mas não é compartilhado entre jobs paralelos
 
@@ -697,12 +722,22 @@ artefato.
 
 1. **Cobertura fora do caminho crítico** — `seguranca / cobertura` leva 225 s e é o maior job depois
    do deploy; na agenda (ou em paralelo com os testes, sem esperar `gate`) corta isso do push.
-2. **Registry + pull no deploy** (§14.1): até ~20 min por push em `develop` que muda `crates/`.
-3. **`cargo-chef` ou cache mounts** (`--mount=type=cache,target=/usr/local/cargo,target=/src/target`)
-   no Dockerfile: corta o rebuild de dependências mesmo sem registry.
-4. **`cargo nextest` + matriz de teste por crate**: é o que torna o split de §14.2 vantajoso.
+2. ~~Registry + pull no deploy~~ — feito (§14.1): −20 min no pior caso.
+3. **`cargo-chef`: descartado com medição** — os `Dockerfile.*` **já** usam
+   `--mount=type=cache,target=/usr/local/cargo/registry` e `target=/src/target`. Medido com
+   `docker build` do `Dockerfile.server`: sem mudança de fonte **2,9 s** ("Finished release profile in
+   2.92s"); mudando uma linha em `crates/wyd-core`, **~1 min 50 s** recompilando só o crate e seus
+dependentes (core → db → admin → server). O chef só pagaria num builder **sem** cache mount (cache
+   persiste entre builds na mesma máquina) — e, como o deploy agora puxa imagem, o build local é
+   exceção. Adotá-lo adicionaria um estágio de planner para ganho ~zero no caminho real.
+4. ~~`cargo nextest` + matriz~~ — feito (§14.2).
 
 ### 14.5 Implementado nesta rodada
+
+- **Imagens no GHCR + deploy por pull** (§14.1): deploy de 21 min 20 s → **1 min 38 s**; run de
+  `develop` de 28 min 46 s → **7 min 51 s**.
+- **Testes em matriz com `nextest`** (§14.2): 10 jobs por crate, maior job 2 min 31 s → 1 min 45 s,
+  doc-tests em job próprio.
 
 - **Anotação de deploy no Grafana** (`tools/dev/anotar-deploy-grafana.mjs`, passo do job `deploy`):
   lê `GRAFANA_USER`/`GRAFANA_PASSWORD` do `.env` do host, grava `deploy · <commit> · <resultado>`
