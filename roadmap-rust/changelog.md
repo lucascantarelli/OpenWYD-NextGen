@@ -2,6 +2,13 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## DEVOPS-12 — Dependências fora de range e pin de actions por SHA
+
+- **ID:** `DEVOPS-12`
+- **Concluída em:** 2026-11-13
+- **Resumo:** Todo `uses:` em `.github/workflows/` e `.github/actions/` aponta para o **commit SHA de 40 caracteres** com a referência humana ao lado (`uses: actions/checkout@3d3c42e…​ # v7`) — 39 usos, todos resolvidos pela API do GitHub, nunca digitados. O novo `tools/dev/check-actions-pin.mjs` cobra três coisas: ref é SHA de 40 hex (P1), existe comentário com a referência (P2) e o SHA é **exatamente** o commit para onde a tag/branch aponta agora (P3) — resolvendo tag anotada até o commit. Entra no job `infra` do CI (com `GITHUB_TOKEN`) e no `make check` como `actions-pin-check`. Sobre as dependências atrás da última versão: 4 majors (`argon2`, `ed25519-dalek`, `sha2`, `sqlx`) ficam **de propósito** fora do Dependabot e exigem ADR; o resto é patch/minor coberto pelo grupo semanal.
+- **Evidência:** run [43501166685](https://github.com/lucascantarelli/wyd/actions/runs/43501166685) — `infra / actions pinadas por SHA` **success** com o `gate` verde no PR #31. Prova negativa antes do merge: cópia temporária de `ci.yml` com o SHA de `actions/checkout` zerado → `check-actions-pin` exit **1** com `pin 0000000 não é o commit de "v7" (3d3c42e)`; no estado real, exit **0** com `39 uso(s) de action pinados por SHA`. `cargo update --verbose` listou os crates atrás da última versão e cada um tem decisão registrada na issue antes do arquivamento.
+
 ## DEVOPS-03 — Superfície de produção do compose: TLS, tag, privilégio e limites
 
 - **ID:** `DEVOPS-03`
