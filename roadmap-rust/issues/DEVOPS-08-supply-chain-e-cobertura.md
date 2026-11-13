@@ -111,3 +111,5 @@ Dependabot abrindo PR agrupado na primeira semana.
 - Risco: volume de PRs do Dependabot parar o time → mitigação: agrupamento, limite semanal e
   `ignore` para crates presas por ADR.
 - Rollback: desligar o agendamento; `cargo audit`/`deny` por commit continua.
+
+> **Consolidação (2026-11-13):** os oito workflows de CI viraram um só — `.github/workflows/ci.yml`, com estágios encadeados por `needs` (qualidade → build/teste → imagens/cobertura → gate/deploy) e notificação sempre ao fim. `bench.yml` e `release.yml` seguem separados. Nomes de arquivo citados acima são **históricos** desta seção.

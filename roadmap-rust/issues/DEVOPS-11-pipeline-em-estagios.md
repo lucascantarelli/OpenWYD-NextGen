@@ -82,3 +82,5 @@ duplica compilação: se o objetivo for minutos e não isolamento de falha, eles
   Mitigação: `shared-key` no cache e `bench` fora do PR; medir antes de fatiar mais.
 - Rollback: `rust.yml` é o único ponto de entrada — voltar o arquivo restaura o gate monolítico
   sem tocar nos grupos (que ficam inertes, pois só rodam por `workflow_call`).
+
+> **Consolidação (2026-11-13):** os oito workflows de CI viraram um só — `.github/workflows/ci.yml`, com estágios encadeados por `needs` (qualidade → build/teste → imagens/cobertura → gate/deploy) e notificação sempre ao fim. `bench.yml` e `release.yml` seguem separados. Nomes de arquivo citados acima são **históricos** desta seção.

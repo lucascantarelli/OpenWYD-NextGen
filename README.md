@@ -7,7 +7,7 @@
 **O clássico *With Your Destiny* reconstruído com um Hot Path em Rust, PostgreSQL e um portal de operação em Next.js.**
 
 <p>
-  <a href="https://github.com/lucascantarelli/wyd/actions/workflows/rust.yml"><img src="https://github.com/lucascantarelli/wyd/actions/workflows/rust.yml/badge.svg?branch=develop" alt="CI Rust"></a>
+  <a href="https://github.com/lucascantarelli/wyd/actions/workflows/ci.yml"><img src="https://github.com/lucascantarelli/wyd/actions/workflows/ci.yml/badge.svg?branch=develop" alt="CI"></a>
   <img src="https://img.shields.io/badge/Rust-stable-000?logo=rust&amp;logoColor=white" alt="Rust stable">
   <img src="https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&amp;logoColor=white" alt="Next.js 16">
   <img src="https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&amp;logoColor=white" alt="PostgreSQL 17">
@@ -299,9 +299,11 @@ make docs-serve   # MkDocs interno dev/admin em 127.0.0.1:8000
 make ci           # espelho local do workflow Rust
 ```
 
-O CI em [`.github/workflows/rust.yml`](.github/workflows/rust.yml) roda em `main` e `develop`,
-com jobs separados para **fmt/clippy/build/test**, **seed no boot**, **actionlint**,
-**bench gates**, **release + imagem mínima** e **audit/deny**.
+O CI em [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em `main` e `develop` em
+**estágios encadeados**: qualidade (fmt, clippy, conteúdo, infra, portal, advisory) → build/teste
++ sistema com Postgres real → imagens e cobertura → `gate` e deploy local → notificação no Slack
+com resultado e métricas de cada job. `bench.yml` (agendado) e `release.yml` (tag) ficam fora do
+caminho de push.
 
 ### Invariantes que não se negociam
 

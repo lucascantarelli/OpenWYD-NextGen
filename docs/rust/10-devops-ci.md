@@ -1,6 +1,6 @@
 # DevOps e CI do WYD (Rust) — pipeline, imagens, stack e deploy local
 
-> **Norma desta área.** Fonte executável: `.github/workflows/rust.yml`, `Makefile`,
+> **Norma desta área.** Fonte executável: `.github/workflows/ci.yml`, `Makefile`,
 > `docker/Dockerfile.*`, `docker-compose*.yml` e `docker/monitoring/`. Este documento é a
 > **auditoria de 2026-11-12** e o contrato do que o pipeline precisa provar; o backlog derivado
 > está em `roadmap-rust/index.md` §DevOps e CI (`DEVOPS-01`…`DEVOPS-10`).
@@ -10,7 +10,7 @@
 
 ## 0. Método e limite desta análise
 
-**Lido integralmente:** `.github/workflows/rust.yml`, `Makefile`, `.dockerignore`, `deny.toml`,
+**Lido integralmente:** `.github/workflows/ci.yml` (antes: `rust.yml`, `images.yml`, `supply-chain.yml`, `deploy-local.yml` e os quatro `ci-*.yml`, consolidados em 2026-11-13), `Makefile`, `.dockerignore`, `deny.toml`,
 `rust-toolchain.toml`, os quatro `docker/Dockerfile.*`, os cinco `docker-compose*.yml`,
 `docker/monitoring/**` (Prometheus, alertas, alvos, Loki, Alloy, provisioning) ,
 `tools/dev/{bench-gate,monitoring-smoke,check-docs-consistency}.mjs`,
@@ -27,47 +27,56 @@ flakiness não foram remedidos aqui** — os números citados são os registrado
 `docs/rust/02-execucao.md` §6 e nas evidências de QA-02/QA-03. Onde a conclusão depende de
 medição futura, está marcado **hipótese**.
 
-## 1. Mapa do pipeline (`rust.yml`)
+## 1. Mapa do pipeline (`ci.yml`)
 
-**Template desde 2026-11-12** — cinco workflows, um por responsabilidade, com um job para cada
-issue DEVOPS. `ubuntu-24.04`, `permissions: contents: read` (release: `contents: write`),
-`timeout-minutes` em **todos** os jobs e cache de cargo/npm em todos os que compilam.
+**Três workflows desde 2026-11-13:** `ci.yml` (push/PR em `main`/`develop`, agenda semanal e
+`workflow_dispatch`), `bench.yml` (agendado e por caminho de engine/sim/net/protocolo) e
+`release.yml` (tag `vX.Y.Z`). Antes eram oito arquivos e até cinco runs separados por push; agora
+**um** push gera **um** run, com estágios encadeados por `needs`.
 
-| Workflow | Job | Issue | O que prova |
+| Estágio | Jobs | Issue | O que prova |
 |---|---|---|---|
-| `rust.yml` (nome `Rust`, **orquestrador**) | `conteudo` → `ci-content.yml` | DEVOPS-04 | matriz de 6 jobs em paralelo: `migrations-check`, `issue-status-check`, `docs-check`, `skills-check`, `versao-check`, `tools-test` |
-| | `rust` → `ci-rust.yml` | DEVOPS-04/05/07 | `fmt`, `clippy -D warnings` e `build`+`test` em jobs separados (paralelo); `sistema` em matriz (`wyd-server`, `wyd-admin`) com Postgres 17 efêmero, `--migrate` e `WYD_TEST_REQUIRED=1` |
-| | `portal` → `ci-portal.yml` | DEVOPS-07 | matriz `tsc --noEmit` / `vitest` / `next build` |
-| | `infra` → `ci-infra.yml` | DEVOPS-03/04 | matriz: hardening do compose + `config` nos três modos, `promtool check config/rules/test`, render do Alertmanager/Slack e `actionlint` |
-| | `gate` | DEVOPS-04 | agrega os grupos com `needs` + `always()` e falha se qualquer um não for `success` — é este o check obrigatório de branch protection |
-| | `notify` | operação | falha do gate → aviso no Slack (segredo `SLACK_CI_WEBHOOK`, §11); sem o segredo o passo não roda |
-| `bench.yml` | `bench` | DEVOPS-05 | `cargo bench --no-run` (uma compilação) + `bench-gate` (baseline) + `limits` do `wyd-net`; roda por caminho (engine/sim/net/protocolo, lockfile) e semanalmente — fora do caminho crítico do gate. **Provado em 2026-11-13** pelo run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) (`workflow_dispatch`, 5 min 10 s, job verde) |
-| `images.yml` | `build` (matriz 4) | DEVOPS-06 | build das quatro imagens com `WYD_VERSION`/`WYD_COMMIT` do run, smoke do artefato, labels conferidas, Trivy `CRITICAL` bloqueante e SBOM CycloneDX como artefato |
-| `supply-chain.yml` | `audit` / `images` / `cobertura` | DEVOPS-08 | `cargo audit` + `deny` (gate), scan das quatro imagens (gate, semanal), cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** |
-| `release.yml` | `versao` / `binarios` / `imagens` / `notas` | DEVOPS-10 | tag `vX.Y.Z` confere com `[workspace.package]`; binários + `SHA256SUMS`; imagens com a tag e SBOM; release com notas do GitHub + changelog anexado |
-| `deploy-local.yml` | `deploy` | DEVOPS-09 | `workflow_run` do `Rust` verde em `develop` → rebuild + `up --wait` + `deploy-provas.mjs` no runner `self-hosted,wyd-local`, com sentinela de teste humano |
+| 1 (paralelo) | `rust / fmt`, `rust / clippy (-D warnings)` | DEVOPS-04 | formatação e lints do workspace, com `-D warnings` |
+| | `conteudo / …` (matriz 6) | DEVOPS-04 | migrations, status de issue, links/crates, skills, versão única, testes das ferramentas |
+| | `infra / …` (matriz 9) | DEVOPS-03/04 | hardening do compose + `config` nos três modos, três `promtool`, render do Alertmanager/Slack, `actionlint` |
+| | `portal / typecheck + testes` | DEVOPS-07 | `tsc --noEmit` e `vitest` |
+| | `seguranca / advisory + licencas` | DEVOPS-08 | `cargo audit` e `cargo deny` (advisory, licença, fonte, wildcard) |
+| 2 (depois do 1) | `rust / build + testes` | DEVOPS-04 | build do workspace + testes unit/integração/doc |
+| | `rust / sistema — wyd-server|wyd-admin` (matriz 2) | DEVOPS-07 | Postgres 17 efêmero → `--migrate` → testes de sistema com `WYD_TEST_REQUIRED=1` |
+| | `portal / next build` | DEVOPS-07 | build de produção do portal |
+| 3 (só push/agenda) | `imagens / …` (matriz 4) | DEVOPS-06 | build com `WYD_VERSION`/`WYD_COMMIT`, labels conferidas, smoke, Trivy `CRITICAL` bloqueante, SBOM por imagem |
+| | `seguranca / cobertura (métrica)` | DEVOPS-08 | `cargo llvm-cov` + `vitest --coverage`, artefato publicado |
+| 4 | `gate (agrega os grupos)` | DEVOPS-04/11 | agrega com `needs` + `always()`; falha se qualquer estágio não for `success` |
+| | `deploy local (runner wyd-local)` | DEVOPS-09 | só em push de `develop` e depois do gate: rebuild, `up --wait`, `deploy-provas.mjs`, com sentinela de teste humano |
+| Fim | `notify (Slack: resultado + métricas)` | DEVOPS-11 | **sempre** (sucesso, falha ou cancelado): título, contagem por estado e um ícone por job, com link do run |
+
+Fora do caminho de push: `bench.yml` (`cargo bench --no-run` + `bench-gate` + `limits` do
+`wyd-net`) e `release.yml` (tag → versão × workspace, binários + `SHA256SUMS`, imagens + SBOM, notas).
+
+**Por que estágios e não tudo de uma vez:** o estágio 1 é barato e filtra rápido (fmt, lints,
+conteúdo, infra, auditoria); o estágio 2 só começa com o 1 verde, porque compilar e testar é o
+custo alto; o 3 (imagens/cobertura) é caro e nem roda em PR; o 4 só depois de tudo. O ganho de
+tempo de parede vem das matrizes dentro de cada estágio, não de paralelizar estágios que dependem
+uns dos outros.
+
+**Custo honesto do desenho:** encadear estágios aumenta o tempo de parede em relação ao desenho
+anterior (que rodava tudo em paralelo, 2 min 32 s), porque `fmt → clippy → build/test` virou
+sequência real. O que se ganha é um único run com ordem legível, falha cedo no estágio barato e um
+único check (`gate`) para branch protection.
 
 ### 1.1 Comprovação de execução por workflow (2026-11-13)
 
 Cada arquivo de `.github/workflows/` com o que foi **observado no GitHub** (não leitura de YAML).
-Onde não há run completo, está o motivo e o comando exato.
 
 | Arquivo | Estado comprovado | Prova |
 |---|---|---|
-| `rust.yml` (orquestrador) | verde, 25 jobs, só `notify` skipped | run [43429981097](https://github.com/lucascantarelli/wyd/actions/runs/43429981097) (commit `fc5d04b`) |
-| `ci-content.yml` | chamado pelo orquestrador: 6 jobs verdes | jobs `conteúdo — …` no run acima |
-| `ci-rust.yml` | chamado pelo orquestrador: fmt, clippy, build+test e 2 jobs de sistema verdes | jobs `rust / …` no run acima |
-| `ci-portal.yml` | chamado pelo orquestrador: typecheck, vitest e build verdes | jobs `portal / …` no run acima |
-| `ci-infra.yml` | chamado pelo orquestrador: 9 jobs verdes (compose, promtool, alertas, actionlint) | jobs `infra / …` no run acima |
-| `images.yml` | verde nas quatro imagens (build, labels, smoke, Trivy, SBOM) | run [43422723816](https://github.com/lucascantarelli/wyd/actions/runs/43422723816) |
-| `bench.yml` | verde por `workflow_dispatch` | run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) |
-| `deploy-local.yml` | verde no runner `wyd2-desktop` (quatro provas) | run [43430395464](https://github.com/lucascantarelli/wyd/actions/runs/43430395464) |
-| `supply-chain.yml` | verde nos 6 jobs (advisory, 4 scans, cobertura) por `workflow_dispatch` | run [43432022839](https://github.com/lucascantarelli/wyd/actions/runs/43432022839) |
-| `release.yml` | **disparo por tag provado**; execução completa não (cancela e não foi refeita) | run [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735): `workflow=Release event=push branch=v0.1.0`, cancelado de propósito e tag apagada |
+| `bench.yml` | verde por `workflow_dispatch` (5 min 10 s) | run [43427765855](https://github.com/lucascantarelli/wyd/actions/runs/43427765855) |
+| `release.yml` | **disparo por tag provado**; execução completa não (cancela de propósito, tag apagada) | run [43431337735](https://github.com/lucascantarelli/wyd/actions/runs/43431337735): `workflow=Release event=push branch=v0.1.0` |
+| `ci.yml` | run do merge que introduziu o arquivo (o link entra quando ele fecha) | — |
 
-O `release.yml` é o único sem execução **completa**, por desenho: publicar release é decisão do dono e
-não existe tag `vX.Y.Z` permanente. O disparo foi provado com a tag descartável `v0.1.0` (run criado,
-cancelado, tag e release inexistentes depois). Para uma release real, o dono roda:
+O `release.yml` é o único sem execução **completa**, por desenho: publicar release é decisão do dono
+e não existe tag `vX.Y.Z` permanente. O disparo foi provado com a tag descartável `v0.1.0` (run
+criado, cancelado, tag e release inexistentes depois). Para uma release real, o dono roda:
 
 ```bash
 git checkout main && git pull && git tag -a v0.1.0 -m "Release 0.1.0" && git push origin v0.1.0
@@ -83,15 +92,14 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 | `DEVOPS-03` | `check-compose-hardening` (R1–R6): `TAG` obrigatório em prod, Grafana sem anônimo, `limits` em todo serviço, lifecycle fora do base, nenhuma porta de infra publicada, socket `:ro`; `stack-config` prova que prod recusa `TAG` vazia | TLS na frente do portal, `healthcheck` nos serviços de observabilidade, `cap_drop`/`security_opt` por serviço |
 | `DEVOPS-04` | job `gate` com a mesma lista do `make check` (inclui `migrations`, `issues`, `skills`, `tools-test`, `versao`); `make ci` com `bench-gate`, `monitoring-rules`, `compose-hardening`, `portal-build` | — (paridade fechada; resta manter) |
 | `DEVOPS-05` | `rust-setup`/`node-setup` com cache, `cache-from/to: type=gha` por imagem, `paths-ignore` em PR, `cancel-in-progress` só em PR, `timeout-minutes` em todo job | medir a economia real de minutos (comparar runs com/sem cache) |
-| `DEVOPS-06` | **✅ fechada em 2026-11-13** (run [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698)): `images.yml` constrói as quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, confere labels, publica tamanho, faz smoke, roda Trivy `CRITICAL` bloqueante e sobe SBOM por imagem | publicação em registry (decisão do dono) e promoção de digest |
+| `DEVOPS-06` | **✅ fechada em 2026-11-13** (run [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698)): o estágio 3 do `ci.yml` constrói as quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, confere labels, publica tamanho, faz smoke, roda Trivy `CRITICAL` bloqueante e sobe SBOM por imagem | publicação em registry (decisão do dono) e promoção de digest |
 | `DEVOPS-07` | jobs `portal` (`npm run typecheck`, `npm run test`, `next build`) e `sistema` (Postgres 17 efêmero, `--migrate`, `-j 1`, `WYD_TEST_REQUIRED=1`); anti-skip provado — `SKIP` verde sem DSN e `FAILED` com a variável; lock sincronizado em **TypeScript 7.0.2** e nenhum alvo usa `npx tsc` | — (fecha B2/B3; resta manter) |
-| `DEVOPS-08` | `supply-chain.yml`: `audit`+`deny` e scan das quatro imagens como **gate**; cobertura Rust (llvm-cov) e portal (vitest) publicadas como **métrica** com artefato | baseline de cobertura comparada entre runs (queda como aviso) |
-| `DEVOPS-09` | `deploy-local.yml`: `workflow_run` do `Rust` verde em `develop`, runner `self-hosted,wyd-local`, sem trigger de PR, `contents: read`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | — (runner `wyd2-desktop` instalado e deploy verde provado em 2026-11-13; falta notificar o resultado no Alertmanager) |
+| `DEVOPS-08` | `ci.yml`: job `seguranca / advisory + licencas` (`audit`+`deny`) e scan das quatro imagens no estágio 3 como **gate**; cobertura Rust (llvm-cov) e portal (vitest) no estágio 3 como **métrica** com artefato | baseline de cobertura comparada entre runs (queda como aviso) |
+| `DEVOPS-09` | `ci.yml` job `deploy`: `needs: [gate]` e `if` de push em `develop` (sem `workflow_run` nem trigger de PR), runner `self-hosted,wyd-local`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | — (runner `wyd2-desktop` instalado e deploy verde provado em 2026-11-13; falta notificar o resultado no Alertmanager) |
 | `DEVOPS-10` | **versão única 0.1.0** (`[workspace.package]` + `version.workspace = true` nos dez membros e espelho no portal), `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas do git | push de imagem por tag (registry) e política de rollback por digest |
 
-**O que já rodou no GitHub (2026-11-13):** `Rust` (com os quatro grupos), `images.yml`,
-`bench.yml`, `deploy-local.yml` (com a sentinela) e `supply-chain.yml` — todos com run verde e link
-em §1.1. O único sem execução completa é `release.yml`, cujo **disparo por tag** está provado (run
+**O que já rodou no GitHub (2026-11-13):** o pipeline único `ci.yml` (todos os estágios, imagens,
+cobertura, deploy e notificação) e `bench.yml` — com run verde e link em §1.1. O único sem execução completa é `release.yml`, cujo **disparo por tag** está provado (run
 43431337735, cancelado de propósito) e que depende de tag real do dono. `check-compose-hardening` é
 verificação **textual** do compose: TLS na frente do portal, `healthcheck` dos serviços de
 observabilidade e `cap_drop`/`security_opt` por serviço continuam checklist da `DEVOPS-03`, não gate.
@@ -387,8 +395,8 @@ Desenho recomendado (`DEVOPS-09`):
    pôr `C:\Windows\System32` antes do Git e o `shell: bash` cai no **bash do WSL**
    (`anexar o disco ... ERROR_PATH_NOT_FOUND`); o workflow já prependa `C:\Program Files\Git\bin`
    no `GITHUB_PATH` antes do primeiro passo bash, então não dependa da ordem do PATH da máquina.
-3. **Job `deploy`** no workflow `deploy-local.yml`, disparado por **`workflow_run`** do workflow
-   **Rust** concluído com sucesso em `develop` (mais `workflow_dispatch`), com
+3. **Job `deploy`** dentro do `ci.yml`, com `needs: [gate]` e `if: push && ref == develop` (sem
+   `workflow_run` em workflow separado), com
    `permissions: contents: read`, `environment: local`, `concurrency` sem cancelamento e checkout
    do `head_sha` validado — assim o deploy só roda sobre commit que já passou no gate, e nenhum
    trigger de `pull_request` chega ao runner.
@@ -443,7 +451,7 @@ meio de deploy ruidoso:
 | Origem | Quando fala | Destino | Como configurar |
 |---|---|---|---|
 | Alertmanager | métrica de jogo/stack (`WydServidorForaDoAr`, `WydTickP99Alto`) | `#wyd-alertas` | `docker-compose.monitoring.yml` + `docker/monitoring/alertmanager/`, webhook no `.env` do host |
-| CI | `gate` vermelho em `main`/`develop` | `#wyd-ci` | job `notify` do `rust.yml`, segredo `SLACK_CI_WEBHOOK` |
+| CI | resultado do run em `main`/`develop` (sucesso, falha ou cancelado) com métricas por job | `#wyd-ci` | job `notify` do `ci.yml`, segredo `SLACK_CI_WEBHOOK` |
 
 Criar o webhook do canal de CI: Slack → *Apps* → *Incoming Webhooks* → *Add to Slack* → canal
 `#wyd-ci` → copiar a URL → repositório → *Settings* → *Secrets and variables* → *Actions* →
