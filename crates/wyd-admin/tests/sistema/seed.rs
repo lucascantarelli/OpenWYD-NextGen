@@ -32,10 +32,16 @@ fn runtime() -> tokio::runtime::Runtime {
 }
 
 fn gateway(dsn: &str, login: &str) -> Child {
+    // O gateway aplica a série no boot (ADR-0024) lendo `MIGRATIONS_DIR`; o default é
+    // `/migrations` (cópia dentro da imagem) e o cwd do teste é o diretório do crate, então o
+    // caminho tem de ser absoluto e derivado do manifesto — relativo, o processo morre antes de
+    // registrar o seed e o teste falha por timeout sem dizer por quê.
+    let migrations = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../wyd-db/migrations");
     Command::new(env!("CARGO_BIN_EXE_wyd-gateway"))
         // O teste prova o caminho de ambiente; um `WYD_ENV_FILE` herdado
         // apontaria para o `.env` real e mudaria a credencial sob teste.
         .env_remove("WYD_ENV_FILE")
+        .env("MIGRATIONS_DIR", migrations)
         .env("DATABASE_URL", dsn)
         .env("WEB_API_TOKEN", "token-de-teste")
         .env("WYD_GATEWAY_BIND", "127.0.0.1:0")

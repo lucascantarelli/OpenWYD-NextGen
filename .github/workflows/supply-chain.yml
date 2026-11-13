@@ -80,7 +80,7 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.imagem }}
           cache-to: type=gha,mode=max,scope=${{ matrix.imagem }}
       - name: Scan CRITICAL (bloqueante)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: wyd/${{ matrix.imagem }}:sc
           severity: CRITICAL

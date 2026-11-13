@@ -64,6 +64,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/rust-setup
+        with:
+          # O workspace inclui `apps/launcher-ui` (Tauri): sem GTK/WebKit o `glib-sys` falha.
+          tauri: "true"
 
       - name: Formatação
         run: cargo fmt --all --check
@@ -180,8 +183,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      # Overlays de prod exigem TAG; valor fixo no CI para o `config` ser determinístico.
+      # O compose exige estas variáveis (`${VAR:?}`) e o `config` não lê `.env` no CI:
+      # valores fixos, sem segredo, só para validar a sintaxe e a interpolação.
       TAG: ci
+      POSTGRES_PASSWORD: ci-nao-e-segredo
+      WEB_API_TOKEN: ci-nao-e-segredo
+      SESSION_SECRET: ci-nao-e-segredo
     steps:
       - uses: actions/checkout@v5
 
@@ -207,6 +214,7 @@ jobs:
         with:
           cache-key-extra: bench
           cache-all-crates: "true"
+          tauri: "true"
 
       # Uma compilação: o `--no-run` cobre o gate de compilação e o `bench-gate` roda o
       # binário já compilado. Antes eram duas (`--no-run` + o do gate) — C4 da auditoria.
