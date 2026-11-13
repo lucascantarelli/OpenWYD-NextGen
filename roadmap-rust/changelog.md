@@ -2,6 +2,14 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## DEVOPS-06 — As quatro imagens no CI: build, proveniência e scan
+
+- **ID:** `DEVOPS-06`
+- **Concluída em:** 2026-11-13
+- **Resumo:** `.github/workflows/images.yml` constrói as **quatro** imagens (launcher, gateway, server e portal) em todo push/PR que toca `crates/`, `apps/`, `Cargo.toml`/`Cargo.lock`, `docker/`, `docker-compose*`, `wyd-portal/` ou o próprio workflow. Cada build recebe `WYD_VERSION` (tag `v*` ou `0.0.0-<sha>`) e `WYD_COMMIT` (sha completo) do run, as labels `version`/`revision` são **conferidas contra esses valores**, o artefato passa por smoke, o Trivy falha em `CRITICAL` (exceção só em `.trivyignore`, versionada e com prazo) e o SBOM CycloneDX de cada imagem sobe como artefato. O tamanho é publicado no log do job. O smoke do gateway/server aceita exit 2 **e** exige `event=fatal` na saída: prova que o binário executou e recusou subir sem banco, em vez de aceitar qualquer saída.
+- **Evidência:** run [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698) (commit `3da1897`, 2026-11-13) — quatro jobs `build+smoke+scan` com `success`, incluindo os passos "Build (cache gha entre execuções)", "Labels de proveniência conferem com o run", "Tamanho da imagem", "Smoke do artefato", "Scan de vulnerabilidade (Trivy)" e "SBOM (CycloneDX) como artefato". O primeiro run real do workflow falhou na resolução da action do Trivy (`0.28.0` não existe; a tag é `v0.36.0`) — defeito corrigido e provado no run seguinte.
+- **Resíduo declarado:** publicação em registry e promoção por digest continuam fora do escopo (decisão do dono); o `deploy-local` reconstrói as imagens na máquina.
+
 ## DEVOPS-02 — Alertmanager: alertas que chegam a um humano
 
 - **ID:** `DEVOPS-02`

@@ -2,7 +2,7 @@
 
 > Documento vivo. Atualizado a **cada issue** executada (regra em
 > `docs/rust/02-execucao.md` §5). Última atualização: 2026-11-12 (cobertura canônica das
-> 35 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
+> 34 issues ativas, com ID e status iguais ao índice e ao arquivo; antes, árvore por domínio em
 > `wyd-server`/`wyd-bots`; a entrada anterior era a mega revisão do roadmap:
 > 9 issues novas com fila por tamanho, status reconciliado nos três lugares que carregam status,
 > `wyd-server` incorporado à árvore normativa, gate de `cargo test --workspace` consertado e
@@ -111,8 +111,8 @@
 > `esperar_ate` (o `release` roda no `Drop` do `SessionLease`, ao encerrar a conexão), sem
 > afrouxar a asserção.
 
-> **Cobertura canônica:** as **35 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
-> exige cobertura 35/35 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
+> **Cobertura canônica:** as **34 issues ativas** estão listadas com ID `CATEGORIA-NN`; o gate
+> exige cobertura 34/34 e compara o status com `roadmap-rust/index.md` e com o cabeçalho de
 > cada arquivo de issue.
 
 ## Legenda
@@ -1736,7 +1736,7 @@ de QA-02/QA-03 e o que foi lido no código.
 | DEVOPS-03 superfície de produção do compose | 🚧 | Prod com `${TAG:?}` nas quatro imagens, `limits` nos 14 serviços, Grafana sem anônimo e nenhuma porta de infra publicada; gate `compose-surface` (R1–R6) e `make stack-config` provando que sem `TAG` falha. Falta TLS, healthcheck em 5 serviços de observabilidade e `cap_drop`/`security_opt`. |
 | DEVOPS-04 paridade gate local × CI | 🚧 | `gate` roda a lista do `make check` (11 verificações, com `versao-check` e `portal-test`), `make ci` espelha o pipeline, `.PHONY`/`help` corrigidos e `local-rebuild` deriva `SCHEMA_VERSION`; `make check` exit 0 (994 testes). Falta provar a reprovação por injeção num run real. |
 | DEVOPS-05 cache e custo do CI | 🚧 | Cache de cargo/npm em action composta, `cache-from/to: type=gha` por imagem, `timeout-minutes` nos 16 jobs, bench compilado uma vez, `paths-ignore` em PR e `cancel-in-progress` só em PR. Falta medir o ganho, `bench-gate` em 5 execuções e pinar `rust-toolchain.toml`. |
-| DEVOPS-06 imagens no CI | 🚧 | `images.yml` constrói as quatro imagens com `WYD_VERSION`/`WYD_COMMIT`, confere labels, faz smoke, Trivy `CRITICAL` bloqueante com `.trivyignore` e SBOM por imagem. Nunca executou; falta tamanho por imagem e decisão de registry. |
+| DEVOPS-06 imagens no CI | ✅ | **Fechada em 2026-11-13:** run [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698) — quatro jobs `build+smoke+scan` verdes, com cache GHA, labels de proveniência conferidas contra `WYD_VERSION`/`WYD_COMMIT`, tamanho publicado, smoke (exit 2 **e** `event=fatal` no gateway/server), Trivy `CRITICAL` bloqueante e SBOM CycloneDX por imagem. O primeiro run expôs a action do Trivy em versão inexistente (`0.28.0` → `v0.36.0`), corrigida no mesmo dia. Resíduo: registry/promoção por digest é decisão do dono. |
 | DEVOPS-07 banco e portal no CI | 🚧 | Jobs `portal` (`npm run typecheck`/`test`/`next build`) e `sistema` (Postgres 17 efêmero, `-j 1`, `WYD_TEST_REQUIRED=1`). Anti-skip provado localmente (SKIP × FAILED) e lock do portal sincronizado em TypeScript 7.0.2 — `npm ci` antes abortava. Falta o primeiro run do `sistema`. |
 | DEVOPS-08 supply-chain e cobertura | 🚧 | `supply-chain.yml` semanal com `audit`+`deny` e scan das quatro imagens como gate; cobertura Rust (llvm-cov) e portal (vitest) como métrica com artefato; Dependabot em cargo/npm/actions/docker. Falta baseline comparável e o primeiro run da agenda. |
 | DEVOPS-09 runner e deploy local | 🚧 | Runner `self-hosted,wyd-local` **registrado no GitHub em 2026-11-13**; `deploy-local.yml` dispara no `workflow_run` verde em `develop`, sem trigger de PR, com `contents: read`, sentinela de teste humano e `deploy-provas.mjs` (4 provas). Falta o primeiro deploy real e a notificação no Alertmanager. |

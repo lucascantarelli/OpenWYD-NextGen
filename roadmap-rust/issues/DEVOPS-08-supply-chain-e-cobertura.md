@@ -3,6 +3,8 @@
 > **ID canônico:** `DEVOPS-08`
 > **ID histórico:** `DEVOPS-08`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** ainda não executado (o workflow só dispara em agenda, `workflow_dispatch` ou mudança em
+> `Cargo.lock`/`Cargo.toml`/`deny.toml`, e nenhum push desta sessão tocou esses arquivos).
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-07 · **Bloqueia:** QA-09
 
@@ -23,6 +25,13 @@ com baseline registrada — sem transformar cobertura em meta decorativa.
   `private.ignore`) — a política existe, a cadência não.
 - QA-09 (tarpaulin/miri) depende desta base para ter onde publicar número.
 - Análise completa em `docs/rust/10-devops-ci.md` §3 (achados B7, B8).
+
+## Run real (2026-11-13)
+
+- **Não exercitado ainda.** O Dependabot, por outro lado, abriu PRs em cargo, npm e GitHub Actions
+  (`actions/checkout 5→7`, `trivy-action`, crates como `glib`), o que confirma os quatro ecossistemas
+  configurados — mas nenhum run de `supply-chain.yml` aconteceu; cobertura e baseline continuam sem
+  medição real.
 
 ## Progresso (2026-11-13)
 

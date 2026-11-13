@@ -1,6 +1,6 @@
 # Roadmap Rust — índice executável
 
-> **Estado:** 2026-11-12 · **35 issues ativas** + 15 descritores de fase. 57 issues concluídas estão em [`changelog.md`](changelog.md).
+> **Estado:** 2026-11-13 · **34 issues ativas** + 15 descritores de fase. 58 issues concluídas estão em [`changelog.md`](changelog.md).
 >
 > **Auditoria de DevOps/CI (2026-11-12):** dez issues novas (`DEVOPS-01`…`DEVOPS-10`) abertas pela
 > análise de pipeline, imagens, compose, testes e monitoramento; contrato em
@@ -9,8 +9,9 @@
 > (Alertmanager com entrega de notificação provada). Ganho rápido sem bloqueio externo na fila:
 > `DEVOPS-04` (paridade gate local × CI). **Template de CI completo em 2026-11-13** — cinco
 > workflows, duas actions compostas, `make check` em paridade com o job `gate` — e o runner
-> `self-hosted,wyd-local` registrado pelo dono: as oito restantes estão 🚧, com o que cada job já
-> cobra e o que falta em `10-devops-ci.md` §1.1.
+> `self-hosted,wyd-local` registrado e o deploy rodando nele: `DEVOPS-06` **fechou** em 2026-11-13
+> com o run real das quatro imagens (build, labels, smoke, Trivy e SBOM); as sete restantes estão 🚧,
+> com o que cada job já cobra e o que falta em `10-devops-ci.md` §1.1.
 >
 > **IDs canônicos preservados.** A numeração de fila `#01..#27` é nova e estável; os IDs
 > `CATEGORIA-NN` continuam os mesmos para não reutilizar IDs já aposentados no changelog
@@ -190,7 +191,6 @@ isolada por desenho contínuo. Não há fase órfã acidental.
 | 30 | `DEVOPS-03` | [Superfície de produção do compose: TLS, tag, privilégio e limites](issues/DEVOPS-03-superficie-producao-compose.md) | 🚧 | M | QA-03 ✅, WEB-01 ✅ |
 | 31 | `DEVOPS-04` | [Paridade gate local × CI: fim do verde falso](issues/DEVOPS-04-paridade-gate-local-ci.md) | 🚧 | S | PROC-13 ✅, QA-02 ✅ |
 | 32 | `DEVOPS-05` | [Cache, timeouts e custo do pipeline](issues/DEVOPS-05-cache-e-custo-ci.md) | 🚧 | S | DEVOPS-04 |
-| 33 | `DEVOPS-06` | [As quatro imagens no CI: build, proveniência e scan](issues/DEVOPS-06-imagens-build-scan.md) | 🚧 | M | DEVOPS-01, DEVOPS-05 |
 | 34 | `DEVOPS-07` | [Testes de banco e portal no CI (fim do skip silencioso)](issues/DEVOPS-07-banco-e-portal-no-ci.md) | 🚧 | M | DEVOPS-04 |
 | 35 | `DEVOPS-08` | [Supply-chain contínua e cobertura medida](issues/DEVOPS-08-supply-chain-e-cobertura.md) | 🚧 | M | DEVOPS-07 |
 | 36 | `DEVOPS-09` | [Runner auto-hospedado e deploy local após CI verde](issues/DEVOPS-09-runner-deploy-local.md) | 🚧 | M | DEVOPS-02, DEVOPS-04 |

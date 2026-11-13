@@ -3,6 +3,8 @@
 > **ID canônico:** `DEVOPS-10`
 > **ID histórico:** `DEVOPS-10`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714) provou o
+> gate de versão no CI (`versão única ok: 0.1.0`); `release.yml` continua não exercitado (nenhuma tag criada).
 
 **Tipo:** DevOps · **Esforço:** S · **Depende de:** DEVOPS-06 · **Bloqueia:** QA-10
 
@@ -23,6 +25,14 @@ versão é o build-arg default `0.1.0`.
 - Comentário do `[profile.release]` cita `323.072 → 223.232 bytes`; o §6 do mesmo doc registra
   `296.448` — duas fontes para o mesmo número.
 - Análise completa em `docs/rust/10-devops-ci.md` §8 (achados C17, C18).
+
+## Run real (2026-11-13)
+
+- Run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714): o passo "Versão
+  única (Cargo workspace × portal)" do job `gate` passou com `versão única ok: 0.1.0 (workspace, 10
+  membros e portal)` — a fonte única agora é cobrada no CI, não só localmente.
+- `release.yml` nunca rodou: sem tag criada, nada de binários/`SHA256SUMS`/SBOM de release provado.
+  Rollback por tag+digest escrito e a divergência de tamanho de imagem medida continuam pendentes.
 
 ## Progresso (2026-11-13)
 

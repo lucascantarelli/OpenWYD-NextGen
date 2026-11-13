@@ -3,6 +3,9 @@
 > **ID canônico:** `DEVOPS-09`
 > **ID histórico:** `DEVOPS-09`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43355011816](https://github.com/lucascantarelli/wyd/actions/runs/43355011816) (deploy
+> verde no runner `wyd2-desktop`), [43355353987](https://github.com/lucascantarelli/wyd/actions/runs/43355353987)
+> (sentinela) e [43355580033](https://github.com/lucascantarelli/wyd/actions/runs/43355580033) (sem o flag).
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-02, DEVOPS-04 · **Bloqueia:** —
 
@@ -22,6 +25,26 @@ colocar segredo no GitHub.
 - `AGENTS.md` §0/§7 proíbem reiniciar serviço durante teste humano e proíbem `down -v`/reset de
   volume: o job precisa respeitar as duas regras.
 - Desenho completo (passos, travas e alternativa sem runner) em `docs/rust/10-devops-ci.md` §9.
+
+## Run real (2026-11-13)
+
+- **Runner** `wyd2-desktop` registrado em 2026-11-13 (a API do repositório mostrava `total_count: 0`),
+  labels `self-hosted,Windows,X64,wyd-local`, online e `busy=true` durante o job.
+- Run [43355011816](https://github.com/lucascantarelli/wyd/actions/runs/43355011816): disparado por
+  `workflow_run` do **Rust** verde em `develop`, executado no runner `wyd2-desktop` com as labels
+  `self-hosted,wyd-local`, todos os passos verdes — `.env` do host copiado (variável de repositório
+  `WYD_ENV_FILE`), `docker compose build`, `up -d --wait --wait-timeout 240` e as quatro provas:
+  `/login` 200, `/entregas` 307, gateway `/health` com `schema=50 == SCHEMA_VERSION` e
+  `/api/health` 200 (`deploy local provado: quatro provas verdes`).
+- **Sentinela provada:** run [43355353987](https://github.com/lucascantarelli/wyd/actions/runs/43355353987)
+  com `tmp/teste-humano.flag` no projeto do host —
+  `::warning::tmp/teste-humano.flag presente em D:/dolorestec/wyd2 — deploy NÃO executado`, sem build
+  nem `up`. Run [43355580033](https://github.com/lucascantarelli/wyd/actions/runs/43355580033) sem o
+  flag voltou a executar e terminou verde.
+- Faltou corrigir no caminho: `.env` inexistente no checkout (`--env-file` não bastava porque o
+  override de dev monta `./.env`), `SCHEMA_VERSION` lido como `i32` (é `u32`) e o job falhando na
+  interpolação obrigatória — os três viraram correção no repositório, não contorno no runner.
+- Falta: notificar o resultado no destino do Alertmanager (critério 5).
 
 ## Progresso (2026-11-13)
 
@@ -98,10 +121,10 @@ com `tmp/teste-humano.flag` presente o job aborta com mensagem clara.
 
 ## Critérios de aceite
 
-- [ ] Push verde em `develop` reconstrói e sobe a stack local sem intervenção humana.
-- [ ] Job falha (e não "quase passa") quando qualquer prova de contrato falha.
+- [x] Push verde em `develop` reconstrói e sobe a stack local sem intervenção humana.
+- [x] Job falha (e não "quase passa") quando qualquer prova de contrato falha.
 - [x] Nenhum trigger de `pull_request`; conta sem privilégio; segredos fora do GitHub.
-- [ ] Instalação/remoção do runner e a trava de teste humano documentadas.
+- [x] Instalação/remoção do runner e a trava de teste humano documentadas.
 - [ ] Resultado do deploy notificado no destino do Alertmanager.
 
 ## Riscos / rollback

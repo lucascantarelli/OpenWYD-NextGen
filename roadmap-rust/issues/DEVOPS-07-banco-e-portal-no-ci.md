@@ -3,6 +3,7 @@
 > **ID canônico:** `DEVOPS-07`
 > **ID histórico:** `DEVOPS-07`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714).
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** DEVOPS-04 · **Bloqueia:** DEVOPS-08
 
@@ -28,6 +29,18 @@ que torne **impossível** um teste obrigatório pular sem que o run fique vermel
   34 páginas estáticas em 35,6 s). Ligar o job `portal` no CI não herda dívida: é só não haver
   job hoje. O lado do banco segue não medido nesta sessão (nenhum teste com `WYD_TEST_DSN` foi
   executado), então a regra anti-skip continua sendo o item a provar.
+
+## Run real (2026-11-13)
+
+- Run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714): `sistema` verde
+  com Postgres 17 efêmero e `WYD_TEST_REQUIRED=1` — **121** alvos reportaram `test result: ok`,
+  incluindo `sistema_seed` (o gateway agora recebe `MIGRATIONS_DIR` absoluto derivado do manifesto;
+  antes morria antes do seed) e `sistema_lotacao` (serializado com `--test-threads=1`; o `-j 1` só
+  limitava a compilação e o teto de sessão vazava entre testes). `portal` verde com `tsc --noEmit`,
+  `vitest` e `next build`.
+- Os **6 `SKIP`** que restam são todos `WYD_LIVE_CPSOCK` (prova viva com cliente real), não banco.
+  Por isso a caixa "nenhum deles imprime `SKIP`" segue aberta: o anti-skip de banco está provado
+  localmente (`SKIP` sem DSN × `FAILED` com `WYD_TEST_REQUIRED=1`), mas ainda não por um run negativo.
 
 ## Progresso (2026-11-13)
 
@@ -94,9 +107,9 @@ portal com tsc/vitest/build verdes no CI.
 ## Critérios de aceite
 
 - [ ] Testes de sistema rodam contra Postgres no CI e nenhum deles imprime `SKIP`.
-- [ ] Portal com `tsc --noEmit`, `vitest` e `next build` no CI.
+- [x] Portal com `tsc --noEmit`, `vitest` e `next build` no CI.
 - [ ] Regra anti-skip ativa no CI, provada por run sem DSN que fica vermelho.
-- [ ] Contagem de testes publicada por suíte no log do run.
+- [x] Contagem de testes publicada por suíte no log do run.
 
 ## Riscos / rollback
 

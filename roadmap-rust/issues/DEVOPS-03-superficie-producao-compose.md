@@ -3,6 +3,7 @@
 > **ID canônico:** `DEVOPS-03`
 > **ID histórico:** `DEVOPS-03`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714).
 
 **Tipo:** DevOps · **Esforço:** M · **Depende de:** QA-03 ✅, WEB-01 ✅ · **Bloqueia:** release
 
@@ -29,6 +30,15 @@ serviços.
 - `docker-compose.reaper.yml` sem cabeçalho e sem menção na documentação.
 - `.env` inteiro montado no gateway, que só consome `PORTAL_ADMIN_*`.
 - Análise completa em `docs/rust/10-devops-ci.md` §6 (achados A3, A4, A5, C6–C15).
+
+## Run real (2026-11-13)
+
+- Run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714): job `compose`
+  **verde** — `check-compose-hardening` (R1–R6) e `docker compose config` nos três modos (base+dev,
+  prod, prod+.env). O CI não tem `.env`, então o job carrega `TAG`/`POSTGRES_PASSWORD`/
+  `WEB_API_TOKEN`/`SESSION_SECRET` de validação; antes disso o `config` morria na interpolação.
+- Continua 🚧 pelo que o gate **textual** não cobre: TLS na frente do portal, `healthcheck` dos cinco
+  serviços de observabilidade, `cap_drop`/`security_opt` por serviço e log com teto nos oito restantes.
 
 ## Progresso (2026-11-13)
 

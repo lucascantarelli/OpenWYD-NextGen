@@ -3,6 +3,7 @@
 > **ID canônico:** `DEVOPS-04`
 > **ID histórico:** `DEVOPS-04`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714).
 
 **Tipo:** DevOps · **Esforço:** S · **Depende de:** PROC-13 ✅, QA-02 ✅ · **Bloqueia:** DEVOPS-05
 
@@ -36,6 +37,15 @@ consertar a rotina de fechamento (`make local-rebuild`) que hoje falha por núme
   68 % → 37 % → 27 % (teto 50 %); os gates determinísticos passam (`bench-build` exit 0,
   `bench-gate` exit 0 com 3 cenários dentro do limite). Conclusão para o passo 3: manter `bench`
   fora do `check`, gatear por `bench-gate` e não por p99 medido em máquina com Docker rodando.
+
+## Run real (2026-11-13)
+
+- Run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714): os **sete** jobs
+  verdes — `gate` (fmt, clippy `-D warnings`, build, test, migrations, issue-status, docs, skills,
+  versão única e tools-test), `portal` (tsc + vitest + next build), `sistema` (Postgres real),
+  `monitoramento`, `compose`, `benches` e `actionlint`. A paridade deixou de ser promessa: é o log.
+- Falta para fechar: provar o **negativo** — injetar uma divergência de status/link/skill e ver o CI
+  reprovar, depois reconciliar para verde.
 
 ## Progresso (2026-11-13)
 
@@ -99,7 +109,7 @@ Saída esperada: `make check` exit 0 com as dez verificações; `local-rebuild` 
 
 ## Critérios de aceite
 
-- [ ] CI executa as mesmas verificações de `make check` (+ `portal-test`).
+- [x] CI executa as mesmas verificações de `make check` (+ `portal-test`).
 - [ ] Uma divergência de status/link/skill reprova o CI, provado com injeção temporária.
 - [ ] `make local-rebuild` sem número fixo de schema; `null`/`netstat` falha de forma ruidosa.
 - [x] `.PHONY` completo e `make help` derivado dos comentários.

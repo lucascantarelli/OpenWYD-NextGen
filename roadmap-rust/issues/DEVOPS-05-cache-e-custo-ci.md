@@ -3,6 +3,7 @@
 > **ID canônico:** `DEVOPS-05`
 > **ID histórico:** `DEVOPS-05`
 > **Estado 2026-11-13:** 🚧 · ver `roadmap-rust/index.md`.
+> **Run real:** [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714).
 
 **Tipo:** DevOps · **Esforço:** S/M · **Depende de:** DEVOPS-04 · **Bloqueia:** DEVOPS-06
 
@@ -31,6 +32,19 @@ Reduzir o custo e o tempo do CI sem perder cobertura: cache de dependências ent
 - Limiares do `bench-gate` calibrados no host do dono (Windows, 2,2×–5,3× de folga), com p99
   variando ~4× na mesma máquina: risco de flake em runner compartilhado.
 - Análise completa em `docs/rust/10-devops-ci.md` §1 (achados B4, C4, C5, C8).
+
+## Run real (2026-11-13)
+
+- Cache ativo e observável: `Cache restored successfully` do `Swatinem/rust-cache` no job `benches` do
+  run [43354688714](https://github.com/lucascantarelli/wyd/actions/runs/43354688714), e
+  `Build (cache gha entre execuções)` nas quatro imagens do run
+  [43352177698](https://github.com/lucascantarelli/wyd/actions/runs/43352177698).
+- `timeout-minutes` nos 16 jobs e bench compilado uma vez (`--no-run` + `bench-gate` no mesmo binário,
+  job verde em ~2 min).
+- O run provou **na prática** por que pinar a toolchain importa: o clippy do runner (1.100) acusou
+  `needless_range_loop` que o local (1.99) não via; a toolchain local foi atualizada para 1.100.
+- Falta: medir o ganho (minutos com/sem cache) e `bench-gate` estável em 5 execuções; e pinar
+  `rust-toolchain.toml`, que segue `channel = "stable"`.
 
 ## Progresso (2026-11-13)
 
