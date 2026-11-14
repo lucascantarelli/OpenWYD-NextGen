@@ -27,6 +27,28 @@ CP errado e **nome vermelho** já no primeiro login.
 - A issue foi fechada em 2026-11-12 com testes de persistência (`entrada_mundo`, `pg`), que
   **não** olham o que o cliente desenha.
 
+## Medição no cliente (2026-11-13, print do dono)
+
+Personagem `Cantarelli` (classe TransKnight, conta `admin`). Banco: nível 1, HP 83/83,
+MP 46/46, FOR/INT/DES/CON = 8/4/7/6 (`character_scores`), CP 0 (`character_chaos`).
+
+| Campo no painel | Cliente | Banco / esperado | Veredito |
+|---|---|---|---|
+| Nível | **2** | 1 (fio 0) | divergente |
+| HP | 83/83 | 83/83 | ✅ |
+| MP | **0/0** | 46/46 | divergente |
+| FOR / INT / DES / CON | **0 / 0 / 0 / 0** | 8 / 4 / 7 / 6 | divergente |
+| Ataque / Defesa | 5 / 4 | template | a conferir |
+| Resist (4) | **245** em todos | 0 esperado | lixo de template no fio |
+| Crítico | **102,00%** | 0 esperado | lixo de template no fio |
+| Nome | **vermelho** | CP 0 → `ChaosRate` 75 (amarelo) | divergente |
+
+O HP correto mostra que o `STRUCT_MOB`/`Score` chega alinhado até `Hp` (offset 116 do mob);
+MP (120) e atributos (124+) vêm errados. `Mob::from_persisted` preserva `Critical`,
+`Resist` e `SkillBar` do template (comentário no código) — é a origem provável de 245/102%.
+O caminho do `select` também precisa ser conferido contra `list_by_account`, que carrega
+`character_scores`/`character_chaos` à parte.
+
 ## Passos
 
 1. Capturar no 7662 o `_MSG_CNFCharacterLogin` e o `_MSG_UpdateScore` do primeiro login e
