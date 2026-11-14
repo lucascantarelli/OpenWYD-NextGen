@@ -8,7 +8,7 @@
 
 CARGO ?= cargo
 
-.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check docs-check skills-check actions-pin-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
+.PHONY: help fmt clippy build test test-all check audit deny bench bench-build bench-gate release docker docker-smoke gateway-image gateway-smoke server-image server-smoke telemetry-smoke clean ci migrations-check issue-status-check harness-cliente docs-check skills-check actions-pin-check docs-serve docs-smoke migrations-apply db-migrate db-reset banco-catalogo banco-verify stack-config stack-up stack-down stack-logs local-rebuild prod-env-smoke monitoring-rules monitoring-up monitoring-down monitoring-check monitoring-alertas portal-install portal-dev portal-test portal-build tools-re tools-binarios tools-strings tools-pacotes tools-test tools-inventario tools-zip-check client-zip clean-target clean-tmp versao-check compose-hardening sistema-test deploy-local coverage
 
 # TAG usada só para VALIDAR o overlay de produção (o overlay exige TAG; o gate não exige
 # que o dono exporte uma). A prova de que sem TAG falha está no fim de `stack-config`.
@@ -39,6 +39,9 @@ versao-check: ## fonte única de versão (Cargo workspace × portal) — DEVOPS-
 
 compose-hardening: ## contrato de superfície do compose de produção (DEVOPS-03)
 	node tools/dev/check-compose-hardening.mjs
+
+harness-cliente: ## testa o harness de captura/replay do cliente (proxy + replay)
+	node --test --test-force-exit tools/cliente-harness/
 
 sistema-test: ## testes de sistema do servidor/admin contra o banco do compose (zero SKIP)
 	WYD_TEST_REQUIRED=1 WYD_TEST_DSN="$${WYD_TEST_DSN:-postgres://postgres:postgres@127.0.0.1:5432/wyd}" \

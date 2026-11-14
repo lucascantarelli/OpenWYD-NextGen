@@ -2,6 +2,13 @@
 
 > Issues que cumpriram os critérios de aceite foram removidas de `roadmap-rust/issues/` e registradas aqui. O histórico completo continua no git (arquivos removidos) e o painel vivo é `docs/rust/03-progresso.md`.
 
+## DEVOPS-10 — Versionamento de release e notas rastreáveis
+
+- **ID:** `DEVOPS-10`
+- **Concluída em:** 2026-11-13
+- **Resumo:** versão única (workspace 0.1.0 herdado pelos dez membros e espelhado no portal) cobrada pelo `check-versao` no `gate`, e a **primeira release real publicada**. Tag anotada `v0.1.0` no commit `4a53d02` de `main` (depois da promoção `develop`→`main`, que juntou a linhagem antiga da stack Go com `merge -s ours` para não ressuscitar `webserver/`/`dbserver/`). A release entrega três binários `linux-x86_64` (`wyd-gateway`, `wyd-launcher`, `wyd-server`) + `SHA256SUMS`, o SBOM CycloneDX das quatro imagens e notas que listam `wyd/launcher`, `wyd/gateway`, `wyd/server` e `wyd/portal` na tag com `WYD_VERSION`/`WYD_COMMIT`.
+- **Evidência:** run [43515686556](https://github.com/lucascantarelli/wyd/actions/runs/43515686556) **success** com `versão da tag × workspace`, `binários + checksums`, as quatro `imagem + SBOM` e `release com notas`; release [v0.1.0](https://github.com/lucascantarelli/wyd/releases/tag/v0.1.0) publicada (não-draft) com 8 anexos, e o CI do commit tagueado (`4a53d02`, run [43513837479](https://github.com/lucascantarelli/wyd/actions/runs/43513837479)) **success**. Anúncio confirmado no `#wyd-releases` pelo job `notify-release` (`release anunciada em #wyd-releases`). Rollback por tag anterior e por digest: `docs/rust/10-devops-ci.md` §8.2.
+
 ## DEVOPS-12 — Dependências fora de range e pin de actions por SHA
 
 - **ID:** `DEVOPS-12`
@@ -101,6 +108,7 @@
 
 - **ID:** `GAME-19`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — no canal vivo o personagem nível 1 causa 1 de dano em `GremlinDecoy` (600 HP); fórmula provada, dano real não. Ver `issues/GAME-19-combate-dano-real.md`.
 - **Resumo:** os 9 sistemas de `crates/wyd-sim/src/formula/` e a ordem do golpe/tick em `scenario/combat.rs` já estavam codificados; faltava o exemplo numérico exigido pelo aceite. O documento ganhou a conta completa (`base 100 + 20 + 10`, skill 150%, buff 110%, crítico 200%, defesa 100/perfuração 30, resistência 25%, absorção 19 → **250**) e o teste `worked_example_matches_documented_chain` reproduz o mesmo resultado. As hipóteses D-02..D-04/D-06 continuam explicitamente marcadas; a ordem do legado será confirmada pelo trace da `CLIENT-06`, fora desta issue.
 - **Evidência:** `docs/arquitetura/matematica-sim.md` §3.2.1; `crates/wyd-sim/src/formula/damage.rs`; `cargo test -p wyd-sim damage` → 13 passed; [`AUDIT-ISSUES-2026-11-12.md`](../docs/rust/evidencias/AUDIT-ISSUES-2026-11-12.md).
 
@@ -350,6 +358,7 @@
 
 - **ID:** `GAME-08`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — relato do dono no 7662: personagem sem atributos, CP errado e nome vermelho. Ver `issues/GAME-08-entrada-no-mundo-spawn.md`.
 - **Resumo:** Transformar `_MSG_CharacterLogin` em **entidade viva no mundo**: ler o personagem do Postgres, criar a entidade no `ComponentStore` na posição salva e devolver ao banco posição/HP/MP/EXP no logout, queda de conexão e save periódico.
 - **Evidência:** ```bash WYD_TEST_DATABASE_URL=... cargo test -p wyd-server --test entrada_mundo WYD_TEST_DATABASE_URL=... cargo test -p wyd-db --test pg cargo test --workspace          # sem DSN: os testes de banco pulam com aviso ```
 
@@ -357,6 +366,7 @@
 
 - **ID:** `GAME-09`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — relato “npc não clica”; falta prova de clique/render no 7662. Ver `issues/GAME-09-cena-autoritativa.md`.
 - **Resumo:** Emitir o pacote autoritativo de cena com `HEADER.ID = ESCENE_FIELD` (30000): entidades visíveis, posição, HP/EXP e remoção — o que faz o cliente desenhar o mundo e atualizar as barras.
 - **Evidência:** ```bash cargo test -p wyd-protocol --test scene cargo test -p wyd-core --test visibility cargo test -p wyd-server --test cena cargo test -p wyd-protocol -p wyd-net     # bytes no fio ```
 
@@ -364,6 +374,7 @@
 
 - **ID:** `GAME-10`
 - **Concluída em:** 2026-11-12
+- **Reaberta em:** 2026-11-13 — falta a mensagem “você é/não é cidadão do canal” e o indicador no cliente. Ver `issues/GAME-10-cidadania-canal.md`.
 - **Resumo:** Fazer `citizen` deixar de ser só um número no `STRUCT_SELCHAR` e virar **regra aplicada**: bônus de caça/drop do canal de cidadania, recusa de serviço de NPC de outra cidade e papel verde (sem PvP, loja permitida) como propriedade do processo.
 - **Evidência:** ```bash cargo test -p wyd-core --test cidadania cargo test -p wyd-sim cargo test -p wyd-server --test canal_verde cargo test -p wyd-db --test catalogo   # se houver migration nova ```
 

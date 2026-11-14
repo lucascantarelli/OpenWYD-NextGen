@@ -114,6 +114,7 @@ nav:
     - Análise estática: cliente/analise-estatica.md
     - Depuração: cliente/depuracao.md
     - Roteiro de prova visual: cliente/roteiro-prova-visual-7662.md
+    - Harness de captura/replay: cliente/harness-e2e.md
     - Pacotes: cliente/pacotes.md
     - Formatos: cliente/formatos.md
     - Tabelas binárias: cliente/tabelas-bin.md
@@ -165,6 +166,43 @@ nav:
     - Auditoria do roadmap: manual-técnico/auditoria-roadmap.md
     - Mapa de skills: manual-técnico/skills.md
     - Portabilidade do legado: manual-técnico/analise-portabilidade-legado.md
+  - Auditoria (2026-11):
+    - Índice e método: audit/README.md
+    - Sumário executivo: audit/00-executive-summary.md
+    - Inventário do projeto: audit/01-project-inventory.md
+    - Legado: audit/02-legacy-analysis.md
+    - Rust: audit/03-rust-analysis.md
+    - Cliente: audit/04-client-analysis.md
+    - Matriz de paridade: audit/05-feature-parity-matrix.md
+    - Protocolos: audit/06-protocol-catalog.md
+    - Fluxos de rede: audit/07-network-flows.md
+    - Engenharia reversa: audit/08-reverse-engineering.md
+    - Customização: audit/09-client-customization.md
+    - Assets e formatos: audit/10-assets-and-formats.md
+    - Itens e equipamentos: audit/11-items-and-equipment.md
+    - Mapas e animações: audit/12-maps-and-animations.md
+    - Referências externas: audit/13-external-references.md
+    - Arquitetura Rust: audit/14-rust-architecture-audit.md
+    - Bugs e divergências: audit/15-bugs-and-divergences.md
+    - Estratégia de testes: audit/16-test-strategy.md
+    - Roadmap: audit/17-priorities-and-roadmap.md
+    - Desconhecidos: audit/18-unknown-features.md
+    - Gerações visuais do cliente: audit/19-client-visual-generations.md
+    - Validação executada (2026-11-13): audit/20-validacao-2026-11-13.md
+    - Sistemas:
+      - Autenticação: audit/systems/authentication.md
+      - Personagens: audit/systems/characters.md
+      - Movimento e mundo: audit/systems/movement.md
+      - Combate: audit/systems/combat.md
+      - Inventário: audit/systems/inventory.md
+      - Itens e refino: audit/systems/items.md
+      - NPCs: audit/systems/npcs.md
+      - Quests: audit/systems/quests.md
+      - Eventos: audit/systems/events.md
+      - Guildas: audit/systems/guilds.md
+      - Economia: audit/systems/economy.md
+      - Cidadania: audit/systems/citizenship.md
+      - Sistemas adicionais: audit/systems/additional-systems.md
   - Mundo do jogo (WYD):
     - Visão geral: wyd/README.md
     - Lore: wyd/lore.md

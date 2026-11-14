@@ -18,10 +18,11 @@ export default defineConfig({
     // conta (jsdom por arquivo, via `@vitest-environment jsdom` no topo). O E2E
     // é Playwright (`tests/e2e`, `npm run test:e2e`), fora do Vitest.
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
-    // 23 arquivos abrem 23 forks no Windows; o startup do worker jsdom passa do
-    // timeout antes de o arquivo de componente rodar. Quatro workers bastam e
-    // mantêm o isolamento por arquivo.
+    // 29 arquivos no Windows: com quatro forks o startup do worker jsdom passa
+    // do timeout e o arquivo de componente (`conta/pin-form`) nem roda — a suíte
+    // saía com 144/28 e código 1. Dois workers rodam os 154/29 e mantêm o
+    // isolamento por arquivo (medido em 2026-11-13).
     pool: "forks",
-    maxWorkers: 4,
+    maxWorkers: 2,
   },
 });

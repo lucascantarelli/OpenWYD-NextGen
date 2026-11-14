@@ -121,7 +121,7 @@ Nem toda issue DEVOPS fecha com o template no ar — o critério de aceite é de
 | `DEVOPS-07` | jobs `portal` (`npm run typecheck`, `npm run test`, `next build`) e `sistema` (Postgres 17 efêmero, `--migrate`, `-j 1`, `WYD_TEST_REQUIRED=1`); anti-skip provado — `SKIP` verde sem DSN e `FAILED` com a variável; lock sincronizado em **TypeScript 7.0.2** e nenhum alvo usa `npx tsc` | — (fecha B2/B3; resta manter) |
 | `DEVOPS-08` | `ci.yml`: job `seguranca / advisory + licencas` (`audit`+`deny`) e scan das quatro imagens no estágio 3 como **gate**; cobertura Rust (llvm-cov) e portal (vitest) no estágio 3 como **métrica** com artefato | baseline de cobertura comparada entre runs (queda como aviso) |
 | `DEVOPS-09` | `ci.yml` job `deploy`: `needs: [gate]` e `if` de push em `develop` (sem `workflow_run` nem trigger de PR), runner `self-hosted,wyd-local`, sentinela `tmp/teste-humano.flag`, `deploy-provas.mjs` (login 200, entregas 307, schema == `SCHEMA_VERSION`, `/api/health` 200) | — (runner `wyd2-desktop` instalado e deploy verde provado em 2026-11-13; falta notificar o resultado no Alertmanager) |
-| `DEVOPS-10` | **versão única 0.1.0** (`[workspace.package]` + `version.workspace = true` nos dez membros e espelho no portal), `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM + notas do git | push de imagem por tag (registry) e política de rollback por digest |
+| `DEVOPS-10` | **✅ fechada em 2026-11-13** (run [43515686556](https://github.com/lucascantarelli/wyd/actions/runs/43515686556)): versão única 0.1.0 (`[workspace.package]` + `version.workspace = true` nos dez membros e espelho no portal) conferida pelo `check-versao` no `gate`; `release.yml` confere tag × versão, publica binários + `SHA256SUMS` + SBOM por imagem + notas com as imagens da tag, e anuncia no `#wyd-releases`. **`v0.1.0` publicada** (tag anotada no commit `4a53d02` de `main`), rollback em §8.2 | push de imagem para registry (decisão do dono, fora do §8.1) |
 
 **O que já rodou no GitHub (2026-11-13):** o pipeline único `ci.yml` (todos os estágios, imagens,
 cobertura, deploy e notificação) e `bench.yml` — com run verde e link em §1.1. O único sem execução completa é `release.yml`, cujo **disparo por tag** está provado (run
@@ -410,10 +410,20 @@ git tag -l 'v0.1.0'            # tag não é reescrita depois de publicada
 ```
 
 `release.yml` reprova se a tag não for exatamente a versão do workspace, publica binários com
-`SHA256SUMS`, constrói as quatro imagens com `WYD_VERSION=<tag>` e SBOM, e monta as notas a partir do
-`changelog.md` + `git log` desde a tag anterior. **A primeira release real ainda não foi publicada**
-(é decisão do dono, `DEVOPS-10`): o disparo por tag já foi provado com uma tag descartável
+`SHA256SUMS`, constrói as quatro imagens com `WYD_VERSION=<tag>` e SBOM (anexado à release), e monta
+as notas a partir do `changelog.md` + `git log` desde a tag anterior, listando as imagens da tag.
+
+**Primeira release publicada em 2026-11-13 (`DEVOPS-10`):** tag anotada `v0.1.0` no commit
+`4a53d02` de `main` → run [43515686556](https://github.com/lucascantarelli/wyd/actions/runs/43515686556)
+**success** (`versão da tag`, `binários + checksums`, as quatro `imagem + SBOM` e `release com notas`),
+artefatos em [releases/tag/v0.1.0](https://github.com/lucascantarelli/wyd/releases/tag/v0.1.0) e
+anúncio no `#wyd-releases`. O disparo por tag já tinha sido provado antes com tag descartável
 (run 43431337735, cancelado de propósito).
+
+**Promoção `develop` → `main`:** `main` parou na stack Go antiga (commit `b58a607`), então o merge
+normal ressuscitava `webserver/`/`dbserver/`/`portal/`. As linhagens foram juntadas **uma vez** com
+`git merge -s ours origin/main` no `develop` (mantém a árvore do `develop` e torna `main` ancestral),
+e o `main` recebeu o `develop` por squash. A partir daí a promoção é PR comum, sem conflito.
 
 ### 8.2 Rollback
 
